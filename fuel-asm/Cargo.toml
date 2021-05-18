@@ -1,0 +1,12 @@
+[package]
+name = "fuel-asm"
+description = "Defines all opcodes available in the FuelVM."
+version = "0.1.0"
+authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+edition = "2018"
+repository = "https://github.com/FuelLabs/fuel-asm"
+license = "Apache-2.0"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
+
+[dependencies]

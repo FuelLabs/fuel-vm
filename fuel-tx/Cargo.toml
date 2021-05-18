@@ -1,0 +1,14 @@
+[package]
+name = "fuel-tx"
+description = "FuelVM transaction."
+version = "0.1.0"
+authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+edition = "2018"
+repository = "https://github.com/FuelLabs/fuel-tx"
+license = "Apache-2.0"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+categories = ["cryptography::cryptocurrencies", "data-structures"]
+
+[dependencies]
+fuel-asm = {git="https://github.com/FuelLabs/fuel-asm"}
+itertools = "0.10"

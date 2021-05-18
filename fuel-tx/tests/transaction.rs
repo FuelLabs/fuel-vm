@@ -3,6 +3,8 @@ use fuel_tx::*;
 use std::fmt;
 use std::io::{self, Read, Write};
 
+mod valid;
+
 pub fn assert_encoding_correct<T>(data: &[T])
 where
     T: Read + Write + fmt::Debug + Clone + PartialEq,

@@ -7,8 +7,10 @@ use std::io::Write;
 use std::{io, mem};
 
 mod types;
+mod validation;
 
 pub use types::{Color, Id, Input, Output, Root, Witness};
+pub use validation::ValidationError;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 const ID_SIZE: usize = mem::size_of::<Id>();

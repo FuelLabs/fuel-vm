@@ -10,5 +10,5 @@ keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["cryptography::cryptocurrencies", "data-structures"]
 
 [dependencies]
-fuel-asm = {git="https://github.com/FuelLabs/fuel-asm"}
+fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
 itertools = "0.10"

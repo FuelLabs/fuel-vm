@@ -1101,6 +1101,80 @@ pub enum Opcode {
     /// - `$rC > MEM_MAX_ACCESS_SIZE`
     S256(RegisterId, RegisterId, RegisterId) = OP_S256,
 
+    /// Set `$rA` to the length in bytes of [the `$rB`th
+    /// input](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xil($rB);```      |
+    /// | Syntax      | `xil $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.inputsCount`
+    XIL(RegisterId, RegisterId) = OP_XIL,
+
+    /// Set `$rA` to the memory addess of the start of [the `$rB`th
+    /// input](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xis($rB);```      |
+    /// | Syntax      | `xis $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.inputsCount`
+    XIS(RegisterId, RegisterId) = OP_XIS,
+
+    /// Set `$rA` to the length in bytes of [the `$rB`th
+    /// output](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xol($rB);```      |
+    /// | Syntax      | `xol $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.outputsCount`
+    XOL(RegisterId, RegisterId) = OP_XOL,
+
+    /// Set `$rA` to the memory addess of the start of [the `$rB`th
+    /// output](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xos($rB);```      |
+    /// | Syntax      | `xos $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.outputsCount`
+    XOS(RegisterId, RegisterId) = OP_XOS,
+
+    /// Set `$rA` to the length in bytes of [the `$rB`th
+    /// witness](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xwl($rB);```      |
+    /// | Syntax      | `xwl $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.witnessesCount`
+    ///
+    /// Note that the returned length includes the [_entire_
+    /// witness](../protocol/tx_format.md), not just of the witness's `data`
+    /// field.
+    XWL(RegisterId, RegisterId) = OP_XWL,
+
+    /// Set `$rA` to the memory addess of the start of [the `$rB`th
+    /// witness](./main.md#vm-initialization).
+    ///
+    /// | Operation   | ```$rA = xws($rB);```      |
+    /// | Syntax      | `xws $rA, $rB`             |
+    /// | Encoding    | `0x00 rA rB - -`           |
+    ///
+    /// #### Panics
+    /// - `$rB >= tx.witnessesCount`
+    ///
+    /// Note that the returned memory address includes the [_entire_
+    /// witness](../protocol/tx_format.md), not just of the witness's `data`
+    /// field.
+    XWS(RegisterId, RegisterId) = OP_XWS,
+
     /// Performs no operation.
     ///
     /// | Operation   |                        |
@@ -1203,6 +1277,12 @@ impl Opcode {
             OP_ECR => ECR(ra, rb, rc),
             OP_K256 => K256(ra, rb, rc),
             OP_S256 => S256(ra, rb, rc),
+            OP_XIL => XIL(ra, rb),
+            OP_XIS => XIS(ra, rb),
+            OP_XOL => XOL(ra, rb),
+            OP_XOS => XOS(ra, rb),
+            OP_XWL => XWL(ra, rb),
+            OP_XWS => XWS(ra, rb),
             OP_NOOP => NOOP,
             OP_FLAG => FLAG(ra),
             _ => Undefined,
@@ -1285,6 +1365,12 @@ impl Opcode {
             Self::ECR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::K256(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::S256(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::XIL(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::XIS(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::XOL(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::XOS(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::XWL(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::XWS(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::NOOP => [None; 4],
             Self::FLAG(ra) => [Some(*ra), None, None, None],
             Self::Undefined => [None; 4],
@@ -1469,6 +1555,12 @@ impl From<Opcode> for u32 {
             Opcode::S256(ra, rb, rc) => {
                 ((OP_S256 as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
+            Opcode::XIL(ra, rb) => ((OP_XIL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XIS(ra, rb) => ((OP_XIS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XOL(ra, rb) => ((OP_XOL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XOS(ra, rb) => ((OP_XOS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XWL(ra, rb) => ((OP_XWL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XWS(ra, rb) => ((OP_XWS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
             Opcode::NOOP => (OP_NOOP as u32) << 24,
             Opcode::FLAG(ra) => ((OP_FLAG as u32) << 24) | ((ra as u32) << 18),
             Opcode::Undefined => (0x00 << 24),

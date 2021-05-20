@@ -1,7 +1,4 @@
-#![feature(arbitrary_enum_discriminant)]
-#![feature(external_doc)]
 #![warn(missing_docs)]
-#![doc(include = "../README.md")]
 
 mod opcode;
 mod types;

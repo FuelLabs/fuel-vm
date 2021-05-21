@@ -8,7 +8,6 @@ use std::io;
 pub mod consts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
 /// Instruction representation for the interpreter.
 ///
 /// ## Memory Opcodes
@@ -1208,85 +1207,84 @@ impl Opcode {
         imm18: Immediate18,
         imm24: Immediate24,
     ) -> Self {
-        use Opcode::*;
-        use OpcodeRepr::*;
+        let op = OpcodeRepr::from_u8(op);
 
         match op {
-            op if op == OP_ADD as u8 => ADD(ra, rb, rc),
-            op if op == OP_ADDI as u8 => ADDI(ra, rb, imm12),
-            op if op == OP_AND as u8 => AND(ra, rb, rc),
-            op if op == OP_ANDI as u8 => ANDI(ra, rb, imm12),
-            op if op == OP_DIV as u8 => DIV(ra, rb, rc),
-            op if op == OP_DIVI as u8 => DIVI(ra, rb, imm12),
-            op if op == OP_EQ as u8 => EQ(ra, rb, rc),
-            op if op == OP_EXP as u8 => EXP(ra, rb, rc),
-            op if op == OP_EXPI as u8 => EXPI(ra, rb, imm12),
-            op if op == OP_GT as u8 => GT(ra, rb, rc),
-            op if op == OP_MLOG as u8 => MLOG(ra, rb, rc),
-            op if op == OP_MROO as u8 => MROO(ra, rb, rc),
-            op if op == OP_MOD as u8 => MOD(ra, rb, rc),
-            op if op == OP_MODI as u8 => MODI(ra, rb, imm12),
-            op if op == OP_MOVE as u8 => MOVE(ra, rb),
-            op if op == OP_MUL as u8 => MUL(ra, rb, rc),
-            op if op == OP_MULI as u8 => MULI(ra, rb, imm12),
-            op if op == OP_NOT as u8 => NOT(ra, rb),
-            op if op == OP_OR as u8 => OR(ra, rb, rc),
-            op if op == OP_ORI as u8 => ORI(ra, rb, imm12),
-            op if op == OP_SLL as u8 => SLL(ra, rb, rc),
-            op if op == OP_SLLI as u8 => SLLI(ra, rb, imm12),
-            op if op == OP_SRL as u8 => SRL(ra, rb, rc),
-            op if op == OP_SRLI as u8 => SRLI(ra, rb, imm12),
-            op if op == OP_SUB as u8 => SUB(ra, rb, rc),
-            op if op == OP_SUBI as u8 => SUBI(ra, rb, imm12),
-            op if op == OP_XOR as u8 => XOR(ra, rb, rc),
-            op if op == OP_XORI as u8 => XORI(ra, rb, imm12),
-            op if op == OP_CIMV as u8 => CIMV(ra, rb, rc),
-            op if op == OP_CTMV as u8 => CTMV(ra, rb),
-            op if op == OP_JI as u8 => JI(imm24),
-            op if op == OP_JNEI as u8 => JNEI(ra, rb, imm12),
-            op if op == OP_RET as u8 => RET(ra),
-            op if op == OP_CFEI as u8 => CFEI(imm24),
-            op if op == OP_CFSI as u8 => CFSI(imm24),
-            op if op == OP_LB as u8 => LB(ra, rb, imm12),
-            op if op == OP_LW as u8 => LW(ra, rb, imm12),
-            op if op == OP_ALOC as u8 => ALOC(ra),
-            op if op == OP_MCL as u8 => MCL(ra, rb),
-            op if op == OP_MCLI as u8 => MCLI(ra, imm18),
-            op if op == OP_MCP as u8 => MCP(ra, rb, rc),
-            op if op == OP_MEQ as u8 => MEQ(ra, rb, rc, rd),
-            op if op == OP_SB as u8 => SB(ra, rb, imm12),
-            op if op == OP_SW as u8 => SW(ra, rb, imm12),
-            op if op == OP_BHSH as u8 => BHSH(ra, rb),
-            op if op == OP_BHEI as u8 => BHEI(ra),
-            op if op == OP_BURN as u8 => BURN(ra),
-            op if op == OP_CALL as u8 => CALL(ra, rb, rc, rd),
-            op if op == OP_CCP as u8 => CCP(ra, rb, rc, rd),
-            op if op == OP_CROO as u8 => CROO(ra, rb),
-            op if op == OP_CSIZ as u8 => CSIZ(ra, rb),
-            op if op == OP_CB as u8 => CB(ra),
-            op if op == OP_LDC as u8 => LDC(ra, rb, rc),
-            op if op == OP_LOG as u8 => LOG(ra, rb, rc, rd),
-            op if op == OP_MINT as u8 => MINT(ra),
-            op if op == OP_RVRT as u8 => RVRT(ra),
-            op if op == OP_SLDC as u8 => SLDC(ra, rb, rc),
-            op if op == OP_SRW as u8 => SRW(ra, rb),
-            op if op == OP_SRWQ as u8 => SRWQ(ra, rb),
-            op if op == OP_SWW as u8 => SWW(ra, rb),
-            op if op == OP_SWWQ as u8 => SWWQ(ra, rb),
-            op if op == OP_TR as u8 => TR(ra, rb, rc),
-            op if op == OP_TRO as u8 => TRO(ra, rb, rc, rd),
-            op if op == OP_ECR as u8 => ECR(ra, rb, rc),
-            op if op == OP_K256 as u8 => K256(ra, rb, rc),
-            op if op == OP_S256 as u8 => S256(ra, rb, rc),
-            op if op == OP_XIL as u8 => XIL(ra, rb),
-            op if op == OP_XIS as u8 => XIS(ra, rb),
-            op if op == OP_XOL as u8 => XOL(ra, rb),
-            op if op == OP_XOS as u8 => XOS(ra, rb),
-            op if op == OP_XWL as u8 => XWL(ra, rb),
-            op if op == OP_XWS as u8 => XWS(ra, rb),
-            op if op == OP_NOOP as u8 => NOOP,
-            op if op == OP_FLAG as u8 => FLAG(ra),
-            _ => Undefined,
+            OpcodeRepr::ADD => Opcode::ADD(ra, rb, rc),
+            OpcodeRepr::ADDI => Opcode::ADDI(ra, rb, imm12),
+            OpcodeRepr::AND => Opcode::AND(ra, rb, rc),
+            OpcodeRepr::ANDI => Opcode::ANDI(ra, rb, imm12),
+            OpcodeRepr::DIV => Opcode::DIV(ra, rb, rc),
+            OpcodeRepr::DIVI => Opcode::DIVI(ra, rb, imm12),
+            OpcodeRepr::EQ => Opcode::EQ(ra, rb, rc),
+            OpcodeRepr::EXP => Opcode::EXP(ra, rb, rc),
+            OpcodeRepr::EXPI => Opcode::EXPI(ra, rb, imm12),
+            OpcodeRepr::GT => Opcode::GT(ra, rb, rc),
+            OpcodeRepr::MLOG => Opcode::MLOG(ra, rb, rc),
+            OpcodeRepr::MROO => Opcode::MROO(ra, rb, rc),
+            OpcodeRepr::MOD => Opcode::MOD(ra, rb, rc),
+            OpcodeRepr::MODI => Opcode::MODI(ra, rb, imm12),
+            OpcodeRepr::MOVE => Opcode::MOVE(ra, rb),
+            OpcodeRepr::MUL => Opcode::MUL(ra, rb, rc),
+            OpcodeRepr::MULI => Opcode::MULI(ra, rb, imm12),
+            OpcodeRepr::NOT => Opcode::NOT(ra, rb),
+            OpcodeRepr::OR => Opcode::OR(ra, rb, rc),
+            OpcodeRepr::ORI => Opcode::ORI(ra, rb, imm12),
+            OpcodeRepr::SLL => Opcode::SLL(ra, rb, rc),
+            OpcodeRepr::SLLI => Opcode::SLLI(ra, rb, imm12),
+            OpcodeRepr::SRL => Opcode::SRL(ra, rb, rc),
+            OpcodeRepr::SRLI => Opcode::SRLI(ra, rb, imm12),
+            OpcodeRepr::SUB => Opcode::SUB(ra, rb, rc),
+            OpcodeRepr::SUBI => Opcode::SUBI(ra, rb, imm12),
+            OpcodeRepr::XOR => Opcode::XOR(ra, rb, rc),
+            OpcodeRepr::XORI => Opcode::XORI(ra, rb, imm12),
+            OpcodeRepr::CIMV => Opcode::CIMV(ra, rb, rc),
+            OpcodeRepr::CTMV => Opcode::CTMV(ra, rb),
+            OpcodeRepr::JI => Opcode::JI(imm24),
+            OpcodeRepr::JNEI => Opcode::JNEI(ra, rb, imm12),
+            OpcodeRepr::RET => Opcode::RET(ra),
+            OpcodeRepr::CFEI => Opcode::CFEI(imm24),
+            OpcodeRepr::CFSI => Opcode::CFSI(imm24),
+            OpcodeRepr::LB => Opcode::LB(ra, rb, imm12),
+            OpcodeRepr::LW => Opcode::LW(ra, rb, imm12),
+            OpcodeRepr::ALOC => Opcode::ALOC(ra),
+            OpcodeRepr::MCL => Opcode::MCL(ra, rb),
+            OpcodeRepr::MCLI => Opcode::MCLI(ra, imm18),
+            OpcodeRepr::MCP => Opcode::MCP(ra, rb, rc),
+            OpcodeRepr::MEQ => Opcode::MEQ(ra, rb, rc, rd),
+            OpcodeRepr::SB => Opcode::SB(ra, rb, imm12),
+            OpcodeRepr::SW => Opcode::SW(ra, rb, imm12),
+            OpcodeRepr::BHSH => Opcode::BHSH(ra, rb),
+            OpcodeRepr::BHEI => Opcode::BHEI(ra),
+            OpcodeRepr::BURN => Opcode::BURN(ra),
+            OpcodeRepr::CALL => Opcode::CALL(ra, rb, rc, rd),
+            OpcodeRepr::CCP => Opcode::CCP(ra, rb, rc, rd),
+            OpcodeRepr::CROO => Opcode::CROO(ra, rb),
+            OpcodeRepr::CSIZ => Opcode::CSIZ(ra, rb),
+            OpcodeRepr::CB => Opcode::CB(ra),
+            OpcodeRepr::LDC => Opcode::LDC(ra, rb, rc),
+            OpcodeRepr::LOG => Opcode::LOG(ra, rb, rc, rd),
+            OpcodeRepr::MINT => Opcode::MINT(ra),
+            OpcodeRepr::RVRT => Opcode::RVRT(ra),
+            OpcodeRepr::SLDC => Opcode::SLDC(ra, rb, rc),
+            OpcodeRepr::SRW => Opcode::SRW(ra, rb),
+            OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb),
+            OpcodeRepr::SWW => Opcode::SWW(ra, rb),
+            OpcodeRepr::SWWQ => Opcode::SWWQ(ra, rb),
+            OpcodeRepr::TR => Opcode::TR(ra, rb, rc),
+            OpcodeRepr::TRO => Opcode::TRO(ra, rb, rc, rd),
+            OpcodeRepr::ECR => Opcode::ECR(ra, rb, rc),
+            OpcodeRepr::K256 => Opcode::K256(ra, rb, rc),
+            OpcodeRepr::S256 => Opcode::S256(ra, rb, rc),
+            OpcodeRepr::XIL => Opcode::XIL(ra, rb),
+            OpcodeRepr::XIS => Opcode::XIS(ra, rb),
+            OpcodeRepr::XOL => Opcode::XOL(ra, rb),
+            OpcodeRepr::XOS => Opcode::XOS(ra, rb),
+            OpcodeRepr::XWL => Opcode::XWL(ra, rb),
+            OpcodeRepr::XWS => Opcode::XWS(ra, rb),
+            OpcodeRepr::NOOP => Opcode::NOOP,
+            OpcodeRepr::FLAG => Opcode::FLAG(ra),
+            _ => Opcode::Undefined,
         }
     }
 
@@ -1401,129 +1399,190 @@ impl From<u32> for Opcode {
 
 impl From<Opcode> for u32 {
     fn from(opcode: Opcode) -> u32 {
-        use Opcode::*;
-        use OpcodeRepr::*;
-
         match opcode {
-            ADD(ra, rb, rc) => ((OP_ADD as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            ADDI(ra, rb, imm12) => {
-                ((OP_ADDI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::ADD(ra, rb, rc) => {
+                ((OpcodeRepr::ADD as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            AND(ra, rb, rc) => ((OP_AND as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            ANDI(ra, rb, imm12) => {
-                ((OP_ANDI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::ADDI(ra, rb, imm12) => {
+                ((OpcodeRepr::ADDI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            DIV(ra, rb, rc) => ((OP_DIV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            DIVI(ra, rb, imm12) => {
-                ((OP_DIVI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::AND(ra, rb, rc) => {
+                ((OpcodeRepr::AND as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            EQ(ra, rb, rc) => ((OP_EQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            EXP(ra, rb, rc) => ((OP_EXP as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            EXPI(ra, rb, imm12) => {
-                ((OP_EXPI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::ANDI(ra, rb, imm12) => {
+                ((OpcodeRepr::ANDI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            GT(ra, rb, rc) => ((OP_GT as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            MLOG(ra, rb, rc) => {
-                ((OP_MLOG as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::DIV(ra, rb, rc) => {
+                ((OpcodeRepr::DIV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            MROO(ra, rb, rc) => {
-                ((OP_MROO as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::DIVI(ra, rb, imm12) => {
+                ((OpcodeRepr::DIVI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            MOD(ra, rb, rc) => ((OP_MOD as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            MODI(ra, rb, imm12) => {
-                ((OP_MODI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::EQ(ra, rb, rc) => {
+                ((OpcodeRepr::EQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            MOVE(ra, rb) => ((OP_MOVE as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            MUL(ra, rb, rc) => ((OP_MUL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            MULI(ra, rb, imm12) => {
-                ((OP_MULI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::EXP(ra, rb, rc) => {
+                ((OpcodeRepr::EXP as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            NOT(ra, rb) => ((OP_NOT as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            OR(ra, rb, rc) => ((OP_OR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            ORI(ra, rb, imm12) => ((OP_ORI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32),
-            SLL(ra, rb, rc) => ((OP_SLL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            SLLI(ra, rb, imm12) => {
-                ((OP_SLLI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::EXPI(ra, rb, imm12) => {
+                ((OpcodeRepr::EXPI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            SRL(ra, rb, rc) => ((OP_SRL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            SRLI(ra, rb, imm12) => {
-                ((OP_SRLI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::GT(ra, rb, rc) => {
+                ((OpcodeRepr::GT as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            SUB(ra, rb, rc) => ((OP_SUB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            SUBI(ra, rb, imm12) => {
-                ((OP_SUBI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::MLOG(ra, rb, rc) => {
+                ((OpcodeRepr::MLOG as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            XOR(ra, rb, rc) => ((OP_XOR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            XORI(ra, rb, imm12) => {
-                ((OP_XORI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::MROO(ra, rb, rc) => {
+                ((OpcodeRepr::MROO as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            CIMV(ra, rb, rc) => {
-                ((OP_CIMV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::MOD(ra, rb, rc) => {
+                ((OpcodeRepr::MOD as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            CTMV(ra, rb) => ((OP_CTMV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            JI(imm24) => ((OP_JI as u32) << 24) | (imm24 as u32),
-            JNEI(ra, rb, imm12) => {
-                ((OP_JNEI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            Opcode::MODI(ra, rb, imm12) => {
+                ((OpcodeRepr::MODI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            RET(ra) => ((OP_RET as u32) << 24) | ((ra as u32) << 18),
-            CFEI(imm24) => ((OP_CFEI as u32) << 24) | (imm24 as u32),
-            CFSI(imm24) => ((OP_CFSI as u32) << 24) | (imm24 as u32),
-            LB(ra, rb, imm12) => ((OP_LB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32),
-            LW(ra, rb, imm12) => ((OP_LW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32),
-            ALOC(ra) => ((OP_ALOC as u32) << 24) | ((ra as u32) << 18),
-            MCL(ra, rb) => ((OP_MCL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            MCLI(ra, imm18) => ((OP_MCLI as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32),
-            MCP(ra, rb, rc) => ((OP_MCP as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            MEQ(ra, rb, rc, rd) => {
-                ((OP_MEQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6) | (rd as u32)
+            Opcode::MOVE(ra, rb) => ((OpcodeRepr::MOVE as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::MUL(ra, rb, rc) => {
+                ((OpcodeRepr::MUL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            SB(ra, rb, imm12) => ((OP_SB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32),
-            SW(ra, rb, imm12) => ((OP_SW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32),
-            BHSH(ra, rb) => ((OP_BHSH as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            BHEI(ra) => ((OP_BHEI as u32) << 24) | ((ra as u32) << 18),
-            BURN(ra) => ((OP_BURN as u32) << 24) | ((ra as u32) << 18),
-            CALL(ra, rb, rc, rd) => {
-                ((OP_CALL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6) | (rd as u32)
+            Opcode::MULI(ra, rb, imm12) => {
+                ((OpcodeRepr::MULI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            CCP(ra, rb, rc, rd) => {
-                ((OP_CCP as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6) | (rd as u32)
+            Opcode::NOT(ra, rb) => ((OpcodeRepr::NOT as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::OR(ra, rb, rc) => {
+                ((OpcodeRepr::OR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            CROO(ra, rb) => ((OP_CROO as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            CSIZ(ra, rb) => ((OP_CSIZ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            CB(ra) => ((OP_CB as u32) << 24) | ((ra as u32) << 18),
-            LDC(ra, rb, rc) => ((OP_LDC as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            LOG(ra, rb, rc, rd) => {
-                ((OP_LOG as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6) | (rd as u32)
+            Opcode::ORI(ra, rb, imm12) => {
+                ((OpcodeRepr::ORI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            MINT(ra) => ((OP_MINT as u32) << 24) | ((ra as u32) << 18),
-            RVRT(ra) => ((OP_RVRT as u32) << 24) | ((ra as u32) << 18),
-            SLDC(ra, rb, rc) => {
-                ((OP_SLDC as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::SLL(ra, rb, rc) => {
+                ((OpcodeRepr::SLL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            SRW(ra, rb) => ((OP_SRW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            SRWQ(ra, rb) => ((OP_SRWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            SWW(ra, rb) => ((OP_SWW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            SWWQ(ra, rb) => ((OP_SWWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            TR(ra, rb, rc) => ((OP_TR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            TRO(ra, rb, rc, rd) => {
-                ((OP_TRO as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6) | (rd as u32)
+            Opcode::SLLI(ra, rb, imm12) => {
+                ((OpcodeRepr::SLLI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            ECR(ra, rb, rc) => ((OP_ECR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6),
-            K256(ra, rb, rc) => {
-                ((OP_K256 as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::SRL(ra, rb, rc) => {
+                ((OpcodeRepr::SRL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
             }
-            S256(ra, rb, rc) => {
-                ((OP_S256 as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            Opcode::SRLI(ra, rb, imm12) => {
+                ((OpcodeRepr::SRLI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
             }
-            XIL(ra, rb) => ((OP_XIL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            XIS(ra, rb) => ((OP_XIS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            XOL(ra, rb) => ((OP_XOL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            XOS(ra, rb) => ((OP_XOS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            XWL(ra, rb) => ((OP_XWL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            XWS(ra, rb) => ((OP_XWS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
-            NOOP => (OP_NOOP as u32) << 24,
-            FLAG(ra) => ((OP_FLAG as u32) << 24) | ((ra as u32) << 18),
-            Undefined => (0x00 << 24),
+            Opcode::SUB(ra, rb, rc) => {
+                ((OpcodeRepr::SUB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::SUBI(ra, rb, imm12) => {
+                ((OpcodeRepr::SUBI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::XOR(ra, rb, rc) => {
+                ((OpcodeRepr::XOR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::XORI(ra, rb, imm12) => {
+                ((OpcodeRepr::XORI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::CIMV(ra, rb, rc) => {
+                ((OpcodeRepr::CIMV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::CTMV(ra, rb) => ((OpcodeRepr::CTMV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::JI(imm24) => ((OpcodeRepr::JI as u32) << 24) | (imm24 as u32),
+            Opcode::JNEI(ra, rb, imm12) => {
+                ((OpcodeRepr::JNEI as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::RET(ra) => ((OpcodeRepr::RET as u32) << 24) | ((ra as u32) << 18),
+            Opcode::CFEI(imm24) => ((OpcodeRepr::CFEI as u32) << 24) | (imm24 as u32),
+            Opcode::CFSI(imm24) => ((OpcodeRepr::CFSI as u32) << 24) | (imm24 as u32),
+            Opcode::LB(ra, rb, imm12) => {
+                ((OpcodeRepr::LB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::LW(ra, rb, imm12) => {
+                ((OpcodeRepr::LW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::ALOC(ra) => ((OpcodeRepr::ALOC as u32) << 24) | ((ra as u32) << 18),
+            Opcode::MCL(ra, rb) => ((OpcodeRepr::MCL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::MCLI(ra, imm18) => ((OpcodeRepr::MCLI as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32),
+            Opcode::MCP(ra, rb, rc) => {
+                ((OpcodeRepr::MCP as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::MEQ(ra, rb, rc, rd) => {
+                ((OpcodeRepr::MEQ as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::SB(ra, rb, imm12) => {
+                ((OpcodeRepr::SB as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::SW(ra, rb, imm12) => {
+                ((OpcodeRepr::SW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | (imm12 as u32)
+            }
+            Opcode::BHSH(ra, rb) => ((OpcodeRepr::BHSH as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::BHEI(ra) => ((OpcodeRepr::BHEI as u32) << 24) | ((ra as u32) << 18),
+            Opcode::BURN(ra) => ((OpcodeRepr::BURN as u32) << 24) | ((ra as u32) << 18),
+            Opcode::CALL(ra, rb, rc, rd) => {
+                ((OpcodeRepr::CALL as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::CCP(ra, rb, rc, rd) => {
+                ((OpcodeRepr::CCP as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::CROO(ra, rb) => ((OpcodeRepr::CROO as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::CSIZ(ra, rb) => ((OpcodeRepr::CSIZ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::CB(ra) => ((OpcodeRepr::CB as u32) << 24) | ((ra as u32) << 18),
+            Opcode::LDC(ra, rb, rc) => {
+                ((OpcodeRepr::LDC as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::LOG(ra, rb, rc, rd) => {
+                ((OpcodeRepr::LOG as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::MINT(ra) => ((OpcodeRepr::MINT as u32) << 24) | ((ra as u32) << 18),
+            Opcode::RVRT(ra) => ((OpcodeRepr::RVRT as u32) << 24) | ((ra as u32) << 18),
+            Opcode::SLDC(ra, rb, rc) => {
+                ((OpcodeRepr::SLDC as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::SRW(ra, rb) => ((OpcodeRepr::SRW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::SRWQ(ra, rb) => ((OpcodeRepr::SRWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::SWW(ra, rb) => ((OpcodeRepr::SWW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::SWWQ(ra, rb) => ((OpcodeRepr::SWWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::TR(ra, rb, rc) => {
+                ((OpcodeRepr::TR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::TRO(ra, rb, rc, rd) => {
+                ((OpcodeRepr::TRO as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::ECR(ra, rb, rc) => {
+                ((OpcodeRepr::ECR as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::K256(ra, rb, rc) => {
+                ((OpcodeRepr::K256 as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::S256(ra, rb, rc) => {
+                ((OpcodeRepr::S256 as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12) | ((rc as u32) << 6)
+            }
+            Opcode::XIL(ra, rb) => ((OpcodeRepr::XIL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XIS(ra, rb) => ((OpcodeRepr::XIS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XOL(ra, rb) => ((OpcodeRepr::XOL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XOS(ra, rb) => ((OpcodeRepr::XOS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XWL(ra, rb) => ((OpcodeRepr::XWL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::XWS(ra, rb) => ((OpcodeRepr::XWS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12),
+            Opcode::NOOP => (OpcodeRepr::NOOP as u32) << 24,
+            Opcode::FLAG(ra) => ((OpcodeRepr::FLAG as u32) << 24) | ((ra as u32) << 18),
+            Opcode::Undefined => (0x00 << 24),
         }
     }
 }

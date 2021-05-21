@@ -1,59 +1,115 @@
-use super::{Color, Id, Root};
+use super::{Address, Color, ContractAddress, Hash};
 use crate::bytes;
 
 use fuel_asm::Word;
 
+use std::convert::TryFrom;
 use std::{io, mem};
 
-const ID_SIZE: usize = mem::size_of::<Id>();
-const WORD_SIZE: usize = mem::size_of::<Word>();
+const ADDRESS_SIZE: usize = mem::size_of::<Address>();
 const COLOR_SIZE: usize = mem::size_of::<Color>();
-const ROOT_SIZE: usize = mem::size_of::<Root>();
+const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
+const HASH_SIZE: usize = mem::size_of::<Hash>();
+const WORD_SIZE: usize = mem::size_of::<Word>();
+
+const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
+    + ADDRESS_SIZE // To
+    + WORD_SIZE // Amount
+    + COLOR_SIZE; // Color
+
+const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
+    + WORD_SIZE // Input index
+    + HASH_SIZE // Balance root
+    + HASH_SIZE; // State root
+
+const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
+    + CONTRACT_ADDRESS_SIZE; // Contract Id
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum OutputRepr {
+    Coin = 0x00,
+    Contract = 0x01,
+    Withdrawal = 0x02,
+    Change = 0x03,
+    Variable = 0x04,
+    ContractCreated = 0x05,
+}
+
+impl TryFrom<Word> for OutputRepr {
+    type Error = io::Error;
+
+    fn try_from(b: Word) -> Result<Self, Self::Error> {
+        match b {
+            0x00 => Ok(Self::Coin),
+            0x01 => Ok(Self::Contract),
+            0x02 => Ok(Self::Withdrawal),
+            0x03 => Ok(Self::Change),
+            0x04 => Ok(Self::Variable),
+            0x05 => Ok(Self::ContractCreated),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "The provided identifier is invalid!",
+            )),
+        }
+    }
+}
+
+impl From<&mut Output> for OutputRepr {
+    fn from(o: &mut Output) -> Self {
+        match o {
+            Output::Coin { .. } => Self::Coin,
+            Output::Contract { .. } => Self::Contract,
+            Output::Withdrawal { .. } => Self::Withdrawal,
+            Output::Change { .. } => Self::Change,
+            Output::Variable { .. } => Self::Variable,
+            Output::ContractCreated { .. } => Self::ContractCreated,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
 pub enum Output {
     Coin {
-        to: Id,
+        to: Address,
         amount: Word,
         color: Color,
-    } = 0x00,
+    },
 
     Contract {
         input_index: u8,
-        balance_root: Root,
-        state_root: Root,
-    } = 0x01,
+        balance_root: Hash,
+        state_root: Hash,
+    },
 
     Withdrawal {
-        to: Id,
+        to: Address,
         amount: Word,
         color: Color,
-    } = 0x02,
+    },
 
     Change {
-        to: Id,
+        to: Address,
         amount: Word,
         color: Color,
-    } = 0x03,
+    },
 
     Variable {
-        to: Id,
+        to: Address,
         amount: Word,
         color: Color,
-    } = 0x04,
+    },
 
     ContractCreated {
-        contract_id: Id,
-    } = 0x05,
+        contract_id: ContractAddress,
+    },
 }
 
 impl Output {
-    pub const fn coin(to: Id, amount: Word, color: Color) -> Self {
+    pub const fn coin(to: Address, amount: Word, color: Color) -> Self {
         Self::Coin { to, amount, color }
     }
 
-    pub const fn contract(input_index: u8, balance_root: Root, state_root: Root) -> Self {
+    pub const fn contract(input_index: u8, balance_root: Hash, state_root: Hash) -> Self {
         Self::Contract {
             input_index,
             balance_root,
@@ -61,19 +117,19 @@ impl Output {
         }
     }
 
-    pub const fn withdrawal(to: Id, amount: Word, color: Color) -> Self {
+    pub const fn withdrawal(to: Address, amount: Word, color: Color) -> Self {
         Self::Withdrawal { to, amount, color }
     }
 
-    pub const fn change(to: Id, amount: Word, color: Color) -> Self {
+    pub const fn change(to: Address, amount: Word, color: Color) -> Self {
         Self::Change { to, amount, color }
     }
 
-    pub const fn variable(to: Id, amount: Word, color: Color) -> Self {
+    pub const fn variable(to: Address, amount: Word, color: Color) -> Self {
         Self::Variable { to, amount, color }
     }
 
-    pub const fn contract_created(contract_id: Id) -> Self {
+    pub const fn contract_created(contract_id: ContractAddress) -> Self {
         Self::ContractCreated { contract_id }
     }
 
@@ -90,36 +146,29 @@ impl Output {
 
 impl io::Read for Output {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        let identifier = match self {
-            Self::Coin { .. } => 0x00,
-            Self::Contract { .. } => 0x01,
-            Self::Withdrawal { .. } => 0x02,
-            Self::Change { .. } => 0x03,
-            Self::Variable { .. } => 0x04,
-            Self::ContractCreated { .. } => 0x05,
-        };
+        let identifier: OutputRepr = self.into();
 
         match self {
             Self::Coin { .. } | Self::Withdrawal { .. } | Self::Change { .. } | Self::Variable { .. }
-                if buf.len() < 1 + ID_SIZE + WORD_SIZE + COLOR_SIZE =>
+                if buf.len() < OUTPUT_COIN_SIZE =>
             {
                 Err(bytes::eof())
             }
 
-            Self::Contract { .. } if buf.len() < 1 + WORD_SIZE + 2 * ROOT_SIZE => Err(bytes::eof()),
+            Self::Contract { .. } if buf.len() < OUTPUT_CONTRACT_SIZE => Err(bytes::eof()),
 
-            Self::ContractCreated { .. } if buf.len() < 1 + ID_SIZE => Err(bytes::eof()),
+            Self::ContractCreated { .. } if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE => Err(bytes::eof()),
 
             Self::Coin { to, amount, color }
             | Self::Withdrawal { to, amount, color }
             | Self::Change { to, amount, color }
             | Self::Variable { to, amount, color } => {
-                buf[0] = identifier;
-                buf = bytes::store_array_unchecked(&mut buf[1..], to);
+                buf = bytes::store_number_unchecked(buf, identifier as Word);
+                buf = bytes::store_array_unchecked(buf, to);
                 buf = bytes::store_number_unchecked(buf, *amount);
                 bytes::store_array_unchecked(buf, color);
 
-                Ok(1 + ID_SIZE + WORD_SIZE + COLOR_SIZE)
+                Ok(OUTPUT_COIN_SIZE)
             }
 
             Self::Contract {
@@ -127,58 +176,62 @@ impl io::Read for Output {
                 balance_root,
                 state_root,
             } => {
-                buf[0] = identifier;
-                buf = bytes::store_number_unchecked(&mut buf[1..], *input_index);
+                buf = bytes::store_number_unchecked(buf, identifier as Word);
+                buf = bytes::store_number_unchecked(buf, *input_index);
                 buf = bytes::store_array_unchecked(buf, balance_root);
                 bytes::store_array_unchecked(buf, state_root);
 
-                Ok(1 + WORD_SIZE + 2 * ROOT_SIZE)
+                Ok(OUTPUT_CONTRACT_SIZE)
             }
 
             Self::ContractCreated { contract_id } => {
-                buf[0] = identifier;
-                bytes::store_array_unchecked(&mut buf[1..], contract_id);
+                buf = bytes::store_number_unchecked(buf, identifier as Word);
+                bytes::store_array_unchecked(buf, contract_id);
 
-                Ok(1 + ID_SIZE)
+                Ok(OUTPUT_CONTRACT_CREATED_SIZE)
             }
         }
     }
 }
 
 impl io::Write for Output {
-    fn write(&mut self, mut buf: &[u8]) -> io::Result<usize> {
-        if buf.is_empty() {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() < WORD_SIZE {
             return Err(bytes::eof());
         }
 
-        let identifier = buf[0];
-        buf = &buf[1..];
+        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
-            0x00 | 0x02 | 0x03 | 0x4 if buf.len() < ID_SIZE + WORD_SIZE + COLOR_SIZE => Err(bytes::eof()),
+            OutputRepr::Coin | OutputRepr::Withdrawal | OutputRepr::Change | OutputRepr::Variable
+                if buf.len() < OUTPUT_COIN_SIZE - WORD_SIZE =>
+            {
+                Err(bytes::eof())
+            }
 
-            0x01 if buf.len() < WORD_SIZE + 2 * ROOT_SIZE => Err(bytes::eof()),
+            OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
 
-            0x05 if buf.len() < ID_SIZE => Err(bytes::eof()),
+            OutputRepr::ContractCreated if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE - WORD_SIZE => Err(bytes::eof()),
 
-            0x00 | 0x02 | 0x03 | 0x4 => {
+            OutputRepr::Coin | OutputRepr::Withdrawal | OutputRepr::Change | OutputRepr::Variable => {
                 let (to, buf) = bytes::restore_array_unchecked(buf);
                 let (amount, buf) = bytes::restore_number_unchecked(buf);
                 let (color, _) = bytes::restore_array_unchecked(buf);
 
                 match identifier {
-                    0x00 => *self = Self::Coin { to, amount, color },
-                    0x02 => *self = Self::Withdrawal { to, amount, color },
-                    0x03 => *self = Self::Change { to, amount, color },
-                    0x04 => *self = Self::Variable { to, amount, color },
+                    OutputRepr::Coin => *self = Self::Coin { to, amount, color },
+                    OutputRepr::Withdrawal => *self = Self::Withdrawal { to, amount, color },
+                    OutputRepr::Change => *self = Self::Change { to, amount, color },
+                    OutputRepr::Variable => *self = Self::Variable { to, amount, color },
 
                     _ => unreachable!(),
                 }
 
-                Ok(1 + ID_SIZE + WORD_SIZE + COLOR_SIZE)
+                Ok(OUTPUT_COIN_SIZE)
             }
 
-            0x01 => {
+            OutputRepr::Contract => {
                 let (input_index, buf) = bytes::restore_u8_unchecked(buf);
                 let (balance_root, buf) = bytes::restore_array_unchecked(buf);
                 let (state_root, _) = bytes::restore_array_unchecked(buf);
@@ -189,20 +242,15 @@ impl io::Write for Output {
                     state_root,
                 };
 
-                Ok(1 + WORD_SIZE + 2 * ROOT_SIZE)
+                Ok(OUTPUT_CONTRACT_SIZE)
             }
 
-            0x05 => {
+            OutputRepr::ContractCreated => {
                 let (contract_id, _) = bytes::restore_array_unchecked(buf);
                 *self = Self::ContractCreated { contract_id };
 
-                Ok(1 + ID_SIZE)
+                Ok(OUTPUT_CONTRACT_CREATED_SIZE)
             }
-
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
-            )),
         }
     }
 

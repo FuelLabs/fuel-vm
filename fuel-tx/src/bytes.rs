@@ -32,6 +32,16 @@ pub fn store_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize
     Ok((WORD_SIZE + bytes.len() + pad, buf))
 }
 
+pub const fn padded_len(bytes: &[u8]) -> usize {
+    let pad = bytes.len() % WORD_SIZE;
+
+    if pad == 0 {
+        bytes.len()
+    } else {
+        bytes.len() + WORD_SIZE - pad
+    }
+}
+
 pub fn store_raw_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
     let pad = bytes.len() % WORD_SIZE;
     let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };

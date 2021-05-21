@@ -1,41 +1,79 @@
-use super::{Color, Id, Root};
+use super::{Address, Color, ContractAddress, Hash};
 use crate::bytes;
 
 use fuel_asm::Word;
 
+use std::convert::TryFrom;
 use std::{io, mem};
 
-const ID_SIZE: usize = mem::size_of::<Id>();
-const WORD_SIZE: usize = mem::size_of::<Word>();
+const ADDRESS_SIZE: usize = mem::size_of::<Address>();
 const COLOR_SIZE: usize = mem::size_of::<Color>();
-const ROOT_SIZE: usize = mem::size_of::<Root>();
+const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
+const HASH_SIZE: usize = mem::size_of::<Hash>();
+const WORD_SIZE: usize = mem::size_of::<Word>();
+
+const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + HASH_SIZE // UTXO Id
+    + ADDRESS_SIZE // Owner
+    + WORD_SIZE // Amount
+    + COLOR_SIZE // Color
+    + WORD_SIZE // Witness index
+    + WORD_SIZE // Maturity
+    + WORD_SIZE // Predicate size
+    + WORD_SIZE; // Predicate data size
+
+const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
+    + HASH_SIZE // UTXO Id
+    + HASH_SIZE // Balance root
+    + HASH_SIZE // State root
+    + CONTRACT_ADDRESS_SIZE; // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[repr(u8)]
+enum InputRepr {
+    Coin = 0x00,
+    Contract = 0x01,
+}
+
+impl TryFrom<Word> for InputRepr {
+    type Error = io::Error;
+
+    fn try_from(b: Word) -> Result<Self, Self::Error> {
+        match b {
+            0x00 => Ok(Self::Coin),
+            0x01 => Ok(Self::Contract),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "The provided identifier is invalid!",
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Input {
     Coin {
-        utxo_id: Id,
-        owner: Id,
+        utxo_id: Hash,
+        owner: Address,
         amount: Word,
         color: Color,
         witness_index: u8,
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
-    } = 0x00,
+    },
 
     Contract {
-        utxo_id: Id,
-        balance_root: Root,
-        state_root: Root,
-        contract_id: Id,
-    } = 0x01,
+        utxo_id: Hash,
+        balance_root: Hash,
+        state_root: Hash,
+        contract_id: ContractAddress,
+    },
 }
 
 impl Input {
     pub const fn coin(
-        utxo_id: Id,
-        owner: Id,
+        utxo_id: Hash,
+        owner: Address,
         amount: Word,
         color: Color,
         witness_index: u8,
@@ -55,7 +93,7 @@ impl Input {
         }
     }
 
-    pub const fn contract(utxo_id: Id, balance_root: Root, state_root: Root, contract_id: Id) -> Self {
+    pub const fn contract(utxo_id: Hash, balance_root: Hash, state_root: Hash, contract_id: ContractAddress) -> Self {
         Self::Contract {
             utxo_id,
             balance_root,
@@ -64,10 +102,26 @@ impl Input {
         }
     }
 
-    pub const fn utxo_id(&self) -> &Id {
+    pub const fn utxo_id(&self) -> &Hash {
         match self {
             Self::Coin { utxo_id, .. } => &utxo_id,
             Self::Contract { utxo_id, .. } => &utxo_id,
+        }
+    }
+
+    pub fn serialized_size(&self) -> usize {
+        match self {
+            Self::Coin {
+                predicate,
+                predicate_data,
+                ..
+            } => {
+                INPUT_COIN_FIXED_SIZE
+                    + bytes::padded_len(predicate.as_slice())
+                    + bytes::padded_len(predicate_data.as_slice())
+            }
+
+            Self::Contract { .. } => INPUT_CONTRACT_SIZE,
         }
     }
 }
@@ -85,14 +139,13 @@ impl io::Read for Input {
                 predicate,
                 predicate_data,
             } => {
-                let mut n = 1 + 2 * ID_SIZE + 5 * WORD_SIZE + COLOR_SIZE;
-
+                let mut n = INPUT_COIN_FIXED_SIZE;
                 if buf.len() < n {
                     return Err(bytes::eof());
                 }
 
-                buf[0] = 0x00;
-                let buf = bytes::store_array_unchecked(&mut buf[1..], utxo_id);
+                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
+                let buf = bytes::store_array_unchecked(buf, utxo_id);
                 let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, color);
@@ -111,7 +164,7 @@ impl io::Read for Input {
                 Ok(n)
             }
 
-            Self::Contract { .. } if buf.len() < 1 + 2 * ID_SIZE + 2 * ROOT_SIZE => Err(bytes::eof()),
+            Self::Contract { .. } if buf.len() < INPUT_CONTRACT_SIZE => Err(bytes::eof()),
 
             Self::Contract {
                 utxo_id,
@@ -119,35 +172,32 @@ impl io::Read for Input {
                 state_root,
                 contract_id,
             } => {
-                buf[0] = 0x01;
-                let buf = bytes::store_array_unchecked(&mut buf[1..], utxo_id);
+                let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
+                let buf = bytes::store_array_unchecked(buf, utxo_id);
                 let buf = bytes::store_array_unchecked(buf, balance_root);
                 let buf = bytes::store_array_unchecked(buf, state_root);
                 bytes::store_array_unchecked(buf, contract_id);
 
-                Ok(1 + 2 * ID_SIZE + 2 * ROOT_SIZE)
+                Ok(INPUT_CONTRACT_SIZE)
             }
         }
     }
 }
 
 impl io::Write for Input {
-    fn write(&mut self, mut buf: &[u8]) -> io::Result<usize> {
-        if buf.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "The provided buffer is not big enough!",
-            ));
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() < WORD_SIZE {
+            return Err(bytes::eof());
         }
 
-        let identifier = buf[0];
-        buf = &buf[1..];
+        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        let identifier = InputRepr::try_from(identifier)?;
 
         match identifier {
-            0x00 if buf.len() < 2 * ID_SIZE + 5 * WORD_SIZE + COLOR_SIZE => Err(bytes::eof()),
+            InputRepr::Coin if buf.len() < INPUT_COIN_FIXED_SIZE - WORD_SIZE => Err(bytes::eof()),
 
-            0x00 => {
-                let mut n = 1 + 2 * ID_SIZE + 5 * WORD_SIZE + COLOR_SIZE;
+            InputRepr::Coin => {
+                let mut n = INPUT_COIN_FIXED_SIZE;
 
                 let (utxo_id, buf) = bytes::restore_array_unchecked(buf);
                 let (owner, buf) = bytes::restore_array_unchecked(buf);
@@ -179,9 +229,9 @@ impl io::Write for Input {
                 Ok(n)
             }
 
-            0x01 if buf.len() < 2 * ID_SIZE + 2 * ROOT_SIZE => Err(bytes::eof()),
+            InputRepr::Contract if buf.len() < INPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
 
-            0x01 => {
+            InputRepr::Contract => {
                 let (utxo_id, buf) = bytes::restore_array_unchecked(buf);
                 let (balance_root, buf) = bytes::restore_array_unchecked(buf);
                 let (state_root, buf) = bytes::restore_array_unchecked(buf);
@@ -194,13 +244,8 @@ impl io::Write for Input {
                     contract_id,
                 };
 
-                Ok(1 + 2 * ROOT_SIZE + 2 * ID_SIZE)
+                Ok(INPUT_CONTRACT_SIZE)
             }
-
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
-            )),
         }
     }
 

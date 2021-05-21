@@ -5,6 +5,10 @@ use std::io::{self, Read, Write};
 
 mod valid;
 
+pub fn d<T: Default>() -> T {
+    Default::default()
+}
+
 pub fn assert_encoding_correct<T>(data: &[T])
 where
     T: Read + Write + fmt::Debug + Clone + PartialEq,
@@ -250,4 +254,134 @@ fn transaction() {
             vec![],
         ),
     ]);
+}
+
+#[test]
+fn create_input_coin_data_offset() {
+    let gas_price = 100;
+    let gas_limit = 1000;
+    let maturity = 10;
+    let bytecode_witness_index = 0x00;
+    let salt = [0xbb; 32];
+
+    let static_contracts: Vec<Vec<ContractAddress>> = vec![vec![], vec![d()], vec![d(), d()]];
+    let inputs: Vec<Vec<Input>> = vec![
+        vec![],
+        vec![Input::contract(d(), d(), d(), d())],
+        vec![Input::contract(d(), d(), d(), d()); 2],
+    ];
+    let outputs: Vec<Vec<Output>> = vec![
+        vec![],
+        vec![Output::coin(d(), d(), d())],
+        vec![Output::contract(d(), d(), d()), Output::withdrawal(d(), d(), d())],
+    ];
+    let witnesses: Vec<Vec<Witness>> = vec![
+        vec![],
+        vec![vec![0xfau8, 0xfb].into()],
+        vec![vec![0xbau8, 0xbb].into(), vec![0xff].into()],
+    ];
+
+    let predicate_data = vec![0xa0u8, 0xb0, 0xc0];
+    let input_coin = Input::coin(d(), d(), d(), d(), d(), d(), d(), predicate_data.clone());
+
+    let mut buffer = vec![0u8; 1024];
+    for static_contracts in static_contracts.iter() {
+        for inputs in inputs.iter() {
+            for outputs in outputs.iter() {
+                for witnesses in witnesses.iter() {
+                    let mut inputs = inputs.clone();
+                    let offset = inputs.len();
+                    inputs.push(input_coin.clone());
+
+                    let mut tx = Transaction::create(
+                        gas_price,
+                        gas_limit,
+                        maturity,
+                        bytecode_witness_index,
+                        salt,
+                        static_contracts.clone(),
+                        inputs,
+                        outputs.clone(),
+                        witnesses.clone(),
+                    );
+
+                    buffer.iter_mut().for_each(|b| *b = 0x00);
+                    tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+
+                    let offset = tx.input_coin_data_offset(offset).expect("Failed to fetch offset");
+
+                    assert_eq!(
+                        predicate_data.as_slice(),
+                        &buffer[offset..offset + predicate_data.len()]
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn script_input_coin_data_offset() {
+    let gas_price = 100;
+    let gas_limit = 1000;
+    let maturity = 10;
+
+    let script: Vec<Vec<u8>> = vec![vec![], vec![0xfa, 0xfb]];
+
+    let script_data: Vec<Vec<u8>> = vec![vec![], vec![0xfa, 0xfb]];
+
+    let inputs: Vec<Vec<Input>> = vec![
+        vec![],
+        vec![Input::contract(d(), d(), d(), d())],
+        vec![Input::contract(d(), d(), d(), d()); 2],
+    ];
+    let outputs: Vec<Vec<Output>> = vec![
+        vec![],
+        vec![Output::coin(d(), d(), d())],
+        vec![Output::contract(d(), d(), d()), Output::withdrawal(d(), d(), d())],
+    ];
+    let witnesses: Vec<Vec<Witness>> = vec![
+        vec![],
+        vec![vec![0xfau8, 0xfb].into()],
+        vec![vec![0xbau8, 0xbb].into(), vec![0xff].into()],
+    ];
+
+    let predicate_data = vec![0xa0u8, 0xb0, 0xc0];
+    let input_coin = Input::coin(d(), d(), d(), d(), d(), d(), d(), predicate_data.clone());
+
+    let mut buffer = vec![0u8; 1024];
+    for script in script.iter() {
+        for script_data in script_data.iter() {
+            for inputs in inputs.iter() {
+                for outputs in outputs.iter() {
+                    for witnesses in witnesses.iter() {
+                        let mut inputs = inputs.clone();
+                        let offset = inputs.len();
+                        inputs.push(input_coin.clone());
+
+                        let mut tx = Transaction::script(
+                            gas_price,
+                            gas_limit,
+                            maturity,
+                            script.clone(),
+                            script_data.clone(),
+                            inputs,
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        buffer.iter_mut().for_each(|b| *b = 0x00);
+                        tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+
+                        let offset = tx.input_coin_data_offset(offset).expect("Failed to fetch offset");
+
+                        assert_eq!(
+                            predicate_data.as_slice(),
+                            &buffer[offset..offset + predicate_data.len()]
+                        );
+                    }
+                }
+            }
+        }
+    }
 }

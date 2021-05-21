@@ -1,6 +1,6 @@
 use super::d;
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Id, Input, Output, Transaction, ValidationError};
+use fuel_tx::{Color, ContractAddress, Input, Output, Transaction, ValidationError};
 
 #[test]
 fn gas_price() {
@@ -438,13 +438,13 @@ fn create() {
     .unwrap();
     assert_eq!(ValidationError::TransactionCreateBytecodeWitnessIndex, err);
 
-    let mut id = Id::default();
+    let mut id = ContractAddress::default();
     let mut static_contracts = (0..MAX_STATIC_CONTRACTS as u64)
         .map(|i| {
             id[..8].copy_from_slice(&i.to_be_bytes());
             id
         })
-        .collect::<Vec<Id>>();
+        .collect::<Vec<ContractAddress>>();
 
     Transaction::create(
         d(),

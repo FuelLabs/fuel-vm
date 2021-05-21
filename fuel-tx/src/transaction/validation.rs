@@ -158,13 +158,13 @@ impl Transaction {
                     Err(ValidationError::TransactionCreateStaticContractsMax)?;
                 }
 
-                if !static_contracts.as_slice().is_sorted() {
+                if !static_contracts.as_slice().windows(2).all(|w| w[0] <= w[1]) {
                     Err(ValidationError::TransactionCreateStaticContractsOrder)?;
                 }
 
-                // TODO Any contract with ID in staticContracts is not in the state
-                // TODO The computed contract ID (see below) is not equal to the contractID of
-                // the one OutputType.ContractCreated output
+                // TODO Any contract with ADDRESS in staticContracts is not in the state
+                // TODO The computed contract ADDRESS (see below) is not equal to the
+                // contractADDRESS of the one OutputType.ContractCreated output
 
                 for (index, input) in inputs.iter().enumerate() {
                     if let Input::Contract { .. } = input {

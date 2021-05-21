@@ -3,20 +3,64 @@ use crate::bytes;
 use fuel_asm::Word;
 use itertools::Itertools;
 
+use std::convert::TryFrom;
 use std::io::Write;
 use std::{io, mem};
 
 mod types;
 mod validation;
 
-pub use types::{Color, Id, Input, Output, Root, Witness};
+pub use types::{Address, Color, ContractAddress, Hash, Input, Output, Salt, Witness};
 pub use validation::ValidationError;
 
+const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
+const SALT_SIZE: usize = mem::size_of::<Salt>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
-const ID_SIZE: usize = mem::size_of::<Id>();
+
+const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + WORD_SIZE // Gas price
+    + WORD_SIZE // Gas limit
+    + WORD_SIZE // Maturity
+    + WORD_SIZE // Script size
+    + WORD_SIZE // Script data size
+    + WORD_SIZE // Inputs size
+    + WORD_SIZE // Outputs size
+    + WORD_SIZE; // Witnesses size
+
+const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + WORD_SIZE // Gas price
+    + WORD_SIZE // Gas limit
+    + WORD_SIZE // Maturity
+    + WORD_SIZE // Bytecode size
+    + WORD_SIZE // Bytecode witness index
+    + WORD_SIZE // Static contracts size
+    + WORD_SIZE // Inputs size
+    + WORD_SIZE // Outputs size
+    + WORD_SIZE // Witnesses size
+    + SALT_SIZE; // Salt
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[repr(u8)]
+enum TransactionRepr {
+    Script = 0x00,
+    Create = 0x01,
+}
+
+impl TryFrom<Word> for TransactionRepr {
+    type Error = io::Error;
+
+    fn try_from(b: Word) -> Result<Self, Self::Error> {
+        match b {
+            0x00 => Ok(Self::Script),
+            0x01 => Ok(Self::Create),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "The provided identifier is invalid!",
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Transaction {
     Script {
         gas_price: Word,
@@ -27,19 +71,19 @@ pub enum Transaction {
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
-    } = 0x00,
+    },
 
     Create {
         gas_price: Word,
         gas_limit: Word,
         maturity: Word,
         bytecode_witness_index: u8,
-        salt: [u8; 32],
-        static_contracts: Vec<Id>,
+        salt: Salt,
+        static_contracts: Vec<ContractAddress>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
-    } = 0x01,
+    },
 }
 
 impl Default for Transaction {
@@ -49,7 +93,7 @@ impl Default for Transaction {
             1000000,
             10,
             0,
-            [0u8; 32],
+            Salt::default(),
             vec![],
             vec![],
             vec![],
@@ -86,8 +130,8 @@ impl Transaction {
         gas_limit: Word,
         maturity: Word,
         bytecode_witness_index: u8,
-        salt: [u8; 32],
-        static_contracts: Vec<Id>,
+        salt: Salt,
+        static_contracts: Vec<ContractAddress>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -115,7 +159,7 @@ impl Transaction {
             .unique()
     }
 
-    pub fn input_contracts(&self) -> impl Iterator<Item = &Id> {
+    pub fn input_contracts(&self) -> impl Iterator<Item = &ContractAddress> {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
@@ -148,6 +192,48 @@ impl Transaction {
 
     pub const fn is_script(&self) -> bool {
         matches!(self, Self::Script { .. })
+    }
+
+    /// For a transaction of type `Create`, return the offset of the data
+    /// relative to the serialized transaction for a given index of inputs,
+    /// if this input is of type `Coin`.
+    pub fn input_coin_data_offset(&self, index: usize) -> Option<usize> {
+        match self {
+            Transaction::Create {
+                inputs,
+                static_contracts,
+                ..
+            } => inputs.get(index).map(|input| match input {
+                Input::Coin { predicate_data, .. } => Some(
+                    TRANSACTION_CREATE_FIXED_SIZE
+                        + CONTRACT_ADDRESS_SIZE * static_contracts.len()
+                        + inputs.iter().take(index).map(|i| i.serialized_size()).sum::<usize>()
+                        + input.serialized_size()
+                        - bytes::padded_len(predicate_data.as_slice()),
+                ),
+
+                _ => None,
+            }),
+
+            Transaction::Script {
+                inputs,
+                script,
+                script_data,
+                ..
+            } => inputs.get(index).map(|input| match input {
+                Input::Coin { predicate_data, .. } => Some(
+                    TRANSACTION_SCRIPT_FIXED_SIZE
+                        + bytes::padded_len(script.as_slice())
+                        + bytes::padded_len(script_data.as_slice())
+                        + inputs.iter().take(index).map(|i| i.serialized_size()).sum::<usize>()
+                        + input.serialized_size()
+                        - bytes::padded_len(predicate_data.as_slice()),
+                ),
+
+                _ => None,
+            }),
+        }
+        .flatten()
     }
 
     pub fn inputs(&self) -> &[Input] {
@@ -214,14 +300,13 @@ impl io::Read for Transaction {
                 outputs,
                 witnesses,
             } => {
-                let mut n = 1 + 8 * WORD_SIZE;
-
+                let mut n = TRANSACTION_SCRIPT_FIXED_SIZE;
                 if buf.len() < n {
                     return Err(bytes::eof());
                 }
 
-                buf[0] = 0x00;
-                let buf = bytes::store_number_unchecked(&mut buf[1..], *gas_price);
+                let buf = bytes::store_number_unchecked(buf, TransactionRepr::Script as Word);
+                let buf = bytes::store_number_unchecked(buf, *gas_price);
                 let buf = bytes::store_number_unchecked(buf, *gas_limit);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
                 let buf = bytes::store_number_unchecked(buf, script.len() as Word);
@@ -268,7 +353,7 @@ impl io::Read for Transaction {
                 outputs,
                 witnesses,
             } => {
-                let mut n = 33 + 9 * WORD_SIZE + static_contracts.len() * ID_SIZE;
+                let mut n = TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * CONTRACT_ADDRESS_SIZE;
                 if buf.len() < n {
                     return Err(bytes::eof());
                 }
@@ -278,8 +363,8 @@ impl io::Read for Transaction {
                     .map(|witness| witness.as_ref().len() as Word / 4)
                     .unwrap_or(0);
 
-                buf[0] = 0x01;
-                let buf = bytes::store_number_unchecked(&mut buf[1..], *gas_price);
+                let buf = bytes::store_number_unchecked(buf, TransactionRepr::Create as Word);
+                let buf = bytes::store_number_unchecked(buf, *gas_price);
                 let buf = bytes::store_number_unchecked(buf, *gas_limit);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
                 let buf = bytes::store_number_unchecked(buf, bytecode_length);
@@ -319,22 +404,18 @@ impl io::Read for Transaction {
 }
 
 impl io::Write for Transaction {
-    fn write(&mut self, mut buf: &[u8]) -> io::Result<usize> {
-        if buf.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "The provided buffer is not big enough!",
-            ));
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() < WORD_SIZE {
+            return Err(bytes::eof());
         }
 
-        let identifier = buf[0];
-        buf = &buf[1..];
+        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        let identifier = TransactionRepr::try_from(identifier)?;
 
         match identifier {
-            0x00 => {
-                let mut n = 1 + 8 * WORD_SIZE;
-
-                if buf.len() + 1 < n {
+            TransactionRepr::Script => {
+                let mut n = TRANSACTION_SCRIPT_FIXED_SIZE;
+                if buf.len() < n - WORD_SIZE {
                     return Err(bytes::eof());
                 }
 
@@ -353,14 +434,22 @@ impl io::Write for Transaction {
                 let (size, script_data, mut buf) = bytes::restore_raw_bytes(buf, script_data_len)?;
                 n += size;
 
-                let mut inputs = vec![Input::contract([0x00; 32], [0x00; 32], [0x00; 32], [0x00; 32]); inputs_len];
+                let mut inputs = vec![
+                    Input::contract(
+                        Default::default(),
+                        Default::default(),
+                        Default::default(),
+                        Default::default()
+                    );
+                    inputs_len
+                ];
                 for input in inputs.iter_mut() {
                     let input_len = input.write(buf)?;
                     buf = &buf[input_len..];
                     n += input_len;
                 }
 
-                let mut outputs = vec![Output::contract_created([0x00; 32]); outputs_len];
+                let mut outputs = vec![Output::contract_created(Default::default()); outputs_len];
                 for output in outputs.iter_mut() {
                     let output_len = output.write(buf)?;
                     buf = &buf[output_len..];
@@ -388,10 +477,9 @@ impl io::Write for Transaction {
                 Ok(n)
             }
 
-            0x01 => {
-                let mut n = 33 + 9 * WORD_SIZE;
-
-                if buf.len() + 1 < n {
+            TransactionRepr::Create => {
+                let mut n = TRANSACTION_CREATE_FIXED_SIZE;
+                if buf.len() < n - WORD_SIZE {
                     return Err(bytes::eof());
                 }
 
@@ -406,25 +494,33 @@ impl io::Write for Transaction {
                 let (witnesses_len, buf) = bytes::restore_usize_unchecked(buf);
                 let (salt, mut buf) = bytes::restore_array_unchecked(buf);
 
-                if buf.len() < static_contracts_len * ID_SIZE {
+                if buf.len() < static_contracts_len * CONTRACT_ADDRESS_SIZE {
                     return Err(bytes::eof());
                 }
 
-                let mut static_contracts = vec![[0x00; ID_SIZE]; static_contracts_len];
-                n += ID_SIZE * static_contracts_len;
+                let mut static_contracts = vec![ContractAddress::default(); static_contracts_len];
+                n += CONTRACT_ADDRESS_SIZE * static_contracts_len;
                 for static_contract in static_contracts.iter_mut() {
-                    static_contract.copy_from_slice(&buf[..ID_SIZE]);
-                    buf = &buf[ID_SIZE..];
+                    static_contract.copy_from_slice(&buf[..CONTRACT_ADDRESS_SIZE]);
+                    buf = &buf[CONTRACT_ADDRESS_SIZE..];
                 }
 
-                let mut inputs = vec![Input::contract([0x00; 32], [0x00; 32], [0x00; 32], [0x00; 32]); inputs_len];
+                let mut inputs = vec![
+                    Input::contract(
+                        Default::default(),
+                        Default::default(),
+                        Default::default(),
+                        Default::default()
+                    );
+                    inputs_len
+                ];
                 for input in inputs.iter_mut() {
                     let input_len = input.write(buf)?;
                     buf = &buf[input_len..];
                     n += input_len;
                 }
 
-                let mut outputs = vec![Output::contract_created([0x00; 32]); outputs_len];
+                let mut outputs = vec![Output::contract_created(Default::default()); outputs_len];
                 for output in outputs.iter_mut() {
                     let output_len = output.write(buf)?;
                     buf = &buf[output_len..];
@@ -452,11 +548,6 @@ impl io::Write for Transaction {
 
                 Ok(n)
             }
-
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
-            )),
         }
     }
 

@@ -1,3 +1,5 @@
+//! FuelVM opcodes representation
+
 #![warn(missing_docs)]
 
 mod opcode;

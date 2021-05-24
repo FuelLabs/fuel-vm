@@ -1,5 +1,5 @@
 use super::{Address, Color, ContractAddress, Hash};
-use crate::bytes;
+use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
 
@@ -70,6 +70,35 @@ pub enum Input {
     },
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Self::Contract {
+            utxo_id: Default::default(),
+            balance_root: Default::default(),
+            state_root: Default::default(),
+            contract_id: Default::default(),
+        }
+    }
+}
+
+impl bytes::SizedBytes for Input {
+    fn serialized_size(&self) -> usize {
+        match self {
+            Self::Coin {
+                predicate,
+                predicate_data,
+                ..
+            } => {
+                INPUT_COIN_FIXED_SIZE
+                    + bytes::padded_len(predicate.as_slice())
+                    + bytes::padded_len(predicate_data.as_slice())
+            }
+
+            _ => INPUT_CONTRACT_SIZE,
+        }
+    }
+}
+
 impl Input {
     pub const fn coin(
         utxo_id: Hash,
@@ -108,26 +137,15 @@ impl Input {
             Self::Contract { utxo_id, .. } => &utxo_id,
         }
     }
-
-    pub fn serialized_size(&self) -> usize {
-        match self {
-            Self::Coin {
-                predicate,
-                predicate_data,
-                ..
-            } => {
-                INPUT_COIN_FIXED_SIZE
-                    + bytes::padded_len(predicate.as_slice())
-                    + bytes::padded_len(predicate_data.as_slice())
-            }
-
-            Self::Contract { .. } => INPUT_CONTRACT_SIZE,
-        }
-    }
 }
 
 impl io::Read for Input {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = self.serialized_size();
+        if buf.len() < n {
+            return Err(bytes::eof());
+        }
+
         match self {
             Self::Coin {
                 utxo_id,
@@ -139,11 +157,6 @@ impl io::Read for Input {
                 predicate,
                 predicate_data,
             } => {
-                let mut n = INPUT_COIN_FIXED_SIZE;
-                if buf.len() < n {
-                    return Err(bytes::eof());
-                }
-
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
                 let buf = bytes::store_array_unchecked(buf, utxo_id);
                 let buf = bytes::store_array_unchecked(buf, owner);
@@ -155,16 +168,9 @@ impl io::Read for Input {
                 let buf = bytes::store_number_unchecked(buf, predicate.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, predicate_data.len() as Word);
 
-                let (size, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
-                n += size;
-
-                let (size, _) = bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
-                n += size;
-
-                Ok(n)
+                let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
+                bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
             }
-
-            Self::Contract { .. } if buf.len() < INPUT_CONTRACT_SIZE => Err(bytes::eof()),
 
             Self::Contract {
                 utxo_id,
@@ -177,10 +183,10 @@ impl io::Read for Input {
                 let buf = bytes::store_array_unchecked(buf, balance_root);
                 let buf = bytes::store_array_unchecked(buf, state_root);
                 bytes::store_array_unchecked(buf, contract_id);
-
-                Ok(INPUT_CONTRACT_SIZE)
             }
         }
+
+        Ok(n)
     }
 }
 

@@ -1,5 +1,5 @@
 use super::{Address, Color, ContractAddress, Hash};
-use crate::bytes;
+use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
 
@@ -104,6 +104,28 @@ pub enum Output {
     },
 }
 
+impl Default for Output {
+    fn default() -> Self {
+        Self::ContractCreated {
+            contract_id: Default::default(),
+        }
+    }
+}
+
+impl bytes::SizedBytes for Output {
+    fn serialized_size(&self) -> usize {
+        match self {
+            Self::Coin { .. } | Self::Withdrawal { .. } | Self::Change { .. } | Self::Variable { .. } => {
+                OUTPUT_COIN_SIZE
+            }
+
+            Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
+
+            Self::ContractCreated { .. } => OUTPUT_CONTRACT_CREATED_SIZE,
+        }
+    }
+}
+
 impl Output {
     pub const fn coin(to: Address, amount: Word, color: Color) -> Self {
         Self::Coin { to, amount, color }
@@ -146,29 +168,22 @@ impl Output {
 
 impl io::Read for Output {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
+        let n = self.serialized_size();
+        if buf.len() < n {
+            return Err(bytes::eof());
+        }
+
         let identifier: OutputRepr = self.into();
+        buf = bytes::store_number_unchecked(buf, identifier as Word);
 
         match self {
-            Self::Coin { .. } | Self::Withdrawal { .. } | Self::Change { .. } | Self::Variable { .. }
-                if buf.len() < OUTPUT_COIN_SIZE =>
-            {
-                Err(bytes::eof())
-            }
-
-            Self::Contract { .. } if buf.len() < OUTPUT_CONTRACT_SIZE => Err(bytes::eof()),
-
-            Self::ContractCreated { .. } if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE => Err(bytes::eof()),
-
             Self::Coin { to, amount, color }
             | Self::Withdrawal { to, amount, color }
             | Self::Change { to, amount, color }
             | Self::Variable { to, amount, color } => {
-                buf = bytes::store_number_unchecked(buf, identifier as Word);
                 buf = bytes::store_array_unchecked(buf, to);
                 buf = bytes::store_number_unchecked(buf, *amount);
                 bytes::store_array_unchecked(buf, color);
-
-                Ok(OUTPUT_COIN_SIZE)
             }
 
             Self::Contract {
@@ -176,21 +191,17 @@ impl io::Read for Output {
                 balance_root,
                 state_root,
             } => {
-                buf = bytes::store_number_unchecked(buf, identifier as Word);
                 buf = bytes::store_number_unchecked(buf, *input_index);
                 buf = bytes::store_array_unchecked(buf, balance_root);
                 bytes::store_array_unchecked(buf, state_root);
-
-                Ok(OUTPUT_CONTRACT_SIZE)
             }
 
             Self::ContractCreated { contract_id } => {
-                buf = bytes::store_number_unchecked(buf, identifier as Word);
                 bytes::store_array_unchecked(buf, contract_id);
-
-                Ok(OUTPUT_CONTRACT_CREATED_SIZE)
             }
         }
+
+        Ok(n)
     }
 }
 

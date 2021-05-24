@@ -12,3 +12,4 @@ categories = ["cryptography::cryptocurrencies", "data-structures"]
 [dependencies]
 fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
 itertools = "0.10"
+sha2 = "0.9"

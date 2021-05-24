@@ -5,6 +5,47 @@ use std::{io, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
+pub trait SizedBytes {
+    fn serialized_size(&self) -> usize;
+}
+
+pub trait SerializableVec: SizedBytes {
+    fn to_bytes(&mut self) -> Vec<u8>;
+}
+
+pub trait Deserializable: Sized {
+    fn from_bytes(bytes: &[u8]) -> io::Result<Self>;
+}
+
+impl<T> SerializableVec for T
+where
+    T: SizedBytes + io::Read,
+{
+    fn to_bytes(&mut self) -> Vec<u8> {
+        let n = self.serialized_size();
+
+        let mut bytes = vec![0u8; n];
+
+        self.read(bytes.as_mut_slice())
+            .expect("Incorrect `SizedBytes` implementation!");
+
+        bytes
+    }
+}
+
+impl<T> Deserializable for T
+where
+    T: Default + io::Write,
+{
+    fn from_bytes(bytes: &[u8]) -> io::Result<Self> {
+        let mut instance = Self::default();
+
+        instance.write(bytes)?;
+
+        Ok(instance)
+    }
+}
+
 pub fn eof() -> io::Error {
     io::Error::new(io::ErrorKind::UnexpectedEof, "The provided buffer is not big enough!")
 }
@@ -13,7 +54,6 @@ pub fn store_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize
     let len = (bytes.len() as Word).to_be_bytes();
     let pad = bytes.len() % WORD_SIZE;
     let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
-
     if buf.len() < WORD_SIZE + bytes.len() + pad {
         return Err(eof());
     }

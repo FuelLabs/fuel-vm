@@ -1,15 +1,34 @@
 use crate::bytes;
+use fuel_asm::Word;
 
-use std::io;
+use std::{io, mem};
+
+const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Witness {
     data: Vec<u8>,
 }
 
+impl Witness {
+    pub const fn as_vec(&self) -> &Vec<u8> {
+        &self.data
+    }
+
+    pub fn as_vec_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.data
+    }
+}
+
 impl From<Vec<u8>> for Witness {
     fn from(data: Vec<u8>) -> Self {
         Self { data }
+    }
+}
+
+impl From<&[u8]> for Witness {
+    fn from(data: &[u8]) -> Self {
+        data.to_vec().into()
     }
 }
 
@@ -47,5 +66,11 @@ impl io::Write for Witness {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+impl bytes::SizedBytes for Witness {
+    fn serialized_size(&self) -> usize {
+        WORD_SIZE + bytes::padded_len(self.data.as_slice())
     }
 }

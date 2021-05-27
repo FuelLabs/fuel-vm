@@ -1195,6 +1195,9 @@ pub enum Opcode {
 }
 
 impl Opcode {
+    /// Size of the struct when serialized into bytes
+    pub const BYTES_SIZE: usize = 4;
+
     /// Create a new [`Opcode`] given the internal attributes
     pub const fn new(
         op: u8,
@@ -1286,6 +1289,21 @@ impl Opcode {
             OpcodeRepr::FLAG => Opcode::FLAG(ra),
             _ => Opcode::Undefined,
         }
+    }
+
+    /// Create a `Opcode` from a slice of bytes
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the length of the bytes is smaller than
+    /// [`Opcode::BYTES_SIZE`].
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        assert!(Self::BYTES_SIZE <= bytes.len());
+
+        <[u8; Self::BYTES_SIZE]>::try_from(&bytes[..Self::BYTES_SIZE])
+            .map(u32::from_be_bytes)
+            .map(Self::from)
+            .unwrap_or_else(|_| unreachable!())
     }
 
     /// Gas cost for this operation
@@ -1602,8 +1620,7 @@ impl io::Write for Opcode {
         buf.chunks_exact(4)
             .next()
             .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "The provided buffer is not big enough!"))
-            .and_then(|chunk| <[u8; 4]>::try_from(chunk).map_err(|_| unreachable!()))
-            .map(|bytes| *self = u32::from_be_bytes(bytes).into())
+            .map(|bytes| *self = Self::from_bytes_unchecked(bytes))
             .map(|_| 4)
     }
 

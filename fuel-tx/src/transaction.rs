@@ -286,7 +286,7 @@ impl Transaction {
 
     /// For a serialized transaction of type `Script`, return the bytes offset
     /// of the script
-    pub const fn script_offset(&self) -> usize {
+    pub const fn script_offset() -> usize {
         TRANSACTION_SCRIPT_FIXED_SIZE
     }
 

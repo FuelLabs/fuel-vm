@@ -383,7 +383,7 @@ fn script_input_coin_data_offset() {
                         buffer.iter_mut().for_each(|b| *b = 0x00);
                         tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
 
-                        let script_offset = tx.script_offset();
+                        let script_offset = Transaction::script_offset();
                         assert_eq!(script.as_slice(), &buffer[script_offset..script_offset + script.len()]);
 
                         let offset = tx.input_coin_predicate_offset(offset).expect("Failed to fetch offset");

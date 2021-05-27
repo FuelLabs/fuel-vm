@@ -94,9 +94,17 @@ fn opcode() {
         bytes.extend(&buffer);
 
         let op_p = u32::from(op);
+        let mut op_bytes = op_p.to_be_bytes().to_vec();
+
         let op_p = Opcode::from(op_p);
+        let op_q = Opcode::from_bytes_unchecked(op_bytes.as_slice());
+
+        op_bytes.push(0xff);
+        let op_r = Opcode::from_bytes_unchecked(op_bytes.as_slice());
 
         assert_eq!(op, op_p);
+        assert_eq!(op, op_q);
+        assert_eq!(op, op_r);
     }
 
     let mut op_p = Opcode::Undefined;

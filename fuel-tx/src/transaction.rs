@@ -284,6 +284,12 @@ impl Transaction {
         matches!(self, Self::Script { .. })
     }
 
+    /// For a serialized transaction of type `Script`, return the bytes offset
+    /// of the script
+    pub const fn script_offset(&self) -> usize {
+        TRANSACTION_SCRIPT_FIXED_SIZE
+    }
+
     /// For a transaction of type `Create`, return the offset of the data
     /// relative to the serialized transaction for a given index of inputs,
     /// if this input is of type `Coin`.

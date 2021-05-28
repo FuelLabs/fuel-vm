@@ -337,7 +337,7 @@ fn script_input_coin_data_offset() {
 
     let script: Vec<Vec<u8>> = vec![vec![], vec![0xfa, 0xfb]];
 
-    let script_data: Vec<Vec<u8>> = vec![vec![], vec![0xfa, 0xfb]];
+    let script_data: Vec<Vec<u8>> = vec![vec![], vec![0xca, 0xcb]];
 
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
@@ -385,6 +385,14 @@ fn script_input_coin_data_offset() {
 
                         let script_offset = Transaction::script_offset();
                         assert_eq!(script.as_slice(), &buffer[script_offset..script_offset + script.len()]);
+
+                        let script_data_offset = tx
+                            .script_data_offset()
+                            .expect("Transaction is Script and should return data offset");
+                        assert_eq!(
+                            script_data.as_slice(),
+                            &buffer[script_data_offset..script_data_offset + script_data.len()]
+                        );
 
                         let offset = tx.input_coin_predicate_offset(offset).expect("Failed to fetch offset");
                         assert_eq!(predicate.as_slice(), &buffer[offset..offset + predicate.len()]);

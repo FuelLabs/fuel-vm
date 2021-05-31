@@ -1306,6 +1306,26 @@ impl Opcode {
             .unwrap_or_else(|_| unreachable!())
     }
 
+    /// Convert the opcode to bytes representation
+    pub fn to_bytes(self) -> [u8; Self::BYTES_SIZE] {
+        u32::from(self).to_be_bytes()
+    }
+
+    /// Create a `Opcode` from a slice of bytes
+    ///
+    /// This function will fail if the length of the bytes is smaller than
+    /// [`Opcode::BYTES_SIZE`].
+    pub fn from_bytes(bytes: &[u8]) -> io::Result<Self> {
+        if bytes.len() < Self::BYTES_SIZE {
+            Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "The provided buffer is not big enough!",
+            ))
+        } else {
+            Ok(Self::from_bytes_unchecked(bytes))
+        }
+    }
+
     /// Gas cost for this operation
     pub const fn gas_cost(&self) -> u64 {
         // TODO define gas costs

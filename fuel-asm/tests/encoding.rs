@@ -94,17 +94,34 @@ fn opcode() {
         bytes.extend(&buffer);
 
         let op_p = u32::from(op);
-        let mut op_bytes = op_p.to_be_bytes().to_vec();
+        let op_bytes = op_p.to_be_bytes().to_vec();
 
         let op_p = Opcode::from(op_p);
         let op_q = Opcode::from_bytes_unchecked(op_bytes.as_slice());
 
-        op_bytes.push(0xff);
-        let op_r = Opcode::from_bytes_unchecked(op_bytes.as_slice());
-
         assert_eq!(op, op_p);
         assert_eq!(op, op_q);
-        assert_eq!(op, op_r);
+
+        let mut op_bytes = op.to_bytes().to_vec();
+
+        // Assert opcode can be created from big slices
+        op_bytes.extend_from_slice(&[0xff; 25]);
+        while op_bytes.len() > Opcode::BYTES_SIZE {
+            op_bytes.pop();
+
+            let op_r = Opcode::from_bytes_unchecked(op_bytes.as_slice());
+            let op_s = Opcode::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
+
+            assert_eq!(op, op_r);
+            assert_eq!(op, op_s);
+        }
+
+        // Assert no panic with checked function
+        while !op_bytes.is_empty() {
+            op_bytes.pop();
+
+            assert!(Opcode::from_bytes(op_bytes.as_slice()).is_err());
+        }
     }
 
     let mut op_p = Opcode::Undefined;

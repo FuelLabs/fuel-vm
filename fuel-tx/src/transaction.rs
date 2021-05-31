@@ -1,7 +1,7 @@
 use crate::bytes::{self, SerializableVec, SizedBytes};
 use crate::crypto;
 
-use fuel_asm::Word;
+use fuel_asm::{Opcode, Word};
 use itertools::Itertools;
 
 use std::convert::TryFrom;
@@ -89,17 +89,12 @@ pub enum Transaction {
 
 impl Default for Transaction {
     fn default() -> Self {
-        Transaction::create(
-            1,
-            1000000,
-            10,
-            0,
-            Salt::default(),
-            vec![],
-            vec![],
-            vec![],
-            vec![vec![0xffu8].into()],
-        )
+        // Create a valid transaction with a single return instruction
+        //
+        // The Return op is mandatory for the execution of any context
+        let script = Opcode::RET(0x10).to_bytes().to_vec();
+
+        Transaction::script(0, 1000000, 0, script, vec![], vec![], vec![], vec![])
     }
 }
 

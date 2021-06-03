@@ -1,13 +1,14 @@
 use fuel_tx::*;
+use rand::rngs::StdRng;
+use rand::{RngCore, SeedableRng};
 use std::mem;
 use std::ops::Not;
 
-fn d<T: Default>() -> T {
-    Default::default()
-}
-
-fn invert(bytes: &mut [u8]) {
-    bytes.iter_mut().for_each(|b| *b = b.not());
+fn invert<B>(mut bytes: B)
+where
+    B: AsMut<[u8]>,
+{
+    bytes.as_mut().iter_mut().for_each(|b| *b = b.not());
 }
 
 fn inv_v(bytes: &mut Vec<u8>) {
@@ -118,31 +119,56 @@ fn assert_id_common_attrs(tx: &Transaction) {
 
 #[test]
 fn id() {
+    let mut rng_base = StdRng::seed_from_u64(8586);
+    let rng = &mut rng_base;
+
     let inputs = vec![
         vec![],
         vec![
-            Input::coin(d(), d(), d(), d(), d(), d(), d(), d()),
-            Input::contract(d(), d(), d(), d()),
+            Input::coin(
+                Hash::random(rng),
+                Address::random(rng),
+                rng.next_u64(),
+                Color::random(rng),
+                rng.next_u32().to_be_bytes()[0],
+                rng.next_u64(),
+                Witness::random(rng).into_inner(),
+                Witness::random(rng).into_inner(),
+            ),
+            Input::contract(
+                Hash::random(rng),
+                Hash::random(rng),
+                Hash::random(rng),
+                ContractAddress::random(rng),
+            ),
         ],
     ];
 
     let outputs = vec![
         vec![],
         vec![
-            Output::coin(d(), d(), d()),
-            Output::contract(d(), d(), d()),
-            Output::withdrawal(d(), d(), d()),
-            Output::change(d(), d(), d()),
-            Output::variable(d(), d(), d()),
-            Output::contract_created(d()),
+            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
+            Output::contract(rng.next_u32().to_be_bytes()[0], Hash::random(rng), Hash::random(rng)),
+            Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
+            Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
+            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
+            Output::contract_created(ContractAddress::random(rng)),
         ],
     ];
 
-    let witnesses = vec![vec![], vec![Witness::from(vec![0xab]), Witness::from(vec![0xbc, 0xbd])]];
+    let witnesses = vec![vec![], vec![Witness::random(rng), Witness::random(rng)]];
 
-    let scripts = vec![vec![], vec![0xfa], vec![0xfa, 0xfb]];
-    let script_data = vec![vec![], vec![0xfa], vec![0xfa, 0xfb]];
-    let static_contracts = vec![vec![], vec![d(), d()]];
+    let scripts = vec![
+        vec![],
+        Witness::random(rng).into_inner(),
+        Witness::random(rng).into_inner(),
+    ];
+    let script_data = vec![
+        vec![],
+        Witness::random(rng).into_inner(),
+        Witness::random(rng).into_inner(),
+    ];
+    let static_contracts = vec![vec![], vec![ContractAddress::random(rng), ContractAddress::random(rng)]];
 
     for inputs in inputs.iter() {
         for outputs in outputs.iter() {
@@ -150,9 +176,9 @@ fn id() {
                 for script in scripts.iter() {
                     for script_data in script_data.iter() {
                         let tx = Transaction::script(
-                            d(),
-                            d(),
-                            d(),
+                            rng.next_u64(),
+                            rng.next_u64(),
+                            rng.next_u64(),
                             script.clone(),
                             script_data.clone(),
                             inputs.clone(),
@@ -176,11 +202,11 @@ fn id() {
 
                 for static_contracts in static_contracts.iter() {
                     let tx = Transaction::create(
-                        d(),
-                        d(),
-                        d(),
-                        d(),
-                        d(),
+                        rng.next_u64(),
+                        rng.next_u64(),
+                        rng.next_u64(),
+                        rng.next_u32().to_be_bytes()[0],
+                        Salt::random(rng),
                         static_contracts.clone(),
                         inputs.clone(),
                         outputs.clone(),

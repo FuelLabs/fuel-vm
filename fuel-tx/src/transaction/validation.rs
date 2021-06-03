@@ -3,13 +3,9 @@ use crate::consts::*;
 
 use fuel_asm::Word;
 
-use std::mem;
-
 mod error;
 
 pub use error::ValidationError;
-
-const COLOR_SIZE: usize = mem::size_of::<Color>();
 
 impl Input {
     pub fn validate(&self, index: usize, outputs: &[Output], witnesses: &[Witness]) -> Result<(), ValidationError> {
@@ -179,10 +175,10 @@ impl Transaction {
                         Output::Contract { .. } => Err(ValidationError::TransactionCreateOutputContract { index })?,
                         Output::Variable { .. } => Err(ValidationError::TransactionCreateOutputVariable { index })?,
 
-                        Output::Change { color, .. } if color == &[0u8; COLOR_SIZE] && change_color_zero => {
+                        Output::Change { color, .. } if color == &Color::default() && change_color_zero => {
                             Err(ValidationError::TransactionCreateOutputChangeColorZero { index })?
                         }
-                        Output::Change { color, .. } if color == &[0u8; COLOR_SIZE] => change_color_zero = true,
+                        Output::Change { color, .. } if color == &Color::default() => change_color_zero = true,
                         Output::Change { .. } => {
                             Err(ValidationError::TransactionCreateOutputChangeColorNonZero { index })?
                         }

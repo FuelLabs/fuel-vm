@@ -6,24 +6,20 @@ use fuel_asm::Word;
 use std::convert::TryFrom;
 use std::{io, mem};
 
-const ADDRESS_SIZE: usize = mem::size_of::<Address>();
-const COLOR_SIZE: usize = mem::size_of::<Color>();
-const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
-const HASH_SIZE: usize = mem::size_of::<Hash>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
-    + ADDRESS_SIZE // To
+    + Address::size_of() // To
     + WORD_SIZE // Amount
-    + COLOR_SIZE; // Color
+    + Color::size_of(); // Color
 
 const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Input index
-    + HASH_SIZE // Balance root
-    + HASH_SIZE; // State root
+    + Hash::size_of() // Balance root
+    + Hash::size_of(); // State root
 
 const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
-    + CONTRACT_ADDRESS_SIZE; // Contract Id
+    + ContractAddress::size_of(); // Contract Id
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum OutputRepr {
@@ -230,6 +226,9 @@ impl io::Write for Output {
                 let (amount, buf) = bytes::restore_number_unchecked(buf);
                 let (color, _) = bytes::restore_array_unchecked(buf);
 
+                let to = to.into();
+                let color = color.into();
+
                 match identifier {
                     OutputRepr::Coin => *self = Self::Coin { to, amount, color },
                     OutputRepr::Withdrawal => *self = Self::Withdrawal { to, amount, color },
@@ -247,6 +246,9 @@ impl io::Write for Output {
                 let (balance_root, buf) = bytes::restore_array_unchecked(buf);
                 let (state_root, _) = bytes::restore_array_unchecked(buf);
 
+                let balance_root = balance_root.into();
+                let state_root = state_root.into();
+
                 *self = Self::Contract {
                     input_index,
                     balance_root,
@@ -258,6 +260,8 @@ impl io::Write for Output {
 
             OutputRepr::ContractCreated => {
                 let (contract_id, _) = bytes::restore_array_unchecked(buf);
+                let contract_id = contract_id.into();
+
                 *self = Self::ContractCreated { contract_id };
 
                 Ok(OUTPUT_CONTRACT_CREATED_SIZE)

@@ -18,6 +18,22 @@ impl Witness {
     pub fn as_vec_mut(&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
+
+    pub fn into_inner(self) -> Vec<u8> {
+        self.data
+    }
+
+    pub fn random<R>(rng: &mut R) -> Self
+    where
+        R: rand::RngCore + rand::CryptoRng,
+    {
+        let size = rng.next_u32() & 0x3f;
+        let mut data = vec![0u8; size as usize];
+
+        rng.fill_bytes(data.as_mut());
+
+        data.into()
+    }
 }
 
 impl From<Vec<u8>> for Witness {

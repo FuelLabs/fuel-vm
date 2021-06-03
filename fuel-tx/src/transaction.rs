@@ -14,8 +14,6 @@ mod validation;
 pub use types::{Address, Color, ContractAddress, Hash, Input, Output, Salt, Witness};
 pub use validation::ValidationError;
 
-const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
-const SALT_SIZE: usize = mem::size_of::<Salt>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
@@ -38,7 +36,7 @@ const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
-    + SALT_SIZE; // Salt
+    + Salt::size_of(); // Salt
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum TransactionRepr {
@@ -114,7 +112,7 @@ impl bytes::SizedBytes for Transaction {
             }
 
             Self::Create { static_contracts, .. } => {
-                TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * CONTRACT_ADDRESS_SIZE
+                TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractAddress::size_of()
             }
         };
 
@@ -187,18 +185,18 @@ impl Transaction {
     }
 
     pub fn prepare_sign(&mut self) {
-        self.inputs_mut().iter_mut().for_each(|input| match input {
-            Input::Contract {
+        self.inputs_mut().iter_mut().for_each(|input| {
+            if let Input::Contract {
                 utxo_id,
                 balance_root,
                 state_root,
                 ..
-            } => {
+            } = input
+            {
                 utxo_id.iter_mut().for_each(|b| *b = 0);
                 balance_root.iter_mut().for_each(|b| *b = 0);
                 state_root.iter_mut().for_each(|b| *b = 0);
             }
-            _ => (),
         });
 
         self.outputs_mut().iter_mut().for_each(|output| match output {
@@ -310,7 +308,7 @@ impl Transaction {
                     ..
                 } => Some(
                     TRANSACTION_CREATE_FIXED_SIZE
-                        + CONTRACT_ADDRESS_SIZE * static_contracts.len()
+                        + ContractAddress::size_of() * static_contracts.len()
                         + inputs.iter().take(index).map(|i| i.serialized_size()).sum::<usize>()
                         + input.serialized_size()
                         - bytes::padded_len(predicate.as_slice())
@@ -569,15 +567,17 @@ impl io::Write for Transaction {
                 let (witnesses_len, buf) = bytes::restore_usize_unchecked(buf);
                 let (salt, mut buf) = bytes::restore_array_unchecked(buf);
 
-                if buf.len() < static_contracts_len * CONTRACT_ADDRESS_SIZE {
+                let salt = salt.into();
+
+                if buf.len() < static_contracts_len * ContractAddress::size_of() {
                     return Err(bytes::eof());
                 }
 
                 let mut static_contracts = vec![ContractAddress::default(); static_contracts_len];
-                n += CONTRACT_ADDRESS_SIZE * static_contracts_len;
+                n += ContractAddress::size_of() * static_contracts_len;
                 for static_contract in static_contracts.iter_mut() {
-                    static_contract.copy_from_slice(&buf[..CONTRACT_ADDRESS_SIZE]);
-                    buf = &buf[CONTRACT_ADDRESS_SIZE..];
+                    static_contract.copy_from_slice(&buf[..ContractAddress::size_of()]);
+                    buf = &buf[ContractAddress::size_of()..];
                 }
 
                 let mut inputs = vec![Input::default(); inputs_len];

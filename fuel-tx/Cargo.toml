@@ -13,3 +13,4 @@ categories = ["cryptography::cryptocurrencies", "data-structures"]
 fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
 itertools = "0.10"
 sha2 = "0.9"
+rand = "0.8"

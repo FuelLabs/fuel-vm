@@ -6,27 +6,23 @@ use fuel_asm::Word;
 use std::convert::TryFrom;
 use std::{io, mem};
 
-const ADDRESS_SIZE: usize = mem::size_of::<Address>();
-const COLOR_SIZE: usize = mem::size_of::<Color>();
-const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
-const HASH_SIZE: usize = mem::size_of::<Hash>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + HASH_SIZE // UTXO Id
-    + ADDRESS_SIZE // Owner
+    + Hash::size_of() // UTXO Id
+    + Address::size_of() // Owner
     + WORD_SIZE // Amount
-    + COLOR_SIZE // Color
+    + Color::size_of() // Color
     + WORD_SIZE // Witness index
     + WORD_SIZE // Maturity
     + WORD_SIZE // Predicate size
     + WORD_SIZE; // Predicate data size
 
 const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + HASH_SIZE // UTXO Id
-    + HASH_SIZE // Balance root
-    + HASH_SIZE // State root
-    + CONTRACT_ADDRESS_SIZE; // Contract address
+    + Hash::size_of() // UTXO Id
+    + Hash::size_of() // Balance root
+    + Hash::size_of() // State root
+    + ContractAddress::size_of(); // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum InputRepr {
@@ -221,6 +217,10 @@ impl io::Write for Input {
                 let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
                 n += size;
 
+                let utxo_id = utxo_id.into();
+                let owner = owner.into();
+                let color = color.into();
+
                 *self = Self::Coin {
                     utxo_id,
                     owner,
@@ -242,6 +242,11 @@ impl io::Write for Input {
                 let (balance_root, buf) = bytes::restore_array_unchecked(buf);
                 let (state_root, buf) = bytes::restore_array_unchecked(buf);
                 let (contract_id, _) = bytes::restore_array_unchecked(buf);
+
+                let utxo_id = utxo_id.into();
+                let balance_root = balance_root.into();
+                let state_root = state_root.into();
+                let contract_id = contract_id.into();
 
                 *self = Self::Contract {
                     utxo_id,

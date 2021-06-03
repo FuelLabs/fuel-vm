@@ -21,11 +21,14 @@ impl<T> SerializableVec for T
 where
     T: SizedBytes + io::Read,
 {
+    #[allow(clippy::unused_io_amount)]
     fn to_bytes(&mut self) -> Vec<u8> {
         let n = self.serialized_size();
 
         let mut bytes = vec![0u8; n];
 
+        // Read return is not checked because it is already calculated with
+        // `serialized_size` and any additional check is unnecessary
         self.read(bytes.as_mut_slice())
             .expect("Incorrect `SizedBytes` implementation!");
 
@@ -37,9 +40,12 @@ impl<T> Deserializable for T
 where
     T: Default + io::Write,
 {
+    #[allow(clippy::unused_io_amount)]
     fn from_bytes(bytes: &[u8]) -> io::Result<Self> {
         let mut instance = Self::default();
 
+        // Write return is not checked because it is already calculated with
+        // `serialized_size` and any additional check is unnecessary
         instance.write(bytes)?;
 
         Ok(instance)

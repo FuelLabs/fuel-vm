@@ -1,7 +1,7 @@
-use fuel_core::consts::*;
-use fuel_core::crypto;
-use fuel_core::prelude::*;
 use fuel_tx::crypto as tx_crypto;
+use fuel_vm::consts::*;
+use fuel_vm::crypto;
+use fuel_vm::prelude::*;
 
 use std::convert::TryFrom;
 use std::str::FromStr;

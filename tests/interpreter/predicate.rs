@@ -1,7 +1,7 @@
 use super::common::r;
-use fuel_core::consts::*;
-use fuel_core::prelude::*;
 use fuel_tx::bytes;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
 
 #[test]
 fn predicate() {

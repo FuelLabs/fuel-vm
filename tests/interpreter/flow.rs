@@ -1,7 +1,7 @@
 use super::common::{d, r};
 use super::program_to_bytes;
-use fuel_core::consts::*;
-use fuel_core::prelude::*;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
 
 use std::mem;
 

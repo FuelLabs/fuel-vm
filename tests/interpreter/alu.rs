@@ -1,5 +1,5 @@
-use fuel_core::consts::*;
-use fuel_core::prelude::*;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
 
 fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();

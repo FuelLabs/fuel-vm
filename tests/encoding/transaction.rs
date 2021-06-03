@@ -1,5 +1,5 @@
 use super::assert_encoding_correct;
-use fuel_core::prelude::*;
+use fuel_vm::prelude::*;
 
 #[test]
 fn witness() {

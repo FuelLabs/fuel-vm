@@ -1,11 +1,10 @@
-use fuel_core::consts::*;
-use fuel_core::prelude::*;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
 
 mod alu;
 mod blockchain;
 mod crypto;
 mod flow;
-mod frame;
 mod memory;
 mod predicate;
 

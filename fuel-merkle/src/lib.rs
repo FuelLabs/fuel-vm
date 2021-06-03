@@ -1,3 +1,5 @@
 pub mod binary;
-pub mod digest;
-pub mod sha;
+
+mod digest;
+mod proof_set;
+mod sha;

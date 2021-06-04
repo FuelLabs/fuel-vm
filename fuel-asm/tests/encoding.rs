@@ -90,7 +90,8 @@ fn opcode() {
     let mut buffer = [0u8; 4];
 
     for mut op in data.clone() {
-        op.read(&mut buffer).expect("Failed to write opcode to buffer");
+        op.read(&mut buffer)
+            .expect("Failed to write opcode to buffer");
         bytes.extend(&buffer);
 
         let op_p = u32::from(op);
@@ -110,7 +111,8 @@ fn opcode() {
             op_bytes.pop();
 
             let op_r = Opcode::from_bytes_unchecked(op_bytes.as_slice());
-            let op_s = Opcode::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
+            let op_s = Opcode::from_bytes(op_bytes.as_slice())
+                .expect("Failed to safely generate op from bytes!");
 
             assert_eq!(op, op_r);
             assert_eq!(op, op_s);
@@ -126,7 +128,8 @@ fn opcode() {
 
     let mut op_p = Opcode::Undefined;
     bytes.chunks(4).zip(data.iter()).for_each(|(chunk, op)| {
-        op_p.write(chunk).expect("Failed to parse opcode from chunk");
+        op_p.write(chunk)
+            .expect("Failed to parse opcode from chunk");
 
         assert_eq!(op, &op_p);
     });

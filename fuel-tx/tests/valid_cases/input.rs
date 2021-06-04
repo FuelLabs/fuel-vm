@@ -64,7 +64,10 @@ fn coin() {
     .validate(1, &[], witnesses.as_slice())
     .err()
     .unwrap();
-    assert_eq!(ValidationError::InputCoinPredicateDataLength { index: 1 }, err);
+    assert_eq!(
+        ValidationError::InputCoinPredicateDataLength { index: 1 },
+        err
+    );
 
     let err = Input::coin(
         Hash::random(rng),
@@ -79,7 +82,10 @@ fn coin() {
     .validate(1, &[], witnesses.as_slice())
     .err()
     .unwrap();
-    assert_eq!(ValidationError::InputCoinWitnessIndexBounds { index: 1 }, err);
+    assert_eq!(
+        ValidationError::InputCoinWitnessIndexBounds { index: 1 },
+        err
+    );
 }
 
 #[test]
@@ -93,7 +99,11 @@ fn contract() {
         Hash::random(rng),
         ContractAddress::random(rng),
     )
-    .validate(1, &[Output::contract(1, Hash::random(rng), Hash::random(rng))], &[])
+    .validate(
+        1,
+        &[Output::contract(1, Hash::random(rng), Hash::random(rng))],
+        &[],
+    )
     .unwrap();
 
     let err = Input::contract(
@@ -105,7 +115,10 @@ fn contract() {
     .validate(1, &[], &[])
     .err()
     .unwrap();
-    assert_eq!(ValidationError::InputContractAssociatedOutputContract { index: 1 }, err);
+    assert_eq!(
+        ValidationError::InputContractAssociatedOutputContract { index: 1 },
+        err
+    );
 
     let err = Input::contract(
         Hash::random(rng),
@@ -115,12 +128,19 @@ fn contract() {
     )
     .validate(
         1,
-        &[Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng))],
+        &[Output::coin(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::random(rng),
+        )],
         &[],
     )
     .err()
     .unwrap();
-    assert_eq!(ValidationError::InputContractAssociatedOutputContract { index: 1 }, err);
+    assert_eq!(
+        ValidationError::InputContractAssociatedOutputContract { index: 1 },
+        err
+    );
 
     let err = Input::contract(
         Hash::random(rng),
@@ -128,8 +148,15 @@ fn contract() {
         Hash::random(rng),
         ContractAddress::random(rng),
     )
-    .validate(1, &[Output::contract(2, Hash::random(rng), Hash::random(rng))], &[])
+    .validate(
+        1,
+        &[Output::contract(2, Hash::random(rng), Hash::random(rng))],
+        &[],
+    )
     .err()
     .unwrap();
-    assert_eq!(ValidationError::InputContractAssociatedOutputContract { index: 1 }, err);
+    assert_eq!(
+        ValidationError::InputContractAssociatedOutputContract { index: 1 },
+        err
+    );
 }

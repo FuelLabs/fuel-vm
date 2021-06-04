@@ -135,7 +135,11 @@ fn output() {
 
     assert_encoding_correct(&[
         Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
-        Output::contract(rng.next_u32().to_be_bytes()[0], Hash::random(rng), Hash::random(rng)),
+        Output::contract(
+            rng.next_u32().to_be_bytes()[0],
+            Hash::random(rng),
+            Hash::random(rng),
+        ),
         Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
@@ -322,9 +326,17 @@ fn create_input_coin_data_offset() {
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng))],
+        vec![Output::coin(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::random(rng),
+        )],
         vec![
-            Output::contract(rng.next_u32().to_be_bytes()[0], Hash::random(rng), Hash::random(rng)),
+            Output::contract(
+                rng.next_u32().to_be_bytes()[0],
+                Hash::random(rng),
+                Hash::random(rng),
+            ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         ],
     ];
@@ -369,11 +381,17 @@ fn create_input_coin_data_offset() {
                     );
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
-                    tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+                    tx.read(buffer.as_mut_slice())
+                        .expect("Failed to serialize input");
 
-                    let offset = tx.input_coin_predicate_offset(offset).expect("Failed to fetch offset");
+                    let offset = tx
+                        .input_coin_predicate_offset(offset)
+                        .expect("Failed to fetch offset");
 
-                    assert_eq!(predicate.as_slice(), &buffer[offset..offset + predicate.len()]);
+                    assert_eq!(
+                        predicate.as_slice(),
+                        &buffer[offset..offset + predicate.len()]
+                    );
                 }
             }
         }
@@ -418,9 +436,17 @@ fn script_input_coin_data_offset() {
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng))],
+        vec![Output::coin(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::random(rng),
+        )],
         vec![
-            Output::contract(rng.next_u32().to_be_bytes()[0], Hash::random(rng), Hash::random(rng)),
+            Output::contract(
+                rng.next_u32().to_be_bytes()[0],
+                Hash::random(rng),
+                Hash::random(rng),
+            ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         ],
     ];
@@ -465,10 +491,14 @@ fn script_input_coin_data_offset() {
                         );
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
-                        tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+                        tx.read(buffer.as_mut_slice())
+                            .expect("Failed to serialize input");
 
                         let script_offset = Transaction::script_offset();
-                        assert_eq!(script.as_slice(), &buffer[script_offset..script_offset + script.len()]);
+                        assert_eq!(
+                            script.as_slice(),
+                            &buffer[script_offset..script_offset + script.len()]
+                        );
 
                         let script_data_offset = tx
                             .script_data_offset()
@@ -478,8 +508,13 @@ fn script_input_coin_data_offset() {
                             &buffer[script_data_offset..script_data_offset + script_data.len()]
                         );
 
-                        let offset = tx.input_coin_predicate_offset(offset).expect("Failed to fetch offset");
-                        assert_eq!(predicate.as_slice(), &buffer[offset..offset + predicate.len()]);
+                        let offset = tx
+                            .input_coin_predicate_offset(offset)
+                            .expect("Failed to fetch offset");
+                        assert_eq!(
+                            predicate.as_slice(),
+                            &buffer[offset..offset + predicate.len()]
+                        );
                     }
                 }
             }

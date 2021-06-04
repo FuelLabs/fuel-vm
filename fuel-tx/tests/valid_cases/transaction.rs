@@ -163,7 +163,10 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)); MAX_OUTPUTS as usize],
+        vec![
+            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
+            MAX_OUTPUTS as usize
+        ],
         vec![Witness::random(rng); MAX_WITNESSES as usize],
     )
     .validate(block_height)
@@ -189,7 +192,10 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)); MAX_OUTPUTS as usize],
+        vec![
+            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
+            MAX_OUTPUTS as usize
+        ],
         vec![Witness::random(rng); MAX_WITNESSES as usize],
     )
     .validate(block_height)
@@ -210,7 +216,10 @@ fn max_iow() {
             );
             MAX_INPUTS as usize + 1
         ],
-        vec![Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)); MAX_OUTPUTS as usize],
+        vec![
+            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
+            MAX_OUTPUTS as usize
+        ],
         vec![Witness::random(rng); MAX_WITNESSES as usize],
     )
     .validate(block_height)
@@ -233,7 +242,10 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)); MAX_OUTPUTS as usize + 1],
+        vec![
+            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
+            MAX_OUTPUTS as usize + 1
+        ],
         vec![Witness::random(rng); MAX_WITNESSES as usize],
     )
     .validate(block_height)
@@ -256,7 +268,10 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)); MAX_OUTPUTS as usize],
+        vec![
+            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
+            MAX_OUTPUTS as usize
+        ],
         vec![Witness::random(rng); MAX_WITNESSES as usize + 1],
     )
     .validate(block_height)
@@ -526,7 +541,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -551,7 +570,10 @@ fn create() {
     .validate(block_height)
     .err()
     .unwrap();
-    assert_eq!(ValidationError::TransactionCreateInputContract { index: 0 }, err);
+    assert_eq!(
+        ValidationError::TransactionCreateInputContract { index: 0 },
+        err
+    );
 
     let color = Color::random(rng);
     let err = Transaction::create(
@@ -571,13 +593,20 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::variable(Address::random(rng), rng.next_u64(), color)],
+        vec![Output::variable(
+            Address::random(rng),
+            rng.next_u64(),
+            color,
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
     .err()
     .unwrap();
-    assert_eq!(ValidationError::TransactionCreateOutputVariable { index: 0 }, err);
+    assert_eq!(
+        ValidationError::TransactionCreateOutputVariable { index: 0 },
+        err
+    );
 
     let err = Transaction::create(
         MAX_GAS_PER_TX,
@@ -726,7 +755,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![vec![0xfau8; CONTRACT_MAX_SIZE as usize / 4].into()],
     )
     .validate(block_height)
@@ -749,7 +782,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![vec![0xfau8; 1 + CONTRACT_MAX_SIZE as usize / 4].into()],
     )
     .validate(block_height)
@@ -774,7 +811,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -807,7 +848,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -832,7 +877,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -859,7 +908,11 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), Color::default())],
+        vec![Output::change(
+            Address::random(rng),
+            rng.next_u64(),
+            Color::default(),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)

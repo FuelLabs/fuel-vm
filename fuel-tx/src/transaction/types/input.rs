@@ -118,7 +118,12 @@ impl Input {
         }
     }
 
-    pub const fn contract(utxo_id: Hash, balance_root: Hash, state_root: Hash, contract_id: ContractAddress) -> Self {
+    pub const fn contract(
+        utxo_id: Hash,
+        balance_root: Hash,
+        state_root: Hash,
+        contract_id: ContractAddress,
+    ) -> Self {
         Self::Contract {
             utxo_id,
             balance_root,

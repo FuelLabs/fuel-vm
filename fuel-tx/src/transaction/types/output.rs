@@ -111,9 +111,10 @@ impl Default for Output {
 impl bytes::SizedBytes for Output {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::Coin { .. } | Self::Withdrawal { .. } | Self::Change { .. } | Self::Variable { .. } => {
-                OUTPUT_COIN_SIZE
-            }
+            Self::Coin { .. }
+            | Self::Withdrawal { .. }
+            | Self::Change { .. }
+            | Self::Variable { .. } => OUTPUT_COIN_SIZE,
 
             Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
 
@@ -211,17 +212,27 @@ impl io::Write for Output {
         let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
-            OutputRepr::Coin | OutputRepr::Withdrawal | OutputRepr::Change | OutputRepr::Variable
+            OutputRepr::Coin
+            | OutputRepr::Withdrawal
+            | OutputRepr::Change
+            | OutputRepr::Variable
                 if buf.len() < OUTPUT_COIN_SIZE - WORD_SIZE =>
             {
                 Err(bytes::eof())
             }
 
-            OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
+            OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => {
+                Err(bytes::eof())
+            }
 
-            OutputRepr::ContractCreated if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE - WORD_SIZE => Err(bytes::eof()),
+            OutputRepr::ContractCreated if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE - WORD_SIZE => {
+                Err(bytes::eof())
+            }
 
-            OutputRepr::Coin | OutputRepr::Withdrawal | OutputRepr::Change | OutputRepr::Variable => {
+            OutputRepr::Coin
+            | OutputRepr::Withdrawal
+            | OutputRepr::Change
+            | OutputRepr::Variable => {
                 let (to, buf) = bytes::restore_array_unchecked(buf);
                 let (amount, buf) = bytes::restore_number_unchecked(buf);
                 let (color, _) = bytes::restore_array_unchecked(buf);

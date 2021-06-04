@@ -53,7 +53,10 @@ where
 }
 
 pub fn eof() -> io::Error {
-    io::Error::new(io::ErrorKind::UnexpectedEof, "The provided buffer is not big enough!")
+    io::Error::new(
+        io::ErrorKind::UnexpectedEof,
+        "The provided buffer is not big enough!",
+    )
 }
 
 pub fn store_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
@@ -88,7 +91,10 @@ pub const fn padded_len(bytes: &[u8]) -> usize {
     }
 }
 
-pub fn store_raw_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
+pub fn store_raw_bytes<'a>(
+    mut buf: &'a mut [u8],
+    bytes: &[u8],
+) -> io::Result<(usize, &'a mut [u8])> {
     let pad = bytes.len() % WORD_SIZE;
     let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
     if buf.len() < bytes.len() + pad {
@@ -220,7 +226,10 @@ where
     Ok((number, &buf[WORD_SIZE..]))
 }
 
-pub fn store_array<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> io::Result<&'a mut [u8]> {
+pub fn store_array<'a, const N: usize>(
+    buf: &'a mut [u8],
+    array: &[u8; N],
+) -> io::Result<&'a mut [u8]> {
     buf.chunks_exact_mut(N)
         .next()
         .map(|chunk| chunk.copy_from_slice(array))
@@ -229,7 +238,10 @@ pub fn store_array<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> io
     Ok(&mut buf[N..])
 }
 
-pub fn store_array_unchecked<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> &'a mut [u8] {
+pub fn store_array_unchecked<'a, const N: usize>(
+    buf: &'a mut [u8],
+    array: &[u8; N],
+) -> &'a mut [u8] {
     buf[..N].copy_from_slice(array);
 
     &mut buf[N..]

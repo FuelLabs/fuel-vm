@@ -98,20 +98,36 @@ impl Default for Transaction {
 
 impl bytes::SizedBytes for Transaction {
     fn serialized_size(&self) -> usize {
-        let inputs = self.inputs().iter().map(|i| i.serialized_size()).sum::<usize>();
-        let outputs = self.outputs().iter().map(|o| o.serialized_size()).sum::<usize>();
-        let witnesses = self.witnesses().iter().map(|w| w.serialized_size()).sum::<usize>();
+        let inputs = self
+            .inputs()
+            .iter()
+            .map(|i| i.serialized_size())
+            .sum::<usize>();
+        let outputs = self
+            .outputs()
+            .iter()
+            .map(|o| o.serialized_size())
+            .sum::<usize>();
+        let witnesses = self
+            .witnesses()
+            .iter()
+            .map(|w| w.serialized_size())
+            .sum::<usize>();
 
         let n = match self {
             Self::Script {
-                script, script_data, ..
+                script,
+                script_data,
+                ..
             } => {
                 TRANSACTION_SCRIPT_FIXED_SIZE
                     + bytes::padded_len(script.as_slice())
                     + bytes::padded_len(script_data.as_slice())
             }
 
-            Self::Create { static_contracts, .. } => {
+            Self::Create {
+                static_contracts, ..
+            } => {
                 TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractAddress::size_of()
             }
         };
@@ -199,26 +215,30 @@ impl Transaction {
             }
         });
 
-        self.outputs_mut().iter_mut().for_each(|output| match output {
-            Output::Contract {
-                balance_root,
-                state_root,
-                ..
-            } => {
-                balance_root.iter_mut().for_each(|b| *b = 0);
-                state_root.iter_mut().for_each(|b| *b = 0);
-            }
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(|output| match output {
+                Output::Contract {
+                    balance_root,
+                    state_root,
+                    ..
+                } => {
+                    balance_root.iter_mut().for_each(|b| *b = 0);
+                    state_root.iter_mut().for_each(|b| *b = 0);
+                }
 
-            Output::Change { amount, .. } => *amount = 0,
+                Output::Change { amount, .. } => *amount = 0,
 
-            Output::Variable { to, amount, color, .. } => {
-                to.iter_mut().for_each(|b| *b = 0);
-                *amount = 0;
-                color.iter_mut().for_each(|b| *b = 0);
-            }
+                Output::Variable {
+                    to, amount, color, ..
+                } => {
+                    to.iter_mut().for_each(|b| *b = 0);
+                    *amount = 0;
+                    color.iter_mut().for_each(|b| *b = 0);
+                }
 
-            _ => (),
-        });
+                _ => (),
+            });
     }
 
     pub fn input_contracts(&self) -> impl Iterator<Item = &ContractAddress> {
@@ -287,7 +307,9 @@ impl Transaction {
     /// of the script data
     pub fn script_data_offset(&self) -> Option<usize> {
         match &self {
-            Self::Script { script, .. } => Some(TRANSACTION_SCRIPT_FIXED_SIZE + bytes::padded_len(script.as_slice())),
+            Self::Script { script, .. } => {
+                Some(TRANSACTION_SCRIPT_FIXED_SIZE + bytes::padded_len(script.as_slice()))
+            }
             _ => None,
         }
     }
@@ -309,7 +331,11 @@ impl Transaction {
                 } => Some(
                     TRANSACTION_CREATE_FIXED_SIZE
                         + ContractAddress::size_of() * static_contracts.len()
-                        + inputs.iter().take(index).map(|i| i.serialized_size()).sum::<usize>()
+                        + inputs
+                            .iter()
+                            .take(index)
+                            .map(|i| i.serialized_size())
+                            .sum::<usize>()
                         + input.serialized_size()
                         - bytes::padded_len(predicate.as_slice())
                         - bytes::padded_len(predicate_data.as_slice()),
@@ -332,7 +358,11 @@ impl Transaction {
                     TRANSACTION_SCRIPT_FIXED_SIZE
                         + bytes::padded_len(script.as_slice())
                         + bytes::padded_len(script_data.as_slice())
-                        + inputs.iter().take(index).map(|i| i.serialized_size()).sum::<usize>()
+                        + inputs
+                            .iter()
+                            .take(index)
+                            .map(|i| i.serialized_size())
+                            .sum::<usize>()
                         + input.serialized_size()
                         - bytes::padded_len(predicate.as_slice())
                         - bytes::padded_len(predicate_data.as_slice()),
@@ -619,8 +649,12 @@ impl io::Write for Transaction {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inputs_mut().iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs_mut().iter_mut().try_for_each(|output| output.flush())?;
+        self.inputs_mut()
+            .iter_mut()
+            .try_for_each(|input| input.flush())?;
+        self.outputs_mut()
+            .iter_mut()
+            .try_for_each(|output| output.flush())?;
         self.witnesses_mut()
             .iter_mut()
             .try_for_each(|witness| witness.flush())?;

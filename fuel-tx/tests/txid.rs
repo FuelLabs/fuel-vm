@@ -109,11 +109,19 @@ fn assert_id_common_attrs(tx: &Transaction) {
         assert_io_eq!(tx, outputs_mut, Output::Variable, amount, not);
         assert_io_eq!(tx, outputs_mut, Output::Variable, color, invert);
 
-        assert_io_ne!(tx, outputs_mut, Output::ContractCreated, contract_id, invert);
+        assert_io_ne!(
+            tx,
+            outputs_mut,
+            Output::ContractCreated,
+            contract_id,
+            invert
+        );
     }
 
     if !tx.witnesses().is_empty() {
-        assert_id_ne(tx, |t| inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut()));
+        assert_id_ne(tx, |t| {
+            inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut())
+        });
     }
 }
 
@@ -148,7 +156,11 @@ fn id() {
         vec![],
         vec![
             Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::contract(rng.next_u32().to_be_bytes()[0], Hash::random(rng), Hash::random(rng)),
+            Output::contract(
+                rng.next_u32().to_be_bytes()[0],
+                Hash::random(rng),
+                Hash::random(rng),
+            ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
@@ -168,7 +180,10 @@ fn id() {
         Witness::random(rng).into_inner(),
         Witness::random(rng).into_inner(),
     ];
-    let static_contracts = vec![vec![], vec![ContractAddress::random(rng), ContractAddress::random(rng)]];
+    let static_contracts = vec![
+        vec![],
+        vec![ContractAddress::random(rng), ContractAddress::random(rng)],
+    ];
 
     for inputs in inputs.iter() {
         for outputs in outputs.iter() {
@@ -215,7 +230,8 @@ fn id() {
 
                     assert_id_ne(&tx, |t| match t {
                         Transaction::Create {
-                            bytecode_witness_index, ..
+                            bytecode_witness_index,
+                            ..
                         } => not(bytecode_witness_index),
                         _ => unreachable!(),
                     });
@@ -227,9 +243,9 @@ fn id() {
 
                     if !static_contracts.is_empty() {
                         assert_id_ne(&tx, |t| match t {
-                            Transaction::Create { static_contracts, .. } => {
-                                invert(static_contracts.first_mut().unwrap())
-                            }
+                            Transaction::Create {
+                                static_contracts, ..
+                            } => invert(static_contracts.first_mut().unwrap()),
                             _ => unreachable!(),
                         });
                     }

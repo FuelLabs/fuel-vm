@@ -8,13 +8,20 @@ mod error;
 pub use error::ValidationError;
 
 impl Input {
-    pub fn validate(&self, index: usize, outputs: &[Output], witnesses: &[Witness]) -> Result<(), ValidationError> {
+    pub fn validate(
+        &self,
+        index: usize,
+        outputs: &[Output],
+        witnesses: &[Witness],
+    ) -> Result<(), ValidationError> {
         match self {
             Self::Coin { predicate, .. } if predicate.len() > MAX_PREDICATE_LENGTH as usize => {
                 Err(ValidationError::InputCoinPredicateLength { index })
             }
 
-            Self::Coin { predicate_data, .. } if predicate_data.len() > MAX_PREDICATE_DATA_LENGTH as usize => {
+            Self::Coin { predicate_data, .. }
+                if predicate_data.len() > MAX_PREDICATE_DATA_LENGTH as usize =>
+            {
                 Err(ValidationError::InputCoinPredicateDataLength { index })
             }
 
@@ -27,7 +34,9 @@ impl Input {
                 if 1 != outputs
                     .iter()
                     .filter_map(|output| match output {
-                        Output::Contract { input_index, .. } if *input_index as usize == index => Some(()),
+                        Output::Contract { input_index, .. } if *input_index as usize == index => {
+                            Some(())
+                        }
                         _ => None,
                     })
                     .count() =>
@@ -83,7 +92,11 @@ impl Transaction {
                 .outputs()
                 .iter()
                 .filter_map(|output| match output {
-                    Output::Change { color, .. } if color != &Color::default() && input_color == &color => Some(()),
+                    Output::Change { color, .. }
+                        if color != &Color::default() && input_color == &color =>
+                    {
+                        Some(())
+                    }
                     _ => None,
                 })
                 .count()
@@ -172,20 +185,32 @@ impl Transaction {
                 let mut contract_created = false;
                 for (index, output) in outputs.iter().enumerate() {
                     match output {
-                        Output::Contract { .. } => Err(ValidationError::TransactionCreateOutputContract { index })?,
-                        Output::Variable { .. } => Err(ValidationError::TransactionCreateOutputVariable { index })?,
+                        Output::Contract { .. } => {
+                            Err(ValidationError::TransactionCreateOutputContract { index })?
+                        }
+                        Output::Variable { .. } => {
+                            Err(ValidationError::TransactionCreateOutputVariable { index })?
+                        }
 
-                        Output::Change { color, .. } if color == &Color::default() && change_color_zero => {
+                        Output::Change { color, .. }
+                            if color == &Color::default() && change_color_zero =>
+                        {
                             Err(ValidationError::TransactionCreateOutputChangeColorZero { index })?
                         }
-                        Output::Change { color, .. } if color == &Color::default() => change_color_zero = true,
+                        Output::Change { color, .. } if color == &Color::default() => {
+                            change_color_zero = true
+                        }
                         Output::Change { .. } => {
-                            Err(ValidationError::TransactionCreateOutputChangeColorNonZero { index })?
+                            Err(ValidationError::TransactionCreateOutputChangeColorNonZero {
+                                index,
+                            })?
                         }
 
-                        Output::ContractCreated { .. } if contract_created => {
-                            Err(ValidationError::TransactionCreateOutputContractCreatedMultiple { index })?
-                        }
+                        Output::ContractCreated { .. } if contract_created => Err(
+                            ValidationError::TransactionCreateOutputContractCreatedMultiple {
+                                index,
+                            },
+                        )?,
                         Output::ContractCreated { .. } => contract_created = true,
 
                         _ => (),

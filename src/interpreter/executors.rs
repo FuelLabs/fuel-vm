@@ -1,13 +1,12 @@
-use super::{Contract, ExecuteError, Interpreter};
-use crate::data::Storage;
+use super::{ExecuteError, Interpreter};
+use crate::data::InterpreterStorage;
 
-use fuel_asm::Word;
 use fuel_tx::bytes::Deserializable;
-use fuel_tx::{Color, ContractAddress, Transaction};
+use fuel_tx::Transaction;
 
 impl<S> Interpreter<S>
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     pub fn execute_tx_bytes(storage: S, bytes: &[u8]) -> Result<Self, ExecuteError> {
         let tx = Transaction::from_bytes(bytes)?;

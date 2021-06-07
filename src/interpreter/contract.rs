@@ -1,7 +1,7 @@
 use super::{ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
 use crate::crypto;
-use crate::data::Storage;
+use crate::data::InterpreterStorage;
 
 use fuel_asm::{Opcode, Word};
 use fuel_tx::bytes::{SerializableVec, SizedBytes};
@@ -86,7 +86,7 @@ impl Contract {
 
 impl<S> Interpreter<S>
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     pub fn contract(&self, address: &ContractAddress) -> Result<Option<Contract>, ExecuteError> {
         Ok(self.storage.get(address)?)

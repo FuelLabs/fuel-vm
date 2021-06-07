@@ -1,4 +1,4 @@
-use super::{DataError, Storage};
+use super::{DataError, InterpreterStorage, Storage};
 use crate::interpreter::Contract;
 
 use fuel_asm::Word;
@@ -47,3 +47,5 @@ impl Storage<Color, Word> for MemoryStorage {
         Ok(self.color_balances.contains_key(key))
     }
 }
+
+impl InterpreterStorage for MemoryStorage {}

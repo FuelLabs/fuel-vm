@@ -1,6 +1,6 @@
 use super::{Contract, ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
-use crate::data::Storage;
+use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::bytes::SizedBytes;
@@ -275,7 +275,7 @@ impl io::Write for CallFrame {
 
 impl<S> Interpreter<S>
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     pub fn call_frame(&self, call: Call, color: Color) -> Result<CallFrame, ExecuteError> {
         let (to, inputs, outputs) = call.into_inner();

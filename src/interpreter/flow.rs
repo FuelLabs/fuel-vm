@@ -1,17 +1,17 @@
-use super::{Call, Contract, Interpreter};
+use super::{Call, Interpreter};
 use crate::consts::*;
-use crate::data::Storage;
+use crate::data::InterpreterStorage;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::bytes::SerializableVec;
-use fuel_tx::{Color, ContractAddress, Input};
+use fuel_tx::{Color, Input};
 
 use std::convert::TryFrom;
 use std::io::Write;
 
 impl<S> Interpreter<S>
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     // TODO add CIMV tests
     pub fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {

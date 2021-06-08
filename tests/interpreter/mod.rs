@@ -26,7 +26,7 @@ pub fn deploy_contract<S>(
     program: &[Opcode],
 ) -> ContractAddress
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     let salt: Salt = common::r();
     let program = Witness::from(program_to_bytes(program));

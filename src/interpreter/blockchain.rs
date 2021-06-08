@@ -1,6 +1,6 @@
-use super::{Contract, Interpreter, MemoryRange};
+use super::{Interpreter, MemoryRange};
 use crate::consts::*;
-use crate::data::Storage;
+use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Color, ContractAddress, Input};
@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 
 impl<S> Interpreter<S>
 where
-    S: Storage<ContractAddress, Contract> + Storage<Color, Word>,
+    S: InterpreterStorage,
 {
     pub fn burn(&mut self, a: Word) -> bool {
         let (x, overflow) = self.registers[REG_FP].overflowing_add(Address::size_of() as Word);

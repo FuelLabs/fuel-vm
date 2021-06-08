@@ -28,6 +28,10 @@ where
     fn contains_key(&self, key: &K) -> Result<bool, DataError>;
 }
 
+/// When this trait is implemented, the underlying interpreter is guaranteed to
+/// have full functionality
+pub trait InterpreterStorage: Storage<ContractAddress, Contract> + Storage<Color, Word> {}
+
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
 impl Key for Color {}

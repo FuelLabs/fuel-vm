@@ -11,7 +11,6 @@ mod blockchain;
 mod contract;
 mod crypto;
 mod error;
-mod execution;
 mod executors;
 mod flow;
 mod frame;

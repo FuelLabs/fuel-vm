@@ -14,7 +14,67 @@ use std::convert::TryFrom;
 use std::mem;
 use std::ops::Div;
 
+#[cfg(feature = "debug")]
+use crate::debug::{Breakpoint, DebugEval};
+
 const WORD_SIZE: usize = mem::size_of::<Word>();
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExecuteState {
+    Proceed,
+    Return(Word),
+
+    #[cfg(feature = "debug")]
+    DebugEvent(DebugEval),
+}
+
+impl Default for ExecuteState {
+    fn default() -> Self {
+        Self::Proceed
+    }
+}
+
+#[cfg(feature = "debug")]
+impl From<DebugEval> for ExecuteState {
+    fn from(d: DebugEval) -> Self {
+        Self::DebugEvent(d)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ProgramState {
+    Return(Word),
+
+    #[cfg(feature = "debug")]
+    RunProgram(DebugEval),
+
+    #[cfg(feature = "debug")]
+    VerifyPredicate(DebugEval),
+}
+
+#[cfg(feature = "debug")]
+impl PartialEq<Breakpoint> for ProgramState {
+    fn eq(&self, other: &Breakpoint) -> bool {
+        match self.debug_ref() {
+            Some(&DebugEval::Breakpoint(b)) => &b == other,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(feature = "debug")]
+impl ProgramState {
+    pub const fn debug_ref(&self) -> Option<&DebugEval> {
+        match self {
+            Self::RunProgram(d) | Self::VerifyPredicate(d) => Some(d),
+            _ => None,
+        }
+    }
+
+    pub const fn is_debug(&self) -> bool {
+        self.debug_ref().is_some()
+    }
+}
 
 impl<S> Interpreter<S>
 where
@@ -79,7 +139,18 @@ where
         Ok(())
     }
 
-    pub fn run(&mut self) -> Result<(), ExecuteError> {
+    pub fn run(&mut self) -> Result<ProgramState, ExecuteError> {
+        let state = self._run()?;
+
+        #[cfg(feature = "debug")]
+        if state.is_debug() {
+            self.debugger_set_last_state(state.clone());
+        }
+
+        Ok(state)
+    }
+
+    fn _run(&mut self) -> Result<ProgramState, ExecuteError> {
         let tx = &self.tx;
 
         match tx {
@@ -122,11 +193,19 @@ where
                     .map(|(ofs, len)| MemoryRange::new(ofs, len))
                     .collect();
 
-                predicates
-                    .iter()
-                    .try_for_each(|predicate| self.verify_predicate(predicate))?;
+                let mut state = ProgramState::Return(1);
+                for predicate in predicates {
+                    state = self.verify_predicate(&predicate)?;
 
-                Ok(())
+                    #[cfg(feature = "debug")]
+                    if state.is_debug() {
+                        // TODO should restore the constructed predicates and continue from current
+                        // predicate
+                        return Ok(state);
+                    }
+                }
+
+                Ok(state)
             }
 
             Transaction::Script { .. } => {
@@ -144,7 +223,21 @@ where
         }
     }
 
-    pub fn run_program(&mut self) -> Result<(), ExecuteError> {
+    #[cfg(feature = "debug")]
+    pub fn resume(&mut self) -> Result<ProgramState, ExecuteError> {
+        match self
+            .debugger_last_state()
+            .ok_or(ExecuteError::DebugStateNotInitialized)?
+        {
+            ProgramState::Return(w) => Ok(ProgramState::Return(w)),
+
+            ProgramState::RunProgram(_) => self.run_program(),
+
+            ProgramState::VerifyPredicate(_) => unimplemented!(),
+        }
+    }
+
+    pub fn run_program(&mut self) -> Result<ProgramState, ExecuteError> {
         loop {
             if self.registers[REG_PC] >= VM_MAX_RAM {
                 return Err(ExecuteError::ProgramOverflow);
@@ -156,19 +249,22 @@ where
                 .map(Opcode::from_bytes_unchecked)
                 .ok_or(ExecuteError::ProgramOverflow)?;
 
-            if let Opcode::RET(ra) = op {
-                if Self::is_valid_register(ra) && self.ret(ra) && self.inc_pc() {
-                    return Ok(());
-                } else {
-                    return Err(ExecuteError::OpcodeFailure(op));
+            match self.execute(op)? {
+                ExecuteState::Return(r) => {
+                    return Ok(ProgramState::Return(r));
                 }
-            }
 
-            self.execute(op)?;
+                #[cfg(feature = "debug")]
+                ExecuteState::DebugEvent(d) => {
+                    return Ok(ProgramState::RunProgram(d));
+                }
+
+                _ => (),
+            }
         }
     }
 
-    pub fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<(), ExecuteError> {
+    pub fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, ExecuteError> {
         // TODO initialize VM with tx prepared for sign
         let (start, end) = predicate.boundaries(&self);
 
@@ -184,21 +280,22 @@ where
                 .map(Opcode::from_bytes_unchecked)
                 .ok_or(ExecuteError::PredicateOverflow)?;
 
-            if let Opcode::RET(ra) = op {
-                return self
-                    .registers
-                    .get(ra)
-                    .ok_or(ExecuteError::OpcodeFailure(op))
-                    .and_then(|ret| {
-                        if ret == &1 {
-                            Ok(())
-                        } else {
-                            Err(ExecuteError::PredicateFailure)
-                        }
-                    });
-            }
+            match self.execute(op)? {
+                ExecuteState::Return(r) => {
+                    if r == 1 {
+                        return Ok(ProgramState::Return(r));
+                    } else {
+                        return Err(ExecuteError::PredicateFailure);
+                    }
+                }
 
-            self.execute(op)?;
+                #[cfg(feature = "debug")]
+                ExecuteState::DebugEvent(d) => {
+                    return Ok(ProgramState::VerifyPredicate(d));
+                }
+
+                _ => (),
+            }
 
             if self.registers[REG_PC] < pc || self.registers[REG_PC] >= end {
                 return Err(ExecuteError::PredicateOverflow);
@@ -221,8 +318,16 @@ where
         Ok(vm)
     }
 
-    pub fn execute(&mut self, op: Opcode) -> Result<(), ExecuteError> {
-        let mut result = Ok(());
+    pub fn execute(&mut self, op: Opcode) -> Result<ExecuteState, ExecuteError> {
+        let mut result = Ok(ExecuteState::Proceed);
+
+        #[cfg(feature = "debug")]
+        {
+            let debug = self.eval_debugger_state();
+            if !debug.should_continue() {
+                return Ok(debug.into());
+            }
+        }
 
         debug!("Executing {:?}", op);
         debug!(
@@ -377,7 +482,9 @@ where
                 if Self::is_valid_register_couple(ra, rb)
                     && self.jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word) => {}
 
-            Opcode::RET(ra) if Self::is_valid_register(ra) && self.ret(ra) && self.inc_pc() => {}
+            Opcode::RET(ra) if Self::is_valid_register(ra) && self.ret(ra) && self.inc_pc() => {
+                result = Ok(ExecuteState::Return(self.registers[ra]));
+            }
 
             Opcode::ALOC(ra) if Self::is_valid_register(ra) && self.malloc(self.registers[ra]) && self.inc_pc() => {}
 

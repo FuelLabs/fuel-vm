@@ -19,3 +19,6 @@ fuel-tx = {git="ssh://git@github.com/FuelLabs/fuel-tx.git"}
 
 [dev-dependencies]
 rand = "0.8"
+
+[features]
+debug = []

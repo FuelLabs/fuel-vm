@@ -225,16 +225,23 @@ where
 
     #[cfg(feature = "debug")]
     pub fn resume(&mut self) -> Result<ProgramState, ExecuteError> {
-        match self
+        let state = self
             .debugger_last_state()
-            .ok_or(ExecuteError::DebugStateNotInitialized)?
-        {
+            .ok_or(ExecuteError::DebugStateNotInitialized)?;
+
+        let state = match state {
             ProgramState::Return(w) => Ok(ProgramState::Return(w)),
 
             ProgramState::RunProgram(_) => self.run_program(),
 
             ProgramState::VerifyPredicate(_) => unimplemented!(),
+        }?;
+
+        if state.is_debug() {
+            self.debugger_set_last_state(state.clone());
         }
+
+        Ok(state)
     }
 
     pub fn run_program(&mut self) -> Result<ProgramState, ExecuteError> {

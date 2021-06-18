@@ -1,6 +1,6 @@
 use crate::interpreter::ProgramState;
 
-use fuel_asm::Word;
+use fuel_asm::{Opcode, Word};
 use fuel_tx::ContractAddress;
 
 use std::collections::{HashMap, HashSet};
@@ -12,8 +12,29 @@ pub struct Breakpoint {
 }
 
 impl Breakpoint {
-    pub const fn new(contract: ContractAddress, pc: Word) -> Self {
+    const fn raw(contract: ContractAddress, pc: Word) -> Self {
         Self { contract, pc }
+    }
+
+    /// Create a new contract breakpoint
+    ///
+    /// The `$pc` is provided in op count and internally is multiplied by the op
+    /// size. Also, the op count is always relative to `$is` so it should
+    /// consider only the bytecode of the contract.
+    pub const fn new(contract: ContractAddress, pc: Word) -> Self {
+        let pc = pc * (Opcode::BYTES_SIZE as Word);
+
+        Self::raw(contract, pc)
+    }
+
+    /// Create a new script breakpoint
+    ///
+    /// The `$pc` is provided in op count and internally is multiplied by the op
+    /// size
+    pub fn script(pc: Word) -> Self {
+        let contract = Default::default();
+
+        Self::new(contract, pc)
     }
 
     pub const fn contract(&self) -> &ContractAddress {
@@ -50,6 +71,13 @@ impl DebugEval {
             _ => false,
         }
     }
+
+    pub const fn breakpoint(&self) -> Option<&Breakpoint> {
+        match self {
+            Self::Breakpoint(b) => Some(b),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -59,7 +87,10 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    pub fn set_breakpoint(&mut self, contract: ContractAddress, pc: Word) {
+    pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
+        let contract = *breakpoint.contract();
+        let pc = breakpoint.pc();
+
         self.breakpoints
             .get_mut(&contract)
             .map(|set| set.insert(pc))
@@ -73,8 +104,10 @@ impl Debugger {
             });
     }
 
-    pub fn remove_breakpoint(&mut self, contract: &ContractAddress, pc: Word) {
-        self.breakpoints.get_mut(contract).map(|set| set.remove(&pc));
+    pub fn remove_breakpoint(&mut self, breakpoint: &Breakpoint) {
+        self.breakpoints
+            .get_mut(breakpoint.contract())
+            .map(|set| set.remove(&breakpoint.pc()));
     }
 
     pub fn eval_state(&mut self, contract: ContractAddress, pc: Word) -> DebugEval {
@@ -85,7 +118,7 @@ impl Debugger {
             .map(|set| set.get(&pc))
             .flatten()
             .map(|_| {
-                let breakpoint = Breakpoint::new(contract, pc);
+                let breakpoint = Breakpoint::raw(contract, pc);
 
                 match last_state {
                     Some(s) if s == breakpoint => DebugEval::Continue,

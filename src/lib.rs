@@ -12,10 +12,15 @@ pub mod interpreter;
 pub mod prelude {
     pub use crate::data::{InterpreterStorage, MemoryStorage, Storage};
     pub use crate::debug::Debugger;
-    pub use crate::interpreter::{Call, CallFrame, Contract, ExecuteError, Interpreter, LogEvent, MemoryRange};
+    pub use crate::interpreter::{
+        Call, CallFrame, Contract, ExecuteError, Interpreter, LogEvent, MemoryRange, ProgramState,
+    };
     pub use fuel_asm::{Immediate06, Immediate12, Immediate18, Immediate24, Opcode, RegisterId, Word};
     pub use fuel_tx::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
         Address, Color, ContractAddress, Hash, Input, Output, Salt, Transaction, ValidationError, Witness,
     };
+
+    #[cfg(feature = "debug")]
+    pub use crate::debug::{Breakpoint, DebugEval};
 }

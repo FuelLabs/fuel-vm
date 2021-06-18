@@ -1,31 +1,21 @@
 use super::{Interpreter, ProgramState};
 use crate::consts::*;
-use crate::debug::DebugEval;
-
-use fuel_asm::Word;
-use fuel_tx::ContractAddress;
+use crate::debug::{Breakpoint, DebugEval};
 
 impl<S> Interpreter<S> {
-    pub fn set_breakpoint(&mut self, contract: Option<ContractAddress>, pc: Word) {
-        let contract = contract.unwrap_or_default();
-
-        self.debugger.set_breakpoint(contract, pc)
+    pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
+        self.debugger.set_breakpoint(breakpoint)
     }
 
-    pub fn remove_breakpoint(&mut self, contract: Option<ContractAddress>, pc: Word) {
-        let contract = contract.unwrap_or_default();
-
-        self.debugger.remove_breakpoint(&contract, pc)
+    pub fn remove_breakpoint(&mut self, breakpoint: &Breakpoint) {
+        self.debugger.remove_breakpoint(breakpoint)
     }
 
     pub fn eval_debugger_state(&mut self) -> DebugEval {
         let debugger = &mut self.debugger;
 
         let contract = self.frames.last().map(|f| f.to()).copied();
-        let pc = match &contract {
-            Some(_) => self.registers[REG_PC].saturating_sub(self.registers[REG_IS]),
-            None => self.registers[REG_PC],
-        };
+        let pc = self.registers[REG_PC].saturating_sub(self.registers[REG_IS]);
 
         // Default contract address maps to unset contract target
         let contract = contract.unwrap_or_default();

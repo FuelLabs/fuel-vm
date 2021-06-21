@@ -110,7 +110,9 @@ impl Debugger {
             .map(|set| set.remove(&breakpoint.pc()));
     }
 
-    pub fn eval_state(&mut self, contract: ContractAddress, pc: Word) -> DebugEval {
+    pub fn eval_state(&mut self, contract: Option<&ContractAddress>, pc: Word) -> DebugEval {
+        // Default contract address maps to unset contract target
+        let contract = contract.copied().unwrap_or_default();
         let last_state = self.last_state.take();
 
         self.breakpoints

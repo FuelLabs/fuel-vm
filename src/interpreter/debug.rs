@@ -1,4 +1,4 @@
-use super::{Interpreter, ProgramState};
+use super::{CallFrame, Interpreter, ProgramState};
 use crate::consts::*;
 use crate::debug::{Breakpoint, DebugEval};
 
@@ -14,11 +14,8 @@ impl<S> Interpreter<S> {
     pub fn eval_debugger_state(&mut self) -> DebugEval {
         let debugger = &mut self.debugger;
 
-        let contract = self.frames.last().map(|f| f.to()).copied();
+        let contract = self.frames.last().map(CallFrame::to);
         let pc = self.registers[REG_PC].saturating_sub(self.registers[REG_IS]);
-
-        // Default contract address maps to unset contract target
-        let contract = contract.unwrap_or_default();
 
         debugger.eval_state(contract, pc)
     }

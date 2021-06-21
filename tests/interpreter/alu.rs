@@ -8,7 +8,7 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
 
     registers_init.iter().for_each(|(r, v)| {
         vm.execute(Opcode::ADDI(*r, *r, *v))
-            .expect("Failed to execute the provided opcode!")
+            .expect("Failed to execute the provided opcode!");
     });
 
     vm.execute(op).expect("Failed to execute the final opcode!");
@@ -28,7 +28,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
 
     registers_init.iter().for_each(|(r, v)| {
         vm.execute(Opcode::ADDI(*r, *r, *v))
-            .expect("Failed to execute the provided opcode!")
+            .expect("Failed to execute the provided opcode!");
     });
 
     let result = vm.execute(op);

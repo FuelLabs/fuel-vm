@@ -1,4 +1,5 @@
 use crate::consts::*;
+use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
@@ -11,15 +12,18 @@ mod blockchain;
 mod contract;
 mod crypto;
 mod error;
-mod execution;
 mod executors;
 mod flow;
 mod frame;
 mod log;
 mod memory;
 
+#[cfg(feature = "debug")]
+mod debug;
+
 pub use contract::Contract;
 pub use error::ExecuteError;
+pub use executors::ProgramState;
 pub use frame::{Call, CallFrame};
 pub use log::LogEvent;
 pub use memory::MemoryRange;
@@ -35,6 +39,7 @@ pub struct Interpreter<S> {
     // TODO review all opcodes that mutates the tx in the stack and keep this one sync
     tx: Transaction,
     storage: S,
+    debugger: Debugger,
 }
 
 impl<S> Interpreter<S> {
@@ -46,6 +51,7 @@ impl<S> Interpreter<S> {
             log: vec![],
             tx: Transaction::default(),
             storage,
+            debugger: Debugger::default(),
         }
     }
 

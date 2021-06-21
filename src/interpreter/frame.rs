@@ -172,6 +172,10 @@ impl CallFrame {
     pub const fn registers(&self) -> &[Word] {
         &self.registers
     }
+
+    pub const fn to(&self) -> &ContractAddress {
+        &self.to
+    }
 }
 
 impl SizedBytes for CallFrame {

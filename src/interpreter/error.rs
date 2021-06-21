@@ -18,6 +18,9 @@ pub enum ExecuteError {
     ProgramOverflow,
     PredicateFailure,
     ContractNotFound,
+
+    #[cfg(feature = "debug")]
+    DebugStateNotInitialized,
 }
 
 impl fmt::Display for ExecuteError {

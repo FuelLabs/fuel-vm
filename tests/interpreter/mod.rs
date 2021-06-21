@@ -8,6 +8,9 @@ mod flow;
 mod memory;
 mod predicate;
 
+#[cfg(feature = "debug")]
+mod debug;
+
 pub use super::common;
 
 pub fn program_to_bytes(program: &[Opcode]) -> Vec<u8> {

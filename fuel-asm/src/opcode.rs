@@ -178,6 +178,19 @@ pub enum Opcode {
     /// `$of` and `$err` are cleared.
     GT(RegisterId, RegisterId, RegisterId),
 
+    /// Compares two registers for less-than.
+    ///
+    /// | Operation   | ```$rA = $rB < $rC;```                |
+    /// | Syntax      | `lt $rA, $rB, $rC`                    |
+    /// | Encoding    | `0x00 rA rB rC -`                     |
+    ///
+    /// #### Panics
+    /// - `$rA` is a [reserved register](./main.md#semantics)
+    ///
+    /// #### Execution
+    /// `$of` and `$err` are cleared.
+    LT(RegisterId, RegisterId, RegisterId),
+
     /// The (integer) logarithm base `$rC` of `$rB`.
     ///
     /// | Operation   | ```$rA = math.floor(math.log($rB, $rC));```  |
@@ -866,6 +879,12 @@ pub enum Opcode {
     /// | Encoding    | `0x00 rA rB rC rD`             |
     LOG(RegisterId, RegisterId, RegisterId, RegisterId),
 
+    /// Logs the memory range `MEM[$rC, $rD]`. This is a no-op.
+    ///
+    /// | Syntax      | `logd $rA, $rB, $rC, $rD`       |
+    /// | Encoding    | `0x00 rA rB rC rD`              |
+    LOGD(RegisterId, RegisterId, RegisterId, RegisterId),
+
     /// Mint `$rA` coins of the current contract's color.
     ///
     /// | Operation   | ```mint($rA);```                                  |
@@ -1223,6 +1242,7 @@ impl Opcode {
             OpcodeRepr::EXP => Opcode::EXP(ra, rb, rc),
             OpcodeRepr::EXPI => Opcode::EXPI(ra, rb, imm12),
             OpcodeRepr::GT => Opcode::GT(ra, rb, rc),
+            OpcodeRepr::LT => Opcode::LT(ra, rb, rc),
             OpcodeRepr::MLOG => Opcode::MLOG(ra, rb, rc),
             OpcodeRepr::MROO => Opcode::MROO(ra, rb, rc),
             OpcodeRepr::MOD => Opcode::MOD(ra, rb, rc),
@@ -1267,6 +1287,7 @@ impl Opcode {
             OpcodeRepr::CB => Opcode::CB(ra),
             OpcodeRepr::LDC => Opcode::LDC(ra, rb, rc),
             OpcodeRepr::LOG => Opcode::LOG(ra, rb, rc, rd),
+            OpcodeRepr::LOGD => Opcode::LOGD(ra, rb, rc, rd),
             OpcodeRepr::MINT => Opcode::MINT(ra),
             OpcodeRepr::RVRT => Opcode::RVRT(ra),
             OpcodeRepr::SLDC => Opcode::SLDC(ra, rb, rc),
@@ -1346,6 +1367,7 @@ impl Opcode {
             Self::EXP(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::EXPI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::GT(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::LT(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::MLOG(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::MROO(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::MOD(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
@@ -1390,6 +1412,7 @@ impl Opcode {
             Self::CB(ra) => [Some(*ra), None, None, None],
             Self::LDC(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::LOG(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
+            Self::LOGD(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::MINT(ra) => [Some(*ra), None, None, None],
             Self::RVRT(ra) => [Some(*ra), None, None, None],
             Self::SLDC(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
@@ -1494,6 +1517,12 @@ impl From<Opcode> for u32 {
             }
             Opcode::GT(ra, rb, rc) => {
                 ((OpcodeRepr::GT as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+            }
+            Opcode::LT(ra, rb, rc) => {
+                ((OpcodeRepr::LT as u32) << 24)
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | ((rc as u32) << 6)
@@ -1697,6 +1726,13 @@ impl From<Opcode> for u32 {
             }
             Opcode::LOG(ra, rb, rc, rd) => {
                 ((OpcodeRepr::LOG as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
+            Opcode::LOGD(ra, rb, rc, rd) => {
+                ((OpcodeRepr::LOGD as u32) << 24)
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | ((rc as u32) << 6)

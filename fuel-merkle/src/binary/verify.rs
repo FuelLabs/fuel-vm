@@ -1,13 +1,7 @@
-use crate::binary::merkle_tree::MerkleTree;
-use crate::digest::Digest;
+use crate::binary::hash::{leaf_sum, node_sum, Data};
 use crate::proof_set::ProofSet;
 
-pub fn verify<D: Digest>(
-    root: &[u8; 32],
-    proof_set: ProofSet,
-    proof_index: u64,
-    num_leaves: u64,
-) -> bool {
+pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u64) -> bool {
     if proof_index >= num_leaves {
         return false;
     }
@@ -18,7 +12,7 @@ pub fn verify<D: Digest>(
 
     let mut height = 0usize;
     let proof_data = proof_set.get(height).unwrap();
-    let mut sum = MerkleTree::<D>::leaf_sum(proof_data);
+    let mut sum = leaf_sum(proof_data);
     height += 1;
 
     let mut stable_end = proof_index;
@@ -38,9 +32,9 @@ pub fn verify<D: Digest>(
 
         let proof_data = proof_set.get(height).unwrap();
         if proof_index - subtree_start_index < 1 << (height - 1) {
-            sum = MerkleTree::<D>::node_sum(&sum, proof_data);
+            sum = node_sum(&sum, proof_data);
         } else {
-            sum = MerkleTree::<D>::node_sum(proof_data, &sum);
+            sum = node_sum(proof_data, &sum);
         }
 
         height += 1;
@@ -51,13 +45,13 @@ pub fn verify<D: Digest>(
             return false;
         }
         let proof_data = proof_set.get(height).unwrap();
-        sum = MerkleTree::<D>::node_sum(&sum, proof_data);
+        sum = node_sum(&sum, proof_data);
         height += 1;
     }
 
     while height < proof_set.len() {
         let proof_data = proof_set.get(height).unwrap();
-        sum = MerkleTree::<D>::node_sum(proof_data, &sum);
+        sum = node_sum(proof_data, &sum);
         height += 1;
     }
 
@@ -68,9 +62,6 @@ pub fn verify<D: Digest>(
 mod test {
     use super::*;
     use crate::binary::merkle_tree::MerkleTree;
-    use crate::sha::Sha256 as Hash;
-
-    type MT = MerkleTree<Hash>;
 
     const DATA: [&[u8]; 10] = [
         "Frankly, my dear, I don't give a damn.".as_bytes(),
@@ -87,7 +78,7 @@ mod test {
 
     #[test]
     fn verify_returns_true_when_the_given_proof_set_matches_the_given_merkle_root() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
         let data = &DATA[0..5]; // 5 leaves
@@ -99,7 +90,7 @@ mod test {
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify::<Hash>(&root, set, 2, 5);
+        let verification = verify(&root, set, 2, 5);
         assert_eq!(verification, true);
     }
 
@@ -109,7 +100,7 @@ mod test {
         // proof set: because the two roots come from different trees, the comparison should fail.
 
         // Generate the first Merkle tree and get its root
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
         let data = &DATA[0..4];
@@ -120,7 +111,7 @@ mod test {
         let root = proof.0;
 
         // Generate the second Merkle tree and get its proof set
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
         let data = &DATA[5..10];
@@ -130,26 +121,26 @@ mod test {
         let proof = mt.prove();
         let set = proof.1;
 
-        let verification = verify::<Hash>(&root, set, 2, 5);
+        let verification = verify(&root, set, 2, 5);
         assert_eq!(verification, false);
     }
 
     #[test]
     fn verify_returns_false_when_the_proof_set_is_empty() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(0);
 
         let proof = mt.prove();
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify::<Hash>(&root, set, 0, 0);
+        let verification = verify(&root, set, 0, 0);
         assert_eq!(verification, false);
     }
 
     #[test]
     fn verify_returns_false_when_the_proof_index_is_invalid() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(0);
 
         let data = &DATA[0..4];
@@ -161,7 +152,7 @@ mod test {
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify::<Hash>(&root, set, 15, 5);
+        let verification = verify(&root, set, 15, 5);
         assert_eq!(verification, false);
     }
 }

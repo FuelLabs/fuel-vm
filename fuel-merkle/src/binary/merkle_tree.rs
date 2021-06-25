@@ -1,35 +1,23 @@
+use crate::binary::hash::{empty_sum, leaf_sum, node_sum, Data};
 use crate::binary::node::Node;
-use crate::digest::Digest;
 use crate::proof_set::ProofSet;
 
-use std::convert::TryFrom;
-use std::marker::PhantomData;
-
-const NODE: [u8; 1] = [0x01];
-const LEAF: [u8; 1] = [0x00];
-
-type Data = [u8; 32];
-type DataRef<'a> = &'a [u8];
 type DataNode = Node<Data>;
 
-pub struct MerkleTree<D: Digest> {
+pub struct MerkleTree {
     head: Option<Box<DataNode>>,
     leaves_count: u64,
     proof_index: u64,
     proof_set: ProofSet,
-
-    phantom: PhantomData<D>,
 }
 
-impl<D: Digest> MerkleTree<D> {
+impl MerkleTree {
     pub fn new() -> Self {
         Self {
             head: None,
             leaves_count: 0,
             proof_index: 0,
             proof_set: ProofSet::new(),
-
-            phantom: PhantomData,
         }
     }
 
@@ -42,7 +30,7 @@ impl<D: Digest> MerkleTree<D> {
 
     pub fn root(&self) -> Data {
         match self.head() {
-            None => Self::empty_sum(),
+            None => empty_sum().clone(),
             Some(ref head) => {
                 let mut current = head.clone();
                 while current.next().is_some() {
@@ -50,7 +38,7 @@ impl<D: Digest> MerkleTree<D> {
                     let mut next_node = node.take_next().unwrap();
                     current = Self::join_subtrees(&mut next_node, &node)
                 }
-                *current.data()
+                current.data().clone()
             }
         }
     }
@@ -64,7 +52,7 @@ impl<D: Digest> MerkleTree<D> {
             self.proof_set.push(data);
         }
 
-        let node = Self::create_node(self.head.take(), 0, Self::leaf_sum(data));
+        let node = Self::create_node(self.head.take(), 0, leaf_sum(data));
         self.head = Some(node);
         self.join_all_subtrees();
 
@@ -133,44 +121,10 @@ impl<D: Digest> MerkleTree<D> {
         }
     }
 
-    // Merkle Tree hash of an empty list
-    // MTH({}) = Hash()
-    pub fn empty_sum() -> Data {
-        let hash = D::new();
-        let data = hash.finalize();
-
-        <Data>::try_from(data.as_slice()).unwrap()
-    }
-
-    // Merkle tree hash of an n-element list D[n]
-    // MTH(D[n]) = Hash(0x01 || MTH(D[0:k]) || MTH(D[k:n])
-    pub fn node_sum(lhs_data: DataRef, rhs_data: DataRef) -> Data {
-        let mut hash = D::new();
-
-        hash.update(&NODE);
-        hash.update(&lhs_data);
-        hash.update(&rhs_data);
-        let data = hash.finalize();
-
-        <Data>::try_from(data.as_slice()).unwrap()
-    }
-
-    // Merkle tree hash of a list with one entry
-    // MTH({d(0)}) = Hash(0x00 || d(0))
-    pub fn leaf_sum(data: DataRef) -> Data {
-        let mut hash = D::new();
-
-        hash.update(&LEAF);
-        hash.update(&data);
-        let data = hash.finalize();
-
-        <Data>::try_from(data.as_slice()).unwrap()
-    }
-
     fn join_subtrees(a: &mut DataNode, b: &DataNode) -> Box<DataNode> {
         let next = a.take_next();
         let height = a.height() + 1;
-        let data = Self::node_sum(a.data(), b.data());
+        let data = node_sum(a.data(), b.data());
         Self::create_node(next, height, data)
     }
 
@@ -182,27 +136,29 @@ impl<D: Digest> MerkleTree<D> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sha::Sha256 as Hash;
+    use digest::Digest;
+    use sha2::Sha256;
 
-    type MT = MerkleTree<Hash>;
+    const NODE: u8 = 0x01;
+    const LEAF: u8 = 0x00;
 
     fn empty_data() -> Data {
-        let hash = Hash::new();
-        <Data>::try_from(hash.finalize()).unwrap()
+        let hash = Sha256::new();
+        hash.finalize()
     }
 
-    fn leaf_data(data: DataRef) -> Data {
-        let mut hash = Hash::new();
-        hash.update(&LEAF);
+    fn leaf_data(data: &[u8]) -> Data {
+        let mut hash = Sha256::new();
+        hash.update(&[LEAF]);
         hash.update(&data);
-        <Data>::try_from(hash.finalize()).unwrap()
+        hash.finalize()
     }
-    fn node_data(lhs_data: DataRef, rhs_data: DataRef) -> Data {
-        let mut hash = Hash::new();
-        hash.update(&NODE);
+    fn node_data(lhs_data: &[u8], rhs_data: &[u8]) -> Data {
+        let mut hash = Sha256::new();
+        hash.update(&[NODE]);
         hash.update(&lhs_data);
         hash.update(&rhs_data);
-        <Data>::try_from(hash.finalize()).unwrap()
+        hash.finalize()
     }
 
     const DATA: [&[u8]; 10] = [
@@ -220,7 +176,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_empty_string_when_no_leaves_are_pushed() {
-        let mt = MT::new();
+        let mt = MerkleTree::new();
         let root = mt.root();
 
         let expected = empty_data();
@@ -229,7 +185,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_leaf_when_one_leaf_is_pushed() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
 
         let data = &DATA[0];
         mt.push(&data);
@@ -241,7 +197,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_4_leaves_are_pushed() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
 
         let data = &DATA[0..4]; // 4 leaves
         for datum in data.iter() {
@@ -271,7 +227,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_5_leaves_are_pushed() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
 
         let data = &DATA[0..5]; // 5 leaves
         for datum in data.iter() {
@@ -305,7 +261,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_7_leaves_are_pushed() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
 
         let data = &DATA[0..7]; // 7 leaves
         for datum in data.iter() {
@@ -344,7 +300,7 @@ mod test {
 
     #[test]
     fn leaves_count_returns_the_number_of_leaves_pushed_to_the_tree() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
 
         let data = &DATA[0..4];
         for datum in data.iter() {
@@ -356,7 +312,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(0);
 
         let data = &DATA[0..4]; // 4 leaves
@@ -389,12 +345,12 @@ mod test {
 
         assert_eq!(root, node_3);
         assert_eq!(s_1, data[0]);
-        assert_eq!(s_2, &leaf_2);
+        assert_eq!(s_2, &leaf_2[..]);
     }
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
         let data = &DATA[0..5]; // 5 leaves
@@ -433,14 +389,14 @@ mod test {
 
         assert_eq!(root, node_4);
         assert_eq!(s_1, data[2]);
-        assert_eq!(s_2, &leaf_4);
-        assert_eq!(s_3, &node_1);
-        assert_eq!(s_4, &leaf_5);
+        assert_eq!(s_2, &leaf_4[..]);
+        assert_eq!(s_3, &node_1[..]);
+        assert_eq!(s_4, &leaf_5[..]);
     }
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root() {
-        let mut mt = MT::new();
+        let mut mt = MerkleTree::new();
         mt.set_proof_index(4);
 
         let data = &DATA[0..5]; // 5 leaves
@@ -477,12 +433,12 @@ mod test {
 
         assert_eq!(root, node_4);
         assert_eq!(s_1, data[4]);
-        assert_eq!(s_2, &node_3);
+        assert_eq!(s_2, &node_3[..]);
     }
 
     #[test]
     fn prove_returns_the_root_of_the_empty_merkle_tree_when_no_leaves_are_added() {
-        let mt = MT::new();
+        let mt = MerkleTree::new();
 
         let proof = mt.prove();
         let root = proof.0;
@@ -493,7 +449,7 @@ mod test {
 
     #[test]
     fn prove_returns_an_empty_proof_set_when_no_leaves_are_added() {
-        let mt = MT::new();
+        let mt = MerkleTree::new();
 
         let proof = mt.prove();
         let set = proof.1;

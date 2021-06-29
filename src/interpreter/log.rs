@@ -5,6 +5,7 @@ use fuel_asm::{RegisterId, Word};
 use tracing::debug;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
 pub enum LogEvent {
     Register {

@@ -3,7 +3,7 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Address, Color, ContractAddress, Hash, Transaction};
+use fuel_tx::{Address, Color, ContractId, Hash, Transaction};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -225,8 +225,8 @@ impl<S> Interpreter<S> {
         }
 
         let c = self.registers[REG_FP] as usize;
-        let cx = c + ContractAddress::size_of();
-        let contract = ContractAddress::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+        let cx = c + ContractId::size_of();
+        let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
 
         let c = self.registers[REG_FP] as usize + Address::size_of();
         let cx = c + Color::size_of();

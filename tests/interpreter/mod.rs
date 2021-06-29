@@ -28,7 +28,7 @@ pub fn deploy_contract<S>(
     maturity: Word,
     vm: &mut Interpreter<S>,
     program: &[Opcode],
-) -> ContractAddress
+) -> ContractId
 where
     S: InterpreterStorage,
 {

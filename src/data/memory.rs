@@ -2,30 +2,30 @@ use super::{DataError, InterpreterStorage, Storage};
 use crate::interpreter::{Contract, ContractColor};
 
 use fuel_asm::Word;
-use fuel_tx::ContractAddress;
+use fuel_tx::ContractId;
 
 use std::collections::HashMap;
 
 #[derive(Debug, Default, Clone)]
 pub struct MemoryStorage {
-    contracts: HashMap<ContractAddress, Contract>,
+    contracts: HashMap<ContractId, Contract>,
     balances: HashMap<ContractColor, Word>,
 }
 
-impl Storage<ContractAddress, Contract> for MemoryStorage {
-    fn insert(&mut self, key: ContractAddress, value: Contract) -> Result<Option<Contract>, DataError> {
+impl Storage<ContractId, Contract> for MemoryStorage {
+    fn insert(&mut self, key: ContractId, value: Contract) -> Result<Option<Contract>, DataError> {
         Ok(self.contracts.insert(key, value))
     }
 
-    fn remove(&mut self, key: &ContractAddress) -> Result<Option<Contract>, DataError> {
+    fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, DataError> {
         Ok(self.contracts.remove(key))
     }
 
-    fn get(&self, key: &ContractAddress) -> Result<Option<Contract>, DataError> {
+    fn get(&self, key: &ContractId) -> Result<Option<Contract>, DataError> {
         Ok(self.contracts.get(key).cloned())
     }
 
-    fn contains_key(&self, key: &ContractAddress) -> Result<bool, DataError> {
+    fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
         Ok(self.contracts.contains_key(key))
     }
 }

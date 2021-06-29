@@ -5,22 +5,22 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::crypto as tx_crypto;
-use fuel_tx::{Color, ContractAddress, Transaction, ValidationError};
+use fuel_tx::{Color, ContractId, Transaction, ValidationError};
 
 use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ContractColor {
-    contract: ContractAddress,
+    contract: ContractId,
     color: Color,
 }
 
 impl ContractColor {
-    pub const fn new(contract: ContractAddress, color: Color) -> Self {
+    pub const fn new(contract: ContractId, color: Color) -> Self {
         Self { contract, color }
     }
 
-    pub const fn contract(&self) -> &ContractAddress {
+    pub const fn contract(&self) -> &ContractId {
         &self.contract
     }
 
@@ -88,7 +88,7 @@ impl TryFrom<&Transaction> for Contract {
 }
 
 impl Contract {
-    pub fn address(&self, salt: &[u8]) -> ContractAddress {
+    pub fn address(&self, salt: &[u8]) -> ContractId {
         let mut input = VM_CONTRACT_ID_BASE.to_vec();
 
         input.extend_from_slice(salt);
@@ -102,11 +102,11 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn contract(&self, address: &ContractAddress) -> Result<Option<Contract>, ExecuteError> {
+    pub fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
         Ok(self.storage.get(address)?)
     }
 
-    pub fn check_contract_exists(&self, address: &ContractAddress) -> Result<bool, ExecuteError> {
+    pub fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
         Ok(self.storage.contains_key(address)?)
     }
 

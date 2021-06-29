@@ -35,7 +35,7 @@ fn contract() {
                     Hash::random(rng),
                     Hash::random(rng),
                     Hash::random(rng),
-                    ContractAddress::random(rng),
+                    ContractId::random(rng),
                 ),
             ],
         )
@@ -59,7 +59,7 @@ fn contract() {
                     Hash::random(rng),
                     Hash::random(rng),
                     Hash::random(rng),
-                    ContractAddress::random(rng),
+                    ContractId::random(rng),
                 ),
             ],
         )
@@ -85,7 +85,7 @@ fn contract() {
                     Hash::random(rng),
                     Hash::random(rng),
                     Hash::random(rng),
-                    ContractAddress::random(rng),
+                    ContractId::random(rng),
                 ),
             ],
         )
@@ -129,7 +129,7 @@ fn contract_created() {
     let mut rng_base = StdRng::seed_from_u64(8586);
     let rng = &mut rng_base;
 
-    Output::contract_created(ContractAddress::random(rng))
+    Output::contract_created(ContractId::random(rng))
         .validate(1, &[])
         .unwrap();
 }

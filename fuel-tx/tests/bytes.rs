@@ -123,7 +123,7 @@ fn input() {
             Hash::random(rng),
             Hash::random(rng),
             Hash::random(rng),
-            ContractAddress::random(rng),
+            ContractId::random(rng),
         ),
     ]);
 }
@@ -143,7 +143,7 @@ fn output() {
         Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
-        Output::contract_created(ContractAddress::random(rng)),
+        Output::contract_created(ContractId::random(rng)),
     ]);
 }
 
@@ -156,7 +156,7 @@ fn transaction() {
         Hash::random(rng),
         Hash::random(rng),
         Hash::random(rng),
-        ContractAddress::random(rng),
+        ContractId::random(rng),
     );
     let o = Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
     let w = Witness::random(rng);
@@ -238,7 +238,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u32().to_be_bytes()[0],
             Salt::random(rng),
-            vec![ContractAddress::random(rng)],
+            vec![ContractId::random(rng)],
             vec![i.clone()],
             vec![o.clone()],
             vec![w.clone()],
@@ -301,10 +301,10 @@ fn create_input_coin_data_offset() {
     let bytecode_witness_index = 0x00;
     let salt = Salt::random(rng);
 
-    let static_contracts: Vec<Vec<ContractAddress>> = vec![
+    let static_contracts: Vec<Vec<ContractId>> = vec![
         vec![],
-        vec![ContractAddress::random(rng)],
-        vec![ContractAddress::random(rng), ContractAddress::random(rng)],
+        vec![ContractId::random(rng)],
+        vec![ContractId::random(rng), ContractId::random(rng)],
     ];
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
@@ -312,14 +312,14 @@ fn create_input_coin_data_offset() {
             Hash::random(rng),
             Hash::random(rng),
             Hash::random(rng),
-            ContractAddress::random(rng),
+            ContractId::random(rng),
         )],
         vec![
             Input::contract(
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng)
+                ContractId::random(rng)
             );
             2
         ],
@@ -417,20 +417,20 @@ fn script_input_coin_data_offset() {
             Hash::random(rng),
             Hash::random(rng),
             Hash::random(rng),
-            ContractAddress::random(rng),
+            ContractId::random(rng),
         )],
         vec![
             Input::contract(
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng),
+                ContractId::random(rng),
             ),
             Input::contract(
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng),
+                ContractId::random(rng),
             ),
         ],
     ];

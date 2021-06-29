@@ -147,7 +147,7 @@ fn id() {
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng),
+                ContractId::random(rng),
             ),
         ],
     ];
@@ -164,7 +164,7 @@ fn id() {
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::contract_created(ContractAddress::random(rng)),
+            Output::contract_created(ContractId::random(rng)),
         ],
     ];
 
@@ -182,7 +182,7 @@ fn id() {
     ];
     let static_contracts = vec![
         vec![],
-        vec![ContractAddress::random(rng), ContractAddress::random(rng)],
+        vec![ContractId::random(rng), ContractId::random(rng)],
     ];
 
     for inputs in inputs.iter() {

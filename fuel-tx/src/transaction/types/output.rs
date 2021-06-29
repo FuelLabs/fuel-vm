@@ -1,4 +1,4 @@
-use super::{Address, Color, ContractAddress, Hash};
+use super::{Address, Color, ContractId, Hash};
 use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
@@ -19,7 +19,7 @@ const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + Hash::size_of(); // State root
 
 const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
-    + ContractAddress::size_of(); // Contract Id
+    + ContractId::size_of(); // Contract Id
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum OutputRepr {
@@ -96,7 +96,7 @@ pub enum Output {
     },
 
     ContractCreated {
-        contract_id: ContractAddress,
+        contract_id: ContractId,
     },
 }
 
@@ -148,7 +148,7 @@ impl Output {
         Self::Variable { to, amount, color }
     }
 
-    pub const fn contract_created(contract_id: ContractAddress) -> Self {
+    pub const fn contract_created(contract_id: ContractId) -> Self {
         Self::ContractCreated { contract_id }
     }
 

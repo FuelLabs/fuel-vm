@@ -97,7 +97,7 @@ fn contract() {
         Hash::random(rng),
         Hash::random(rng),
         Hash::random(rng),
-        ContractAddress::random(rng),
+        ContractId::random(rng),
     )
     .validate(
         1,
@@ -110,7 +110,7 @@ fn contract() {
         Hash::random(rng),
         Hash::random(rng),
         Hash::random(rng),
-        ContractAddress::random(rng),
+        ContractId::random(rng),
     )
     .validate(1, &[], &[])
     .err()
@@ -124,7 +124,7 @@ fn contract() {
         Hash::random(rng),
         Hash::random(rng),
         Hash::random(rng),
-        ContractAddress::random(rng),
+        ContractId::random(rng),
     )
     .validate(
         1,
@@ -146,7 +146,7 @@ fn contract() {
         Hash::random(rng),
         Hash::random(rng),
         Hash::random(rng),
-        ContractAddress::random(rng),
+        ContractId::random(rng),
     )
     .validate(
         1,

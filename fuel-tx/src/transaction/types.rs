@@ -94,6 +94,6 @@ pub use witness::Witness;
 
 key!(Address, 32);
 key!(Color, 32);
-key!(ContractAddress, 32);
+key!(ContractId, 32);
 key!(Hash, 32);
 key!(Salt, 32);

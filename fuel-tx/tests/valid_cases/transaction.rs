@@ -212,7 +212,7 @@ fn max_iow() {
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng)
+                ContractId::random(rng)
             );
             MAX_INPUTS as usize + 1
         ],
@@ -238,7 +238,7 @@ fn max_iow() {
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng)
+                ContractId::random(rng)
             );
             MAX_INPUTS as usize
         ],
@@ -264,7 +264,7 @@ fn max_iow() {
                 Hash::random(rng),
                 Hash::random(rng),
                 Hash::random(rng),
-                ContractAddress::random(rng)
+                ContractId::random(rng)
             );
             MAX_INPUTS as usize
         ],
@@ -455,7 +455,7 @@ fn script() {
             Witness::random(rng).into_inner(),
             Witness::random(rng).into_inner(),
         )],
-        vec![Output::contract_created(ContractAddress::random(rng))],
+        vec![Output::contract_created(ContractId::random(rng))],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -482,7 +482,7 @@ fn script() {
             Witness::random(rng).into_inner(),
             Witness::random(rng).into_inner(),
         )],
-        vec![Output::contract_created(ContractAddress::random(rng))],
+        vec![Output::contract_created(ContractId::random(rng))],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -562,7 +562,7 @@ fn create() {
             Hash::random(rng),
             Hash::random(rng),
             Hash::random(rng),
-            ContractAddress::random(rng),
+            ContractId::random(rng),
         )],
         vec![Output::contract(0, Hash::random(rng), Hash::random(rng))],
         vec![Witness::random(rng)],
@@ -725,8 +725,8 @@ fn create() {
             ),
         ],
         vec![
-            Output::contract_created(ContractAddress::random(rng)),
-            Output::contract_created(ContractAddress::random(rng)),
+            Output::contract_created(ContractId::random(rng)),
+            Output::contract_created(ContractId::random(rng)),
         ],
         vec![Witness::random(rng)],
     )
@@ -823,13 +823,13 @@ fn create() {
     .unwrap();
     assert_eq!(ValidationError::TransactionCreateBytecodeWitnessIndex, err);
 
-    let mut id = ContractAddress::default();
+    let mut id = ContractId::default();
     let mut static_contracts = (0..MAX_STATIC_CONTRACTS as u64)
         .map(|i| {
             id[..8].copy_from_slice(&i.to_be_bytes());
             id
         })
-        .collect::<Vec<ContractAddress>>();
+        .collect::<Vec<ContractId>>();
 
     Transaction::create(
         MAX_GAS_PER_TX,

@@ -1,4 +1,4 @@
-use super::{Address, Color, ContractAddress, Hash};
+use super::{Address, Color, ContractId, Hash};
 use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
@@ -22,7 +22,7 @@ const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + Hash::size_of() // UTXO Id
     + Hash::size_of() // Balance root
     + Hash::size_of() // State root
-    + ContractAddress::size_of(); // Contract address
+    + ContractId::size_of(); // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum InputRepr {
@@ -62,7 +62,7 @@ pub enum Input {
         utxo_id: Hash,
         balance_root: Hash,
         state_root: Hash,
-        contract_id: ContractAddress,
+        contract_id: ContractId,
     },
 }
 
@@ -122,7 +122,7 @@ impl Input {
         utxo_id: Hash,
         balance_root: Hash,
         state_root: Hash,
-        contract_id: ContractAddress,
+        contract_id: ContractId,
     ) -> Self {
         Self::Contract {
             utxo_id,

@@ -11,7 +11,7 @@ use std::{io, mem};
 mod types;
 mod validation;
 
-pub use types::{Address, Color, ContractAddress, Hash, Input, Output, Salt, Witness};
+pub use types::{Address, Color, ContractId, Hash, Input, Output, Salt, Witness};
 pub use validation::ValidationError;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -78,7 +78,7 @@ pub enum Transaction {
         maturity: Word,
         bytecode_witness_index: u8,
         salt: Salt,
-        static_contracts: Vec<ContractAddress>,
+        static_contracts: Vec<ContractId>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -127,9 +127,7 @@ impl bytes::SizedBytes for Transaction {
 
             Self::Create {
                 static_contracts, ..
-            } => {
-                TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractAddress::size_of()
-            }
+            } => TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractId::size_of(),
         };
 
         n + inputs + outputs + witnesses
@@ -165,7 +163,7 @@ impl Transaction {
         maturity: Word,
         bytecode_witness_index: u8,
         salt: Salt,
-        static_contracts: Vec<ContractAddress>,
+        static_contracts: Vec<ContractId>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -241,7 +239,7 @@ impl Transaction {
             });
     }
 
-    pub fn input_contracts(&self) -> impl Iterator<Item = &ContractAddress> {
+    pub fn input_contracts(&self) -> impl Iterator<Item = &ContractId> {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
@@ -330,7 +328,7 @@ impl Transaction {
                     ..
                 } => Some(
                     TRANSACTION_CREATE_FIXED_SIZE
-                        + ContractAddress::size_of() * static_contracts.len()
+                        + ContractId::size_of() * static_contracts.len()
                         + inputs
                             .iter()
                             .take(index)
@@ -599,15 +597,15 @@ impl io::Write for Transaction {
 
                 let salt = salt.into();
 
-                if buf.len() < static_contracts_len * ContractAddress::size_of() {
+                if buf.len() < static_contracts_len * ContractId::size_of() {
                     return Err(bytes::eof());
                 }
 
-                let mut static_contracts = vec![ContractAddress::default(); static_contracts_len];
-                n += ContractAddress::size_of() * static_contracts_len;
+                let mut static_contracts = vec![ContractId::default(); static_contracts_len];
+                n += ContractId::size_of() * static_contracts_len;
                 for static_contract in static_contracts.iter_mut() {
-                    static_contract.copy_from_slice(&buf[..ContractAddress::size_of()]);
-                    buf = &buf[ContractAddress::size_of()..];
+                    static_contract.copy_from_slice(&buf[..ContractId::size_of()]);
+                    buf = &buf[ContractId::size_of()..];
                 }
 
                 let mut inputs = vec![Input::default(); inputs_len];

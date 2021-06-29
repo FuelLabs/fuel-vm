@@ -68,7 +68,7 @@ where
         let call = Call::try_from(&self.memory[a as usize..])?;
         let color = Color::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
-        if self.context().is_external() {
+        if self.is_external_context() {
             self.external_color_balance_sub(&color, b)?;
         }
 

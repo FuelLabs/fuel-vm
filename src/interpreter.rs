@@ -167,7 +167,7 @@ impl<S> Interpreter<S> {
     }
 
     pub const fn is_external_context(&self) -> bool {
-        self.registers[REG_FP] == 0
+        self.context().is_external()
     }
 
     pub const fn is_unsafe_math(&self) -> bool {
@@ -220,7 +220,7 @@ impl<S> Interpreter<S> {
     }
 
     pub fn internal_context_balance(&self) -> Result<ContractColor, ExecuteError> {
-        if self.context().is_external() {
+        if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
 

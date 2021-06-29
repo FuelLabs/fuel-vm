@@ -3,6 +3,8 @@ use crate::interpreter::{Contract, ContractColor};
 use fuel_asm::Word;
 use fuel_tx::ContractId;
 
+use std::ops::DerefMut;
+
 mod error;
 mod memory;
 
@@ -28,9 +30,39 @@ where
     fn contains_key(&self, key: &K) -> Result<bool, DataError>;
 }
 
+impl<K, V, S, I> Storage<K, V> for I
+where
+    K: Key,
+    V: Value,
+    S: Storage<K, V>,
+    I: DerefMut<Target = S>,
+{
+    fn insert(&mut self, key: K, value: V) -> Result<Option<V>, DataError> {
+        <S as Storage<K, V>>::insert(self.deref_mut(), key, value)
+    }
+
+    fn remove(&mut self, key: &K) -> Result<Option<V>, DataError> {
+        <S as Storage<K, V>>::remove(self.deref_mut(), key)
+    }
+
+    fn get(&self, key: &K) -> Result<Option<V>, DataError> {
+        <S as Storage<K, V>>::get(self.deref(), key)
+    }
+
+    fn contains_key(&self, key: &K) -> Result<bool, DataError> {
+        <S as Storage<K, V>>::contains_key(self.deref(), key)
+    }
+}
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<ContractColor, Word> {}
+impl<S, I> InterpreterStorage for I
+where
+    S: InterpreterStorage,
+    I: DerefMut<Target = S>,
+{
+}
 
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented

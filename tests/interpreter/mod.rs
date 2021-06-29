@@ -4,6 +4,7 @@ use fuel_vm::prelude::*;
 mod alu;
 mod blockchain;
 mod crypto;
+mod executors;
 mod flow;
 mod memory;
 mod predicate;

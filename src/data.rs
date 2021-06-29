@@ -1,7 +1,7 @@
-use crate::interpreter::Contract;
+use crate::interpreter::{Contract, ContractColor};
 
 use fuel_asm::Word;
-use fuel_tx::{Color, ContractAddress};
+use fuel_tx::ContractAddress;
 
 mod error;
 mod memory;
@@ -30,11 +30,11 @@ where
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
-pub trait InterpreterStorage: Storage<ContractAddress, Contract> + Storage<Color, Word> {}
+pub trait InterpreterStorage: Storage<ContractAddress, Contract> + Storage<ContractColor, Word> {}
 
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
-impl Key for Color {}
 impl Key for ContractAddress {}
+impl Key for ContractColor {}
 impl Value for Word {}
 impl Value for Contract {}

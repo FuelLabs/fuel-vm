@@ -6,7 +6,9 @@ use fuel_asm::Word;
 use fuel_tx::bytes::SizedBytes;
 use fuel_tx::{bytes, Color, ContractAddress};
 
-use std::{io, mem};
+use std::convert::TryFrom;
+use std::io::{self, Write};
+use std::mem;
 
 const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
 const COLOR_SIZE: usize = mem::size_of::<Color>();
@@ -42,6 +44,18 @@ impl Call {
 
     pub fn into_inner(self) -> (ContractAddress, Vec<MemoryRange>, Vec<MemoryRange>) {
         (self.to, self.inputs, self.outputs)
+    }
+}
+
+impl TryFrom<&[u8]> for Call {
+    type Error = io::Error;
+
+    fn try_from(bytes: &[u8]) -> io::Result<Self> {
+        let mut call = Self::default();
+
+        call.write(bytes)?;
+
+        Ok(call)
     }
 }
 

@@ -30,6 +30,7 @@ fn mint_burn() {
     );
 
     let color = Color::from(*mint);
+    let mint_color = ContractColor::new(mint, color);
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x00),
@@ -69,10 +70,10 @@ fn mint_burn() {
         _ => unreachable!(),
     }
 
-    assert_eq!(0, vm.color_balance(&color).unwrap());
+    assert_eq!(0, vm.balance(&mint_color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
-    assert_eq!(balance as Word, vm.color_balance(&color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&mint_color).unwrap());
 
     // Try to burn more than balance
     let mut script_data = mint.to_vec();
@@ -101,10 +102,10 @@ fn mint_burn() {
         _ => unreachable!(),
     }
 
-    assert_eq!(balance, vm.color_balance(&color).unwrap());
+    assert_eq!(balance, vm.balance(&mint_color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     assert!(vm.run().is_err());
-    assert_eq!(balance as Word, vm.color_balance(&color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&mint_color).unwrap());
 
     // Burn some of the balance
     let burn = 100;
@@ -135,11 +136,11 @@ fn mint_burn() {
         _ => unreachable!(),
     }
 
-    assert_eq!(balance, vm.color_balance(&color).unwrap());
+    assert_eq!(balance, vm.balance(&mint_color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
     balance -= burn;
-    assert_eq!(balance as Word, vm.color_balance(&color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&mint_color).unwrap());
 
     // Burn the remainder balance
     let mut script_data = mint.to_vec();
@@ -168,8 +169,8 @@ fn mint_burn() {
         _ => unreachable!(),
     }
 
-    assert_eq!(balance, vm.color_balance(&color).unwrap());
+    assert_eq!(balance, vm.balance(&mint_color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
-    assert_eq!(0, vm.color_balance(&color).unwrap());
+    assert_eq!(0, vm.balance(&mint_color).unwrap());
 }

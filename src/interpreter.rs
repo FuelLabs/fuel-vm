@@ -3,8 +3,9 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Hash, Transaction};
+use fuel_tx::{Address, Color, ContractAddress, Hash, Transaction};
 
+use std::convert::TryFrom;
 use std::mem;
 
 mod alu;
@@ -21,7 +22,7 @@ mod memory;
 #[cfg(feature = "debug")]
 mod debug;
 
-pub use contract::Contract;
+pub use contract::{Contract, ContractColor};
 pub use error::ExecuteError;
 pub use executors::ProgramState;
 pub use frame::{Call, CallFrame};
@@ -29,6 +30,39 @@ pub use log::LogEvent;
 pub use memory::MemoryRange;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Context {
+    Predicate,
+    Script,
+    Call,
+    NotInitialized,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::NotInitialized
+    }
+}
+
+impl Context {
+    pub const fn is_external(&self) -> bool {
+        match self {
+            Self::Predicate | Self::Script => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<&Transaction> for Context {
+    fn from(tx: &Transaction) -> Self {
+        if tx.is_script() {
+            Self::Script
+        } else {
+            Self::Predicate
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {
@@ -40,6 +74,7 @@ pub struct Interpreter<S> {
     tx: Transaction,
     storage: S,
     debugger: Debugger,
+    context: Context,
 }
 
 impl<S> Interpreter<S> {
@@ -52,6 +87,7 @@ impl<S> Interpreter<S> {
             tx: Transaction::default(),
             storage,
             debugger: Debugger::default(),
+            context: Context::default(),
         }
     }
 
@@ -122,6 +158,14 @@ impl<S> Interpreter<S> {
         &self.registers
     }
 
+    pub const fn context(&self) -> Context {
+        if self.registers[REG_FP] == 0 {
+            self.context
+        } else {
+            Context::Call
+        }
+    }
+
     pub const fn is_external_context(&self) -> bool {
         self.registers[REG_FP] == 0
     }
@@ -173,5 +217,23 @@ impl<S> Interpreter<S> {
 
     pub const fn is_valid_register(ra: RegisterId) -> bool {
         ra < VM_REGISTER_COUNT
+    }
+
+    pub fn internal_context_balance(&self) -> Result<ContractColor, ExecuteError> {
+        if self.context().is_external() {
+            return Err(ExecuteError::ExpectedInternalContext);
+        }
+
+        let c = self.registers[REG_FP] as usize;
+        let cx = c + ContractAddress::size_of();
+        let contract = ContractAddress::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+
+        let c = self.registers[REG_FP] as usize + Address::size_of();
+        let cx = c + Color::size_of();
+        let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+
+        let key = ContractColor::new(contract, color);
+
+        Ok(key)
     }
 }

@@ -1,14 +1,13 @@
-use super::{Contract, ExecuteError, Interpreter, MemoryRange};
+use super::{Context, Contract, ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
 
-use fuel_asm::{Opcode, RegisterId, Word};
+use fuel_asm::{Opcode, Word};
 use fuel_tx::bytes::Deserializable;
 use fuel_tx::bytes::{SerializableVec, SizedBytes};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Input, Output, Transaction};
+use fuel_tx::{Color, Hash, Input, Output, Transaction};
 use itertools::Itertools;
-use tracing::debug;
 
 use std::convert::TryFrom;
 use std::mem;
@@ -80,12 +79,29 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn init(&mut self, tx: Transaction) -> Result<(), ExecuteError> {
-        self._init(tx, false)
+    pub fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), ExecuteError> {
+        const LEN: usize = Color::size_of() + WORD_SIZE;
+
+        let balance_memory = self.memory[Hash::size_of()..Hash::size_of() + MAX_INPUTS as usize * LEN]
+            .chunks_mut(LEN)
+            .filter(|chunk| &chunk[..Color::size_of()] == color.as_ref())
+            .next()
+            .map(|chunk| &mut chunk[Color::size_of()..])
+            .ok_or(ExecuteError::ExternalColorNotFound)?;
+
+        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
+        let balance = Word::from_be_bytes(balance);
+        let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
+        let balance = balance.to_be_bytes();
+
+        balance_memory.copy_from_slice(&balance);
+
+        Ok(())
     }
 
-    fn _init(&mut self, mut tx: Transaction, predicate: bool) -> Result<(), ExecuteError> {
+    pub fn init(&mut self, mut tx: Transaction) -> Result<(), ExecuteError> {
         tx.validate(self.block_height() as Word)?;
+        self.context = Context::from(&tx);
 
         self.frames.clear();
         self.log.clear();
@@ -103,32 +119,31 @@ where
         self.push_stack(tx.id().as_ref())?;
 
         let zeroes = &[0; MAX_INPUTS as usize * (Color::size_of() + WORD_SIZE)];
-        let mut ssp = self.registers[REG_SSP] as usize;
-
+        let ssp = self.registers[REG_SSP] as usize;
         self.push_stack(zeroes)?;
-        if !predicate {
+
+        if tx.is_script() {
             tx.inputs()
                 .iter()
                 .filter_map(|input| match input {
-                    Input::Coin { color, .. } => Some(color),
+                    Input::Coin { color, amount, .. } => Some((color, amount)),
                     _ => None,
                 })
-                .sorted()
+                .sorted_by_key(|i| i.0)
                 .take(MAX_INPUTS as usize)
-                .try_for_each::<_, Result<_, ExecuteError>>(|color| {
-                    let balance = self.color_balance(color)?;
-
+                .fold(ssp, |mut ssp, (color, amount)| {
                     self.memory[ssp..ssp + Color::size_of()].copy_from_slice(color.as_ref());
                     ssp += Color::size_of();
 
-                    self.memory[ssp..ssp + WORD_SIZE].copy_from_slice(&balance.to_be_bytes());
+                    self.memory[ssp..ssp + WORD_SIZE].copy_from_slice(&amount.to_be_bytes());
                     ssp += WORD_SIZE;
 
-                    Ok(())
-                })?;
+                    ssp
+                });
         }
 
         let tx_size = tx.serialized_size() as Word;
+
         self.push_stack(&tx_size.to_be_bytes())?;
         self.push_stack(tx.to_bytes().as_slice())?;
 
@@ -336,16 +351,6 @@ where
             }
         }
 
-        debug!("Executing {:?}", op);
-        debug!(
-            "Current state: {:?}",
-            op.registers()
-                .iter()
-                .filter_map(|r| *r)
-                .map(|r| (r, self.registers.get(r).copied()))
-                .collect::<Vec<(RegisterId, Option<Word>)>>()
-        );
-
         match op {
             Opcode::ADD(ra, rb, rc) if Self::is_valid_register_triple_alu(ra, rb, rc) => {
                 self.alu_overflow(ra, Word::overflowing_add, self.registers[rb], self.registers[rc])
@@ -542,16 +547,18 @@ where
             }
 
             // TODO BLOCKHASH: Block hash
-            Opcode::BURN(ra) if Self::is_valid_register(ra) && self.burn(self.registers[ra]) && self.inc_pc() => {}
+            Opcode::BURN(ra) if Self::is_valid_register(ra) && self.burn(self.registers[ra])? => {}
 
             Opcode::CALL(ra, rb, rc, rd)
                 if Self::is_valid_register_quadruple(ra, rb, rc, rd)
-                    && self.call(
-                        self.registers[ra],
-                        self.registers[rb],
-                        self.registers[rc],
-                        self.registers[rd],
-                    ) => {}
+                    && self
+                        .call(
+                            self.registers[ra],
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rd],
+                        )
+                        .map(|_| true)? => {}
 
             Opcode::CCP(ra, rb, rc, rd)
                 if Self::is_valid_register_quadruple(ra, rb, rc, rd)
@@ -572,7 +579,7 @@ where
                     && self.log_append(&[ra, rb, rc, rd])
                     && self.inc_pc() => {}
 
-            Opcode::MINT(ra) if Self::is_valid_register(ra) && self.mint(self.registers[ra]) && self.inc_pc() => {}
+            Opcode::MINT(ra) if Self::is_valid_register(ra) && self.mint(self.registers[ra])? => {}
 
             // TODO REVERT: Revert
             // TODO SLOADCODE: Load code from static list
@@ -601,15 +608,6 @@ where
 
             _ => result = Err(ExecuteError::OpcodeFailure(op)),
         }
-
-        debug!(
-            "After   state: {:?}",
-            op.registers()
-                .iter()
-                .filter_map(|r| *r)
-                .map(|r| (r, self.registers.get(r).copied()))
-                .collect::<Vec<(RegisterId, Option<Word>)>>()
-        );
 
         result
     }

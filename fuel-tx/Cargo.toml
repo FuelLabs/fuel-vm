@@ -1,15 +1,19 @@
 [package]
 name = "fuel-tx"
-description = "FuelVM transaction."
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
-edition = "2018"
-repository = "https://github.com/FuelLabs/fuel-tx"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["cryptography::cryptocurrencies", "data-structures"]
+edition = "2018"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+repository = "https://github.com/FuelLabs/fuel-tx"
+description = "FuelVM transaction."
 
 [dependencies]
-fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
+fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 itertools = "0.10"
-sha2 = "0.9"
 rand = "0.8"
+serde = { version = "1.0", features = ["derive"], optional = true }
+sha2 = "0.9"
+
+[features]
+serde-types = ["serde", "fuel-asm/serde-types"]

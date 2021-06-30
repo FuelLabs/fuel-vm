@@ -9,6 +9,7 @@ mod witness;
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
         pub struct $i([u8; $s]);
 
         impl $i {

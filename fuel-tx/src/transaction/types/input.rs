@@ -46,6 +46,7 @@ impl TryFrom<Word> for InputRepr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum Input {
     Coin {
         utxo_id: Hash,

@@ -53,3 +53,9 @@ jobs:
       with:
         command: test
         args: --verbose
+
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features serde-types

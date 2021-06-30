@@ -9,3 +9,7 @@ keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
 
 [dependencies]
+serde = {version="1.0", features=["derive"], optional=true}
+
+[features]
+serde-types = ["serde"]

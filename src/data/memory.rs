@@ -1,15 +1,15 @@
 use super::{DataError, InterpreterStorage, Storage};
-use crate::interpreter::{Contract, ContractColor};
+use crate::interpreter::Contract;
 
 use fuel_asm::Word;
-use fuel_tx::ContractId;
+use fuel_tx::{Color, ContractId};
 
 use std::collections::HashMap;
 
 #[derive(Debug, Default, Clone)]
 pub struct MemoryStorage {
     contracts: HashMap<ContractId, Contract>,
-    balances: HashMap<ContractColor, Word>,
+    balances: HashMap<Color, Word>,
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
@@ -30,20 +30,20 @@ impl Storage<ContractId, Contract> for MemoryStorage {
     }
 }
 
-impl Storage<ContractColor, Word> for MemoryStorage {
-    fn insert(&mut self, key: ContractColor, value: Word) -> Result<Option<Word>, DataError> {
+impl Storage<Color, Word> for MemoryStorage {
+    fn insert(&mut self, key: Color, value: Word) -> Result<Option<Word>, DataError> {
         Ok(self.balances.insert(key, value))
     }
 
-    fn get(&self, key: &ContractColor) -> Result<Option<Word>, DataError> {
+    fn get(&self, key: &Color) -> Result<Option<Word>, DataError> {
         Ok(self.balances.get(key).copied())
     }
 
-    fn remove(&mut self, key: &ContractColor) -> Result<Option<Word>, DataError> {
+    fn remove(&mut self, key: &Color) -> Result<Option<Word>, DataError> {
         Ok(self.balances.remove(key))
     }
 
-    fn contains_key(&self, key: &ContractColor) -> Result<bool, DataError> {
+    fn contains_key(&self, key: &Color) -> Result<bool, DataError> {
         Ok(self.balances.contains_key(key))
     }
 }

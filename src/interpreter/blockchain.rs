@@ -12,14 +12,14 @@ where
     S: InterpreterStorage,
 {
     pub fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
-        self.internal_context_balance()
-            .and_then(|key| self.balance_sub(key, a))
+        self.internal_color()
+            .and_then(|color| self.balance_sub(color, a))
             .map(|_| self.inc_pc())
     }
 
     pub fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
-        self.internal_context_balance()
-            .and_then(|key| self.balance_add(key, a))
+        self.internal_color()
+            .and_then(|color| self.balance_add(color, a))
             .map(|_| self.inc_pc())
     }
 

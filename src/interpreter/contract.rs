@@ -9,26 +9,6 @@ use fuel_tx::{Color, ContractId, Transaction, ValidationError};
 
 use std::convert::TryFrom;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ContractColor {
-    contract: ContractId,
-    color: Color,
-}
-
-impl ContractColor {
-    pub const fn new(contract: ContractId, color: Color) -> Self {
-        Self { contract, color }
-    }
-
-    pub const fn contract(&self) -> &ContractId {
-        &self.contract
-    }
-
-    pub const fn color(&self) -> &Color {
-        &self.color
-    }
-}
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Contract(Vec<u8>);
 
@@ -110,17 +90,17 @@ where
         Ok(self.storage.contains_key(address)?)
     }
 
-    pub fn set_balance(&mut self, key: ContractColor, balance: Word) -> Result<(), ExecuteError> {
+    pub fn set_balance(&mut self, key: Color, balance: Word) -> Result<(), ExecuteError> {
         self.storage.insert(key, balance)?;
 
         Ok(())
     }
 
-    pub fn balance(&self, key: &ContractColor) -> Result<Word, ExecuteError> {
+    pub fn balance(&self, key: &Color) -> Result<Word, ExecuteError> {
         Ok(self.storage.get(key)?.unwrap_or(0))
     }
 
-    pub fn balance_add(&mut self, key: ContractColor, value: Word) -> Result<Word, ExecuteError> {
+    pub fn balance_add(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
         let balance = self.balance(&key)?;
         let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
 
@@ -129,7 +109,7 @@ where
         Ok(balance)
     }
 
-    pub fn balance_sub(&mut self, key: ContractColor, value: Word) -> Result<Word, ExecuteError> {
+    pub fn balance_sub(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
         let balance = self.balance(&key)?;
         let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
 

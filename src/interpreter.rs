@@ -3,7 +3,7 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Address, Color, ContractId, Hash, Transaction};
+use fuel_tx::{Address, Color, Hash, Transaction};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -22,7 +22,7 @@ mod memory;
 #[cfg(feature = "debug")]
 mod debug;
 
-pub use contract::{Contract, ContractColor};
+pub use contract::Contract;
 pub use error::ExecuteError;
 pub use executors::ProgramState;
 pub use frame::{Call, CallFrame};
@@ -219,21 +219,17 @@ impl<S> Interpreter<S> {
         ra < VM_REGISTER_COUNT
     }
 
-    pub fn internal_context_balance(&self) -> Result<ContractColor, ExecuteError> {
+    pub fn internal_color(&self) -> Result<Color, ExecuteError> {
         if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
 
-        let c = self.registers[REG_FP] as usize;
-        let cx = c + ContractId::size_of();
-        let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+        // TODO fetch color from output of contract in $fp
 
         let c = self.registers[REG_FP] as usize + Address::size_of();
         let cx = c + Color::size_of();
         let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
 
-        let key = ContractColor::new(contract, color);
-
-        Ok(key)
+        Ok(color)
     }
 }

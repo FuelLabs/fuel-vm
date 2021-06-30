@@ -1,7 +1,7 @@
-use crate::interpreter::{Contract, ContractColor};
+use crate::interpreter::Contract;
 
 use fuel_asm::Word;
-use fuel_tx::ContractId;
+use fuel_tx::{Color, ContractId};
 
 use std::ops::DerefMut;
 
@@ -56,7 +56,7 @@ where
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
-pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<ContractColor, Word> {}
+pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<Color, Word> {}
 impl<S, I> InterpreterStorage for I
 where
     S: InterpreterStorage,
@@ -67,6 +67,6 @@ where
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
 impl Key for ContractId {}
-impl Key for ContractColor {}
+impl Key for Color {}
 impl Value for Word {}
 impl Value for Contract {}

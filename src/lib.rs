@@ -13,8 +13,7 @@ pub mod prelude {
     pub use crate::data::{InterpreterStorage, MemoryStorage, Storage};
     pub use crate::debug::Debugger;
     pub use crate::interpreter::{
-        Call, CallFrame, Context, Contract, ContractColor, ExecuteError, Interpreter, LogEvent, MemoryRange,
-        ProgramState,
+        Call, CallFrame, Context, Contract, ExecuteError, Interpreter, LogEvent, MemoryRange, ProgramState,
     };
     pub use fuel_asm::{Immediate06, Immediate12, Immediate18, Immediate24, Opcode, RegisterId, Word};
     pub use fuel_tx::{

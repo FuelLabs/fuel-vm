@@ -15,6 +15,7 @@ const COLOR_SIZE: usize = mem::size_of::<Color>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Call {
     to: ContractId,
     inputs: Vec<MemoryRange>,

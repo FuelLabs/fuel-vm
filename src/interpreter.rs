@@ -32,6 +32,7 @@ pub use memory::MemoryRange;
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum Context {
     Predicate,
     Script,

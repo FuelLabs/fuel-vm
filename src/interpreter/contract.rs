@@ -10,6 +10,7 @@ use fuel_tx::{Color, ContractId, Transaction, ValidationError};
 use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract(Vec<u8>);
 
 impl From<Vec<u8>> for Contract {

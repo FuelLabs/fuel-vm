@@ -6,6 +6,7 @@ use fuel_tx::ContractId;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Breakpoint {
     contract: ContractId,
     pc: Word,
@@ -47,6 +48,7 @@ impl Breakpoint {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum DebugEval {
     Breakpoint(Breakpoint),
     Continue,

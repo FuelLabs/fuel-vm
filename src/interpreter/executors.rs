@@ -41,6 +41,7 @@ impl From<DebugEval> for ExecuteState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProgramState {
     Return(Word),
 

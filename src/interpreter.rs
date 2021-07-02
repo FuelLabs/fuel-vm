@@ -3,7 +3,7 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Address, Color, Hash, Transaction};
+use fuel_tx::{Color, Hash, Transaction};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -220,14 +220,14 @@ impl<S> Interpreter<S> {
         ra < VM_REGISTER_COUNT
     }
 
-    pub fn internal_color(&self) -> Result<Color, ExecuteError> {
+    pub fn internal_contract_color(&self) -> Result<Color, ExecuteError> {
         if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
 
         // TODO fetch color from output of contract in $fp
 
-        let c = self.registers[REG_FP] as usize + Address::size_of();
+        let c = self.registers[REG_FP] as usize;
         let cx = c + Color::size_of();
         let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
 

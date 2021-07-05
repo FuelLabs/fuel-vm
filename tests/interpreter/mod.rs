@@ -4,6 +4,7 @@ use fuel_vm::prelude::*;
 mod alu;
 mod blockchain;
 mod crypto;
+mod executors;
 mod flow;
 mod memory;
 mod predicate;
@@ -27,7 +28,7 @@ pub fn deploy_contract<S>(
     maturity: Word,
     vm: &mut Interpreter<S>,
     program: &[Opcode],
-) -> ContractAddress
+) -> ContractId
 where
     S: InterpreterStorage,
 {

@@ -9,6 +9,7 @@ use std::ops;
 // rules
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Debug, Clone, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct MemoryRange {
     start: ops::Bound<Word>,
     end: ops::Bound<Word>,

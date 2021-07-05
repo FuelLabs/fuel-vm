@@ -18,6 +18,12 @@ pub enum ExecuteError {
     ProgramOverflow,
     PredicateFailure,
     ContractNotFound,
+    MemoryOverflow,
+    MemoryOwnership,
+    ContractNotInTxInputs,
+    NotEnoughBalance,
+    ExpectedInternalContext,
+    ExternalColorNotFound,
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

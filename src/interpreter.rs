@@ -5,6 +5,7 @@ use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
 use fuel_tx::{Color, Hash, Transaction};
 
+use std::convert::TryFrom;
 use std::mem;
 
 mod alu;
@@ -30,6 +31,40 @@ pub use memory::MemoryRange;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+pub enum Context {
+    Predicate,
+    Script,
+    Call,
+    NotInitialized,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::NotInitialized
+    }
+}
+
+impl Context {
+    pub const fn is_external(&self) -> bool {
+        match self {
+            Self::Predicate | Self::Script => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<&Transaction> for Context {
+    fn from(tx: &Transaction) -> Self {
+        if tx.is_script() {
+            Self::Script
+        } else {
+            Self::Predicate
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {
     registers: [Word; VM_REGISTER_COUNT],
@@ -40,6 +75,7 @@ pub struct Interpreter<S> {
     tx: Transaction,
     storage: S,
     debugger: Debugger,
+    context: Context,
 }
 
 impl<S> Interpreter<S> {
@@ -52,6 +88,7 @@ impl<S> Interpreter<S> {
             tx: Transaction::default(),
             storage,
             debugger: Debugger::default(),
+            context: Context::default(),
         }
     }
 
@@ -122,8 +159,16 @@ impl<S> Interpreter<S> {
         &self.registers
     }
 
+    pub const fn context(&self) -> Context {
+        if self.registers[REG_FP] == 0 {
+            self.context
+        } else {
+            Context::Call
+        }
+    }
+
     pub const fn is_external_context(&self) -> bool {
-        self.registers[REG_FP] == 0
+        self.context().is_external()
     }
 
     pub const fn is_unsafe_math(&self) -> bool {
@@ -173,5 +218,19 @@ impl<S> Interpreter<S> {
 
     pub const fn is_valid_register(ra: RegisterId) -> bool {
         ra < VM_REGISTER_COUNT
+    }
+
+    pub fn internal_contract_color(&self) -> Result<Color, ExecuteError> {
+        if self.is_external_context() {
+            return Err(ExecuteError::ExpectedInternalContext);
+        }
+
+        // TODO fetch color from output of contract in $fp
+
+        let c = self.registers[REG_FP] as usize;
+        let cx = c + Color::size_of();
+        let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+
+        Ok(color)
     }
 }

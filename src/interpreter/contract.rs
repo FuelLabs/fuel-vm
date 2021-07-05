@@ -5,11 +5,12 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::crypto as tx_crypto;
-use fuel_tx::{Color, ContractAddress, Transaction, ValidationError};
+use fuel_tx::{Color, ContractId, Transaction, ValidationError};
 
 use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract(Vec<u8>);
 
 impl From<Vec<u8>> for Contract {
@@ -68,7 +69,7 @@ impl TryFrom<&Transaction> for Contract {
 }
 
 impl Contract {
-    pub fn address(&self, salt: &[u8]) -> ContractAddress {
+    pub fn address(&self, salt: &[u8]) -> ContractId {
         let mut input = VM_CONTRACT_ID_BASE.to_vec();
 
         input.extend_from_slice(salt);
@@ -82,21 +83,39 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn contract(&self, address: &ContractAddress) -> Result<Option<Contract>, ExecuteError> {
+    pub fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
         Ok(self.storage.get(address)?)
     }
 
-    pub fn check_contract_exists(&self, address: &ContractAddress) -> Result<bool, ExecuteError> {
+    pub fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
         Ok(self.storage.contains_key(address)?)
     }
 
-    pub fn set_color_balance(&mut self, color: Color, balance: Word) -> Result<(), ExecuteError> {
-        self.storage.insert(color, balance)?;
+    pub fn set_balance(&mut self, key: Color, balance: Word) -> Result<(), ExecuteError> {
+        self.storage.insert(key, balance)?;
 
         Ok(())
     }
 
-    pub fn color_balance(&self, color: &Color) -> Result<Word, ExecuteError> {
-        Ok(self.storage.get(color)?.unwrap_or(0))
+    pub fn balance(&self, key: &Color) -> Result<Word, ExecuteError> {
+        Ok(self.storage.get(key)?.unwrap_or(0))
+    }
+
+    pub fn balance_add(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
+        let balance = self.balance(&key)?;
+        let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
+
+        self.set_balance(key, balance)?;
+
+        Ok(balance)
+    }
+
+    pub fn balance_sub(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
+        let balance = self.balance(&key)?;
+        let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
+
+        self.set_balance(key, balance)?;
+
+        Ok(balance)
     }
 }

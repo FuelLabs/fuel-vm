@@ -4,23 +4,26 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::bytes::SizedBytes;
-use fuel_tx::{bytes, Color, ContractAddress};
+use fuel_tx::{bytes, Color, ContractId};
 
-use std::{io, mem};
+use std::convert::TryFrom;
+use std::io::{self, Write};
+use std::mem;
 
-const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractAddress>();
+const CONTRACT_ADDRESS_SIZE: usize = mem::size_of::<ContractId>();
 const COLOR_SIZE: usize = mem::size_of::<Color>();
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Call {
-    to: ContractAddress,
+    to: ContractId,
     inputs: Vec<MemoryRange>,
     outputs: Vec<MemoryRange>,
 }
 
 impl Call {
-    pub const fn new(to: ContractAddress, inputs: Vec<MemoryRange>, outputs: Vec<MemoryRange>) -> Self {
+    pub const fn new(to: ContractId, inputs: Vec<MemoryRange>, outputs: Vec<MemoryRange>) -> Self {
         Self { to, inputs, outputs }
     }
 
@@ -28,7 +31,7 @@ impl Call {
         self.outputs.iter().all(|range| vm.has_ownership_range(range))
     }
 
-    pub const fn to(&self) -> &ContractAddress {
+    pub const fn to(&self) -> &ContractId {
         &self.to
     }
 
@@ -40,8 +43,20 @@ impl Call {
         self.outputs.as_slice()
     }
 
-    pub fn into_inner(self) -> (ContractAddress, Vec<MemoryRange>, Vec<MemoryRange>) {
+    pub fn into_inner(self) -> (ContractId, Vec<MemoryRange>, Vec<MemoryRange>) {
         (self.to, self.inputs, self.outputs)
+    }
+}
+
+impl TryFrom<&[u8]> for Call {
+    type Error = io::Error;
+
+    fn try_from(bytes: &[u8]) -> io::Result<Self> {
+        let mut call = Self::default();
+
+        call.write(bytes)?;
+
+        Ok(call)
     }
 }
 
@@ -123,7 +138,7 @@ impl io::Write for Call {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallFrame {
-    to: ContractAddress,
+    to: ContractId,
     color: Color,
     registers: [Word; VM_REGISTER_COUNT],
     inputs: Vec<MemoryRange>,
@@ -133,7 +148,7 @@ pub struct CallFrame {
 
 impl CallFrame {
     pub const fn new(
-        to: ContractAddress,
+        to: ContractId,
         color: Color,
         registers: [Word; VM_REGISTER_COUNT],
         inputs: Vec<MemoryRange>,
@@ -173,7 +188,7 @@ impl CallFrame {
         &self.registers
     }
 
-    pub const fn to(&self) -> &ContractAddress {
+    pub const fn to(&self) -> &ContractId {
         &self.to
     }
 }

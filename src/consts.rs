@@ -1,4 +1,4 @@
-use fuel_tx::ContractAddress;
+use fuel_tx::ContractId;
 
 /* MEMORY TYPES */
 
@@ -80,4 +80,4 @@ pub const FUEL_MAX_PROGRAM_SIZE: u8 = 16;
 // used for serder
 pub const VM_REGISTER_WIDTH: u8 = 6;
 
-pub const VM_CONTRACT_ID_BASE: ContractAddress = ContractAddress::new([0xab; ContractAddress::size_of()]);
+pub const VM_CONTRACT_ID_BASE: ContractId = ContractId::new([0xab; ContractId::size_of()]);

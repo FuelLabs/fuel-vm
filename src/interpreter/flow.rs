@@ -1,4 +1,4 @@
-use super::{Call, Interpreter};
+use super::{Call, ExecuteError, Interpreter, ProgramState};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
 
@@ -7,7 +7,6 @@ use fuel_tx::bytes::SerializableVec;
 use fuel_tx::{Color, Input};
 
 use std::convert::TryFrom;
-use std::io::Write;
 
 impl<S> Interpreter<S>
 where
@@ -57,46 +56,46 @@ where
         }
     }
 
-    pub fn call(&mut self, a: Word, _b: Word, c: Word, _d: Word) -> bool {
+    pub fn call(&mut self, a: Word, b: Word, c: Word, _d: Word) -> Result<ProgramState, ExecuteError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
 
-        let mut call = Call::default();
+        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let call = Call::try_from(&self.memory[a as usize..])?;
+        let color = Color::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+
+        if self.is_external_context() {
+            self.external_color_balance_sub(&color, b)?;
+        }
+
+        if !self.tx.input_contracts().any(|contract| call.to() == contract) {
+            return Err(ExecuteError::ContractNotInTxInputs);
+        }
+
+        if !call.outputs().iter().all(|output| self.has_ownership_range(output)) {
+            return Err(ExecuteError::MemoryOwnership);
+        }
 
         // TODO validate external and internal context
-        if overflow
-            || ax > VM_MAX_RAM
-            || cx > VM_MAX_RAM
-            || call.write(&self.memory[a as usize..]).is_err()
-            || !self.tx.input_contracts().any(|contract| call.to() == contract)
-            || !call.outputs().iter().all(|output| self.has_ownership_range(output))
-        {
-            false
-        } else {
-            let color = Color::try_from(&self.memory[c as usize..cx as usize]).unwrap_or_else(|_| unreachable!());
-            // TODO update color balance
+        // TODO update color balance
 
-            let mut frame = match self.call_frame(call, color) {
-                Ok(frame) => frame,
-                Err(_) => return false,
-            };
+        let mut frame = self.call_frame(call, color)?;
 
-            self.registers[REG_FP] = self.registers[REG_SP];
-            if self.push_stack_bypass_fp(frame.to_bytes().as_slice()).is_err() {
-                return false;
-            }
+        self.registers[REG_FP] = self.registers[REG_SP];
+        self.push_stack_bypass_fp(frame.to_bytes().as_slice())?;
 
-            // TODO set balance for forward coins to $bal
-            // TODO set forward gas to $cgas
+        // TODO set balance for forward coins to $bal
+        // TODO set forward gas to $cgas
 
-            self.registers[REG_PC] = self.registers[REG_FP].saturating_add(frame.code_offset() as Word);
-            self.registers[REG_IS] = self.registers[REG_PC];
-            self.frames.push(frame);
+        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(frame.code_offset() as Word);
+        self.registers[REG_IS] = self.registers[REG_PC];
+        self.frames.push(frame);
 
-            // TODO report the error of the called routine
-            self.run_program().is_ok()
-        }
+        self.run_program()
     }
 
     pub fn ret(&mut self, ra: RegisterId) -> bool {

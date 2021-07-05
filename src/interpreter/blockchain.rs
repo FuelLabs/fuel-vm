@@ -1,9 +1,9 @@
-use super::{Interpreter, MemoryRange};
+use super::{ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
-use fuel_tx::{Address, Color, ContractAddress, Input};
+use fuel_tx::{ContractId, Input};
 
 use std::convert::TryFrom;
 
@@ -11,58 +11,22 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn burn(&mut self, a: Word) -> bool {
-        let (x, overflow) = self.registers[REG_FP].overflowing_add(Address::size_of() as Word);
-        let (xc, of) = x.overflowing_add(Color::size_of() as Word);
-        let overflow = overflow || of;
-
-        if overflow || self.is_external_context() || xc >= VM_MAX_RAM {
-            return false;
-        }
-
-        let color = Color::try_from(&self.memory[x as usize..xc as usize]).expect("Memory bounds logically verified");
-        let balance = match self.color_balance(&color) {
-            Ok(b) => b,
-            Err(_) => return false,
-        };
-
-        let (balance, underflow) = balance.overflowing_sub(a);
-
-        if underflow {
-            return false;
-        }
-
-        self.set_color_balance(color, balance).is_ok()
+    pub fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
+        self.internal_contract_color()
+            .and_then(|color| self.balance_sub(color, a))
+            .map(|_| self.inc_pc())
     }
 
-    pub fn mint(&mut self, a: Word) -> bool {
-        let (x, overflow) = self.registers[REG_FP].overflowing_add(Address::size_of() as Word);
-        let (xc, of) = x.overflowing_add(Color::size_of() as Word);
-        let overflow = overflow || of;
-
-        if overflow || self.is_external_context() || xc >= VM_MAX_RAM {
-            return false;
-        }
-
-        let color = Color::try_from(&self.memory[x as usize..xc as usize]).expect("Memory bounds logically verified");
-        let balance = match self.color_balance(&color) {
-            Ok(b) => b,
-            Err(_) => return false,
-        };
-
-        let (balance, overflow) = balance.overflowing_add(a);
-
-        if overflow {
-            return false;
-        }
-
-        self.set_color_balance(color, balance).is_ok()
+    pub fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
+        self.internal_contract_color()
+            .and_then(|color| self.balance_add(color, a))
+            .map(|_| self.inc_pc())
     }
 
     // TODO add CCP tests
     pub fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {
         let (ad, overflow) = a.overflowing_add(d);
-        let (bx, of) = b.overflowing_add(ContractAddress::size_of() as Word);
+        let (bx, of) = b.overflowing_add(ContractId::size_of() as Word);
         let overflow = overflow || of;
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
@@ -78,7 +42,7 @@ where
         }
 
         let contract =
-            ContractAddress::try_from(&self.memory[b as usize..bx as usize]).expect("Memory bounds logically checked");
+            ContractId::try_from(&self.memory[b as usize..bx as usize]).expect("Memory bounds logically checked");
 
         if !self
             .tx

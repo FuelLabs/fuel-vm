@@ -1,18 +1,19 @@
 use crate::interpreter::ProgramState;
 
 use fuel_asm::{Opcode, Word};
-use fuel_tx::ContractAddress;
+use fuel_tx::ContractId;
 
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Breakpoint {
-    contract: ContractAddress,
+    contract: ContractId,
     pc: Word,
 }
 
 impl Breakpoint {
-    const fn raw(contract: ContractAddress, pc: Word) -> Self {
+    const fn raw(contract: ContractId, pc: Word) -> Self {
         Self { contract, pc }
     }
 
@@ -21,7 +22,7 @@ impl Breakpoint {
     /// The `$pc` is provided in op count and internally is multiplied by the op
     /// size. Also, the op count is always relative to `$is` so it should
     /// consider only the bytecode of the contract.
-    pub const fn new(contract: ContractAddress, pc: Word) -> Self {
+    pub const fn new(contract: ContractId, pc: Word) -> Self {
         let pc = pc * (Opcode::BYTES_SIZE as Word);
 
         Self::raw(contract, pc)
@@ -37,7 +38,7 @@ impl Breakpoint {
         Self::new(contract, pc)
     }
 
-    pub const fn contract(&self) -> &ContractAddress {
+    pub const fn contract(&self) -> &ContractId {
         &self.contract
     }
 
@@ -47,6 +48,7 @@ impl Breakpoint {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum DebugEval {
     Breakpoint(Breakpoint),
     Continue,
@@ -82,7 +84,7 @@ impl DebugEval {
 
 #[derive(Debug, Default, Clone)]
 pub struct Debugger {
-    breakpoints: HashMap<ContractAddress, HashSet<Word>>,
+    breakpoints: HashMap<ContractId, HashSet<Word>>,
     last_state: Option<ProgramState>,
 }
 
@@ -110,7 +112,7 @@ impl Debugger {
             .map(|set| set.remove(&breakpoint.pc()));
     }
 
-    pub fn eval_state(&mut self, contract: Option<&ContractAddress>, pc: Word) -> DebugEval {
+    pub fn eval_state(&mut self, contract: Option<&ContractId>, pc: Word) -> DebugEval {
         // Default contract address maps to unset contract target
         let contract = contract.copied().unwrap_or_default();
         let last_state = self.last_state.take();

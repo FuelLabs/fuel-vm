@@ -1,23 +1,25 @@
 [package]
 name = "fuel-vm"
-description = "FuelVM interpreter."
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
-edition = "2018"
-repository = "https://github.com/FuelLabs/fuel-vm"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
+edition = "2018"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+repository = "https://github.com/FuelLabs/fuel-vm"
+description = "FuelVM interpreter."
 
 [dependencies]
+fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
 itertools = "0.10"
+secp256k1 = { version = "0.20", features = ["recovery"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.9"
-secp256k1 = {version="0.20", features=["recovery"]}
 tracing = "0.1"
-fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
-fuel-tx = {git="ssh://git@github.com/FuelLabs/fuel-tx.git"}
 
 [dev-dependencies]
 rand = "0.8"
 
 [features]
 debug = []
+serde-types = ["serde", "fuel-asm/serde-types", "fuel-tx/serde-types"]

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default, Clone)]
 pub struct MemoryStorage {
     contracts: HashMap<ContractId, Contract>,
-    balances: HashMap<Color, Word>,
+    balances: HashMap<(ContractId, Color), Word>,
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
@@ -30,20 +30,20 @@ impl Storage<ContractId, Contract> for MemoryStorage {
     }
 }
 
-impl Storage<Color, Word> for MemoryStorage {
-    fn insert(&mut self, key: Color, value: Word) -> Result<Option<Word>, DataError> {
+impl Storage<(ContractId, Color), Word> for MemoryStorage {
+    fn insert(&mut self, key: (ContractId, Color), value: Word) -> Result<Option<Word>, DataError> {
         Ok(self.balances.insert(key, value))
     }
 
-    fn get(&self, key: &Color) -> Result<Option<Word>, DataError> {
+    fn get(&self, key: &(ContractId, Color)) -> Result<Option<Word>, DataError> {
         Ok(self.balances.get(key).copied())
     }
 
-    fn remove(&mut self, key: &Color) -> Result<Option<Word>, DataError> {
+    fn remove(&mut self, key: &(ContractId, Color)) -> Result<Option<Word>, DataError> {
         Ok(self.balances.remove(key))
     }
 
-    fn contains_key(&self, key: &Color) -> Result<bool, DataError> {
+    fn contains_key(&self, key: &(ContractId, Color)) -> Result<bool, DataError> {
         Ok(self.balances.contains_key(key))
     }
 }

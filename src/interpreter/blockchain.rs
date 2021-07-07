@@ -13,13 +13,13 @@ where
 {
     pub fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract_color()
-            .and_then(|color| self.balance_sub(color, a))
+            .and_then(|(contract, color)| self.balance_sub(contract, color, a))
             .map(|_| self.inc_pc())
     }
 
     pub fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract_color()
-            .and_then(|color| self.balance_add(color, a))
+            .and_then(|(contract, color)| self.balance_add(contract, color, a))
             .map(|_| self.inc_pc())
     }
 

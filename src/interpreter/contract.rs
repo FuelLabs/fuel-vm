@@ -91,30 +91,30 @@ where
         Ok(self.storage.contains_key(address)?)
     }
 
-    pub fn set_balance(&mut self, key: Color, balance: Word) -> Result<(), ExecuteError> {
-        self.storage.insert(key, balance)?;
+    pub fn set_balance(&mut self, contract: ContractId, color: Color, balance: Word) -> Result<(), ExecuteError> {
+        self.storage.insert((contract, color), balance)?;
 
         Ok(())
     }
 
-    pub fn balance(&self, key: &Color) -> Result<Word, ExecuteError> {
-        Ok(self.storage.get(key)?.unwrap_or(0))
+    pub fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {
+        Ok(self.storage.get(&(*contract, *color))?.unwrap_or(0))
     }
 
-    pub fn balance_add(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&key)?;
+    pub fn balance_add(&mut self, contract: ContractId, color: Color, value: Word) -> Result<Word, ExecuteError> {
+        let balance = self.balance(&contract, &color)?;
         let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
 
-        self.set_balance(key, balance)?;
+        self.set_balance(contract, color, balance)?;
 
         Ok(balance)
     }
 
-    pub fn balance_sub(&mut self, key: Color, value: Word) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&key)?;
+    pub fn balance_sub(&mut self, contract: ContractId, color: Color, value: Word) -> Result<Word, ExecuteError> {
+        let balance = self.balance(&contract, &color)?;
         let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
 
-        self.set_balance(key, balance)?;
+        self.set_balance(contract, color, balance)?;
 
         Ok(balance)
     }

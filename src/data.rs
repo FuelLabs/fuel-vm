@@ -56,7 +56,7 @@ where
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
-pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<Color, Word> {}
+pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<(ContractId, Color), Word> {}
 impl<S, I> InterpreterStorage for I
 where
     S: InterpreterStorage,
@@ -67,6 +67,6 @@ where
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
 impl Key for ContractId {}
-impl Key for Color {}
+impl Key for (ContractId, Color) {}
 impl Value for Word {}
 impl Value for Contract {}

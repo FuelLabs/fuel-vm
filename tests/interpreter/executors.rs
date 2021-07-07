@@ -23,7 +23,7 @@ fn external_balance() {
         .iter()
         .map(|(color, amount)| {
             Input::coin(
-                Hash::random(&mut rng),
+                Bytes32::random(&mut rng),
                 Address::random(&mut rng),
                 *amount,
                 *color,

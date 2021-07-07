@@ -12,13 +12,15 @@ where
     S: InterpreterStorage,
 {
     pub fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
-        self.internal_contract_color()
+        self.internal_contract()
+            .map(|contract| (contract, (*contract).into()))
             .and_then(|(contract, color)| self.balance_sub(contract, color, a))
             .map(|_| self.inc_pc())
     }
 
     pub fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
-        self.internal_contract_color()
+        self.internal_contract()
+            .map(|contract| (contract, (*contract).into()))
             .and_then(|(contract, color)| self.balance_add(contract, color, a))
             .map(|_| self.inc_pc())
     }

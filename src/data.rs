@@ -1,7 +1,7 @@
 use crate::interpreter::Contract;
 
 use fuel_asm::Word;
-use fuel_tx::{Color, ContractId};
+use fuel_tx::{Bytes32, Color, ContractId};
 
 use std::ops::DerefMut;
 
@@ -56,10 +56,10 @@ where
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
-pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<(ContractId, Color), Word> {}
-
-// TODO after `Bytes32` type is implemented, storage should also support a map
-// `bytes -> bytes`
+pub trait InterpreterStorage:
+    Storage<ContractId, Contract> + Storage<(ContractId, Color), Word> + Storage<(ContractId, Bytes32), Bytes32>
+{
+}
 
 impl<S, I> InterpreterStorage for I
 where
@@ -72,5 +72,7 @@ where
 // is implemented
 impl Key for ContractId {}
 impl Key for (ContractId, Color) {}
+impl Key for (ContractId, Bytes32) {}
 impl Value for Word {}
 impl Value for Contract {}
+impl Value for Bytes32 {}

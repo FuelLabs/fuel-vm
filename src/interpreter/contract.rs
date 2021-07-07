@@ -5,7 +5,7 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_tx::crypto as tx_crypto;
-use fuel_tx::{Color, ContractId, Transaction, ValidationError};
+use fuel_tx::{Bytes32, Color, ContractId, Transaction, ValidationError};
 
 use std::convert::TryFrom;
 
@@ -95,6 +95,12 @@ where
         self.storage.insert((contract, color), balance)?;
 
         Ok(())
+    }
+
+    pub fn storage_value(&self, key: &Bytes32) -> Result<Bytes32, ExecuteError> {
+        let contract = self.internal_contract()?;
+
+        Ok(self.storage.get(&(contract, *key))?.unwrap_or_default())
     }
 
     pub fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {

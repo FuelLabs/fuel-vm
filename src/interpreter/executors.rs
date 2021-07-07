@@ -6,7 +6,7 @@ use fuel_asm::{Opcode, Word};
 use fuel_tx::bytes::Deserializable;
 use fuel_tx::bytes::{SerializableVec, SizedBytes};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Hash, Input, Output, Transaction};
+use fuel_tx::{Bytes32, Color, Input, Output, Transaction};
 use itertools::Itertools;
 
 use std::convert::TryFrom;
@@ -87,7 +87,7 @@ where
 
         const LEN: usize = Color::size_of() + WORD_SIZE;
 
-        let balance_memory = self.memory[Hash::size_of()..Hash::size_of() + MAX_INPUTS as usize * LEN]
+        let balance_memory = self.memory[Bytes32::size_of()..Bytes32::size_of() + MAX_INPUTS as usize * LEN]
             .chunks_mut(LEN)
             .filter(|chunk| &chunk[..Color::size_of()] == color.as_ref())
             .next()

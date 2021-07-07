@@ -3,7 +3,7 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, ContractId, Hash, Transaction};
+use fuel_tx::{Bytes32, Color, ContractId, Transaction};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -106,7 +106,7 @@ impl<S> Interpreter<S> {
     }
 
     pub const fn tx_mem_address() -> usize {
-        Hash::size_of() // Tx ID
+        Bytes32::size_of() // Tx ID
             + WORD_SIZE // Tx size
             + MAX_INPUTS as usize * (Color::size_of() + WORD_SIZE) // Color/Balance
                                                                    // coin input
@@ -207,7 +207,7 @@ impl<S> Interpreter<S> {
         ra < VM_REGISTER_COUNT
     }
 
-    pub fn internal_contract_color(&self) -> Result<(ContractId, Color), ExecuteError> {
+    pub fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
         if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
@@ -215,8 +215,7 @@ impl<S> Interpreter<S> {
         let c = self.registers[REG_FP] as usize;
         let cx = c + ContractId::size_of();
         let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
-        let color = Color::try_from(contract.as_ref()).expect("Memory bounds logically verified");
 
-        Ok((contract, color))
+        Ok(contract)
     }
 }

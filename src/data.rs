@@ -57,6 +57,10 @@ where
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage: Storage<ContractId, Contract> + Storage<(ContractId, Color), Word> {}
+
+// TODO after `Bytes32` type is implemented, storage should also support a map
+// `bytes -> bytes`
+
 impl<S, I> InterpreterStorage for I
 where
     S: InterpreterStorage,

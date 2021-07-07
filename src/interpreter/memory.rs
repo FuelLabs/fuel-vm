@@ -12,7 +12,7 @@ pub use range::MemoryRange;
 
 impl<S> Interpreter<S> {
     /// Grant ownership of the range `[a..ab[`
-    pub const fn has_ownership_range(&self, range: &MemoryRange) -> bool {
+    pub fn has_ownership_range(&self, range: &MemoryRange) -> bool {
         let (a, ab) = range.boundaries(self);
 
         let a_is_stack = a < self.registers[REG_SP];
@@ -23,7 +23,7 @@ impl<S> Interpreter<S> {
 
         a < ab
             && (a_is_stack && ab_is_stack && self.has_ownership_stack(a) && self.has_ownership_stack_exclusive(ab)
-                || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap(ab))
+                || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
     }
 
     pub const fn has_ownership_stack(&self, a: Word) -> bool {
@@ -34,13 +34,26 @@ impl<S> Interpreter<S> {
         a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a <= self.registers[REG_SP]
     }
 
-    pub const fn has_ownership_heap(&self, a: Word) -> bool {
+    pub fn has_ownership_heap(&self, a: Word) -> bool {
         // TODO implement fp->hp and (addr, size) validations
         // fp->hp
         // it means $hp from the previous context, i.e. what's saved in the
         // "Saved registers from previous context" of the call frame at
         // $fp`
-        a <= VM_MAX_RAM && (a < VM_MAX_RAM - 1 || !self.is_external_context()) && self.registers[REG_HP] < a
+        let external = self.is_external_context();
+
+        self.registers[REG_HP] < a
+            && (external && a < VM_MAX_RAM
+                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0))
+    }
+
+    pub fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
+        // TODO reflect the pending changes from `has_ownership_heap`
+        let external = self.is_external_context();
+
+        self.registers[REG_HP] < a
+            && (external && a <= VM_MAX_RAM
+                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0) + 1)
     }
 
     pub const fn is_stack_address(&self, a: Word) -> bool {
@@ -97,13 +110,12 @@ impl<S> Interpreter<S> {
 
     pub fn store_byte(&mut self, a: Word, b: Word, c: Word) -> bool {
         let (ac, overflow) = a.overflowing_add(c);
-        let (result, of) = ac.overflowing_add(1);
-        let overflow = overflow || of;
 
-        if overflow || result > VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
+        if overflow || ac >= VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
             false
         } else {
-            self.memory[ac as usize] = b.to_le_bytes()[0];
+            self.memory[ac as usize] = b as u8;
+
             true
         }
     }

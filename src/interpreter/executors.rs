@@ -81,6 +81,10 @@ where
     S: InterpreterStorage,
 {
     pub fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), ExecuteError> {
+        if value == 0 {
+            return Ok(());
+        }
+
         const LEN: usize = Color::size_of() + WORD_SIZE;
 
         let balance_memory = self.memory[Hash::size_of()..Hash::size_of() + MAX_INPUTS as usize * LEN]
@@ -114,8 +118,7 @@ where
         self.registers[REG_SSP] = 0;
 
         // Set heap area
-        self.registers[REG_FP] = VM_MAX_RAM - 1;
-        self.registers[REG_HP] = self.registers[REG_FP];
+        self.registers[REG_HP] = VM_MAX_RAM - 1;
 
         self.push_stack(tx.id().as_ref())?;
 

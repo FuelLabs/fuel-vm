@@ -95,20 +95,7 @@ impl<S> Interpreter<S> {
     pub fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
-        if overflow || ssp > self.registers[REG_FP] {
-            Err(ExecuteError::StackOverflow)
-        } else {
-            self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
-            self.registers[REG_SSP] = ssp;
-
-            Ok(())
-        }
-    }
-
-    pub fn push_stack_bypass_fp(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
-        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
-
-        if overflow {
+        if overflow || self.registers[REG_FP] != 0 && ssp > self.registers[REG_FP] {
             Err(ExecuteError::StackOverflow)
         } else {
             self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);

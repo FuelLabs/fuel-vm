@@ -1,4 +1,4 @@
-use super::{Address, Color, ContractId, Hash};
+use super::{Address, Bytes32, Color, ContractId};
 use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
@@ -15,8 +15,8 @@ const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
 
 const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Input index
-    + Hash::size_of() // Balance root
-    + Hash::size_of(); // State root
+    + Bytes32::size_of() // Balance root
+    + Bytes32::size_of(); // State root
 
 const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
     + ContractId::size_of(); // Contract Id
@@ -74,8 +74,8 @@ pub enum Output {
 
     Contract {
         input_index: u8,
-        balance_root: Hash,
-        state_root: Hash,
+        balance_root: Bytes32,
+        state_root: Bytes32,
     },
 
     Withdrawal {
@@ -129,7 +129,7 @@ impl Output {
         Self::Coin { to, amount, color }
     }
 
-    pub const fn contract(input_index: u8, balance_root: Hash, state_root: Hash) -> Self {
+    pub const fn contract(input_index: u8, balance_root: Bytes32, state_root: Bytes32) -> Self {
         Self::Contract {
             input_index,
             balance_root,

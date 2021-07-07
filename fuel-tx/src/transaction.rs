@@ -11,7 +11,7 @@ use std::{io, mem};
 mod types;
 mod validation;
 
-pub use types::{Address, Color, ContractId, Hash, Input, Output, Salt, Witness};
+pub use types::{Address, Bytes32, Color, ContractId, Input, Output, Salt, Witness};
 pub use validation::ValidationError;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -192,7 +192,7 @@ impl Transaction {
             .unique()
     }
 
-    pub fn id(&self) -> Hash {
+    pub fn id(&self) -> Bytes32 {
         let mut tx = self.clone();
         tx.prepare_sign();
 

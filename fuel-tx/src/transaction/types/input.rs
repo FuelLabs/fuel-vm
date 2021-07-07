@@ -1,4 +1,4 @@
-use super::{Address, Color, ContractId, Hash};
+use super::{Address, Bytes32, Color, ContractId};
 use crate::bytes::{self, SizedBytes};
 
 use fuel_asm::Word;
@@ -9,7 +9,7 @@ use std::{io, mem};
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + Hash::size_of() // UTXO Id
+    + Bytes32::size_of() // UTXO Id
     + Address::size_of() // Owner
     + WORD_SIZE // Amount
     + Color::size_of() // Color
@@ -19,9 +19,9 @@ const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE; // Predicate data size
 
 const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + Hash::size_of() // UTXO Id
-    + Hash::size_of() // Balance root
-    + Hash::size_of() // State root
+    + Bytes32::size_of() // UTXO Id
+    + Bytes32::size_of() // Balance root
+    + Bytes32::size_of() // State root
     + ContractId::size_of(); // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,7 +49,7 @@ impl TryFrom<Word> for InputRepr {
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum Input {
     Coin {
-        utxo_id: Hash,
+        utxo_id: Bytes32,
         owner: Address,
         amount: Word,
         color: Color,
@@ -60,9 +60,9 @@ pub enum Input {
     },
 
     Contract {
-        utxo_id: Hash,
-        balance_root: Hash,
-        state_root: Hash,
+        utxo_id: Bytes32,
+        balance_root: Bytes32,
+        state_root: Bytes32,
         contract_id: ContractId,
     },
 }
@@ -98,7 +98,7 @@ impl bytes::SizedBytes for Input {
 
 impl Input {
     pub const fn coin(
-        utxo_id: Hash,
+        utxo_id: Bytes32,
         owner: Address,
         amount: Word,
         color: Color,
@@ -120,9 +120,9 @@ impl Input {
     }
 
     pub const fn contract(
-        utxo_id: Hash,
-        balance_root: Hash,
-        state_root: Hash,
+        utxo_id: Bytes32,
+        balance_root: Bytes32,
+        state_root: Bytes32,
         contract_id: ContractId,
     ) -> Self {
         Self::Contract {
@@ -133,7 +133,7 @@ impl Input {
         }
     }
 
-    pub const fn utxo_id(&self) -> &Hash {
+    pub const fn utxo_id(&self) -> &Bytes32 {
         match self {
             Self::Coin { utxo_id, .. } => &utxo_id,
             Self::Contract { utxo_id, .. } => &utxo_id,

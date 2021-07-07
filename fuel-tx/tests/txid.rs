@@ -134,7 +134,7 @@ fn id() {
         vec![],
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::random(rng),
@@ -144,9 +144,9 @@ fn id() {
                 Witness::random(rng).into_inner(),
             ),
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng),
             ),
         ],
@@ -158,8 +158,8 @@ fn id() {
             Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::contract(
                 rng.next_u32().to_be_bytes()[0],
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
             ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
             Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),

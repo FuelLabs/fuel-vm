@@ -212,15 +212,10 @@ impl<S> Interpreter<S> {
             return Err(ExecuteError::ExpectedInternalContext);
         }
 
-        // TODO fetch color from output of contract in $fp
-
         let c = self.registers[REG_FP] as usize;
         let cx = c + ContractId::size_of();
         let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
-
-        let c = cx;
-        let cx = c + Color::size_of();
-        let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+        let color = Color::try_from(contract.as_ref()).expect("Memory bounds logically verified");
 
         Ok((contract, color))
     }

@@ -152,7 +152,7 @@ fn max_iow() {
         Witness::random(rng).into_inner(),
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::random(rng),
@@ -181,7 +181,7 @@ fn max_iow() {
         vec![],
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::random(rng),
@@ -209,9 +209,9 @@ fn max_iow() {
         Witness::random(rng).into_inner(),
         vec![
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng)
             );
             MAX_INPUTS as usize + 1
@@ -235,9 +235,9 @@ fn max_iow() {
         Witness::random(rng).into_inner(),
         vec![
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng)
             );
             MAX_INPUTS as usize
@@ -261,9 +261,9 @@ fn max_iow() {
         Witness::random(rng).into_inner(),
         vec![
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng)
             );
             MAX_INPUTS as usize
@@ -300,7 +300,7 @@ fn output_change_color() {
         Witness::random(rng).into_inner(),
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 a,
@@ -310,7 +310,7 @@ fn output_change_color() {
                 Witness::random(rng).into_inner(),
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 b,
@@ -337,7 +337,7 @@ fn output_change_color() {
         Witness::random(rng).into_inner(),
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 a,
@@ -347,7 +347,7 @@ fn output_change_color() {
                 Witness::random(rng).into_inner(),
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 b,
@@ -376,7 +376,7 @@ fn output_change_color() {
         Witness::random(rng).into_inner(),
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 a,
@@ -386,7 +386,7 @@ fn output_change_color() {
                 Witness::random(rng).into_inner(),
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 b,
@@ -424,7 +424,7 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             color,
@@ -446,7 +446,7 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -473,7 +473,7 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize + 1],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -498,7 +498,7 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize + 1],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             color,
@@ -532,7 +532,7 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -559,12 +559,16 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::contract(
-            Hash::random(rng),
-            Hash::random(rng),
-            Hash::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
             ContractId::random(rng),
         )],
-        vec![Output::contract(0, Hash::random(rng), Hash::random(rng))],
+        vec![Output::contract(
+            0,
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+        )],
         vec![Witness::random(rng)],
     )
     .validate(block_height)
@@ -584,7 +588,7 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             color,
@@ -617,7 +621,7 @@ fn create() {
         vec![],
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::default(),
@@ -627,7 +631,7 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::random(rng),
@@ -661,7 +665,7 @@ fn create() {
         vec![],
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::default(),
@@ -671,7 +675,7 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 color,
@@ -704,7 +708,7 @@ fn create() {
         vec![],
         vec![
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::default(),
@@ -714,7 +718,7 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Hash::random(rng),
+                Bytes32::random(rng),
                 Address::random(rng),
                 rng.next_u64(),
                 Color::random(rng),
@@ -746,7 +750,7 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -773,7 +777,7 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -802,7 +806,7 @@ fn create() {
         Salt::random(rng),
         vec![],
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -839,7 +843,7 @@ fn create() {
         Salt::random(rng),
         static_contracts.clone(),
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -868,7 +872,7 @@ fn create() {
         Salt::random(rng),
         static_contracts.clone(),
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),
@@ -899,7 +903,7 @@ fn create() {
         Salt::random(rng),
         static_contracts,
         vec![Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::default(),

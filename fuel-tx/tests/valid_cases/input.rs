@@ -11,7 +11,7 @@ fn coin() {
     let witnesses = vec![Witness::random(rng)];
 
     Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -24,7 +24,7 @@ fn coin() {
     .unwrap();
 
     Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -37,7 +37,7 @@ fn coin() {
     .unwrap();
 
     let err = Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -52,7 +52,7 @@ fn coin() {
     assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
 
     let err = Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -70,7 +70,7 @@ fn coin() {
     );
 
     let err = Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -94,22 +94,26 @@ fn contract() {
     let rng = &mut rng_base;
 
     Input::contract(
-        Hash::random(rng),
-        Hash::random(rng),
-        Hash::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
         ContractId::random(rng),
     )
     .validate(
         1,
-        &[Output::contract(1, Hash::random(rng), Hash::random(rng))],
+        &[Output::contract(
+            1,
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+        )],
         &[],
     )
     .unwrap();
 
     let err = Input::contract(
-        Hash::random(rng),
-        Hash::random(rng),
-        Hash::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
         ContractId::random(rng),
     )
     .validate(1, &[], &[])
@@ -121,9 +125,9 @@ fn contract() {
     );
 
     let err = Input::contract(
-        Hash::random(rng),
-        Hash::random(rng),
-        Hash::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
         ContractId::random(rng),
     )
     .validate(
@@ -143,14 +147,18 @@ fn contract() {
     );
 
     let err = Input::contract(
-        Hash::random(rng),
-        Hash::random(rng),
-        Hash::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
         ContractId::random(rng),
     )
     .validate(
         1,
-        &[Output::contract(2, Hash::random(rng), Hash::random(rng))],
+        &[Output::contract(
+            2,
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+        )],
         &[],
     )
     .err()

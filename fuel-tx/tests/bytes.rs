@@ -80,7 +80,7 @@ fn input() {
 
     assert_encoding_correct(&[
         Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -90,7 +90,7 @@ fn input() {
             Witness::random(rng).into_inner(),
         ),
         Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -100,7 +100,7 @@ fn input() {
             Witness::random(rng).into_inner(),
         ),
         Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -110,7 +110,7 @@ fn input() {
             vec![],
         ),
         Input::coin(
-            Hash::random(rng),
+            Bytes32::random(rng),
             Address::random(rng),
             rng.next_u64(),
             Color::random(rng),
@@ -120,9 +120,9 @@ fn input() {
             vec![],
         ),
         Input::contract(
-            Hash::random(rng),
-            Hash::random(rng),
-            Hash::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
             ContractId::random(rng),
         ),
     ]);
@@ -137,8 +137,8 @@ fn output() {
         Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::contract(
             rng.next_u32().to_be_bytes()[0],
-            Hash::random(rng),
-            Hash::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
         ),
         Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
@@ -153,9 +153,9 @@ fn transaction() {
     let rng = &mut rng_base;
 
     let i = Input::contract(
-        Hash::random(rng),
-        Hash::random(rng),
-        Hash::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
+        Bytes32::random(rng),
         ContractId::random(rng),
     );
     let o = Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
@@ -309,16 +309,16 @@ fn create_input_coin_data_offset() {
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            Hash::random(rng),
-            Hash::random(rng),
-            Hash::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
             ContractId::random(rng),
         )],
         vec![
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng)
             );
             2
@@ -334,8 +334,8 @@ fn create_input_coin_data_offset() {
         vec![
             Output::contract(
                 rng.next_u32().to_be_bytes()[0],
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
             ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         ],
@@ -349,7 +349,7 @@ fn create_input_coin_data_offset() {
     let predicate = Witness::random(rng).into_inner();
     let predicate_data = Witness::random(rng).into_inner();
     let input_coin = Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),
@@ -414,22 +414,22 @@ fn script_input_coin_data_offset() {
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            Hash::random(rng),
-            Hash::random(rng),
-            Hash::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
+            Bytes32::random(rng),
             ContractId::random(rng),
         )],
         vec![
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng),
             ),
             Input::contract(
-                Hash::random(rng),
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
                 ContractId::random(rng),
             ),
         ],
@@ -444,8 +444,8 @@ fn script_input_coin_data_offset() {
         vec![
             Output::contract(
                 rng.next_u32().to_be_bytes()[0],
-                Hash::random(rng),
-                Hash::random(rng),
+                Bytes32::random(rng),
+                Bytes32::random(rng),
             ),
             Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
         ],
@@ -459,7 +459,7 @@ fn script_input_coin_data_offset() {
     let predicate = Witness::random(rng).into_inner();
     let predicate_data = Witness::random(rng).into_inner();
     let input_coin = Input::coin(
-        Hash::random(rng),
+        Bytes32::random(rng),
         Address::random(rng),
         rng.next_u64(),
         Color::random(rng),

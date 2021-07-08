@@ -1,4 +1,3 @@
-use super::program_to_bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
@@ -7,9 +6,9 @@ fn breakpoint_script() {
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
-    let gas_price = 10;
+    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 100;
+    let maturity = 0;
 
     let script = vec![
         Opcode::ADDI(0x10, REG_ZERO, 8),
@@ -18,8 +17,10 @@ fn breakpoint_script() {
         Opcode::ADDI(0x13, REG_ZERO, 64),
         Opcode::ADDI(0x14, REG_ZERO, 128),
         Opcode::RET(0x10),
-    ];
-    let script = program_to_bytes(script.as_slice());
+    ]
+    .iter()
+    .copied()
+    .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
 

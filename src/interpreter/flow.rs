@@ -1,4 +1,4 @@
-use super::{Call, ExecuteError, Interpreter, ProgramState};
+use super::{Call, CallFrame, ExecuteError, Interpreter, ProgramState};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
 
@@ -76,10 +76,6 @@ where
             return Err(ExecuteError::ContractNotInTxInputs);
         }
 
-        if !call.outputs().iter().all(|output| self.has_ownership_range(output)) {
-            return Err(ExecuteError::MemoryOwnership);
-        }
-
         // TODO validate external and internal context
         // TODO update color balance
 
@@ -92,7 +88,7 @@ where
         // TODO set balance for forward coins to $bal
         // TODO set forward gas to $cgas
 
-        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(frame.code_offset() as Word);
+        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
         self.registers[REG_IS] = self.registers[REG_PC];
         self.frames.push(frame);
 
@@ -100,11 +96,22 @@ where
     }
 
     pub fn ret(&mut self, ra: RegisterId) -> bool {
-        // TODO define the return strategy for internal/external contexts
         // TODO Return the unused forwarded gas to the caller
 
-        // TODO review if a frame is mandatory for every return. For `run_program`, no
-        // frame is created and we may still have a valid `RET`
+        if !self
+            .registers
+            .get(ra)
+            .copied()
+            .map(|a| {
+                self.registers[REG_RET] = a;
+                self.registers[REG_RETL] = 0;
+                true
+            })
+            .unwrap_or(false)
+        {
+            return false;
+        }
+
         if let Some(frame) = self.frames.pop() {
             frame
                 .registers()

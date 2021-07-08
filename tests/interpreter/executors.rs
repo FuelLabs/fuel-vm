@@ -1,4 +1,3 @@
-use super::program_to_bytes;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -10,13 +9,11 @@ fn external_balance() {
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
-    let gas_price = 10;
+    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 100;
+    let maturity = 0;
 
-    let script = vec![Opcode::RET(0x01)];
-    let script = program_to_bytes(script.as_slice());
-
+    let script = vec![Opcode::RET(0x01)].iter().copied().collect();
     let balances = vec![(Color::random(&mut rng), 100), (Color::random(&mut rng), 500)];
 
     let inputs = balances

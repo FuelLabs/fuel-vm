@@ -53,11 +53,11 @@ pub const REG_BAL: usize = 0x0b;
 /// Pointer to the start of the currently-executing code.
 pub const REG_IS: usize = 0x0c;
 
-/// Reserved register
-pub const REG_RESERVA: usize = 0x0d;
+/// Return value or pointer.
+pub const REG_RET: usize = 0x0d;
 
-/// Reserved register
-pub const REG_RESERVB: usize = 0x0e;
+/// Return value length in bytes.
+pub const REG_RETL: usize = 0x0e;
 
 /// Flags register.
 pub const REG_FLAG: usize = 0x0f;

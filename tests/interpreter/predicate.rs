@@ -26,7 +26,7 @@ fn predicate() {
 
     let predicate_data = predicate_data.to_be_bytes().to_vec();
 
-    let maturity = 100;
+    let maturity = 0;
     let salt: Salt = r();
     let witness = vec![];
     let contract = Contract::from(witness.as_slice());
@@ -35,7 +35,7 @@ fn predicate() {
     let input = Input::coin(r(), r(), 0, r(), 0, maturity, predicate, predicate_data);
     let output = Output::contract_created(contract);
 
-    let gas_price = 10;
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
@@ -101,7 +101,7 @@ fn predicate_false() {
 
     let predicate_data = predicate_data.to_be_bytes().to_vec();
 
-    let maturity = 100;
+    let maturity = 0;
     let salt: Salt = r();
     let witness = vec![];
     let contract = Contract::from(witness.as_slice());
@@ -110,7 +110,7 @@ fn predicate_false() {
     let input = Input::coin(r(), r(), 0, r(), 0, maturity, predicate, predicate_data);
     let output = Output::contract_created(contract);
 
-    let gas_price = 10;
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];

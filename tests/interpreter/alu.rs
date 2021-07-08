@@ -50,8 +50,8 @@ fn reserved_register() {
     alu_err(&[(0x10, 128)], Opcode::ADD(REG_CGAS, 0x10, 0x11));
     alu_err(&[(0x10, 128)], Opcode::ADD(REG_BAL, 0x10, 0x11));
     alu_err(&[(0x10, 128)], Opcode::ADD(REG_IS, 0x10, 0x11));
-    alu_err(&[(0x10, 128)], Opcode::ADD(REG_RESERVA, 0x10, 0x11));
-    alu_err(&[(0x10, 128)], Opcode::ADD(REG_RESERVB, 0x10, 0x11));
+    alu_err(&[(0x10, 128)], Opcode::ADD(REG_RET, 0x10, 0x11));
+    alu_err(&[(0x10, 128)], Opcode::ADD(REG_RETL, 0x10, 0x11));
     alu_err(&[(0x10, 128)], Opcode::ADD(REG_FLAG, 0x10, 0x11));
 }
 

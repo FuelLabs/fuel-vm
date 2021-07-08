@@ -8,168 +8,144 @@ fn mint_burn() {
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
-    let gas_price = 10;
+    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 100;
+    let maturity = 0;
 
-    let mint = deploy_contract(
+    let salt: Salt = r();
+    let program: Witness = [
+        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        Opcode::LW(0x10, 0x10, 0),
+        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        Opcode::LW(0x11, 0x11, 0),
+        Opcode::JNEI(0x10, REG_ZERO, 7),
+        Opcode::MINT(0x11),
+        Opcode::JI(8),
+        Opcode::BURN(0x11),
+        Opcode::RET(REG_ONE),
+    ]
+    .iter()
+    .copied()
+    .collect::<Vec<u8>>()
+    .into();
+
+    let contract = Contract::from(program.as_ref()).address(salt.as_ref());
+    let color = Color::from(*contract);
+    let output = Output::contract_created(contract);
+
+    let bytecode_witness = 0;
+    let tx = Transaction::create(
         gas_price,
         gas_limit,
         maturity,
-        &mut vm,
-        &[
-            Opcode::ADDI(0x10, REG_FP, CallFrame::inputs_outputs_offset() as Immediate12),
-            Opcode::LW(0x11, 0x10, 1),
-            Opcode::LW(0x10, 0x10, 0),
-            Opcode::JNEI(0x10, REG_ZERO, 6),
-            Opcode::MINT(0x11),
-            Opcode::JI(7),
-            Opcode::BURN(0x11),
-            Opcode::RET(0x11),
-        ],
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![output],
+        vec![program],
     );
 
-    let color = Color::from(*mint);
+    vm.init(tx).expect("Failed to init VM with tx create!");
+    vm.run().expect("Failed to deploy contract!");
 
-    let mut script_ops = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 0x00),
-        Opcode::ADDI(0x11, 0x10, ContractId::size_of() as Immediate12),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x10),
-        Opcode::RET(0x30),
-    ];
-
-    let script = program_to_bytes(script_ops.as_slice());
-    let input = Input::contract(d(), d(), d(), mint);
+    let input = Input::contract(d(), d(), d(), contract);
     let output = Output::contract(0, d(), d());
 
-    // Mint balance
-    let mut script_data = mint.to_vec();
-    script_data.extend((0 as Word).to_be_bytes());
-    script_data.extend((2 as Word).to_be_bytes());
-    script_data.extend((0 as Word).to_be_bytes()); // Flag for mint subroutine
-    script_data.extend((balance as Word).to_be_bytes());
+    let mut script_ops = vec![
+        Opcode::ADDI(0x10, REG_ZERO, 0),
+        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::RET(REG_ONE),
+    ];
 
-    let mut tx = Transaction::script(
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
+        vec![],
+        vec![input.clone()],
+        vec![output],
+        vec![],
+    );
+
+    let script_data_offset = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
+    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_offset as Immediate12);
+
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script_data = Call::new(contract, 0, balance).to_bytes();
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
-    let script_mem = program_to_bytes(script_ops.as_slice());
-
-    match &mut tx {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
-
-    assert_eq!(0, vm.balance(&mint, &color).unwrap());
+    assert_eq!(0, vm.balance(&contract, &color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
-    assert_eq!(balance as Word, vm.balance(&mint, &color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&contract, &color).unwrap());
 
-    // Try to burn more than balance
-    let mut script_data = mint.to_vec();
-    script_data.extend((0 as Word).to_be_bytes());
-    script_data.extend((2 as Word).to_be_bytes());
-    script_data.extend((1 as Word).to_be_bytes()); // Flag for burn subroutine
-    script_data.extend((balance as Word + 1).to_be_bytes());
-
-    let mut tx = Transaction::script(
+    // Try to burn more than the available balance
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script_data = Call::new(contract, 1, balance + 1).to_bytes();
+    let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
-    let script_mem = program_to_bytes(script_ops.as_slice());
-
-    match &mut tx {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
-
-    assert_eq!(balance, vm.balance(&mint, &color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     assert!(vm.run().is_err());
-    assert_eq!(balance as Word, vm.balance(&mint, &color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&contract, &color).unwrap());
 
     // Burn some of the balance
     let burn = 100;
 
-    let mut script_data = mint.to_vec();
-    script_data.extend((0 as Word).to_be_bytes());
-    script_data.extend((2 as Word).to_be_bytes());
-    script_data.extend((1 as Word).to_be_bytes()); // Flag for burn subroutine
-    script_data.extend((burn as Word).to_be_bytes());
-
-    let mut tx = Transaction::script(
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script_data = Call::new(contract, 1, burn).to_bytes();
+    let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
-    let script_mem = program_to_bytes(script_ops.as_slice());
-
-    match &mut tx {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
-
-    assert_eq!(balance, vm.balance(&mint, &color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
     balance -= burn;
-    assert_eq!(balance as Word, vm.balance(&mint, &color).unwrap());
+    assert_eq!(balance as Word, vm.balance(&contract, &color).unwrap());
 
     // Burn the remainder balance
-    let mut script_data = mint.to_vec();
-    script_data.extend((0 as Word).to_be_bytes());
-    script_data.extend((2 as Word).to_be_bytes());
-    script_data.extend((1 as Word).to_be_bytes()); // Flag for burn subroutine
-    script_data.extend((balance as Word).to_be_bytes());
-
-    let mut tx = Transaction::script(
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script_data = Call::new(contract, 1, balance).to_bytes();
+    let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
-    let script_mem = program_to_bytes(script_ops.as_slice());
-
-    match &mut tx {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
-
-    assert_eq!(balance, vm.balance(&mint, &color).unwrap());
     vm.init(tx).expect("Failed to init VM with tx create!");
     vm.run().expect("Failed to execute contract!");
-    assert_eq!(0, vm.balance(&mint, &color).unwrap());
+    assert_eq!(0, vm.balance(&contract, &color).unwrap());
 }

@@ -3,7 +3,7 @@ use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Hash, Transaction};
+use fuel_tx::{Bytes32, Color, ContractId, Transaction};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -95,20 +95,7 @@ impl<S> Interpreter<S> {
     pub fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
-        if overflow || ssp > self.registers[REG_FP] {
-            Err(ExecuteError::StackOverflow)
-        } else {
-            self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
-            self.registers[REG_SSP] = ssp;
-
-            Ok(())
-        }
-    }
-
-    pub fn push_stack_bypass_fp(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
-        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
-
-        if overflow {
+        if overflow || self.registers[REG_FP] != 0 && ssp > self.registers[REG_FP] {
             Err(ExecuteError::StackOverflow)
         } else {
             self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
@@ -119,7 +106,7 @@ impl<S> Interpreter<S> {
     }
 
     pub const fn tx_mem_address() -> usize {
-        Hash::size_of() // Tx ID
+        Bytes32::size_of() // Tx ID
             + WORD_SIZE // Tx size
             + MAX_INPUTS as usize * (Color::size_of() + WORD_SIZE) // Color/Balance
                                                                    // coin input
@@ -220,17 +207,15 @@ impl<S> Interpreter<S> {
         ra < VM_REGISTER_COUNT
     }
 
-    pub fn internal_contract_color(&self) -> Result<Color, ExecuteError> {
+    pub fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
         if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
 
-        // TODO fetch color from output of contract in $fp
-
         let c = self.registers[REG_FP] as usize;
-        let cx = c + Color::size_of();
-        let color = Color::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+        let cx = c + ContractId::size_of();
+        let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
 
-        Ok(color)
+        Ok(contract)
     }
 }

@@ -85,8 +85,9 @@ where
 
         let mut frame = self.call_frame(call, color)?;
 
-        self.registers[REG_FP] = self.registers[REG_SP];
-        self.push_stack_bypass_fp(frame.to_bytes().as_slice())?;
+        let sp = self.registers[REG_SP];
+        self.push_stack(frame.to_bytes().as_slice())?;
+        self.registers[REG_FP] = sp;
 
         // TODO set balance for forward coins to $bal
         // TODO set forward gas to $cgas

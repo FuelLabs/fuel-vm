@@ -16,6 +16,7 @@ mod error;
 mod executors;
 mod flow;
 mod frame;
+mod gas;
 mod log;
 mod memory;
 
@@ -26,6 +27,7 @@ pub use contract::Contract;
 pub use error::ExecuteError;
 pub use executors::ProgramState;
 pub use frame::{Call, CallFrame};
+pub use gas::GasUnit;
 pub use log::LogEvent;
 pub use memory::MemoryRange;
 
@@ -116,6 +118,10 @@ impl<S> Interpreter<S> {
     pub const fn block_height(&self) -> u32 {
         // TODO fetch block height
         u32::MAX >> 1
+    }
+
+    pub const fn gas_price(&self) -> Word {
+        self.tx.gas_price()
     }
 
     pub fn set_flag(&mut self, a: Word) {

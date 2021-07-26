@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecuteError, Interpreter};
 use crate::consts::*;
 
 use fuel_asm::{Opcode, Word};
@@ -11,7 +11,6 @@ pub enum GasUnit {
     RegisterRead(Word),
     RegisterWrite(Word),
     Branching(Word),
-    MemoryAlloc(Word),
     MemoryOwnership(Word),
     MemoryWrite(Word),
     Accumulated(Word),
@@ -29,7 +28,6 @@ impl GasUnit {
             RegisterRead(1) => 1,
             RegisterWrite(1) => 2,
             Branching(1) => 10,
-            MemoryAlloc(bytes) => *bytes * 15,
             MemoryOwnership(1) => 9,
             MemoryWrite(1) => 8,
             Undefined => 20,
@@ -100,7 +98,10 @@ impl<S> Interpreter<S> {
 
             JNEI(_, _, _) => GasUnit::RegisterRead(2),
 
-            ALOC(ra) => GasUnit::RegisterRead(1).join(GasUnit::MemoryAlloc(self.registers[*ra])),
+            ALOC(_) => GasUnit::RegisterRead(1)
+                .join(GasUnit::Arithmetic(1))
+                .join(GasUnit::Branching(1))
+                .join(GasUnit::RegisterWrite(1)),
 
             LB(_, _, _) => GasUnit::RegisterRead(2)
                 .join(GasUnit::Arithmetic(1))
@@ -120,18 +121,18 @@ impl<S> Interpreter<S> {
 
     // TODO enable const flag
     // https://github.com/rust-lang/rust/issues/57349
-    pub fn gas_charge(&mut self, op: &Opcode) -> bool {
-        let cost = self.gas_price() * self.gas_cost(op);
+    pub fn gas_charge(&mut self, op: &Opcode) -> Result<(), ExecuteError> {
+        let cost = !self.is_predicate() as Word * self.gas_cost(op);
 
         if cost > self.registers[REG_CGAS] {
             self.registers[REG_GGAS] -= self.registers[REG_CGAS];
             self.registers[REG_CGAS] = 0;
 
-            false
+            Err(ExecuteError::OutOfGas)
         } else {
             self.registers[REG_CGAS] -= cost;
 
-            true
+            Ok(())
         }
     }
 }

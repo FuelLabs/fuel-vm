@@ -6,6 +6,7 @@ use fuel_asm::{RegisterId, Word};
 use fuel_tx::bytes::SerializableVec;
 use fuel_tx::{Color, Input};
 
+use std::cmp;
 use std::convert::TryFrom;
 
 impl<S> Interpreter<S>
@@ -56,7 +57,7 @@ where
         }
     }
 
-    pub fn call(&mut self, a: Word, b: Word, c: Word, _d: Word) -> Result<ProgramState, ExecuteError> {
+    pub fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, ExecuteError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
@@ -90,6 +91,8 @@ where
 
         self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
         self.registers[REG_IS] = self.registers[REG_PC];
+        self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
+
         self.frames.push(frame);
 
         self.run_program()
@@ -113,13 +116,15 @@ where
         }
 
         if let Some(frame) = self.frames.pop() {
+            self.registers[REG_CGAS] += frame.context_gas();
+
             frame
                 .registers()
                 .iter()
                 .enumerate()
                 .zip(self.registers.iter_mut())
                 .for_each(|((i, frame), current)| {
-                    if i != REG_CGAS && i != REG_GGAS {
+                    if i != REG_CGAS && i != REG_GGAS && i != REG_RET && i != REG_RETL {
                         *current = *frame;
                     }
                 });

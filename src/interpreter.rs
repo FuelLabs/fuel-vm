@@ -164,6 +164,10 @@ impl<S> Interpreter<S> {
         self.context().is_external()
     }
 
+    pub const fn is_predicate(&self) -> bool {
+        matches!(self.context, Context::Predicate)
+    }
+
     pub const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }

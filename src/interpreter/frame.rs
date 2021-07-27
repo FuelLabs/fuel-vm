@@ -156,6 +156,10 @@ impl CallFrame {
     pub const fn b(&self) -> Word {
         self.b
     }
+
+    pub const fn context_gas(&self) -> Word {
+        self.registers[REG_CGAS]
+    }
 }
 
 impl SizedBytes for CallFrame {

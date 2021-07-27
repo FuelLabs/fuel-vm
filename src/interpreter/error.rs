@@ -24,6 +24,7 @@ pub enum ExecuteError {
     NotEnoughBalance,
     ExpectedInternalContext,
     ExternalColorNotFound,
+    OutOfGas,
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

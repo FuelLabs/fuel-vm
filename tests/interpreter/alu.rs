@@ -3,36 +3,42 @@ use fuel_vm::prelude::*;
 
 fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
-    vm.init(Transaction::default()).expect("Failed to init VM");
 
-    registers_init.iter().for_each(|(r, v)| {
-        vm.execute(Opcode::ADDI(*r, *r, *v))
-            .expect("Failed to execute the provided opcode!");
-    });
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
 
-    vm.execute(op).expect("Failed to execute the final opcode!");
-    vm.execute(Opcode::LOG(reg, 0, 0, 0))
-        .expect("Failed to call log instruction");
+    let script = registers_init
+        .iter()
+        .map(|(r, v)| Opcode::ADDI(*r, REG_ZERO, *v))
+        .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
+        .collect();
 
-    match vm.log().first() {
-        Some(LogEvent::Register { register, value, .. }) if *register == reg && *value == expected => (),
-        _ => panic!("Unexpected log output"),
-    }
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
+    let state = Interpreter::transition(storage, tx).expect("Failed to execute ALU script!");
+
+    assert!(
+        matches!(state.log().first(), Some(LogEvent::Register { register, value, .. }) if *register == reg && *value == expected)
+    );
 }
 
 fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
     let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
-    vm.init(Transaction::default()).expect("Failed to init VM");
 
-    registers_init.iter().for_each(|(r, v)| {
-        vm.execute(Opcode::ADDI(*r, *r, *v))
-            .expect("Failed to execute the provided opcode!");
-    });
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
 
-    let result = vm.execute(op);
-    assert!(result.is_err());
+    let script = registers_init
+        .iter()
+        .map(|(r, v)| Opcode::ADDI(*r, REG_ZERO, *v))
+        .chain([op, Opcode::RET(REG_ONE)].iter().copied())
+        .collect();
+
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
+    let result = Interpreter::transition(storage, tx);
+
+    assert!(matches!(result, Err(ExecuteError::OpcodeFailure(o)) if o == op));
 }
 
 #[test]

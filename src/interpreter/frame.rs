@@ -233,7 +233,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn call_frame(&self, call: Call, color: Color) -> Result<CallFrame, ExecuteError> {
+    pub(crate) fn call_frame(&self, call: Call, color: Color) -> Result<CallFrame, ExecuteError> {
         let Call { to, a, b } = call;
 
         let code = self.contract(&to)?.ok_or(ExecuteError::ContractNotFound)?;

@@ -12,7 +12,7 @@ pub use range::MemoryRange;
 
 impl<S> Interpreter<S> {
     /// Grant ownership of the range `[a..ab[`
-    pub fn has_ownership_range(&self, range: &MemoryRange) -> bool {
+    pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
         let (a, ab) = range.boundaries(self);
 
         let a_is_stack = a < self.registers[REG_SP];
@@ -26,15 +26,15 @@ impl<S> Interpreter<S> {
                 || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
     }
 
-    pub const fn has_ownership_stack(&self, a: Word) -> bool {
+    pub(crate) const fn has_ownership_stack(&self, a: Word) -> bool {
         a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a < self.registers[REG_SP]
     }
 
-    pub const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
+    pub(crate) const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
         a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a <= self.registers[REG_SP]
     }
 
-    pub fn has_ownership_heap(&self, a: Word) -> bool {
+    pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
         // TODO implement fp->hp and (addr, size) validations
         // fp->hp
         // it means $hp from the previous context, i.e. what's saved in the
@@ -47,7 +47,7 @@ impl<S> Interpreter<S> {
                 || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0))
     }
 
-    pub fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
+    pub(crate) fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
         // TODO reflect the pending changes from `has_ownership_heap`
         let external = self.is_external_context();
 
@@ -56,13 +56,11 @@ impl<S> Interpreter<S> {
                 || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0) + 1)
     }
 
-    pub const fn is_stack_address(&self, a: Word) -> bool {
+    pub(crate) const fn is_stack_address(&self, a: Word) -> bool {
         a < self.registers[REG_SP]
     }
-}
 
-impl<S> Interpreter<S> {
-    pub fn stack_pointer_overflow(&mut self, f: fn(Word, Word) -> (Word, bool), v: Word) -> bool {
+    pub(crate) fn stack_pointer_overflow(&mut self, f: fn(Word, Word) -> (Word, bool), v: Word) -> bool {
         let (result, overflow) = f(self.registers[REG_SP], v);
 
         if overflow || result > self.registers[REG_HP] {
@@ -73,7 +71,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> bool {
+    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> bool {
         let bc = b.saturating_add(c as RegisterId);
 
         if bc >= VM_MAX_RAM as RegisterId {
@@ -87,7 +85,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
+    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
         // C is expressed in words; mul by 8
         let (bc, overflow) = b.overflowing_add(c * 8);
         let (bcw, of) = bc.overflowing_add(8);
@@ -108,7 +106,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn store_byte(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> bool {
         let (ac, overflow) = a.overflowing_add(c);
 
         if overflow || ac >= VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
@@ -120,7 +118,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn store_word(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> bool {
         // C is expressed in words; mul by 8
         let (ac, overflow) = a.overflowing_add(c * 8);
         let (acw, of) = ac.overflowing_add(8);
@@ -137,7 +135,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn malloc(&mut self, a: Word) -> bool {
+    pub(crate) fn malloc(&mut self, a: Word) -> bool {
         let (result, overflow) = self.registers[REG_HP].overflowing_sub(a);
 
         if overflow || result < self.registers[REG_SP] {
@@ -148,7 +146,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn memclear(&mut self, a: Word, b: Word) -> bool {
+    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> bool {
         let (ab, overflow) = a.overflowing_add(b);
 
         let range = MemoryRange::new(a, b);
@@ -163,7 +161,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn memcopy(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> bool {
         let (ac, overflow) = a.overflowing_add(c);
         let (bc, of) = b.overflowing_add(c);
         let overflow = overflow || of;
@@ -192,7 +190,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> bool {
+    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> bool {
         let (bd, overflow) = b.overflowing_add(d);
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
@@ -204,5 +202,101 @@ impl<S> Interpreter<S> {
 
             true
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::consts::*;
+    use crate::prelude::*;
+
+    #[test]
+    fn memcopy() {
+        let storage = MemoryStorage::default();
+        let mut vm = Interpreter::with_storage(storage);
+        vm.init(Transaction::default()).expect("Failed to init VM");
+
+        let alloc = 1024;
+
+        // r[0x10] := 1024
+        vm.execute(Opcode::ADDI(0x10, REG_ZERO, alloc)).unwrap();
+        vm.execute(Opcode::ALOC(0x10)).unwrap();
+
+        // r[0x20] := 128
+        vm.execute(Opcode::ADDI(0x20, 0x20, 128)).unwrap();
+
+        for i in 0..alloc {
+            vm.execute(Opcode::ADDI(0x21, REG_ZERO, i)).unwrap();
+            vm.execute(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12)).unwrap();
+        }
+
+        // r[0x23] := m[$hp, 0x20] == m[0x12, 0x20]
+        vm.execute(Opcode::MEQ(0x23, REG_HP, 0x12, 0x20)).unwrap();
+        assert_eq!(0, vm.registers()[0x23]);
+
+        // r[0x12] := $hp + r[0x20]
+        vm.execute(Opcode::ADD(0x12, REG_HP, 0x20)).unwrap();
+        vm.execute(Opcode::ADD(0x12, REG_ONE, 0x12)).unwrap();
+
+        // Test ownership
+        vm.execute(Opcode::ADD(0x30, REG_HP, REG_ONE)).unwrap();
+        vm.execute(Opcode::MCP(0x30, 0x12, 0x20)).unwrap();
+
+        // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
+        vm.execute(Opcode::MEQ(0x23, 0x30, 0x12, 0x20)).unwrap();
+        assert_eq!(1, vm.registers()[0x23]);
+
+        // Assert ownership
+        vm.execute(Opcode::SUBI(0x24, REG_HP, 1)).unwrap();
+        let ownership_violated = vm.execute(Opcode::MCP(0x24, 0x12, 0x20));
+        assert!(ownership_violated.is_err());
+
+        // Assert no panic on overlapping
+        vm.execute(Opcode::SUBI(0x25, 0x12, 1)).unwrap();
+        let overlapping = vm.execute(Opcode::MCP(REG_HP, 0x25, 0x20));
+        assert!(overlapping.is_err());
+    }
+
+    #[test]
+    fn memrange() {
+        let m = MemoryRange::from(..1024);
+        let m_p = MemoryRange::new(0, 1024);
+        assert_eq!(m, m_p);
+
+        let storage = MemoryStorage::default();
+        let mut vm = Interpreter::with_storage(storage);
+        vm.init(Transaction::default()).expect("Failed to init VM");
+
+        let bytes = 1024;
+        vm.execute(Opcode::ADDI(0x10, REG_ZERO, bytes as Immediate12)).unwrap();
+        vm.execute(Opcode::ALOC(0x10)).unwrap();
+
+        let m = MemoryRange::new(vm.registers()[REG_HP], bytes);
+        assert!(!vm.has_ownership_range(&m));
+
+        let m = MemoryRange::new(vm.registers()[REG_HP] + 1, bytes);
+        assert!(vm.has_ownership_range(&m));
+
+        let m = MemoryRange::new(vm.registers()[REG_HP] + 1, bytes + 1);
+        assert!(!vm.has_ownership_range(&m));
+
+        let m = MemoryRange::new(0, bytes).to_heap(&vm);
+        assert!(vm.has_ownership_range(&m));
+
+        let m = MemoryRange::new(0, bytes + 1).to_heap(&vm);
+        assert!(!vm.has_ownership_range(&m));
+    }
+
+    #[test]
+    fn stack_alloc_ownership() {
+        let storage = MemoryStorage::default();
+        let mut vm = Interpreter::with_storage(storage);
+        vm.init(Transaction::default()).expect("Failed to init VM");
+
+        vm.execute(Opcode::MOVE(0x10, REG_SP)).unwrap();
+        vm.execute(Opcode::CFEI(2)).unwrap();
+
+        // Assert allocated stack is writable
+        vm.execute(Opcode::MCLI(0x10, 2)).unwrap();
     }
 }

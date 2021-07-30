@@ -46,8 +46,7 @@ fn code_copy() {
         vec![program.clone()],
     );
 
-    vm.init(tx).expect("Failed to init VM with tx create!");
-    vm.run().expect("Failed to deploy contract!");
+    vm.transact(tx).expect("Failed to transact!");
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 2048),
@@ -88,8 +87,7 @@ fn code_copy() {
         _ => unreachable!(),
     }
 
-    vm.init(tx).expect("Failed to init VM with tx create!");
-    vm.run().expect("Failed to execute contract!");
+    vm.transact(tx).expect("Failed to transact!");
 
     assert_eq!(1, vm.registers()[0x30]);
 }
@@ -132,8 +130,7 @@ fn call() {
         vec![program.clone()],
     );
 
-    vm.init(tx).expect("Failed to init VM with tx create!");
-    vm.run().expect("Failed to deploy contract!");
+    vm.transact(tx).expect("Failed to transact!");
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x00),
@@ -168,8 +165,7 @@ fn call() {
         _ => unreachable!(),
     }
 
-    vm.init(tx).expect("Failed to init VM with tx create!");
-    vm.run().expect("Failed to execute contract!");
+    vm.transact(tx).expect("Failed to transact!");
 
     let expected_log = vec![(0x10, 0x11), (0x11, 0x2a), (0x12, 0x3b)];
     expected_log

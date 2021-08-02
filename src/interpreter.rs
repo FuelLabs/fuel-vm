@@ -164,13 +164,13 @@ impl<S> Interpreter<S> {
         matches!(self.context, Context::Predicate)
     }
 
-    #[allow(dead_code)]
-    pub(crate) const fn is_unsafe_math(&self) -> bool {
+    // TODO convert to private scope after using internally
+    pub const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }
 
-    #[allow(dead_code)]
-    pub(crate) const fn is_wrapping(&self) -> bool {
+    // TODO convert to private scope after using internally
+    pub const fn is_wrapping(&self) -> bool {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }
 

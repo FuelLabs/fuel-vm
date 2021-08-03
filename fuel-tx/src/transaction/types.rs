@@ -1,3 +1,5 @@
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use std::array::TryFromSliceError;
 use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
@@ -20,17 +22,6 @@ macro_rules! key {
             pub const fn size_of() -> usize {
                 $s
             }
-
-            pub fn random<R>(rng: &mut R) -> Self
-            where
-                R: rand::RngCore + rand::CryptoRng,
-            {
-                let mut bytes = [0u8; $s];
-
-                rng.fill_bytes(&mut bytes);
-
-                bytes.into()
-            }
         }
 
         impl rand::Fill for $i {
@@ -38,6 +29,12 @@ macro_rules! key {
                 rng.fill_bytes(self.as_mut());
 
                 Ok(())
+            }
+        }
+
+        impl Distribution<$i> for Standard {
+            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
+                $i(rng.gen())
             }
         }
 

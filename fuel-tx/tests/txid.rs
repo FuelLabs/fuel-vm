@@ -1,6 +1,6 @@
 use fuel_tx::*;
 use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng};
 use std::mem;
 use std::ops::Not;
 
@@ -134,56 +134,44 @@ fn id() {
         vec![],
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
-                Color::random(rng),
+                rng.gen(),
                 rng.next_u32().to_be_bytes()[0],
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
-            Input::contract(
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                ContractId::random(rng),
-            ),
+            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         ],
     ];
 
     let outputs = vec![
         vec![],
         vec![
-            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::contract(
-                rng.next_u32().to_be_bytes()[0],
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-            ),
-            Output::withdrawal(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::change(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng)),
-            Output::contract_created(ContractId::random(rng)),
+            Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
+            Output::contract(rng.next_u32().to_be_bytes()[0], rng.gen(), rng.gen()),
+            Output::withdrawal(rng.gen(), rng.next_u64(), rng.gen()),
+            Output::change(rng.gen(), rng.next_u64(), rng.gen()),
+            Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
+            Output::contract_created(rng.gen()),
         ],
     ];
 
-    let witnesses = vec![vec![], vec![Witness::random(rng), Witness::random(rng)]];
+    let witnesses = vec![vec![], vec![rng.gen(), rng.gen()]];
 
     let scripts = vec![
         vec![],
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
     ];
     let script_data = vec![
         vec![],
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
     ];
-    let static_contracts = vec![
-        vec![],
-        vec![ContractId::random(rng), ContractId::random(rng)],
-    ];
+    let static_contracts = vec![vec![], vec![rng.gen(), rng.gen()]];
 
     for inputs in inputs.iter() {
         for outputs in outputs.iter() {
@@ -221,7 +209,7 @@ fn id() {
                         rng.next_u64(),
                         rng.next_u64(),
                         rng.next_u32().to_be_bytes()[0],
-                        Salt::random(rng),
+                        rng.gen(),
                         static_contracts.clone(),
                         inputs.clone(),
                         outputs.clone(),

@@ -43,7 +43,7 @@ where
 mod tests {
     use crate::prelude::*;
     use rand::rngs::StdRng;
-    use rand::SeedableRng;
+    use rand::{Rng, SeedableRng};
 
     #[test]
     fn external_balance() {
@@ -57,22 +57,11 @@ mod tests {
         let maturity = 0;
 
         let script = vec![Opcode::RET(0x01)].iter().copied().collect();
-        let balances = vec![(Color::random(&mut rng), 100), (Color::random(&mut rng), 500)];
+        let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
         let inputs = balances
             .iter()
-            .map(|(color, amount)| {
-                Input::coin(
-                    Bytes32::random(&mut rng),
-                    Address::random(&mut rng),
-                    *amount,
-                    *color,
-                    0,
-                    maturity,
-                    vec![],
-                    vec![],
-                )
-            })
+            .map(|(color, amount)| Input::coin(rng.gen(), rng.gen(), *amount, *color, 0, maturity, vec![], vec![]))
             .collect();
 
         let tx = Transaction::script(

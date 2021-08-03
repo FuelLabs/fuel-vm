@@ -140,13 +140,7 @@ mod tests {
     use crate::consts::*;
     use crate::prelude::*;
     use rand::rngs::StdRng;
-    use rand::SeedableRng;
-
-    macro_rules! rnd {
-        ($r:expr, $i:ident) => {
-            $i::random($r)
-        };
-    }
+    use rand::{Rng, SeedableRng};
 
     #[test]
     fn mint_burn() {
@@ -161,7 +155,7 @@ mod tests {
         let gas_limit = 1_000_000;
         let maturity = 0;
 
-        let salt = rnd!(rng, Salt);
+        let salt: Salt = rng.gen();
         let program: Witness = [
             Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
             Opcode::LW(0x10, 0x10, 0),
@@ -197,8 +191,8 @@ mod tests {
 
         vm.transact(tx).expect("Failed to transact");
 
-        let input = Input::contract(rnd!(rng, Bytes32), rnd!(rng, Bytes32), rnd!(rng, Bytes32), contract);
-        let output = Output::contract(0, rnd!(rng, Bytes32), rnd!(rng, Bytes32));
+        let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+        let output = Output::contract(0, rng.gen(), rng.gen());
 
         let mut script_ops = vec![
             Opcode::ADDI(0x10, REG_ZERO, 0),

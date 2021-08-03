@@ -11,7 +11,7 @@ impl<S> Interpreter<S> {
         self.debugger.remove_breakpoint(breakpoint)
     }
 
-    pub fn eval_debugger_state(&mut self) -> DebugEval {
+    pub(crate) fn eval_debugger_state(&mut self) -> DebugEval {
         let debugger = &mut self.debugger;
 
         let contract = self.frames.last().map(CallFrame::to);
@@ -20,11 +20,11 @@ impl<S> Interpreter<S> {
         debugger.eval_state(contract, pc)
     }
 
-    pub fn debugger_set_last_state(&mut self, state: ProgramState) {
+    pub(crate) fn debugger_set_last_state(&mut self, state: ProgramState) {
         self.debugger.set_last_state(state)
     }
 
-    pub const fn debugger_last_state(&self) -> &Option<ProgramState> {
+    pub(crate) const fn debugger_last_state(&self) -> &Option<ProgramState> {
         self.debugger.last_state()
     }
 }

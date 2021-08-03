@@ -25,7 +25,7 @@ mod debug;
 
 pub use contract::Contract;
 pub use error::ExecuteError;
-pub use executors::ProgramState;
+pub use executors::{ProgramState, StateTransition, StateTransitionRef};
 pub use frame::{Call, CallFrame};
 pub use gas::GasUnit;
 pub use log::LogEvent;
@@ -94,7 +94,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
         if overflow || !self.is_external_context() && ssp > self.registers[REG_FP] {
@@ -115,28 +115,24 @@ impl<S> Interpreter<S> {
                                                                    // pairs
     }
 
-    pub const fn block_height(&self) -> u32 {
+    pub(crate) const fn block_height(&self) -> u32 {
         // TODO fetch block height
         u32::MAX >> 1
     }
 
-    pub const fn gas_price(&self) -> Word {
-        self.tx.gas_price()
-    }
-
-    pub fn set_flag(&mut self, a: Word) {
+    pub(crate) fn set_flag(&mut self, a: Word) {
         self.registers[REG_FLAG] = a;
     }
 
-    pub fn clear_err(&mut self) {
+    pub(crate) fn clear_err(&mut self) {
         self.registers[REG_ERR] = 0;
     }
 
-    pub fn set_err(&mut self) {
+    pub(crate) fn set_err(&mut self) {
         self.registers[REG_ERR] = 1;
     }
 
-    pub fn inc_pc(&mut self) -> bool {
+    pub(crate) fn inc_pc(&mut self) -> bool {
         let (result, overflow) = self.registers[REG_PC].overflowing_add(4);
 
         self.registers[REG_PC] = result;
@@ -152,7 +148,7 @@ impl<S> Interpreter<S> {
         &self.registers
     }
 
-    pub const fn context(&self) -> Context {
+    pub(crate) const fn context(&self) -> Context {
         if self.registers[REG_FP] == 0 {
             self.context
         } else {
@@ -160,35 +156,37 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub const fn is_external_context(&self) -> bool {
+    pub(crate) const fn is_external_context(&self) -> bool {
         self.context().is_external()
     }
 
-    pub const fn is_predicate(&self) -> bool {
+    pub(crate) const fn is_predicate(&self) -> bool {
         matches!(self.context, Context::Predicate)
     }
 
+    // TODO convert to private scope after using internally
     pub const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }
 
+    // TODO convert to private scope after using internally
     pub const fn is_wrapping(&self) -> bool {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }
 
-    pub const fn is_valid_register_alu(ra: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_alu(ra: RegisterId) -> bool {
         ra > REG_FLAG && ra < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_couple_alu(ra: RegisterId, rb: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_couple_alu(ra: RegisterId, rb: RegisterId) -> bool {
         ra > REG_FLAG && ra < VM_REGISTER_COUNT && rb < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_triple_alu(ra: RegisterId, rb: RegisterId, rc: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_triple_alu(ra: RegisterId, rb: RegisterId, rc: RegisterId) -> bool {
         ra > REG_FLAG && ra < VM_REGISTER_COUNT && rb < VM_REGISTER_COUNT && rc < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_quadruple_alu(
+    pub(crate) const fn is_valid_register_quadruple_alu(
         ra: RegisterId,
         rb: RegisterId,
         rc: RegisterId,
@@ -201,23 +199,32 @@ impl<S> Interpreter<S> {
             && rd < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_quadruple(ra: RegisterId, rb: RegisterId, rc: RegisterId, rd: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_quadruple(
+        ra: RegisterId,
+        rb: RegisterId,
+        rc: RegisterId,
+        rd: RegisterId,
+    ) -> bool {
         ra < VM_REGISTER_COUNT && rb < VM_REGISTER_COUNT && rc < VM_REGISTER_COUNT && rd < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_triple(ra: RegisterId, rb: RegisterId, rc: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_triple(ra: RegisterId, rb: RegisterId, rc: RegisterId) -> bool {
         ra < VM_REGISTER_COUNT && rb < VM_REGISTER_COUNT && rc < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register_couple(ra: RegisterId, rb: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register_couple(ra: RegisterId, rb: RegisterId) -> bool {
         ra < VM_REGISTER_COUNT && rb < VM_REGISTER_COUNT
     }
 
-    pub const fn is_valid_register(ra: RegisterId) -> bool {
+    pub(crate) const fn is_valid_register(ra: RegisterId) -> bool {
         ra < VM_REGISTER_COUNT
     }
 
-    pub fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
+    pub(crate) const fn transaction(&self) -> &Transaction {
+        &self.tx
+    }
+
+    pub(crate) fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
         if self.is_external_context() {
             return Err(ExecuteError::ExpectedInternalContext);
         }
@@ -227,5 +234,15 @@ impl<S> Interpreter<S> {
         let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
 
         Ok(contract)
+    }
+
+    pub fn log(&self) -> &[LogEvent] {
+        self.log.as_slice()
+    }
+}
+
+impl<S> From<Interpreter<S>> for Transaction {
+    fn from(vm: Interpreter<S>) -> Self {
+        vm.tx
     }
 }

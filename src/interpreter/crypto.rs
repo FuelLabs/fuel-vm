@@ -6,7 +6,7 @@ use fuel_asm::Word;
 use fuel_tx::crypto as tx_crypto;
 
 impl<S> Interpreter<S> {
-    pub fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> bool {
         let (ax, overflow) = a.overflowing_add(64);
         let (bx, of) = b.overflowing_add(64);
         let overflow = overflow || of;
@@ -34,7 +34,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn keccak256(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> bool {
         use sha3::{Digest, Keccak256};
 
         let (ax, overflow) = a.overflowing_add(32);
@@ -59,7 +59,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub fn sha256(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> bool {
         let (ax, overflow) = a.overflowing_add(32);
         let (bc, of) = b.overflowing_add(c);
         let overflow = overflow || of;

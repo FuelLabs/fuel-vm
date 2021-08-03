@@ -10,6 +10,12 @@ use std::str::FromStr;
 fn ecrecover() {
     use secp256k1::{PublicKey, Secp256k1, SecretKey};
 
+    let storage = MemoryStorage::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+
     let secp = Secp256k1::new();
     let secret = SecretKey::from_str("3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c").unwrap();
     let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
@@ -20,203 +26,228 @@ fn ecrecover() {
     let sig =
         crypto::secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
-    vm.init(Transaction::default()).expect("Failed to init VM");
+    let alloc = e.len() + sig.len() + public.len() + public.len(); // Computed public key
 
-    // r[0x10] := 256
-    vm.execute(Opcode::ADDI(0x10, 0x10, 288)).unwrap();
-    vm.execute(Opcode::ALOC(0x10)).unwrap();
+    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc as Immediate12), Opcode::ALOC(0x20)];
 
-    // r[0x12] := r[hp]
-    vm.execute(Opcode::MOVE(0x12, 0x07)).unwrap();
-
-    // m[hp + 1..hp + |e| + |sig| + |public| + 1] <- e + sig + public
     e.iter()
         .chain(sig.iter())
         .chain(public.iter())
         .enumerate()
         .for_each(|(i, b)| {
-            vm.execute(Opcode::ADDI(0x11, 0x13, (*b) as Immediate12)).unwrap();
-            vm.execute(Opcode::SB(0x12, 0x11, (i + 1) as Immediate12)).unwrap();
+            script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+            script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
         });
 
-    // Set e address to 0x11
-    // r[0x11] := r[hp] + 1
-    vm.execute(Opcode::ADDI(0x11, 0x12, 1)).unwrap();
+    // Set `e` address to 0x30
+    script.push(Opcode::ADDI(0x30, REG_HP, 1));
 
-    // Set sig address to 0x14
-    // r[0x14] := r[0x11] + |e|
-    vm.execute(Opcode::ADDI(0x14, 0x11, e.len() as Immediate12)).unwrap();
+    // Set `sig` address to 0x31
+    script.push(Opcode::ADDI(0x31, 0x30, e.len() as Immediate12));
 
-    // Set public key address to 0x15
-    // r[0x15] := r[0x14] + |sig|
-    vm.execute(Opcode::ADDI(0x15, 0x14, sig.len() as Immediate12)).unwrap();
+    // Set `public` address to 0x32
+    script.push(Opcode::ADDI(0x32, 0x31, sig.len() as Immediate12));
 
-    // Set calculated public key address to 0x16
-    // r[0x16] := r[0x15] + |public|
-    vm.execute(Opcode::ADDI(0x16, 0x15, public.len() as Immediate12))
-        .unwrap();
+    // Set computed public key address to 0x33
+    script.push(Opcode::ADDI(0x33, 0x32, public.len() as Immediate12));
+
+    // Set public key length to 0x34
+    script.push(Opcode::ADDI(0x34, REG_ZERO, public.len() as Immediate12));
 
     // Compute the ECRECOVER
-    vm.execute(Opcode::ECR(0x16, 0x14, 0x11)).unwrap();
-
-    // r[0x18] := |recover|
-    // r[0x17] := m[public key] == m[recovered public key]
-    vm.execute(Opcode::ADDI(0x18, 0x18, public.len() as Immediate12))
-        .unwrap();
-    vm.execute(Opcode::MEQ(0x17, 0x15, 0x16, 0x18)).unwrap();
-    assert_eq!(0x01, vm.registers()[0x17]);
+    // m[computed public key] := ecrecover(sig, e)
+    // r[0x10] := m[public] == m[computed public key]
+    script.push(Opcode::ECR(0x33, 0x31, 0x30));
+    script.push(Opcode::MEQ(0x10, 0x32, 0x33, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
     // Corrupt the signature
-    // r[0x19] := 0xff
-    // m[sig] := r[0x19]
-    vm.execute(Opcode::ADDI(0x19, 0x19, 0xff)).unwrap();
-    vm.execute(Opcode::SB(0x14, 0x19, 0)).unwrap();
+    // m[sig][0] := !m[sig][0]
+    script.push(Opcode::LB(0x10, 0x30, 0));
+    script.push(Opcode::NOT(0x10, 0x10));
+    script.push(Opcode::SB(0x30, 0x10, 0));
 
-    // Set calculated corrupt public key address to 0x1a
-    // r[0x1a] := r[0x16] + |public|
-    vm.execute(Opcode::ADDI(0x1a, 0x16, public.len() as Immediate12))
-        .unwrap();
+    // Compute the corrupted ECRECOVER
+    // m[computed public key] := ecrecover(sig', e)
+    // r[0x10] := m[public] == m[computed public key]
+    script.push(Opcode::ECR(0x33, 0x31, 0x30));
+    script.push(Opcode::MEQ(0x10, 0x32, 0x33, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
-    // Compute the ECRECOVER with a corrupted signature
-    vm.execute(Opcode::ECR(0x1a, 0x14, 0x11)).unwrap();
+    script.push(Opcode::RET(REG_ONE));
 
-    // r[0x17] := m[public key] == m[recovered public key]
-    // r[0x17] must be false
-    vm.execute(Opcode::MEQ(0x17, 0x15, 0x1a, 0x18)).unwrap();
-    assert_eq!(0x00, vm.registers()[0x17]);
-    assert_eq!(1, vm.registers()[REG_ERR]);
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script.into_iter().collect(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+
+    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
+    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
 }
 
 #[test]
 fn sha256() {
+    let storage = MemoryStorage::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+
     let message = b"I say let the world go to hell, but I should always have my tea.";
+    let length = message.len() as Immediate12;
     let hash = tx_crypto::hash(message);
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
-    vm.init(Transaction::default()).expect("Failed to init VM");
+    let alloc = length  // message
+        + 32 // reference hash
+        + 32; // computed hash
 
-    // r[0x10] := 128
-    vm.execute(Opcode::ADDI(0x10, 0x10, 128)).unwrap();
-    vm.execute(Opcode::ALOC(0x10)).unwrap();
+    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc), Opcode::ALOC(0x20)];
 
-    // r[0x12] := r[hp]
-    vm.execute(Opcode::MOVE(0x12, 0x07)).unwrap();
-
-    // m[hp + 1..hp + |message| + |hash| + 1] <- message + hash
     message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        vm.execute(Opcode::ADDI(0x11, 0x13, (*b) as Immediate12)).unwrap();
-        vm.execute(Opcode::SB(0x12, 0x11, (i + 1) as Immediate12)).unwrap();
+        script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
     });
 
-    // Set message address to 0x11
-    // r[0x11] := r[hp] + 1
-    vm.execute(Opcode::ADDI(0x11, 0x12, 1)).unwrap();
+    // Set message address to 0x30
+    script.push(Opcode::ADDI(0x30, REG_HP, 1));
 
-    // Set hash address to 0x14
-    // r[0x14] := r[0x11] + |message|
-    vm.execute(Opcode::ADDI(0x14, 0x11, message.len() as Immediate12))
-        .unwrap();
+    // Set hash address to 0x31
+    script.push(Opcode::ADDI(0x31, 0x30, length));
 
-    // Set calculated hash address to 0x15
-    // r[0x15] := r[0x14] + |hash|
-    vm.execute(Opcode::ADDI(0x15, 0x14, hash.len() as Immediate12)).unwrap();
+    // Set computed hash address to 0x32
+    script.push(Opcode::ADDI(0x32, 0x31, 32));
 
-    // Set hash size
-    // r[0x16] := |message|
-    vm.execute(Opcode::ADDI(0x16, 0x16, message.len() as Immediate12))
-        .unwrap();
+    // Set message length to 0x33
+    script.push(Opcode::ADDI(0x33, REG_ZERO, length));
 
-    // Compute the SHA256
-    vm.execute(Opcode::S256(0x15, 0x11, 0x16)).unwrap();
+    // Set hash length to 0x34
+    script.push(Opcode::ADDI(0x34, REG_ZERO, 32));
 
-    // r[0x18] := |hash|
-    // r[0x17] := m[hash] == m[computed hash]
-    vm.execute(Opcode::ADDI(0x18, 0x18, hash.len() as Immediate12)).unwrap();
-    vm.execute(Opcode::MEQ(0x17, 0x14, 0x15, 0x18)).unwrap();
-    assert_eq!(0x01, vm.registers()[0x17]);
+    // Compute the Keccak256
+    // m[computed hash] := keccack256(m[message, length])
+    // r[0x10] := m[hash] == m[computed hash]
+    script.push(Opcode::S256(0x32, 0x30, 0x33));
+    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
     // Corrupt the message
-    // r[0x19] := 0xff
-    // m[message] := r[0x19]
-    vm.execute(Opcode::ADDI(0x19, 0x19, 0xff)).unwrap();
-    vm.execute(Opcode::SB(0x11, 0x19, 0)).unwrap();
+    // m[message][0] := !m[message][0]
+    script.push(Opcode::LB(0x10, 0x30, 0));
+    script.push(Opcode::NOT(0x10, 0x10));
+    script.push(Opcode::SB(0x30, 0x10, 0));
 
-    // Compute the SHA256 of the corrupted message
-    vm.execute(Opcode::S256(0x15, 0x11, 0x16)).unwrap();
+    // Compute the Keccak256
+    // m[computed hash] := keccack256(m[message, length])
+    // r[0x10] := m[hash] == m[computed hash]
+    script.push(Opcode::K256(0x32, 0x30, 0x33));
+    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
-    // r[0x17] := m[hash] == m[computed hash]
-    // r[0x17] must be false
-    vm.execute(Opcode::MEQ(0x17, 0x14, 0x15, 0x18)).unwrap();
-    assert_eq!(0x00, vm.registers()[0x17]);
+    script.push(Opcode::RET(REG_ONE));
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script.into_iter().collect(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+
+    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
+    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
 }
 
 #[test]
 fn keccak256() {
     use sha3::{Digest, Keccak256};
 
+    let storage = MemoryStorage::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
+    let length = message.len() as Immediate12;
+
     let mut hasher = Keccak256::new();
     hasher.update(message);
     let hash = hasher.finalize();
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
-    vm.init(Transaction::default()).expect("Failed to init VM");
+    let alloc = length  // message
+        + 32 // reference hash
+        + 32; // computed hash
 
-    // r[0x10] := 162
-    vm.execute(Opcode::ADDI(0x10, 0x10, 162)).unwrap();
-    vm.execute(Opcode::ALOC(0x10)).unwrap();
+    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc), Opcode::ALOC(0x20)];
 
-    // r[0x12] := r[hp]
-    vm.execute(Opcode::MOVE(0x12, 0x07)).unwrap();
-
-    // m[hp + 1..hp + |message| + |hash| + 1] <- message + hash
     message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        vm.execute(Opcode::ADDI(0x11, 0x13, (*b) as Immediate12)).unwrap();
-        vm.execute(Opcode::SB(0x12, 0x11, (i + 1) as Immediate12)).unwrap();
+        script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
     });
 
-    // Set message address to 0x11
-    // r[0x11] := r[hp] + 1
-    vm.execute(Opcode::ADDI(0x11, 0x12, 1)).unwrap();
+    // Set message address to 0x30
+    script.push(Opcode::ADDI(0x30, REG_HP, 1));
 
-    // Set hash address to 0x14
-    // r[0x14] := r[0x11] + |message|
-    vm.execute(Opcode::ADDI(0x14, 0x11, message.len() as Immediate12))
-        .unwrap();
+    // Set hash address to 0x31
+    script.push(Opcode::ADDI(0x31, 0x30, length));
 
-    // Set calculated hash address to 0x15
-    // r[0x15] := r[0x14] + |hash|
-    vm.execute(Opcode::ADDI(0x15, 0x14, hash.len() as Immediate12)).unwrap();
+    // Set computed hash address to 0x32
+    script.push(Opcode::ADDI(0x32, 0x31, 32));
 
-    // Set hash size
-    // r[0x16] := |message|
-    vm.execute(Opcode::ADDI(0x16, 0x16, message.len() as Immediate12))
-        .unwrap();
+    // Set message length to 0x33
+    script.push(Opcode::ADDI(0x33, REG_ZERO, length));
+
+    // Set hash length to 0x34
+    script.push(Opcode::ADDI(0x34, REG_ZERO, 32));
 
     // Compute the Keccak256
-    vm.execute(Opcode::K256(0x15, 0x11, 0x16)).unwrap();
-
-    // r[0x18] := |hash|
-    // r[0x17] := m[hash] == m[computed hash]
-    vm.execute(Opcode::ADDI(0x18, 0x18, hash.len() as Immediate12)).unwrap();
-    vm.execute(Opcode::MEQ(0x17, 0x14, 0x15, 0x18)).unwrap();
-    assert_eq!(0x01, vm.registers()[0x17]);
+    // m[computed hash] := keccack256(m[message, length])
+    // r[0x10] := m[hash] == m[computed hash]
+    script.push(Opcode::K256(0x32, 0x30, 0x33));
+    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
     // Corrupt the message
-    // r[0x19] := 0xff
-    // m[message] := r[0x19]
-    vm.execute(Opcode::ADDI(0x19, 0x19, 0xff)).unwrap();
-    vm.execute(Opcode::SB(0x11, 0x19, 0)).unwrap();
+    // m[message][0] := !m[message][0]
+    script.push(Opcode::LB(0x10, 0x30, 0));
+    script.push(Opcode::NOT(0x10, 0x10));
+    script.push(Opcode::SB(0x30, 0x10, 0));
 
-    // Compute the Keccak256 of the corrupted message
-    vm.execute(Opcode::K256(0x15, 0x11, 0x16)).unwrap();
+    // Compute the Keccak256
+    // m[computed hash] := keccack256(m[message, length])
+    // r[0x10] := m[hash] == m[computed hash]
+    script.push(Opcode::K256(0x32, 0x30, 0x33));
+    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
+    script.push(Opcode::LOG(0x10, 0, 0, 0));
 
-    // r[0x17] := m[hash] == m[computed hash]
-    // r[0x17] must be false
-    vm.execute(Opcode::MEQ(0x17, 0x14, 0x15, 0x18)).unwrap();
-    assert_eq!(0x00, vm.registers()[0x17]);
+    script.push(Opcode::RET(REG_ONE));
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script.into_iter().collect(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+
+    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
+    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
 }

@@ -58,7 +58,7 @@ impl<S> Interpreter<S> {
     ///
     /// The checks are intentionally not performed so the gas cost can be as
     /// optimal as possible
-    pub const fn gas_cost(&self, op: &Opcode) -> Word {
+    pub(crate) const fn gas_cost(&self, op: &Opcode) -> Word {
         use Opcode::*;
 
         match op {
@@ -121,7 +121,7 @@ impl<S> Interpreter<S> {
 
     // TODO enable const flag
     // https://github.com/rust-lang/rust/issues/57349
-    pub fn gas_charge(&mut self, op: &Opcode) -> Result<(), ExecuteError> {
+    pub(crate) fn gas_charge(&mut self, op: &Opcode) -> Result<(), ExecuteError> {
         let cost = !self.is_predicate() as Word * self.gas_cost(op);
 
         if cost > self.registers[REG_CGAS] {

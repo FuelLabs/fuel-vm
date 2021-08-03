@@ -4,7 +4,7 @@ use crate::consts::*;
 use fuel_asm::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
-    pub fn alu_overflow<B, C>(&mut self, ra: RegisterId, f: fn(B, C) -> (Word, bool), b: B, c: C) {
+    pub(crate) fn alu_overflow<B, C>(&mut self, ra: RegisterId, f: fn(B, C) -> (Word, bool), b: B, c: C) {
         let (result, overflow) = f(b, c);
 
         // TODO If the F_UNSAFEMATH flag is unset, an operation that would have set $err
@@ -21,7 +21,7 @@ impl<S> Interpreter<S> {
         self.inc_pc();
     }
 
-    pub fn alu_error<B, C>(&mut self, ra: RegisterId, f: fn(B, C) -> Word, b: B, c: C, err: bool) {
+    pub(crate) fn alu_error<B, C>(&mut self, ra: RegisterId, f: fn(B, C) -> Word, b: B, c: C, err: bool) {
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = err as Word;
 
@@ -30,7 +30,7 @@ impl<S> Interpreter<S> {
         self.inc_pc();
     }
 
-    pub fn alu_set(&mut self, ra: RegisterId, b: Word) {
+    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) {
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = 0;
 
@@ -39,7 +39,7 @@ impl<S> Interpreter<S> {
         self.inc_pc();
     }
 
-    pub fn alu_clear(&mut self) {
+    pub(crate) fn alu_clear(&mut self) {
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = 0;
 

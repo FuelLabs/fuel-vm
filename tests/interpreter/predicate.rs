@@ -74,8 +74,7 @@ fn predicate() {
         _ => panic!("Inconsistent transaction!"),
     }
 
-    vm.init(tx).expect("Failed to initialize VM");
-    vm.run().expect("Failed to execute predicate");
+    vm.transact(tx).expect("Failed to transact!");
 }
 
 #[test]
@@ -149,6 +148,5 @@ fn predicate_false() {
         _ => panic!("Inconsistent transaction!"),
     }
 
-    vm.init(tx).expect("Failed to initialize VM");
-    assert!(vm.run().is_err());
+    assert!(vm.transact(tx).is_err());
 }

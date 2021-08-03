@@ -24,8 +24,6 @@ fn breakpoint_script() {
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
 
-    vm.init(tx).expect("Failed to init VM!");
-
     let suite = vec![
         (
             Breakpoint::script(0),
@@ -46,7 +44,11 @@ fn breakpoint_script() {
     ];
 
     suite.iter().for_each(|(b, _)| vm.set_breakpoint(*b));
-    let state = vm.run().expect("Failed to execute script!");
+
+    let state = vm
+        .transact(tx)
+        .map(ProgramState::from)
+        .expect("Failed to execute script!");
 
     suite.into_iter().fold(state, |state, (breakpoint, registers)| {
         let debug = state.debug_ref().expect("Expected breakpoint");

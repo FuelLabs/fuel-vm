@@ -21,11 +21,7 @@ pub enum LogEvent {
 }
 
 impl<S> Interpreter<S> {
-    pub fn log(&self) -> &[LogEvent] {
-        self.log.as_slice()
-    }
-
-    pub fn log_append(&mut self, reg: &[RegisterId]) -> bool {
+    pub(crate) fn log_append(&mut self, reg: &[RegisterId]) -> bool {
         let pc = self.registers[REG_PC];
         let registers = &self.registers;
         let log = &mut self.log;
@@ -48,7 +44,7 @@ impl<S> Interpreter<S> {
         true
     }
 
-    pub fn log_return(&mut self, register: RegisterId) -> bool {
+    pub(crate) fn log_return(&mut self, register: RegisterId) -> bool {
         match self.registers.get(register as usize).copied() {
             Some(value) => {
                 self.log.push(LogEvent::Return { register, value });

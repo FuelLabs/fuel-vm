@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 /// Sign a given message and compress the `v` to the signature
 ///
 /// The compression scheme is described in
-/// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography
+/// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
 pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Result<[u8; 64], Secp256k1Error> {
     let secret = SecretKey::from_slice(secret)?;
     let message = Message::from_slice(message)?;

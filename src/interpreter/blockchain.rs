@@ -11,14 +11,14 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
+    pub(crate) fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract()
             .map(|contract| (contract, (*contract).into()))
             .and_then(|(contract, color)| self.balance_sub(contract, color, a))
             .map(|_| self.inc_pc())
     }
 
-    pub fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
+    pub(crate) fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract()
             .map(|contract| (contract, (*contract).into()))
             .and_then(|(contract, color)| self.balance_add(contract, color, a))
@@ -26,7 +26,7 @@ where
     }
 
     // TODO add CCP tests
-    pub fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {
+    pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {
         let (ad, overflow) = a.overflowing_add(d);
         let (bx, of) = b.overflowing_add(ContractId::size_of() as Word);
         let overflow = overflow || of;

@@ -1,6 +1,8 @@
 use crate::bytes;
 use fuel_asm::Word;
 
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use std::{io, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -22,18 +24,6 @@ impl Witness {
 
     pub fn into_inner(self) -> Vec<u8> {
         self.data
-    }
-
-    pub fn random<R>(rng: &mut R) -> Self
-    where
-        R: rand::RngCore + rand::CryptoRng,
-    {
-        let size = rng.next_u32() & 0x3f;
-        let mut data = vec![0u8; size as usize];
-
-        rng.fill_bytes(data.as_mut());
-
-        data.into()
     }
 }
 
@@ -64,6 +54,17 @@ impl AsMut<[u8]> for Witness {
 impl Extend<u8> for Witness {
     fn extend<T: IntoIterator<Item = u8>>(&mut self, iter: T) {
         self.data.extend(iter);
+    }
+}
+
+impl Distribution<Witness> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Witness {
+        let len = rng.gen_range(0..512);
+
+        let mut data = vec![0u8; len];
+        rng.fill_bytes(data.as_mut_slice());
+
+        data.into()
     }
 }
 

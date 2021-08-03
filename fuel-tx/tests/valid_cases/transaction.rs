@@ -1,7 +1,7 @@
 use fuel_tx::consts::*;
 use fuel_tx::*;
 use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng};
 
 #[test]
 fn gas_price() {
@@ -15,8 +15,8 @@ fn gas_price() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![],
         vec![],
         vec![],
@@ -29,7 +29,7 @@ fn gas_price() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![],
         vec![],
@@ -42,8 +42,8 @@ fn gas_price() {
         MAX_GAS_PER_TX + 1,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![],
         vec![],
         vec![],
@@ -58,11 +58,11 @@ fn gas_price() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![],
         vec![],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -95,11 +95,11 @@ fn maturity() {
         rng.next_u64(),
         1000,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![],
         vec![],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .unwrap();
@@ -124,11 +124,11 @@ fn maturity() {
         rng.next_u64(),
         1001,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![],
         vec![],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -148,14 +148,14 @@ fn max_iow() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
-                Color::random(rng),
+                rng.gen(),
                 0,
                 rng.next_u64(),
                 vec![],
@@ -163,11 +163,8 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![
-            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
-            MAX_OUTPUTS as usize
-        ],
-        vec![Witness::random(rng); MAX_WITNESSES as usize],
+        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen()); MAX_OUTPUTS as usize],
+        vec![rng.gen(); MAX_WITNESSES as usize],
     )
     .validate(block_height)
     .unwrap();
@@ -177,14 +174,14 @@ fn max_iow() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
-                Color::random(rng),
+                rng.gen(),
                 0,
                 rng.next_u64(),
                 vec![],
@@ -192,11 +189,8 @@ fn max_iow() {
             );
             MAX_INPUTS as usize
         ],
-        vec![
-            Output::coin(Address::random(rng), rng.next_u64(), Color::random(rng));
-            MAX_OUTPUTS as usize
-        ],
-        vec![Witness::random(rng); MAX_WITNESSES as usize],
+        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen()); MAX_OUTPUTS as usize],
+        vec![rng.gen(); MAX_WITNESSES as usize],
     )
     .validate(block_height)
     .unwrap();
@@ -205,22 +199,11 @@ fn max_iow() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
-        vec![
-            Input::contract(
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                ContractId::random(rng)
-            );
-            MAX_INPUTS as usize + 1
-        ],
-        vec![
-            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
-            MAX_OUTPUTS as usize
-        ],
-        vec![Witness::random(rng); MAX_WITNESSES as usize],
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()); MAX_INPUTS as usize + 1],
+        vec![Output::variable(rng.gen(), rng.next_u64(), rng.gen()); MAX_OUTPUTS as usize],
+        vec![rng.gen(); MAX_WITNESSES as usize],
     )
     .validate(block_height)
     .err()
@@ -231,22 +214,11 @@ fn max_iow() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
-        vec![
-            Input::contract(
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                ContractId::random(rng)
-            );
-            MAX_INPUTS as usize
-        ],
-        vec![
-            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
-            MAX_OUTPUTS as usize + 1
-        ],
-        vec![Witness::random(rng); MAX_WITNESSES as usize],
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()); MAX_INPUTS as usize],
+        vec![Output::variable(rng.gen(), rng.next_u64(), rng.gen()); MAX_OUTPUTS as usize + 1],
+        vec![rng.gen(); MAX_WITNESSES as usize],
     )
     .validate(block_height)
     .err()
@@ -257,22 +229,11 @@ fn max_iow() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
-        vec![
-            Input::contract(
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                Bytes32::random(rng),
-                ContractId::random(rng)
-            );
-            MAX_INPUTS as usize
-        ],
-        vec![
-            Output::variable(Address::random(rng), rng.next_u64(), Color::random(rng));
-            MAX_OUTPUTS as usize
-        ],
-        vec![Witness::random(rng); MAX_WITNESSES as usize + 1],
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()); MAX_INPUTS as usize],
+        vec![Output::variable(rng.gen(), rng.next_u64(), rng.gen()); MAX_OUTPUTS as usize],
+        vec![rng.gen(); MAX_WITNESSES as usize + 1],
     )
     .validate(block_height)
     .err()
@@ -288,43 +249,43 @@ fn output_change_color() {
     let maturity = 100;
     let block_height = 1000;
 
-    let a = Color::random(rng);
-    let b = Color::random(rng);
-    let c = Color::random(rng);
+    let a = rng.gen();
+    let b = rng.gen();
+    let c = rng.gen();
 
     Transaction::script(
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 a,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 b,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
         ],
         vec![
-            Output::change(Address::random(rng), rng.next_u64(), a),
-            Output::change(Address::random(rng), rng.next_u64(), b),
+            Output::change(rng.gen(), rng.next_u64(), a),
+            Output::change(rng.gen(), rng.next_u64(), b),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .unwrap();
@@ -333,35 +294,35 @@ fn output_change_color() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 a,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 b,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
         ],
         vec![
-            Output::change(Address::random(rng), rng.next_u64(), a),
-            Output::change(Address::random(rng), rng.next_u64(), a),
+            Output::change(rng.gen(), rng.next_u64(), a),
+            Output::change(rng.gen(), rng.next_u64(), a),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -372,35 +333,35 @@ fn output_change_color() {
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
-        Witness::random(rng).into_inner(),
-        Witness::random(rng).into_inner(),
+        rng.gen::<Witness>().into_inner(),
+        rng.gen::<Witness>().into_inner(),
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 a,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 b,
                 0,
                 rng.next_u64(),
-                Witness::random(rng).into_inner(),
-                Witness::random(rng).into_inner(),
+                rng.gen::<Witness>().into_inner(),
+                rng.gen::<Witness>().into_inner(),
             ),
         ],
         vec![
-            Output::change(Address::random(rng), rng.next_u64(), a),
-            Output::change(Address::random(rng), rng.next_u64(), c),
+            Output::change(rng.gen(), rng.next_u64(), a),
+            Output::change(rng.gen(), rng.next_u64(), c),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -416,7 +377,7 @@ fn script() {
     let maturity = 100;
     let block_height = 1000;
 
-    let color = Color::random(rng);
+    let color = rng.gen();
     Transaction::script(
         MAX_GAS_PER_TX,
         rng.next_u64(),
@@ -424,17 +385,17 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             color,
             0,
             rng.next_u64(),
-            Witness::random(rng).into_inner(),
-            Witness::random(rng).into_inner(),
+            rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), color)],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), color)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .unwrap();
@@ -446,17 +407,17 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
-            Color::random(rng),
+            rng.gen(),
             0,
             rng.next_u64(),
-            Witness::random(rng).into_inner(),
-            Witness::random(rng).into_inner(),
+            rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::contract_created(ContractId::random(rng))],
-        vec![Witness::random(rng)],
+        vec![Output::contract_created(rng.gen())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -473,24 +434,24 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize + 1],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
-            Color::random(rng),
+            rng.gen(),
             0,
             rng.next_u64(),
-            Witness::random(rng).into_inner(),
-            Witness::random(rng).into_inner(),
+            rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::contract_created(ContractId::random(rng))],
-        vec![Witness::random(rng)],
+        vec![Output::contract_created(rng.gen())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
     .unwrap();
     assert_eq!(ValidationError::TransactionScriptLength, err);
 
-    let color = Color::random(rng);
+    let color = rng.gen();
     let err = Transaction::script(
         MAX_GAS_PER_TX,
         rng.next_u64(),
@@ -498,17 +459,17 @@ fn script() {
         vec![0xfa; MAX_SCRIPT_LENGTH as usize],
         vec![0xfb; MAX_SCRIPT_DATA_LENGTH as usize + 1],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             color,
             0,
             rng.next_u64(),
-            Witness::random(rng).into_inner(),
-            Witness::random(rng).into_inner(),
+            rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::change(Address::random(rng), rng.next_u64(), color)],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), color)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -529,11 +490,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -541,12 +502,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .unwrap();
@@ -556,20 +513,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
-        vec![Input::contract(
-            Bytes32::random(rng),
-            Bytes32::random(rng),
-            Bytes32::random(rng),
-            ContractId::random(rng),
-        )],
-        vec![Output::contract(
-            0,
-            Bytes32::random(rng),
-            Bytes32::random(rng),
-        )],
-        vec![Witness::random(rng)],
+        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())],
+        vec![Output::contract(0, rng.gen(), rng.gen())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -579,17 +527,17 @@ fn create() {
         err
     );
 
-    let color = Color::random(rng);
+    let color = rng.gen();
     let err = Transaction::create(
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             color,
             0,
@@ -597,12 +545,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::variable(
-            Address::random(rng),
-            rng.next_u64(),
-            color,
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::variable(rng.gen(), rng.next_u64(), color)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -617,12 +561,12 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 Color::default(),
                 0,
@@ -631,10 +575,10 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
-                Color::random(rng),
+                rng.gen(),
                 0,
                 rng.next_u64(),
                 vec![],
@@ -642,10 +586,10 @@ fn create() {
             ),
         ],
         vec![
-            Output::change(Address::random(rng), rng.next_u64(), Color::default()),
-            Output::change(Address::random(rng), rng.next_u64(), Color::default()),
+            Output::change(rng.gen(), rng.next_u64(), Color::default()),
+            Output::change(rng.gen(), rng.next_u64(), Color::default()),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -655,18 +599,18 @@ fn create() {
         err
     );
 
-    let color = Color::random(rng);
+    let color = rng.gen();
     let err = Transaction::create(
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 Color::default(),
                 0,
@@ -675,8 +619,8 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 color,
                 0,
@@ -686,10 +630,10 @@ fn create() {
             ),
         ],
         vec![
-            Output::change(Address::random(rng), rng.next_u64(), Color::default()),
-            Output::change(Address::random(rng), rng.next_u64(), color),
+            Output::change(rng.gen(), rng.next_u64(), Color::default()),
+            Output::change(rng.gen(), rng.next_u64(), color),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -704,12 +648,12 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
                 Color::default(),
                 0,
@@ -718,10 +662,10 @@ fn create() {
                 vec![],
             ),
             Input::coin(
-                Bytes32::random(rng),
-                Address::random(rng),
+                rng.gen(),
+                rng.gen(),
                 rng.next_u64(),
-                Color::random(rng),
+                rng.gen(),
                 0,
                 rng.next_u64(),
                 vec![],
@@ -729,10 +673,10 @@ fn create() {
             ),
         ],
         vec![
-            Output::contract_created(ContractId::random(rng)),
-            Output::contract_created(ContractId::random(rng)),
+            Output::contract_created(rng.gen()),
+            Output::contract_created(rng.gen()),
         ],
-        vec![Witness::random(rng)],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -747,11 +691,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -759,11 +703,7 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
         vec![vec![0xfau8; CONTRACT_MAX_SIZE as usize / 4].into()],
     )
     .validate(block_height)
@@ -774,11 +714,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -786,11 +726,7 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
         vec![vec![0xfau8; 1 + CONTRACT_MAX_SIZE as usize / 4].into()],
     )
     .validate(block_height)
@@ -803,11 +739,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         1,
-        Salt::random(rng),
+        rng.gen(),
         vec![],
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -815,12 +751,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -840,11 +772,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         static_contracts.clone(),
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -852,12 +784,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .unwrap();
@@ -869,11 +797,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         static_contracts.clone(),
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -881,12 +809,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -900,11 +824,11 @@ fn create() {
         rng.next_u64(),
         maturity,
         0,
-        Salt::random(rng),
+        rng.gen(),
         static_contracts,
         vec![Input::coin(
-            Bytes32::random(rng),
-            Address::random(rng),
+            rng.gen(),
+            rng.gen(),
             rng.next_u64(),
             Color::default(),
             0,
@@ -912,12 +836,8 @@ fn create() {
             vec![],
             vec![],
         )],
-        vec![Output::change(
-            Address::random(rng),
-            rng.next_u64(),
-            Color::default(),
-        )],
-        vec![Witness::random(rng)],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
     )
     .validate(block_height)
     .err()

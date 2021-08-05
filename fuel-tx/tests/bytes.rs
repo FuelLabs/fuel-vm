@@ -323,7 +323,7 @@ fn create_input_coin_data_offset() {
             for outputs in outputs.iter() {
                 for witnesses in witnesses.iter() {
                     let mut inputs = inputs.clone();
-                    let offset = inputs.len();
+                    let last_input = inputs.len();
                     inputs.push(input_coin.clone());
 
                     let mut tx = Transaction::create(
@@ -338,14 +338,22 @@ fn create_input_coin_data_offset() {
                         witnesses.clone(),
                     );
 
+                    let mut tx_p = tx.clone();
+                    tx_p.precompute_metadata();
+
                     buffer.iter_mut().for_each(|b| *b = 0x00);
                     tx.read(buffer.as_mut_slice())
                         .expect("Failed to serialize input");
 
                     let offset = tx
-                        .input_coin_predicate_offset(offset)
+                        .input_coin_predicate_offset(last_input)
                         .expect("Failed to fetch offset");
 
+                    let offset_p = tx_p
+                        .input_coin_predicate_offset(last_input)
+                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+
+                    assert_eq!(offset, offset_p);
                     assert_eq!(
                         predicate.as_slice(),
                         &buffer[offset..offset + predicate.len()]
@@ -421,6 +429,9 @@ fn script_input_coin_data_offset() {
                             witnesses.clone(),
                         );
 
+                        let mut tx_p = tx.clone();
+                        tx_p.precompute_metadata();
+
                         buffer.iter_mut().for_each(|b| *b = 0x00);
                         tx.read(buffer.as_mut_slice())
                             .expect("Failed to serialize input");
@@ -434,6 +445,12 @@ fn script_input_coin_data_offset() {
                         let script_data_offset = tx
                             .script_data_offset()
                             .expect("Transaction is Script and should return data offset");
+
+                        let script_data_offset_p = tx_p.script_data_offset().expect(
+                            "Transaction metadata script data offset failed after precompute!",
+                        );
+
+                        assert_eq!(script_data_offset, script_data_offset_p);
                         assert_eq!(
                             script_data.as_slice(),
                             &buffer[script_data_offset..script_data_offset + script_data.len()]

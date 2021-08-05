@@ -139,6 +139,19 @@ impl Input {
             Self::Contract { utxo_id, .. } => &utxo_id,
         }
     }
+
+    /// Return a tuple containing the predicate and its data if the input is of type `Coin`
+    pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
+        match self {
+            Input::Coin {
+                predicate,
+                predicate_data,
+                ..
+            } => Some((predicate.as_slice(), predicate_data.as_slice())),
+
+            _ => None,
+        }
+    }
 }
 
 impl io::Read for Input {

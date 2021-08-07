@@ -1,6 +1,7 @@
-use super::common::{d, r};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 use std::mem;
 
@@ -8,6 +9,8 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[test]
 fn code_copy() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
@@ -15,7 +18,7 @@ fn code_copy() {
     let gas_limit = 1_000_000;
     let maturity = 0;
 
-    let salt: Salt = r();
+    let salt: Salt = rng.gen();
 
     let program: Vec<u8> = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x11),
@@ -64,8 +67,8 @@ fn code_copy() {
     let script = script_ops.iter().copied().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(program.as_ref());
-    let input = Input::contract(d(), d(), d(), contract);
-    let output = Output::contract(0, d(), d());
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut tx = Transaction::script(
         gas_price,
@@ -94,13 +97,15 @@ fn code_copy() {
 
 #[test]
 fn call() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = 0;
-    let salt: Salt = r();
+    let salt: Salt = rng.gen();
 
     let program: Vec<u8> = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x11),
@@ -142,8 +147,8 @@ fn call() {
     let script = script_ops.iter().copied().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(&[0u8; WORD_SIZE * 2]);
-    let input = Input::contract(d(), d(), d(), contract);
-    let output = Output::contract(0, d(), d());
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut tx = Transaction::script(
         gas_price,

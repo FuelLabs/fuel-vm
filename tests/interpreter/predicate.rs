@@ -1,14 +1,20 @@
-use super::common::r;
 use fuel_tx::bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 #[test]
 fn predicate() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
     let predicate_data = 0x23 as Word;
+    let predicate_data = predicate_data.to_be_bytes().to_vec();
+    let predicate_data_len = bytes::padded_len(predicate_data.as_slice()) as Immediate12;
+
     let mut predicate = vec![];
 
     predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x11));
@@ -17,6 +23,13 @@ fn predicate() {
     predicate.push(Opcode::ALOC(0x12));
     predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
     predicate.push(Opcode::SW(0x12, 0x11, 0));
+    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
+    predicate.push(Opcode::XIL(0x20, 0));
+    predicate.push(Opcode::XIS(0x11, 0));
+    predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
+    predicate.push(Opcode::SUBI(0x11, 0x11, predicate_data_len));
+    predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
+    predicate.push(Opcode::RET(0x10));
 
     let predicate = predicate
         .into_iter()
@@ -24,15 +37,22 @@ fn predicate() {
         .flatten()
         .collect();
 
-    let predicate_data = predicate_data.to_be_bytes().to_vec();
-
     let maturity = 0;
-    let salt: Salt = r();
+    let salt: Salt = rng.gen();
     let witness = vec![];
     let contract = Contract::from(witness.as_slice());
     let contract = contract.address(salt.as_ref());
 
-    let input = Input::coin(r(), r(), 0, r(), 0, maturity, predicate, predicate_data);
+    let input = Input::coin(
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+        0,
+        maturity,
+        predicate,
+        predicate_data,
+    );
     let output = Output::contract_created(contract);
 
     let gas_price = 0;
@@ -43,7 +63,7 @@ fn predicate() {
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
 
-    let mut tx = Transaction::create(
+    let tx = Transaction::create(
         gas_price,
         gas_limit,
         maturity,
@@ -54,35 +74,21 @@ fn predicate() {
         outputs,
         witnesses,
     );
-
-    let predicate_offset = tx.input_coin_predicate_offset(0).expect("Inconsistent inputs!");
-    match tx.inputs_mut().get_mut(0) {
-        Some(Input::Coin { predicate, .. }) => {
-            let mut p = vec![];
-
-            let predicate_data_offset =
-                Interpreter::<()>::tx_mem_address() + predicate_offset + bytes::padded_len(predicate.as_slice()) + 16; // 4 additional opcodes represented as u32
-            p.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
-            p.push(Opcode::ADDI(0x11, REG_ZERO, predicate_data_offset as Immediate12));
-            p.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
-            p.push(Opcode::RET(0x10));
-
-            let p: Vec<u8> = p.into_iter().map(|op| u32::from(op).to_be_bytes()).flatten().collect();
-
-            predicate.extend_from_slice(p.as_slice());
-        }
-        _ => panic!("Inconsistent transaction!"),
-    }
 
     vm.transact(tx).expect("Failed to transact!");
 }
 
 #[test]
 fn predicate_false() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
     let storage = MemoryStorage::default();
     let mut vm = Interpreter::with_storage(storage);
 
     let predicate_data = 0x24 as Word;
+    let predicate_data = predicate_data.to_be_bytes().to_vec();
+    let predicate_data_len = bytes::padded_len(predicate_data.as_slice()) as Immediate12;
+
     let mut predicate = vec![];
 
     predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x11));
@@ -91,6 +97,13 @@ fn predicate_false() {
     predicate.push(Opcode::ALOC(0x12));
     predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
     predicate.push(Opcode::SW(0x12, 0x11, 0));
+    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
+    predicate.push(Opcode::XIL(0x20, 0));
+    predicate.push(Opcode::XIS(0x11, 0));
+    predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
+    predicate.push(Opcode::SUBI(0x11, 0x11, predicate_data_len));
+    predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
+    predicate.push(Opcode::RET(0x10));
 
     let predicate = predicate
         .into_iter()
@@ -98,15 +111,22 @@ fn predicate_false() {
         .flatten()
         .collect();
 
-    let predicate_data = predicate_data.to_be_bytes().to_vec();
-
     let maturity = 0;
-    let salt: Salt = r();
+    let salt: Salt = rng.gen();
     let witness = vec![];
     let contract = Contract::from(witness.as_slice());
     let contract = contract.address(salt.as_ref());
 
-    let input = Input::coin(r(), r(), 0, r(), 0, maturity, predicate, predicate_data);
+    let input = Input::coin(
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+        0,
+        maturity,
+        predicate,
+        predicate_data,
+    );
     let output = Output::contract_created(contract);
 
     let gas_price = 0;
@@ -117,7 +137,7 @@ fn predicate_false() {
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
 
-    let mut tx = Transaction::create(
+    let tx = Transaction::create(
         gas_price,
         gas_limit,
         maturity,
@@ -128,25 +148,6 @@ fn predicate_false() {
         outputs,
         witnesses,
     );
-
-    let predicate_offset = tx.input_coin_predicate_offset(0).expect("Inconsistent inputs!");
-    match tx.inputs_mut().get_mut(0) {
-        Some(Input::Coin { predicate, .. }) => {
-            let mut p = vec![];
-
-            let predicate_data_offset =
-                Interpreter::<()>::tx_mem_address() + predicate_offset + bytes::padded_len(predicate.as_slice()) + 16; // 4 additional opcodes represented as u32
-            p.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
-            p.push(Opcode::ADDI(0x11, REG_ZERO, predicate_data_offset as Immediate12));
-            p.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
-            p.push(Opcode::RET(0x10));
-
-            let p: Vec<u8> = p.into_iter().map(|op| u32::from(op).to_be_bytes()).flatten().collect();
-
-            predicate.extend_from_slice(p.as_slice());
-        }
-        _ => panic!("Inconsistent transaction!"),
-    }
 
     assert!(vm.transact(tx).is_err());
 }

@@ -25,6 +25,9 @@ pub enum ExecuteError {
     ExpectedInternalContext,
     ExternalColorNotFound,
     OutOfGas,
+    InputNotFound,
+    OutputNotFound,
+    WitnessNotFound,
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

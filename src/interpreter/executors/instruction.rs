@@ -349,6 +349,54 @@ where
                     && self.sha256(self.registers[ra], self.registers[rb], self.registers[rc])
                     && self.inc_pc() => {}
 
+            Opcode::XIL(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_input_length(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
+            Opcode::XIS(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_input_start(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
+            Opcode::XOL(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_output_length(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
+            Opcode::XOS(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_output_start(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
+            Opcode::XWL(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_witness_length(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
+            Opcode::XWS(ra, rb)
+                if Self::is_valid_register_couple(ra, rb) && self.gas_charge(&op).is_ok() && self.inc_pc() =>
+            {
+                result = self
+                    .transaction_witness_start(ra, self.registers[rb])
+                    .map(|_| ExecuteState::Proceed)
+            }
+
             Opcode::FLAG(ra) if Self::is_valid_register(ra) && self.gas_charge(&op).is_ok() && self.inc_pc() => {
                 self.set_flag(self.registers[ra])
             }

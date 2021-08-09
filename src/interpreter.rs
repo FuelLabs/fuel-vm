@@ -19,6 +19,7 @@ mod frame;
 mod gas;
 mod log;
 mod memory;
+mod transaction;
 
 #[cfg(feature = "debug")]
 mod debug;

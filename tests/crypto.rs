@@ -1,5 +1,3 @@
-#![feature(once_cell)]
-
 use fuel_tx::crypto as tx_crypto;
 use fuel_vm::crypto;
 use rand::rngs::StdRng;
@@ -7,8 +5,6 @@ use rand::{RngCore, SeedableRng};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 
 use std::convert::TryFrom;
-
-pub mod common;
 
 #[test]
 fn ecrecover() {

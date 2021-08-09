@@ -5,5 +5,3 @@ mod predicate;
 
 #[cfg(feature = "debug")]
 mod debug;
-
-pub use super::common;

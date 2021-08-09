@@ -4,8 +4,6 @@ use std::io::{self, Read, Write};
 mod interpreter;
 mod transaction;
 
-pub use super::common;
-
 pub fn assert_encoding_correct<T>(data: &[T])
 where
     T: Read + Write + fmt::Debug + Clone + PartialEq,

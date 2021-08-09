@@ -18,6 +18,8 @@ where
 {
     pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), ExecuteError> {
         tx.validate(self.block_height() as Word)?;
+        tx.precompute_metadata();
+
         self.context = Context::from(&tx);
 
         self.frames.clear();

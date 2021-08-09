@@ -1,5 +1,6 @@
 use super::{
-    ContractId, Metadata, Transaction, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE,
+    ContractId, Input, Metadata, Transaction, TRANSACTION_CREATE_FIXED_SIZE,
+    TRANSACTION_SCRIPT_FIXED_SIZE,
 };
 use crate::bytes::{self, SizedBytes};
 
@@ -37,17 +38,9 @@ impl Transaction {
     }
 
     pub(crate) fn _input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
-        self.inputs()
-            .get(index)
-            .map(|i| {
-                i.predicate()
-                    .map(|(predicate, data)| (predicate, data, i.serialized_size()))
-            })
-            .flatten()
-            .zip(self.input_offset(index))
-            .map(|((predicate, data, size), offset)| {
-                offset + size - bytes::padded_len(predicate) - bytes::padded_len(data)
-            })
+        self.input_offset(index)
+            .map(|ofs| ofs + Input::coin_predicate_offset())
+            .filter(|_| self.inputs()[index].is_coin())
     }
 
     /// Return the serialized bytes offset of the input with the provided index

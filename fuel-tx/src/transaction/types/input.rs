@@ -152,6 +152,27 @@ impl Input {
             _ => None,
         }
     }
+
+    pub const fn is_coin(&self) -> bool {
+        match self {
+            Input::Coin { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub const fn coin_predicate_offset() -> usize {
+        INPUT_COIN_FIXED_SIZE
+    }
+
+    pub fn coin_predicate_data_offset(&self) -> Option<usize> {
+        match self {
+            Input::Coin { predicate, .. } => {
+                Some(Self::coin_predicate_offset() + bytes::padded_len(predicate.as_slice()))
+            }
+
+            _ => None,
+        }
+    }
 }
 
 impl io::Read for Input {

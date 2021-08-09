@@ -3,14 +3,43 @@ use crate::consts::*;
 use crate::data::InterpreterStorage;
 
 use fuel_asm::Word;
-use fuel_tx::{ContractId, Input};
+use fuel_tx::{Address, Bytes32, ContractId, Input};
 
 use std::convert::TryFrom;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+pub struct BlockData {
+    height: u32,
+    hash: Bytes32,
+}
+
+impl BlockData {
+    pub const fn new(height: u32, hash: Bytes32) -> Self {
+        Self { height, hash }
+    }
+
+    pub const fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub const fn hash(&self) -> &Bytes32 {
+        &self.hash
+    }
+}
 
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
+    pub(crate) fn block_data(&self, block_height: u32) -> Result<BlockData, ExecuteError> {
+        Ok(self.storage.block_data(block_height)?)
+    }
+
+    pub(crate) fn coinbase(&self) -> Result<Address, ExecuteError> {
+        Ok(self.storage.coinbase()?)
+    }
+
     pub(crate) fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract()
             .map(|contract| (contract, (*contract).into()))
@@ -69,5 +98,17 @@ where
         }
 
         true
+    }
+
+    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
+        self.block_data(b as u32)
+            .and_then(|data| self.try_mem_write(a, data.hash().as_ref()))
+            .map(|_| self.inc_pc())
+    }
+
+    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<bool, ExecuteError> {
+        self.coinbase()
+            .and_then(|data| self.try_mem_write(a, data.as_ref()))
+            .map(|_| self.inc_pc())
     }
 }

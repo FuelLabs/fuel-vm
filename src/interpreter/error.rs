@@ -13,6 +13,7 @@ pub enum ExecuteError {
     Data(DataError),
     TransactionCreateStaticContractNotFound,
     TransactionCreateIdNotInTx,
+    ArithmeticOverflow,
     StackOverflow,
     PredicateOverflow,
     ProgramOverflow,

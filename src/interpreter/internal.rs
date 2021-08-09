@@ -1,0 +1,116 @@
+use super::{ExecuteError, Interpreter};
+use crate::consts::*;
+
+use fuel_asm::{RegisterId, Word};
+use fuel_tx::{ContractId, Transaction};
+
+use std::convert::TryFrom;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+pub enum Context {
+    Predicate,
+    Script,
+    Call,
+    NotInitialized,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::NotInitialized
+    }
+}
+
+impl Context {
+    pub const fn is_external(&self) -> bool {
+        match self {
+            Self::Predicate | Self::Script => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<&Transaction> for Context {
+    fn from(tx: &Transaction) -> Self {
+        if tx.is_script() {
+            Self::Script
+        } else {
+            Self::Predicate
+        }
+    }
+}
+
+impl<S> Interpreter<S> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
+        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
+
+        if overflow || !self.is_external_context() && ssp > self.registers[REG_FP] {
+            Err(ExecuteError::StackOverflow)
+        } else {
+            self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
+            self.registers[REG_SSP] = ssp;
+
+            Ok(())
+        }
+    }
+
+    pub(crate) const fn block_height(&self) -> u32 {
+        self.block_height
+    }
+
+    pub(crate) fn set_flag(&mut self, a: Word) {
+        self.registers[REG_FLAG] = a;
+    }
+
+    pub(crate) fn clear_err(&mut self) {
+        self.registers[REG_ERR] = 0;
+    }
+
+    pub(crate) fn set_err(&mut self) {
+        self.registers[REG_ERR] = 1;
+    }
+
+    pub(crate) fn inc_pc(&mut self) -> bool {
+        let (result, overflow) = self.registers[REG_PC].overflowing_add(4);
+
+        self.registers[REG_PC] = result;
+
+        !overflow
+    }
+
+    pub(crate) const fn context(&self) -> Context {
+        if self.registers[REG_FP] == 0 {
+            self.context
+        } else {
+            Context::Call
+        }
+    }
+
+    pub(crate) const fn is_external_context(&self) -> bool {
+        self.context().is_external()
+    }
+
+    pub(crate) const fn is_predicate(&self) -> bool {
+        matches!(self.context, Context::Predicate)
+    }
+
+    pub(crate) const fn is_register_writable(ra: RegisterId) -> bool {
+        ra > REG_FLAG
+    }
+
+    pub(crate) const fn transaction(&self) -> &Transaction {
+        &self.tx
+    }
+
+    pub(crate) fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
+        if self.is_external_context() {
+            return Err(ExecuteError::ExpectedInternalContext);
+        }
+
+        let c = self.registers[REG_FP] as usize;
+        let cx = c + ContractId::size_of();
+        let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+
+        Ok(contract)
+    }
+}

@@ -31,7 +31,8 @@ where
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
-                let id = contract.address(salt.as_ref());
+                let id = Self::contract_id(&mut self.storage, &contract, &salt)?;
+
                 if !&self
                     .tx
                     .outputs()

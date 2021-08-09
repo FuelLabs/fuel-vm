@@ -1,8 +1,9 @@
-use super::{DataError, InterpreterStorage, Storage};
-use crate::interpreter::Contract;
+use super::{DataError, InterpreterStorage, MerkleStorage, Storage};
+use crate::interpreter::{BlockData, Contract};
 
 use fuel_asm::Word;
-use fuel_tx::{Bytes32, Color, ContractId};
+use fuel_tx::{crypto, Address, Bytes32, Color, ContractId};
+use itertools::Itertools;
 
 use std::collections::HashMap;
 
@@ -11,6 +12,7 @@ pub struct MemoryStorage {
     contracts: HashMap<ContractId, Contract>,
     balances: HashMap<(ContractId, Color), Word>,
     storage: HashMap<(ContractId, Bytes32), Bytes32>,
+    contract_code_tree: HashMap<Word, [u8; 8]>,
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
@@ -67,4 +69,51 @@ impl Storage<(ContractId, Bytes32), Bytes32> for MemoryStorage {
     }
 }
 
-impl InterpreterStorage for MemoryStorage {}
+impl Storage<Word, [u8; 8]> for MemoryStorage {
+    fn insert(&mut self, key: Word, value: [u8; 8]) -> Result<Option<[u8; 8]>, DataError> {
+        Ok(self.contract_code_tree.insert(key, value))
+    }
+
+    fn get(&self, key: &Word) -> Result<Option<[u8; 8]>, DataError> {
+        Ok(self.contract_code_tree.get(key).copied())
+    }
+
+    fn remove(&mut self, key: &Word) -> Result<Option<[u8; 8]>, DataError> {
+        Ok(self.contract_code_tree.remove(key))
+    }
+
+    fn contains_key(&self, key: &Word) -> Result<bool, DataError> {
+        Ok(self.contract_code_tree.contains_key(key))
+    }
+}
+
+impl MerkleStorage<Word, [u8; 8]> for MemoryStorage {
+    fn root(&mut self) -> Result<Bytes32, DataError> {
+        let bytes = self
+            .contract_code_tree
+            .drain()
+            .sorted_by_key(|entry| entry.0)
+            .map(|(_, value)| value)
+            .flatten()
+            .collect::<Vec<u8>>();
+
+        Ok(crypto::hash(bytes.as_slice()))
+    }
+}
+
+impl InterpreterStorage for MemoryStorage {
+    fn block_height(&self) -> Result<u32, DataError> {
+        Ok(1)
+    }
+
+    fn coinbase(&self) -> Result<Address, DataError> {
+        Ok(Address::from(*crypto::hash(b"coinbase")))
+    }
+
+    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError> {
+        let hash = crypto::hash(&block_height.to_be_bytes());
+        let data = BlockData::new(block_height, hash);
+
+        Ok(data)
+    }
+}

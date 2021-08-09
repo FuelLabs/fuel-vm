@@ -20,6 +20,7 @@ where
         tx.validate(self.block_height() as Word)?;
         tx.precompute_metadata();
 
+        self.block_height = self.storage.block_height()?;
         self.context = Context::from(&tx);
 
         self.frames.clear();

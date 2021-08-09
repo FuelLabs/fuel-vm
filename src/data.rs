@@ -1,7 +1,7 @@
-use crate::interpreter::Contract;
+use crate::interpreter::{BlockData, Contract};
 
 use fuel_asm::Word;
-use fuel_tx::{Bytes32, Color, ContractId};
+use fuel_tx::{Address, Bytes32, Color, ContractId};
 
 use std::ops::DerefMut;
 
@@ -28,6 +28,14 @@ where
     // value.
     fn get(&self, key: &K) -> Result<Option<V>, DataError>;
     fn contains_key(&self, key: &K) -> Result<bool, DataError>;
+}
+
+pub trait MerkleStorage<K, V>: Storage<K, V>
+where
+    K: Key,
+    V: Value,
+{
+    fn root(&mut self) -> Result<Bytes32, DataError>;
 }
 
 impl<K, V, S, I> Storage<K, V> for I
@@ -57,22 +65,41 @@ where
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    Storage<ContractId, Contract> + Storage<(ContractId, Color), Word> + Storage<(ContractId, Bytes32), Bytes32>
+    Storage<ContractId, Contract>
+    + Storage<(ContractId, Color), Word>
+    + Storage<(ContractId, Bytes32), Bytes32>
+    + MerkleStorage<Word, [u8; 8]>
 {
+    fn block_height(&self) -> Result<u32, DataError>;
+    fn coinbase(&self) -> Result<Address, DataError>;
+    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError>;
 }
 
 impl<S, I> InterpreterStorage for I
 where
     S: InterpreterStorage,
-    I: DerefMut<Target = S>,
+    I: DerefMut<Target = S> + MerkleStorage<Word, [u8; 8]>,
 {
+    fn block_height(&self) -> Result<u32, DataError> {
+        S::block_height(self)
+    }
+
+    fn coinbase(&self) -> Result<Address, DataError> {
+        S::coinbase(self)
+    }
+
+    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError> {
+        S::block_data(self, block_height)
+    }
 }
 
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
+impl Key for Word {}
 impl Key for ContractId {}
 impl Key for (ContractId, Color) {}
 impl Key for (ContractId, Bytes32) {}
 impl Value for Word {}
 impl Value for Contract {}
 impl Value for Bytes32 {}
+impl Value for [u8; 8] {}

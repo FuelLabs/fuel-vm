@@ -1,12 +1,11 @@
 use super::{ExecuteError, Interpreter};
-use crate::consts::*;
-use crate::crypto;
-use crate::data::InterpreterStorage;
+use crate::data::{InterpreterStorage, MerkleStorage};
 
 use fuel_asm::Word;
-use fuel_tx::crypto as tx_crypto;
-use fuel_tx::{Color, ContractId, Transaction, ValidationError};
+use fuel_tx::crypto;
+use fuel_tx::{Color, ContractId, Salt, Transaction, ValidationError};
 
+use std::cmp;
 use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -68,23 +67,49 @@ impl TryFrom<&Transaction> for Contract {
     }
 }
 
-impl Contract {
-    pub fn address(&self, salt: &[u8]) -> ContractId {
-        let mut input = VM_CONTRACT_ID_BASE.to_vec();
-
-        input.extend_from_slice(salt);
-        input.extend_from_slice(crypto::merkle_root(self.0.as_slice()).as_ref());
-
-        (*tx_crypto::hash(input.as_slice())).into()
-    }
-}
-
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
     pub(crate) fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
         Ok(self.storage.get(address)?)
+    }
+
+    pub fn contract_id<M>(storage: &mut M, contract: &Contract, salt: &Salt) -> Result<ContractId, ExecuteError>
+    where
+        M: MerkleStorage<Word, [u8; 8]>,
+    {
+        // Drain all elements from the contract code tree
+        storage.root()?;
+
+        contract
+            .as_ref()
+            .chunks(8)
+            .map(|c| {
+                let mut bytes = [0u8; 8];
+
+                let l = cmp::min(c.len(), 8);
+                (&mut bytes[..l]).copy_from_slice(c);
+
+                bytes
+            })
+            .enumerate()
+            .map(|(i, b)| storage.insert(i as Word, b).map(|_| ()))
+            .collect::<Result<_, _>>()?;
+
+        let root = storage.root()?;
+
+        const CONTRACT_ID_SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
+        let id = CONTRACT_ID_SEED
+            .iter()
+            .chain(salt.as_ref().iter())
+            .chain(root.as_ref().iter())
+            .copied()
+            .collect::<Vec<u8>>();
+
+        let id = crypto::hash(id.as_slice());
+
+        Ok(ContractId::from(*id))
     }
 
     pub(crate) fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
@@ -172,7 +197,10 @@ mod tests {
         .collect::<Vec<u8>>()
         .into();
 
-        let contract = Contract::from(program.as_ref()).address(salt.as_ref());
+        let contract = Contract::from(program.as_ref());
+        let contract = <Interpreter<MemoryStorage>>::contract_id(vm.as_mut(), &contract, &salt)
+            .expect("Failed to calculate contract ID from storage!");
+
         let color = Color::from(*contract);
         let output = Output::contract_created(contract);
 

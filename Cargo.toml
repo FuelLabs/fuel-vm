@@ -17,9 +17,8 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.9"
 tracing = "0.1"
 
-#[dev-dependencies]
+[dev-dependencies]
 rand = "0.8"
-hex = "0.4"
 
 [features]
 debug = []

@@ -1,6 +1,5 @@
-use fuel_tx::crypto as tx_crypto;
 use fuel_vm::consts::*;
-use fuel_vm::crypto;
+use fuel_vm::crypto::{self, Hasher};
 use fuel_vm::prelude::*;
 
 use std::convert::TryFrom;
@@ -22,7 +21,7 @@ fn ecrecover() {
     let public = <[u8; 64]>::try_from(&public[1..]).expect("Failed to parse public key!");
 
     let message = b"The gift of words is the gift of deception and illusion.";
-    let e = tx_crypto::hash(&message[..]);
+    let e = Hasher::hash(&message[..]);
     let sig =
         crypto::secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
 
@@ -103,7 +102,7 @@ fn sha256() {
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let length = message.len() as Immediate12;
-    let hash = tx_crypto::hash(message);
+    let hash = Hasher::hash(message);
 
     let alloc = length  // message
         + 32 // reference hash

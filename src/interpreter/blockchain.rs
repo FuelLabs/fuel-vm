@@ -1,8 +1,8 @@
-use super::{ExecuteError, Interpreter, MemoryRange};
+use super::{ContractData, ContractState, ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
-use crate::data::InterpreterStorage;
+use crate::data::{InterpreterStorage, KeyedMerkleStorage};
 
-use fuel_asm::Word;
+use fuel_asm::{RegisterId, Word};
 use fuel_tx::{Address, Bytes32, ContractId, Input};
 
 use std::convert::TryFrom;
@@ -109,6 +109,37 @@ where
     pub(crate) fn block_proposer(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.coinbase()
             .and_then(|data| self.try_mem_write(a, data.as_ref()))
+            .map(|_| self.inc_pc())
+    }
+
+    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
+        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract_id = <[u8; ContractId::size_of()]>::try_from(&self.memory[b as usize..b as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        <S as KeyedMerkleStorage<ContractId, ContractData, (), ContractState>>::metadata(&self.storage, &contract_id)
+            .or(Err(ExecuteError::ContractNotFound))
+            .and_then(|data| self.try_mem_write(a, data.root().as_ref()))
+            .map(|_| self.inc_pc())
+    }
+
+    pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<bool, ExecuteError> {
+        if b >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract_id = <[u8; ContractId::size_of()]>::try_from(&self.memory[b as usize..b as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        self.contract(&contract_id)
+            .transpose()
+            .ok_or(ExecuteError::ContractNotFound)?
+            .and_then(|contract| Ok(self.registers[ra] = contract.as_ref().len() as Word))
             .map(|_| self.inc_pc())
     }
 }

@@ -1,4 +1,4 @@
-use crate::interpreter::{BlockData, Contract};
+use crate::interpreter::{BlockData, Contract, ContractData, ContractState};
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Bytes32, Color, ContractId};
@@ -12,7 +12,6 @@ pub use error::DataError;
 pub use memory::MemoryStorage;
 
 pub trait Key {}
-
 pub trait Value {}
 
 pub trait Storage<K, V>
@@ -28,14 +27,6 @@ where
     // value.
     fn get(&self, key: &K) -> Result<Option<V>, DataError>;
     fn contains_key(&self, key: &K) -> Result<bool, DataError>;
-}
-
-pub trait MerkleStorage<K, V>: Storage<K, V>
-where
-    K: Key,
-    V: Value,
-{
-    fn root(&mut self) -> Result<Bytes32, DataError>;
 }
 
 impl<K, V, S, I> Storage<K, V> for I
@@ -62,13 +53,57 @@ where
     }
 }
 
+pub trait KeyedMerkleStorage<P, M, K, V>: Storage<(P, K), V>
+where
+    P: Key,
+    M: Value,
+    K: Key,
+    V: Value,
+{
+    fn initialize(&mut self, parent: P, metadata: M) -> Result<(), DataError>;
+    fn metadata(&self, parent: &P) -> Result<M, DataError>;
+    fn update(&mut self, parent: &P, metadata: M) -> Result<(), DataError>;
+    fn destroy(&mut self, parent: &P) -> Result<(), DataError>;
+    fn root(&mut self, parent: &P) -> Result<Bytes32, DataError>;
+}
+
+impl<P, M, K, V, X, I> KeyedMerkleStorage<P, M, K, V> for I
+where
+    P: Key,
+    M: Value,
+    K: Key,
+    V: Value,
+    X: Storage<(P, K), V>,
+    X: KeyedMerkleStorage<P, M, K, V>,
+    I: DerefMut<Target = X>,
+{
+    fn initialize(&mut self, parent: P, metadata: M) -> Result<(), DataError> {
+        <X as KeyedMerkleStorage<P, M, K, V>>::initialize(self.deref_mut(), parent, metadata)
+    }
+
+    fn metadata(&self, parent: &P) -> Result<M, DataError> {
+        <X as KeyedMerkleStorage<P, M, K, V>>::metadata(self.deref(), parent)
+    }
+
+    fn update(&mut self, parent: &P, metadata: M) -> Result<(), DataError> {
+        <X as KeyedMerkleStorage<P, M, K, V>>::update(self.deref_mut(), parent, metadata)
+    }
+
+    fn destroy(&mut self, parent: &P) -> Result<(), DataError> {
+        <X as KeyedMerkleStorage<P, M, K, V>>::destroy(self.deref_mut(), parent)
+    }
+
+    fn root(&mut self, parent: &P) -> Result<Bytes32, DataError> {
+        <X as KeyedMerkleStorage<P, M, K, V>>::root(self.deref_mut(), parent)
+    }
+}
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    Storage<ContractId, Contract>
-    + Storage<(ContractId, Color), Word>
-    + Storage<(ContractId, Bytes32), Bytes32>
-    + MerkleStorage<Word, [u8; 8]>
+    KeyedMerkleStorage<ContractId, ContractData, (), ContractState>
+    + KeyedMerkleStorage<ContractId, (), Color, Word>
+    + KeyedMerkleStorage<ContractId, (), Bytes32, Bytes32>
 {
     fn block_height(&self) -> Result<u32, DataError>;
     fn coinbase(&self) -> Result<Address, DataError>;
@@ -78,7 +113,7 @@ pub trait InterpreterStorage:
 impl<S, I> InterpreterStorage for I
 where
     S: InterpreterStorage,
-    I: DerefMut<Target = S> + MerkleStorage<Word, [u8; 8]>,
+    I: DerefMut<Target = S>,
 {
     fn block_height(&self) -> Result<u32, DataError> {
         S::block_height(self)
@@ -95,11 +130,25 @@ where
 
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
+impl Key for () {}
 impl Key for Word {}
 impl Key for ContractId {}
-impl Key for (ContractId, Color) {}
-impl Key for (ContractId, Bytes32) {}
+impl Key for Color {}
+impl Key for Bytes32 {}
+
+impl Value for () {}
 impl Value for Word {}
 impl Value for Contract {}
 impl Value for Bytes32 {}
-impl Value for [u8; 8] {}
+impl Value for ContractState {}
+impl Value for ContractData {}
+
+impl<K> Key for &K where K: Key {}
+impl<V> Value for &V where V: Value {}
+
+impl<P, K> Key for (P, K)
+where
+    P: Key,
+    K: Key,
+{
+}

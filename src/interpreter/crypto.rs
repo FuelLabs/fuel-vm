@@ -1,9 +1,8 @@
 use super::{Interpreter, MemoryRange};
 use crate::consts::{MEM_MAX_ACCESS_SIZE, VM_MAX_RAM};
-use crate::crypto;
+use crate::crypto::{self, Hasher};
 
 use fuel_asm::Word;
-use fuel_tx::crypto as tx_crypto;
 
 impl<S> Interpreter<S> {
     pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> bool {
@@ -73,9 +72,10 @@ impl<S> Interpreter<S> {
         {
             false
         } else {
-            let result = tx_crypto::hash(&self.memory[b as usize..bc as usize]);
+            let result = Hasher::hash(&self.memory[b as usize..bc as usize]);
 
             self.memory[a as usize..ax as usize].copy_from_slice(result.as_ref());
+
             true
         }
     }

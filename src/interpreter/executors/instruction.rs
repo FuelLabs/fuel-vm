@@ -67,6 +67,10 @@ where
                 self.alu_set(ra, (self.registers[rb] > self.registers[rc]) as Word)
             }
 
+            Opcode::LT(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
+                self.alu_set(ra, (self.registers[rb] < self.registers[rc]) as Word)
+            }
+
             Opcode::MLOG(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
                 .alu_error(
                     ra,
@@ -74,15 +78,6 @@ where
                     self.registers[rb],
                     self.registers[rc],
                     self.registers[rb] == 0 || self.registers[rc] <= 1,
-                ),
-
-            Opcode::MROO(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
-                .alu_error(
-                    ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
-                    self.registers[rb],
-                    self.registers[rc],
-                    self.registers[rc] == 0,
                 ),
 
             Opcode::MOD(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
@@ -101,6 +96,15 @@ where
             Opcode::MOVE(ra, rb) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
                 self.alu_set(ra, self.registers[rb])
             }
+
+            Opcode::MROO(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
+                .alu_error(
+                    ra,
+                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
+                    self.registers[rb],
+                    self.registers[rc],
+                    self.registers[rc] == 0,
+                ),
 
             Opcode::MUL(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
                 self.alu_overflow(ra, Word::overflowing_mul, self.registers[rb], self.registers[rc])
@@ -238,8 +242,6 @@ where
             Opcode::BHSH(ra, rb)
                 if self.gas_charge(&op).is_ok() && self.block_hash(self.registers[ra], self.registers[rb])? => {}
 
-            Opcode::CB(ra) if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra])? => {}
-
             Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra])? => {}
 
             Opcode::CALL(ra, rb, rc, rd)
@@ -253,6 +255,8 @@ where
                         )
                         .map(|_| true)? => {}
 
+            Opcode::CB(ra) if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra])? => {}
+
             Opcode::CCP(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
                     && self.code_copy(
@@ -263,23 +267,25 @@ where
                     )
                     && self.inc_pc() => {}
 
-            // TODO CODEROOT: Code Merkle root
-            // TODO CODESIZE: Code size
-            // TODO COINBASE: Block proposer address
-            // TODO LOADCODE: Load code from an external contract
+            Opcode::CROO(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.code_root(self.registers[ra], self.registers[rb])? => {}
+
+            Opcode::CSIZ(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.code_size(ra, self.registers[rb])? => {}
+
+            // TODO LDC
+            // TODO Append to receipts
             Opcode::LOG(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) && self.inc_pc() => {}
 
+            // TODO LOGD
             Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra])? => {}
 
-            // TODO REVERT: Revert
-            // TODO SLOADCODE: Load code from static list
-            // TODO SRW: State read word
-            // TODO SRWQ: State read 32 bytes
-            // TODO SWW: State write word
-            // TODO SWWQ: State write 32 bytes
-            // TODO TRANSFER: Transfer coins to contract
-            // TODO TRANSFEROUT: Transfer coins to output
+            // TODO RETD
+            // TODO RVRT
+            // TODO SLDC
             Opcode::ECR(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
                     && self.ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])

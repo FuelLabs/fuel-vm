@@ -25,7 +25,7 @@ mod transaction;
 mod debug;
 
 pub use blockchain::BlockData;
-pub use contract::Contract;
+pub use contract::{Contract, ContractData, ContractState};
 pub use error::ExecuteError;
 pub use executors::{ProgramState, StateTransition, StateTransitionRef};
 pub use frame::{Call, CallFrame};

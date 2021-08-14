@@ -42,8 +42,8 @@ fn predicate() {
     let witness = vec![];
 
     let contract = Contract::from(witness.as_ref());
-    let contract = <Interpreter<MemoryStorage>>::contract_id(vm.as_mut(), &contract, &salt)
-        .expect("Failed to calculate contract ID from storage!");
+    let contract = ContractData::new(contract, salt);
+    let contract = contract.id();
 
     let input = Input::coin(
         rng.gen(),
@@ -118,8 +118,8 @@ fn predicate_false() {
     let witness = vec![];
 
     let contract = Contract::from(witness.as_ref());
-    let contract = <Interpreter<MemoryStorage>>::contract_id(vm.as_mut(), &contract, &salt)
-        .expect("Failed to calculate contract ID from storage!");
+    let contract = ContractData::new(contract, salt);
+    let contract = contract.id();
 
     let input = Input::coin(
         rng.gen(),

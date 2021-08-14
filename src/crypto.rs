@@ -1,8 +1,59 @@
+use fuel_tx::{crypto, Bytes32};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
 
 use std::convert::TryFrom;
+use std::{iter, mem};
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub struct Hasher(Vec<u8>);
+
+impl Hasher {
+    pub fn input<B>(&mut self, data: B)
+    where
+        B: AsRef<[u8]>,
+    {
+        self.0.extend_from_slice(data.as_ref())
+    }
+
+    pub fn reset(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn hash<B>(bytes: B) -> Bytes32
+    where
+        B: AsRef<[u8]>,
+    {
+        crypto::hash(bytes.as_ref())
+    }
+
+    pub fn digest(&self) -> Bytes32 {
+        crypto::hash(self.0.as_slice())
+    }
+}
+
+impl From<Vec<u8>> for Hasher {
+    fn from(bytes: Vec<u8>) -> Hasher {
+        Self(bytes)
+    }
+}
+
+impl<B> iter::FromIterator<B> for Hasher
+where
+    B: AsRef<[u8]>,
+{
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = B>,
+    {
+        let mut hasher = Hasher::default();
+
+        iter.into_iter().for_each(|i| hasher.input(i.as_ref()));
+
+        hasher
+    }
+}
 
 /// Sign a given message and compress the `v` to the signature
 ///
@@ -37,4 +88,154 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
 
     // Ignore the first byte of the compressed flag
     <[u8; 64]>::try_from(&pk[1..]).map_err(|_| Secp256k1Error::InvalidPublicKey)
+}
+
+/// Calculate a binary merkle root
+///
+/// The space complexity of this operation is O(n). This means it expects small
+/// sets. For bigger sets (e.g. blockchain state), use a storage backed merkle
+/// implementation
+pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
+where
+    L: AsRef<[u8]>,
+    I: Iterator<Item = L> + ExactSizeIterator,
+{
+    let mut hasher = Hasher::default();
+    let mut len = leaves.len() as f32;
+    let mut width = len.log2().ceil().exp2() as usize;
+
+    if width <= 2 {
+        return leaves.collect::<Hasher>().digest();
+    }
+
+    width /= 2;
+    len /= 2.0;
+
+    let mut current = vec![Bytes32::default(); width];
+
+    // Drain the leaves
+    current.iter_mut().for_each(|l| {
+        hasher.reset();
+
+        leaves.next().map(|a| hasher.input(a));
+        leaves.next().map(|b| hasher.input(b));
+
+        *l = hasher.digest();
+    });
+
+    let mut next = current.clone();
+
+    while width > 1 {
+        mem::swap(&mut current, &mut next);
+
+        let mut c = current.iter().take(len.ceil() as usize);
+
+        width /= 2;
+        len /= 2.0;
+
+        next.iter_mut().take(width).for_each(|n| {
+            hasher.reset();
+
+            c.next().map(|a| hasher.input(a));
+            c.next().map(|b| hasher.input(b));
+
+            *n = hasher.digest();
+        });
+    }
+
+    next[0]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+
+    use rand::rngs::StdRng;
+    use rand::{Rng, RngCore, SeedableRng};
+    use secp256k1::PublicKey;
+
+    use std::convert::TryFrom;
+
+    #[test]
+    fn ecrecover() {
+        let secp = Secp256k1::new();
+        let mut rng = StdRng::seed_from_u64(2322u64);
+        let mut secret_seed = [0u8; 32];
+        let mut message = [0u8; 95];
+
+        for _ in 0..10 {
+            rng.fill_bytes(&mut message);
+            rng.fill_bytes(&mut secret_seed);
+
+            let secret = SecretKey::from_slice(&secret_seed).expect("Failed to generate random secret!");
+            let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
+            let public = <[u8; 64]>::try_from(&public[1..]).expect("Failed to parse public key!");
+
+            let e = crypto::hash(&message);
+
+            let sig =
+                secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
+            let pk_p = secp256k1_sign_compact_recover(&sig, e.as_ref()).expect("Failed to recover PK from signature");
+
+            assert_eq!(public, pk_p);
+        }
+    }
+
+    #[test]
+    fn ephemeral_merkle_root_works() {
+        let mut rng = StdRng::seed_from_u64(2322u64);
+
+        // Test for 0 leaves
+        let empty: Vec<Address> = vec![];
+
+        let root = ephemeral_merkle_root(empty.iter());
+        let empty = Hasher::default().digest();
+
+        assert_eq!(empty, root);
+
+        // Test for 5 leaves
+        let a: Address = rng.gen();
+        let b: Address = rng.gen();
+        let c: Address = rng.gen();
+        let d: Address = rng.gen();
+        let e: Address = rng.gen();
+
+        let initial = [a, b, c, d, e];
+
+        let a = [a, b].iter().collect::<Hasher>().digest();
+        let b = [c, d].iter().collect::<Hasher>().digest();
+        let c = [e].iter().collect::<Hasher>().digest();
+
+        let a = [a, b].iter().collect::<Hasher>().digest();
+        let b = [c].iter().collect::<Hasher>().digest();
+
+        let root = [a, b].iter().collect::<Hasher>().digest();
+        let root_p = ephemeral_merkle_root(initial.iter());
+
+        assert_eq!(root, root_p);
+
+        // Test for n leaves
+        let mut inputs = vec![Address::default(); 64];
+
+        inputs.iter_mut().for_each(|i| *i = rng.gen());
+
+        let width: Vec<usize> = (0..65).collect();
+        width.iter().for_each(|w| {
+            let initial: Vec<&Address> = inputs.iter().take(*w).collect();
+            let mut level: Vec<Bytes32> = initial
+                .chunks(2)
+                .map(|c| c.iter().collect::<Hasher>().digest())
+                .collect();
+
+            while level.len() > 1 {
+                level = level.chunks(2).map(|c| c.iter().collect::<Hasher>().digest()).collect();
+            }
+
+            let root = level.first().copied().unwrap_or(empty);
+            let root_p = ephemeral_merkle_root(initial.iter());
+
+            assert_eq!(root, root_p);
+        });
+    }
 }

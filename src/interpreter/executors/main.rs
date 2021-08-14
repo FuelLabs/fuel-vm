@@ -1,7 +1,7 @@
 use super::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
-use crate::interpreter::{Contract, ExecuteError, Interpreter, LogEvent, MemoryRange};
+use crate::interpreter::{Contract, ContractData, ExecuteError, Interpreter, LogEvent, MemoryRange};
 
 use fuel_asm::{Opcode, Word};
 use fuel_tx::{Input, Output, Transaction};
@@ -31,7 +31,8 @@ where
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
-                let id = Self::contract_id(&mut self.storage, &contract, &salt)?;
+                let contract = ContractData::new(contract, *salt);
+                let id = contract.id();
 
                 if !&self
                     .tx
@@ -42,7 +43,7 @@ where
                     Err(ExecuteError::TransactionCreateIdNotInTx)?;
                 }
 
-                self.storage.insert(id, contract)?;
+                self.storage.update(&id, contract)?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification

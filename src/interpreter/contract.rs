@@ -1,12 +1,70 @@
 use super::{ExecuteError, Interpreter};
-use crate::data::{InterpreterStorage, MerkleStorage};
+use crate::crypto;
+use crate::data::{InterpreterStorage, KeyedMerkleStorage};
 
 use fuel_asm::Word;
-use fuel_tx::crypto;
-use fuel_tx::{Color, ContractId, Salt, Transaction, ValidationError};
+use fuel_tx::{Bytes32, Color, ContractId, Salt, Transaction, ValidationError};
 
 use std::cmp;
 use std::convert::TryFrom;
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+pub struct ContractData {
+    code: Contract,
+    root: Bytes32,
+    salt: Salt,
+}
+
+impl ContractData {
+    // TODO move to fuel-asm or tx
+    const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
+
+    pub fn new(contract: Contract, salt: Salt) -> Self {
+        let root = Self::_root(contract.as_ref());
+
+        Self {
+            code: contract,
+            root,
+            salt,
+        }
+    }
+
+    pub const fn code(&self) -> &Contract {
+        &self.code
+    }
+
+    pub const fn root(&self) -> &Bytes32 {
+        &self.root
+    }
+
+    pub const fn salt(&self) -> &Salt {
+        &self.salt
+    }
+
+    pub(crate) fn _root(contract: &[u8]) -> Bytes32 {
+        let root = contract.as_ref().chunks(8).map(|c| {
+            let mut bytes = [0u8; 8];
+
+            let l = cmp::min(c.len(), 8);
+            (&mut bytes[..l]).copy_from_slice(c);
+
+            bytes
+        });
+
+        crypto::ephemeral_merkle_root(root)
+    }
+
+    pub fn id(&self) -> ContractId {
+        let mut hasher = crypto::Hasher::default();
+
+        hasher.input(Self::SEED);
+        hasher.input(&self.salt);
+        hasher.input(&self.root);
+
+        ContractId::from(*hasher.digest())
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
@@ -67,53 +125,61 @@ impl TryFrom<&Transaction> for Contract {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+pub struct ContractState(Vec<u8>);
+
+impl From<Vec<u8>> for ContractState {
+    fn from(s: Vec<u8>) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&[u8]> for ContractState {
+    fn from(s: &[u8]) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<&mut [u8]> for ContractState {
+    fn from(s: &mut [u8]) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<ContractState> for Vec<u8> {
+    fn from(s: ContractState) -> Vec<u8> {
+        s.0
+    }
+}
+
+impl AsRef<[u8]> for ContractState {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl AsMut<[u8]> for ContractState {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
     pub(crate) fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
-        Ok(self.storage.get(address)?)
-    }
-
-    pub fn contract_id<M>(storage: &mut M, contract: &Contract, salt: &Salt) -> Result<ContractId, ExecuteError>
-    where
-        M: MerkleStorage<Word, [u8; 8]>,
-    {
-        // Drain all elements from the contract code tree
-        storage.root()?;
-
-        contract
-            .as_ref()
-            .chunks(8)
-            .map(|c| {
-                let mut bytes = [0u8; 8];
-
-                let l = cmp::min(c.len(), 8);
-                (&mut bytes[..l]).copy_from_slice(c);
-
-                bytes
-            })
-            .enumerate()
-            .map(|(i, b)| storage.insert(i as Word, b).map(|_| ()))
-            .collect::<Result<_, _>>()?;
-
-        let root = storage.root()?;
-
-        const CONTRACT_ID_SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
-        let id = CONTRACT_ID_SEED
-            .iter()
-            .chain(salt.as_ref().iter())
-            .chain(root.as_ref().iter())
-            .copied()
-            .collect::<Vec<u8>>();
-
-        let id = crypto::hash(id.as_slice());
-
-        Ok(ContractId::from(*id))
+        Ok(self
+            .storage
+            .metadata(address)
+            .map(|m: ContractData| Some(m.code().clone()))?)
     }
 
     pub(crate) fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
-        Ok(self.storage.contains_key(address)?)
+        <S as KeyedMerkleStorage<ContractId, ContractData, (), ContractState>>::metadata(&self.storage, address)?;
+
+        Ok(true)
     }
 
     pub(crate) fn set_balance(
@@ -198,8 +264,8 @@ mod tests {
         .into();
 
         let contract = Contract::from(program.as_ref());
-        let contract = <Interpreter<MemoryStorage>>::contract_id(vm.as_mut(), &contract, &salt)
-            .expect("Failed to calculate contract ID from storage!");
+        let contract = ContractData::new(contract, salt);
+        let contract = contract.id();
 
         let color = Color::from(*contract);
         let output = Output::contract_created(contract);

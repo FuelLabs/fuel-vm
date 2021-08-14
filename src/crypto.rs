@@ -220,9 +220,8 @@ mod tests {
 
         inputs.iter_mut().for_each(|i| *i = rng.gen());
 
-        let width: Vec<usize> = (0..65).collect();
-        width.iter().for_each(|w| {
-            let initial: Vec<&Address> = inputs.iter().take(*w).collect();
+        (0..65).into_iter().for_each(|w| {
+            let initial: Vec<&Address> = inputs.iter().take(w).collect();
             let mut level: Vec<Bytes32> = initial
                 .chunks(2)
                 .map(|c| c.iter().collect::<Hasher>().digest())

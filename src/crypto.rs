@@ -101,8 +101,8 @@ where
     I: Iterator<Item = L> + ExactSizeIterator,
 {
     let mut hasher = Hasher::default();
+    let mut width = leaves.len().next_power_of_two();
     let mut len = leaves.len() as f32;
-    let mut width = len.log2().ceil().exp2() as usize;
 
     if width <= 2 {
         return leaves.collect::<Hasher>().digest();
@@ -125,6 +125,7 @@ where
 
     let mut next = current.clone();
 
+    // Cheap loop with no realloc
     while width > 1 {
         mem::swap(&mut current, &mut next);
 

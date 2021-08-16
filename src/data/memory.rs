@@ -3,7 +3,7 @@ use crate::crypto::{self, Hasher};
 use crate::interpreter::{BlockData, Contract, ContractData, ContractState};
 
 use fuel_asm::Word;
-use fuel_tx::{Address, Bytes32, Color, ContractId};
+use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
 use itertools::Itertools;
 
 use std::collections::HashMap;
@@ -15,6 +15,7 @@ pub struct MemoryStorage {
     storage: HashMap<(ContractId, Bytes32), Bytes32>,
     contract_data: HashMap<ContractId, ContractData>,
     contract_state: HashMap<ContractId, ContractState>,
+    contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
@@ -32,6 +33,24 @@ impl Storage<ContractId, Contract> for MemoryStorage {
 
     fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
         Ok(self.contracts.contains_key(key))
+    }
+}
+
+impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
+    fn insert(&mut self, key: ContractId, value: (Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, DataError> {
+        Ok(self.contract_code_root.insert(key, value))
+    }
+
+    fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, DataError> {
+        Ok(self.contract_code_root.remove(key))
+    }
+
+    fn get(&self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, DataError> {
+        Ok(self.contract_code_root.get(key).cloned())
+    }
+
+    fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
+        Ok(self.contract_code_root.contains_key(key))
     }
 }
 
@@ -53,25 +72,7 @@ impl Storage<(ContractId, Color), Word> for MemoryStorage {
     }
 }
 
-impl KeyedMerkleStorage<ContractId, (), Color, Word> for MemoryStorage {
-    fn initialize(&mut self, _parent: ContractId, _metadata: ()) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn metadata(&self, _parent: &ContractId) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn update(&mut self, _parent: &ContractId, _metadata: ()) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn destroy(&mut self, parent: &ContractId) -> Result<(), DataError> {
-        self.balances.retain(|(p, _), _| p != parent);
-
-        Ok(())
-    }
-
+impl KeyedMerkleStorage<ContractId, Color, Word> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
         let root = self
             .balances
@@ -103,25 +104,7 @@ impl Storage<(ContractId, Bytes32), Bytes32> for MemoryStorage {
     }
 }
 
-impl KeyedMerkleStorage<ContractId, (), Bytes32, Bytes32> for MemoryStorage {
-    fn initialize(&mut self, _parent: ContractId, _metadata: ()) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn metadata(&self, _parent: &ContractId) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn update(&mut self, _parent: &ContractId, _metadata: ()) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn destroy(&mut self, parent: &ContractId) -> Result<(), DataError> {
-        self.storage.retain(|(p, _), _| p != parent);
-
-        Ok(())
-    }
-
+impl KeyedMerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
         let root = self
             .storage
@@ -170,41 +153,12 @@ impl Storage<(ContractId, ()), ContractState> for MemoryStorage {
     }
 }
 
-impl KeyedMerkleStorage<ContractId, ContractData, (), ContractState> for MemoryStorage {
-    fn initialize(&mut self, _parent: ContractId, _metadata: ContractData) -> Result<(), DataError> {
-        Ok(())
-    }
-
-    fn metadata(&self, parent: &ContractId) -> Result<ContractData, DataError> {
-        self.contract_data
-            .get(parent)
-            .cloned()
-            .ok_or(DataError::MetadataNotAvailable)
-    }
-
-    fn update(&mut self, parent: &ContractId, metadata: ContractData) -> Result<(), DataError> {
-        self.contracts.insert(*parent, metadata.code().clone());
-        self.contract_data.insert(*parent, metadata);
-
-        Ok(())
-    }
-
-    fn destroy(&mut self, parent: &ContractId) -> Result<(), DataError> {
-        self.contract_data.remove(parent);
-        self.contract_state.remove(parent);
-
-        Ok(())
-    }
-
-    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
-        self.contract_state
-            .get(parent)
-            .map(|s| ContractData::_root(s.as_ref()))
-            .ok_or(DataError::StateNotAvailable)
-    }
-}
-
 impl InterpreterStorage for MemoryStorage {
+    type ContractCodeRootProvider = Self;
+    type ContractCodeProvider = Self;
+    type ContractBalanceProvider = Self;
+    type ContractStateProvider = Self;
+
     fn block_height(&self) -> Result<u32, DataError> {
         Ok(1)
     }
@@ -218,5 +172,17 @@ impl InterpreterStorage for MemoryStorage {
         let data = BlockData::new(block_height, hash);
 
         Ok(data)
+    }
+}
+
+impl AsRef<Self> for MemoryStorage {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl AsMut<Self> for MemoryStorage {
+    fn as_mut(&mut self) -> &mut Self {
+        self
     }
 }

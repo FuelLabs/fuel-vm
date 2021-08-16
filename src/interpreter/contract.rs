@@ -1,6 +1,6 @@
 use super::{ExecuteError, Interpreter};
 use crate::crypto;
-use crate::data::{InterpreterStorage, KeyedMerkleStorage};
+use crate::data::{InterpreterStorage, Storage};
 
 use fuel_asm::Word;
 use fuel_tx::{Bytes32, Color, ContractId, Salt, Transaction, ValidationError};
@@ -69,6 +69,34 @@ impl ContractData {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract(Vec<u8>);
+
+impl Contract {
+    // TODO move to fuel-asm or tx
+    const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
+
+    pub(crate) fn root(&self) -> Bytes32 {
+        let root = self.0.chunks(8).map(|c| {
+            let mut bytes = [0u8; 8];
+
+            let l = cmp::min(c.len(), 8);
+            (&mut bytes[..l]).copy_from_slice(c);
+
+            bytes
+        });
+
+        crypto::ephemeral_merkle_root(root)
+    }
+
+    pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
+        let mut hasher = crypto::Hasher::default();
+
+        hasher.input(Self::SEED);
+        hasher.input(salt);
+        hasher.input(root);
+
+        ContractId::from(*hasher.digest())
+    }
+}
 
 impl From<Vec<u8>> for Contract {
     fn from(c: Vec<u8>) -> Self {
@@ -169,17 +197,12 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
-        Ok(self
-            .storage
-            .metadata(address)
-            .map(|m: ContractData| Some(m.code().clone()))?)
+    pub(crate) fn contract(&self, contract: &ContractId) -> Result<Option<Contract>, ExecuteError> {
+        Ok(<S as AsRef<S::ContractCodeProvider>>::as_ref(&self.storage).get(contract)?)
     }
 
-    pub(crate) fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
-        <S as KeyedMerkleStorage<ContractId, ContractData, (), ContractState>>::metadata(&self.storage, address)?;
-
-        Ok(true)
+    pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, ExecuteError> {
+        Ok(<S as AsRef<S::ContractCodeProvider>>::as_ref(&self.storage).contains_key(contract)?)
     }
 
     pub(crate) fn set_balance(
@@ -188,13 +211,15 @@ where
         color: Color,
         balance: Word,
     ) -> Result<(), ExecuteError> {
-        self.storage.insert((contract, color), balance)?;
+        <S as AsMut<S::ContractBalanceProvider>>::as_mut(&mut self.storage).insert((contract, color), balance)?;
 
         Ok(())
     }
 
     pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {
-        Ok(self.storage.get(&(*contract, *color))?.unwrap_or(0))
+        Ok(<S as AsRef<S::ContractBalanceProvider>>::as_ref(&self.storage)
+            .get(&(*contract, *color))?
+            .unwrap_or(0))
     }
 
     pub(crate) fn balance_add(

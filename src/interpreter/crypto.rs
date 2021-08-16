@@ -19,7 +19,7 @@ impl<S> Interpreter<S> {
             let e = &self.memory[c as usize..cx as usize];
             let sig = &self.memory[b as usize..bx as usize];
 
-            crypto::secp256k1_sign_compact_recover(&sig, &e)
+            crypto::secp256k1_sign_compact_recover(sig, e)
                 .map(|pk| {
                     self.memory[a as usize..ax as usize].copy_from_slice(&pk);
                     self.clear_err();

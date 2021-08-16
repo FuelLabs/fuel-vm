@@ -23,8 +23,7 @@ where
 
         let balance_memory = self.memory[Bytes32::size_of()..Bytes32::size_of() + MAX_INPUTS as usize * LEN]
             .chunks_mut(LEN)
-            .filter(|chunk| &chunk[..Color::size_of()] == color.as_ref())
-            .next()
+            .find(|chunk| &chunk[..Color::size_of()] == color.as_ref())
             .map(|chunk| &mut chunk[Color::size_of()..])
             .ok_or(ExecuteError::ExternalColorNotFound)?;
 

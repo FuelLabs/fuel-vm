@@ -1,6 +1,6 @@
-use super::{ContractData, ContractState, ExecuteError, Interpreter, MemoryRange};
+use super::{ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
-use crate::data::{InterpreterStorage, KeyedMerkleStorage};
+use crate::data::{InterpreterStorage, Storage};
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::{Address, Bytes32, ContractId, Input};
@@ -121,10 +121,12 @@ where
             .expect("Checked memory bounds!")
             .into();
 
-        <S as KeyedMerkleStorage<ContractId, ContractData, (), ContractState>>::metadata(&self.storage, &contract_id)
-            .or(Err(ExecuteError::ContractNotFound))
-            .and_then(|data| self.try_mem_write(a, data.root().as_ref()))
-            .map(|_| self.inc_pc())
+        let (_, root) = <S as AsRef<S::ContractCodeRootProvider>>::as_ref(&self.storage)
+            .get(&contract_id)
+            .transpose()
+            .ok_or(ExecuteError::ContractNotFound)??;
+
+        self.try_mem_write(a, root.as_ref()).map(|_| self.inc_pc())
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<bool, ExecuteError> {
@@ -139,7 +141,7 @@ where
         self.contract(&contract_id)
             .transpose()
             .ok_or(ExecuteError::ContractNotFound)?
-            .and_then(|contract| Ok(self.registers[ra] = contract.as_ref().len() as Word))
+            .map(|contract| self.registers[ra] = contract.as_ref().len() as Word)
             .map(|_| self.inc_pc())
     }
 }

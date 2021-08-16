@@ -23,10 +23,7 @@ impl Default for Context {
 
 impl Context {
     pub const fn is_external(&self) -> bool {
-        match self {
-            Self::Predicate | Self::Script => true,
-            _ => false,
-        }
+        matches!(self, Self::Predicate | Self::Script)
     }
 }
 

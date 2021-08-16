@@ -6,6 +6,9 @@ use fuel_asm::{RegisterId, Word};
 use fuel_tx::{Address, Bytes32, ContractId, Input};
 
 use std::convert::TryFrom;
+use std::mem;
+
+const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
@@ -143,5 +146,80 @@ where
             .ok_or(ExecuteError::ContractNotFound)?
             .map(|contract| self.registers[ra] = contract.as_ref().len() as Word)
             .map(|_| self.inc_pc())
+    }
+
+    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<bool, ExecuteError> {
+        if b >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract = self.internal_contract()?;
+        let key: Bytes32 = <[u8; Bytes32::size_of()]>::try_from(&self.memory[b as usize..b as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        self.registers[ra] = <S as AsRef<S::ContractStateProvider>>::as_ref(&self.storage)
+            .get(&(contract, key))?
+            .map(|state| <[u8; WORD_SIZE]>::try_from(&state[..WORD_SIZE]).expect("Memory bounds logically verified"))
+            .map(Word::from_be_bytes)
+            .unwrap_or(0);
+
+        Ok(self.inc_pc())
+    }
+
+    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
+        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract = self.internal_contract()?;
+        let key: Bytes32 = <[u8; Bytes32::size_of()]>::try_from(&self.memory[b as usize..b as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        let state = <S as AsRef<S::ContractStateProvider>>::as_ref(&self.storage)
+            .get(&(contract, key))?
+            .unwrap_or_default();
+
+        self.try_mem_write(a, state.as_ref()).map(|_| self.inc_pc())
+    }
+
+    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
+        if a >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract = self.internal_contract()?;
+        let key: Bytes32 = <[u8; Bytes32::size_of()]>::try_from(&self.memory[a as usize..a as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        let mut value = Bytes32::default();
+
+        (&mut value[..WORD_SIZE]).copy_from_slice(&b.to_be_bytes());
+
+        <S as AsMut<S::ContractStateProvider>>::as_mut(&mut self.storage).insert((contract, key), value)?;
+
+        Ok(self.inc_pc())
+    }
+
+    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
+        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let contract = self.internal_contract()?;
+
+        let key: Bytes32 = <[u8; Bytes32::size_of()]>::try_from(&self.memory[a as usize..a as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        let value: Bytes32 = <[u8; Bytes32::size_of()]>::try_from(&self.memory[b as usize..b as usize + 32])
+            .expect("Checked memory bounds!")
+            .into();
+
+        <S as AsMut<S::ContractStateProvider>>::as_mut(&mut self.storage).insert((contract, key), value)?;
+
+        Ok(self.inc_pc())
     }
 }

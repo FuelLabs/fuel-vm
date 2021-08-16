@@ -286,6 +286,21 @@ where
             // TODO RETD
             // TODO RVRT
             // TODO SLDC
+            Opcode::SRW(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.state_read_word(ra, self.registers[rb])? => {}
+
+            Opcode::SRWQ(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.state_read_qword(self.registers[ra], self.registers[rb])? => {}
+
+            Opcode::SWW(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.state_write_word(self.registers[ra], self.registers[rb])? => {}
+
+            Opcode::SWWQ(ra, rb)
+                if self.gas_charge(&op).is_ok()
+                    && self.state_write_qword(self.registers[ra], self.registers[rb])? => {}
+
             Opcode::ECR(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
                     && self.ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])

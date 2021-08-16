@@ -1,10 +1,7 @@
 use std::{error, fmt};
 
 #[derive(Debug)]
-pub enum DataError {
-    MetadataNotAvailable,
-    StateNotAvailable,
-}
+pub enum DataError {}
 
 impl fmt::Display for DataError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

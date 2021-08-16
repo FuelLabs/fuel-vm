@@ -131,20 +131,15 @@ where
 
 // Provisory implementation that will cover ID definitions until client backend
 // is implemented
-impl Key for () {}
-impl Key for Word {}
-impl Key for ContractId {}
-impl Key for Color {}
 impl Key for Bytes32 {}
+impl Key for Color {}
+impl Key for ContractId {}
+impl Key for Word {}
 
-impl Value for () {}
-impl Value for Word {}
-impl Value for Contract {}
 impl Value for Bytes32 {}
+impl Value for Contract {}
 impl Value for Salt {}
-
-impl<K> Key for &K where K: Key {}
-impl<V> Value for &V where V: Value {}
+impl Value for Word {}
 
 impl<P, K> Key for (P, K)
 where

@@ -1,4 +1,4 @@
-use crate::interpreter::{BlockData, Contract, ContractData, ContractState};
+use crate::interpreter::{Contract, ContractData, ContractState};
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
@@ -94,8 +94,8 @@ pub trait InterpreterStorage:
     type ContractStateProvider: KeyedMerkleStorage<ContractId, Bytes32, Bytes32>;
 
     fn block_height(&self) -> Result<u32, DataError>;
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError>;
     fn coinbase(&self) -> Result<Address, DataError>;
-    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError>;
 }
 
 impl<S, I> InterpreterStorage for I
@@ -120,12 +120,12 @@ where
         S::block_height(self)
     }
 
-    fn coinbase(&self) -> Result<Address, DataError> {
-        S::coinbase(self)
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
+        S::block_hash(self, block_height)
     }
 
-    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError> {
-        S::block_data(self, block_height)
+    fn coinbase(&self) -> Result<Address, DataError> {
+        S::coinbase(self)
     }
 }
 

@@ -1,6 +1,6 @@
 use super::{DataError, InterpreterStorage, KeyedMerkleStorage, Storage};
 use crate::crypto::{self, Hasher};
-use crate::interpreter::{BlockData, Contract, ContractData, ContractState};
+use crate::interpreter::{Contract, ContractData, ContractState};
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
@@ -163,15 +163,12 @@ impl InterpreterStorage for MemoryStorage {
         Ok(1)
     }
 
-    fn coinbase(&self) -> Result<Address, DataError> {
-        Ok(Address::from(*Hasher::hash(b"coinbase")))
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
+        Ok(Hasher::hash(&block_height.to_be_bytes()))
     }
 
-    fn block_data(&self, block_height: u32) -> Result<BlockData, DataError> {
-        let hash = Hasher::hash(&block_height.to_be_bytes());
-        let data = BlockData::new(block_height, hash);
-
-        Ok(data)
+    fn coinbase(&self) -> Result<Address, DataError> {
+        Ok(Address::from(*Hasher::hash(b"coinbase")))
     }
 }
 

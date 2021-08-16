@@ -24,7 +24,6 @@ mod transaction;
 #[cfg(feature = "debug")]
 mod debug;
 
-pub use blockchain::BlockData;
 pub use contract::{Contract, ContractData, ContractState};
 pub use error::ExecuteError;
 pub use executors::{ProgramState, StateTransition, StateTransitionRef};

@@ -1,6 +1,6 @@
 use super::{DataError, InterpreterStorage, KeyedMerkleStorage, Storage};
 use crate::crypto::{self, Hasher};
-use crate::interpreter::{Contract, ContractData, ContractState};
+use crate::interpreter::Contract;
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
@@ -12,9 +12,7 @@ use std::collections::HashMap;
 pub struct MemoryStorage {
     contracts: HashMap<ContractId, Contract>,
     balances: HashMap<(ContractId, Color), Word>,
-    storage: HashMap<(ContractId, Bytes32), Bytes32>,
-    contract_data: HashMap<ContractId, ContractData>,
-    contract_state: HashMap<ContractId, ContractState>,
+    contract_state: HashMap<(ContractId, Bytes32), Bytes32>,
     contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
 }
 
@@ -88,68 +86,32 @@ impl KeyedMerkleStorage<ContractId, Color, Word> for MemoryStorage {
 
 impl Storage<(ContractId, Bytes32), Bytes32> for MemoryStorage {
     fn insert(&mut self, key: (ContractId, Bytes32), value: Bytes32) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.storage.insert(key, value))
+        Ok(self.contract_state.insert(key, value))
     }
 
     fn get(&self, key: &(ContractId, Bytes32)) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.storage.get(key).copied())
+        Ok(self.contract_state.get(key).copied())
     }
 
     fn remove(&mut self, key: &(ContractId, Bytes32)) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.storage.remove(key))
+        Ok(self.contract_state.remove(key))
     }
 
     fn contains_key(&self, key: &(ContractId, Bytes32)) -> Result<bool, DataError> {
-        Ok(self.storage.contains_key(key))
+        Ok(self.contract_state.contains_key(key))
     }
 }
 
 impl KeyedMerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
         let root = self
-            .storage
+            .contract_state
             .iter()
             .filter_map(|((contract, key), value)| (contract == parent).then(|| (key, value)))
             .sorted_by_key(|t| t.0)
             .map(|(_, value)| value);
 
         Ok(crypto::ephemeral_merkle_root(root))
-    }
-}
-
-impl Storage<ContractId, ContractState> for MemoryStorage {
-    fn insert(&mut self, key: ContractId, value: ContractState) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.insert(key, value))
-    }
-
-    fn get(&self, key: &ContractId) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.get(key).cloned())
-    }
-
-    fn remove(&mut self, key: &ContractId) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.remove(key))
-    }
-
-    fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
-        Ok(self.contract_state.contains_key(key))
-    }
-}
-
-impl Storage<(ContractId, ()), ContractState> for MemoryStorage {
-    fn insert(&mut self, key: (ContractId, ()), value: ContractState) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.insert(key.0, value))
-    }
-
-    fn get(&self, key: &(ContractId, ())) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.get(&key.0).cloned())
-    }
-
-    fn remove(&mut self, key: &(ContractId, ())) -> Result<Option<ContractState>, DataError> {
-        Ok(self.contract_state.remove(&key.0))
-    }
-
-    fn contains_key(&self, key: &(ContractId, ())) -> Result<bool, DataError> {
-        Ok(self.contract_state.contains_key(&key.0))
     }
 }
 

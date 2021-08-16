@@ -24,7 +24,7 @@ mod transaction;
 #[cfg(feature = "debug")]
 mod debug;
 
-pub use contract::{Contract, ContractData, ContractState};
+pub use contract::Contract;
 pub use error::ExecuteError;
 pub use executors::{ProgramState, StateTransition, StateTransitionRef};
 pub use frame::{Call, CallFrame};

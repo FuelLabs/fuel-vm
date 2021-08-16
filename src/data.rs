@@ -1,4 +1,4 @@
-use crate::interpreter::{Contract, ContractData, ContractState};
+use crate::interpreter::Contract;
 
 use fuel_asm::Word;
 use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
@@ -141,8 +141,6 @@ impl Value for () {}
 impl Value for Word {}
 impl Value for Contract {}
 impl Value for Bytes32 {}
-impl Value for ContractState {}
-impl Value for ContractData {}
 impl Value for Salt {}
 
 impl<K> Key for &K where K: Key {}

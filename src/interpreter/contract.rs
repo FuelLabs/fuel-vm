@@ -10,71 +10,13 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
-pub struct ContractData {
-    code: Contract,
-    root: Bytes32,
-    salt: Salt,
-}
-
-impl ContractData {
-    // TODO move to fuel-asm or tx
-    const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
-
-    pub fn new(contract: Contract, salt: Salt) -> Self {
-        let root = Self::_root(contract.as_ref());
-
-        Self {
-            code: contract,
-            root,
-            salt,
-        }
-    }
-
-    pub const fn code(&self) -> &Contract {
-        &self.code
-    }
-
-    pub const fn root(&self) -> &Bytes32 {
-        &self.root
-    }
-
-    pub const fn salt(&self) -> &Salt {
-        &self.salt
-    }
-
-    pub(crate) fn _root(contract: &[u8]) -> Bytes32 {
-        let root = contract.as_ref().chunks(8).map(|c| {
-            let mut bytes = [0u8; 8];
-
-            let l = cmp::min(c.len(), 8);
-            (&mut bytes[..l]).copy_from_slice(c);
-
-            bytes
-        });
-
-        crypto::ephemeral_merkle_root(root)
-    }
-
-    pub fn id(&self) -> ContractId {
-        let mut hasher = crypto::Hasher::default();
-
-        hasher.input(Self::SEED);
-        hasher.input(&self.salt);
-        hasher.input(&self.root);
-
-        ContractId::from(*hasher.digest())
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract(Vec<u8>);
 
 impl Contract {
     // TODO move to fuel-asm or tx
-    const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
+    pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 
-    pub(crate) fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> Bytes32 {
         let root = self.0.chunks(8).map(|c| {
             let mut bytes = [0u8; 8];
 
@@ -150,46 +92,6 @@ impl TryFrom<&Transaction> for Contract {
 
             _ => Err(ValidationError::TransactionScriptOutputContractCreated { index: 0 }),
         }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
-pub struct ContractState(Vec<u8>);
-
-impl From<Vec<u8>> for ContractState {
-    fn from(s: Vec<u8>) -> Self {
-        Self(s)
-    }
-}
-
-impl From<&[u8]> for ContractState {
-    fn from(s: &[u8]) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<&mut [u8]> for ContractState {
-    fn from(s: &mut [u8]) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<ContractState> for Vec<u8> {
-    fn from(s: ContractState) -> Vec<u8> {
-        s.0
-    }
-}
-
-impl AsRef<[u8]> for ContractState {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl AsMut<[u8]> for ContractState {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
     }
 }
 
@@ -289,8 +191,8 @@ mod tests {
         .into();
 
         let contract = Contract::from(program.as_ref());
-        let contract = ContractData::new(contract, salt);
-        let contract = contract.id();
+        let contract_root = contract.root();
+        let contract = contract.id(&salt, &contract_root);
 
         let color = Color::from(*contract);
         let output = Output::contract_created(contract);

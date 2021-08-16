@@ -42,8 +42,8 @@ fn predicate() {
     let witness = vec![];
 
     let contract = Contract::from(witness.as_ref());
-    let contract = ContractData::new(contract, salt);
-    let contract = contract.id();
+    let contract_root = contract.root();
+    let contract = contract.id(&salt, &contract_root);
 
     let input = Input::coin(
         rng.gen(),
@@ -118,8 +118,8 @@ fn predicate_false() {
     let witness = vec![];
 
     let contract = Contract::from(witness.as_ref());
-    let contract = ContractData::new(contract, salt);
-    let contract = contract.id();
+    let contract_root = contract.root();
+    let contract = contract.id(&salt, &contract_root);
 
     let input = Input::coin(
         rng.gen(),

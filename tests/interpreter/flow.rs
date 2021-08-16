@@ -33,8 +33,8 @@ fn code_copy() {
     let program = Witness::from(program.as_slice());
 
     let contract = Contract::from(program.as_ref());
-    let contract = ContractData::new(contract, salt);
-    let contract = contract.id();
+    let contract_root = contract.root();
+    let contract = contract.id(&salt, &contract_root);
 
     let contract_size = program.as_ref().len();
     let output = Output::contract_created(contract);
@@ -123,8 +123,8 @@ fn call() {
     let program = Witness::from(program.as_slice());
 
     let contract = Contract::from(program.as_ref());
-    let contract = ContractData::new(contract, salt);
-    let contract = contract.id();
+    let contract_root = contract.root();
+    let contract = contract.id(&salt, &contract_root);
 
     let output = Output::contract_created(contract);
 

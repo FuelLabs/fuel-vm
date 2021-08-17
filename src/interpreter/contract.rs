@@ -1,6 +1,6 @@
 use super::{ExecuteError, Interpreter};
 use crate::crypto;
-use crate::data::{InterpreterStorage, Storage};
+use crate::data::{InterpreterStorage, MerkleStorage, Storage};
 
 use fuel_asm::Word;
 use fuel_tx::{Bytes32, Color, ContractId, Salt, Transaction, ValidationError};
@@ -100,37 +100,38 @@ where
     S: InterpreterStorage,
 {
     pub(crate) fn contract(&self, contract: &ContractId) -> Result<Option<Contract>, ExecuteError> {
-        Ok(<S as AsRef<S::ContractCodeProvider>>::as_ref(&self.storage).get(contract)?)
+        Ok(<S as Storage<ContractId, Contract>>::get(&self.storage, contract)?)
     }
 
     pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, ExecuteError> {
-        Ok(<S as AsRef<S::ContractCodeProvider>>::as_ref(&self.storage).contains_key(contract)?)
+        Ok(<S as Storage<ContractId, Contract>>::contains_key(
+            &self.storage,
+            contract,
+        )?)
     }
 
     pub(crate) fn set_balance(
         &mut self,
-        contract: ContractId,
+        contract: &ContractId,
         color: Color,
         balance: Word,
     ) -> Result<(), ExecuteError> {
-        <S as AsMut<S::ContractBalanceProvider>>::as_mut(&mut self.storage).insert((contract, color), balance)?;
+        <S as MerkleStorage<ContractId, Color, Word>>::insert(&mut self.storage, contract, color, balance)?;
 
         Ok(())
     }
 
     pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {
-        Ok(<S as AsRef<S::ContractBalanceProvider>>::as_ref(&self.storage)
-            .get(&(*contract, *color))?
-            .unwrap_or(0))
+        Ok(<S as MerkleStorage<ContractId, Color, Word>>::get(&self.storage, contract, color)?.unwrap_or(0))
     }
 
     pub(crate) fn balance_add(
         &mut self,
-        contract: ContractId,
+        contract: &ContractId,
         color: Color,
         value: Word,
     ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&contract, &color)?;
+        let balance = self.balance(contract, &color)?;
         let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
 
         self.set_balance(contract, color, balance)?;
@@ -140,11 +141,11 @@ where
 
     pub(crate) fn balance_sub(
         &mut self,
-        contract: ContractId,
+        contract: &ContractId,
         color: Color,
         value: Word,
     ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&contract, &color)?;
+        let balance = self.balance(contract, &color)?;
         let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
 
         self.set_balance(contract, color, balance)?;

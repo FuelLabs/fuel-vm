@@ -4,7 +4,7 @@ use crate::data::{InterpreterStorage, Storage};
 use crate::interpreter::{Contract, ExecuteError, Interpreter, LogEvent, MemoryRange};
 
 use fuel_asm::{Opcode, Word};
-use fuel_tx::{Input, Output, Transaction};
+use fuel_tx::{Bytes32, ContractId, Input, Output, Salt, Transaction};
 
 use std::convert::TryFrom;
 
@@ -43,8 +43,8 @@ where
                     Err(ExecuteError::TransactionCreateIdNotInTx)?;
                 }
 
-                <S as AsMut<S::ContractCodeProvider>>::as_mut(&mut self.storage).insert(id, contract)?;
-                <S as AsMut<S::ContractCodeRootProvider>>::as_mut(&mut self.storage).insert(id, (*salt, root))?;
+                <S as Storage<ContractId, Contract>>::insert(&mut self.storage, id, contract)?;
+                <S as Storage<ContractId, (Salt, Bytes32)>>::insert(&mut self.storage, id, (*salt, root))?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification

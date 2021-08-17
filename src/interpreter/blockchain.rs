@@ -1,9 +1,9 @@
 use super::{ExecuteError, Interpreter, MemoryRange};
 use crate::consts::*;
-use crate::data::{InterpreterStorage, Storage};
+use crate::data::{InterpreterStorage, MerkleStorage, Storage};
 
 use fuel_asm::{RegisterId, Word};
-use fuel_tx::{Address, Bytes32, ContractId, Input};
+use fuel_tx::{Address, Bytes32, ContractId, Input, Salt};
 
 use std::convert::TryFrom;
 use std::mem;
@@ -21,14 +21,14 @@ where
     pub(crate) fn burn(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract()
             .map(|contract| (contract, (*contract).into()))
-            .and_then(|(contract, color)| self.balance_sub(contract, color, a))
+            .and_then(|(contract, color)| self.balance_sub(&contract, color, a))
             .map(|_| self.inc_pc())
     }
 
     pub(crate) fn mint(&mut self, a: Word) -> Result<bool, ExecuteError> {
         self.internal_contract()
             .map(|contract| (contract, (*contract).into()))
-            .and_then(|(contract, color)| self.balance_add(contract, color, a))
+            .and_then(|(contract, color)| self.balance_add(&contract, color, a))
             .map(|_| self.inc_pc())
     }
 
@@ -99,8 +99,7 @@ where
             .expect("Checked memory bounds!")
             .into();
 
-        let (_, root) = <S as AsRef<S::ContractCodeRootProvider>>::as_ref(&self.storage)
-            .get(&contract_id)
+        let (_, root) = <S as Storage<ContractId, (Salt, Bytes32)>>::get(&self.storage, &contract_id)
             .transpose()
             .ok_or(ExecuteError::ContractNotFound)??;
 
@@ -133,8 +132,7 @@ where
             .expect("Checked memory bounds!")
             .into();
 
-        self.registers[ra] = <S as AsRef<S::ContractStateProvider>>::as_ref(&self.storage)
-            .get(&(contract, key))?
+        self.registers[ra] = <S as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(&self.storage, &contract, &key)?
             .map(|state| <[u8; WORD_SIZE]>::try_from(&state[..WORD_SIZE]).expect("Memory bounds logically verified"))
             .map(Word::from_be_bytes)
             .unwrap_or(0);
@@ -152,8 +150,7 @@ where
             .expect("Checked memory bounds!")
             .into();
 
-        let state = <S as AsRef<S::ContractStateProvider>>::as_ref(&self.storage)
-            .get(&(contract, key))?
+        let state = <S as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(&self.storage, &contract, &key)?
             .unwrap_or_default();
 
         self.try_mem_write(a, state.as_ref()).map(|_| self.inc_pc())
@@ -173,7 +170,7 @@ where
 
         (&mut value[..WORD_SIZE]).copy_from_slice(&b.to_be_bytes());
 
-        <S as AsMut<S::ContractStateProvider>>::as_mut(&mut self.storage).insert((contract, key), value)?;
+        <S as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(&mut self.storage, &contract, key, value)?;
 
         Ok(self.inc_pc())
     }
@@ -193,7 +190,7 @@ where
             .expect("Checked memory bounds!")
             .into();
 
-        <S as AsMut<S::ContractStateProvider>>::as_mut(&mut self.storage).insert((contract, key), value)?;
+        <S as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(&mut self.storage, &contract, key, value)?;
 
         Ok(self.inc_pc())
     }

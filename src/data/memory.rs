@@ -1,4 +1,7 @@
-use super::{DataError, InterpreterStorage, KeyedMerkleStorage, Storage};
+use super::{
+    ContractBalanceProvider, ContractCodeProvider, ContractCodeRootProvider, ContractStateProvider, DataError,
+    InterpreterStorage, MerkleStorage, Storage,
+};
 use crate::crypto::{self, Hasher};
 use crate::interpreter::Contract;
 
@@ -76,25 +79,23 @@ impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
     }
 }
 
-impl Storage<(ContractId, Color), Word> for MemoryStorage {
-    fn insert(&mut self, key: (ContractId, Color), value: Word) -> Result<Option<Word>, DataError> {
-        Ok(self.balances.insert(key, value))
+impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
+    fn insert(&mut self, parent: &ContractId, key: Color, value: Word) -> Result<Option<Word>, DataError> {
+        Ok(self.balances.insert((*parent, key), value))
     }
 
-    fn get(&self, key: &(ContractId, Color)) -> Result<Option<Word>, DataError> {
-        Ok(self.balances.get(key).copied())
+    fn get(&self, parent: &ContractId, key: &Color) -> Result<Option<Word>, DataError> {
+        Ok(self.balances.get(&(*parent, *key)).copied())
     }
 
-    fn remove(&mut self, key: &(ContractId, Color)) -> Result<Option<Word>, DataError> {
-        Ok(self.balances.remove(key))
+    fn remove(&mut self, parent: &ContractId, key: &Color) -> Result<Option<Word>, DataError> {
+        Ok(self.balances.remove(&(*parent, *key)))
     }
 
-    fn contains_key(&self, key: &(ContractId, Color)) -> Result<bool, DataError> {
-        Ok(self.balances.contains_key(key))
+    fn contains_key(&self, parent: &ContractId, key: &Color) -> Result<bool, DataError> {
+        Ok(self.balances.contains_key(&(*parent, *key)))
     }
-}
 
-impl KeyedMerkleStorage<ContractId, Color, Word> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
         let root = self
             .balances
@@ -108,25 +109,23 @@ impl KeyedMerkleStorage<ContractId, Color, Word> for MemoryStorage {
     }
 }
 
-impl Storage<(ContractId, Bytes32), Bytes32> for MemoryStorage {
-    fn insert(&mut self, key: (ContractId, Bytes32), value: Bytes32) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.contract_state.insert(key, value))
+impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
+    fn insert(&mut self, parent: &ContractId, key: Bytes32, value: Bytes32) -> Result<Option<Bytes32>, DataError> {
+        Ok(self.contract_state.insert((*parent, key), value))
     }
 
-    fn get(&self, key: &(ContractId, Bytes32)) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.contract_state.get(key).copied())
+    fn get(&self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, DataError> {
+        Ok(self.contract_state.get(&(*parent, *key)).copied())
     }
 
-    fn remove(&mut self, key: &(ContractId, Bytes32)) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.contract_state.remove(key))
+    fn remove(&mut self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, DataError> {
+        Ok(self.contract_state.remove(&(*parent, *key)))
     }
 
-    fn contains_key(&self, key: &(ContractId, Bytes32)) -> Result<bool, DataError> {
-        Ok(self.contract_state.contains_key(key))
+    fn contains_key(&self, parent: &ContractId, key: &Bytes32) -> Result<bool, DataError> {
+        Ok(self.contract_state.contains_key(&(*parent, *key)))
     }
-}
 
-impl KeyedMerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
         let root = self
             .contract_state
@@ -139,12 +138,12 @@ impl KeyedMerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
     }
 }
 
-impl InterpreterStorage for MemoryStorage {
-    type ContractCodeRootProvider = Self;
-    type ContractCodeProvider = Self;
-    type ContractBalanceProvider = Self;
-    type ContractStateProvider = Self;
+impl ContractCodeRootProvider for MemoryStorage {}
+impl ContractCodeProvider for MemoryStorage {}
+impl ContractBalanceProvider for MemoryStorage {}
+impl ContractStateProvider for MemoryStorage {}
 
+impl InterpreterStorage for MemoryStorage {
     fn block_height(&self) -> Result<u32, DataError> {
         Ok(self.block_height)
     }
@@ -155,17 +154,5 @@ impl InterpreterStorage for MemoryStorage {
 
     fn coinbase(&self) -> Result<Address, DataError> {
         Ok(self.coinbase)
-    }
-}
-
-impl AsRef<Self> for MemoryStorage {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl AsMut<Self> for MemoryStorage {
-    fn as_mut(&mut self) -> &mut Self {
-        self
     }
 }

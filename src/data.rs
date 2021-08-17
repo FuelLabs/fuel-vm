@@ -53,80 +53,61 @@ where
     }
 }
 
-pub trait KeyedMerkleStorage<P, K, V>: Storage<(P, K), V>
+pub trait MerkleStorage<P, K, V>
 where
     P: Key,
     K: Key,
     V: Value,
 {
+    fn insert(&mut self, parent: &P, key: K, value: V) -> Result<Option<V>, DataError>;
+    fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
+    fn get(&self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
+    fn contains_key(&self, parent: &P, key: &K) -> Result<bool, DataError>;
     fn root(&mut self, parent: &P) -> Result<Bytes32, DataError>;
 }
 
-impl<P, K, V, X, I> KeyedMerkleStorage<P, K, V> for I
+impl<P, K, V, X, I> MerkleStorage<P, K, V> for I
 where
     P: Key,
     K: Key,
     V: Value,
-    X: Storage<(P, K), V>,
-    X: KeyedMerkleStorage<P, K, V>,
+    X: MerkleStorage<P, K, V>,
     I: DerefMut<Target = X>,
 {
+    fn insert(&mut self, parent: &P, key: K, value: V) -> Result<Option<V>, DataError> {
+        <X as MerkleStorage<P, K, V>>::insert(self.deref_mut(), parent, key, value)
+    }
+
+    fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, DataError> {
+        <X as MerkleStorage<P, K, V>>::remove(self.deref_mut(), parent, key)
+    }
+
+    fn get(&self, parent: &P, key: &K) -> Result<Option<V>, DataError> {
+        <X as MerkleStorage<P, K, V>>::get(self.deref(), parent, key)
+    }
+
+    fn contains_key(&self, parent: &P, key: &K) -> Result<bool, DataError> {
+        <X as MerkleStorage<P, K, V>>::contains_key(self.deref(), parent, key)
+    }
+
     fn root(&mut self, parent: &P) -> Result<Bytes32, DataError> {
-        <X as KeyedMerkleStorage<P, K, V>>::root(self.deref_mut(), parent)
+        <X as MerkleStorage<P, K, V>>::root(self.deref_mut(), parent)
     }
 }
+
+pub trait ContractCodeRootProvider: Storage<ContractId, (Salt, Bytes32)> {}
+pub trait ContractCodeProvider: Storage<ContractId, Contract> {}
+pub trait ContractBalanceProvider: MerkleStorage<ContractId, Color, Word> {}
+pub trait ContractStateProvider: MerkleStorage<ContractId, Bytes32, Bytes32> {}
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    AsRef<<Self as InterpreterStorage>::ContractCodeRootProvider>
-    + AsMut<<Self as InterpreterStorage>::ContractCodeRootProvider>
-    + AsRef<<Self as InterpreterStorage>::ContractCodeProvider>
-    + AsMut<<Self as InterpreterStorage>::ContractCodeProvider>
-    + AsRef<<Self as InterpreterStorage>::ContractBalanceProvider>
-    + AsMut<<Self as InterpreterStorage>::ContractBalanceProvider>
-    + AsRef<<Self as InterpreterStorage>::ContractStateProvider>
-    + AsMut<<Self as InterpreterStorage>::ContractStateProvider>
+    ContractCodeRootProvider + ContractCodeProvider + ContractBalanceProvider + ContractStateProvider
 {
-    type ContractCodeRootProvider: Storage<ContractId, (Salt, Bytes32)>;
-    type ContractCodeProvider: Storage<ContractId, Contract>;
-    type ContractBalanceProvider: KeyedMerkleStorage<ContractId, Color, Word>;
-    type ContractStateProvider: KeyedMerkleStorage<ContractId, Bytes32, Bytes32>;
-
     fn block_height(&self) -> Result<u32, DataError>;
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError>;
     fn coinbase(&self) -> Result<Address, DataError>;
-}
-
-impl<S, I> InterpreterStorage for I
-where
-    S: InterpreterStorage,
-    I: DerefMut<Target = S>
-        + AsRef<<S as InterpreterStorage>::ContractCodeRootProvider>
-        + AsMut<<S as InterpreterStorage>::ContractCodeRootProvider>
-        + AsRef<<S as InterpreterStorage>::ContractCodeProvider>
-        + AsMut<<S as InterpreterStorage>::ContractCodeProvider>
-        + AsRef<<S as InterpreterStorage>::ContractBalanceProvider>
-        + AsMut<<S as InterpreterStorage>::ContractBalanceProvider>
-        + AsRef<<S as InterpreterStorage>::ContractStateProvider>
-        + AsMut<<S as InterpreterStorage>::ContractStateProvider>,
-{
-    type ContractCodeRootProvider = S::ContractCodeRootProvider;
-    type ContractCodeProvider = S::ContractCodeProvider;
-    type ContractBalanceProvider = S::ContractBalanceProvider;
-    type ContractStateProvider = S::ContractStateProvider;
-
-    fn block_height(&self) -> Result<u32, DataError> {
-        S::block_height(self)
-    }
-
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
-        S::block_hash(self, block_height)
-    }
-
-    fn coinbase(&self) -> Result<Address, DataError> {
-        S::coinbase(self)
-    }
 }
 
 // Provisory implementation that will cover ID definitions until client backend

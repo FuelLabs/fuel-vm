@@ -8,12 +8,36 @@ use itertools::Itertools;
 
 use std::collections::HashMap;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct MemoryStorage {
+    block_height: u32,
+    coinbase: Address,
     contracts: HashMap<ContractId, Contract>,
     balances: HashMap<(ContractId, Color), Word>,
     contract_state: HashMap<(ContractId, Bytes32), Bytes32>,
     contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
+}
+
+impl Default for MemoryStorage {
+    fn default() -> Self {
+        let block_height = 1;
+        let coinbase = Address::from(*Hasher::hash(b"coinbase"));
+
+        Self::new(block_height, coinbase)
+    }
+}
+
+impl MemoryStorage {
+    pub fn new(block_height: u32, coinbase: Address) -> Self {
+        Self {
+            block_height,
+            coinbase,
+            contracts: Default::default(),
+            balances: Default::default(),
+            contract_state: Default::default(),
+            contract_code_root: Default::default(),
+        }
+    }
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
@@ -122,7 +146,7 @@ impl InterpreterStorage for MemoryStorage {
     type ContractStateProvider = Self;
 
     fn block_height(&self) -> Result<u32, DataError> {
-        Ok(1)
+        Ok(self.block_height)
     }
 
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
@@ -130,7 +154,7 @@ impl InterpreterStorage for MemoryStorage {
     }
 
     fn coinbase(&self) -> Result<Address, DataError> {
-        Ok(Address::from(*Hasher::hash(b"coinbase")))
+        Ok(self.coinbase)
     }
 }
 

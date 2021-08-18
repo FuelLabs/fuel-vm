@@ -2,10 +2,11 @@ use super::{
     ContractBalanceProvider, ContractCodeProvider, ContractCodeRootProvider, ContractStateProvider, DataError,
     InterpreterStorage, MerkleStorage, Storage,
 };
-use crate::crypto::{self, Hasher};
+use crate::crypto;
 use crate::interpreter::Contract;
 
 use fuel_asm::Word;
+use fuel_tx::crypto::Hasher;
 use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
 use itertools::Itertools;
 

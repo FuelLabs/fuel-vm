@@ -1,5 +1,6 @@
+use fuel_tx::crypto::Hasher;
 use fuel_vm::consts::*;
-use fuel_vm::crypto::{self, Hasher};
+use fuel_vm::crypto;
 use fuel_vm::prelude::*;
 
 use std::convert::TryFrom;

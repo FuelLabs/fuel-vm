@@ -1,59 +1,11 @@
-use fuel_tx::{crypto, Bytes32};
+use fuel_tx::crypto::Hasher;
+use fuel_tx::Bytes32;
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
 
 use std::convert::TryFrom;
-use std::{iter, mem};
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct Hasher(Vec<u8>);
-
-impl Hasher {
-    pub fn input<B>(&mut self, data: B)
-    where
-        B: AsRef<[u8]>,
-    {
-        self.0.extend_from_slice(data.as_ref())
-    }
-
-    pub fn reset(&mut self) {
-        self.0.clear();
-    }
-
-    pub fn hash<B>(bytes: B) -> Bytes32
-    where
-        B: AsRef<[u8]>,
-    {
-        crypto::hash(bytes.as_ref())
-    }
-
-    pub fn digest(&self) -> Bytes32 {
-        crypto::hash(self.0.as_slice())
-    }
-}
-
-impl From<Vec<u8>> for Hasher {
-    fn from(bytes: Vec<u8>) -> Hasher {
-        Self(bytes)
-    }
-}
-
-impl<B> iter::FromIterator<B> for Hasher
-where
-    B: AsRef<[u8]>,
-{
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = B>,
-    {
-        let mut hasher = Hasher::default();
-
-        iter.into_iter().for_each(|i| hasher.input(i.as_ref()));
-
-        hasher
-    }
-}
+use std::mem;
 
 /// Sign a given message and compress the `v` to the signature
 ///
@@ -152,6 +104,7 @@ mod tests {
     use super::*;
     use crate::prelude::*;
 
+    use fuel_tx::crypto::Hasher;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use secp256k1::PublicKey;
@@ -173,7 +126,7 @@ mod tests {
             let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
             let public = <[u8; 64]>::try_from(&public[1..]).expect("Failed to parse public key!");
 
-            let e = crypto::hash(&message);
+            let e = Hasher::hash(&message);
 
             let sig =
                 secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");

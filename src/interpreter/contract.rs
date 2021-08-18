@@ -3,6 +3,7 @@ use crate::crypto;
 use crate::data::{InterpreterStorage, MerkleStorage, Storage};
 
 use fuel_asm::Word;
+use fuel_tx::crypto::Hasher;
 use fuel_tx::{Bytes32, Color, ContractId, Salt, Transaction, ValidationError};
 
 use std::cmp;
@@ -13,9 +14,6 @@ use std::convert::TryFrom;
 pub struct Contract(Vec<u8>);
 
 impl Contract {
-    // TODO move to fuel-asm or tx
-    pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
-
     pub fn root(&self) -> Bytes32 {
         let root = self.0.chunks(8).map(|c| {
             let mut bytes = [0u8; 8];
@@ -30,9 +28,9 @@ impl Contract {
     }
 
     pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
-        let mut hasher = crypto::Hasher::default();
+        let mut hasher = Hasher::default();
 
-        hasher.input(Self::SEED);
+        hasher.input(ContractId::SEED);
         hasher.input(salt);
         hasher.input(root);
 

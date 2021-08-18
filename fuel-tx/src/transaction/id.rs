@@ -1,6 +1,6 @@
 use super::{Bytes32, Input, Metadata, Output, Transaction, Witness};
 use crate::bytes::SerializableVec;
-use crate::crypto;
+use crate::crypto::Hasher;
 
 impl Transaction {
     pub(crate) fn inputs_mut(&mut self) -> &mut [Input] {
@@ -35,7 +35,7 @@ impl Transaction {
         let mut tx = self.clone();
         tx.prepare_sign();
 
-        crypto::hash(tx.to_bytes().as_slice())
+        Hasher::hash(tx.to_bytes().as_slice())
     }
 
     fn prepare_sign(&mut self) {

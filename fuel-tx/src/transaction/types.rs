@@ -95,3 +95,7 @@ key!(Color, 32);
 key!(ContractId, 32);
 key!(Bytes32, 32);
 key!(Salt, 32);
+
+impl ContractId {
+    pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
+}

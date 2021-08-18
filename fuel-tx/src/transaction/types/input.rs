@@ -232,7 +232,8 @@ impl io::Write for Input {
             return Err(bytes::eof());
         }
 
-        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        // Safety: buf len is checked
+        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
         let identifier = InputRepr::try_from(identifier)?;
 
         match identifier {
@@ -241,15 +242,16 @@ impl io::Write for Input {
             InputRepr::Coin => {
                 let mut n = INPUT_COIN_FIXED_SIZE;
 
-                let (utxo_id, buf) = bytes::restore_array_unchecked(buf);
-                let (owner, buf) = bytes::restore_array_unchecked(buf);
-                let (amount, buf) = bytes::restore_number_unchecked(buf);
-                let (color, buf) = bytes::restore_array_unchecked(buf);
-                let (witness_index, buf) = bytes::restore_u8_unchecked(buf);
-                let (maturity, buf) = bytes::restore_number_unchecked(buf);
+                // Safety: buf len is checked
+                let (utxo_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+                let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
 
-                let (predicate_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (predicate_data_len, buf) = bytes::restore_usize_unchecked(buf);
+                let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
 
                 let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
                 n += size;
@@ -278,10 +280,11 @@ impl io::Write for Input {
             InputRepr::Contract if buf.len() < INPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
 
             InputRepr::Contract => {
-                let (utxo_id, buf) = bytes::restore_array_unchecked(buf);
-                let (balance_root, buf) = bytes::restore_array_unchecked(buf);
-                let (state_root, buf) = bytes::restore_array_unchecked(buf);
-                let (contract_id, _) = bytes::restore_array_unchecked(buf);
+                // Safety: checked buffer len
+                let (utxo_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (state_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let utxo_id = utxo_id.into();
                 let balance_root = balance_root.into();

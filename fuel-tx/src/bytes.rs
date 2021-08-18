@@ -113,12 +113,14 @@ pub fn store_raw_bytes<'a>(
 }
 
 pub fn restore_bytes(mut buf: &[u8]) -> io::Result<(usize, Vec<u8>, &[u8])> {
+    // Safety: chunks_exact will guarantee the size of the slice is correct
     let len = buf
         .chunks_exact(WORD_SIZE)
         .next()
-        .map(|chunk| <[u8; WORD_SIZE]>::try_from(chunk).unwrap_or_else(|_| unreachable!()))
+        .map(|b| unsafe { from_slice_unchecked(b) })
         .map(|len| Word::from_be_bytes(len) as usize)
         .ok_or_else(eof)?;
+
     buf = &buf[WORD_SIZE..];
 
     let pad = len % WORD_SIZE;
@@ -167,46 +169,46 @@ where
     &mut buf[WORD_SIZE..]
 }
 
-pub fn restore_number_unchecked<T>(buf: &[u8]) -> (T, &[u8])
+pub unsafe fn restore_number_unchecked<T>(buf: &[u8]) -> (T, &[u8])
 where
     T: From<Word>,
 {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number).into();
 
     (number, &buf[WORD_SIZE..])
 }
 
-pub fn restore_word_unchecked(buf: &[u8]) -> (Word, &[u8]) {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+pub unsafe fn restore_word_unchecked(buf: &[u8]) -> (Word, &[u8]) {
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number);
 
     (number, &buf[WORD_SIZE..])
 }
 
-pub fn restore_u8_unchecked(buf: &[u8]) -> (u8, &[u8]) {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+pub unsafe fn restore_u8_unchecked(buf: &[u8]) -> (u8, &[u8]) {
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number) as u8;
 
     (number, &buf[WORD_SIZE..])
 }
 
-pub fn restore_u16_unchecked(buf: &[u8]) -> (u16, &[u8]) {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+pub unsafe fn restore_u16_unchecked(buf: &[u8]) -> (u16, &[u8]) {
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number) as u16;
 
     (number, &buf[WORD_SIZE..])
 }
 
-pub fn restore_u32_unchecked(buf: &[u8]) -> (u32, &[u8]) {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+pub unsafe fn restore_u32_unchecked(buf: &[u8]) -> (u32, &[u8]) {
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number) as u32;
 
     (number, &buf[WORD_SIZE..])
 }
 
-pub fn restore_usize_unchecked(buf: &[u8]) -> (usize, &[u8]) {
-    let number = <[u8; WORD_SIZE]>::try_from(&buf[..WORD_SIZE]).unwrap_or_else(|_| unreachable!());
+pub unsafe fn restore_usize_unchecked(buf: &[u8]) -> (usize, &[u8]) {
+    let number = from_slice_unchecked(buf);
     let number = Word::from_be_bytes(number) as usize;
 
     (number, &buf[WORD_SIZE..])
@@ -216,10 +218,11 @@ pub fn restore_number<T>(buf: &[u8]) -> io::Result<(T, &[u8])>
 where
     T: From<Word>,
 {
+    // Safe checked memory bounds
     let number = buf
         .chunks_exact(WORD_SIZE)
         .next()
-        .map(|chunk| <[u8; WORD_SIZE]>::try_from(chunk).unwrap_or_else(|_| unreachable!()))
+        .map(|b| unsafe { from_slice_unchecked(b) })
         .map(|chunk| Word::from_be_bytes(chunk).into())
         .ok_or_else(eof)?;
 
@@ -247,14 +250,26 @@ pub fn store_array_unchecked<'a, const N: usize>(
     &mut buf[N..]
 }
 
-pub fn restore_array_unchecked<const N: usize>(buf: &[u8]) -> ([u8; N], &[u8]) {
-    <[u8; N]>::try_from(&buf[..N])
-        .map(|array| (array, &buf[N..]))
-        .unwrap_or_else(|_| unreachable!())
+pub unsafe fn restore_array_unchecked<const N: usize>(buf: &[u8]) -> ([u8; N], &[u8]) {
+    (from_slice_unchecked(buf), &buf[N..])
 }
 
 pub fn restore_array<const N: usize>(buf: &[u8]) -> io::Result<([u8; N], &[u8])> {
     <[u8; N]>::try_from(&buf[..N])
         .map_err(|_| eof())
         .map(|array| (array, &buf[N..]))
+}
+
+/// Add a conversion from arbitrary slices into arrays
+///
+/// # Warning
+///
+/// This function will not panic if the length of the slice is smaller than `N`. Instead, it will
+/// cause undefined behavior and read random disowned bytes.
+pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
+    let ptr = buf.as_ptr() as *const [u8; N];
+
+    // Static assertions are not applicable to runtime length check (e.g. slices).
+    // This is safe if the size of `bytes` is consistent to `N`
+    *ptr
 }

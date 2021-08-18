@@ -146,7 +146,8 @@ impl io::Write for Transaction {
             return Err(bytes::eof());
         }
 
-        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        // Safety: buffer size is checked
+        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
         let identifier = TransactionRepr::try_from(identifier)?;
 
         match identifier {
@@ -156,14 +157,15 @@ impl io::Write for Transaction {
                     return Err(bytes::eof());
                 }
 
-                let (gas_price, buf) = bytes::restore_number_unchecked(buf);
-                let (gas_limit, buf) = bytes::restore_number_unchecked(buf);
-                let (maturity, buf) = bytes::restore_number_unchecked(buf);
-                let (script_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (script_data_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (inputs_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (outputs_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (witnesses_len, buf) = bytes::restore_usize_unchecked(buf);
+                // Safety: buffer size is checked
+                let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (script_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (script_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
 
                 let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
                 n += size;
@@ -213,16 +215,17 @@ impl io::Write for Transaction {
                     return Err(bytes::eof());
                 }
 
-                let (gas_price, buf) = bytes::restore_number_unchecked(buf);
-                let (gas_limit, buf) = bytes::restore_number_unchecked(buf);
-                let (maturity, buf) = bytes::restore_number_unchecked(buf);
-                let (_bytecode_length, buf) = bytes::restore_u16_unchecked(buf);
-                let (bytecode_witness_index, buf) = bytes::restore_u8_unchecked(buf);
-                let (static_contracts_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (inputs_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (outputs_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (witnesses_len, buf) = bytes::restore_usize_unchecked(buf);
-                let (salt, mut buf) = bytes::restore_array_unchecked(buf);
+                // Safety: buffer size is checked
+                let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (_bytecode_length, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
+                let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+                let (static_contracts_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (salt, mut buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let salt = salt.into();
 

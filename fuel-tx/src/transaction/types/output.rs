@@ -209,7 +209,8 @@ impl io::Write for Output {
             return Err(bytes::eof());
         }
 
-        let (identifier, buf): (Word, _) = bytes::restore_number_unchecked(buf);
+        // Bounds safely checked
+        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
         let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
@@ -234,9 +235,10 @@ impl io::Write for Output {
             | OutputRepr::Withdrawal
             | OutputRepr::Change
             | OutputRepr::Variable => {
-                let (to, buf) = bytes::restore_array_unchecked(buf);
-                let (amount, buf) = bytes::restore_number_unchecked(buf);
-                let (color, _) = bytes::restore_array_unchecked(buf);
+                // Safety: buf len is checked
+                let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let (color, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let to = to.into();
                 let color = color.into();
@@ -254,9 +256,10 @@ impl io::Write for Output {
             }
 
             OutputRepr::Contract => {
-                let (input_index, buf) = bytes::restore_u8_unchecked(buf);
-                let (balance_root, buf) = bytes::restore_array_unchecked(buf);
-                let (state_root, _) = bytes::restore_array_unchecked(buf);
+                // Safety: buf len is checked
+                let (input_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+                let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (state_root, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let balance_root = balance_root.into();
                 let state_root = state_root.into();
@@ -271,7 +274,8 @@ impl io::Write for Output {
             }
 
             OutputRepr::ContractCreated => {
-                let (contract_id, _) = bytes::restore_array_unchecked(buf);
+                // Safety: buf len is checked
+                let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
                 let contract_id = contract_id.into();
 
                 *self = Self::ContractCreated { contract_id };

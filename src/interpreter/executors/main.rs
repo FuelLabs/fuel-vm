@@ -43,8 +43,8 @@ where
                     Err(ExecuteError::TransactionCreateIdNotInTx)?;
                 }
 
-                <S as Storage<ContractId, Contract>>::insert(&mut self.storage, id, contract)?;
-                <S as Storage<ContractId, (Salt, Bytes32)>>::insert(&mut self.storage, id, (*salt, root))?;
+                <S as Storage<ContractId, Contract>>::insert(&mut self.storage, &id, &contract)?;
+                <S as Storage<ContractId, (Salt, Bytes32)>>::insert(&mut self.storage, &id, &(*salt, root))?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification

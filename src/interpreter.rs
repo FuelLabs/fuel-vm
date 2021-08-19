@@ -36,7 +36,6 @@ pub struct Interpreter<S> {
     memory: Vec<u8>,
     frames: Vec<CallFrame>,
     log: Vec<LogEvent>,
-    // TODO review all opcodes that mutates the tx in the stack and keep this one sync
     tx: Transaction,
     storage: S,
     debugger: Debugger,

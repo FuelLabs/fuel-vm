@@ -10,10 +10,7 @@ pub mod debug;
 pub mod interpreter;
 
 pub mod prelude {
-    pub use crate::data::{
-        ContractBalanceProvider, ContractCodeProvider, ContractCodeRootProvider, ContractStateProvider,
-        InterpreterStorage, MemoryStorage, MerkleStorage, Storage,
-    };
+    pub use crate::data::{InterpreterStorage, MemoryStorage, MerkleStorage, Storage};
     pub use crate::debug::Debugger;
     pub use crate::interpreter::{
         Call, CallFrame, Context, Contract, ExecuteError, Interpreter, LogEvent, MemoryRange, ProgramState,

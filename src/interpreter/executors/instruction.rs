@@ -240,9 +240,10 @@ where
             }
 
             Opcode::BHSH(ra, rb)
-                if self.gas_charge(&op).is_ok() && self.block_hash(self.registers[ra], self.registers[rb])? => {}
+                if self.gas_charge(&op).is_ok()
+                    && self.block_hash(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
 
-            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra])? => {}
+            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra]).map(|_| true)? => {}
 
             Opcode::CALL(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
@@ -255,25 +256,28 @@ where
                         )
                         .map(|_| true)? => {}
 
-            Opcode::CB(ra) if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra])? => {}
+            Opcode::CB(ra)
+                if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra]).map(|_| true)? => {}
 
             Opcode::CCP(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
-                    && self.code_copy(
-                        self.registers[ra],
-                        self.registers[rb],
-                        self.registers[rc],
-                        self.registers[rd],
-                    )
-                    && self.inc_pc() => {}
+                    && self
+                        .code_copy(
+                            self.registers[ra],
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rd],
+                        )
+                        .map(|_| true)? => {}
 
             Opcode::CROO(ra, rb)
-                if self.gas_charge(&op).is_ok() && self.code_root(self.registers[ra], self.registers[rb])? => {}
+                if self.gas_charge(&op).is_ok()
+                    && self.code_root(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
 
             Opcode::CSIZ(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.code_size(ra, self.registers[rb])? => {}
+                    && self.code_size(ra, self.registers[rb]).map(|_| true)? => {}
 
             // TODO LDC
             // TODO Append to receipts
@@ -281,7 +285,7 @@ where
                 if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) && self.inc_pc() => {}
 
             // TODO LOGD
-            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra])? => {}
+            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).map(|_| true)? => {}
 
             // TODO RETD
             // TODO RVRT
@@ -289,17 +293,25 @@ where
             Opcode::SRW(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.state_read_word(ra, self.registers[rb])? => {}
+                    && self.state_read_word(ra, self.registers[rb]).map(|_| true)? => {}
 
             Opcode::SRWQ(ra, rb)
-                if self.gas_charge(&op).is_ok() && self.state_read_qword(self.registers[ra], self.registers[rb])? => {}
+                if self.gas_charge(&op).is_ok()
+                    && self
+                        .state_read_qword(self.registers[ra], self.registers[rb])
+                        .map(|_| true)? => {}
 
             Opcode::SWW(ra, rb)
-                if self.gas_charge(&op).is_ok() && self.state_write_word(self.registers[ra], self.registers[rb])? => {}
+                if self.gas_charge(&op).is_ok()
+                    && self
+                        .state_write_word(self.registers[ra], self.registers[rb])
+                        .map(|_| true)? => {}
 
             Opcode::SWWQ(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self.state_write_qword(self.registers[ra], self.registers[rb])? => {}
+                    && self
+                        .state_write_qword(self.registers[ra], self.registers[rb])
+                        .map(|_| true)? => {}
 
             Opcode::ECR(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()

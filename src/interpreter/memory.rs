@@ -18,23 +18,40 @@ impl<S> Interpreter<S> {
     /// # Panics
     ///
     /// Will panic if data overlaps with `addr[..|data|[`
-    pub(crate) fn try_mem_write(&mut self, addr: Word, data: &[u8]) -> Result<(), ExecuteError> {
-        addr.checked_add(data.len() as Word)
+    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), ExecuteError> {
+        addr.checked_add(data.len())
             .ok_or(ExecuteError::ArithmeticOverflow)
             .and_then(|ax| {
-                (ax <= VM_MAX_RAM)
-                    .then(|| MemoryRange::new(addr, 32))
+                (ax <= VM_MAX_RAM as usize)
+                    .then(|| MemoryRange::new(addr as Word, 32))
                     .ok_or(ExecuteError::MemoryOverflow)
             })
             .and_then(|range| {
                 self.has_ownership_range(&range)
                     .then(|| {
                         let src = data.as_ptr();
-                        let dst = &mut self.memory[addr as usize] as *mut u8;
+                        let dst = &mut self.memory[addr] as *mut u8;
 
                         unsafe {
                             ptr::copy_nonoverlapping(src, dst, data.len());
                         }
+                    })
+                    .ok_or(ExecuteError::MemoryOwnership)
+            })
+    }
+
+    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), ExecuteError> {
+        addr.checked_add(len)
+            .ok_or(ExecuteError::ArithmeticOverflow)
+            .and_then(|ax| {
+                (ax <= VM_MAX_RAM as usize)
+                    .then(|| MemoryRange::new(addr as Word, 32))
+                    .ok_or(ExecuteError::MemoryOverflow)
+            })
+            .and_then(|range| {
+                self.has_ownership_range(&range)
+                    .then(|| {
+                        (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
                     })
                     .ok_or(ExecuteError::MemoryOwnership)
             })

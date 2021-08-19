@@ -19,7 +19,7 @@ where
     K: Key,
     V: Value,
 {
-    fn insert(&mut self, key: K, value: V) -> Result<Option<V>, DataError>;
+    fn insert(&mut self, key: &K, value: &V) -> Result<Option<V>, DataError>;
     fn remove(&mut self, key: &K) -> Result<Option<V>, DataError>;
 
     // This initial implementation safeguard from the complex scenarios when a
@@ -36,7 +36,7 @@ where
     S: Storage<K, V>,
     I: DerefMut<Target = S>,
 {
-    fn insert(&mut self, key: K, value: V) -> Result<Option<V>, DataError> {
+    fn insert(&mut self, key: &K, value: &V) -> Result<Option<V>, DataError> {
         <S as Storage<K, V>>::insert(self.deref_mut(), key, value)
     }
 
@@ -59,7 +59,7 @@ where
     K: Key,
     V: Value,
 {
-    fn insert(&mut self, parent: &P, key: K, value: V) -> Result<Option<V>, DataError>;
+    fn insert(&mut self, parent: &P, key: &K, value: &V) -> Result<Option<V>, DataError>;
     fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
     fn get(&self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
     fn contains_key(&self, parent: &P, key: &K) -> Result<bool, DataError>;
@@ -74,7 +74,7 @@ where
     X: MerkleStorage<P, K, V>,
     I: DerefMut<Target = X>,
 {
-    fn insert(&mut self, parent: &P, key: K, value: V) -> Result<Option<V>, DataError> {
+    fn insert(&mut self, parent: &P, key: &K, value: &V) -> Result<Option<V>, DataError> {
         <X as MerkleStorage<P, K, V>>::insert(self.deref_mut(), parent, key, value)
     }
 
@@ -95,46 +95,16 @@ where
     }
 }
 
-pub trait ContractCodeRootProvider: Storage<ContractId, (Salt, Bytes32)> {}
-
-impl<P, I> ContractCodeRootProvider for I
-where
-    P: ContractCodeRootProvider,
-    I: DerefMut<Target = P>,
-{
-}
-
-pub trait ContractCodeProvider: Storage<ContractId, Contract> {}
-
-impl<P, I> ContractCodeProvider for I
-where
-    P: ContractCodeProvider,
-    I: DerefMut<Target = P>,
-{
-}
-
-pub trait ContractBalanceProvider: MerkleStorage<ContractId, Color, Word> {}
-
-impl<P, I> ContractBalanceProvider for I
-where
-    P: ContractBalanceProvider,
-    I: DerefMut<Target = P>,
-{
-}
-
-pub trait ContractStateProvider: MerkleStorage<ContractId, Bytes32, Bytes32> {}
-
-impl<P, I> ContractStateProvider for I
-where
-    P: ContractStateProvider,
-    I: DerefMut<Target = P>,
-{
-}
+// TODO use trait aliases after stable release
+// https://github.com/rust-lang/rust/issues/41517
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    ContractCodeRootProvider + ContractCodeProvider + ContractBalanceProvider + ContractStateProvider
+    Storage<ContractId, (Salt, Bytes32)>
+    + Storage<ContractId, Contract>
+    + MerkleStorage<ContractId, Color, Word>
+    + MerkleStorage<ContractId, Bytes32, Bytes32>
 {
     fn block_height(&self) -> Result<u32, DataError>;
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError>;

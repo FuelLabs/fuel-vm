@@ -4,8 +4,6 @@ use crate::consts::*;
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::{ContractId, Transaction};
 
-use std::convert::TryFrom;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum Context {
@@ -87,6 +85,10 @@ impl<S> Interpreter<S> {
         self.context().is_external()
     }
 
+    pub(crate) const fn is_internal_context(&self) -> bool {
+        !self.is_external_context()
+    }
+
     pub(crate) const fn is_predicate(&self) -> bool {
         matches!(self.context, Context::Predicate)
     }
@@ -99,15 +101,23 @@ impl<S> Interpreter<S> {
         &self.tx
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<ContractId, ExecuteError> {
-        if self.is_external_context() {
-            return Err(ExecuteError::ExpectedInternalContext);
-        }
+    pub(crate) fn internal_contract(&self) -> Result<&ContractId, ExecuteError> {
+        let (c, cx) = self.internal_contract_bounds()?;
 
-        let c = self.registers[REG_FP] as usize;
-        let cx = c + ContractId::size_of();
-        let contract = ContractId::try_from(&self.memory[c..cx]).expect("Memory bounds logically verified");
+        // Safety: Memory bounds logically verified by the interpreter
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         Ok(contract)
+    }
+
+    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), ExecuteError> {
+        self.is_internal_context()
+            .then(|| {
+                let c = self.registers[REG_FP] as usize;
+                let cx = c + ContractId::size_of();
+
+                (c, cx)
+            })
+            .ok_or(ExecuteError::ExpectedInternalContext)
     }
 }

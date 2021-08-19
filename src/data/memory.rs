@@ -1,7 +1,4 @@
-use super::{
-    ContractBalanceProvider, ContractCodeProvider, ContractCodeRootProvider, ContractStateProvider, DataError,
-    InterpreterStorage, MerkleStorage, Storage,
-};
+use super::{DataError, InterpreterStorage, MerkleStorage, Storage};
 use crate::crypto;
 use crate::interpreter::Contract;
 
@@ -52,8 +49,8 @@ impl MemoryStorage {
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {
-    fn insert(&mut self, key: ContractId, value: Contract) -> Result<Option<Contract>, DataError> {
-        Ok(self.contracts.insert(key, value))
+    fn insert(&mut self, key: &ContractId, value: &Contract) -> Result<Option<Contract>, DataError> {
+        Ok(self.contracts.insert(*key, value.clone()))
     }
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, DataError> {
@@ -70,8 +67,8 @@ impl Storage<ContractId, Contract> for MemoryStorage {
 }
 
 impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
-    fn insert(&mut self, key: ContractId, value: (Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, DataError> {
-        Ok(self.contract_code_root.insert(key, value))
+    fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, DataError> {
+        Ok(self.contract_code_root.insert(*key, *value))
     }
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, DataError> {
@@ -88,8 +85,8 @@ impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
 }
 
 impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
-    fn insert(&mut self, parent: &ContractId, key: Color, value: Word) -> Result<Option<Word>, DataError> {
-        Ok(self.balances.insert((*parent, key), value))
+    fn insert(&mut self, parent: &ContractId, key: &Color, value: &Word) -> Result<Option<Word>, DataError> {
+        Ok(self.balances.insert((*parent, *key), *value))
     }
 
     fn get(&self, parent: &ContractId, key: &Color) -> Result<Option<Word>, DataError> {
@@ -118,8 +115,8 @@ impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
 }
 
 impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
-    fn insert(&mut self, parent: &ContractId, key: Bytes32, value: Bytes32) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.contract_state.insert((*parent, key), value))
+    fn insert(&mut self, parent: &ContractId, key: &Bytes32, value: &Bytes32) -> Result<Option<Bytes32>, DataError> {
+        Ok(self.contract_state.insert((*parent, *key), *value))
     }
 
     fn get(&self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, DataError> {
@@ -145,11 +142,6 @@ impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
         Ok(crypto::ephemeral_merkle_root(root))
     }
 }
-
-impl ContractCodeRootProvider for MemoryStorage {}
-impl ContractCodeProvider for MemoryStorage {}
-impl ContractBalanceProvider for MemoryStorage {}
-impl ContractStateProvider for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
     fn block_height(&self) -> Result<u32, DataError> {

@@ -108,47 +108,8 @@ where
         )?)
     }
 
-    pub(crate) fn set_balance(
-        &mut self,
-        contract: &ContractId,
-        color: Color,
-        balance: Word,
-    ) -> Result<(), ExecuteError> {
-        <S as MerkleStorage<ContractId, Color, Word>>::insert(&mut self.storage, contract, color, balance)?;
-
-        Ok(())
-    }
-
     pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {
         Ok(<S as MerkleStorage<ContractId, Color, Word>>::get(&self.storage, contract, color)?.unwrap_or(0))
-    }
-
-    pub(crate) fn balance_add(
-        &mut self,
-        contract: &ContractId,
-        color: Color,
-        value: Word,
-    ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(contract, &color)?;
-        let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
-
-        self.set_balance(contract, color, balance)?;
-
-        Ok(balance)
-    }
-
-    pub(crate) fn balance_sub(
-        &mut self,
-        contract: &ContractId,
-        color: Color,
-        value: Word,
-    ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(contract, &color)?;
-        let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
-
-        self.set_balance(contract, color, balance)?;
-
-        Ok(balance)
     }
 }
 

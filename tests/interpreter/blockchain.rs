@@ -21,16 +21,29 @@ fn state_read_write() {
 
     let salt: Salt = rng.gen();
 
+    // Create a program with two main routines
+    //
+    // 0 - Fetch (key, value) from call[b] and state[key] += value
+    //
+    // 1 - Fetch (key, value) from call[b], unpack b into 4x16, xor the limbs of
+    // state[key] with unpacked b
+
     #[rustfmt::skip]
-    let program: Witness = [
+    let function_selector: Vec<Opcode> = vec![
         Opcode::ADDI(0x30, REG_ZERO, 0),
         Opcode::ADDI(0x31, REG_ONE, 0),
+    ];
 
+    #[rustfmt::skip]
+    let call_arguments_parser: Vec<Opcode> = vec![
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
+    ];
 
+    #[rustfmt::skip]
+    let routine_add_word_to_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x30, 13),       // (0, b) Add word to state
         Opcode::LW(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
         Opcode::SRW(0x21, 0x11),            // r[0x21]      := s[m[b, 32], 8]
@@ -38,7 +51,10 @@ fn state_read_write() {
         Opcode::SWW(0x11, 0x20),            // s[m[b,32]]   := r[0x20]
         Opcode::LOG(0x20, 0x21, 0x00, 0x00),
         Opcode::RET(REG_ONE),
+    ];
 
+    #[rustfmt::skip]
+    let routine_unpack_and_xor_limbs_into_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x31, 45),       // (1, b) Unpack arg into 4x16 and xor into state
         Opcode::ADDI(0x20, REG_ZERO, 32),   // r[0x20]      := 32
         Opcode::ALOC(0x20),                 // aloc            0x20
@@ -71,13 +87,21 @@ fn state_read_write() {
         Opcode::SW(0x20, 0x26, 3),          // m[0x20+24,8] := r[0x26]
         Opcode::SWWQ(0x11, 0x20),           // s[m[b,32],32]:= m[0x20, 32]
         Opcode::RET(REG_ONE),
+    ];
 
+    #[rustfmt::skip]
+    let invalid_call: Vec<Opcode> = vec![
         Opcode::RET(REG_ZERO),
-    ]
-    .iter()
-    .copied()
-    .collect::<Vec<u8>>()
-    .into();
+    ];
+
+    let program: Witness = function_selector
+        .into_iter()
+        .chain(call_arguments_parser.into_iter())
+        .chain(routine_add_word_to_state.into_iter())
+        .chain(routine_unpack_and_xor_limbs_into_state.into_iter())
+        .chain(invalid_call.into_iter())
+        .collect::<Vec<u8>>()
+        .into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
@@ -98,13 +122,21 @@ fn state_read_write() {
         vec![program],
     );
 
+    // Deploy the contract into the blockchain
     Interpreter::transition(&mut storage, tx).expect("Failed to transact");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
+    // The script needs to locate the data offset at runtime. Hence, we need to know
+    // upfront the serialized size of the script so we can set the registers
+    // accordingly.
+    //
+    // This variable is created to assert we have correct script size in the
+    // instructions.
     let script_len = 16;
 
+    // Based on the defined script length, we set the appropriate data offset
     let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
     let script_data_offset = script_data_offset as Immediate12;
 
@@ -118,22 +150,24 @@ fn state_read_write() {
     .copied()
     .collect::<Vec<u8>>();
 
+    // Assert the offsets are set correctnly
     let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
-
-    let script: Vec<u8> = script.into();
-
     assert_eq!(script_data_offset, offset as Immediate12);
 
     let mut script_data = vec![];
 
+    // Routine to be called: Add word to state
     let routine: Word = 0;
 
+    // Offset of the script data relative to the call data
     let call_data_offset = script_data_offset as usize + ContractId::size_of() + 2 * WORD_SIZE;
     let call_data_offset = call_data_offset as Word;
 
+    // Key and value to be added
     let key = Hasher::hash(b"some key");
     let val: Word = 150;
 
+    // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
     script_data.extend(&routine.to_be_bytes());
     script_data.extend(&call_data_offset.to_be_bytes());
@@ -151,22 +185,27 @@ fn state_read_write() {
         vec![],
     );
 
+    // Assert the initial state of `key` is empty
     let state = storage.contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state);
 
     let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
-
     let state = storage.contract_state(&contract, &key);
+
+    // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
+    // Expect the correct log order
     let log = transition.log();
     assert!(matches!(log[0], LogEvent::Register { register, value, .. } if register == 0x20 && value == val));
     assert!(matches!(log[1], LogEvent::Register { register, value, .. } if register == 0x21 && value == 0));
 
     let mut script_data = vec![];
 
+    // Routine to be called: Unpack and XOR into state
     let routine: Word = 1;
 
+    // Create limbs reference values
     let a = 0x25;
     let b = 0xc1;
     let c = 0xd3;
@@ -174,6 +213,7 @@ fn state_read_write() {
 
     let val: Word = (a << 48) | (b << 32) | (c << 16) | d;
 
+    // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
     script_data.extend(&routine.to_be_bytes());
     script_data.extend(&call_data_offset.to_be_bytes());
@@ -191,10 +231,12 @@ fn state_read_write() {
         vec![],
     );
 
+    // Mutate the state
     let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
 
     let log = transition.log();
 
+    // Expect the arguments to be received correctly by the VM
     assert!(matches!(log[0], LogEvent::Register { register, value, .. } if register == 0x21 && value == val));
     assert!(matches!(log[1], LogEvent::Register { register, value, .. } if register == 0x22 && value == a));
     assert!(matches!(log[2], LogEvent::Register { register, value, .. } if register == 0x23 && value == b));
@@ -206,6 +248,7 @@ fn state_read_write() {
     let o = a ^ 0x00;
     let p = a ^ 0x00;
 
+    // Expect the value to be unpacked correctly into 4x16 limbs + XOR state
     assert!(matches!(log[5], LogEvent::Register { register, value, .. } if register == 0x26 && value == m));
     assert!(matches!(log[6], LogEvent::Register { register, value, .. } if register == 0x26 && value == n));
     assert!(matches!(log[7], LogEvent::Register { register, value, .. } if register == 0x26 && value == o));
@@ -213,11 +256,13 @@ fn state_read_write() {
 
     let mut bytes = [0u8; 32];
 
+    // Reconstruct the final state out of the limbs
     (&mut bytes[..8]).copy_from_slice(&m.to_be_bytes());
     (&mut bytes[8..16]).copy_from_slice(&n.to_be_bytes());
     (&mut bytes[16..24]).copy_from_slice(&o.to_be_bytes());
     (&mut bytes[24..]).copy_from_slice(&p.to_be_bytes());
 
+    // Assert the state is correct
     let bytes = Bytes32::from(bytes);
     let state = storage.contract_state(&contract, &key);
     assert_eq!(bytes, state);

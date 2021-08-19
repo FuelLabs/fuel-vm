@@ -96,9 +96,40 @@ where
 }
 
 pub trait ContractCodeRootProvider: Storage<ContractId, (Salt, Bytes32)> {}
+
+impl<P, I> ContractCodeRootProvider for I
+where
+    P: ContractCodeRootProvider,
+    I: DerefMut<Target = P>,
+{
+}
+
 pub trait ContractCodeProvider: Storage<ContractId, Contract> {}
+
+impl<P, I> ContractCodeProvider for I
+where
+    P: ContractCodeProvider,
+    I: DerefMut<Target = P>,
+{
+}
+
 pub trait ContractBalanceProvider: MerkleStorage<ContractId, Color, Word> {}
+
+impl<P, I> ContractBalanceProvider for I
+where
+    P: ContractBalanceProvider,
+    I: DerefMut<Target = P>,
+{
+}
+
 pub trait ContractStateProvider: MerkleStorage<ContractId, Bytes32, Bytes32> {}
+
+impl<P, I> ContractStateProvider for I
+where
+    P: ContractStateProvider,
+    I: DerefMut<Target = P>,
+{
+}
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
@@ -108,6 +139,24 @@ pub trait InterpreterStorage:
     fn block_height(&self) -> Result<u32, DataError>;
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError>;
     fn coinbase(&self) -> Result<Address, DataError>;
+}
+
+impl<S, I> InterpreterStorage for I
+where
+    S: InterpreterStorage,
+    I: DerefMut<Target = S>,
+{
+    fn block_height(&self) -> Result<u32, DataError> {
+        <S as InterpreterStorage>::block_height(self.deref())
+    }
+
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
+        <S as InterpreterStorage>::block_hash(self.deref(), block_height)
+    }
+
+    fn coinbase(&self) -> Result<Address, DataError> {
+        <S as InterpreterStorage>::coinbase(self.deref())
+    }
 }
 
 // Provisory implementation that will cover ID definitions until client backend

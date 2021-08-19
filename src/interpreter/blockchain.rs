@@ -91,7 +91,7 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
-        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+        if a > VM_MAX_RAM - 32 || b > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 
@@ -107,7 +107,7 @@ where
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<bool, ExecuteError> {
-        if b >= VM_MAX_RAM - 32 {
+        if b > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 
@@ -123,7 +123,7 @@ where
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<bool, ExecuteError> {
-        if b >= VM_MAX_RAM - 32 {
+        if b > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 
@@ -141,7 +141,7 @@ where
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
-        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+        if a > VM_MAX_RAM - 32 || b > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 
@@ -157,7 +157,7 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
-        if a >= VM_MAX_RAM - 32 {
+        if a > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 
@@ -176,7 +176,7 @@ where
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<bool, ExecuteError> {
-        if a >= VM_MAX_RAM - 32 || b >= VM_MAX_RAM - 32 {
+        if a > VM_MAX_RAM - 32 || b > VM_MAX_RAM - 32 {
             return Err(ExecuteError::MemoryOverflow);
         }
 

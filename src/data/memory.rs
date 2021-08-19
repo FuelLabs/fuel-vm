@@ -42,6 +42,13 @@ impl MemoryStorage {
             contract_code_root: Default::default(),
         }
     }
+
+    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Bytes32 {
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(&self, contract, key)
+            .ok()
+            .flatten()
+            .unwrap_or_default()
+    }
 }
 
 impl Storage<ContractId, Contract> for MemoryStorage {

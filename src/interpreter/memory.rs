@@ -22,7 +22,7 @@ impl<S> Interpreter<S> {
         addr.checked_add(data.len() as Word)
             .ok_or(ExecuteError::ArithmeticOverflow)
             .and_then(|ax| {
-                (ax > VM_MAX_RAM)
+                (ax <= VM_MAX_RAM)
                     .then(|| MemoryRange::new(addr, 32))
                     .ok_or(ExecuteError::MemoryOverflow)
             })
@@ -123,7 +123,7 @@ impl<S> Interpreter<S> {
         let bc = bc as usize;
         let bcw = bcw as usize;
 
-        if overflow || bcw >= VM_MAX_RAM as RegisterId {
+        if overflow || bcw > VM_MAX_RAM as RegisterId {
             false
         } else {
             // Safe conversion of sized slice

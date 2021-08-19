@@ -134,19 +134,11 @@ where
 impl Key for Bytes32 {}
 impl Key for Color {}
 impl Key for ContractId {}
-impl Key for Word {}
 
 impl Value for Bytes32 {}
 impl Value for Contract {}
 impl Value for Salt {}
 impl Value for Word {}
-
-impl<P, K> Key for (P, K)
-where
-    P: Key,
-    K: Key,
-{
-}
 
 impl<A, B> Value for (A, B)
 where

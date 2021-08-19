@@ -80,9 +80,10 @@ impl io::Write for Call {
             return Err(bytes::eof());
         }
 
-        let (to, buf) = bytes::restore_array_unchecked(buf);
-        let (a, buf) = bytes::restore_word_unchecked(buf);
-        let (b, _) = bytes::restore_word_unchecked(buf);
+        // Safety: checked buffer lenght
+        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+        let (b, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
         self.to = to.into();
         self.a = a;
@@ -199,18 +200,19 @@ impl io::Write for CallFrame {
             return Err(bytes::eof());
         }
 
-        let (to, buf) = bytes::restore_array_unchecked(buf);
-        let (color, buf) = bytes::restore_array_unchecked(buf);
+        // Safety: checked buffer length
+        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
         let buf = self.registers.iter_mut().fold(buf, |buf, reg| {
-            let (r, buf) = bytes::restore_word_unchecked(buf);
+            let (r, buf) = unsafe { bytes::restore_word_unchecked(buf) };
             *reg = r;
             buf
         });
 
-        let (code_len, buf) = bytes::restore_usize_unchecked(buf);
-        let (a, buf) = bytes::restore_word_unchecked(buf);
-        let (b, buf) = bytes::restore_word_unchecked(buf);
+        let (code_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+        let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
 
         let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
         n += bytes;

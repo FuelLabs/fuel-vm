@@ -1,17 +1,42 @@
 use super::{ExecuteError, Interpreter};
-use crate::consts::*;
 use crate::crypto;
-use crate::data::InterpreterStorage;
+use crate::data::{InterpreterStorage, MerkleStorage, Storage};
 
 use fuel_asm::Word;
-use fuel_tx::crypto as tx_crypto;
-use fuel_tx::{Color, ContractId, Transaction, ValidationError};
+use fuel_tx::crypto::Hasher;
+use fuel_tx::{Bytes32, Color, ContractId, Salt, Transaction, ValidationError};
 
+use std::cmp;
 use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract(Vec<u8>);
+
+impl Contract {
+    pub fn root(&self) -> Bytes32 {
+        let root = self.0.chunks(8).map(|c| {
+            let mut bytes = [0u8; 8];
+
+            let l = cmp::min(c.len(), 8);
+            (&mut bytes[..l]).copy_from_slice(c);
+
+            bytes
+        });
+
+        crypto::ephemeral_merkle_root(root)
+    }
+
+    pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
+        let mut hasher = Hasher::default();
+
+        hasher.input(ContractId::SEED);
+        hasher.input(salt);
+        hasher.input(root);
+
+        ContractId::from(*hasher.digest())
+    }
+}
 
 impl From<Vec<u8>> for Contract {
     fn from(c: Vec<u8>) -> Self {
@@ -68,70 +93,23 @@ impl TryFrom<&Transaction> for Contract {
     }
 }
 
-impl Contract {
-    pub fn address(&self, salt: &[u8]) -> ContractId {
-        let mut input = VM_CONTRACT_ID_BASE.to_vec();
-
-        input.extend_from_slice(salt);
-        input.extend_from_slice(crypto::merkle_root(self.0.as_slice()).as_ref());
-
-        (*tx_crypto::hash(input.as_slice())).into()
-    }
-}
-
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn contract(&self, address: &ContractId) -> Result<Option<Contract>, ExecuteError> {
-        Ok(self.storage.get(address)?)
+    pub(crate) fn contract(&self, contract: &ContractId) -> Result<Option<Contract>, ExecuteError> {
+        Ok(<S as Storage<ContractId, Contract>>::get(&self.storage, contract)?)
     }
 
-    pub(crate) fn check_contract_exists(&self, address: &ContractId) -> Result<bool, ExecuteError> {
-        Ok(self.storage.contains_key(address)?)
-    }
-
-    pub(crate) fn set_balance(
-        &mut self,
-        contract: ContractId,
-        color: Color,
-        balance: Word,
-    ) -> Result<(), ExecuteError> {
-        self.storage.insert((contract, color), balance)?;
-
-        Ok(())
+    pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, ExecuteError> {
+        Ok(<S as Storage<ContractId, Contract>>::contains_key(
+            &self.storage,
+            contract,
+        )?)
     }
 
     pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, ExecuteError> {
-        Ok(self.storage.get(&(*contract, *color))?.unwrap_or(0))
-    }
-
-    pub(crate) fn balance_add(
-        &mut self,
-        contract: ContractId,
-        color: Color,
-        value: Word,
-    ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&contract, &color)?;
-        let balance = balance.checked_add(value).ok_or(ExecuteError::NotEnoughBalance)?;
-
-        self.set_balance(contract, color, balance)?;
-
-        Ok(balance)
-    }
-
-    pub(crate) fn balance_sub(
-        &mut self,
-        contract: ContractId,
-        color: Color,
-        value: Word,
-    ) -> Result<Word, ExecuteError> {
-        let balance = self.balance(&contract, &color)?;
-        let balance = balance.checked_sub(value).ok_or(ExecuteError::NotEnoughBalance)?;
-
-        self.set_balance(contract, color, balance)?;
-
-        Ok(balance)
+        Ok(<S as MerkleStorage<ContractId, Color, Word>>::get(&self.storage, contract, color)?.unwrap_or(0))
     }
 }
 
@@ -172,7 +150,10 @@ mod tests {
         .collect::<Vec<u8>>()
         .into();
 
-        let contract = Contract::from(program.as_ref()).address(salt.as_ref());
+        let contract = Contract::from(program.as_ref());
+        let contract_root = contract.root();
+        let contract = contract.id(&salt, &contract_root);
+
         let color = Color::from(*contract);
         let output = Output::contract_created(contract);
 
@@ -213,7 +194,7 @@ mod tests {
             vec![],
         );
 
-        let script_data_offset = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
+        let script_data_offset = VM_TX_MEMORY + tx.script_data_offset().unwrap();
         script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_offset as Immediate12);
 
         let script: Vec<u8> = script_ops.iter().copied().collect();

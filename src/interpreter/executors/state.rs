@@ -131,7 +131,7 @@ impl<'a> StateTransitionRef<'a> {
 impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {
     fn from(t: &'a StateTransition) -> StateTransitionRef<'a> {
         Self {
-            state: t.state().clone(),
+            state: *t.state(),
             tx: t.tx(),
             log: t.log(),
         }

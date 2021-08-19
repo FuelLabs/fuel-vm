@@ -3,7 +3,7 @@ use crate::consts::{MEM_MAX_ACCESS_SIZE, VM_MAX_RAM};
 use crate::crypto;
 
 use fuel_asm::Word;
-use fuel_tx::crypto as tx_crypto;
+use fuel_tx::crypto::Hasher;
 
 impl<S> Interpreter<S> {
     pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> bool {
@@ -20,7 +20,7 @@ impl<S> Interpreter<S> {
             let e = &self.memory[c as usize..cx as usize];
             let sig = &self.memory[b as usize..bx as usize];
 
-            crypto::secp256k1_sign_compact_recover(&sig, &e)
+            crypto::secp256k1_sign_compact_recover(sig, e)
                 .map(|pk| {
                     self.memory[a as usize..ax as usize].copy_from_slice(&pk);
                     self.clear_err();
@@ -73,9 +73,10 @@ impl<S> Interpreter<S> {
         {
             false
         } else {
-            let result = tx_crypto::hash(&self.memory[b as usize..bc as usize]);
+            let result = Hasher::hash(&self.memory[b as usize..bc as usize]);
 
             self.memory[a as usize..ax as usize].copy_from_slice(result.as_ref());
+
             true
         }
     }

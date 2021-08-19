@@ -1,10 +1,10 @@
 use super::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::consts::*;
-use crate::data::InterpreterStorage;
+use crate::data::{InterpreterStorage, Storage};
 use crate::interpreter::{Contract, ExecuteError, Interpreter, LogEvent, MemoryRange};
 
 use fuel_asm::{Opcode, Word};
-use fuel_tx::{Input, Output, Transaction};
+use fuel_tx::{Bytes32, ContractId, Input, Output, Salt, Transaction};
 
 use std::convert::TryFrom;
 
@@ -31,7 +31,9 @@ where
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
-                let id = contract.address(salt.as_ref());
+                let root = contract.root();
+                let id = contract.id(salt, &root);
+
                 if !&self
                     .tx
                     .outputs()
@@ -41,7 +43,8 @@ where
                     Err(ExecuteError::TransactionCreateIdNotInTx)?;
                 }
 
-                self.storage.insert(id, contract)?;
+                <S as Storage<ContractId, Contract>>::insert(&mut self.storage, &id, &contract)?;
+                <S as Storage<ContractId, (Salt, Bytes32)>>::insert(&mut self.storage, &id, &(*salt, root))?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
@@ -58,7 +61,7 @@ where
                             .map(|ofs| (ofs as Word, predicate.len() as Word)),
                         _ => None,
                     })
-                    .map(|(ofs, len)| (ofs + Self::tx_mem_address() as Word, len))
+                    .map(|(ofs, len)| (ofs + VM_TX_MEMORY as Word, len))
                     .map(|(ofs, len)| MemoryRange::new(ofs, len))
                     .collect();
 
@@ -76,7 +79,7 @@ where
             }
 
             Transaction::Script { .. } => {
-                let offset = (Self::tx_mem_address() + Transaction::script_offset()) as Word;
+                let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
                 self.registers[REG_IS] = offset;

@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecuteError, Interpreter};
 use crate::consts::*;
 
 use fuel_asm::{RegisterId, Word};
@@ -11,6 +11,52 @@ mod range;
 pub use range::MemoryRange;
 
 impl<S> Interpreter<S> {
+    /// Copy `data` into `addr[..|data|[`
+    ///
+    /// Check for overflow and memory ownership
+    ///
+    /// # Panics
+    ///
+    /// Will panic if data overlaps with `addr[..|data|[`
+    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), ExecuteError> {
+        addr.checked_add(data.len())
+            .ok_or(ExecuteError::ArithmeticOverflow)
+            .and_then(|ax| {
+                (ax <= VM_MAX_RAM as usize)
+                    .then(|| MemoryRange::new(addr as Word, 32))
+                    .ok_or(ExecuteError::MemoryOverflow)
+            })
+            .and_then(|range| {
+                self.has_ownership_range(&range)
+                    .then(|| {
+                        let src = data.as_ptr();
+                        let dst = &mut self.memory[addr] as *mut u8;
+
+                        unsafe {
+                            ptr::copy_nonoverlapping(src, dst, data.len());
+                        }
+                    })
+                    .ok_or(ExecuteError::MemoryOwnership)
+            })
+    }
+
+    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), ExecuteError> {
+        addr.checked_add(len)
+            .ok_or(ExecuteError::ArithmeticOverflow)
+            .and_then(|ax| {
+                (ax <= VM_MAX_RAM as usize)
+                    .then(|| MemoryRange::new(addr as Word, 32))
+                    .ok_or(ExecuteError::MemoryOverflow)
+            })
+            .and_then(|range| {
+                self.has_ownership_range(&range)
+                    .then(|| {
+                        (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
+                    })
+                    .ok_or(ExecuteError::MemoryOwnership)
+            })
+    }
+
     /// Grant ownership of the range `[a..ab[`
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
         let (a, ab) = range.boundaries(self);
@@ -94,7 +140,7 @@ impl<S> Interpreter<S> {
         let bc = bc as usize;
         let bcw = bcw as usize;
 
-        if overflow || bcw >= VM_MAX_RAM as RegisterId {
+        if overflow || bcw > VM_MAX_RAM as RegisterId {
             false
         } else {
             // Safe conversion of sized slice

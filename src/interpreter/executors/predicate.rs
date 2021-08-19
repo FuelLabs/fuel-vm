@@ -11,7 +11,7 @@ where
 {
     pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, ExecuteError> {
         // TODO initialize VM with tx prepared for sign
-        let (start, end) = predicate.boundaries(&self);
+        let (start, end) = predicate.boundaries(self);
 
         self.registers[REG_PC] = start;
         self.registers[REG_IS] = start;

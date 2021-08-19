@@ -233,7 +233,7 @@ mod tests {
             vec![],
         );
 
-        let script_data_offset = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
+        let script_data_offset = VM_TX_MEMORY + tx.script_data_offset().unwrap();
         script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_offset as Immediate12);
 
         let script: Vec<u8> = script_ops.iter().copied().collect();

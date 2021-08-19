@@ -61,7 +61,7 @@ where
                             .map(|ofs| (ofs as Word, predicate.len() as Word)),
                         _ => None,
                     })
-                    .map(|(ofs, len)| (ofs + Self::tx_mem_address() as Word, len))
+                    .map(|(ofs, len)| (ofs + VM_TX_MEMORY as Word, len))
                     .map(|(ofs, len)| MemoryRange::new(ofs, len))
                     .collect();
 
@@ -79,7 +79,7 @@ where
             }
 
             Transaction::Script { .. } => {
-                let offset = (Self::tx_mem_address() + Transaction::script_offset()) as Word;
+                let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
                 self.registers[REG_IS] = offset;

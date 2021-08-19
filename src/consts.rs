@@ -1,4 +1,8 @@
-use fuel_tx::ContractId;
+use fuel_asm::Word;
+use fuel_tx::consts::*;
+use fuel_tx::{Bytes32, Color};
+
+use std::mem;
 
 /* MEMORY TYPES */
 
@@ -80,4 +84,8 @@ pub const FUEL_MAX_PROGRAM_SIZE: u8 = 16;
 // used for serder
 pub const VM_REGISTER_WIDTH: u8 = 6;
 
-pub const VM_CONTRACT_ID_BASE: ContractId = ContractId::new([0xab; ContractId::size_of()]);
+pub const VM_TX_MEMORY: usize = Bytes32::size_of() // Tx ID
+            + mem::size_of::<Word>() // Tx size
+            + MAX_INPUTS as usize * (
+                Color::size_of() + mem::size_of::<Word>()
+                ); // Color/Balance coin input pairs

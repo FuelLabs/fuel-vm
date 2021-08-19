@@ -84,7 +84,7 @@ fn code_copy() {
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
+    let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
     script_ops[3] = Opcode::ADDI(0x20, REG_ZERO, script_data_mem as Immediate12);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
@@ -167,7 +167,7 @@ fn call() {
         vec![],
     );
 
-    let script_data_mem = Interpreter::<()>::tx_mem_address() + tx.script_data_offset().unwrap();
+    let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
     script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 

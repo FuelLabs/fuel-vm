@@ -2,10 +2,7 @@ use crate::consts::*;
 use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
-use fuel_tx::consts::*;
-use fuel_tx::{Bytes32, Color, Transaction};
-
-use std::mem;
+use fuel_tx::Transaction;
 
 mod alu;
 mod blockchain;
@@ -32,8 +29,6 @@ pub use gas::GasUnit;
 pub use internal::Context;
 pub use log::LogEvent;
 pub use memory::MemoryRange;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {
@@ -62,14 +57,6 @@ impl<S> Interpreter<S> {
             context: Context::default(),
             block_height: 0,
         }
-    }
-
-    pub const fn tx_mem_address() -> usize {
-        Bytes32::size_of() // Tx ID
-            + WORD_SIZE // Tx size
-            + MAX_INPUTS as usize * (Color::size_of() + WORD_SIZE) // Color/Balance
-                                                                   // coin input
-                                                                   // pairs
     }
 
     pub fn memory(&self) -> &[u8] {

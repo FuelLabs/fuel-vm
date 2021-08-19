@@ -105,7 +105,7 @@ fn state_read_write() {
 
     let script_len = 16;
 
-    let script_data_offset = Interpreter::<()>::tx_mem_address() + Transaction::script_offset() + script_len;
+    let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
     let script_data_offset = script_data_offset as Immediate12;
 
     let script = vec![
@@ -118,8 +118,7 @@ fn state_read_write() {
     .copied()
     .collect::<Vec<u8>>();
 
-    let offset =
-        Interpreter::<()>::tx_mem_address() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
 
     let script: Vec<u8> = script.into();
 

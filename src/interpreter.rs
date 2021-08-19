@@ -81,12 +81,6 @@ impl<S> Interpreter<S> {
     }
 }
 
-impl<S> AsMut<S> for Interpreter<S> {
-    fn as_mut(&mut self) -> &mut S {
-        &mut self.storage
-    }
-}
-
 impl<S> From<Interpreter<S>> for Transaction {
     fn from(vm: Interpreter<S>) -> Self {
         vm.tx

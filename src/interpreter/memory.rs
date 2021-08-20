@@ -2,9 +2,9 @@ use super::{ExecuteError, Interpreter};
 use crate::consts::*;
 
 use fuel_asm::{RegisterId, Word};
+use fuel_tx::Bytes8;
 
-use std::convert::TryFrom;
-use std::ptr;
+use std::{ptr, slice};
 
 mod range;
 
@@ -23,7 +23,7 @@ impl<S> Interpreter<S> {
             .ok_or(ExecuteError::ArithmeticOverflow)
             .and_then(|ax| {
                 (ax <= VM_MAX_RAM as usize)
-                    .then(|| MemoryRange::new(addr as Word, 32))
+                    .then(|| MemoryRange::new(addr as Word, data.len() as Word))
                     .ok_or(ExecuteError::MemoryOverflow)
             })
             .and_then(|range| {
@@ -45,7 +45,7 @@ impl<S> Interpreter<S> {
             .ok_or(ExecuteError::ArithmeticOverflow)
             .and_then(|ax| {
                 (ax <= VM_MAX_RAM as usize)
-                    .then(|| MemoryRange::new(addr as Word, 32))
+                    .then(|| MemoryRange::new(addr as Word, len as Word))
                     .ok_or(ExecuteError::MemoryOverflow)
             })
             .and_then(|range| {
@@ -106,148 +106,149 @@ impl<S> Interpreter<S> {
         a < self.registers[REG_SP]
     }
 
-    pub(crate) fn stack_pointer_overflow(&mut self, f: fn(Word, Word) -> (Word, bool), v: Word) -> bool {
-        let (result, overflow) = f(self.registers[REG_SP], v);
-
-        if overflow || result > self.registers[REG_HP] {
-            false
-        } else {
-            self.registers[REG_SP] = result;
-            true
+    pub(crate) fn extend_call_frame(&mut self, imm: Word) -> Result<(), ExecuteError> {
+        if self.registers[REG_SP] > VM_MAX_RAM - imm {
+            return Err(ExecuteError::StackOverflow);
         }
+
+        self.registers[REG_SP] += imm;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> bool {
-        let bc = b.saturating_add(c as RegisterId);
-
-        if bc >= VM_MAX_RAM as RegisterId {
-            false
-        } else {
-            // TODO ensure the byte should be cast and not overwrite the
-            // encoding
-            self.registers[ra] = self.memory[bc] as Word;
-
-            true
+    pub(crate) fn shrink_call_frame(&mut self, imm: Word) -> Result<(), ExecuteError> {
+        if imm > self.registers[REG_SP] {
+            return Err(ExecuteError::StackUnderflow);
         }
+
+        self.registers[REG_SP] -= imm;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
-        // C is expressed in words; mul by 8
-        let (bc, overflow) = b.overflowing_add(c * 8);
-        let (bcw, of) = bc.overflowing_add(8);
-        let overflow = overflow || of;
-
-        let bc = bc as usize;
-        let bcw = bcw as usize;
-
-        if overflow || bcw > VM_MAX_RAM as RegisterId {
-            false
-        } else {
-            // Safe conversion of sized slice
-            self.registers[ra] = <[u8; 8]>::try_from(&self.memory[bc..bcw])
-                .map(Word::from_be_bytes)
-                .unwrap_or_else(|_| unreachable!());
-
-            true
+    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), ExecuteError> {
+        if b > VM_MAX_RAM || c > VM_MAX_RAM || b + c > VM_MAX_RAM {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        self.registers[ra] = self.memory[(b + c) as usize] as Word;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> bool {
-        let (ac, overflow) = a.overflowing_add(c);
-
-        if overflow || ac >= VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
-            false
-        } else {
-            self.memory[ac as usize] = b as u8;
-
-            true
+    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), ExecuteError> {
+        if c > VM_MAX_RAM - 8 || b > VM_MAX_RAM - 8 - c * 8 {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        let (b, c) = (b as usize, c as usize);
+
+        // C is expressed in words
+        let bc = b + c * 8;
+
+        // Safety: memory bounds checked by interpreter
+        let word = unsafe { Bytes8::from_slice_unchecked(&self.memory[bc..bc + 8]) };
+        self.registers[ra] = Word::from_be_bytes(word.into());
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> bool {
-        // C is expressed in words; mul by 8
-        let (ac, overflow) = a.overflowing_add(c * 8);
-        let (acw, of) = ac.overflowing_add(8);
-        let overflow = overflow || of;
-
-        let range = MemoryRange::new(ac, 8);
-        if overflow || acw > VM_MAX_RAM || !self.has_ownership_range(&range) {
-            false
-        } else {
-            // TODO review if BE is intended
-            self.memory[ac as usize..acw as usize].copy_from_slice(&b.to_be_bytes());
-
-            true
+    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
+        if c > VM_MAX_RAM || a > VM_MAX_RAM - c {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        let ac = a + c;
+        if !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
+            return Err(ExecuteError::MemoryOwnership);
+        }
+
+        self.memory[ac as usize] = b as u8;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn malloc(&mut self, a: Word) -> bool {
-        let (result, overflow) = self.registers[REG_HP].overflowing_sub(a);
-
-        if overflow || result < self.registers[REG_SP] {
-            false
-        } else {
-            self.registers[REG_HP] = result;
-            true
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
+        if c > VM_MAX_RAM / 8 || a >= VM_MAX_RAM - c / 8 {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        // C is expressed in words
+        let ac = a + c * 8;
+
+        self.try_mem_write(ac as usize, &b.to_be_bytes())?;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> bool {
-        let (ab, overflow) = a.overflowing_add(b);
-
-        let range = MemoryRange::new(a, b);
-        if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !self.has_ownership_range(&range) {
-            false
-        } else {
-            // trivial compiler optimization for memset when best
-            for i in &mut self.memory[a as usize..ab as usize] {
-                *i = 0
-            }
-            true
+    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), ExecuteError> {
+        if self.registers[REG_HP] - self.registers[REG_SP] < a {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        self.registers[REG_HP] -= a;
+
+        self.inc_pc();
+
+        Ok(())
     }
 
-    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> bool {
-        let (ac, overflow) = a.overflowing_add(c);
-        let (bc, of) = b.overflowing_add(c);
-        let overflow = overflow || of;
+    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), ExecuteError> {
+        self.try_zeroize(a as usize, b as usize)?;
 
-        let range = MemoryRange::new(a, c);
-        if overflow
-            || ac > VM_MAX_RAM
-            || bc > VM_MAX_RAM
-            || c > MEM_MAX_ACCESS_SIZE
-            || a <= b && b < ac
-            || b <= a && a < bc
-            || !self.has_ownership_range(&range)
-        {
-            false
-        } else {
-            // The pointers are granted to be aligned so this is a safe
-            // operation
-            let src = &self.memory[b as usize] as *const u8;
-            let dst = &mut self.memory[a as usize] as *mut u8;
+        self.inc_pc();
 
-            unsafe {
-                ptr::copy_nonoverlapping(src, dst, c as usize);
-            }
-
-            true
-        }
+        Ok(())
     }
 
-    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> bool {
-        let (bd, overflow) = b.overflowing_add(d);
-        let (cd, of) = c.overflowing_add(d);
-        let overflow = overflow || of;
-
-        if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-            false
-        } else {
-            self.registers[ra] = (self.memory[b as usize..bd as usize] == self.memory[c as usize..cd as usize]) as Word;
-
-            true
+    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
+        if c > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - c || b > VM_MAX_RAM - c {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        let (a, b, c) = (a as usize, b as usize, c as usize);
+
+        let ac = a + c;
+        let bc = b + c;
+
+        if a <= b && b < ac || b <= a && a < bc {
+            return Err(ExecuteError::MemoryOverlap);
+        }
+
+        // Safety: The pointers are granted to be aligned and overlap is checked
+        let src = unsafe { slice::from_raw_parts(&self.memory[b] as *const u8, c) };
+
+        self.try_mem_write(a, src)?;
+
+        self.inc_pc();
+
+        Ok(())
+    }
+
+    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), ExecuteError> {
+        if d > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - d || c > VM_MAX_RAM - d {
+            return Err(ExecuteError::MemoryOverflow);
+        }
+
+        let (b, c, d) = (b as usize, c as usize, d as usize);
+
+        self.registers[ra] = (self.memory[b..b + d] == self.memory[c..c + d]) as Word;
+
+        self.inc_pc();
+
+        Ok(())
     }
 }
 

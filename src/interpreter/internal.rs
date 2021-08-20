@@ -55,6 +55,8 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn set_flag(&mut self, a: Word) {
         self.registers[REG_FLAG] = a;
+
+        self.inc_pc();
     }
 
     pub(crate) fn clear_err(&mut self) {
@@ -65,12 +67,8 @@ impl<S> Interpreter<S> {
         self.registers[REG_ERR] = 1;
     }
 
-    pub(crate) fn inc_pc(&mut self) -> bool {
-        let (result, overflow) = self.registers[REG_PC].overflowing_add(4);
-
-        self.registers[REG_PC] = result;
-
-        !overflow
+    pub(crate) fn inc_pc(&mut self) {
+        self.registers[REG_PC] += 4;
     }
 
     pub(crate) const fn context(&self) -> Context {

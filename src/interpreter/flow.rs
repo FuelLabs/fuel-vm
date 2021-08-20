@@ -4,7 +4,7 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::bytes::SerializableVec;
-use fuel_tx::{Color, Input};
+use fuel_tx::{Bytes32, Color, Input};
 
 use std::cmp;
 use std::convert::TryFrom;
@@ -14,60 +14,65 @@ where
     S: InterpreterStorage,
 {
     // TODO add CIMV tests
-    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
+    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), ExecuteError> {
         match self.tx.inputs().get(b as usize) {
             Some(Input::Coin { maturity, .. }) if maturity <= &c => {
                 self.registers[ra] = 1;
 
-                true
+                self.inc_pc();
+
+                Ok(())
             }
 
-            _ => false,
+            _ => Err(ExecuteError::InputNotFound),
         }
     }
 
     // TODO add CTMV tests
-    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> bool {
+    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), ExecuteError> {
         if b <= self.tx.maturity() {
             self.registers[ra] = 1;
 
-            true
+            self.inc_pc();
+
+            Ok(())
         } else {
-            false
+            Err(ExecuteError::TxMaturityFailed)
         }
     }
 
-    pub(crate) fn jump(&mut self, j: Word) -> bool {
-        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(4));
-
-        if j > VM_MAX_RAM - 1 {
-            false
-        } else {
-            self.registers[REG_PC] = j;
-
-            true
+    pub(crate) fn jump(&mut self, j: Word) -> Result<(), ExecuteError> {
+        if j >= VM_MAX_RAM / 4 + self.registers[REG_IS] / 4 {
+            return Err(ExecuteError::MemoryOverflow);
         }
+
+        self.registers[REG_PC] = self.registers[REG_IS] + j * 4;
+
+        Ok(())
     }
 
-    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> bool {
+    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> Result<(), ExecuteError> {
         if a != b {
             self.jump(imm)
         } else {
-            self.inc_pc()
+            self.inc_pc();
+
+            Ok(())
         }
     }
 
     pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, ExecuteError> {
-        let (ax, overflow) = a.overflowing_add(32);
-        let (cx, of) = c.overflowing_add(32);
-        let overflow = overflow || of;
-
-        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+        if a > VM_MAX_RAM - Bytes32::size_of() as Word || c > VM_MAX_RAM + Color::size_of() as Word {
             return Err(ExecuteError::MemoryOverflow);
         }
 
-        let call = Call::try_from(&self.memory[a as usize..])?;
-        let color = Color::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+        let (a, c) = (a as usize, c as usize);
+
+        let cx = c + Color::size_of();
+
+        // Safety: checked memory bounds
+        let call = Call::try_from(&self.memory[a..])?;
+        let color = unsafe { Color::from_slice_unchecked(&self.memory[c..cx]) };
 
         if self.is_external_context() {
             self.external_color_balance_sub(&color, b)?;
@@ -98,7 +103,7 @@ where
         // TODO set balance for forward coins to $bal
         // TODO set forward gas to $cgas
 
-        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
+        self.registers[REG_PC] = self.registers[REG_FP] + CallFrame::code_offset() as Word;
         self.registers[REG_IS] = self.registers[REG_PC];
         self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
 
@@ -107,38 +112,31 @@ where
         self.run_program()
     }
 
-    pub(crate) fn ret(&mut self, ra: RegisterId) -> bool {
+    pub(crate) fn ret(&mut self, ra: RegisterId) -> Result<(), ExecuteError> {
         // TODO Return the unused forwarded gas to the caller
 
-        if !self
-            .registers
-            .get(ra)
-            .copied()
-            .map(|a| {
-                self.registers[REG_RET] = a;
-                self.registers[REG_RETL] = 0;
-                true
-            })
-            .unwrap_or(false)
-        {
-            return false;
-        }
+        self.registers[REG_RET] = self.registers[ra];
+        self.registers[REG_RETL] = 0;
 
         if let Some(frame) = self.frames.pop() {
             self.registers[REG_CGAS] += frame.context_gas();
 
-            frame
-                .registers()
-                .iter()
-                .enumerate()
-                .zip(self.registers.iter_mut())
-                .for_each(|((i, frame), current)| {
-                    if i != REG_CGAS && i != REG_GGAS && i != REG_RET && i != REG_RETL {
-                        *current = *frame;
-                    }
-                });
+            let cgas = self.registers[REG_CGAS];
+            let ggas = self.registers[REG_GGAS];
+            let ret = self.registers[REG_RET];
+            let retl = self.registers[REG_RETL];
+
+            self.registers.copy_from_slice(frame.registers());
+
+            self.registers[REG_CGAS] = cgas;
+            self.registers[REG_GGAS] = ggas;
+            self.registers[REG_RET] = ret;
+            self.registers[REG_RETL] = retl;
         }
 
-        self.log_return(ra)
+        self.log_return(ra);
+        self.inc_pc();
+
+        Ok(())
     }
 }

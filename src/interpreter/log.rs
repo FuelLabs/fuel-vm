@@ -41,17 +41,15 @@ impl<S> Interpreter<S> {
 
         log.extend(entries);
 
+        self.inc_pc();
+
         true
     }
 
-    pub(crate) fn log_return(&mut self, register: RegisterId) -> bool {
-        match self.registers.get(register as usize).copied() {
-            Some(value) => {
-                self.log.push(LogEvent::Return { register, value });
-                true
-            }
+    pub(crate) fn log_return(&mut self, register: RegisterId) {
+        let value = self.registers[register];
+        let log = LogEvent::Return { register, value };
 
-            _ => false,
-        }
+        self.log.push(log);
     }
 }

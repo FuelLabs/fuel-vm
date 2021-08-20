@@ -163,87 +163,83 @@ where
             Opcode::CIMV(ra, rb, rc)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.check_input_maturity(ra, self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .check_input_maturity(ra, self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::CTMV(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.check_tx_maturity(ra, self.registers[rb])
-                    && self.inc_pc() => {}
+                    && self.check_tx_maturity(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::JI(imm) if self.gas_charge(&op).is_ok() && self.jump(imm as Word) => {}
+            Opcode::JI(imm) if self.gas_charge(&op).is_ok() && self.jump(imm as Word).is_ok() => {}
 
             Opcode::JNEI(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word) => {}
+                    && self
+                        .jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(ra) && self.inc_pc() => {
+            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(ra).is_ok() => {
                 result = Ok(ExecuteState::Return(self.registers[ra]));
             }
 
-            Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]) && self.inc_pc() => {}
+            Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]).is_ok() => {}
 
-            Opcode::CFEI(imm)
-                if self.gas_charge(&op).is_ok()
-                    && self.stack_pointer_overflow(Word::overflowing_add, imm as Word)
-                    && self.inc_pc() => {}
+            Opcode::CFEI(imm) if self.gas_charge(&op).is_ok() && self.extend_call_frame(imm as Word).is_ok() => {}
 
-            Opcode::CFSI(imm)
-                if self.gas_charge(&op).is_ok()
-                    && self.stack_pointer_overflow(Word::overflowing_sub, imm as Word)
-                    && self.inc_pc() => {}
+            Opcode::CFSI(imm) if self.gas_charge(&op).is_ok() && self.shrink_call_frame(imm as Word).is_ok() => {}
 
             Opcode::LB(ra, rb, imm)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.load_byte(ra, rb, imm as Word)
-                    && self.inc_pc() => {}
+                    && self.load_byte(ra, self.registers[rb], imm as Word).is_ok() => {}
 
             Opcode::LW(ra, rb, imm)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.load_word(ra, self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self.load_word(ra, self.registers[rb], imm as Word).is_ok() => {}
 
             Opcode::MCL(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.memclear(self.registers[ra], self.registers[rb])
-                    && self.inc_pc() => {}
+                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::MCLI(ra, imm)
-                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], imm as Word) && self.inc_pc() => {}
+                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], imm as Word).is_ok() => {}
 
             Opcode::MCP(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.memcopy(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .memcopy(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::MEQ(ra, rb, rc, rd)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.memeq(ra, self.registers[rb], self.registers[rc], self.registers[rd])
-                    && self.inc_pc() => {}
+                    && self
+                        .memeq(ra, self.registers[rb], self.registers[rc], self.registers[rd])
+                        .is_ok() => {}
 
             Opcode::SB(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.store_byte(self.registers[ra], self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self
+                        .store_byte(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
             Opcode::SW(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.store_word(self.registers[ra], self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self
+                        .store_word(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::BHEI(ra) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                self.registers[ra] = self.block_height() as Word
+            Opcode::BHEI(ra) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
+                self.registers[ra] = self.block_height() as Word;
+                self.inc_pc();
             }
 
             Opcode::BHSH(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.block_hash(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
+                if self.gas_charge(&op).is_ok() && self.block_hash(self.registers[ra], self.registers[rb]).is_ok() => {}
 
-            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra]).map(|_| true)? => {}
+            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra]).is_ok() => {}
 
             Opcode::CALL(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
@@ -254,10 +250,9 @@ where
                             self.registers[rc],
                             self.registers[rd],
                         )
-                        .map(|_| true)? => {}
+                        .is_ok() => {}
 
-            Opcode::CB(ra)
-                if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra]).map(|_| true)? => {}
+            Opcode::CB(ra) if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra]).is_ok() => {}
 
             Opcode::CCP(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
@@ -268,24 +263,22 @@ where
                             self.registers[rc],
                             self.registers[rd],
                         )
-                        .map(|_| true)? => {}
+                        .is_ok() => {}
 
             Opcode::CROO(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.code_root(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
+                if self.gas_charge(&op).is_ok() && self.code_root(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::CSIZ(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.code_size(ra, self.registers[rb]).map(|_| true)? => {}
+                    && self.code_size(ra, self.registers[rb]).is_ok() => {}
 
             // TODO LDC
             // TODO Append to receipts
-            Opcode::LOG(ra, rb, rc, rd)
-                if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) && self.inc_pc() => {}
+            Opcode::LOG(ra, rb, rc, rd) if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) => {}
 
             // TODO LOGD
-            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).map(|_| true)? => {}
+            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).is_ok() => {}
 
             // TODO RETD
             // TODO RVRT
@@ -293,78 +286,59 @@ where
             Opcode::SRW(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.state_read_word(ra, self.registers[rb]).map(|_| true)? => {}
+                    && self.state_read_word(ra, self.registers[rb]).is_ok() => {}
 
             Opcode::SRWQ(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_read_qword(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_read_qword(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::SWW(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_write_word(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_write_word(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::SWWQ(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_write_qword(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_write_qword(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::ECR(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::K256(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.keccak256(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .keccak256(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::S256(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.sha256(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .sha256(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
-            Opcode::XIL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_input_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
+            Opcode::XIL(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_input_length(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::XIS(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_input_start(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::XOL(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_output_length(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::XOS(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_output_start(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::XWL(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_witness_length(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::XWS(ra, rb)
+                if self.gas_charge(&op).is_ok() && self.transaction_witness_start(ra, self.registers[rb]).is_ok() => {}
+
+            Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() => {
+                self.set_flag(self.registers[ra]);
             }
-
-            Opcode::XIS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_input_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
-
-            Opcode::XOL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_output_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
-
-            Opcode::XOS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_output_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
-
-            Opcode::XWL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_witness_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
-
-            Opcode::XWS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_witness_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
-
-            Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.inc_pc() => self.set_flag(self.registers[ra]),
 
             _ => result = Err(ExecuteError::OpcodeFailure(op)),
         }

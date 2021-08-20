@@ -75,7 +75,7 @@ impl AsMut<[u8]> for Contract {
 }
 
 impl TryFrom<&Transaction> for Contract {
-    type Error = ValidationError;
+    type Error = ExecuteError;
 
     fn try_from(tx: &Transaction) -> Result<Self, Self::Error> {
         match tx {
@@ -86,9 +86,9 @@ impl TryFrom<&Transaction> for Contract {
             } => witnesses
                 .get(*bytecode_witness_index as usize)
                 .map(|c| c.as_ref().into())
-                .ok_or(ValidationError::TransactionCreateBytecodeWitnessIndex),
+                .ok_or(ValidationError::TransactionCreateBytecodeWitnessIndex.into()),
 
-            _ => Err(ValidationError::TransactionScriptOutputContractCreated { index: 0 }),
+            _ => Err(ValidationError::TransactionScriptOutputContractCreated { index: 0 }.into()),
         }
     }
 }

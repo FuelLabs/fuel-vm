@@ -1,5 +1,5 @@
 use fuel_tx::crypto::Hasher;
-use fuel_tx::Bytes32;
+use fuel_tx::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -11,7 +11,7 @@ use std::mem;
 ///
 /// The compression scheme is described in
 /// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
-pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Result<[u8; 64], Secp256k1Error> {
+pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Result<Bytes64, Secp256k1Error> {
     let secret = SecretKey::from_slice(secret)?;
     let message = Message::from_slice(message)?;
 
@@ -21,25 +21,30 @@ pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Resu
     let v = v.to_i32();
     signature[32] |= (v << 7) as u8;
 
-    Ok(signature)
+    Ok(signature.into())
 }
 
 /// Recover the public key from a signature performed with
 /// [`secp256k1_sign_compact_recoverable`]
-pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Result<[u8; 64], Secp256k1Error> {
+pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Result<Bytes64, Secp256k1Error> {
     let message = Message::from_slice(message)?;
-    let mut signature = <[u8; 64]>::try_from(signature).map_err(|_| Secp256k1Error::InvalidSignature)?;
+    let mut signature = Bytes64::try_from(signature).map_err(|_| Secp256k1Error::InvalidSignature)?;
 
-    let v = ((signature[32] & 0x80) >> 7) as i32;
-    signature[32] &= 0x7f;
+    let v = ((signature.as_mut()[32] & 0x80) >> 7) as i32;
+    signature.as_mut()[32] &= 0x7f;
 
     let v = RecoveryId::from_i32(v)?;
-    let signature = RecoverableSignature::from_compact(&signature, v)?;
+    let signature = RecoverableSignature::from_compact(signature.as_ref(), v)?;
 
     let pk = Secp256k1::new().recover(&message, &signature)?.serialize_uncompressed();
 
     // Ignore the first byte of the compressed flag
-    <[u8; 64]>::try_from(&pk[1..]).map_err(|_| Secp256k1Error::InvalidPublicKey)
+    let pk = &pk[1..];
+
+    // Safety: secp256k1 protocol specifies 65 bytes output
+    let pk = unsafe { Bytes64::from_slice_unchecked(pk) };
+
+    Ok(pk)
 }
 
 /// Calculate a binary merkle root
@@ -85,7 +90,6 @@ where
 
         width /= 2;
         len /= 2.0;
-
         next.iter_mut().take(width).for_each(|n| {
             hasher.reset();
 
@@ -124,13 +128,14 @@ mod tests {
 
             let secret = SecretKey::from_slice(&secret_seed).expect("Failed to generate random secret!");
             let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
-            let public = <[u8; 64]>::try_from(&public[1..]).expect("Failed to parse public key!");
+            let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
 
             let e = Hasher::hash(&message);
 
             let sig =
                 secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
-            let pk_p = secp256k1_sign_compact_recover(&sig, e.as_ref()).expect("Failed to recover PK from signature");
+            let pk_p =
+                secp256k1_sign_compact_recover(sig.as_ref(), e.as_ref()).expect("Failed to recover PK from signature");
 
             assert_eq!(public, pk_p);
         }

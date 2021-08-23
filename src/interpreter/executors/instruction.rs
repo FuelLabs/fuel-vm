@@ -240,10 +240,9 @@ where
             }
 
             Opcode::BHSH(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.block_hash(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
+                if self.gas_charge(&op).is_ok() && self.block_hash(self.registers[ra], self.registers[rb]).is_ok() => {}
 
-            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra]).map(|_| true)? => {}
+            Opcode::BURN(ra) if self.gas_charge(&op).is_ok() && self.burn(self.registers[ra]).is_ok() => {}
 
             Opcode::CALL(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
@@ -254,10 +253,9 @@ where
                             self.registers[rc],
                             self.registers[rd],
                         )
-                        .map(|_| true)? => {}
+                        .is_ok() => {}
 
-            Opcode::CB(ra)
-                if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra]).map(|_| true)? => {}
+            Opcode::CB(ra) if self.gas_charge(&op).is_ok() && self.block_proposer(self.registers[ra]).is_ok() => {}
 
             Opcode::CCP(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
@@ -268,16 +266,15 @@ where
                             self.registers[rc],
                             self.registers[rd],
                         )
-                        .map(|_| true)? => {}
+                        .is_ok() => {}
 
             Opcode::CROO(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.code_root(self.registers[ra], self.registers[rb]).map(|_| true)? => {}
+                if self.gas_charge(&op).is_ok() && self.code_root(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::CSIZ(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.code_size(ra, self.registers[rb]).map(|_| true)? => {}
+                    && self.code_size(ra, self.registers[rb]).is_ok() => {}
 
             // TODO LDC
             // TODO Append to receipts
@@ -285,7 +282,7 @@ where
                 if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) && self.inc_pc() => {}
 
             // TODO LOGD
-            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).map(|_| true)? => {}
+            Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).is_ok() => {}
 
             // TODO RETD
             // TODO RVRT
@@ -293,40 +290,37 @@ where
             Opcode::SRW(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.state_read_word(ra, self.registers[rb]).map(|_| true)? => {}
+                    && self.state_read_word(ra, self.registers[rb]).is_ok() => {}
 
             Opcode::SRWQ(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_read_qword(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_read_qword(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::SWW(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_write_word(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_write_word(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::SWWQ(ra, rb)
                 if self.gas_charge(&op).is_ok()
-                    && self
-                        .state_write_qword(self.registers[ra], self.registers[rb])
-                        .map(|_| true)? => {}
+                    && self.state_write_qword(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::ECR(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .ecrecover(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::K256(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.keccak256(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .keccak256(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::S256(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.sha256(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .sha256(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::XIL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
                 result = self

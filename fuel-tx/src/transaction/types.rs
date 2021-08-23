@@ -15,6 +15,44 @@ macro_rules! key {
         #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
         pub struct $i([u8; $s]);
 
+        key_methods!($i, $s);
+
+        impl Distribution<$i> for Standard {
+            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
+                $i(rng.gen())
+            }
+        }
+    };
+}
+
+macro_rules! key_no_default {
+    ($i:ident, $s:expr) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        // TODO serde is not implemented for arrays bigger than 32 bytes
+        pub struct $i([u8; $s]);
+
+        key_methods!($i, $s);
+
+        impl Default for $i {
+            fn default() -> $i {
+                $i([0u8; $s])
+            }
+        }
+
+        impl Distribution<$i> for Standard {
+            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
+                let mut bytes = $i::default();
+
+                rng.fill_bytes(bytes.as_mut());
+
+                bytes
+            }
+        }
+    };
+}
+
+macro_rules! key_methods {
+    ($i:ident, $s:expr) => {
         impl $i {
             pub const fn new(bytes: [u8; $s]) -> Self {
                 Self(bytes)
@@ -51,12 +89,6 @@ macro_rules! key {
                 rng.fill_bytes(self.as_mut());
 
                 Ok(())
-            }
-        }
-
-        impl Distribution<$i> for Standard {
-            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
-                $i(rng.gen())
             }
         }
 
@@ -120,6 +152,8 @@ key!(Bytes8, 8);
 key!(Bytes32, 32);
 key!(Salt, 32);
 
+key_no_default!(Bytes64, 64);
+
 impl ContractId {
     pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 }
@@ -181,6 +215,7 @@ mod tests {
             check_consistency!(Bytes4, rng, bytes);
             check_consistency!(Bytes8, rng, bytes);
             check_consistency!(Bytes32, rng, bytes);
+            check_consistency!(Bytes64, rng, bytes);
             check_consistency!(Salt, rng, bytes);
         }
     }

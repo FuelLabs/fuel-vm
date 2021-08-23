@@ -205,7 +205,7 @@ fn call_frame_code_offset() {
     let salt: Salt = rng.gen();
     let bytecode_witness_index = 0;
     let program: Vec<u8> = vec![
-        Opcode::LOG(REG_PC, 0, 0, 0),
+        Opcode::LOG(REG_PC, REG_FP, REG_SSP, REG_SP),
         Opcode::NOOP,
         Opcode::NOOP,
         Opcode::NOOP,
@@ -240,7 +240,7 @@ fn call_frame_code_offset() {
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
-    let script_len = 16;
+    let script_len = 24;
 
     // Based on the defined script length, we set the appropriate data offset
     let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
@@ -249,6 +249,7 @@ fn call_frame_code_offset() {
     let script = vec![
         Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
         Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+        Opcode::LOG(REG_SP, 0, 0, 0),
         Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
         Opcode::RET(REG_ONE),
     ]
@@ -277,9 +278,36 @@ fn call_frame_code_offset() {
 
     vm.transact(script).expect("Failed to call deployed contract");
 
-    let log = vm.log().first().expect("Failed to fetch log from called contract");
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == &REG_PC));
+    let len = program.len();
 
+    let color = Color::default();
+    let contract = Contract::from(program.as_ref());
+
+    let mut frame = CallFrame::new(id, color, [0; VM_REGISTER_COUNT], 0, 0, contract);
+    let stack = frame.to_bytes().len();
+
+    let log = vm.log()[0];
+    let sp = log.value() as usize;
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SP));
+
+    let log = vm.log()[1];
     let pc = log.value() as usize;
-    assert_eq!(program.as_slice(), &vm.memory()[pc..pc + program.len()]);
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_PC));
+    assert_eq!(program.as_slice(), &vm.memory()[pc..pc + len]);
+
+    let log = vm.log()[2];
+    let fp = log.value() as usize;
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_FP));
+
+    let log = vm.log()[3];
+    let ssp = log.value() as usize;
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SSP));
+
+    let log = vm.log()[4];
+    let sp_p = log.value() as usize;
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SP));
+
+    assert_eq!(ssp, sp + stack);
+    assert_eq!(ssp, fp + stack);
+    assert_eq!(ssp, sp_p);
 }

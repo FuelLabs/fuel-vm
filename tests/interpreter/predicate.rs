@@ -155,3 +155,46 @@ fn predicate_false() {
 
     assert!(vm.transact(tx).is_err());
 }
+
+#[test]
+fn predicate_infinite() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let storage = MemoryStorage::default();
+    let mut vm = Interpreter::with_storage(storage);
+
+    let predicate = vec![Opcode::JI(1)].into_iter().collect::<Vec<u8>>();
+
+    let maturity = 0;
+    let salt: Salt = rng.gen();
+    let witness = vec![];
+
+    let contract = Contract::from(witness.as_ref());
+    let contract_root = contract.root();
+    let contract = contract.id(&salt, &contract_root);
+
+    let input = Input::coin(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity, predicate, vec![]);
+    let output = Output::contract_created(contract);
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let bytecode_witness_index = 0;
+    let static_contracts = vec![];
+    let inputs = vec![input];
+    let outputs = vec![output];
+    let witnesses = vec![witness.into()];
+
+    let tx = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        bytecode_witness_index,
+        salt,
+        static_contracts,
+        inputs,
+        outputs,
+        witnesses,
+    );
+
+    assert!(matches!(vm.transact(tx), Err(ExecuteError::PredicateOverflow)));
+}

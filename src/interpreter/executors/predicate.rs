@@ -19,6 +19,8 @@ where
         // TODO optimize
         loop {
             let pc = self.registers[REG_PC];
+
+            // TODO check if its possible to exploit memory overflow with arbitrary jumps
             let op = self.memory[pc as usize..]
                 .chunks_exact(Opcode::BYTES_SIZE)
                 .next()

@@ -14,7 +14,7 @@ mod validation;
 
 pub use metadata::Metadata;
 pub use types::{
-    Address, Bytes32, Bytes4, Bytes8, Color, ContractId, Input, Output, Salt, Witness,
+    Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Input, Output, Salt, Witness,
 };
 pub use validation::ValidationError;
 

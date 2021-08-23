@@ -13,6 +13,6 @@ pub mod consts;
 pub mod crypto;
 
 pub use transaction::{
-    Address, Bytes32, Bytes4, Bytes8, Color, ContractId, Input, Metadata, Output, Salt,
+    Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Input, Metadata, Output, Salt,
     Transaction, ValidationError, Witness,
 };

@@ -15,6 +15,7 @@ pub enum ExecuteError {
     TransactionCreateIdNotInTx,
     ArithmeticOverflow,
     StackOverflow,
+    StackHeapCollision,
     PredicateOverflow,
     ProgramOverflow,
     PredicateFailure,

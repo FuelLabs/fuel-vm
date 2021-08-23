@@ -42,7 +42,7 @@ where
         let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, color)?;
-        let balance = balance.checked_add(a).ok_or(ExecuteError::NotEnoughBalance)?;
+        let balance = balance.checked_add(a).ok_or(ExecuteError::ArithmeticOverflow)?;
 
         <S as MerkleStorage<ContractId, Color, Word>>::insert(&mut self.storage, contract, color, &balance)?;
 

@@ -14,6 +14,7 @@ pub enum ExecuteError {
     TransactionCreateStaticContractNotFound,
     TransactionCreateIdNotInTx,
     ArithmeticOverflow,
+    StackHeapCollision,
     StackOverflow,
     StackUnderflow,
     PredicateOverflow,

@@ -91,7 +91,7 @@ where
         let len = stack.len() as Word;
 
         if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
-            return Err(ExecuteError::StackOverflow);
+            return Err(ExecuteError::StackHeapCollision);
         }
 
         self.registers[REG_FP] = self.registers[REG_SP];

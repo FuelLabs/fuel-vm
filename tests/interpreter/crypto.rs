@@ -1,4 +1,5 @@
 use fuel_tx::crypto::Hasher;
+use fuel_tx::Bytes64;
 use fuel_vm::consts::*;
 use fuel_vm::crypto;
 use fuel_vm::prelude::*;
@@ -19,7 +20,7 @@ fn ecrecover() {
     let secp = Secp256k1::new();
     let secret = SecretKey::from_str("3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c").unwrap();
     let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
-    let public = <[u8; 64]>::try_from(&public[1..]).expect("Failed to parse public key!");
+    let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let e = Hasher::hash(&message[..]);

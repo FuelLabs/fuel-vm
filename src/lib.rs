@@ -19,7 +19,7 @@ pub mod prelude {
     pub use fuel_asm::{Immediate06, Immediate12, Immediate18, Immediate24, Opcode, RegisterId, Word};
     pub use fuel_tx::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
-        Address, Bytes32, Color, ContractId, Input, Output, Salt, Transaction, ValidationError, Witness,
+        Address, Bytes32, Bytes64, Color, ContractId, Input, Output, Salt, Transaction, ValidationError, Witness,
     };
 
     #[cfg(feature = "debug")]

@@ -20,6 +20,15 @@ pub enum LogEvent {
     },
 }
 
+impl LogEvent {
+    pub const fn value(&self) -> Word {
+        match self {
+            Self::Register { value, .. } => *value,
+            Self::Return { value, .. } => *value,
+        }
+    }
+}
+
 impl<S> Interpreter<S> {
     pub(crate) fn log_append(&mut self, reg: &[RegisterId]) -> bool {
         let pc = self.registers[REG_PC];

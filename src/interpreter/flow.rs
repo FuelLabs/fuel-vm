@@ -82,9 +82,18 @@ where
 
         let mut frame = self.call_frame(call, color)?;
 
-        let sp = self.registers[REG_SP];
-        self.push_stack(frame.to_bytes().as_slice())?;
-        self.registers[REG_FP] = sp;
+        let stack = frame.to_bytes();
+        let len = stack.len() as Word;
+
+        if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
+            return Err(ExecuteError::StackOverflow);
+        }
+
+        self.registers[REG_FP] = self.registers[REG_SP];
+        self.registers[REG_SP] += len;
+        self.registers[REG_SSP] = self.registers[REG_SP];
+
+        self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
 
         // TODO set balance for forward coins to $bal
         // TODO set forward gas to $cgas

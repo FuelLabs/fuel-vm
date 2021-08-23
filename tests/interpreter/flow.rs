@@ -191,3 +191,95 @@ fn call() {
             _ => panic!("Unexpected log event!"),
         });
 }
+
+#[test]
+fn call_frame_code_offset() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut storage = MemoryStorage::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+
+    let salt: Salt = rng.gen();
+    let bytecode_witness_index = 0;
+    let program: Vec<u8> = vec![
+        Opcode::LOG(REG_PC, 0, 0, 0),
+        Opcode::NOOP,
+        Opcode::NOOP,
+        Opcode::NOOP,
+        Opcode::NOOP,
+        Opcode::ADDI(0x10, REG_ZERO, 1),
+        Opcode::RET(REG_ONE),
+    ]
+    .into_iter()
+    .collect();
+
+    let contract = Contract::from(program.as_slice());
+    let root = contract.root();
+    let id = contract.id(&salt, &root);
+
+    let input = Input::coin(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity, vec![], vec![]);
+    let output = Output::contract_created(id);
+
+    let deploy = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        bytecode_witness_index,
+        salt,
+        vec![],
+        vec![input],
+        vec![output],
+        vec![program.clone().into()],
+    );
+
+    Interpreter::transition(&mut storage, deploy).expect("Failed to deploy");
+
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
+    let output = Output::contract(0, rng.gen(), rng.gen());
+
+    let script_len = 16;
+
+    // Based on the defined script length, we set the appropriate data offset
+    let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
+    let script_data_offset = script_data_offset as Immediate12;
+
+    let script = vec![
+        Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
+        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::RET(REG_ONE),
+    ]
+    .iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let mut script_data = vec![];
+
+    script_data.extend(id.as_ref());
+    script_data.extend(&Word::default().to_be_bytes());
+    script_data.extend(&Word::default().to_be_bytes());
+
+    let script = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script,
+        script_data,
+        vec![input],
+        vec![output],
+        vec![],
+    );
+
+    let mut vm = Interpreter::with_storage(storage);
+
+    vm.transact(script).expect("Failed to call deployed contract");
+
+    let log = vm.log().first().expect("Failed to fetch log from called contract");
+    assert!(matches!(log, LogEvent::Register { register, .. } if register == &REG_PC));
+
+    let pc = log.value() as usize;
+    assert_eq!(program.as_slice(), &vm.memory()[pc..pc + program.len()]);
+}

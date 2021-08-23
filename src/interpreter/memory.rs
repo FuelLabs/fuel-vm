@@ -119,8 +119,8 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn shrink_call_frame(&mut self, imm: Word) -> Result<(), ExecuteError> {
-        if imm > self.registers[REG_SP] {
-            return Err(ExecuteError::StackUnderflow);
+        if imm > self.registers[REG_SP] || self.registers[REG_SSP] > self.registers[REG_SP] - imm {
+            return Err(ExecuteError::StackShrinkViolation);
         }
 
         self.registers[REG_SP] -= imm;

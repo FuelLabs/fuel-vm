@@ -16,7 +16,7 @@ pub enum ExecuteError {
     ArithmeticOverflow,
     StackHeapCollision,
     StackOverflow,
-    StackUnderflow,
+    StackShrinkViolation,
     PredicateOverflow,
     ProgramOverflow,
     PredicateFailure,

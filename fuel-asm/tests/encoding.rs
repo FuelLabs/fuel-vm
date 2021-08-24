@@ -1,8 +1,9 @@
-use fuel_asm::*;
-use std::io::{Read, Write};
-
 #[test]
+#[cfg(feature = "std")]
 fn opcode() {
+    use fuel_asm::*;
+    use std::io::{Read, Write};
+
     let r = 0x3f;
     let imm12 = 0xbff;
     let imm18 = 0x2ffff;

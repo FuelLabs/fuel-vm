@@ -26,6 +26,17 @@ jobs:
         toolchain: stable
         override: true
 
+    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+    #
+    # Can be replaced by other targets that guarantee bare-minimum no-std
+    - name: Install toolchain no-std
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: thumbv6m-none-eabi
+        override: true
+
     - name: Install rustfmt
       run: rustup component add rustfmt
 
@@ -41,14 +52,38 @@ jobs:
         command: build
         args: --verbose
 
+    - name: Build no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features
+
+    - name: Build no-std serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types
+
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --verbose
 
-    - name: Run tests
+    - name: Run tests no-std
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --features serde-types
+        args: --verbose --no-default-features
+
+    - name: Run serde tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features serde-types-default
+
+    - name: Run serde tests no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features --features serde-types

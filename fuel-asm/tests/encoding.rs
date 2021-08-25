@@ -1,5 +1,4 @@
 #[test]
-#[cfg(feature = "std")]
 fn opcode() {
     use fuel_asm::*;
     use std::io::{Read, Write};

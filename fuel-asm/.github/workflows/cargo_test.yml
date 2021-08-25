@@ -62,7 +62,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
 
     - name: Run tests
       uses: actions-rs/cargo@v1
@@ -80,10 +80,10 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --features serde-types-default
+        args: --verbose --features serde-types
 
     - name: Run serde tests no-std
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --no-default-features --features serde-types
+        args: --verbose --no-default-features --features serde-types-minimal

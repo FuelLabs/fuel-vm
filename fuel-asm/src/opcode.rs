@@ -10,7 +10,7 @@ pub mod consts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
-    any(feature = "serde-types", feature = "serde-types-default"),
+    feature = "serde-types-minimal",
     derive(serde::Serialize, serde::Deserialize)
 )]
 /// Instruction representation for the interpreter.

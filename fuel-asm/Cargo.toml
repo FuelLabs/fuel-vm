@@ -14,5 +14,10 @@ serde = { version = "1.0", default-features = false, features = ["derive"], opti
 [features]
 default = ["std"]
 std = []
-serde-types-default = [ "serde/default", "std" ]
-serde-types = [ "serde" ]
+serde-types = [ "serde-types-minimal", "serde/default", "std" ]
+serde-types-minimal = [ "serde" ]
+
+[[test]]
+name = "test-encoding"
+path = "tests/encoding.rs"
+required-features = ["std"]

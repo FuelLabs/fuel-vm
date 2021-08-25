@@ -1,8 +1,6 @@
-use super::{
-    ContractId, Input, Metadata, Transaction, TRANSACTION_CREATE_FIXED_SIZE,
-    TRANSACTION_SCRIPT_FIXED_SIZE,
-};
+use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::bytes::{self, SizedBytes};
+use crate::{ContractId, Input, Metadata, Transaction};
 
 impl Transaction {
     /// For a serialized transaction of type `Script`, return the bytes offset

@@ -1,7 +1,10 @@
 use std::{error, fmt, io};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde-types-minimal",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 pub enum ValidationError {
     InputCoinPredicateLength { index: usize },
     InputCoinPredicateDataLength { index: usize },

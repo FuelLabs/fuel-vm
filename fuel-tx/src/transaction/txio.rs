@@ -1,8 +1,6 @@
-use super::{
-    ContractId, Input, Output, Transaction, TransactionRepr, Witness,
-    TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE,
-};
+use super::{TransactionRepr, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::bytes::{self, SizedBytes};
+use crate::{ContractId, Input, Output, Transaction, Witness};
 
 use fuel_asm::Word;
 

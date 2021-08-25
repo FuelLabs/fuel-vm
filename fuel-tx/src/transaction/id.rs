@@ -1,6 +1,6 @@
-use super::{Bytes32, Input, Metadata, Output, Transaction, Witness};
 use crate::bytes::SerializableVec;
 use crate::crypto::Hasher;
+use crate::{Bytes32, Input, Metadata, Output, Transaction, Witness};
 
 impl Transaction {
     pub(crate) fn inputs_mut(&mut self) -> &mut [Input] {

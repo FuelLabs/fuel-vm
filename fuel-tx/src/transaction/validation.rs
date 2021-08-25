@@ -1,5 +1,5 @@
-use super::{Color, Input, Output, Transaction, Witness};
 use crate::consts::*;
+use crate::{Color, Input, Output, Transaction, Witness};
 
 use fuel_asm::Word;
 

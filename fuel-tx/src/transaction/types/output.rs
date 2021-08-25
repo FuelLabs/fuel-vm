@@ -1,5 +1,5 @@
-use super::{Address, Bytes32, Color, ContractId};
 use crate::bytes::{self, SizedBytes};
+use crate::{Address, Bytes32, Color, ContractId};
 
 use fuel_asm::Word;
 
@@ -64,7 +64,10 @@ impl From<&mut Output> for OutputRepr {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde-types-minimal",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 pub enum Output {
     Coin {
         to: Address,

@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::try_err)]
 // Wrong clippy convention; check
@@ -6,13 +7,17 @@
 
 // TODO Add docs
 
-mod transaction;
-
 pub mod bytes;
 pub mod consts;
+pub mod types;
+
+pub use types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt};
+
+#[cfg(feature = "std")]
 pub mod crypto;
 
-pub use transaction::{
-    Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Input, Metadata, Output, Salt,
-    Transaction, ValidationError, Witness,
-};
+#[cfg(feature = "std")]
+mod transaction;
+
+#[cfg(feature = "std")]
+pub use transaction::{Input, Metadata, Output, Transaction, ValidationError, Witness};

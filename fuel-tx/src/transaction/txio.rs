@@ -59,6 +59,7 @@ impl io::Read for Transaction {
                 gas_price,
                 gas_limit,
                 maturity,
+                receipts_root,
                 script,
                 script_data,
                 inputs,
@@ -75,6 +76,7 @@ impl io::Read for Transaction {
                 let buf = bytes::store_number_unchecked(buf, inputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, witnesses.len() as Word);
+                let buf = bytes::store_array_unchecked(buf, receipts_root);
 
                 let (_, buf) = bytes::store_raw_bytes(buf, script.as_slice())?;
                 let (_, buf) = bytes::store_raw_bytes(buf, script_data.as_slice())?;
@@ -164,6 +166,9 @@ impl io::Write for Transaction {
                 let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (receipts_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+
+                let receipts_root = receipts_root.into();
 
                 let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
                 n += size;
@@ -196,6 +201,7 @@ impl io::Write for Transaction {
                     gas_price,
                     gas_limit,
                     maturity,
+                    receipts_root,
                     script,
                     script_data,
                     inputs,

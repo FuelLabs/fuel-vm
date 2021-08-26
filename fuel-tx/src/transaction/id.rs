@@ -39,6 +39,8 @@ impl Transaction {
     }
 
     fn prepare_sign(&mut self) {
+        self.set_receipts_root(Default::default());
+
         self.inputs_mut().iter_mut().for_each(|input| {
             if let Input::Contract {
                 utxo_id,
@@ -278,6 +280,7 @@ mod tests {
                                 rng.next_u64(),
                                 rng.next_u64(),
                                 rng.next_u64(),
+                                rng.gen(),
                                 script.clone(),
                                 script_data.clone(),
                                 inputs.clone(),

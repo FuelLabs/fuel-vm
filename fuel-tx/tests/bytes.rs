@@ -139,6 +139,70 @@ fn output() {
 }
 
 #[test]
+fn receipt() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    assert_encoding_correct(&[
+        Receipt::call(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+        Receipt::ret(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::return_data(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+        Receipt::revert(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::log(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+        Receipt::log_data(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+        Receipt::transfer(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+        Receipt::transfer_out(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ),
+    ]);
+}
+
+#[test]
 fn transaction() {
     let mut rng_base = StdRng::seed_from_u64(8586);
     let rng = &mut rng_base;
@@ -152,6 +216,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             rng.gen::<Witness>().into_inner(),
             rng.gen::<Witness>().into_inner(),
             vec![i.clone()],
@@ -162,6 +227,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             vec![],
             rng.gen::<Witness>().into_inner(),
             vec![i.clone()],
@@ -172,6 +238,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             rng.gen::<Witness>().into_inner(),
             vec![],
             vec![i.clone()],
@@ -182,6 +249,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![i.clone()],
@@ -192,6 +260,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -202,6 +271,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -212,6 +282,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -422,6 +493,7 @@ fn script_input_coin_data_offset() {
                             gas_price,
                             gas_limit,
                             maturity,
+                            rng.gen(),
                             script.clone(),
                             script_data.clone(),
                             inputs,

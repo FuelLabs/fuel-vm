@@ -68,6 +68,11 @@ macro_rules! key_methods {
                 $s
             }
 
+            // Similar behavior to Default::default but with `const` directive
+            pub const fn zeroed() -> $i {
+                $i([0; $s])
+            }
+
             /// Add a conversion from arbitrary slices into owned
             ///
             /// # Warning

@@ -69,7 +69,6 @@ impl TransactionFactory {
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
-                self.rng.gen(),
                 self.rng.gen::<Witness>().into_inner(),
                 self.rng.gen::<Witness>().into_inner(),
                 (0..inputs).map(|_| self.input()).collect(),

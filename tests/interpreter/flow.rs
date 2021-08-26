@@ -278,7 +278,7 @@ fn call_frame_code_offset() {
     let receipts = vm.receipts();
 
     let sp = receipts[0].ra().expect("Expected $ra from receipt");
-    let fp = receipts[2].rb().expect("Expected $ra from receipt");
+    let fp = receipts[2].rb().expect("Expected $rb from receipt");
     let ssp = receipts[2].rc().expect("Expected $rc from receipt");
     let sp_p = receipts[2].rd().expect("Expected $rd from receipt");
 

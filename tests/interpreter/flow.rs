@@ -102,8 +102,7 @@ fn code_copy() {
 fn call() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
+    let mut storage = MemoryStorage::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -141,7 +140,7 @@ fn call() {
         vec![program.clone()],
     );
 
-    vm.transact(tx).expect("Failed to transact!");
+    Interpreter::transition(&mut storage, tx).expect("Failed to deploy contract");
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x00),
@@ -176,20 +175,12 @@ fn call() {
         _ => unreachable!(),
     }
 
-    vm.transact(tx).expect("Failed to transact!");
+    let state = Interpreter::transition(&mut storage, tx).expect("Failed to execute script");
+    let receipt = state.receipts()[1];
 
-    let expected_log = vec![(0x10, 0x11), (0x11, 0x2a), (0x12, 0x3b)];
-    expected_log
-        .into_iter()
-        .enumerate()
-        .for_each(|(i, (reg, val))| match vm.log()[i] {
-            LogEvent::Register { register, value, .. } => {
-                assert_eq!(reg, register);
-                assert_eq!(val, value);
-            }
-
-            _ => panic!("Unexpected log event!"),
-        });
+    assert_eq!(receipt.ra().expect("Receipt value failed"), 0x11);
+    assert_eq!(receipt.rb().expect("Receipt value failed"), 0x2a);
+    assert_eq!(receipt.rc().expect("Receipt value failed"), 0x3b);
 }
 
 #[test]
@@ -278,34 +269,18 @@ fn call_frame_code_offset() {
 
     vm.transact(script).expect("Failed to call deployed contract");
 
-    let len = program.len();
-
     let color = Color::default();
     let contract = Contract::from(program.as_ref());
 
     let mut frame = CallFrame::new(id, color, [0; VM_REGISTER_COUNT], 0, 0, contract);
-    let stack = frame.to_bytes().len();
+    let stack = frame.to_bytes().len() as Word;
 
-    let log = vm.log()[0];
-    let sp = log.value() as usize;
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SP));
+    let receipts = vm.receipts();
 
-    let log = vm.log()[1];
-    let pc = log.value() as usize;
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_PC));
-    assert_eq!(program.as_slice(), &vm.memory()[pc..pc + len]);
-
-    let log = vm.log()[2];
-    let fp = log.value() as usize;
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_FP));
-
-    let log = vm.log()[3];
-    let ssp = log.value() as usize;
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SSP));
-
-    let log = vm.log()[4];
-    let sp_p = log.value() as usize;
-    assert!(matches!(log, LogEvent::Register { register, .. } if register == REG_SP));
+    let sp = receipts[0].ra().expect("Expected $ra from receipt");
+    let fp = receipts[2].rb().expect("Expected $ra from receipt");
+    let ssp = receipts[2].rc().expect("Expected $rc from receipt");
+    let sp_p = receipts[2].rd().expect("Expected $rd from receipt");
 
     assert_eq!(ssp, sp + stack);
     assert_eq!(ssp, fp + stack);

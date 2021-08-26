@@ -14,6 +14,8 @@ where
         let state = match state {
             ProgramState::Return(w) => Ok(ProgramState::Return(w)),
 
+            ProgramState::ReturnData(d) => Ok(ProgramState::ReturnData(d)),
+
             ProgramState::RunProgram(_) => self.run_program(),
 
             ProgramState::VerifyPredicate(_) => unimplemented!(),

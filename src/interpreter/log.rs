@@ -1,66 +1,48 @@
 use super::Interpreter;
 use crate::consts::*;
 
-use fuel_asm::{RegisterId, Word};
-use tracing::debug;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
-#[repr(u8)]
-pub enum LogEvent {
-    Register {
-        pc: Word,
-        register: RegisterId,
-        value: Word,
-    },
-
-    Return {
-        register: RegisterId,
-        value: Word,
-    },
-}
-
-impl LogEvent {
-    pub const fn value(&self) -> Word {
-        match self {
-            Self::Register { value, .. } => *value,
-            Self::Return { value, .. } => *value,
-        }
-    }
-}
+use fuel_asm::Word;
+use fuel_tx::crypto::Hasher;
+use fuel_tx::Receipt;
 
 impl<S> Interpreter<S> {
-    pub(crate) fn log_append(&mut self, reg: &[RegisterId]) -> bool {
-        let pc = self.registers[REG_PC];
-        let registers = &self.registers;
-        let log = &mut self.log;
+    pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {
+        let receipt = Receipt::log(
+            self.internal_contract_or_default(),
+            a,
+            b,
+            c,
+            d,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
 
-        let entries = reg.iter().filter(|r| r > &&0).filter_map(|r| {
-            registers.get(*r).map(|v| {
-                let log = LogEvent::Register {
-                    pc,
-                    register: *r,
-                    value: *v,
-                };
-
-                debug!("Appending log {:?}", log);
-                log
-            })
-        });
-
-        log.extend(entries);
+        self.receipts.push(receipt);
 
         true
     }
 
-    pub(crate) fn log_return(&mut self, register: RegisterId) -> bool {
-        match self.registers.get(register as usize).copied() {
-            Some(value) => {
-                self.log.push(LogEvent::Return { register, value });
-                true
-            }
-
-            _ => false,
+    pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {
+        if d > MEM_MAX_ACCESS_SIZE || c >= VM_MAX_RAM - d {
+            return false;
         }
+
+        let cd = (c + d) as usize;
+        let digest = Hasher::hash(&self.memory[c as usize..cd]);
+
+        let receipt = Receipt::log_data(
+            self.internal_contract_or_default(),
+            a,
+            b,
+            c,
+            d,
+            digest,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.receipts.push(receipt);
+
+        true
     }
 }

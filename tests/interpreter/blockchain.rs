@@ -195,10 +195,10 @@ fn state_read_write() {
     // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
-    // Expect the correct log order
-    let log = transition.log();
-    assert!(matches!(log[0], LogEvent::Register { register, value, .. } if register == 0x20 && value == val));
-    assert!(matches!(log[1], LogEvent::Register { register, value, .. } if register == 0x21 && value == 0));
+    // Expect the correct receipt
+    let receipt = transition.receipts()[1];
+    assert_eq!(receipt.ra().expect("Register value expected"), val);
+    assert_eq!(receipt.rb().expect("Register value expected"), 0);
 
     let mut script_data = vec![];
 
@@ -234,14 +234,14 @@ fn state_read_write() {
     // Mutate the state
     let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
 
-    let log = transition.log();
+    let receipts = transition.receipts();
 
     // Expect the arguments to be received correctly by the VM
-    assert!(matches!(log[0], LogEvent::Register { register, value, .. } if register == 0x21 && value == val));
-    assert!(matches!(log[1], LogEvent::Register { register, value, .. } if register == 0x22 && value == a));
-    assert!(matches!(log[2], LogEvent::Register { register, value, .. } if register == 0x23 && value == b));
-    assert!(matches!(log[3], LogEvent::Register { register, value, .. } if register == 0x24 && value == c));
-    assert!(matches!(log[4], LogEvent::Register { register, value, .. } if register == 0x25 && value == d));
+    assert_eq!(receipts[1].ra().expect("Register value expected"), val);
+    assert_eq!(receipts[2].ra().expect("Register value expected"), a);
+    assert_eq!(receipts[2].rb().expect("Register value expected"), b);
+    assert_eq!(receipts[2].rc().expect("Register value expected"), c);
+    assert_eq!(receipts[2].rd().expect("Register value expected"), d);
 
     let m = a ^ 0x96;
     let n = a ^ 0x00;
@@ -249,10 +249,10 @@ fn state_read_write() {
     let p = a ^ 0x00;
 
     // Expect the value to be unpacked correctly into 4x16 limbs + XOR state
-    assert!(matches!(log[5], LogEvent::Register { register, value, .. } if register == 0x26 && value == m));
-    assert!(matches!(log[6], LogEvent::Register { register, value, .. } if register == 0x26 && value == n));
-    assert!(matches!(log[7], LogEvent::Register { register, value, .. } if register == 0x26 && value == o));
-    assert!(matches!(log[8], LogEvent::Register { register, value, .. } if register == 0x26 && value == p));
+    assert_eq!(receipts[3].ra().expect("Register value expected"), m);
+    assert_eq!(receipts[4].ra().expect("Register value expected"), n);
+    assert_eq!(receipts[5].ra().expect("Register value expected"), o);
+    assert_eq!(receipts[6].ra().expect("Register value expected"), p);
 
     let mut bytes = [0u8; 32];
 

@@ -8,6 +8,7 @@ use std::{error, fmt, io};
 #[derive(Debug)]
 pub enum ExecuteError {
     OpcodeFailure(Opcode),
+    OpcodeUnimplemented(Opcode),
     ValidationError(ValidationError),
     Io(io::Error),
     Data(DataError),

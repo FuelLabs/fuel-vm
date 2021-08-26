@@ -1,10 +1,12 @@
 use super::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::consts::*;
+use crate::crypto;
 use crate::data::{InterpreterStorage, Storage};
-use crate::interpreter::{Contract, ExecuteError, Interpreter, LogEvent, MemoryRange};
+use crate::interpreter::{Contract, ExecuteError, Interpreter, MemoryRange};
 
 use fuel_asm::{Opcode, Word};
-use fuel_tx::{Bytes32, ContractId, Input, Output, Salt, Transaction};
+use fuel_tx::bytes::SerializableVec;
+use fuel_tx::{Bytes32, ContractId, Input, Output, Receipt, Salt, Transaction};
 
 use std::convert::TryFrom;
 
@@ -12,8 +14,8 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    fn into_inner(self) -> (Transaction, Vec<LogEvent>) {
-        (self.tx, self.log)
+    fn into_inner(self) -> (Transaction, Vec<Receipt>) {
+        (self.tx, self.receipts)
     }
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, ExecuteError> {
@@ -97,6 +99,17 @@ where
             self.debugger_set_last_state(state.clone());
         }
 
+        // TODO optimize
+        if self.tx.receipts_root().is_some() {
+            let receipts_root = if self.receipts().is_empty() {
+                EMPTY_RECEIPTS_MERKLE_ROOT.into()
+            } else {
+                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
+            };
+
+            self.tx.set_receipts_root(receipts_root);
+        }
+
         Ok(state)
     }
 
@@ -117,6 +130,10 @@ where
                     return Ok(ProgramState::Return(r));
                 }
 
+                ExecuteState::ReturnData(d) => {
+                    return Ok(ProgramState::ReturnData(d));
+                }
+
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::RunProgram(d));
@@ -133,8 +150,8 @@ where
         vm.init(tx)?;
 
         let state = vm.run()?;
-        let (tx, log) = vm.into_inner();
-        let transition = StateTransition::new(state, tx, log);
+        let (tx, receipts) = vm.into_inner();
+        let transition = StateTransition::new(state, tx, receipts);
 
         Ok(transition)
     }
@@ -143,7 +160,7 @@ where
         self.init(tx)?;
 
         let state = self.run()?;
-        let transition = StateTransitionRef::new(state, self.transaction(), self.log());
+        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
 
         Ok(transition)
     }

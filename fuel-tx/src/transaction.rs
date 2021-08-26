@@ -1,4 +1,4 @@
-use crate::{Color, ContractId, Salt};
+use crate::{Bytes32, Color, ContractId, Salt};
 
 use fuel_asm::{Opcode, Word};
 use itertools::Itertools;
@@ -10,11 +10,13 @@ use std::{io, mem};
 mod id;
 mod metadata;
 mod offset;
+mod receipt;
 mod txio;
 mod types;
 mod validation;
 
 pub use metadata::Metadata;
+pub use receipt::Receipt;
 pub use types::{Input, Output, Witness};
 pub use validation::ValidationError;
 
@@ -28,7 +30,8 @@ const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Script data size
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size
-    + WORD_SIZE; // Witnesses size
+    + WORD_SIZE // Witnesses size
+    + Bytes32::size_of(); // Receipts root
 
 const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
@@ -73,6 +76,7 @@ pub enum Transaction {
         gas_price: Word,
         gas_limit: Word,
         maturity: Word,
+        receipts_root: Bytes32,
         script: Vec<u8>,
         script_data: Vec<u8>,
         inputs: Vec<Input>,
@@ -102,7 +106,17 @@ impl Default for Transaction {
         // The Return op is mandatory for the execution of any context
         let script = Opcode::RET(0x10).to_bytes().to_vec();
 
-        Transaction::script(0, 1000000, 0, script, vec![], vec![], vec![], vec![])
+        Transaction::script(
+            0,
+            1000000,
+            0,
+            Default::default(),
+            script,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
     }
 }
 
@@ -111,6 +125,7 @@ impl Transaction {
         gas_price: Word,
         gas_limit: Word,
         maturity: Word,
+        receipts_root: Bytes32,
         script: Vec<u8>,
         script_data: Vec<u8>,
         inputs: Vec<Input>,
@@ -121,6 +136,7 @@ impl Transaction {
             gas_price,
             gas_limit,
             maturity,
+            receipts_root,
             script,
             script_data,
             inputs,
@@ -250,10 +266,25 @@ impl Transaction {
     }
 
     pub fn try_from_bytes(bytes: &[u8]) -> io::Result<(usize, Self)> {
-        let mut tx = Self::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![]);
+        let mut tx = Self::default();
 
         let n = tx.write(bytes)?;
 
         Ok((n, tx))
+    }
+
+    pub const fn receipts_root(&self) -> Option<&Bytes32> {
+        match self {
+            Self::Script { receipts_root, .. } => Some(receipts_root),
+            _ => None,
+        }
+    }
+
+    pub fn set_receipts_root(&mut self, root: Bytes32) -> Option<Bytes32> {
+        match self {
+            Self::Script { receipts_root, .. } => Some(std::mem::replace(receipts_root, root)),
+
+            _ => None,
+        }
     }
 }

@@ -106,17 +106,7 @@ impl Default for Transaction {
         // The Return op is mandatory for the execution of any context
         let script = Opcode::RET(0x10).to_bytes().to_vec();
 
-        Transaction::script(
-            0,
-            1000000,
-            0,
-            Default::default(),
-            script,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
+        Transaction::script(0, 1000000, 0, script, vec![], vec![], vec![], vec![])
     }
 }
 
@@ -125,13 +115,14 @@ impl Transaction {
         gas_price: Word,
         gas_limit: Word,
         maturity: Word,
-        receipts_root: Bytes32,
         script: Vec<u8>,
         script_data: Vec<u8>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Self {
+        let receipts_root = Bytes32::zeroed();
+
         Self::Script {
             gas_price,
             gas_limit,

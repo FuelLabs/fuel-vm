@@ -280,7 +280,6 @@ mod tests {
                                 rng.next_u64(),
                                 rng.next_u64(),
                                 rng.next_u64(),
-                                rng.gen(),
                                 script.clone(),
                                 script_data.clone(),
                                 inputs.clone(),

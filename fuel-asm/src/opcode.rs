@@ -552,6 +552,31 @@ pub enum Opcode {
     /// 1. `$pc = $pc + 4` (advance program counter from where we called)
     RET(RegisterId),
 
+    /// Return from context with data
+    ///
+    /// | Operation   | ```returndata($rA, $rB);```
+    /// | Syntax      | `retd $rA, $rB`
+    /// | Encoding    | `0x00 rA rB - -`
+    ///
+    /// If current context is external, cease VM execution and return `MEM[$rA, $rB]`.
+    ///
+    /// Returns from contract call, popping the call frame. Before popping:
+    ///
+    /// 1. Return the unused forwarded gas to the caller:
+    ///     - `$cgas = $cgas + $fp->$cgas` (add remaining context gas from
+    ///       previous context to current remaining context gas)
+    ///
+    /// Then pop the call frame and restoring registers _except_ `$ggas` and
+    /// `$cgas`. Afterwards, set the following registers:
+    ///
+    /// Set the return value:
+    ///
+    /// 1. `$ret = $rA`
+    /// 1. `$retl = $rB`
+    ///
+    /// 1. `$pc = $pc + 4` (advance program counter from where we called)
+    RETD(RegisterId, RegisterId),
+
     /// Extend the current call frame's stack by an immediate value.
     ///
     /// | Operation   | ```$sp = $sp + imm```
@@ -1271,6 +1296,7 @@ impl Opcode {
             OpcodeRepr::JI => Opcode::JI(imm24),
             OpcodeRepr::JNEI => Opcode::JNEI(ra, rb, imm12),
             OpcodeRepr::RET => Opcode::RET(ra),
+            OpcodeRepr::RETD => Opcode::RETD(ra, rb),
             OpcodeRepr::CFEI => Opcode::CFEI(imm24),
             OpcodeRepr::CFSI => Opcode::CFSI(imm24),
             OpcodeRepr::LB => Opcode::LB(ra, rb, imm12),
@@ -1375,6 +1401,7 @@ impl Opcode {
             Self::JI(_) => [None; 4],
             Self::JNEI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::RET(ra) => [Some(*ra), None, None, None],
+            Self::RETD(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::CFEI(_) => [None; 4],
             Self::CFSI(_) => [None; 4],
             Self::LB(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
@@ -1648,6 +1675,9 @@ impl From<Opcode> for u32 {
                     | (imm12 as u32)
             }
             Opcode::RET(ra) => ((OpcodeRepr::RET as u32) << 24) | ((ra as u32) << 18),
+            Opcode::RETD(ra, rb) => {
+                ((OpcodeRepr::RETD as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            }
             Opcode::CFEI(imm24) => ((OpcodeRepr::CFEI as u32) << 24) | (imm24 as u32),
             Opcode::CFSI(imm24) => ((OpcodeRepr::CFSI as u32) << 24) | (imm24 as u32),
             Opcode::LB(ra, rb, imm12) => {

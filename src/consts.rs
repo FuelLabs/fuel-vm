@@ -6,11 +6,11 @@ use std::mem;
 
 /* MEMORY TYPES */
 
-/// Maximum memory access size, in bytes.
-pub const MEM_MAX_ACCESS_SIZE: u64 = 32 * 1024 * 1024;
-
 /// Maximum VM RAM, in bytes.
 pub const VM_MAX_RAM: u64 = 1024 * 1024;
+
+/// Maximum memory access size, in bytes.
+pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
 /* FLAG AND REGISTER TYPES */
 
@@ -89,3 +89,9 @@ pub const VM_TX_MEMORY: usize = Bytes32::size_of() // Tx ID
             + MAX_INPUTS as usize * (
                 Color::size_of() + mem::size_of::<Word>()
                 ); // Color/Balance coin input pairs
+
+/// Empty merkle root for receipts tree
+pub const EMPTY_RECEIPTS_MERKLE_ROOT: [u8; 32] = [
+    0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41,
+    0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55,
+];

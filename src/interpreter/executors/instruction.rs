@@ -21,6 +21,8 @@ where
             }
         }
 
+        // TODO catch panic receipt
+
         match op {
             Opcode::ADD(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
                 self.alu_overflow(ra, Word::overflowing_add, self.registers[rb], self.registers[rc])
@@ -178,8 +180,24 @@ where
                 if self.gas_charge(&op).is_ok()
                     && self.jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word) => {}
 
-            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(ra) && self.inc_pc() => {
+            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(self.registers[ra]) && self.inc_pc() => {
                 result = Ok(ExecuteState::Return(self.registers[ra]));
+            }
+
+            Opcode::RETD(ra, rb)
+                if self.gas_charge(&op).is_ok()
+                    && self.ret_data(self.registers[ra], self.registers[rb])
+                    && self.inc_pc() =>
+            {
+                // TODO optimize after execute refactor
+                let digest = *self
+                    .receipts
+                    .last()
+                    .expect("ret_data is guaranteed to append a receipt if success")
+                    .digest()
+                    .expect("ret_data is guaranteed to append a receipt ret data if success");
+
+                result = Ok(ExecuteState::ReturnData(digest));
             }
 
             Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]) && self.inc_pc() => {}
@@ -276,17 +294,28 @@ where
                     && self.gas_charge(&op).is_ok()
                     && self.code_size(ra, self.registers[rb]).is_ok() => {}
 
-            // TODO LDC
-            // TODO Append to receipts
             Opcode::LOG(ra, rb, rc, rd)
-                if self.gas_charge(&op).is_ok() && self.log_append(&[ra, rb, rc, rd]) && self.inc_pc() => {}
+                if self.gas_charge(&op).is_ok()
+                    && self.log(
+                        self.registers[ra],
+                        self.registers[rb],
+                        self.registers[rc],
+                        self.registers[rd],
+                    )
+                    && self.inc_pc() => {}
 
-            // TODO LOGD
+            Opcode::LOGD(ra, rb, rc, rd)
+                if self.gas_charge(&op).is_ok()
+                    && self.log_data(
+                        self.registers[ra],
+                        self.registers[rb],
+                        self.registers[rc],
+                        self.registers[rd],
+                    )
+                    && self.inc_pc() => {}
+
             Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).is_ok() => {}
 
-            // TODO RETD
-            // TODO RVRT
-            // TODO SLDC
             Opcode::SRW(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
@@ -359,6 +388,13 @@ where
             }
 
             Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.inc_pc() => self.set_flag(self.registers[ra]),
+
+            Opcode::LDC(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
+            Opcode::SLDC(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
+            Opcode::RVRT(_ra) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
+            Opcode::TR(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
+            Opcode::TRO(_ra, _rb, _rc, _rd) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
+            Opcode::Undefined => result = Err(ExecuteError::OpcodeFailure(op)),
 
             _ => result = Err(ExecuteError::OpcodeFailure(op)),
         }

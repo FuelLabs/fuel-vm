@@ -24,7 +24,7 @@ where
         self.context = Context::from(&tx);
 
         self.frames.clear();
-        self.log.clear();
+        self.receipts.clear();
 
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);

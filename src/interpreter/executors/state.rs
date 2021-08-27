@@ -1,7 +1,5 @@
-use crate::interpreter::LogEvent;
-
 use fuel_asm::Word;
-use fuel_tx::Transaction;
+use fuel_tx::{Bytes32, Receipt, Transaction};
 
 #[cfg(feature = "debug")]
 use crate::debug::{Breakpoint, DebugEval};
@@ -10,6 +8,7 @@ use crate::debug::{Breakpoint, DebugEval};
 pub enum ExecuteState {
     Proceed,
     Return(Word),
+    ReturnData(Bytes32),
 
     #[cfg(feature = "debug")]
     DebugEvent(DebugEval),
@@ -32,6 +31,7 @@ impl From<DebugEval> for ExecuteState {
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProgramState {
     Return(Word),
+    ReturnData(Bytes32),
 
     #[cfg(feature = "debug")]
     RunProgram(DebugEval),
@@ -68,12 +68,12 @@ impl ProgramState {
 pub struct StateTransition {
     state: ProgramState,
     tx: Transaction,
-    log: Vec<LogEvent>,
+    receipts: Vec<Receipt>,
 }
 
 impl StateTransition {
-    pub const fn new(state: ProgramState, tx: Transaction, log: Vec<LogEvent>) -> Self {
-        Self { state, tx, log }
+    pub const fn new(state: ProgramState, tx: Transaction, receipts: Vec<Receipt>) -> Self {
+        Self { state, tx, receipts }
     }
 
     pub const fn state(&self) -> &ProgramState {
@@ -84,12 +84,12 @@ impl StateTransition {
         &self.tx
     }
 
-    pub fn log(&self) -> &[LogEvent] {
-        self.log.as_slice()
+    pub fn receipts(&self) -> &[Receipt] {
+        self.receipts.as_slice()
     }
 
-    pub fn into_inner(self) -> (ProgramState, Transaction, Vec<LogEvent>) {
-        (self.state, self.tx, self.log)
+    pub fn into_inner(self) -> (ProgramState, Transaction, Vec<Receipt>) {
+        (self.state, self.tx, self.receipts)
     }
 }
 
@@ -103,12 +103,12 @@ impl From<StateTransition> for ProgramState {
 pub struct StateTransitionRef<'a> {
     state: ProgramState,
     tx: &'a Transaction,
-    log: &'a [LogEvent],
+    receipts: &'a [Receipt],
 }
 
 impl<'a> StateTransitionRef<'a> {
-    pub const fn new(state: ProgramState, tx: &'a Transaction, log: &'a [LogEvent]) -> Self {
-        Self { state, tx, log }
+    pub const fn new(state: ProgramState, tx: &'a Transaction, receipts: &'a [Receipt]) -> Self {
+        Self { state, tx, receipts }
     }
 
     pub const fn state(&self) -> &ProgramState {
@@ -119,12 +119,12 @@ impl<'a> StateTransitionRef<'a> {
         self.tx
     }
 
-    pub const fn log(&self) -> &[LogEvent] {
-        self.log
+    pub const fn receipts(&self) -> &[Receipt] {
+        self.receipts
     }
 
     pub fn into_owned(self) -> StateTransition {
-        StateTransition::new(self.state, self.tx.clone(), self.log.to_vec())
+        StateTransition::new(self.state, self.tx.clone(), self.receipts.to_vec())
     }
 }
 
@@ -133,7 +133,7 @@ impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {
         Self {
             state: *t.state(),
             tx: t.tx(),
-            log: t.log(),
+            receipts: t.receipts(),
         }
     }
 }

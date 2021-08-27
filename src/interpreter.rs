@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::debug::Debugger;
 
 use fuel_asm::{RegisterId, Word};
-use fuel_tx::Transaction;
+use fuel_tx::{Receipt, Transaction};
 
 mod alu;
 mod blockchain;
@@ -27,7 +27,6 @@ pub use executors::{ProgramState, StateTransition, StateTransitionRef};
 pub use frame::{Call, CallFrame};
 pub use gas::GasUnit;
 pub use internal::Context;
-pub use log::LogEvent;
 pub use memory::MemoryRange;
 
 #[derive(Debug, Clone)]
@@ -35,7 +34,7 @@ pub struct Interpreter<S> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
     frames: Vec<CallFrame>,
-    log: Vec<LogEvent>,
+    receipts: Vec<Receipt>,
     tx: Transaction,
     storage: S,
     debugger: Debugger,
@@ -49,7 +48,7 @@ impl<S> Interpreter<S> {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; VM_MAX_RAM as usize],
             frames: vec![],
-            log: vec![],
+            receipts: vec![],
             tx: Transaction::default(),
             storage,
             debugger: Debugger::default(),
@@ -76,8 +75,8 @@ impl<S> Interpreter<S> {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }
 
-    pub fn log(&self) -> &[LogEvent] {
-        self.log.as_slice()
+    pub fn receipts(&self) -> &[Receipt] {
+        self.receipts.as_slice()
     }
 }
 

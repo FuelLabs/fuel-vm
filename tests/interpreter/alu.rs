@@ -17,8 +17,14 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
     let state = Interpreter::transition(storage, tx).expect("Failed to execute ALU script!");
 
-    assert!(
-        matches!(state.log().first(), Some(LogEvent::Register { register, value, .. }) if *register == reg && *value == expected)
+    assert_eq!(
+        state
+            .receipts()
+            .first()
+            .expect("Receipt not found")
+            .ra()
+            .expect("$ra expected"),
+        expected
     );
 }
 

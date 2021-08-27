@@ -161,6 +161,10 @@ impl CallFrame {
     pub const fn context_gas(&self) -> Word {
         self.registers[REG_CGAS]
     }
+
+    pub const fn color(&self) -> &Color {
+        &self.color
+    }
 }
 
 impl SizedBytes for CallFrame {

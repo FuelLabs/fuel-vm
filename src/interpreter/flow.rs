@@ -4,7 +4,8 @@ use crate::data::InterpreterStorage;
 
 use fuel_asm::{RegisterId, Word};
 use fuel_tx::bytes::SerializableVec;
-use fuel_tx::{Color, Input};
+use fuel_tx::crypto::Hasher;
+use fuel_tx::{Color, Input, Receipt};
 
 use std::cmp;
 use std::convert::TryFrom;
@@ -102,28 +103,25 @@ where
         self.registers[REG_IS] = self.registers[REG_PC];
         self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
 
+        let receipt = Receipt::call(
+            self.internal_contract_or_default(),
+            *frame.to(),
+            b,
+            *frame.color(),
+            d,
+            frame.a(),
+            frame.b(),
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.receipts.push(receipt);
         self.frames.push(frame);
 
         self.run_program()
     }
 
-    pub(crate) fn ret(&mut self, ra: RegisterId) -> bool {
-        // TODO Return the unused forwarded gas to the caller
-
-        if !self
-            .registers
-            .get(ra)
-            .copied()
-            .map(|a| {
-                self.registers[REG_RET] = a;
-                self.registers[REG_RETL] = 0;
-                true
-            })
-            .unwrap_or(false)
-        {
-            return false;
-        }
-
+    pub(crate) fn return_from_context(&mut self) {
         if let Some(frame) = self.frames.pop() {
             self.registers[REG_CGAS] += frame.context_gas();
 
@@ -138,7 +136,50 @@ where
                     }
                 });
         }
+    }
 
-        self.log_return(ra)
+    pub(crate) fn ret(&mut self, a: Word) -> bool {
+        let receipt = Receipt::ret(
+            self.internal_contract_or_default(),
+            a,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.registers[REG_RET] = a;
+        self.registers[REG_RETL] = 0;
+
+        self.return_from_context();
+
+        self.receipts.push(receipt);
+
+        true
+    }
+
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> bool {
+        if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
+            return false;
+        }
+
+        let ab = (a + b) as usize;
+        let digest = Hasher::hash(&self.memory[a as usize..ab]);
+
+        let receipt = Receipt::return_data(
+            self.internal_contract_or_default(),
+            a,
+            b,
+            digest,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.registers[REG_RET] = a;
+        self.registers[REG_RETL] = b;
+
+        self.return_from_context();
+
+        self.receipts.push(receipt);
+
+        true
     }
 }

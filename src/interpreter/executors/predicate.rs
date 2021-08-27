@@ -34,6 +34,9 @@ where
                     }
                 }
 
+                // A predicate is not expected to return data
+                ExecuteState::ReturnData(_) => return Err(ExecuteError::PredicateFailure),
+
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::VerifyPredicate(d));

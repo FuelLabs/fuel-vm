@@ -110,6 +110,13 @@ impl<S> Interpreter<S> {
         Ok(contract)
     }
 
+    pub(crate) fn internal_contract_or_default(&self) -> ContractId {
+        // Safety: memory bounds checked by `internal_contract_bounds`
+        self.internal_contract_bounds()
+            .map(|(c, cx)| unsafe { ContractId::from_slice_unchecked(&self.memory[c..cx]) })
+            .unwrap_or_default()
+    }
+
     pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), ExecuteError> {
         self.is_internal_context()
             .then(|| {

@@ -89,9 +89,10 @@ fn ecrecover() {
     );
 
     let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+    let receipts = state.receipts();
 
-    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
-    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
+    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
+    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
 }
 
 #[test]
@@ -166,9 +167,10 @@ fn sha256() {
     );
 
     let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+    let receipts = state.receipts();
 
-    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
-    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
+    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
+    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
 }
 
 #[test]
@@ -248,7 +250,8 @@ fn keccak256() {
     );
 
     let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
+    let receipts = state.receipts();
 
-    assert!(matches!(state.log()[0], LogEvent::Register { register, value, .. } if register == 0x10 && value == 1));
-    assert!(matches!(state.log()[1], LogEvent::Register { register, value, .. } if register == 0x10 && value == 0));
+    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
+    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
 }

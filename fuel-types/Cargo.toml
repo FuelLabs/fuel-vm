@@ -7,3 +7,12 @@ repository = "https://github.com/FuelLabs/fuel-data"
 description = "Fuel data traits and types."
 
 [dependencies]
+rand = { version = "0.8", optional = true }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+[features]
+default = [ "std" ]
+std = []
+random = [ "rand", "std" ]
+serde-types = [ "serde-types-minimal", "serde/default", "std" ]
+serde-types-minimal = [ "serde" ]

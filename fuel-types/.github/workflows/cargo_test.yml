@@ -1,0 +1,90 @@
+name: Compile and Test
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+    #
+    # Can be replaced by other targets that guarantee bare-minimum no-std
+    - name: Install toolchain no-std
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: thumbv6m-none-eabi
+        override: true
+
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
+    - name: Check formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --verbose -- --check
+
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose
+
+    - name: Build no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features
+
+    - name: Build no-std serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
+
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features random
+
+    - name: Run tests no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features
+
+    - name: Run tests serde no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features --features serde-types-minimal
+
+    - name: Run tests serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features serde-types

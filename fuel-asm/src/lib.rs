@@ -4,7 +4,6 @@
 #![warn(missing_docs)]
 
 mod opcode;
-mod types;
 
+pub use fuel_data::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 pub use opcode::Opcode;
-pub use types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};

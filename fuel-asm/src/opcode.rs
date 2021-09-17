@@ -1,7 +1,8 @@
-use crate::types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId};
-use consts::*;
+use fuel_data::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId};
 
 use core::convert::TryFrom;
+
+use consts::*;
 
 #[cfg(feature = "std")]
 use std::{io, iter};

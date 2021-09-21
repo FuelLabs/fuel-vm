@@ -1,7 +1,7 @@
 use crate::consts::*;
-use crate::{Color, Input, Output, Transaction, Witness};
+use crate::{Input, Output, Transaction, Witness};
 
-use fuel_asm::Word;
+use fuel_data::{Color, Word};
 
 mod error;
 

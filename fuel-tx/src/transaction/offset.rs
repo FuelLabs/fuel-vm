@@ -1,6 +1,8 @@
 use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
-use crate::bytes::{self, SizedBytes};
-use crate::{ContractId, Input, Metadata, Transaction};
+use crate::{Input, Metadata, Transaction};
+
+use fuel_data::bytes::{self, SizedBytes};
+use fuel_data::ContractId;
 
 impl Transaction {
     /// For a serialized transaction of type `Script`, return the bytes offset
@@ -64,7 +66,7 @@ impl Transaction {
 
             Transaction::Create {
                 static_contracts, ..
-            } => TRANSACTION_CREATE_FIXED_SIZE + ContractId::size_of() * static_contracts.len(),
+            } => TRANSACTION_CREATE_FIXED_SIZE + ContractId::LEN * static_contracts.len(),
         }
     }
 
@@ -109,7 +111,7 @@ impl Transaction {
                 ..
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
-                    + ContractId::size_of() * static_contracts.len()
+                    + ContractId::LEN * static_contracts.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
             }
         }
@@ -159,7 +161,7 @@ impl Transaction {
                 ..
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
-                    + ContractId::size_of() * static_contracts.len()
+                    + ContractId::LEN * static_contracts.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
                     + outputs.iter().map(|o| o.serialized_size()).sum::<usize>()
             }

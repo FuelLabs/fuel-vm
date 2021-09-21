@@ -1,3 +1,4 @@
+use fuel_data::{bytes, ContractId};
 use fuel_tx::*;
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};

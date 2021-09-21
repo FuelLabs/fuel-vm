@@ -1,5 +1,7 @@
-use crate::bytes::SizedBytes;
-use crate::{Bytes32, Transaction};
+use crate::Transaction;
+
+use fuel_data::bytes::SizedBytes;
+use fuel_data::Bytes32;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(

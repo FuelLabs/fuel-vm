@@ -1,7 +1,5 @@
-use crate::bytes::{self, SizedBytes};
-use crate::{Address, Bytes32, Color, ContractId};
-
-use fuel_asm::Word;
+use fuel_data::bytes::{self, SizedBytes};
+use fuel_data::{Address, Bytes32, Color, ContractId, Word};
 
 use std::convert::TryFrom;
 use std::{io, mem};
@@ -9,17 +7,17 @@ use std::{io, mem};
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
-    + Address::size_of() // To
+    + Address::LEN // To
     + WORD_SIZE // Amount
-    + Color::size_of(); // Color
+    + Color::LEN; // Color
 
 const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Input index
-    + Bytes32::size_of() // Balance root
-    + Bytes32::size_of(); // State root
+    + Bytes32::LEN // Balance root
+    + Bytes32::LEN; // State root
 
 const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
-    + ContractId::size_of(); // Contract Id
+    + ContractId::LEN; // Contract Id
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum OutputRepr {

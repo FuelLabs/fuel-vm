@@ -1,5 +1,4 @@
-use crate::bytes;
-use fuel_asm::Word;
+use fuel_data::{bytes, Word};
 
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;

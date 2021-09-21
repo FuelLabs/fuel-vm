@@ -1,4 +1,4 @@
-use fuel_tx::bytes::{Deserializable, SerializableVec};
+use fuel_data::bytes::{Deserializable, SerializableVec};
 use fuel_tx::*;
 
 mod factory;

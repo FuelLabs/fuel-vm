@@ -1,3 +1,4 @@
+use fuel_data::*;
 use fuel_tx::consts::*;
 use fuel_tx::*;
 use rand::rngs::StdRng;

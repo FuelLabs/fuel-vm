@@ -2,11 +2,15 @@
 
 pub mod bytes;
 
-mod data;
 mod types;
 
-pub use data::*;
 pub use types::*;
+
+#[cfg(feature = "std")]
+mod data;
+
+#[cfg(feature = "std")]
+pub use data::*;
 
 /// Register ID type
 pub type RegisterId = usize;

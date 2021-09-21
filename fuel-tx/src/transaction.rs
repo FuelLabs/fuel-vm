@@ -1,6 +1,5 @@
-use crate::{Bytes32, Color, ContractId, Salt};
-
-use fuel_asm::{Opcode, Word};
+use fuel_asm::Opcode;
+use fuel_data::{Bytes32, Color, ContractId, Salt, Word};
 use itertools::Itertools;
 
 use std::convert::TryFrom;
@@ -31,7 +30,7 @@ const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
-    + Bytes32::size_of(); // Receipts root
+    + Bytes32::LEN; // Receipts root
 
 const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
@@ -43,7 +42,7 @@ const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
-    + Salt::size_of(); // Salt
+    + Salt::LEN; // Salt
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum TransactionRepr {

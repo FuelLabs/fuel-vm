@@ -7,11 +7,9 @@
 
 // TODO Add docs
 
-pub mod bytes;
 pub mod consts;
-pub mod types;
 
-pub use types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt};
+pub use fuel_data::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt};
 
 #[cfg(feature = "std")]
 pub mod crypto;

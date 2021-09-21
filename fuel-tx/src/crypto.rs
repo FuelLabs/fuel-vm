@@ -1,4 +1,4 @@
-use crate::Bytes32;
+use fuel_data::Bytes32;
 use sha2::{Digest, Sha256};
 
 use std::iter;
@@ -33,11 +33,11 @@ impl Hasher {
 
         hasher.update(data);
 
-        <[u8; Bytes32::size_of()]>::from(hasher.finalize()).into()
+        <[u8; Bytes32::LEN]>::from(hasher.finalize()).into()
     }
 
     pub fn digest(&self) -> Bytes32 {
-        <[u8; Bytes32::size_of()]>::from(self.0.clone().finalize()).into()
+        <[u8; Bytes32::LEN]>::from(self.0.clone().finalize()).into()
     }
 }
 
@@ -49,10 +49,6 @@ where
     where
         T: IntoIterator<Item = B>,
     {
-        let mut hasher = Hasher::default();
-
-        iter.into_iter().for_each(|i| hasher.input(i));
-
-        hasher
+        iter.into_iter().fold(Hasher::default(), Hasher::chain)
     }
 }

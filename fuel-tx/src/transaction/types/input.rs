@@ -1,7 +1,5 @@
-use crate::bytes::{self, SizedBytes};
-use crate::{Address, Bytes32, Color, ContractId};
-
-use fuel_asm::Word;
+use fuel_data::bytes::{self, SizedBytes};
+use fuel_data::{Address, Bytes32, Color, ContractId, Word};
 
 use std::convert::TryFrom;
 use std::{io, mem};
@@ -9,20 +7,20 @@ use std::{io, mem};
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + Bytes32::size_of() // UTXO Id
-    + Address::size_of() // Owner
+    + Bytes32::LEN // UTXO Id
+    + Address::LEN // Owner
     + WORD_SIZE // Amount
-    + Color::size_of() // Color
+    + Color::LEN // Color
     + WORD_SIZE // Witness index
     + WORD_SIZE // Maturity
     + WORD_SIZE // Predicate size
     + WORD_SIZE; // Predicate data size
 
 const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + Bytes32::size_of() // UTXO Id
-    + Bytes32::size_of() // Balance root
-    + Bytes32::size_of() // State root
-    + ContractId::size_of(); // Contract address
+    + Bytes32::LEN // UTXO Id
+    + Bytes32::LEN // Balance root
+    + Bytes32::LEN // State root
+    + ContractId::LEN; // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum InputRepr {

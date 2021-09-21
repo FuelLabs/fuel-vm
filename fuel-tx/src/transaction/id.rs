@@ -1,6 +1,8 @@
-use crate::bytes::SerializableVec;
 use crate::crypto::Hasher;
-use crate::{Bytes32, Input, Metadata, Output, Transaction, Witness};
+use crate::{Input, Metadata, Output, Transaction, Witness};
+
+use fuel_data::bytes::SerializableVec;
+use fuel_data::Bytes32;
 
 impl Transaction {
     pub(crate) fn inputs_mut(&mut self) -> &mut [Input] {
@@ -82,7 +84,7 @@ impl Transaction {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::*;
     use rand::rngs::StdRng;

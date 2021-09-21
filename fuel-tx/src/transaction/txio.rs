@@ -1,8 +1,8 @@
 use super::{TransactionRepr, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
-use crate::bytes::{self, SizedBytes};
-use crate::{ContractId, Input, Output, Transaction, Witness};
+use crate::{Input, Output, Transaction, Witness};
 
-use fuel_asm::Word;
+use fuel_data::bytes::{self, SizedBytes};
+use fuel_data::{ContractId, Word};
 
 use std::convert::TryFrom;
 use std::{io, mem};
@@ -40,7 +40,7 @@ impl bytes::SizedBytes for Transaction {
 
             Self::Create {
                 static_contracts, ..
-            } => TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractId::size_of(),
+            } => TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractId::LEN,
         };
 
         n + inputs + outputs + witnesses
@@ -233,15 +233,15 @@ impl io::Write for Transaction {
 
                 let salt = salt.into();
 
-                if buf.len() < static_contracts_len * ContractId::size_of() {
+                if buf.len() < static_contracts_len * ContractId::LEN {
                     return Err(bytes::eof());
                 }
 
                 let mut static_contracts = vec![ContractId::default(); static_contracts_len];
-                n += ContractId::size_of() * static_contracts_len;
+                n += ContractId::LEN * static_contracts_len;
                 for static_contract in static_contracts.iter_mut() {
-                    static_contract.copy_from_slice(&buf[..ContractId::size_of()]);
-                    buf = &buf[ContractId::size_of()..];
+                    static_contract.copy_from_slice(&buf[..ContractId::LEN]);
+                    buf = &buf[ContractId::LEN..];
                 }
 
                 let mut inputs = vec![Input::default(); inputs_len];

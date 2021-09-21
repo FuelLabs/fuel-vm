@@ -1,7 +1,5 @@
-use crate::bytes::{self, SizedBytes};
-use crate::{Address, Bytes32, Color, ContractId};
-
-use fuel_asm::Word;
+use fuel_data::bytes::{self, SizedBytes};
+use fuel_data::{Address, Bytes32, Color, ContractId, Word};
 
 use std::convert::TryFrom;
 use std::io::{self, Write};
@@ -24,14 +22,14 @@ enum ReceiptRepr {
 
 impl ReceiptRepr {
     pub const fn len(&self) -> usize {
-        ContractId::size_of() // id
+        ContractId::LEN // id
                 + WORD_SIZE // pc
                 + WORD_SIZE // is
         + match self {
             Self::Call => {
-                ContractId::size_of() // to
+                ContractId::LEN // to
                 + WORD_SIZE // amount
-                + Color::size_of() // color
+                + Color::LEN // color
                 + WORD_SIZE // gas
                 + WORD_SIZE // a
                 + WORD_SIZE // b
@@ -42,7 +40,7 @@ impl ReceiptRepr {
             Self::ReturnData => {
                 WORD_SIZE // ptr
                 + WORD_SIZE // len
-                + Bytes32::size_of() // digest
+                + Bytes32::LEN // digest
             }
 
             Self::Panic => WORD_SIZE, // reason
@@ -60,19 +58,19 @@ impl ReceiptRepr {
                 + WORD_SIZE // rb
                 + WORD_SIZE // ptr
                 + WORD_SIZE // len
-                + Bytes32::size_of() // digest
+                + Bytes32::LEN // digest
             }
 
             Self::Transfer => {
-                ContractId::size_of() // to
+                ContractId::LEN // to
                 + WORD_SIZE // amount
-                + Color::size_of() // digest
+                + Color::LEN // digest
             }
 
             Self::TransferOut => {
-                Address::size_of() // to
+                Address::LEN // to
                 + WORD_SIZE // amount
-                + Color::size_of() // digest
+                + Color::LEN // digest
             }
         }
     }

@@ -1,6 +1,7 @@
-use super::{CallFrame, Interpreter, ProgramState};
+use super::Interpreter;
+use crate::call::CallFrame;
 use crate::consts::*;
-use crate::debug::{Breakpoint, DebugEval};
+use crate::state::{Breakpoint, DebugEval, ProgramState};
 
 impl<S> Interpreter<S> {
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {

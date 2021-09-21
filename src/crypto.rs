@@ -1,5 +1,5 @@
+use fuel_data::{Bytes32, Bytes64};
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
@@ -103,7 +103,7 @@ where
     next[0]
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "random"))]
 mod tests {
     use super::*;
     use crate::prelude::*;

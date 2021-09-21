@@ -1,8 +1,10 @@
-use super::ExecuteState;
 use crate::data::InterpreterStorage;
-use crate::interpreter::{ExecuteError, Interpreter};
+use crate::error::InterpreterError;
+use crate::interpreter::Interpreter;
+use crate::state::ExecuteState;
 
-use fuel_asm::{Opcode, Word};
+use fuel_asm::Opcode;
+use fuel_data::Word;
 
 use std::ops::Div;
 
@@ -10,7 +12,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn execute(&mut self, op: Opcode) -> Result<ExecuteState, ExecuteError> {
+    pub fn execute(&mut self, op: Opcode) -> Result<ExecuteState, InterpreterError> {
         let mut result = Ok(ExecuteState::Proceed);
 
         #[cfg(feature = "debug")]
@@ -389,14 +391,14 @@ where
 
             Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.inc_pc() => self.set_flag(self.registers[ra]),
 
-            Opcode::LDC(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
-            Opcode::SLDC(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
-            Opcode::RVRT(_ra) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
-            Opcode::TR(_ra, _rb, _rc) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
-            Opcode::TRO(_ra, _rb, _rc, _rd) => result = Err(ExecuteError::OpcodeUnimplemented(op)),
-            Opcode::Undefined => result = Err(ExecuteError::OpcodeFailure(op)),
+            Opcode::LDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::RVRT(_ra) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::TR(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::TRO(_ra, _rb, _rc, _rd) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::Undefined => result = Err(InterpreterError::OpcodeFailure(op)),
 
-            _ => result = Err(ExecuteError::OpcodeFailure(op)),
+            _ => result = Err(InterpreterError::OpcodeFailure(op)),
         }
 
         result

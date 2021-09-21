@@ -3,8 +3,7 @@ use fuel_vm::prelude::*;
 
 #[test]
 fn breakpoint_script() {
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
+    let mut vm = Interpreter::in_memory();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;

@@ -1,7 +1,9 @@
-use super::{ExecuteState, ProgramState};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
-use crate::interpreter::{ExecuteError, Interpreter, MemoryRange};
+use crate::error::InterpreterError;
+use crate::interpreter::Interpreter;
+use crate::memory::MemoryRange;
+use crate::state::{ExecuteState, ProgramState};
 
 use fuel_asm::Opcode;
 
@@ -9,7 +11,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, ExecuteError> {
+    pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, InterpreterError> {
         // TODO initialize VM with tx prepared for sign
         let (start, end) = predicate.boundaries(self);
 
@@ -23,19 +25,19 @@ where
                 .chunks_exact(Opcode::BYTES_SIZE)
                 .next()
                 .map(Opcode::from_bytes_unchecked)
-                .ok_or(ExecuteError::PredicateOverflow)?;
+                .ok_or(InterpreterError::PredicateOverflow)?;
 
             match self.execute(op)? {
                 ExecuteState::Return(r) => {
                     if r == 1 {
                         return Ok(ProgramState::Return(r));
                     } else {
-                        return Err(ExecuteError::PredicateFailure);
+                        return Err(InterpreterError::PredicateFailure);
                     }
                 }
 
                 // A predicate is not expected to return data
-                ExecuteState::ReturnData(_) => return Err(ExecuteError::PredicateFailure),
+                ExecuteState::ReturnData(_) => return Err(InterpreterError::PredicateFailure),
 
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
@@ -46,7 +48,7 @@ where
             }
 
             if self.registers[REG_PC] < pc || self.registers[REG_PC] >= end {
-                return Err(ExecuteError::PredicateOverflow);
+                return Err(InterpreterError::PredicateOverflow);
             }
         }
     }

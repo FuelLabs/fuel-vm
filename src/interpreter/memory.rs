@@ -1,14 +1,12 @@
-use super::{ExecuteError, Interpreter};
+use super::Interpreter;
 use crate::consts::*;
+use crate::error::InterpreterError;
+use crate::memory::MemoryRange;
 
-use fuel_asm::{RegisterId, Word};
+use fuel_data::{RegisterId, Word};
 
 use std::convert::TryFrom;
 use std::ptr;
-
-mod range;
-
-pub use range::MemoryRange;
 
 impl<S> Interpreter<S> {
     /// Copy `data` into `addr[..|data|[`
@@ -18,13 +16,13 @@ impl<S> Interpreter<S> {
     /// # Panics
     ///
     /// Will panic if data overlaps with `addr[..|data|[`
-    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), ExecuteError> {
+    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), InterpreterError> {
         addr.checked_add(data.len())
-            .ok_or(ExecuteError::ArithmeticOverflow)
+            .ok_or(InterpreterError::ArithmeticOverflow)
             .and_then(|ax| {
                 (ax <= VM_MAX_RAM as usize)
                     .then(|| MemoryRange::new(addr as Word, 32))
-                    .ok_or(ExecuteError::MemoryOverflow)
+                    .ok_or(InterpreterError::MemoryOverflow)
             })
             .and_then(|range| {
                 self.has_ownership_range(&range)
@@ -36,24 +34,24 @@ impl<S> Interpreter<S> {
                             ptr::copy_nonoverlapping(src, dst, data.len());
                         }
                     })
-                    .ok_or(ExecuteError::MemoryOwnership)
+                    .ok_or(InterpreterError::MemoryOwnership)
             })
     }
 
-    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), ExecuteError> {
+    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), InterpreterError> {
         addr.checked_add(len)
-            .ok_or(ExecuteError::ArithmeticOverflow)
+            .ok_or(InterpreterError::ArithmeticOverflow)
             .and_then(|ax| {
                 (ax <= VM_MAX_RAM as usize)
                     .then(|| MemoryRange::new(addr as Word, 32))
-                    .ok_or(ExecuteError::MemoryOverflow)
+                    .ok_or(InterpreterError::MemoryOverflow)
             })
             .and_then(|range| {
                 self.has_ownership_range(&range)
                     .then(|| {
                         (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
                     })
-                    .ok_or(ExecuteError::MemoryOwnership)
+                    .ok_or(InterpreterError::MemoryOwnership)
             })
     }
 
@@ -258,8 +256,7 @@ mod tests {
 
     #[test]
     fn memcopy() {
-        let storage = MemoryStorage::default();
-        let mut vm = Interpreter::with_storage(storage);
+        let mut vm = Interpreter::in_memory();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         let alloc = 1024;
@@ -309,8 +306,7 @@ mod tests {
         let m_p = MemoryRange::new(0, 1024);
         assert_eq!(m, m_p);
 
-        let storage = MemoryStorage::default();
-        let mut vm = Interpreter::with_storage(storage);
+        let mut vm = Interpreter::in_memory();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         let bytes = 1024;
@@ -335,8 +331,7 @@ mod tests {
 
     #[test]
     fn stack_alloc_ownership() {
-        let storage = MemoryStorage::default();
-        let mut vm = Interpreter::with_storage(storage);
+        let mut vm = Interpreter::in_memory();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         vm.execute(Opcode::MOVE(0x10, REG_SP)).unwrap();

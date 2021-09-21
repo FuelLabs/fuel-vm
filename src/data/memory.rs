@@ -1,13 +1,14 @@
-use super::{DataError, InterpreterStorage, MerkleStorage, Storage};
+use super::InterpreterStorage;
+use crate::contract::Contract;
 use crate::crypto;
-use crate::interpreter::Contract;
 
-use fuel_asm::Word;
+use fuel_data::{Address, Bytes32, Color, ContractId, MerkleStorage, Salt, Storage, Word};
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
 use itertools::Itertools;
 
+use std::borrow::Cow;
 use std::collections::HashMap;
+use std::convert::Infallible;
 
 #[derive(Debug, Clone)]
 pub struct MemoryStorage {
@@ -17,15 +18,6 @@ pub struct MemoryStorage {
     balances: HashMap<(ContractId, Color), Word>,
     contract_state: HashMap<(ContractId, Bytes32), Bytes32>,
     contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
-}
-
-impl Default for MemoryStorage {
-    fn default() -> Self {
-        let block_height = 1;
-        let coinbase = Address::from(*Hasher::hash(b"coinbase"));
-
-        Self::new(block_height, coinbase)
-    }
 }
 
 impl MemoryStorage {
@@ -40,68 +32,78 @@ impl MemoryStorage {
         }
     }
 
-    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Bytes32 {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(&self, contract, key)
-            .ok()
-            .flatten()
-            .unwrap_or_default()
+    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
+        const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
+
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32, Infallible>>::get(&self, contract, key)
+            .expect("Infallible")
+            .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
     }
 }
 
-impl Storage<ContractId, Contract> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &Contract) -> Result<Option<Contract>, DataError> {
+impl Default for MemoryStorage {
+    fn default() -> Self {
+        let block_height = 1;
+        let coinbase = Address::from(*Hasher::hash(b"coinbase"));
+
+        Self::new(block_height, coinbase)
+    }
+}
+
+impl Storage<ContractId, Contract, Infallible> for MemoryStorage {
+    fn insert(&mut self, key: &ContractId, value: &Contract) -> Result<Option<Contract>, Infallible> {
         Ok(self.contracts.insert(*key, value.clone()))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, DataError> {
+    fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.contracts.remove(key))
     }
 
-    fn get(&self, key: &ContractId) -> Result<Option<Contract>, DataError> {
-        Ok(self.contracts.get(key).cloned())
+    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Infallible> {
+        Ok(self.contracts.get(key).map(Cow::Borrowed))
     }
 
-    fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
+    fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
         Ok(self.contracts.contains_key(key))
     }
 }
 
-impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, DataError> {
+impl Storage<ContractId, (Salt, Bytes32), Infallible> for MemoryStorage {
+    fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, Infallible> {
         Ok(self.contract_code_root.insert(*key, *value))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, DataError> {
+    fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, Infallible> {
         Ok(self.contract_code_root.remove(key))
     }
 
-    fn get(&self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, DataError> {
-        Ok(self.contract_code_root.get(key).cloned())
+    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
+        Ok(self.contract_code_root.get(key).map(Cow::Borrowed))
     }
 
-    fn contains_key(&self, key: &ContractId) -> Result<bool, DataError> {
+    fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
         Ok(self.contract_code_root.contains_key(key))
     }
 }
 
-impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
-    fn insert(&mut self, parent: &ContractId, key: &Color, value: &Word) -> Result<Option<Word>, DataError> {
+impl MerkleStorage<ContractId, Color, Word, Infallible> for MemoryStorage {
+    fn insert(&mut self, parent: &ContractId, key: &Color, value: &Word) -> Result<Option<Word>, Infallible> {
         Ok(self.balances.insert((*parent, *key), *value))
     }
 
-    fn get(&self, parent: &ContractId, key: &Color) -> Result<Option<Word>, DataError> {
-        Ok(self.balances.get(&(*parent, *key)).copied())
+    fn get(&self, parent: &ContractId, key: &Color) -> Result<Option<Cow<'_, Word>>, Infallible> {
+        Ok(self.balances.get(&(*parent, *key)).copied().map(Cow::Owned))
     }
 
-    fn remove(&mut self, parent: &ContractId, key: &Color) -> Result<Option<Word>, DataError> {
+    fn remove(&mut self, parent: &ContractId, key: &Color) -> Result<Option<Word>, Infallible> {
         Ok(self.balances.remove(&(*parent, *key)))
     }
 
-    fn contains_key(&self, parent: &ContractId, key: &Color) -> Result<bool, DataError> {
+    fn contains_key(&self, parent: &ContractId, key: &Color) -> Result<bool, Infallible> {
         Ok(self.balances.contains_key(&(*parent, *key)))
     }
 
-    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
+    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, Infallible> {
         let root = self
             .balances
             .iter()
@@ -114,24 +116,24 @@ impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
     }
 }
 
-impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
-    fn insert(&mut self, parent: &ContractId, key: &Bytes32, value: &Bytes32) -> Result<Option<Bytes32>, DataError> {
+impl MerkleStorage<ContractId, Bytes32, Bytes32, Infallible> for MemoryStorage {
+    fn insert(&mut self, parent: &ContractId, key: &Bytes32, value: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.contract_state.insert((*parent, *key), *value))
     }
 
-    fn get(&self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, DataError> {
-        Ok(self.contract_state.get(&(*parent, *key)).copied())
+    fn get(&self, parent: &ContractId, key: &Bytes32) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
+        Ok(self.contract_state.get(&(*parent, *key)).map(Cow::Borrowed))
     }
 
-    fn remove(&mut self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, DataError> {
+    fn remove(&mut self, parent: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.contract_state.remove(&(*parent, *key)))
     }
 
-    fn contains_key(&self, parent: &ContractId, key: &Bytes32) -> Result<bool, DataError> {
+    fn contains_key(&self, parent: &ContractId, key: &Bytes32) -> Result<bool, Infallible> {
         Ok(self.contract_state.contains_key(&(*parent, *key)))
     }
 
-    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, DataError> {
+    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, Infallible> {
         let root = self
             .contract_state
             .iter()
@@ -144,15 +146,17 @@ impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
 }
 
 impl InterpreterStorage for MemoryStorage {
-    fn block_height(&self) -> Result<u32, DataError> {
+    type Error = Infallible;
+
+    fn block_height(&self) -> Result<u32, Infallible> {
         Ok(self.block_height)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Infallible> {
         Ok(Hasher::hash(&block_height.to_be_bytes()))
     }
 
-    fn coinbase(&self) -> Result<Address, DataError> {
+    fn coinbase(&self) -> Result<Address, Infallible> {
         Ok(self.coinbase)
     }
 }

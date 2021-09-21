@@ -44,7 +44,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
     let result = Interpreter::transition(storage, tx);
 
-    assert!(matches!(result, Err(ExecuteError::OpcodeFailure(o)) if o == op));
+    assert!(matches!(result, Err(InterpreterError::OpcodeFailure(o)) if o == op));
 }
 
 #[test]

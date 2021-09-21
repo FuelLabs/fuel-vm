@@ -1,17 +1,16 @@
-use crate::data::DataError;
-
 use fuel_asm::Opcode;
 use fuel_tx::ValidationError;
 
-use std::{error, fmt, io};
+use std::convert::Infallible;
+use std::error::Error as StdError;
+use std::{fmt, io};
 
 #[derive(Debug)]
-pub enum ExecuteError {
+pub enum InterpreterError {
     OpcodeFailure(Opcode),
     OpcodeUnimplemented(Opcode),
     ValidationError(ValidationError),
     Io(io::Error),
-    Data(DataError),
     TransactionCreateStaticContractNotFound,
     TransactionCreateIdNotInTx,
     ArithmeticOverflow,
@@ -35,7 +34,7 @@ pub enum ExecuteError {
     DebugStateNotInitialized,
 }
 
-impl fmt::Display for ExecuteError {
+impl fmt::Display for InterpreterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::OpcodeFailure(op) => {
@@ -55,31 +54,30 @@ impl fmt::Display for ExecuteError {
     }
 }
 
-impl error::Error for ExecuteError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+impl StdError for InterpreterError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Self::ValidationError(e) => Some(e),
             Self::Io(e) => Some(e),
-            Self::Data(e) => Some(e),
             _ => None,
         }
     }
 }
 
-impl From<ValidationError> for ExecuteError {
+impl From<ValidationError> for InterpreterError {
     fn from(e: ValidationError) -> Self {
         Self::ValidationError(e)
     }
 }
 
-impl From<io::Error> for ExecuteError {
+impl From<io::Error> for InterpreterError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
     }
 }
 
-impl From<DataError> for ExecuteError {
-    fn from(e: DataError) -> Self {
-        Self::Data(e)
+impl Into<InterpreterError> for Infallible {
+    fn into(self) -> InterpreterError {
+        unreachable!()
     }
 }

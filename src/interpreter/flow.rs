@@ -1,11 +1,14 @@
-use super::{Call, CallFrame, ExecuteError, Interpreter, ProgramState};
+use super::Interpreter;
+use crate::call::{Call, CallFrame};
 use crate::consts::*;
 use crate::data::InterpreterStorage;
+use crate::error::InterpreterError;
+use crate::state::ProgramState;
 
-use fuel_asm::{RegisterId, Word};
-use fuel_tx::bytes::SerializableVec;
+use fuel_data::bytes::SerializableVec;
+use fuel_data::{Color, RegisterId, Word};
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Color, Input, Receipt};
+use fuel_tx::{Input, Receipt};
 
 use std::cmp;
 use std::convert::TryFrom;
@@ -58,13 +61,13 @@ where
         }
     }
 
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, ExecuteError> {
+    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, InterpreterError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
 
         if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
-            return Err(ExecuteError::MemoryOverflow);
+            return Err(InterpreterError::MemoryOverflow);
         }
 
         let call = Call::try_from(&self.memory[a as usize..])?;
@@ -75,7 +78,7 @@ where
         }
 
         if !self.tx.input_contracts().any(|contract| call.to() == contract) {
-            return Err(ExecuteError::ContractNotInTxInputs);
+            return Err(InterpreterError::ContractNotInTxInputs);
         }
 
         // TODO validate external and internal context
@@ -87,7 +90,7 @@ where
         let len = stack.len() as Word;
 
         if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
-            return Err(ExecuteError::StackOverflow);
+            return Err(InterpreterError::StackOverflow);
         }
 
         self.registers[REG_FP] = self.registers[REG_SP];

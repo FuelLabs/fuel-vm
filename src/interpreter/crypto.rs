@@ -1,24 +1,24 @@
-use super::{ExecuteError, Interpreter};
+use super::Interpreter;
 use crate::consts::{MEM_MAX_ACCESS_SIZE, VM_MAX_RAM};
 use crate::crypto;
+use crate::error::InterpreterError;
 
-use fuel_asm::Word;
+use fuel_data::{Bytes32, Bytes64, Word};
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Bytes32, Bytes64};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
-        if a > VM_MAX_RAM - Bytes64::size_of() as Word
-            || b > VM_MAX_RAM - Bytes64::size_of() as Word
-            || c > VM_MAX_RAM - Bytes32::size_of() as Word
+    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+        if a > VM_MAX_RAM - Bytes64::LEN as Word
+            || b > VM_MAX_RAM - Bytes64::LEN as Word
+            || c > VM_MAX_RAM - Bytes32::LEN as Word
         {
-            return Err(ExecuteError::MemoryOverflow);
+            return Err(InterpreterError::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);
 
-        let bx = b + Bytes64::size_of();
-        let cx = c + Bytes32::size_of();
+        let bx = b + Bytes64::LEN;
+        let cx = c + Bytes32::LEN;
 
         let e = &self.memory[c..cx];
         let sig = &self.memory[b..bx];
@@ -30,7 +30,7 @@ impl<S> Interpreter<S> {
             }
 
             Err(_) => {
-                self.try_zeroize(a, Bytes64::size_of())?;
+                self.try_zeroize(a, Bytes64::LEN)?;
                 self.set_err();
             }
         }
@@ -40,11 +40,11 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
+    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
         use sha3::{Digest, Keccak256};
 
-        if a > VM_MAX_RAM - Bytes32::size_of() as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
-            return Err(ExecuteError::MemoryOverflow);
+        if a > VM_MAX_RAM - Bytes32::LEN as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
+            return Err(InterpreterError::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);
@@ -61,9 +61,9 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), ExecuteError> {
-        if a > VM_MAX_RAM - Bytes32::size_of() as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
-            return Err(ExecuteError::MemoryOverflow);
+    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+        if a > VM_MAX_RAM - Bytes32::LEN as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
+            return Err(InterpreterError::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);

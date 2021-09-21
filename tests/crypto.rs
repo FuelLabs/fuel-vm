@@ -1,5 +1,4 @@
 use fuel_tx::crypto::Hasher;
-use fuel_tx::Bytes64;
 use fuel_vm::consts::*;
 use fuel_vm::crypto;
 use fuel_vm::prelude::*;

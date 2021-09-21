@@ -1,46 +1,23 @@
-use super::{ExecuteError, Interpreter};
+use super::Interpreter;
 use crate::consts::*;
+use crate::context::Context;
+use crate::error::InterpreterError;
 
-use fuel_asm::{RegisterId, Word};
-use fuel_tx::{ContractId, Transaction};
+use fuel_data::{Bytes32, Color, ContractId, RegisterId, Word};
+use fuel_tx::consts::*;
+use fuel_tx::Transaction;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
-pub enum Context {
-    Predicate,
-    Script,
-    Call,
-    NotInitialized,
-}
+use std::convert::TryFrom;
+use std::mem;
 
-impl Default for Context {
-    fn default() -> Self {
-        Self::NotInitialized
-    }
-}
-
-impl Context {
-    pub const fn is_external(&self) -> bool {
-        matches!(self, Self::Predicate | Self::Script)
-    }
-}
-
-impl From<&Transaction> for Context {
-    fn from(tx: &Transaction) -> Self {
-        if tx.is_script() {
-            Self::Script
-        } else {
-            Self::Predicate
-        }
-    }
-}
+const WORD_SIZE: usize = mem::size_of::<Word>();
 
 impl<S> Interpreter<S> {
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), ExecuteError> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), InterpreterError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
         if overflow || !self.is_external_context() && ssp > self.registers[REG_SP] {
-            Err(ExecuteError::StackOverflow)
+            Err(InterpreterError::StackOverflow)
         } else {
             self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
             self.registers[REG_SSP] = ssp;
@@ -101,7 +78,7 @@ impl<S> Interpreter<S> {
         &self.tx
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, ExecuteError> {
+    pub(crate) fn internal_contract(&self) -> Result<&ContractId, InterpreterError> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -117,14 +94,84 @@ impl<S> Interpreter<S> {
             .unwrap_or_default()
     }
 
-    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), ExecuteError> {
+    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), InterpreterError> {
         self.is_internal_context()
             .then(|| {
                 let c = self.registers[REG_FP] as usize;
-                let cx = c + ContractId::size_of();
+                let cx = c + ContractId::LEN;
 
                 (c, cx)
             })
-            .ok_or(ExecuteError::ExpectedInternalContext)
+            .ok_or(InterpreterError::ExpectedInternalContext)
+    }
+
+    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), InterpreterError> {
+        if value == 0 {
+            return Ok(());
+        }
+
+        const LEN: usize = Color::LEN + WORD_SIZE;
+
+        let balance_memory = self.memory[Bytes32::LEN..Bytes32::LEN + MAX_INPUTS as usize * LEN]
+            .chunks_mut(LEN)
+            .find(|chunk| &chunk[..Color::LEN] == color.as_ref())
+            .map(|chunk| &mut chunk[Color::LEN..])
+            .ok_or(InterpreterError::ExternalColorNotFound)?;
+
+        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
+        let balance = Word::from_be_bytes(balance);
+        let balance = balance.checked_sub(value).ok_or(InterpreterError::NotEnoughBalance)?;
+        let balance = balance.to_be_bytes();
+
+        balance_memory.copy_from_slice(&balance);
+
+        Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "random"))]
+mod tests {
+    use crate::prelude::*;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    #[test]
+    fn external_balance() {
+        let mut rng = StdRng::seed_from_u64(2322u64);
+
+        let mut vm = Interpreter::in_memory();
+
+        let gas_price = 0;
+        let gas_limit = 1_000_000;
+        let maturity = 0;
+
+        let script = vec![Opcode::RET(0x01)].iter().copied().collect();
+        let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
+
+        let inputs = balances
+            .iter()
+            .map(|(color, amount)| Input::coin(rng.gen(), rng.gen(), *amount, *color, 0, maturity, vec![], vec![]))
+            .collect();
+
+        let tx = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            script,
+            vec![],
+            inputs,
+            vec![],
+            vec![vec![].into()],
+        );
+
+        vm.init(tx).expect("Failed to init VM!");
+
+        for (color, amount) in balances {
+            assert!(vm.external_color_balance_sub(&color, amount + 1).is_err());
+            vm.external_color_balance_sub(&color, amount - 10).unwrap();
+            assert!(vm.external_color_balance_sub(&color, 11).is_err());
+            vm.external_color_balance_sub(&color, 10).unwrap();
+            assert!(vm.external_color_balance_sub(&color, 1).is_err());
+        }
     }
 }

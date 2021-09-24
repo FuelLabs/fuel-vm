@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
   build:
@@ -18,6 +19,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: |
+          ${{ secrets.PRIVATE_KEY_FUEL_DATA }}
 
     - name: Install toolchain
       uses: actions-rs/toolchain@v1

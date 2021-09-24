@@ -1,7 +1,15 @@
-use crate::common::storage::{Storage, StorageError};
+use fuel_data::Storage;
 
 use std::collections::HashMap;
-use std::hash::Hash;
+
+use std::borrow::Cow;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum StorageError {
+    #[error("generic error occurred")]
+    Error(Box<dyn std::error::Error + Send>),
+}
 
 #[derive(Debug)]
 pub struct StorageMap<Key, Value> {
@@ -16,14 +24,15 @@ impl<Key, Value> StorageMap<Key, Value> {
     }
 }
 
-impl<Key, Value> Storage<Key, Value> for StorageMap<Key, Value>
+impl<Key, Value> Storage<Key, Value, StorageError> for StorageMap<Key, Value>
 where
-    Key: Clone + Hash + Eq,
+    Key: Eq + std::hash::Hash + Clone,
     Value: Clone,
 {
     fn insert(&mut self, key: &Key, value: &Value) -> Result<Option<Value>, StorageError> {
         self.map.insert(key.clone(), value.clone());
-        Ok(Some(value.clone()))
+        let v = Some(value.clone());
+        Ok(v)
     }
 
     fn remove(&mut self, key: &Key) -> Result<Option<Value>, StorageError> {
@@ -31,13 +40,15 @@ where
         Ok(value)
     }
 
-    fn get(&self, key: &Key) -> Result<Option<Value>, StorageError> {
+    fn get(&self, key: &Key) -> Result<Option<Cow<Value>>, StorageError> {
         let result = self.map.get(key);
-        Ok(result.cloned())
+        let value = result.map(|value| Cow::Borrowed(value));
+        Ok(value)
     }
 
     fn contains_key(&self, key: &Key) -> Result<bool, StorageError> {
-        Ok(self.map.contains_key(key))
+        let contains = self.map.contains_key(key);
+        Ok(contains)
     }
 }
 
@@ -64,7 +75,7 @@ mod test {
         let mut store = StorageMap::<TestKey, TestValue>::new();
         let _ = store.insert(&key, &TestValue(0));
 
-        assert_eq!(store.get(&key).unwrap(), Some(TestValue(0)));
+        assert_eq!(store.get(&key).unwrap(), Some(Cow::Borrowed(&TestValue(0))));
     }
     #[test]
     fn test_get_returns_none_for_invalid_key() {
@@ -83,7 +94,7 @@ mod test {
         let _ = store.insert(&key, &TestValue(0));
         let _ = store.insert(&key, &TestValue(1));
 
-        assert_eq!(store.get(&key).unwrap(), Some(TestValue(1)));
+        assert_eq!(store.get(&key).unwrap(), Some(Cow::Borrowed(&TestValue(1))));
     }
 
     #[test]

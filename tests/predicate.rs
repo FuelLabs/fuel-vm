@@ -1,4 +1,4 @@
-use fuel_tx::bytes;
+use fuel_data::bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -8,8 +8,7 @@ use rand::{Rng, SeedableRng};
 fn predicate() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
+    let mut vm = Interpreter::in_memory();
 
     let predicate_data = 0x23 as Word;
     let predicate_data = predicate_data.to_be_bytes().to_vec();
@@ -84,8 +83,7 @@ fn predicate() {
 fn predicate_false() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
+    let mut vm = Interpreter::in_memory();
 
     let predicate_data = 0x24 as Word;
     let predicate_data = predicate_data.to_be_bytes().to_vec();

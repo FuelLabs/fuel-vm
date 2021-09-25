@@ -1,7 +1,7 @@
 use super::Interpreter;
 use crate::consts::*;
 
-use fuel_asm::Word;
+use fuel_data::Word;
 use fuel_tx::crypto::Hasher;
 use fuel_tx::Receipt;
 

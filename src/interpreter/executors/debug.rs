@@ -1,15 +1,16 @@
-use super::ProgramState;
 use crate::data::InterpreterStorage;
-use crate::interpreter::{ExecuteError, Interpreter};
+use crate::error::InterpreterError;
+use crate::interpreter::Interpreter;
+use crate::state::ProgramState;
 
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub fn resume(&mut self) -> Result<ProgramState, ExecuteError> {
+    pub fn resume(&mut self) -> Result<ProgramState, InterpreterError> {
         let state = self
             .debugger_last_state()
-            .ok_or(ExecuteError::DebugStateNotInitialized)?;
+            .ok_or(InterpreterError::DebugStateNotInitialized)?;
 
         let state = match state {
             ProgramState::Return(w) => Ok(ProgramState::Return(w)),

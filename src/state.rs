@@ -1,8 +1,20 @@
-use fuel_asm::Word;
-use fuel_tx::{Bytes32, Receipt, Transaction};
+use fuel_data::{Bytes32, Word};
+use fuel_tx::{Receipt, Transaction};
 
 #[cfg(feature = "debug")]
-use crate::debug::{Breakpoint, DebugEval};
+mod debug;
+
+#[cfg(feature = "debug")]
+mod debugger;
+
+#[cfg(feature = "debug")]
+pub use debug::{Breakpoint, DebugEval};
+
+#[cfg(feature = "debug")]
+pub use debugger::Debugger;
+
+#[cfg(not(feature = "debug"))]
+pub type Debugger = ();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExecuteState {

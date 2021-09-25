@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::interpreter::Interpreter;
 
-use fuel_asm::Word;
+use fuel_data::Word;
 
 use std::ops;
 

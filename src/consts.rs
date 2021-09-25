@@ -1,6 +1,5 @@
-use fuel_asm::Word;
+use fuel_data::{Bytes32, Color, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Bytes32, Color};
 
 use std::mem;
 
@@ -84,10 +83,10 @@ pub const FUEL_MAX_PROGRAM_SIZE: u8 = 16;
 // used for serder
 pub const VM_REGISTER_WIDTH: u8 = 6;
 
-pub const VM_TX_MEMORY: usize = Bytes32::size_of() // Tx ID
+pub const VM_TX_MEMORY: usize = Bytes32::LEN // Tx ID
             + mem::size_of::<Word>() // Tx size
             + MAX_INPUTS as usize * (
-                Color::size_of() + mem::size_of::<Word>()
+                Color::LEN + mem::size_of::<Word>()
                 ); // Color/Balance coin input pairs
 
 /// Empty merkle root for receipts tree

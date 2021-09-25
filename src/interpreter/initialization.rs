@@ -1,11 +1,13 @@
+use super::Interpreter;
 use crate::consts::*;
+use crate::context::Context;
 use crate::data::InterpreterStorage;
-use crate::interpreter::{Context, ExecuteError, Interpreter};
+use crate::error::InterpreterError;
 
-use fuel_asm::Word;
-use fuel_tx::bytes::{SerializableVec, SizedBytes};
+use fuel_data::bytes::{SerializableVec, SizedBytes};
+use fuel_data::{Color, Word};
 use fuel_tx::consts::*;
-use fuel_tx::{Color, Input, Transaction};
+use fuel_tx::{Input, Transaction};
 use itertools::Itertools;
 
 use std::mem;
@@ -16,11 +18,11 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), ExecuteError> {
+    pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), InterpreterError> {
         tx.validate(self.block_height() as Word)?;
         tx.precompute_metadata();
 
-        self.block_height = self.storage.block_height()?;
+        self.block_height = self.storage.block_height().map_err(|e| e.into())?;
         self.context = Context::from(&tx);
 
         self.frames.clear();
@@ -37,7 +39,7 @@ where
 
         self.push_stack(tx.id().as_ref())?;
 
-        let zeroes = &[0; MAX_INPUTS as usize * (Color::size_of() + WORD_SIZE)];
+        let zeroes = &[0; MAX_INPUTS as usize * (Color::LEN + WORD_SIZE)];
         let ssp = self.registers[REG_SSP] as usize;
         self.push_stack(zeroes)?;
 
@@ -51,8 +53,8 @@ where
                 .sorted_by_key(|i| i.0)
                 .take(MAX_INPUTS as usize)
                 .fold(ssp, |mut ssp, (color, amount)| {
-                    self.memory[ssp..ssp + Color::size_of()].copy_from_slice(color.as_ref());
-                    ssp += Color::size_of();
+                    self.memory[ssp..ssp + Color::LEN].copy_from_slice(color.as_ref());
+                    ssp += Color::LEN;
 
                     self.memory[ssp..ssp + WORD_SIZE].copy_from_slice(&amount.to_be_bytes());
                     ssp += WORD_SIZE;

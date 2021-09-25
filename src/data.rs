@@ -1,148 +1,112 @@
-use crate::interpreter::Contract;
+use crate::contract::Contract;
+use crate::error::InterpreterError;
 
-use fuel_asm::Word;
-use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
+use fuel_data::{Address, Bytes32, Color, ContractId, MerkleStorage, Salt, Storage, Word};
 
-use std::ops::DerefMut;
+use std::borrow::Cow;
+use std::error::Error as StdError;
+use std::ops::Deref;
 
-mod error;
 mod memory;
 
-pub use error::DataError;
 pub use memory::MemoryStorage;
-
-pub trait Key {}
-pub trait Value {}
-
-pub trait Storage<K, V>
-where
-    K: Key,
-    V: Value,
-{
-    fn insert(&mut self, key: &K, value: &V) -> Result<Option<V>, DataError>;
-    fn remove(&mut self, key: &K) -> Result<Option<V>, DataError>;
-
-    // This initial implementation safeguard from the complex scenarios when a
-    // reference is returned. To simplify, at least for now, we return the owned
-    // value.
-    fn get(&self, key: &K) -> Result<Option<V>, DataError>;
-    fn contains_key(&self, key: &K) -> Result<bool, DataError>;
-}
-
-impl<K, V, S, I> Storage<K, V> for I
-where
-    K: Key,
-    V: Value,
-    S: Storage<K, V>,
-    I: DerefMut<Target = S>,
-{
-    fn insert(&mut self, key: &K, value: &V) -> Result<Option<V>, DataError> {
-        <S as Storage<K, V>>::insert(self.deref_mut(), key, value)
-    }
-
-    fn remove(&mut self, key: &K) -> Result<Option<V>, DataError> {
-        <S as Storage<K, V>>::remove(self.deref_mut(), key)
-    }
-
-    fn get(&self, key: &K) -> Result<Option<V>, DataError> {
-        <S as Storage<K, V>>::get(self.deref(), key)
-    }
-
-    fn contains_key(&self, key: &K) -> Result<bool, DataError> {
-        <S as Storage<K, V>>::contains_key(self.deref(), key)
-    }
-}
-
-pub trait MerkleStorage<P, K, V>
-where
-    P: Key,
-    K: Key,
-    V: Value,
-{
-    fn insert(&mut self, parent: &P, key: &K, value: &V) -> Result<Option<V>, DataError>;
-    fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
-    fn get(&self, parent: &P, key: &K) -> Result<Option<V>, DataError>;
-    fn contains_key(&self, parent: &P, key: &K) -> Result<bool, DataError>;
-    fn root(&mut self, parent: &P) -> Result<Bytes32, DataError>;
-}
-
-impl<P, K, V, X, I> MerkleStorage<P, K, V> for I
-where
-    P: Key,
-    K: Key,
-    V: Value,
-    X: MerkleStorage<P, K, V>,
-    I: DerefMut<Target = X>,
-{
-    fn insert(&mut self, parent: &P, key: &K, value: &V) -> Result<Option<V>, DataError> {
-        <X as MerkleStorage<P, K, V>>::insert(self.deref_mut(), parent, key, value)
-    }
-
-    fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, DataError> {
-        <X as MerkleStorage<P, K, V>>::remove(self.deref_mut(), parent, key)
-    }
-
-    fn get(&self, parent: &P, key: &K) -> Result<Option<V>, DataError> {
-        <X as MerkleStorage<P, K, V>>::get(self.deref(), parent, key)
-    }
-
-    fn contains_key(&self, parent: &P, key: &K) -> Result<bool, DataError> {
-        <X as MerkleStorage<P, K, V>>::contains_key(self.deref(), parent, key)
-    }
-
-    fn root(&mut self, parent: &P) -> Result<Bytes32, DataError> {
-        <X as MerkleStorage<P, K, V>>::root(self.deref_mut(), parent)
-    }
-}
-
-// TODO use trait aliases after stable release
-// https://github.com/rust-lang/rust/issues/41517
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    Storage<ContractId, (Salt, Bytes32)>
-    + Storage<ContractId, Contract>
-    + MerkleStorage<ContractId, Color, Word>
-    + MerkleStorage<ContractId, Bytes32, Bytes32>
+    Storage<ContractId, Contract, Self::Error>
+    + Storage<ContractId, (Salt, Bytes32), Self::Error>
+    + MerkleStorage<ContractId, Color, Word, Self::Error>
+    + MerkleStorage<ContractId, Bytes32, Bytes32, Self::Error>
 {
-    fn block_height(&self) -> Result<u32, DataError>;
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError>;
-    fn coinbase(&self) -> Result<Address, DataError>;
+    type Error: StdError + Into<InterpreterError>;
+
+    fn block_height(&self) -> Result<u32, Self::Error>;
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::Error>;
+    fn coinbase(&self) -> Result<Address, Self::Error>;
+
+    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, InterpreterError> {
+        <Self as Storage<ContractId, Contract, Self::Error>>::get(self, id).map_err(|e| e.into())
+    }
+
+    fn storage_contract_insert(
+        &mut self,
+        id: &ContractId,
+        contract: &Contract,
+    ) -> Result<Option<Contract>, InterpreterError> {
+        <Self as Storage<ContractId, Contract, Self::Error>>::insert(self, id, contract).map_err(|e| e.into())
+    }
+
+    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, InterpreterError> {
+        <Self as Storage<ContractId, Contract, Self::Error>>::contains_key(self, id).map_err(|e| e.into())
+    }
+
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, InterpreterError> {
+        <Self as Storage<ContractId, (Salt, Bytes32), Self::Error>>::get(self, id).map_err(|e| e.into())
+    }
+
+    fn storage_contract_root_insert(
+        &mut self,
+        id: &ContractId,
+        salt: &Salt,
+        root: &Bytes32,
+    ) -> Result<Option<(Salt, Bytes32)>, InterpreterError> {
+        <Self as Storage<ContractId, (Salt, Bytes32), Self::Error>>::insert(self, id, &(*salt, *root))
+            .map_err(|e| e.into())
+    }
+
+    fn merkle_contract_state(
+        &self,
+        id: &ContractId,
+        key: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, InterpreterError> {
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32, Self::Error>>::get(self, id, key).map_err(|e| e.into())
+    }
+
+    fn merkle_contract_state_insert(
+        &mut self,
+        contract: &ContractId,
+        key: &Bytes32,
+        value: &Bytes32,
+    ) -> Result<Option<Bytes32>, InterpreterError> {
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32, Self::Error>>::insert(self, contract, key, &value)
+            .map_err(|e| e.into())
+    }
+
+    fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, InterpreterError> {
+        let balance = <Self as MerkleStorage<ContractId, Color, Word, Self::Error>>::get(self, id, color)
+            .map_err(|e| e.into())?
+            .map(Cow::into_owned);
+
+        Ok(balance)
+    }
+
+    fn merkle_contract_color_balance_insert(
+        &mut self,
+        contract: &ContractId,
+        color: &Color,
+        value: Word,
+    ) -> Result<Option<Word>, InterpreterError> {
+        <Self as MerkleStorage<ContractId, Color, Word, Self::Error>>::insert(self, contract, color, &value)
+            .map_err(|e| e.into())
+    }
 }
 
-impl<S, I> InterpreterStorage for I
+impl<S> InterpreterStorage for &mut S
 where
     S: InterpreterStorage,
-    I: DerefMut<Target = S>,
 {
-    fn block_height(&self) -> Result<u32, DataError> {
+    type Error = S::Error;
+
+    fn block_height(&self) -> Result<u32, Self::Error> {
         <S as InterpreterStorage>::block_height(self.deref())
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, DataError> {
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::Error> {
         <S as InterpreterStorage>::block_hash(self.deref(), block_height)
     }
 
-    fn coinbase(&self) -> Result<Address, DataError> {
+    fn coinbase(&self) -> Result<Address, Self::Error> {
         <S as InterpreterStorage>::coinbase(self.deref())
     }
-}
-
-// Provisory implementation that will cover ID definitions until client backend
-// is implemented
-impl Key for Bytes32 {}
-impl Key for Color {}
-impl Key for ContractId {}
-
-impl Value for Bytes32 {}
-impl Value for Contract {}
-impl Value for Salt {}
-impl Value for Word {}
-
-impl<A, B> Value for (A, B)
-where
-    A: Value,
-    B: Value,
-{
 }

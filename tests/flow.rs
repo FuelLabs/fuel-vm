@@ -11,8 +11,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 fn code_copy() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let storage = MemoryStorage::default();
-    let mut vm = Interpreter::with_storage(storage);
+    let mut vm = Interpreter::in_memory();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -62,7 +61,7 @@ fn code_copy() {
         Opcode::ADD(0x11, REG_ZERO, 0x20),
         Opcode::ADDI(0x12, REG_ZERO, contract_size as Immediate12),
         Opcode::CCP(0x10, 0x11, REG_ZERO, 0x12),
-        Opcode::ADDI(0x21, 0x20, ContractId::size_of() as Immediate12),
+        Opcode::ADDI(0x21, 0x20, ContractId::LEN as Immediate12),
         Opcode::MEQ(0x30, 0x21, 0x10, 0x12),
         Opcode::RET(0x30),
     ];
@@ -144,7 +143,7 @@ fn call() {
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x00),
-        Opcode::ADDI(0x11, 0x10, ContractId::size_of() as Immediate12),
+        Opcode::ADDI(0x11, 0x10, ContractId::LEN as Immediate12),
         Opcode::CALL(0x10, REG_ZERO, 0x10, 0x10),
         Opcode::RET(0x30),
     ];

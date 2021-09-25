@@ -1,12 +1,16 @@
-use super::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::consts::*;
+use crate::contract::Contract;
 use crate::crypto;
-use crate::data::{InterpreterStorage, Storage};
-use crate::interpreter::{Contract, ExecuteError, Interpreter, MemoryRange};
+use crate::data::InterpreterStorage;
+use crate::error::InterpreterError;
+use crate::interpreter::Interpreter;
+use crate::memory::MemoryRange;
+use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 
-use fuel_asm::{Opcode, Word};
-use fuel_tx::bytes::SerializableVec;
-use fuel_tx::{Bytes32, ContractId, Input, Output, Receipt, Salt, Transaction};
+use fuel_asm::Opcode;
+use fuel_data::bytes::SerializableVec;
+use fuel_data::Word;
+use fuel_tx::{Input, Output, Receipt, Transaction};
 
 use std::convert::TryFrom;
 
@@ -18,7 +22,7 @@ where
         (self.tx, self.receipts)
     }
 
-    pub(crate) fn run(&mut self) -> Result<ProgramState, ExecuteError> {
+    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
 
         match &self.tx {
@@ -29,7 +33,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(ExecuteError::TransactionCreateStaticContractNotFound)?
+                    Err(InterpreterError::TransactionCreateStaticContractNotFound)?
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -42,11 +46,11 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(ExecuteError::TransactionCreateIdNotInTx)?;
+                    Err(InterpreterError::TransactionCreateIdNotInTx)?;
                 }
 
-                <S as Storage<ContractId, Contract>>::insert(&mut self.storage, &id, &contract)?;
-                <S as Storage<ContractId, (Salt, Bytes32)>>::insert(&mut self.storage, &id, &(*salt, root))?;
+                self.storage.storage_contract_insert(&id, &contract)?;
+                self.storage.storage_contract_root_insert(&id, salt, &root)?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
@@ -113,17 +117,17 @@ where
         Ok(state)
     }
 
-    pub(crate) fn run_program(&mut self) -> Result<ProgramState, ExecuteError> {
+    pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
             if self.registers[REG_PC] >= VM_MAX_RAM {
-                return Err(ExecuteError::ProgramOverflow);
+                return Err(InterpreterError::ProgramOverflow);
             }
 
             let op = self.memory[self.registers[REG_PC] as usize..]
                 .chunks_exact(4)
                 .next()
                 .map(Opcode::from_bytes_unchecked)
-                .ok_or(ExecuteError::ProgramOverflow)?;
+                .ok_or(InterpreterError::ProgramOverflow)?;
 
             match self.execute(op)? {
                 ExecuteState::Return(r) => {
@@ -144,7 +148,7 @@ where
         }
     }
 
-    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, ExecuteError> {
+    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
         let mut vm = Interpreter::with_storage(storage);
 
         vm.init(tx)?;
@@ -156,7 +160,7 @@ where
         Ok(transition)
     }
 
-    pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, ExecuteError> {
+    pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         self.init(tx)?;
 
         let state = self.run()?;

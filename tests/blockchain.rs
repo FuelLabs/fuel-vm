@@ -1,4 +1,4 @@
-use fuel_tx::bytes;
+use fuel_data::bytes;
 use fuel_tx::crypto::Hasher;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
@@ -160,7 +160,7 @@ fn state_read_write() {
     let routine: Word = 0;
 
     // Offset of the script data relative to the call data
-    let call_data_offset = script_data_offset as usize + ContractId::size_of() + 2 * WORD_SIZE;
+    let call_data_offset = script_data_offset as usize + ContractId::LEN + 2 * WORD_SIZE;
     let call_data_offset = call_data_offset as Word;
 
     // Key and value to be added
@@ -187,7 +187,7 @@ fn state_read_write() {
 
     // Assert the initial state of `key` is empty
     let state = storage.contract_state(&contract, &key);
-    assert_eq!(Bytes32::default(), state);
+    assert_eq!(Bytes32::default(), state.into_owned());
 
     let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
     let state = storage.contract_state(&contract, &key);
@@ -265,5 +265,5 @@ fn state_read_write() {
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
     let state = storage.contract_state(&contract, &key);
-    assert_eq!(bytes, state);
+    assert_eq!(bytes, state.into_owned());
 }

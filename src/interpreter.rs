@@ -1,18 +1,21 @@
+use crate::call::CallFrame;
 use crate::consts::*;
-use crate::debug::Debugger;
+use crate::context::Context;
+use crate::data::MemoryStorage;
+use crate::state::Debugger;
 
-use fuel_asm::{RegisterId, Word};
+use fuel_data::Word;
 use fuel_tx::{Receipt, Transaction};
 
 mod alu;
 mod blockchain;
 mod contract;
 mod crypto;
-mod error;
 mod executors;
 mod flow;
 mod frame;
 mod gas;
+mod initialization;
 mod internal;
 mod log;
 mod memory;
@@ -20,14 +23,6 @@ mod transaction;
 
 #[cfg(feature = "debug")]
 mod debug;
-
-pub use contract::Contract;
-pub use error::ExecuteError;
-pub use executors::{ProgramState, StateTransition, StateTransitionRef};
-pub use frame::{Call, CallFrame};
-pub use gas::GasUnit;
-pub use internal::Context;
-pub use memory::MemoryRange;
 
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {
@@ -65,6 +60,10 @@ impl<S> Interpreter<S> {
         &self.registers
     }
 
+    pub const fn debugger(&self) -> &Debugger {
+        &self.debugger
+    }
+
     // TODO convert to private scope after using internally
     pub const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
@@ -77,6 +76,18 @@ impl<S> Interpreter<S> {
 
     pub fn receipts(&self) -> &[Receipt] {
         self.receipts.as_slice()
+    }
+}
+
+impl Interpreter<MemoryStorage> {
+    pub fn in_memory() -> Self {
+        Self::with_storage(Default::default())
+    }
+}
+
+impl Interpreter<()> {
+    pub fn ephemeral() -> Self {
+        Self::with_storage(())
     }
 }
 

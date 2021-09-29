@@ -4,8 +4,8 @@ use crate::context::Context;
 use crate::data::MemoryStorage;
 use crate::state::Debugger;
 
-use fuel_data::Word;
 use fuel_tx::{Receipt, Transaction};
+use fuel_types::Word;
 
 mod alu;
 mod blockchain;
@@ -23,6 +23,8 @@ mod transaction;
 
 #[cfg(feature = "debug")]
 mod debug;
+
+pub use memory::MemoryRange;
 
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {

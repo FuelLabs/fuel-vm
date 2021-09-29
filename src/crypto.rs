@@ -1,5 +1,5 @@
-use fuel_data::{Bytes32, Bytes64};
 use fuel_tx::crypto::Hasher;
+use fuel_types::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};

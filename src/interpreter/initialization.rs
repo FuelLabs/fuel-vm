@@ -4,10 +4,10 @@ use crate::context::Context;
 use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 
-use fuel_data::bytes::{SerializableVec, SizedBytes};
-use fuel_data::{Color, Word};
 use fuel_tx::consts::*;
 use fuel_tx::{Input, Transaction};
+use fuel_types::bytes::{SerializableVec, SizedBytes};
+use fuel_types::{Color, Word};
 use itertools::Itertools;
 
 use std::mem;

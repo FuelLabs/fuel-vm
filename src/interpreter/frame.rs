@@ -3,7 +3,7 @@ use crate::call::{Call, CallFrame};
 use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 
-use fuel_data::Color;
+use fuel_types::Color;
 
 impl<S> Interpreter<S>
 where

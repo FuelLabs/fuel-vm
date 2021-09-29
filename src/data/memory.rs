@@ -2,8 +2,9 @@ use super::InterpreterStorage;
 use crate::contract::Contract;
 use crate::crypto;
 
-use fuel_data::{Address, Bytes32, Color, ContractId, MerkleStorage, Salt, Storage, Word};
+use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
 use fuel_tx::crypto::Hasher;
+use fuel_types::{Address, Bytes32, Color, ContractId, Salt, Word};
 use itertools::Itertools;
 
 use std::borrow::Cow;
@@ -35,7 +36,7 @@ impl MemoryStorage {
     pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
         const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
 
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32, Infallible>>::get(&self, contract, key)
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(&self, contract, key)
             .expect("Infallible")
             .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
     }
@@ -50,7 +51,9 @@ impl Default for MemoryStorage {
     }
 }
 
-impl Storage<ContractId, Contract, Infallible> for MemoryStorage {
+impl Storage<ContractId, Contract> for MemoryStorage {
+    type Error = Infallible;
+
     fn insert(&mut self, key: &ContractId, value: &Contract) -> Result<Option<Contract>, Infallible> {
         Ok(self.contracts.insert(*key, value.clone()))
     }
@@ -68,7 +71,9 @@ impl Storage<ContractId, Contract, Infallible> for MemoryStorage {
     }
 }
 
-impl Storage<ContractId, (Salt, Bytes32), Infallible> for MemoryStorage {
+impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
+    type Error = Infallible;
+
     fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, Infallible> {
         Ok(self.contract_code_root.insert(*key, *value))
     }
@@ -86,7 +91,9 @@ impl Storage<ContractId, (Salt, Bytes32), Infallible> for MemoryStorage {
     }
 }
 
-impl MerkleStorage<ContractId, Color, Word, Infallible> for MemoryStorage {
+impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
+    type Error = Infallible;
+
     fn insert(&mut self, parent: &ContractId, key: &Color, value: &Word) -> Result<Option<Word>, Infallible> {
         Ok(self.balances.insert((*parent, *key), *value))
     }
@@ -103,7 +110,7 @@ impl MerkleStorage<ContractId, Color, Word, Infallible> for MemoryStorage {
         Ok(self.balances.contains_key(&(*parent, *key)))
     }
 
-    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, Infallible> {
+    fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .balances
             .iter()
@@ -112,11 +119,13 @@ impl MerkleStorage<ContractId, Color, Word, Infallible> for MemoryStorage {
             .map(|(_, &balance)| balance)
             .map(Word::to_be_bytes);
 
-        Ok(crypto::ephemeral_merkle_root(root))
+        Ok(crypto::ephemeral_merkle_root(root).into())
     }
 }
 
-impl MerkleStorage<ContractId, Bytes32, Bytes32, Infallible> for MemoryStorage {
+impl MerkleStorage<ContractId, Bytes32, Bytes32> for MemoryStorage {
+    type Error = Infallible;
+
     fn insert(&mut self, parent: &ContractId, key: &Bytes32, value: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.contract_state.insert((*parent, *key), *value))
     }
@@ -133,7 +142,7 @@ impl MerkleStorage<ContractId, Bytes32, Bytes32, Infallible> for MemoryStorage {
         Ok(self.contract_state.contains_key(&(*parent, *key)))
     }
 
-    fn root(&mut self, parent: &ContractId) -> Result<Bytes32, Infallible> {
+    fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .contract_state
             .iter()
@@ -141,12 +150,12 @@ impl MerkleStorage<ContractId, Bytes32, Bytes32, Infallible> for MemoryStorage {
             .sorted_by_key(|t| t.0)
             .map(|(_, value)| value);
 
-        Ok(crypto::ephemeral_merkle_root(root))
+        Ok(crypto::ephemeral_merkle_root(root).into())
     }
 }
 
 impl InterpreterStorage for MemoryStorage {
-    type Error = Infallible;
+    type DataError = Infallible;
 
     fn block_height(&self) -> Result<u32, Infallible> {
         Ok(self.block_height)

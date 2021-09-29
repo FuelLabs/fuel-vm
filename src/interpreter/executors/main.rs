@@ -3,14 +3,13 @@ use crate::contract::Contract;
 use crate::crypto;
 use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
-use crate::interpreter::Interpreter;
-use crate::memory::MemoryRange;
+use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 
 use fuel_asm::Opcode;
-use fuel_data::bytes::SerializableVec;
-use fuel_data::Word;
 use fuel_tx::{Input, Output, Receipt, Transaction};
+use fuel_types::bytes::SerializableVec;
+use fuel_types::Word;
 
 use std::convert::TryFrom;
 

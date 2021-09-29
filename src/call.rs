@@ -1,8 +1,8 @@
 use crate::consts::*;
 use crate::contract::Contract;
 
-use fuel_data::bytes::{self, SizedBytes};
-use fuel_data::{Color, ContractId, Word};
+use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::{Color, ContractId, Word};
 
 use std::convert::TryFrom;
 use std::io::{self, Write};

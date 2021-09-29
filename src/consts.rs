@@ -1,5 +1,5 @@
-use fuel_data::{Bytes32, Color, Word};
 use fuel_tx::consts::*;
+use fuel_types::{Bytes32, Color, Word};
 
 use std::mem;
 

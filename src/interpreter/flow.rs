@@ -5,10 +5,10 @@ use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 use crate::state::ProgramState;
 
-use fuel_data::bytes::SerializableVec;
-use fuel_data::{Color, RegisterId, Word};
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, Receipt};
+use fuel_types::bytes::SerializableVec;
+use fuel_types::{Color, RegisterId, Word};
 
 use std::cmp;
 use std::convert::TryFrom;

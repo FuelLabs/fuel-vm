@@ -3,7 +3,7 @@ use crate::contract::Contract;
 use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 
-use fuel_data::{Color, ContractId, Word};
+use fuel_types::{Color, ContractId, Word};
 
 use std::borrow::Cow;
 

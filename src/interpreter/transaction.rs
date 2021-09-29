@@ -2,8 +2,8 @@ use super::Interpreter;
 use crate::consts::*;
 use crate::error::InterpreterError;
 
-use fuel_data::bytes::SizedBytes;
-use fuel_data::{RegisterId, Word};
+use fuel_types::bytes::SizedBytes;
+use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn transaction_input_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {

@@ -1,6 +1,6 @@
 use crate::state::{Breakpoint, DebugEval, ProgramState};
 
-use fuel_data::{ContractId, Word};
+use fuel_types::{ContractId, Word};
 
 use std::collections::{HashMap, HashSet};
 

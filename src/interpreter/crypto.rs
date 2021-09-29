@@ -3,8 +3,8 @@ use crate::consts::{MEM_MAX_ACCESS_SIZE, VM_MAX_RAM};
 use crate::crypto;
 use crate::error::InterpreterError;
 
-use fuel_data::{Bytes32, Bytes64, Word};
 use fuel_tx::crypto::Hasher;
+use fuel_types::{Bytes32, Bytes64, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {

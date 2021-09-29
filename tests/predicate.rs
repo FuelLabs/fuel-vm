@@ -1,4 +1,4 @@
-use fuel_data::bytes;
+use fuel_types::bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;

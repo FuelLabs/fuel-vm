@@ -1,16 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod bytes;
-
 mod types;
 
+pub mod bytes;
 pub use types::*;
-
-#[cfg(feature = "std")]
-mod data;
-
-#[cfg(feature = "std")]
-pub use data::*;
 
 /// Register ID type
 pub type RegisterId = usize;

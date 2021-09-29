@@ -1,10 +1,10 @@
 [package]
-name = "fuel-data"
+name = "fuel-types"
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
 edition = "2018"
-repository = "https://github.com/FuelLabs/fuel-data"
-description = "Fuel data traits and types."
+repository = "https://github.com/FuelLabs/fuel-types"
+description = "Fuel data types."
 
 [dependencies]
 rand = { version = "0.8", optional = true }

@@ -1,8 +1,8 @@
 use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::{Input, Metadata, Transaction};
 
-use fuel_data::bytes::{self, SizedBytes};
-use fuel_data::ContractId;
+use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::ContractId;
 
 impl Transaction {
     /// For a serialized transaction of type `Script`, return the bytes offset

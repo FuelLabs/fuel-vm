@@ -1,4 +1,4 @@
-use fuel_data::{bytes, Word};
+use fuel_types::{bytes, Word};
 
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;

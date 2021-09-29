@@ -1,8 +1,8 @@
 use super::{TransactionRepr, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::{Input, Output, Transaction, Witness};
 
-use fuel_data::bytes::{self, SizedBytes};
-use fuel_data::{ContractId, Word};
+use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::{ContractId, Word};
 
 use std::convert::TryFrom;
 use std::{io, mem};

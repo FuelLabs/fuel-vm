@@ -3,8 +3,8 @@ use crate::consts::*;
 use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 
-use fuel_data::{Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 use fuel_tx::Input;
+use fuel_types::{Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 
 use std::mem;
 

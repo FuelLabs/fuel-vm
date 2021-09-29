@@ -1,5 +1,5 @@
-use fuel_data::{Bytes32, Word};
 use fuel_tx::{Receipt, Transaction};
+use fuel_types::{Bytes32, Word};
 
 #[cfg(feature = "debug")]
 mod debug;

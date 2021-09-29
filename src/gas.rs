@@ -1,4 +1,4 @@
-use fuel_data::Word;
+use fuel_types::Word;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GasUnit {

@@ -3,9 +3,9 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::InterpreterError;
 
-use fuel_data::{Bytes32, Color, ContractId, RegisterId, Word};
 use fuel_tx::consts::*;
 use fuel_tx::Transaction;
+use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
 
 use std::convert::TryFrom;
 use std::mem;

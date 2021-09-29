@@ -1,9 +1,9 @@
 use super::Interpreter;
 use crate::consts::*;
 
-use fuel_data::Word;
 use fuel_tx::crypto::Hasher;
 use fuel_tx::Receipt;
+use fuel_types::Word;
 
 impl<S> Interpreter<S> {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> bool {

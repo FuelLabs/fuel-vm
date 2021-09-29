@@ -4,7 +4,7 @@ use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 
 use fuel_asm::Opcode;
-use fuel_data::Word;
+use fuel_types::Word;
 
 use std::ops::Div;
 

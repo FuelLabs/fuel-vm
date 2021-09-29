@@ -1,9 +1,9 @@
 use crate::crypto;
 use crate::error::InterpreterError;
 
-use fuel_data::{Bytes32, ContractId, Salt};
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Transaction, ValidationError};
+use fuel_types::{Bytes32, ContractId, Salt};
 
 use std::cmp;
 use std::convert::TryFrom;

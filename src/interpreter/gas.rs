@@ -4,7 +4,7 @@ use crate::error::InterpreterError;
 use crate::gas::GasUnit;
 
 use fuel_asm::Opcode;
-use fuel_data::Word;
+use fuel_types::Word;
 
 impl<S> Interpreter<S> {
     /// Calculate the gas cost for the current runtime state.

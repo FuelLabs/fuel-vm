@@ -1,4 +1,4 @@
-use fuel_data::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId};
+use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId};
 
 use core::convert::TryFrom;
 

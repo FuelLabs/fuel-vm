@@ -9,14 +9,14 @@ keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
 
 [dependencies]
-fuel-data = { git = "ssh://git@github.com/FuelLabs/fuel-data.git", default-features = false }
+fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 
 [features]
-default = [ "fuel-data/default", "std" ]
-std = [ "fuel-data/std" ]
-serde-types = [ "fuel-data/serde-types", "serde-types-minimal", "serde/default", "std" ]
-serde-types-minimal = [ "fuel-data/serde-types-minimal", "serde" ]
+default = [ "fuel-types/default", "std" ]
+std = [ "fuel-types/std" ]
+serde-types = [ "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std" ]
+serde-types-minimal = [ "fuel-types/serde-types-minimal", "serde" ]
 
 [[test]]
 name = "test-encoding"

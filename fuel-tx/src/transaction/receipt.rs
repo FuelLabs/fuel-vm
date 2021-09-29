@@ -1,5 +1,5 @@
-use fuel_data::bytes::{self, SizedBytes};
-use fuel_data::{Address, Bytes32, Color, ContractId, Word};
+use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::{Address, Bytes32, Color, ContractId, Word};
 
 use std::convert::TryFrom;
 use std::io::{self, Write};

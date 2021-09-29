@@ -1,5 +1,5 @@
-use fuel_data::bytes::Deserializable;
 use fuel_tx::*;
+use fuel_types::bytes::Deserializable;
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};

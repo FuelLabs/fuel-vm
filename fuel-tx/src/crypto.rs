@@ -1,4 +1,4 @@
-use fuel_data::Bytes32;
+use fuel_types::Bytes32;
 use sha2::{Digest, Sha256};
 
 use std::iter;

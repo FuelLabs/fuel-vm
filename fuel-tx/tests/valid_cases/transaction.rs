@@ -1,6 +1,6 @@
-use fuel_data::*;
 use fuel_tx::consts::*;
 use fuel_tx::*;
+use fuel_types::*;
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 

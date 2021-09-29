@@ -1,5 +1,5 @@
 use fuel_asm::Opcode;
-use fuel_data::{Bytes32, Color, ContractId, Salt, Word};
+use fuel_types::{Bytes32, Color, ContractId, Salt, Word};
 use itertools::Itertools;
 
 use std::convert::TryFrom;

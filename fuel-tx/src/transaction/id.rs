@@ -1,8 +1,8 @@
 use crate::crypto::Hasher;
 use crate::{Input, Metadata, Output, Transaction, Witness};
 
-use fuel_data::bytes::SerializableVec;
-use fuel_data::Bytes32;
+use fuel_types::bytes::SerializableVec;
+use fuel_types::Bytes32;
 
 impl Transaction {
     pub(crate) fn inputs_mut(&mut self) -> &mut [Input] {

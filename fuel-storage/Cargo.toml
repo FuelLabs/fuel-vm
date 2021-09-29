@@ -1,0 +1,9 @@
+[package]
+name = "fuel-storage"
+version = "0.1.0"
+authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+edition = "2018"
+repository = "https://github.com/FuelLabs/fuel-storage"
+description = "Storage traits for Fuel storage-backed data structures."
+
+[dependencies]

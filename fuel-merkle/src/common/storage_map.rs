@@ -1,4 +1,4 @@
-use fuel_data::Storage;
+use fuel_storage::Storage;
 
 use std::collections::HashMap;
 
@@ -6,10 +6,7 @@ use std::borrow::Cow;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum StorageError {
-    #[error("generic error occurred")]
-    Error(Box<dyn std::error::Error + Send>),
-}
+pub enum StorageError {}
 
 #[derive(Debug)]
 pub struct StorageMap<Key, Value> {
@@ -24,29 +21,31 @@ impl<Key, Value> StorageMap<Key, Value> {
     }
 }
 
-impl<Key, Value> Storage<Key, Value, StorageError> for StorageMap<Key, Value>
+impl<Key, Value> Storage<Key, Value> for StorageMap<Key, Value>
 where
     Key: Eq + std::hash::Hash + Clone,
     Value: Clone,
 {
-    fn insert(&mut self, key: &Key, value: &Value) -> Result<Option<Value>, StorageError> {
+    type Error = StorageError;
+
+    fn insert(&mut self, key: &Key, value: &Value) -> Result<Option<Value>, Self::Error> {
         self.map.insert(key.clone(), value.clone());
         let v = Some(value.clone());
         Ok(v)
     }
 
-    fn remove(&mut self, key: &Key) -> Result<Option<Value>, StorageError> {
+    fn remove(&mut self, key: &Key) -> Result<Option<Value>, Self::Error> {
         let value = self.map.remove(key);
         Ok(value)
     }
 
-    fn get(&self, key: &Key) -> Result<Option<Cow<Value>>, StorageError> {
+    fn get(&self, key: &Key) -> Result<Option<Cow<Value>>, Self::Error> {
         let result = self.map.get(key);
         let value = result.map(|value| Cow::Borrowed(value));
         Ok(value)
     }
 
-    fn contains_key(&self, key: &Key) -> Result<bool, StorageError> {
+    fn contains_key(&self, key: &Key) -> Result<bool, Self::Error> {
         let contains = self.map.contains_key(key);
         Ok(contains)
     }

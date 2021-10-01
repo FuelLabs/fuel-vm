@@ -1,0 +1,10 @@
+[package]
+name = "fuel-merkle-test-helpers"
+version = "0.1.0"
+authors = ["Brandon Vrooman <brandon.vrooman@fuel.sh>"]
+edition = "2018"
+
+[dependencies]
+digest = "~0.9.0"
+lazy_static = "~1.4.0"
+sha2 = "~0.9.5"

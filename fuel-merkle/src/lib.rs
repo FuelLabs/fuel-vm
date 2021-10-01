@@ -1,4 +1,3 @@
-pub mod binary;
+pub mod proof_set;
 
 mod common;
-mod proof_set;

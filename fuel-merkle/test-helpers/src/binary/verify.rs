@@ -1,5 +1,5 @@
-use crate::binary::hash::{leaf_sum, node_sum, Data};
-use crate::proof_set::ProofSet;
+use crate::binary::{node_sum, Data};
+use crate::common::ProofSet;
 
 pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u64) -> bool {
     if proof_index >= num_leaves {
@@ -11,8 +11,7 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
     }
 
     let mut height = 0usize;
-    let proof_data = proof_set.get(height).unwrap();
-    let mut sum = leaf_sum(proof_data);
+    let mut sum = proof_set.get(height).unwrap();
     height += 1;
 
     let mut stable_end = proof_index;
@@ -32,9 +31,9 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
 
         let proof_data = proof_set.get(height).unwrap();
         if proof_index - subtree_start_index < 1 << (height - 1) {
-            sum = node_sum(&sum, proof_data);
+            sum = node_sum(&sum, &proof_data);
         } else {
-            sum = node_sum(proof_data, &sum);
+            sum = node_sum(&proof_data, &sum);
         }
 
         height += 1;
@@ -45,13 +44,13 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
             return false;
         }
         let proof_data = proof_set.get(height).unwrap();
-        sum = node_sum(&sum, proof_data);
+        sum = node_sum(&sum, &proof_data);
         height += 1;
     }
 
     while height < proof_set.len() {
         let proof_data = proof_set.get(height).unwrap();
-        sum = node_sum(proof_data, &sum);
+        sum = node_sum(&proof_data, &sum);
         height += 1;
     }
 
@@ -60,28 +59,16 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::binary::merkle_tree::MerkleTree;
-
-    const DATA: [&[u8]; 10] = [
-        "Frankly, my dear, I don't give a damn.".as_bytes(),
-        "I'm going to make him an offer he can't refuse".as_bytes(),
-        "Toto, I've got a feeling we're not in Kansas anymore.".as_bytes(),
-        "Here's looking at you, kid.".as_bytes(),
-        "Go ahead, make my day.".as_bytes(),
-        "May the Force be with you.".as_bytes(),
-        "You talking to me?".as_bytes(),
-        "What we've got here is failure to communicate.".as_bytes(),
-        "I love the smell of napalm in the morning.".as_bytes(),
-        "Love means never having to say you're sorry.".as_bytes(),
-    ];
+    use super::verify;
+    use crate::binary::MerkleTree;
+    use crate::TEST_DATA;
 
     #[test]
     fn verify_returns_true_when_the_given_proof_set_matches_the_given_merkle_root() {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
-        let data = &DATA[0..5]; // 5 leaves
+        let data = &TEST_DATA[0..5]; // 5 leaves
         for datum in data.iter() {
             mt.push(datum);
         }
@@ -103,7 +90,7 @@ mod test {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
-        let data = &DATA[0..4];
+        let data = &TEST_DATA[0..4];
         for datum in data.iter() {
             mt.push(datum)
         }
@@ -114,7 +101,7 @@ mod test {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
-        let data = &DATA[5..10];
+        let data = &TEST_DATA[5..10];
         for datum in data.iter() {
             mt.push(datum);
         }
@@ -143,7 +130,7 @@ mod test {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(0);
 
-        let data = &DATA[0..4];
+        let data = &TEST_DATA[0..4];
         for datum in data.iter() {
             mt.push(datum);
         }

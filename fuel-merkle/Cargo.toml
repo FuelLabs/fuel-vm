@@ -14,3 +14,6 @@ generic-array = "~0.14.4"
 lazy_static = "~1.4.0"
 sha2 = "~0.9.5"
 thiserror = "1.0.28"
+
+[dev-dependencies]
+fuel-merkle-test-helpers = { path = "test-helpers" }

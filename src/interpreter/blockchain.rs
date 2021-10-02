@@ -31,9 +31,7 @@ where
         self.storage
             .merkle_contract_color_balance_insert(contract, color, balance)?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn mint(&mut self, a: Word) -> Result<(), InterpreterError> {
@@ -49,9 +47,7 @@ where
         self.storage
             .merkle_contract_color_balance_insert(contract, color, balance)?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
@@ -88,9 +84,7 @@ where
             self.try_mem_write(a, &contract.as_ref()[c..cd])?;
         }
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
@@ -98,18 +92,14 @@ where
 
         self.try_mem_write(a as usize, hash.as_ref())?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), InterpreterError> {
         self.coinbase()
             .and_then(|data| self.try_mem_write(a as usize, data.as_ref()))?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
@@ -131,9 +121,7 @@ where
 
         self.try_mem_write(a, root.as_ref())?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -148,9 +136,7 @@ where
 
         self.registers[ra] = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -172,9 +158,7 @@ where
             .map(Word::from_be_bytes)
             .unwrap_or(0);
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
@@ -197,9 +181,7 @@ where
 
         self.try_mem_write(a, state.as_ref())?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
@@ -220,9 +202,7 @@ where
 
         self.storage.merkle_contract_state_insert(contract, key, &value)?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
@@ -240,8 +220,6 @@ where
 
         self.storage.merkle_contract_state_insert(contract, key, value)?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 }

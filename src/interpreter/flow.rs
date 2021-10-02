@@ -18,42 +18,42 @@ where
     S: InterpreterStorage,
 {
     // TODO add CIMV tests
-    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
+    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), InterpreterError> {
         match self.tx.inputs().get(b as usize) {
             Some(Input::Coin { maturity, .. }) if maturity <= &c => {
                 self.registers[ra] = 1;
 
-                true
+                self.inc_pc()
             }
 
-            _ => false,
+            _ => Err(InterpreterError::InputNotFound),
         }
     }
 
     // TODO add CTMV tests
-    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> bool {
+    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
         if b <= self.tx.maturity() {
             self.registers[ra] = 1;
 
-            true
+            self.inc_pc()
         } else {
-            false
+            Err(InterpreterError::TxMaturity)
         }
     }
 
-    pub(crate) fn jump(&mut self, j: Word) -> bool {
+    pub(crate) fn jump(&mut self, j: Word) -> Result<(), InterpreterError> {
         let j = self.registers[REG_IS].saturating_add(j.saturating_mul(4));
 
         if j > VM_MAX_RAM - 1 {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             self.registers[REG_PC] = j;
 
-            true
+            Ok(())
         }
     }
 
-    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> bool {
+    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> Result<(), InterpreterError> {
         if a != b {
             self.jump(imm)
         } else {
@@ -124,7 +124,7 @@ where
         self.run_program()
     }
 
-    pub(crate) fn return_from_context(&mut self) {
+    pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), InterpreterError> {
         if let Some(frame) = self.frames.pop() {
             self.registers[REG_CGAS] += frame.context_gas();
 
@@ -139,9 +139,13 @@ where
                     }
                 });
         }
+
+        self.receipts.push(receipt);
+
+        self.inc_pc()
     }
 
-    pub(crate) fn ret(&mut self, a: Word) -> bool {
+    pub(crate) fn ret(&mut self, a: Word) -> Result<(), InterpreterError> {
         let receipt = Receipt::ret(
             self.internal_contract_or_default(),
             a,
@@ -152,16 +156,12 @@ where
         self.registers[REG_RET] = a;
         self.registers[REG_RETL] = 0;
 
-        self.return_from_context();
-
-        self.receipts.push(receipt);
-
-        true
+        self.return_from_context(receipt)
     }
 
-    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> bool {
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
         if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
-            return false;
+            return Err(InterpreterError::MemoryOverflow);
         }
 
         let ab = (a + b) as usize;
@@ -179,10 +179,6 @@ where
         self.registers[REG_RET] = a;
         self.registers[REG_RETL] = b;
 
-        self.return_from_context();
-
-        self.receipts.push(receipt);
-
-        true
+        self.return_from_context(receipt)
     }
 }

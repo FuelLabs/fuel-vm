@@ -35,9 +35,7 @@ impl<S> Interpreter<S> {
             }
         }
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
@@ -56,9 +54,7 @@ impl<S> Interpreter<S> {
 
         self.try_mem_write(a, h.finalize().as_slice())?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
@@ -71,8 +67,6 @@ impl<S> Interpreter<S> {
 
         self.try_mem_write(a, Hasher::hash(&self.memory[b..bc]).as_ref())?;
 
-        self.inc_pc();
-
-        Ok(())
+        self.inc_pc()
     }
 }

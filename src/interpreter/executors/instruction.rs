@@ -26,170 +26,245 @@ where
         // TODO catch panic receipt
 
         match op {
-            Opcode::ADD(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_add, self.registers[rb], self.registers[rc])
-            }
+            Opcode::ADD(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_add, self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
-            Opcode::ADDI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_add, self.registers[rb], imm as Word)
-            }
+            Opcode::ADDI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_add, self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::AND(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] & self.registers[rc])
-            }
+            Opcode::AND(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] & self.registers[rc]).is_ok() => {}
 
-            Opcode::ANDI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] & (imm as Word))
-            }
+            Opcode::ANDI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] & (imm as Word)).is_ok() => {}
 
-            Opcode::DIV(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
-                .alu_error(
-                    ra,
-                    Word::div,
-                    self.registers[rb],
-                    self.registers[rc],
-                    self.registers[rc] == 0,
-                ),
+            Opcode::DIV(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(
+                            ra,
+                            Word::div,
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rc] == 0,
+                        )
+                        .is_ok() => {}
 
-            Opcode::DIVI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_error(ra, Word::div, self.registers[rb], imm as Word, imm == 0)
-            }
+            Opcode::DIVI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(ra, Word::div, self.registers[rb], imm as Word, imm == 0)
+                        .is_ok() => {}
 
-            Opcode::EQ(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, (self.registers[rb] == self.registers[rc]) as Word)
-            }
+            Opcode::EQ(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_set(ra, (self.registers[rb] == self.registers[rc]) as Word)
+                        .is_ok() => {}
 
-            Opcode::EXP(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_pow, self.registers[rb], self.registers[rc] as u32)
-            }
+            Opcode::EXP(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_pow, self.registers[rb], self.registers[rc] as u32)
+                        .is_ok() => {}
 
-            Opcode::EXPI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_pow, self.registers[rb], imm as u32)
-            }
+            Opcode::EXPI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_pow, self.registers[rb], imm as u32)
+                        .is_ok() => {}
 
-            Opcode::GT(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, (self.registers[rb] > self.registers[rc]) as Word)
-            }
+            Opcode::GT(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_set(ra, (self.registers[rb] > self.registers[rc]) as Word)
+                        .is_ok() => {}
 
-            Opcode::LT(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, (self.registers[rb] < self.registers[rc]) as Word)
-            }
+            Opcode::LT(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_set(ra, (self.registers[rb] < self.registers[rc]) as Word)
+                        .is_ok() => {}
 
-            Opcode::MLOG(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
-                .alu_error(
-                    ra,
-                    |b, c| (b as f64).log(c as f64).trunc() as Word,
-                    self.registers[rb],
-                    self.registers[rc],
-                    self.registers[rb] == 0 || self.registers[rc] <= 1,
-                ),
+            Opcode::MLOG(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(
+                            ra,
+                            |b, c| (b as f64).log(c as f64).trunc() as Word,
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rb] == 0 || self.registers[rc] <= 1,
+                        )
+                        .is_ok() => {}
 
-            Opcode::MOD(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
-                .alu_error(
-                    ra,
-                    Word::wrapping_rem,
-                    self.registers[rb],
-                    self.registers[rc],
-                    self.registers[rc] == 0,
-                ),
+            Opcode::MOD(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(
+                            ra,
+                            Word::wrapping_rem,
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rc] == 0,
+                        )
+                        .is_ok() => {}
 
-            Opcode::MODI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_error(ra, Word::wrapping_rem, self.registers[rb], imm as Word, imm == 0)
-            }
+            Opcode::MODI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(ra, Word::wrapping_rem, self.registers[rb], imm as Word, imm == 0)
+                        .is_ok() => {}
 
-            Opcode::MOVE(ra, rb) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb])
-            }
+            Opcode::MOVE(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::MROO(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => self
-                .alu_error(
-                    ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
-                    self.registers[rb],
-                    self.registers[rc],
-                    self.registers[rc] == 0,
-                ),
+            Opcode::MROO(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_error(
+                            ra,
+                            |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rc] == 0,
+                        )
+                        .is_ok() => {}
 
-            Opcode::MUL(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_mul, self.registers[rb], self.registers[rc])
-            }
+            Opcode::MUL(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_mul, self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
-            Opcode::MULI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_mul, self.registers[rb], imm as Word)
-            }
+            Opcode::MULI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_mul, self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::NOOP if self.gas_charge(&op).is_ok() => self.alu_clear(),
+            Opcode::NOOP if self.gas_charge(&op).is_ok() && self.alu_clear().is_ok() => {}
 
-            Opcode::NOT(ra, rb) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, !self.registers[rb])
-            }
+            Opcode::NOT(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, !self.registers[rb]).is_ok() => {}
 
-            Opcode::OR(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] | self.registers[rc])
-            }
+            Opcode::OR(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] | self.registers[rc]).is_ok() => {}
 
-            Opcode::ORI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] | (imm as Word))
-            }
+            Opcode::ORI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] | (imm as Word)).is_ok() => {}
 
-            Opcode::SLL(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_shl, self.registers[rb], self.registers[rc] as u32)
-            }
+            Opcode::SLL(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_shl, self.registers[rb], self.registers[rc] as u32)
+                        .is_ok() => {}
 
-            Opcode::SLLI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_shl, self.registers[rb], imm as u32)
-            }
+            Opcode::SLLI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_shl, self.registers[rb], imm as u32)
+                        .is_ok() => {}
 
-            Opcode::SRL(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_shr, self.registers[rb], self.registers[rc] as u32)
-            }
+            Opcode::SRL(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_shr, self.registers[rb], self.registers[rc] as u32)
+                        .is_ok() => {}
 
-            Opcode::SRLI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_shr, self.registers[rb], imm as u32)
-            }
+            Opcode::SRLI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_shr, self.registers[rb], imm as u32)
+                        .is_ok() => {}
 
-            Opcode::SUB(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_sub, self.registers[rb], self.registers[rc])
-            }
+            Opcode::SUB(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_sub, self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
-            Opcode::SUBI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_overflow(ra, Word::overflowing_sub, self.registers[rb], imm as Word)
-            }
+            Opcode::SUBI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self
+                        .alu_overflow(ra, Word::overflowing_sub, self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::XOR(ra, rb, rc) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] ^ self.registers[rc])
-            }
+            Opcode::XOR(ra, rb, rc)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] ^ self.registers[rc]).is_ok() => {}
 
-            Opcode::XORI(ra, rb, imm) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() => {
-                self.alu_set(ra, self.registers[rb] ^ (imm as Word))
-            }
+            Opcode::XORI(ra, rb, imm)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.registers[rb] ^ (imm as Word)).is_ok() => {}
 
             Opcode::CIMV(ra, rb, rc)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.check_input_maturity(ra, self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .check_input_maturity(ra, self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::CTMV(ra, rb)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.check_tx_maturity(ra, self.registers[rb])
-                    && self.inc_pc() => {}
+                    && self.check_tx_maturity(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::JI(imm) if self.gas_charge(&op).is_ok() && self.jump(imm as Word) => {}
+            Opcode::JI(imm) if self.gas_charge(&op).is_ok() && self.jump(imm as Word).is_ok() => {}
 
             Opcode::JNEI(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word) => {}
+                    && self
+                        .jump_not_equal_imm(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(self.registers[ra]) && self.inc_pc() => {
+            Opcode::RET(ra) if self.gas_charge(&op).is_ok() && self.ret(self.registers[ra]).is_ok() => {
                 result = Ok(ExecuteState::Return(self.registers[ra]));
             }
 
             Opcode::RETD(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.ret_data(self.registers[ra], self.registers[rb])
-                    && self.inc_pc() =>
+                if self.gas_charge(&op).is_ok() && self.ret_data(self.registers[ra], self.registers[rb]).is_ok() =>
             {
                 // TODO optimize after execute refactor
                 let digest = *self
@@ -202,62 +277,61 @@ where
                 result = Ok(ExecuteState::ReturnData(digest));
             }
 
-            Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]) && self.inc_pc() => {}
+            Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]).is_ok() => {}
 
             Opcode::CFEI(imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.stack_pointer_overflow(Word::overflowing_add, imm as Word)
-                    && self.inc_pc() => {}
+                    && self.stack_pointer_overflow(Word::overflowing_add, imm as Word).is_ok() => {}
 
             Opcode::CFSI(imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.stack_pointer_overflow(Word::overflowing_sub, imm as Word)
-                    && self.inc_pc() => {}
+                    && self.stack_pointer_overflow(Word::overflowing_sub, imm as Word).is_ok() => {}
 
             Opcode::LB(ra, rb, imm)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.load_byte(ra, rb, imm as Word)
-                    && self.inc_pc() => {}
+                    && self.load_byte(ra, rb, imm as Word).is_ok() => {}
 
             Opcode::LW(ra, rb, imm)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.load_word(ra, self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self.load_word(ra, self.registers[rb], imm as Word).is_ok() => {}
 
             Opcode::MCL(ra, rb)
-                if self.gas_charge(&op).is_ok()
-                    && self.memclear(self.registers[ra], self.registers[rb])
-                    && self.inc_pc() => {}
+                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], self.registers[rb]).is_ok() => {}
 
             Opcode::MCLI(ra, imm)
-                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], imm as Word) && self.inc_pc() => {}
+                if self.gas_charge(&op).is_ok() && self.memclear(self.registers[ra], imm as Word).is_ok() => {}
 
             Opcode::MCP(ra, rb, rc)
                 if self.gas_charge(&op).is_ok()
-                    && self.memcopy(self.registers[ra], self.registers[rb], self.registers[rc])
-                    && self.inc_pc() => {}
+                    && self
+                        .memcopy(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
 
             Opcode::MEQ(ra, rb, rc, rd)
                 if Self::is_register_writable(ra)
                     && self.gas_charge(&op).is_ok()
-                    && self.memeq(ra, self.registers[rb], self.registers[rc], self.registers[rd])
-                    && self.inc_pc() => {}
+                    && self
+                        .memeq(ra, self.registers[rb], self.registers[rc], self.registers[rd])
+                        .is_ok() => {}
 
             Opcode::SB(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.store_byte(self.registers[ra], self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self
+                        .store_byte(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
             Opcode::SW(ra, rb, imm)
                 if self.gas_charge(&op).is_ok()
-                    && self.store_word(self.registers[ra], self.registers[rb], imm as Word)
-                    && self.inc_pc() => {}
+                    && self
+                        .store_word(self.registers[ra], self.registers[rb], imm as Word)
+                        .is_ok() => {}
 
-            Opcode::BHEI(ra) if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                self.registers[ra] = self.block_height() as Word
-            }
+            Opcode::BHEI(ra)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.alu_set(ra, self.block_height() as Word).is_ok() => {}
 
             Opcode::BHSH(ra, rb)
                 if self.gas_charge(&op).is_ok() && self.block_hash(self.registers[ra], self.registers[rb]).is_ok() => {}
@@ -298,23 +372,25 @@ where
 
             Opcode::LOG(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
-                    && self.log(
-                        self.registers[ra],
-                        self.registers[rb],
-                        self.registers[rc],
-                        self.registers[rd],
-                    )
-                    && self.inc_pc() => {}
+                    && self
+                        .log(
+                            self.registers[ra],
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rd],
+                        )
+                        .is_ok() => {}
 
             Opcode::LOGD(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
-                    && self.log_data(
-                        self.registers[ra],
-                        self.registers[rb],
-                        self.registers[rc],
-                        self.registers[rd],
-                    )
-                    && self.inc_pc() => {}
+                    && self
+                        .log_data(
+                            self.registers[ra],
+                            self.registers[rb],
+                            self.registers[rc],
+                            self.registers[rd],
+                        )
+                        .is_ok() => {}
 
             Opcode::MINT(ra) if self.gas_charge(&op).is_ok() && self.mint(self.registers[ra]).is_ok() => {}
 
@@ -353,43 +429,37 @@ where
                         .sha256(self.registers[ra], self.registers[rb], self.registers[rc])
                         .is_ok() => {}
 
-            Opcode::XIL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_input_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XIL(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_input_length(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::XIS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_input_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XIS(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_input_start(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::XOL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_output_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XOL(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_output_length(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::XOS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_output_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XOS(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_output_start(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::XWL(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_witness_length(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XWL(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_witness_length(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::XWS(ra, rb) if self.gas_charge(&op).is_ok() && self.inc_pc() => {
-                result = self
-                    .transaction_witness_start(ra, self.registers[rb])
-                    .map(|_| ExecuteState::Proceed)
-            }
+            Opcode::XWS(ra, rb)
+                if Self::is_register_writable(ra)
+                    && self.gas_charge(&op).is_ok()
+                    && self.transaction_witness_start(ra, self.registers[rb]).is_ok() => {}
 
-            Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.inc_pc() => self.set_flag(self.registers[ra]),
+            Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.set_flag(self.registers[ra]).is_ok() => {}
 
             Opcode::LDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),

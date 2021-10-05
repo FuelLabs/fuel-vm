@@ -1,8 +1,7 @@
 use fuel_storage::Storage;
 
-use std::collections::HashMap;
-
 use std::borrow::Cow;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

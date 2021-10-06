@@ -14,7 +14,7 @@ impl<S> Interpreter<S> {
             .ok_or(InterpreterError::InputNotFound)
             .map(|input| input.serialized_size() as Word)?;
 
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn transaction_input_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -24,7 +24,7 @@ impl<S> Interpreter<S> {
                 .input_offset(b as usize)
                 .ok_or(InterpreterError::InputNotFound)?) as Word;
 
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn transaction_output_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -35,7 +35,7 @@ impl<S> Interpreter<S> {
             .ok_or(InterpreterError::OutputNotFound)
             .map(|output| output.serialized_size() as Word)?;
 
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn transaction_output_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -45,7 +45,7 @@ impl<S> Interpreter<S> {
                 .output_offset(b as usize)
                 .ok_or(InterpreterError::OutputNotFound)?) as Word;
 
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn transaction_witness_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -56,7 +56,7 @@ impl<S> Interpreter<S> {
             .ok_or(InterpreterError::OutputNotFound)
             .map(|witness| witness.serialized_size() as Word)?;
 
-        Ok(())
+        self.inc_pc()
     }
 
     pub(crate) fn transaction_witness_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
@@ -66,6 +66,6 @@ impl<S> Interpreter<S> {
                 .witness_offset(b as usize)
                 .ok_or(InterpreterError::WitnessNotFound)?) as Word;
 
-        Ok(())
+        self.inc_pc()
     }
 }

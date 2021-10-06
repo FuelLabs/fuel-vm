@@ -265,32 +265,35 @@ impl<S> Interpreter<S> {
         a < self.registers[REG_SP]
     }
 
-    pub(crate) fn stack_pointer_overflow(&mut self, f: fn(Word, Word) -> (Word, bool), v: Word) -> bool {
+    pub(crate) fn stack_pointer_overflow(
+        &mut self,
+        f: fn(Word, Word) -> (Word, bool),
+        v: Word,
+    ) -> Result<(), InterpreterError> {
         let (result, overflow) = f(self.registers[REG_SP], v);
 
         if overflow || result > self.registers[REG_HP] {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             self.registers[REG_SP] = result;
-            true
+
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> bool {
+    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> Result<(), InterpreterError> {
         let bc = b.saturating_add(c as RegisterId);
 
         if bc >= VM_MAX_RAM as RegisterId {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
-            // TODO ensure the byte should be cast and not overwrite the
-            // encoding
             self.registers[ra] = self.memory[bc] as Word;
 
-            true
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> bool {
+    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), InterpreterError> {
         // C is expressed in words; mul by 8
         let (bc, overflow) = b.overflowing_add(c * 8);
         let (bcw, of) = bc.overflowing_add(8);
@@ -300,30 +303,30 @@ impl<S> Interpreter<S> {
         let bcw = bcw as usize;
 
         if overflow || bcw > VM_MAX_RAM as RegisterId {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             // Safe conversion of sized slice
             self.registers[ra] = <[u8; 8]>::try_from(&self.memory[bc..bcw])
                 .map(Word::from_be_bytes)
                 .unwrap_or_else(|_| unreachable!());
 
-            true
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
         let (ac, overflow) = a.overflowing_add(c);
 
         if overflow || ac >= VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             self.memory[ac as usize] = b as u8;
 
-            true
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
         // C is expressed in words; mul by 8
         let (ac, overflow) = a.overflowing_add(c * 8);
         let (acw, of) = ac.overflowing_add(8);
@@ -331,42 +334,43 @@ impl<S> Interpreter<S> {
 
         let range = MemoryRange::new(ac, 8);
         if overflow || acw > VM_MAX_RAM || !self.has_ownership_range(&range) {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
-            // TODO review if BE is intended
             self.memory[ac as usize..acw as usize].copy_from_slice(&b.to_be_bytes());
 
-            true
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn malloc(&mut self, a: Word) -> bool {
+    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), InterpreterError> {
         let (result, overflow) = self.registers[REG_HP].overflowing_sub(a);
 
         if overflow || result < self.registers[REG_SP] {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             self.registers[REG_HP] = result;
-            true
+
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> bool {
+    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
         let (ab, overflow) = a.overflowing_add(b);
 
         let range = MemoryRange::new(a, b);
         if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !self.has_ownership_range(&range) {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
-            // trivial compiler optimization for memset when best
+            // trivial compiler optimization for memset
             for i in &mut self.memory[a as usize..ab as usize] {
                 *i = 0
             }
-            true
+
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> bool {
+    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
         let (ac, overflow) = a.overflowing_add(c);
         let (bc, of) = b.overflowing_add(c);
         let overflow = overflow || of;
@@ -380,7 +384,7 @@ impl<S> Interpreter<S> {
             || b <= a && a < bc
             || !self.has_ownership_range(&range)
         {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             // The pointers are granted to be aligned so this is a safe
             // operation
@@ -391,21 +395,21 @@ impl<S> Interpreter<S> {
                 ptr::copy_nonoverlapping(src, dst, c as usize);
             }
 
-            true
+            self.inc_pc()
         }
     }
 
-    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> bool {
+    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
         let (bd, overflow) = b.overflowing_add(d);
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
 
         if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-            false
+            Err(InterpreterError::MemoryOverflow)
         } else {
             self.registers[ra] = (self.memory[b as usize..bd as usize] == self.memory[c as usize..cd as usize]) as Word;
 
-            true
+            self.inc_pc()
         }
     }
 }

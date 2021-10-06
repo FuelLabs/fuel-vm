@@ -29,6 +29,7 @@ pub enum InterpreterError {
     InputNotFound,
     OutputNotFound,
     WitnessNotFound,
+    TxMaturity,
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

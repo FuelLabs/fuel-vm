@@ -1,7 +1,6 @@
 use crate::binary::{node_sum, Data};
-use crate::common::ProofSet;
 
-pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u64) -> bool {
+pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: u64) -> bool {
     if proof_index >= num_leaves {
         return false;
     }
@@ -11,7 +10,7 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
     }
 
     let mut height = 0usize;
-    let mut sum = proof_set.get(height).unwrap();
+    let mut sum = proof_set[height];
     height += 1;
 
     let mut stable_end = proof_index;
@@ -29,7 +28,7 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
             return false;
         }
 
-        let proof_data = proof_set.get(height).unwrap();
+        let proof_data = proof_set[height];
         if proof_index - subtree_start_index < 1 << (height - 1) {
             sum = node_sum(&sum, &proof_data);
         } else {
@@ -43,13 +42,13 @@ pub fn verify(root: &Data, proof_set: ProofSet, proof_index: u64, num_leaves: u6
         if proof_set.len() <= height {
             return false;
         }
-        let proof_data = proof_set.get(height).unwrap();
+        let proof_data = proof_set[height];
         sum = node_sum(&sum, &proof_data);
         height += 1;
     }
 
     while height < proof_set.len() {
-        let proof_data = proof_set.get(height).unwrap();
+        let proof_data = proof_set[height];
         sum = node_sum(&proof_data, &sum);
         height += 1;
     }
@@ -77,7 +76,7 @@ mod test {
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, set, 2, 5);
+        let verification = verify(&root, &set, 2, 5);
         assert_eq!(verification, true);
     }
 
@@ -108,7 +107,7 @@ mod test {
         let proof = mt.prove();
         let set = proof.1;
 
-        let verification = verify(&root, set, 2, 5);
+        let verification = verify(&root, &set, 2, 5);
         assert_eq!(verification, false);
     }
 
@@ -121,7 +120,7 @@ mod test {
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, set, 0, 0);
+        let verification = verify(&root, &set, 0, 0);
         assert_eq!(verification, false);
     }
 
@@ -139,7 +138,7 @@ mod test {
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, set, 15, 5);
+        let verification = verify(&root, &set, 15, 5);
         assert_eq!(verification, false);
     }
 }

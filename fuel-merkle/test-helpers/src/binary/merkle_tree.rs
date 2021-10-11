@@ -1,7 +1,7 @@
 use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
-use crate::common::ProofSet;
 
 type DataNode = Node<Data>;
+type ProofSet = Vec<Data>;
 
 pub struct MerkleTree {
     head: Option<Box<DataNode>>,
@@ -48,7 +48,7 @@ impl MerkleTree {
 
     pub fn push(&mut self, data: &[u8]) {
         if self.leaves_count == self.proof_index {
-            self.proof_set.push(&leaf_sum(data));
+            self.proof_set.push(leaf_sum(data));
         }
 
         let node = Self::create_node(self.head.take(), 0, leaf_sum(data));
@@ -73,12 +73,12 @@ impl MerkleTree {
         }
 
         if current.next().is_some() && current.next_height().unwrap() == proof_set_length - 1 {
-            self.proof_set.push(current.data());
+            self.proof_set.push(*current.data());
             current = current.take_next().unwrap();
         }
 
         while current.next().is_some() {
-            self.proof_set.push(current.next_data().unwrap());
+            self.proof_set.push(*current.next_data().unwrap());
             current = current.take_next().unwrap();
         }
 
@@ -105,9 +105,9 @@ impl MerkleTree {
                 let head_leaves_count = 1u64 << head.height();
                 let mid = (self.leaves_count / head_leaves_count) * head_leaves_count;
                 if self.proof_index < mid {
-                    self.proof_set.push(head.data());
+                    self.proof_set.push(*head.data());
                 } else {
-                    self.proof_set.push(head.next_data().unwrap());
+                    self.proof_set.push(*head.next_data().unwrap());
                 }
             }
 
@@ -304,12 +304,9 @@ mod test {
         let node_2 = node_sum(&leaf_3, &leaf_4);
         let node_3 = node_sum(&node_1, &node_2);
 
-        let s_1 = set.get(0).unwrap();
-        let s_2 = set.get(1).unwrap();
-
         assert_eq!(root, node_3);
-        assert_eq!(s_1, leaf_1);
-        assert_eq!(s_2, leaf_2);
+        assert_eq!(set[0], leaf_1);
+        assert_eq!(set[1], leaf_2);
     }
 
     #[test]
@@ -346,16 +343,11 @@ mod test {
         let node_3 = node_sum(&node_1, &node_2);
         let node_4 = node_sum(&node_3, &leaf_5);
 
-        let s_1 = set.get(0).unwrap();
-        let s_2 = set.get(1).unwrap();
-        let s_3 = set.get(2).unwrap();
-        let s_4 = set.get(3).unwrap();
-
         assert_eq!(root, node_4);
-        assert_eq!(s_1, leaf_3);
-        assert_eq!(s_2, leaf_4);
-        assert_eq!(s_3, node_1);
-        assert_eq!(s_4, leaf_5);
+        assert_eq!(set[0], leaf_3);
+        assert_eq!(set[1], leaf_4);
+        assert_eq!(set[2], node_1);
+        assert_eq!(set[3], leaf_5);
     }
 
     #[test]
@@ -392,12 +384,9 @@ mod test {
         let node_3 = node_sum(&node_1, &node_2);
         let node_4 = node_sum(&node_3, &leaf_5);
 
-        let s_1 = set.get(0).unwrap();
-        let s_2 = set.get(1).unwrap();
-
         assert_eq!(root, node_4);
-        assert_eq!(s_1, leaf_5);
-        assert_eq!(s_2, node_3);
+        assert_eq!(set[0], leaf_5);
+        assert_eq!(set[1], node_3);
     }
 
     #[test]

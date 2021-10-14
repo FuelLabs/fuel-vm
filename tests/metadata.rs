@@ -53,6 +53,8 @@ fn metadata() {
     Interpreter::transition(&mut storage, tx).expect("Failed to transact");
 
     let mut routine_call_metadata_contract: Vec<Opcode> = vec![
+        Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
+        Opcode::LOG(0x10, 0x00, 0x00, 0x00),
         Opcode::ADDI(0x10, REG_ZERO, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate12),
         Opcode::ALOC(0x10),
         Opcode::ADDI(0x10, REG_HP, 1),
@@ -123,12 +125,17 @@ fn metadata() {
     let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
     let receipts = transition.receipts();
 
-    let ra = receipts[2]
+    let ra = receipts[1]
+        .ra()
+        .expect("IsCallerExternal should set $rA as boolean flag");
+    assert_eq!(0, ra);
+
+    let ra = receipts[3]
         .ra()
         .expect("IsCallerExternal should set $rA as boolean flag");
     assert_eq!(1, ra);
 
     let contract_call = Hasher::hash(contract_call.as_ref());
-    let digest = receipts[3].digest().expect("GetCaller should return contract Id");
+    let digest = receipts[4].digest().expect("GetCaller should return contract Id");
     assert_eq!(&contract_call, digest);
 }

@@ -43,25 +43,24 @@ impl<S> Interpreter<S> {
             return Err(InterpreterError::ExpectedInternalContext);
         }
 
-        let metadata = InterpreterMetadata::try_from(imm)?;
         let parent = self.frames.last().map(|f| f.registers()[REG_FP]).unwrap_or(0);
 
-        match metadata {
-            InterpreterMetadata::IsCallerExternal => {
+        match imm {
+            IS_CALLER_EXTERNAL => {
                 self.registers[ra] = (parent != 0) as Word;
             }
 
-            InterpreterMetadata::GetCaller => {
+            GET_CALLER => {
                 if parent == 0 {
                     return Err(InterpreterError::ExpectedInternalContext);
                 }
 
                 self.registers[ra] = parent;
             }
+
+            _ => return Err(InterpreterError::MetadataIdentifierUndefined),
         }
 
-        self.inc_pc()?;
-
-        Ok(())
+        self.inc_pc()
     }
 }

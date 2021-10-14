@@ -43,7 +43,11 @@ impl<S> Interpreter<S> {
             return Err(InterpreterError::ExpectedInternalContext);
         }
 
-        let parent = self.frames.last().map(|f| f.registers()[REG_FP]).unwrap_or(0);
+        let parent = self
+            .frames
+            .last()
+            .map(|f| f.registers()[REG_FP])
+            .expect("External context will always have a frame");
 
         match imm {
             IS_CALLER_EXTERNAL => {

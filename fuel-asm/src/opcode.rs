@@ -1240,6 +1240,13 @@ pub enum Opcode {
     /// | Encoding    | `0x00 rA - - -`       |
     FLAG(RegisterId),
 
+    /// Get metadata from memory
+    ///
+    /// | Operation   | Selected by `imm`     |
+    /// | Syntax      | `gm $rA, imm`         |
+    /// | Encoding    | `0x00 rA imm imm imm` |
+    GM(RegisterId, Immediate18),
+
     /// Undefined opcode, potentially from inconsistent serialization
     Undefined,
 }
@@ -1340,6 +1347,7 @@ impl Opcode {
             OpcodeRepr::XWS => Opcode::XWS(ra, rb),
             OpcodeRepr::NOOP => Opcode::NOOP,
             OpcodeRepr::FLAG => Opcode::FLAG(ra),
+            OpcodeRepr::GM => Opcode::GM(ra, imm18),
             _ => Opcode::Undefined,
         }
     }
@@ -1445,6 +1453,7 @@ impl Opcode {
             Self::XWS(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::NOOP => [None; 4],
             Self::FLAG(ra) => [Some(*ra), None, None, None],
+            Self::GM(ra, _) => [Some(*ra), None, None, None],
             Self::Undefined => [None; 4],
         }
     }
@@ -1842,6 +1851,9 @@ impl From<Opcode> for u32 {
             }
             Opcode::NOOP => (OpcodeRepr::NOOP as u32) << 24,
             Opcode::FLAG(ra) => ((OpcodeRepr::FLAG as u32) << 24) | ((ra as u32) << 18),
+            Opcode::GM(ra, imm18) => {
+                ((OpcodeRepr::GM as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32)
+            }
             Opcode::Undefined => (0x00 << 24),
         }
     }

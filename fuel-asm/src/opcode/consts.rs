@@ -78,6 +78,7 @@ pub enum OpcodeRepr {
     XWS = 0x85,
     NOOP = 0xf0,
     FLAG = 0xf1,
+    GM = 0xf2,
     UNDEFINED = 0x00,
 }
 
@@ -168,6 +169,7 @@ impl OpcodeRepr {
             0x85 => Self::XWS,
             0xf0 => Self::NOOP,
             0xf1 => Self::FLAG,
+            0xf2 => Self::GM,
             _ => Self::UNDEFINED,
         }
     }

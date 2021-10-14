@@ -86,6 +86,7 @@ fn opcode() {
         Opcode::XWS(r, r),
         Opcode::NOOP,
         Opcode::FLAG(r),
+        Opcode::GM(r, imm18),
         Opcode::Undefined,
     ];
 

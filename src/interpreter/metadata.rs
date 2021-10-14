@@ -6,10 +6,13 @@ use fuel_types::{Immediate18, RegisterId, Word};
 
 use std::convert::TryFrom;
 
+const IS_CALLER_EXTERNAL: Immediate18 = 0x000001;
+const GET_CALLER: Immediate18 = 0x000002;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InterpreterMetadata {
-    IsCallerExternal = 0x000001,
-    GetCaller = 0x000002,
+    IsCallerExternal = IS_CALLER_EXTERNAL as isize,
+    GetCaller = GET_CALLER as isize,
 }
 
 impl TryFrom<Immediate18> for InterpreterMetadata {
@@ -17,8 +20,8 @@ impl TryFrom<Immediate18> for InterpreterMetadata {
 
     fn try_from(imm: Immediate18) -> Result<Self, Self::Error> {
         match imm {
-            0x000001 => Ok(Self::IsCallerExternal),
-            0x000002 => Ok(Self::GetCaller),
+            IS_CALLER_EXTERNAL => Ok(Self::IsCallerExternal),
+            GET_CALLER => Ok(Self::GetCaller),
             _ => Err(InterpreterError::MetadataIdentifierUndefined),
         }
     }
@@ -27,8 +30,8 @@ impl TryFrom<Immediate18> for InterpreterMetadata {
 impl From<InterpreterMetadata> for Immediate18 {
     fn from(m: InterpreterMetadata) -> Immediate18 {
         match m {
-            InterpreterMetadata::IsCallerExternal => 0x000001,
-            InterpreterMetadata::GetCaller => 0x000002,
+            InterpreterMetadata::IsCallerExternal => IS_CALLER_EXTERNAL,
+            InterpreterMetadata::GetCaller => GET_CALLER,
         }
     }
 }

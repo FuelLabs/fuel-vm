@@ -461,6 +461,10 @@ where
 
             Opcode::FLAG(ra) if self.gas_charge(&op).is_ok() && self.set_flag(self.registers[ra]).is_ok() => {}
 
+            Opcode::GM(ra, imm)
+                if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() && self.metadata(ra, imm).is_ok() => {
+            }
+
             Opcode::LDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::RVRT(_ra) => result = Err(InterpreterError::OpcodeUnimplemented(op)),

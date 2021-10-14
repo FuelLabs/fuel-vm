@@ -19,12 +19,14 @@ mod initialization;
 mod internal;
 mod log;
 mod memory;
+mod metadata;
 mod transaction;
 
 #[cfg(feature = "debug")]
 mod debug;
 
 pub use memory::MemoryRange;
+pub use metadata::InterpreterMetadata;
 
 #[derive(Debug, Clone)]
 pub struct Interpreter<S> {

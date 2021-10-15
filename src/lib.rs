@@ -20,8 +20,8 @@ pub mod prelude {
     pub use fuel_tx::{Input, Output, Receipt, Transaction, ValidationError, Witness};
     pub use fuel_types::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
-        Address, Bytes32, Bytes64, Color, ContractId, Immediate06, Immediate12, Immediate18, Immediate24, RegisterId,
-        Salt, Word,
+        Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Immediate06, Immediate12, Immediate18,
+        Immediate24, RegisterId, Salt, Word,
     };
 
     pub use crate::call::{Call, CallFrame};
@@ -29,7 +29,7 @@ pub mod prelude {
     pub use crate::contract::Contract;
     pub use crate::data::{InterpreterStorage, MemoryStorage};
     pub use crate::error::InterpreterError;
-    pub use crate::interpreter::{Interpreter, MemoryRange};
+    pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
 
     #[cfg(feature = "debug")]

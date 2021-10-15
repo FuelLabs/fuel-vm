@@ -48,6 +48,11 @@ path = "tests/flow.rs"
 required-features = [ "random" ]
 
 [[test]]
+name = "test-metadata"
+path = "tests/metadata.rs"
+required-features = [ "random" ]
+
+[[test]]
 name = "test-predicate"
 path = "tests/predicate.rs"
 required-features = [ "random" ]

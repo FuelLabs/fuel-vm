@@ -74,8 +74,12 @@ where
     current.iter_mut().for_each(|l| {
         hasher.reset();
 
-        leaves.next().map(|a| hasher.input(a));
-        leaves.next().map(|b| hasher.input(b));
+        // let a = leaves.next();
+        // let b = leaves.next();
+
+        for a in leaves.by_ref().take(2) {
+            hasher.input(a);
+        }
 
         *l = hasher.digest();
     });
@@ -93,8 +97,9 @@ where
         next.iter_mut().take(width).for_each(|n| {
             hasher.reset();
 
-            c.next().map(|a| hasher.input(a));
-            c.next().map(|b| hasher.input(b));
+            for a in c.by_ref().take(2) {
+                hasher.input(a);
+            }
 
             *n = hasher.digest();
         });

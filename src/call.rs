@@ -91,7 +91,7 @@ impl TryFrom<&[u8]> for Call {
     fn try_from(bytes: &[u8]) -> io::Result<Self> {
         let mut call = Self::default();
 
-        call.write(bytes)?;
+        let _ = call.write(bytes)?;
 
         Ok(call)
     }

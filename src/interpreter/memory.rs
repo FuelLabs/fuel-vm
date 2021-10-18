@@ -9,6 +9,7 @@ use std::{ops, ptr};
 
 // Memory bounds must be manually checked and cannot follow general PartialEq
 // rules
+#[allow(clippy::derive_hash_xor_eq)] // ok as long as `a == b -> hash(a) == hash(b)`
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct MemoryRange {

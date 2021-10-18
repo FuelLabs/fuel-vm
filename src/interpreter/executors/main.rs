@@ -32,7 +32,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(InterpreterError::TransactionCreateStaticContractNotFound)?
+                    return Err(InterpreterError::TransactionCreateStaticContractNotFound);
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -45,7 +45,7 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(InterpreterError::TransactionCreateIdNotInTx)?;
+                    return Err(InterpreterError::TransactionCreateIdNotInTx);
                 }
 
                 self.storage.storage_contract_insert(&id, &contract)?;

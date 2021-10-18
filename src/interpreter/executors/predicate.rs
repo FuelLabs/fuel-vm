@@ -1,8 +1,8 @@
 use crate::consts::*;
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState};
+use crate::storage::InterpreterStorage;
 
 use fuel_asm::Opcode;
 

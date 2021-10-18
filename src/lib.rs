@@ -1,18 +1,14 @@
-#![allow(clippy::try_err)]
-// Wrong clippy convention; check
-// https://rust-lang.github.io/api-guidelines/naming.html
-#![allow(clippy::wrong_self_convention)]
-
 pub mod call;
+pub mod client;
 pub mod consts;
 pub mod context;
 pub mod contract;
 pub mod crypto;
-pub mod data;
 pub mod error;
 pub mod gas;
 pub mod interpreter;
 pub mod state;
+pub mod storage;
 
 pub mod prelude {
     pub use fuel_asm::Opcode;
@@ -25,12 +21,13 @@ pub mod prelude {
     };
 
     pub use crate::call::{Call, CallFrame};
+    pub use crate::client::{MemoryClient, MemoryStorage};
     pub use crate::context::Context;
     pub use crate::contract::Contract;
-    pub use crate::data::{InterpreterStorage, MemoryStorage};
     pub use crate::error::InterpreterError;
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
+    pub use crate::storage::InterpreterStorage;
 
     #[cfg(feature = "debug")]
     pub use crate::state::{Breakpoint, DebugEval};

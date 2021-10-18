@@ -5,7 +5,7 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use std::mem;
+use std::{iter, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -13,7 +13,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 fn state_read_write() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut storage = MemoryStorage::default();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -110,7 +110,7 @@ fn state_read_write() {
     let output = Output::contract_created(contract);
 
     let bytecode_witness = 0;
-    let tx = Transaction::create(
+    let tx_deploy = Transaction::create(
         gas_price,
         gas_limit,
         maturity,
@@ -121,9 +121,6 @@ fn state_read_write() {
         vec![output],
         vec![program],
     );
-
-    // Deploy the contract into the blockchain
-    Interpreter::transition(&mut storage, tx).expect("Failed to transact");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -174,7 +171,7 @@ fn state_read_write() {
     script_data.extend(key.as_ref());
     script_data.extend(&val.to_be_bytes());
 
-    let tx = Transaction::script(
+    let tx_add_word = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
@@ -186,19 +183,20 @@ fn state_read_write() {
     );
 
     // Assert the initial state of `key` is empty
-    let state = storage.contract_state(&contract, &key);
+    let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
-    let state = storage.contract_state(&contract, &key);
+    let receipts = client
+        .transition(vec![tx_deploy, tx_add_word])
+        .expect("Failed to transact");
+    let state = client.as_ref().contract_state(&contract, &key);
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
     // Expect the correct receipt
-    let receipt = transition.receipts()[1];
-    assert_eq!(receipt.ra().expect("Register value expected"), val);
-    assert_eq!(receipt.rb().expect("Register value expected"), 0);
+    assert_eq!(receipts[1].ra().expect("Register value expected"), val);
+    assert_eq!(receipts[1].rb().expect("Register value expected"), 0);
 
     let mut script_data = vec![];
 
@@ -220,7 +218,7 @@ fn state_read_write() {
     script_data.extend(key.as_ref());
     script_data.extend(&val.to_be_bytes());
 
-    let tx = Transaction::script(
+    let tx_unpack_xor = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
@@ -232,9 +230,9 @@ fn state_read_write() {
     );
 
     // Mutate the state
-    let transition = Interpreter::transition(&mut storage, tx).expect("Failed to transact");
-
-    let receipts = transition.receipts();
+    let receipts = client
+        .transition(iter::once(tx_unpack_xor))
+        .expect("Failed to transact");
 
     // Expect the arguments to be received correctly by the VM
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -264,6 +262,6 @@ fn state_read_write() {
 
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
-    let state = storage.contract_state(&contract, &key);
+    let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(bytes, state.into_owned());
 }

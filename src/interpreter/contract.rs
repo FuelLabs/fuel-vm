@@ -1,7 +1,7 @@
 use super::Interpreter;
 use crate::contract::Contract;
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
+use crate::storage::InterpreterStorage;
 
 use fuel_types::{Color, ContractId, Word};
 

@@ -1,7 +1,7 @@
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
+use crate::storage::InterpreterStorage;
 
 use fuel_asm::Opcode;
 use fuel_types::Word;

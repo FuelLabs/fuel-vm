@@ -8,10 +8,6 @@ use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::ops::Deref;
 
-mod memory;
-
-pub use memory::MemoryStorage;
-
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -69,7 +65,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, InterpreterError> {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, &value).map_err(|e| e.into())
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value).map_err(|e| e.into())
     }
 
     fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, InterpreterError> {

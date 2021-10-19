@@ -1,7 +1,7 @@
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 use crate::interpreter::Interpreter;
 use crate::state::ProgramState;
+use crate::storage::InterpreterStorage;
 
 impl<S> Interpreter<S>
 where

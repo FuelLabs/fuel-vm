@@ -1,9 +1,9 @@
 use super::Interpreter;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
 use crate::state::ProgramState;
+use crate::storage::InterpreterStorage;
 
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, Receipt};

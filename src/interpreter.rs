@@ -1,7 +1,7 @@
 use crate::call::CallFrame;
+use crate::client::MemoryStorage;
 use crate::consts::*;
 use crate::context::Context;
-use crate::data::MemoryStorage;
 use crate::state::Debugger;
 
 use fuel_tx::{Receipt, Transaction};
@@ -98,5 +98,11 @@ impl Interpreter<()> {
 impl<S> From<Interpreter<S>> for Transaction {
     fn from(vm: Interpreter<S>) -> Self {
         vm.tx
+    }
+}
+
+impl<S> AsMut<S> for Interpreter<S> {
+    fn as_mut(&mut self) -> &mut S {
+        &mut self.storage
     }
 }

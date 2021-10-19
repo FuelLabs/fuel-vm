@@ -78,8 +78,8 @@ impl From<io::Error> for InterpreterError {
     }
 }
 
-impl Into<InterpreterError> for Infallible {
-    fn into(self) -> InterpreterError {
+impl From<Infallible> for InterpreterError {
+    fn from(_i: Infallible) -> InterpreterError {
         unreachable!()
     }
 }

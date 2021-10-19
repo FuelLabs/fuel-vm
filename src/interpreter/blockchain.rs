@@ -1,7 +1,7 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
+use crate::storage::InterpreterStorage;
 
 use fuel_tx::Input;
 use fuel_types::{Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
@@ -153,7 +153,7 @@ where
 
         self.registers[ra] = self
             .storage
-            .merkle_contract_state(&contract, key)?
+            .merkle_contract_state(contract, key)?
             .map(|state| unsafe { Bytes8::from_slice_unchecked(state.as_ref().as_ref()).into() })
             .map(Word::from_be_bytes)
             .unwrap_or(0);
@@ -175,7 +175,7 @@ where
 
         let state = self
             .storage
-            .merkle_contract_state(&contract, key)?
+            .merkle_contract_state(contract, key)?
             .map(|s| s.into_owned())
             .unwrap_or_default();
 

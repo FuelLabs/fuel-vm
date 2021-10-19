@@ -85,7 +85,7 @@ impl TryFrom<&Transaction> for Contract {
             } => witnesses
                 .get(*bytecode_witness_index as usize)
                 .map(|c| c.as_ref().into())
-                .ok_or(ValidationError::TransactionCreateBytecodeWitnessIndex.into()),
+                .ok_or_else(|| ValidationError::TransactionCreateBytecodeWitnessIndex.into()),
 
             _ => Err(ValidationError::TransactionScriptOutputContractCreated { index: 0 }.into()),
         }

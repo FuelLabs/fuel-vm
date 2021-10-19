@@ -1,8 +1,8 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
-use crate::data::InterpreterStorage;
 use crate::error::InterpreterError;
+use crate::storage::InterpreterStorage;
 
 use fuel_tx::consts::*;
 use fuel_tx::{Input, Transaction};

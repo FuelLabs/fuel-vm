@@ -88,7 +88,23 @@ fn opcode() {
         Opcode::FLAG(r),
         Opcode::GM(r, imm18),
         Opcode::Undefined,
+        Opcode::Undefined,
     ];
+
+    let bytes: Vec<u8> = data.iter().copied().collect();
+
+    let pairs = bytes.chunks(8).into_iter().map(|chunk| {
+        let mut arr = [0; core::mem::size_of::<Word>()];
+        arr.copy_from_slice(chunk);
+        Instruction::parse_word(Word::from_be_bytes(arr))
+    });
+
+    let result: Vec<Opcode> = pairs
+        .into_iter()
+        .flat_map(|(a, b)| [Opcode::from(a), Opcode::from(b)])
+        .collect();
+
+    assert_eq!(data, result);
 
     let mut bytes: Vec<u8> = vec![];
     let mut buffer = [0u8; 4];
@@ -101,9 +117,12 @@ fn opcode() {
         let op_p = u32::from(op);
         let op_bytes = op_p.to_be_bytes().to_vec();
 
+        let ins = Instruction::from(op_p);
+
         let op_p = Opcode::from(op_p);
         let op_q = Opcode::from_bytes_unchecked(op_bytes.as_slice());
 
+        assert_eq!(op, Opcode::from(ins));
         assert_eq!(op, op_p);
         assert_eq!(op, op_q);
 
@@ -120,6 +139,13 @@ fn opcode() {
 
             assert_eq!(op, op_r);
             assert_eq!(op, op_s);
+
+            let ins_r = unsafe { Instruction::from_slice_unchecked(op_bytes.as_slice()) };
+            let ins_s = Instruction::from_bytes(op_bytes.as_slice())
+                .expect("Failed to safely generate op from bytes!");
+
+            assert_eq!(op, Opcode::from(ins_r));
+            assert_eq!(op, Opcode::from(ins_s));
         }
 
         // Assert no panic with checked function

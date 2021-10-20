@@ -1,4 +1,4 @@
-use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId};
+use fuel_types::{Immediate12, Immediate18, Immediate24, RegisterId};
 
 use core::convert::TryFrom;
 
@@ -6,6 +6,8 @@ use consts::*;
 
 #[cfg(feature = "std")]
 use std::{io, iter};
+
+use crate::Instruction;
 
 pub mod consts;
 
@@ -1256,17 +1258,16 @@ impl Opcode {
     pub const BYTES_SIZE: usize = 4;
 
     /// Create a new [`Opcode`] given the internal attributes
-    pub const fn new(
-        op: u8,
-        ra: RegisterId,
-        rb: RegisterId,
-        rc: RegisterId,
-        rd: RegisterId,
-        _imm06: Immediate06,
-        imm12: Immediate12,
-        imm18: Immediate18,
-        imm24: Immediate24,
-    ) -> Self {
+    pub const fn new(instruction: Instruction) -> Self {
+        let op = instruction.op();
+        let ra = instruction.ra();
+        let rb = instruction.rb();
+        let rc = instruction.rc();
+        let rd = instruction.rd();
+        let imm12 = instruction.imm12();
+        let imm18 = instruction.imm18();
+        let imm24 = instruction.imm24();
+
         let op = OpcodeRepr::from_u8(op);
 
         match op {
@@ -1477,23 +1478,15 @@ impl Opcode {
     }
 }
 
+impl From<Instruction> for Opcode {
+    fn from(parsed: Instruction) -> Self {
+        Self::new(parsed)
+    }
+}
+
 impl From<u32> for Opcode {
     fn from(instruction: u32) -> Self {
-        // TODO Optimize with native architecture (eg SIMD?) or facilitate
-        // auto-vectorization
-        let op = (instruction >> 24) as u8;
-
-        let ra = ((instruction >> 18) & 0x3f) as RegisterId;
-        let rb = ((instruction >> 12) & 0x3f) as RegisterId;
-        let rc = ((instruction >> 6) & 0x3f) as RegisterId;
-        let rd = (instruction & 0x3f) as RegisterId;
-
-        let imm06 = (instruction & 0xff) as Immediate06;
-        let imm12 = (instruction & 0x0fff) as Immediate12;
-        let imm18 = (instruction & 0x3ffff) as Immediate18;
-        let imm24 = (instruction & 0xffffff) as Immediate24;
-
-        Self::new(op, ra, rb, rc, rd, imm06, imm12, imm18, imm24)
+        Self::new(Instruction::from(instruction))
     }
 }
 

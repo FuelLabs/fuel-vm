@@ -38,6 +38,8 @@ impl From<InterpreterMetadata> for Immediate18 {
 
 impl<S> Interpreter<S> {
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         // Both metadata implementations should panic if external context
         if self.is_external_context() {
             return Err(InterpreterError::ExpectedInternalContext);

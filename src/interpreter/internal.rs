@@ -71,8 +71,12 @@ impl<S> Interpreter<S> {
         matches!(self.context, Context::Predicate)
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> bool {
-        ra > REG_FLAG
+    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), InterpreterError> {
+        if ra > REG_FLAG {
+            Ok(())
+        } else {
+            Err(InterpreterError::RegisterNotWritable)
+        }
     }
 
     pub(crate) const fn transaction(&self) -> &Transaction {

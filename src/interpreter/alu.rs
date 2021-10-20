@@ -12,6 +12,8 @@ impl<S> Interpreter<S> {
         b: B,
         c: C,
     ) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         let (result, overflow) = f(b, c);
 
         // TODO If the F_UNSAFEMATH flag is unset, an operation that would have set $err
@@ -36,6 +38,8 @@ impl<S> Interpreter<S> {
         c: C,
         err: bool,
     ) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = err as Word;
 
@@ -45,6 +49,8 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = 0;
 

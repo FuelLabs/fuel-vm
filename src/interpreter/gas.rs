@@ -3,91 +3,68 @@ use crate::consts::*;
 use crate::error::InterpreterError;
 use crate::gas::GasUnit;
 
-use fuel_asm::Opcode;
+use fuel_asm::OpcodeRepr;
 use fuel_types::Word;
 
+pub mod consts;
+
 impl<S> Interpreter<S> {
-    /// Calculate the gas cost for the current runtime state.
-    ///
-    /// This function will access register values directly without any check.
-    /// This means it must be protected by executor validators such as
-    /// `is_valid_register_triple_alu` - otherwise it may panic.
-    ///
-    /// The checks are intentionally not performed so the gas cost can be as
-    /// optimal as possible
-    pub(crate) const fn gas_cost(&self, op: &Opcode) -> Word {
-        use Opcode::*;
+    pub(crate) const fn gas_cost_const(op: OpcodeRepr) -> Word {
+        use OpcodeRepr::*;
 
         match op {
-            ADD(_, _, _) | EXP(_, _, _) | MUL(_, _, _) | SLL(_, _, _) | SRL(_, _, _) | SUB(_, _, _) => {
-                GasUnit::Arithmetic(1)
-                    .join(GasUnit::RegisterRead(3))
-                    .join(GasUnit::RegisterWrite(3))
+            ADD | EXP | MUL | SLL | SRL | SUB | ADDI | EXPI | MULI | SLLI | SRLI | SUBI => {
+                GasUnit::Arithmetic(1).join(GasUnit::RegisterWrite(3))
             }
 
-            MLOG(_, _, _) | MROO(_, _, _) => GasUnit::ArithmeticExpensive(1)
-                .join(GasUnit::RegisterRead(3))
-                .join(GasUnit::RegisterWrite(3)),
+            MLOG | MROO => GasUnit::ArithmeticExpensive(1).join(GasUnit::RegisterWrite(3)),
 
-            ADDI(_, _, _) | EXPI(_, _, _) | MULI(_, _, _) | SLLI(_, _, _) | SRLI(_, _, _) | SUBI(_, _, _) => {
-                GasUnit::Arithmetic(1)
-                    .join(GasUnit::RegisterRead(2))
-                    .join(GasUnit::RegisterWrite(3))
-            }
+            AND | EQ | GT | LT | OR | XOR | NOT | ANDI | MOVE | ORI | XORI => GasUnit::RegisterWrite(3),
 
-            AND(_, _, _) | EQ(_, _, _) | GT(_, _, _) | OR(_, _, _) | XOR(_, _, _) => {
-                GasUnit::RegisterRead(3).join(GasUnit::RegisterWrite(3))
-            }
+            DIV | MOD | DIVI | MODI => GasUnit::Arithmetic(1).join(GasUnit::Branching(1)),
 
-            ANDI(_, _, _) | MOVE(_, _) | ORI(_, _, _) | XORI(_, _, _) => {
-                GasUnit::RegisterRead(2).join(GasUnit::RegisterWrite(3))
-            }
+            NOOP | JI | JNEI => GasUnit::Atom(1),
 
-            DIV(_, _, _) | MOD(_, _, _) => GasUnit::RegisterRead(3)
-                .join(GasUnit::Arithmetic(1))
-                .join(GasUnit::Branching(1)),
-
-            DIVI(_, _, _) | MODI(_, _, _) => GasUnit::RegisterRead(2)
-                .join(GasUnit::Arithmetic(1))
-                .join(GasUnit::Branching(1)),
-
-            NOOP | JI(_) => GasUnit::Atom(1),
-
-            JNEI(_, _, _) => GasUnit::RegisterRead(2),
-
-            ALOC(_) => GasUnit::RegisterRead(1)
-                .join(GasUnit::Arithmetic(1))
+            ALOC | LB => GasUnit::Arithmetic(1)
                 .join(GasUnit::Branching(1))
                 .join(GasUnit::RegisterWrite(1)),
 
-            LB(_, _, _) => GasUnit::RegisterRead(2)
-                .join(GasUnit::Arithmetic(1))
-                .join(GasUnit::Branching(1))
-                .join(GasUnit::RegisterWrite(1)),
-
-            MCL(_, rb) => GasUnit::RegisterRead(2)
-                .join(GasUnit::Arithmetic(1))
-                .join(GasUnit::Branching(1))
-                .join(GasUnit::MemoryOwnership(1))
-                .join(GasUnit::MemoryWrite(self.registers[*rb])),
-
-            _ => GasUnit::Undefined,
+            _ => panic!("Opcode is not gas constant"),
         }
         .cost()
     }
 
-    // TODO enable const flag
-    // https://github.com/rust-lang/rust/issues/57349
-    pub(crate) fn gas_charge(&mut self, op: &Opcode) -> Result<(), InterpreterError> {
-        let cost = !self.is_predicate() as Word * self.gas_cost(op);
+    /// Return the constant term of a variable gas instruction
+    // TODO Rust support for const fn pointers didn't land in stable yet
+    // This fn should return both the base and the variable fn
+    // https://github.com/rust-lang/rust/issues/57563
+    pub(crate) const fn gas_cost_monad_base(op: OpcodeRepr) -> Word {
+        use OpcodeRepr::*;
 
-        if cost > self.registers[REG_CGAS] {
+        match op {
+            MCL | MCLI => GasUnit::Arithmetic(1).join(GasUnit::MemoryOwnership(1)),
+
+            MCP => GasUnit::Arithmetic(2).join(GasUnit::MemoryOwnership(1)),
+
+            _ => panic!("Opcode is not variable gas"),
+        }
+        .cost()
+    }
+
+    pub(crate) fn gas_charge_monad(&mut self, monad: fn(Word) -> Word, arg: Word) -> Result<(), InterpreterError> {
+        self.gas_charge(monad(arg))
+    }
+
+    pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), InterpreterError> {
+        let gas = !self.is_predicate() as Word * gas;
+
+        if gas > self.registers[REG_CGAS] {
             self.registers[REG_GGAS] -= self.registers[REG_CGAS];
             self.registers[REG_CGAS] = 0;
 
             Err(InterpreterError::OutOfGas)
         } else {
-            self.registers[REG_CGAS] -= cost;
+            self.registers[REG_CGAS] -= gas;
 
             Ok(())
         }

@@ -1,15 +1,15 @@
-use fuel_types::{Immediate12, Immediate18, Immediate24, RegisterId};
+use fuel_types::{Immediate12, Immediate18, Immediate24, RegisterId, Word};
 
 use core::convert::TryFrom;
-
-use consts::*;
 
 #[cfg(feature = "std")]
 use std::{io, iter};
 
 use crate::Instruction;
 
-pub mod consts;
+mod consts;
+
+pub use consts::OpcodeRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -945,9 +945,9 @@ pub enum Opcode {
     ///
     /// 1. All [OutputContract](../protocol/tx_format.md#outputcontract) outputs
     /// will have the same `amount` and `stateRoot` as on initialization. 1.
-    /// All [OutputVariable](../protocol/tx_format.md outputs#outputvariable)
+    /// All OutputVariable (../protocol/tx_format.md outputs#outputvariable)
     /// outputs will have `to` and `amount` of zero.
-    /// 1. All [OutputContractConditional](../protocol/tx_format.md#
+    /// 1. All OutputContractConditional (../protocol/tx_format.md#
     /// outputcontractconditional) outputs will have `contractID`, `amount`, and
     /// `stateRoot` of zero.
     RVRT(RegisterId),
@@ -1268,9 +1268,9 @@ impl Opcode {
         let imm18 = instruction.imm18();
         let imm24 = instruction.imm24();
 
-        let op = OpcodeRepr::from_u8(op);
+        let repr = OpcodeRepr::from_u8(op);
 
-        match op {
+        match repr {
             OpcodeRepr::ADD => Opcode::ADD(ra, rb, rc),
             OpcodeRepr::ADDI => Opcode::ADDI(ra, rb, imm12),
             OpcodeRepr::AND => Opcode::AND(ra, rb, rc),
@@ -1456,6 +1456,91 @@ impl Opcode {
             Self::FLAG(ra) => [Some(*ra), None, None, None],
             Self::GM(ra, _) => [Some(*ra), None, None, None],
             Self::Undefined => [None; 4],
+        }
+    }
+
+    /// Return the underlying immediate value, if present
+    pub const fn immediate(&self) -> Option<Word> {
+        match self {
+            Self::ADDI(_, _, imm)
+            | Self::ANDI(_, _, imm)
+            | Self::DIVI(_, _, imm)
+            | Self::EXPI(_, _, imm)
+            | Self::MODI(_, _, imm)
+            | Self::MULI(_, _, imm)
+            | Self::ORI(_, _, imm)
+            | Self::SLLI(_, _, imm)
+            | Self::SRLI(_, _, imm)
+            | Self::SUBI(_, _, imm)
+            | Self::XORI(_, _, imm)
+            | Self::JNEI(_, _, imm)
+            | Self::LB(_, _, imm)
+            | Self::LW(_, _, imm)
+            | Self::SB(_, _, imm)
+            | Self::SW(_, _, imm) => Some(*imm as Word),
+
+            Self::MCLI(_, imm) | Self::GM(_, imm) => Some(*imm as Word),
+
+            Self::JI(imm) | Self::CFEI(imm) | Self::CFSI(imm) => Some(*imm as Word),
+
+            Self::ADD(_, _, _)
+            | Self::AND(_, _, _)
+            | Self::DIV(_, _, _)
+            | Self::EQ(_, _, _)
+            | Self::EXP(_, _, _)
+            | Self::GT(_, _, _)
+            | Self::LT(_, _, _)
+            | Self::MLOG(_, _, _)
+            | Self::MROO(_, _, _)
+            | Self::MOD(_, _, _)
+            | Self::MOVE(_, _)
+            | Self::MUL(_, _, _)
+            | Self::NOT(_, _)
+            | Self::OR(_, _, _)
+            | Self::SLL(_, _, _)
+            | Self::SRL(_, _, _)
+            | Self::SUB(_, _, _)
+            | Self::XOR(_, _, _)
+            | Self::CIMV(_, _, _)
+            | Self::CTMV(_, _)
+            | Self::RET(_)
+            | Self::RETD(_, _)
+            | Self::ALOC(_)
+            | Self::MCL(_, _)
+            | Self::MCP(_, _, _)
+            | Self::MEQ(_, _, _, _)
+            | Self::BHSH(_, _)
+            | Self::BHEI(_)
+            | Self::BURN(_)
+            | Self::CALL(_, _, _, _)
+            | Self::CCP(_, _, _, _)
+            | Self::CROO(_, _)
+            | Self::CSIZ(_, _)
+            | Self::CB(_)
+            | Self::LDC(_, _, _)
+            | Self::LOG(_, _, _, _)
+            | Self::LOGD(_, _, _, _)
+            | Self::MINT(_)
+            | Self::RVRT(_)
+            | Self::SLDC(_, _, _)
+            | Self::SRW(_, _)
+            | Self::SRWQ(_, _)
+            | Self::SWW(_, _)
+            | Self::SWWQ(_, _)
+            | Self::TR(_, _, _)
+            | Self::TRO(_, _, _, _)
+            | Self::ECR(_, _, _)
+            | Self::K256(_, _, _)
+            | Self::S256(_, _, _)
+            | Self::XIL(_, _)
+            | Self::XIS(_, _)
+            | Self::XOL(_, _)
+            | Self::XOS(_, _)
+            | Self::XWL(_, _)
+            | Self::XWS(_, _)
+            | Self::NOOP
+            | Self::FLAG(_)
+            | Self::Undefined => None,
         }
     }
 }

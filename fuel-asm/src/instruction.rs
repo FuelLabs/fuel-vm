@@ -1,9 +1,9 @@
+use crate::opcode::OpcodeRepr;
+
 use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 
 #[cfg(feature = "std")]
 use std::{io, iter};
-
-use crate::opcode::consts::OpcodeRepr;
 
 /// A version of Opcode that can used without unnecessary branching
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +128,7 @@ impl Instruction {
         u32::from(self).to_be_bytes()
     }
 
-    /// Splits a Word into two [`Instruction`] that can be used to construct [`Opcode`]
+    /// Splits a Word into two [`Instruction`] that can be used to construct [`crate::Opcode`]
     pub const fn parse_word(word: Word) -> (Instruction, Instruction) {
         // Assumes Word is u64
         // https://doc.rust-lang.org/nightly/reference/expressions/operator-expr.html#numeric-cast4
@@ -136,6 +136,51 @@ impl Instruction {
         let hi = (word >> 32) as u32;
 
         (Instruction::new(hi), Instruction::new(lo))
+    }
+
+    /// Convert the instruction into its internal representation
+    ///
+    /// `(repr, $ra, $rb, $rc, $rd, immediate)`
+    pub const fn into_inner(
+        self,
+    ) -> (
+        OpcodeRepr,
+        RegisterId,
+        RegisterId,
+        RegisterId,
+        RegisterId,
+        Word,
+    ) {
+        let Self {
+            op,
+            ra,
+            rb,
+            rc,
+            rd,
+            imm06,
+            imm12,
+            imm18,
+            imm24,
+        } = self;
+
+        let repr = OpcodeRepr::from_u8(op);
+
+        let _ = imm06;
+        let imm12 = imm12 as Word;
+        let imm18 = imm18 as Word;
+        let imm24 = imm24 as Word;
+
+        let imm12_mask = (op & 0xf0 == 0x50) || (op & 0xf0 == 0x60);
+        let imm18_mask = (op & 0xf0 == 0x70) || (op & 0xf0 == 0x80);
+        let imm24_mask = (op & 0xf0 == 0x90) || (op & 0xf0 == 0xa0);
+
+        let imm12_mask = imm12_mask as Word;
+        let imm18_mask = imm18_mask as Word;
+        let imm24_mask = imm24_mask as Word;
+
+        let imm = imm12 * imm12_mask + imm18 * imm18_mask + imm24 * imm24_mask;
+
+        (repr, ra, rb, rc, rd, imm)
     }
 }
 
@@ -159,7 +204,9 @@ impl From<Instruction> for u32 {
         let imm18 = parsed.imm18 as u32;
         let imm24 = parsed.imm24 as u32;
 
-        let args = match OpcodeRepr::from_u8(parsed.op) {
+        let repr = OpcodeRepr::from_u8(parsed.op);
+
+        let args = match repr {
             OpcodeRepr::ADD
             | OpcodeRepr::AND
             | OpcodeRepr::DIV
@@ -184,6 +231,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::ECR
             | OpcodeRepr::K256
             | OpcodeRepr::S256 => a | b | c,
+
             OpcodeRepr::ADDI
             | OpcodeRepr::ANDI
             | OpcodeRepr::DIVI
@@ -200,6 +248,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::LW
             | OpcodeRepr::SB
             | OpcodeRepr::SW => a | b | imm12,
+
             OpcodeRepr::MOVE
             | OpcodeRepr::NOT
             | OpcodeRepr::CTMV
@@ -218,6 +267,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::XOS
             | OpcodeRepr::XWL
             | OpcodeRepr::XWS => a | b,
+
             OpcodeRepr::RET
             | OpcodeRepr::ALOC
             | OpcodeRepr::BHEI
@@ -226,15 +276,19 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::MINT
             | OpcodeRepr::RVRT
             | OpcodeRepr::FLAG => a,
+
             OpcodeRepr::JI | OpcodeRepr::CFEI | OpcodeRepr::CFSI => imm24,
+
             OpcodeRepr::MCLI | OpcodeRepr::GM => a | imm18,
+
             OpcodeRepr::MEQ
             | OpcodeRepr::CALL
             | OpcodeRepr::CCP
             | OpcodeRepr::LOG
             | OpcodeRepr::LOGD
             | OpcodeRepr::TRO => a | b | c | d,
-            OpcodeRepr::NOOP | OpcodeRepr::UNDEFINED => 0,
+
+            _ => 0,
         };
 
         ((parsed.op as u32) << 24) | args

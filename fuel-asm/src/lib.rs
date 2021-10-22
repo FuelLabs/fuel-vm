@@ -8,4 +8,4 @@ mod opcode;
 
 pub use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 pub use instruction::Instruction;
-pub use opcode::Opcode;
+pub use opcode::{Opcode, OpcodeRepr};

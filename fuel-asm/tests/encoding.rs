@@ -119,6 +119,11 @@ fn opcode() {
 
         let ins = Instruction::from(op_p);
 
+        let (_, _, _, _, _, imm_ins) = ins.into_inner();
+        let imm_op = op.immediate().unwrap_or_default();
+
+        assert_eq!(imm_op, imm_ins);
+
         let op_p = Opcode::from(op_p);
         let op_q = Opcode::from_bytes_unchecked(op_bytes.as_slice());
 

@@ -4,7 +4,7 @@ use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
 use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
-use fuel_types::{Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
+use fuel_types::{bytes, Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 
 use std::mem;
 
@@ -68,21 +68,21 @@ where
         // Fetch the code from the contract
         let contract_len = contract.as_ref().as_ref().len();
         let end_in_contract = (start_in_contract + padded_len).min(contract_len);
-        let copy_len = end_in_contract - start_in_contract;
-        let mut code = vec![0; padded_len]; // padded with zeroes
-        code[..copy_len].copy_from_slice(&contract.as_ref().as_ref()[start_in_contract..end_in_contract]);
+        let code = &contract.as_ref().as_ref()[start_in_contract..end_in_contract].to_vec();
 
         // Increment the frame code size by len defined in memory
         let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;
         let start = (fp as usize) + offset_in_frame;
-        let mut buffer = [0; core::mem::size_of::<Word>()];
-        buffer.copy_from_slice(&self.memory[start..start + WORD_SIZE]);
-        let old = Word::from_be_bytes(buffer);
+        // Safety: bounds enforced by the interpreter
+        let old = Word::from_be_bytes(unsafe {
+            bytes::from_slice_unchecked::<WORD_SIZE>(&self.memory[start..start + WORD_SIZE])
+        });
         let new = ((old as usize) + padded_len) as Word;
         self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
 
         // Push the contract code to the stack
         self.push_stack(&code)?;
+        self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
         self.registers[REG_SP] = ssp + (padded_len as u64);
 
         self.inc_pc()

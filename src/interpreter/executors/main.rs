@@ -137,12 +137,16 @@ where
                     return Ok(ProgramState::ReturnData(d));
                 }
 
+                ExecuteState::Revert(r) => {
+                    return Ok(ProgramState::Revert(r));
+                }
+
+                ExecuteState::Proceed => (),
+
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::RunProgram(d));
                 }
-
-                _ => (),
             }
         }
     }

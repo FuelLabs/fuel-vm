@@ -277,6 +277,10 @@ where
                 result = Ok(ExecuteState::ReturnData(digest));
             }
 
+            Opcode::RVRT(ra) if self.gas_charge(&op).is_ok() && self.revert(self.registers[ra]).is_ok() => {
+                result = Ok(ExecuteState::Revert(self.registers[ra]))
+            }
+
             Opcode::ALOC(ra) if self.gas_charge(&op).is_ok() && self.malloc(self.registers[ra]).is_ok() => {}
 
             Opcode::CFEI(imm)
@@ -467,7 +471,6 @@ where
 
             Opcode::LDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
-            Opcode::RVRT(_ra) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::TR(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::TRO(_ra, _rb, _rc, _rd) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::Undefined => result = Err(InterpreterError::OpcodeFailure(op)),

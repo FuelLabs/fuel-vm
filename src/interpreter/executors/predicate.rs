@@ -38,12 +38,14 @@ where
                 // A predicate is not expected to return data
                 ExecuteState::ReturnData(_) => return Err(InterpreterError::PredicateFailure),
 
+                ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
+
+                ExecuteState::Proceed => (),
+
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::VerifyPredicate(d));
                 }
-
-                _ => (),
             }
 
             if self.registers[REG_PC] < pc || self.registers[REG_PC] >= end {

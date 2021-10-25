@@ -156,6 +156,7 @@ where
         self.registers[REG_RET] = a;
         self.registers[REG_RETL] = 0;
 
+        // TODO if ret instruction is in memory boundary, inc_pc shouldn't fail
         self.return_from_context(receipt)
     }
 
@@ -180,5 +181,27 @@ where
         self.registers[REG_RETL] = b;
 
         self.return_from_context(receipt)
+    }
+
+    pub(crate) fn revert(&mut self, a: Word) -> Result<(), InterpreterError> {
+        let receipt = Receipt::revert(
+            self.internal_contract_or_default(),
+            a,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.receipts.push(receipt);
+
+        // TODO
+        // All OutputContract outputs will have the same amount and stateRoot as on
+        // initialization.
+        //
+        // All OutputVariable outputs will have to and amount of zero.
+        //
+        // All OutputContractConditional outputs will have contractID, amount, and
+        // stateRoot of zero.
+
+        Ok(())
     }
 }

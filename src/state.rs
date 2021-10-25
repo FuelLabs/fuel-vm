@@ -21,6 +21,7 @@ pub enum ExecuteState {
     Proceed,
     Return(Word),
     ReturnData(Bytes32),
+    Revert(Word),
 
     #[cfg(feature = "debug")]
     DebugEvent(DebugEval),
@@ -44,6 +45,7 @@ impl From<DebugEval> for ExecuteState {
 pub enum ProgramState {
     Return(Word),
     ReturnData(Bytes32),
+    Revert(Word),
 
     #[cfg(feature = "debug")]
     RunProgram(DebugEval),

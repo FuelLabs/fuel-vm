@@ -33,12 +33,12 @@ where
 
         let id_addr = a as usize; // address of contract ID
         let start_in_contract = b as usize; // start offset
-        let length_to_copy_unaligned = c; // length to copy
+        let length_to_copy_unpadded = c; // length to copy
 
         // Validate arguments
-        if ssp + length_to_copy_unaligned > hp
+        if ssp + length_to_copy_unpadded > hp
             || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
-            || length_to_copy_unaligned > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
+            || length_to_copy_unpadded > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
         {
             return Err(InterpreterError::MemoryOverflow);
         }
@@ -58,17 +58,17 @@ where
         };
 
         // Fetch the contract code
-        let contract = self.contract(contract_id)?;
+        let cow_contract = self.contract(contract_id)?;
+        let contract = cow_contract.as_ref().as_ref();
 
         // Calculate the word aligned padded len based on $rC
-        let len_over = (length_to_copy_unaligned as usize) % WORD_SIZE;
-        let padding_len = if len_over == 0 { 0 } else { WORD_SIZE - len_over };
-        let padded_len = (length_to_copy_unaligned as usize) + padding_len;
+        let padded_len = bytes::padded_len(&contract[..length_to_copy_unpadded as usize]);
+        let padding_len = padded_len - (length_to_copy_unpadded as usize);
 
         // Fetch the code from the contract
-        let contract_len = contract.as_ref().as_ref().len();
+        let contract_len = contract.len();
         let end_in_contract = (start_in_contract + padded_len).min(contract_len);
-        let code = &contract.as_ref().as_ref()[start_in_contract..end_in_contract].to_vec();
+        let code = &contract[start_in_contract..end_in_contract].to_vec();
 
         // Increment the frame code size by len defined in memory
         let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;

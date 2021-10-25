@@ -334,17 +334,17 @@ fn load_external_contract_code() {
     }
 
     load_contract.extend(vec![
-        Opcode::MOVE(reg_a, REG_HP),                   // r[a] := $hp
-        Opcode::ADDI(reg_a, reg_a, 1),                 // r[a] += 1
-        Opcode::XOR(reg_b, reg_b, reg_b),              // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),                 // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),           // Load first two words from the contract
-        Opcode::MOVE(reg_a, REG_SSP),                  // r[a] := $hp
-        Opcode::SUBI(reg_a, reg_a, 8 * 2),             // r[a] -= 16 (start of the loaded code)
-        Opcode::LW(reg_b, reg_a, 1),                   // Load second word of the contract into r[b]
-        Opcode::LW(reg_a, reg_a, 0),                   // Load first word of the contract into r[a]
-        Opcode::LOG(reg_a, reg_b, REG_ZERO, REG_ZERO), // Log the results
-        Opcode::RET(REG_ONE),                          // Done, success
+        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
+        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
+        Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        Opcode::RET(REG_ONE),                           // Done, success
     ]);
 
     let tx_deploy_loader = Transaction::script(
@@ -360,13 +360,10 @@ fn load_external_contract_code() {
 
     let receipts = client.transition(vec![tx_deploy_loader]).expect("deploy failed");
 
-    if let Receipt::Log { ra, rb, .. } = receipts.get(0).expect("No receipt") {
-        let mut loaded = ra.to_be_bytes().to_vec();
-        loaded.extend(rb.to_be_bytes());
-
-        let code = program.into_inner();
-        assert_eq!(loaded[..12], code);
-        assert_eq!(&loaded[12..], &[0; 4]);
+    if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
+        let mut code = program.into_inner();
+        code.extend(&[0; 4]);
+        assert_eq!(digest, &Hasher::hash(&code));
     } else {
         panic!("Script did not return a value");
     }

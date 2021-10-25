@@ -3,7 +3,7 @@ use crate::consts::*;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::Input;
+use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
 use fuel_types::{Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 
 use std::mem;
@@ -16,6 +16,80 @@ where
 {
     pub(crate) fn coinbase(&self) -> Result<Address, InterpreterError> {
         self.storage.coinbase().map_err(|e| e.into())
+    }
+
+    /// Loads contract ID pointed by `a`, and then for that contract,
+    /// copies `c` bytes from it starting from offset `b` into the stack.
+    /// ```txt
+    /// contract_id = mem[$rA, 32]
+    /// contract_code = contracts[contract_id]
+    /// mem[$ssp, $rC] = contract_code[$rB, $rC]
+    /// ```
+    pub(crate) fn load_contract_code(
+        &mut self,
+        a: RegisterId,
+        b: RegisterId,
+        c: RegisterId,
+    ) -> Result<(), InterpreterError> {
+        let ssp = self.registers[REG_SSP];
+        let sp = self.registers[REG_SP];
+        let hp = self.registers[REG_HP];
+        let fp = self.registers[REG_FP];
+
+        let id_addr = self.registers[a] as usize; // address of contract ID
+        let start_in_contract = self.registers[b] as usize; // start offset
+        let length_to_copy_unaligned = self.registers[c]; // length to copy
+
+        // Validate arguments
+        if ssp + length_to_copy_unaligned > hp
+            || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
+            || length_to_copy_unaligned > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
+        {
+            return Err(InterpreterError::MemoryOverflow);
+        }
+
+        if ssp != sp {
+            return Err(InterpreterError::ExpectedEmptyStack);
+        }
+
+        // Fetch the contract id
+        // Safety: Memory bounds are checked by the interpreter
+        let contract_id_bytes = &self.memory[id_addr..id_addr + ContractId::LEN];
+        let contract_id = unsafe { ContractId::as_ref_unchecked(contract_id_bytes) };
+
+        // Check that the contract exists
+        if !self.tx.input_contracts().any(|id| id == contract_id) {
+            return Err(InterpreterError::ContractNotInTxInputs);
+        };
+
+        // Fetch the contract code
+        let contract = self.contract(contract_id)?.into_owned();
+
+        // Calculate the word aligned padded len based on $rC
+        let len_over = (length_to_copy_unaligned as usize) % WORD_SIZE;
+        let padding_len = if len_over == 0 { 0 } else { WORD_SIZE - len_over };
+        let padded_len = (length_to_copy_unaligned as usize) + padding_len;
+
+        // Fetch the code from the contract
+        let end_in_contract = (start_in_contract + padded_len).min(contract.as_ref().len());
+        let copy_len = end_in_contract - start_in_contract;
+        let mut code = vec![0; padded_len]; // padded with zeroes
+        code[..copy_len].copy_from_slice(&contract.as_ref()[start_in_contract..end_in_contract]);
+
+        // Increment the frame code size by len defined in memory
+        let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;
+        let start = (fp as usize) + offset_in_frame;
+        let mut buffer = [0; core::mem::size_of::<Word>()];
+        buffer.copy_from_slice(&self.memory[start..start + WORD_SIZE]);
+        let old = Word::from_be_bytes(buffer);
+        let new = ((old as usize) + padded_len) as Word;
+        self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
+
+        // Push the contract code to the stack
+        self.push_stack(&code)?;
+        self.registers[REG_SP] = ssp + (padded_len as u64);
+
+        self.inc_pc()
     }
 
     pub(crate) fn burn(&mut self, a: Word) -> Result<(), InterpreterError> {

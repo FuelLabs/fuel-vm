@@ -21,6 +21,7 @@ pub enum InterpreterError {
     ContractNotFound,
     MemoryOverflow,
     MemoryOwnership,
+    ExpectedEmptyStack,
     ContractNotInTxInputs,
     NotEnoughBalance,
     ExpectedInternalContext,

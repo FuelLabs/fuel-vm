@@ -465,7 +465,8 @@ where
                 if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() && self.metadata(ra, imm).is_ok() => {
             }
 
-            Opcode::LDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
+            Opcode::LDC(ra, rb, rc) if self.gas_charge(&op).is_ok() && self.load_contract_code(ra, rb, rc).is_ok() => {}
+
             Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::RVRT(_ra) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::TR(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),

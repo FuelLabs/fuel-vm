@@ -25,20 +25,15 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    pub(crate) fn load_contract_code(
-        &mut self,
-        a: RegisterId,
-        b: RegisterId,
-        c: RegisterId,
-    ) -> Result<(), InterpreterError> {
+    pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
         let ssp = self.registers[REG_SSP];
         let sp = self.registers[REG_SP];
         let hp = self.registers[REG_HP];
         let fp = self.registers[REG_FP];
 
-        let id_addr = self.registers[a] as usize; // address of contract ID
-        let start_in_contract = self.registers[b] as usize; // start offset
-        let length_to_copy_unaligned = self.registers[c]; // length to copy
+        let id_addr = a as usize; // address of contract ID
+        let start_in_contract = b as usize; // start offset
+        let length_to_copy_unaligned = c; // length to copy
 
         // Validate arguments
         if ssp + length_to_copy_unaligned > hp

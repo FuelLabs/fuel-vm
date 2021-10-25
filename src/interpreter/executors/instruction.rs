@@ -370,6 +370,12 @@ where
                     && self.gas_charge(&op).is_ok()
                     && self.code_size(ra, self.registers[rb]).is_ok() => {}
 
+            Opcode::LDC(ra, rb, rc)
+                if self.gas_charge(&op).is_ok()
+                    && self
+                        .load_contract_code(self.registers[ra], self.registers[rb], self.registers[rc])
+                        .is_ok() => {}
+
             Opcode::LOG(ra, rb, rc, rd)
                 if self.gas_charge(&op).is_ok()
                     && self
@@ -464,12 +470,6 @@ where
             Opcode::GM(ra, imm)
                 if Self::is_register_writable(ra) && self.gas_charge(&op).is_ok() && self.metadata(ra, imm).is_ok() => {
             }
-
-            Opcode::LDC(ra, rb, rc)
-                if self.gas_charge(&op).is_ok()
-                    && self
-                        .load_contract_code(self.registers[ra], self.registers[rb], self.registers[rc])
-                        .is_ok() => {}
 
             Opcode::SLDC(_ra, _rb, _rc) => result = Err(InterpreterError::OpcodeUnimplemented(op)),
             Opcode::RVRT(_ra) => result = Err(InterpreterError::OpcodeUnimplemented(op)),

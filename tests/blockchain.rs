@@ -344,7 +344,7 @@ fn load_external_contract_code() {
         Opcode::LW(reg_b, reg_a, 1),                   // Load second word of the contract into r[b]
         Opcode::LW(reg_a, reg_a, 0),                   // Load first word of the contract into r[a]
         Opcode::LOG(reg_a, reg_b, REG_ZERO, REG_ZERO), // Log the results
-        Opcode::RET(REG_ZERO),                         // Done
+        Opcode::RET(REG_ONE),                          // Done, success
     ]);
 
     let tx_deploy_loader = Transaction::script(

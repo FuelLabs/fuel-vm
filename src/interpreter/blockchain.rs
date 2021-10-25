@@ -58,7 +58,7 @@ where
         };
 
         // Fetch the contract code
-        let contract = self.contract(contract_id)?.into_owned();
+        let contract = self.contract(contract_id)?;
 
         // Calculate the word aligned padded len based on $rC
         let len_over = (length_to_copy_unaligned as usize) % WORD_SIZE;
@@ -66,10 +66,11 @@ where
         let padded_len = (length_to_copy_unaligned as usize) + padding_len;
 
         // Fetch the code from the contract
-        let end_in_contract = (start_in_contract + padded_len).min(contract.as_ref().len());
+        let contract_len = contract.as_ref().as_ref().len();
+        let end_in_contract = (start_in_contract + padded_len).min(contract_len);
         let copy_len = end_in_contract - start_in_contract;
         let mut code = vec![0; padded_len]; // padded with zeroes
-        code[..copy_len].copy_from_slice(&contract.as_ref()[start_in_contract..end_in_contract]);
+        code[..copy_len].copy_from_slice(&contract.as_ref().as_ref()[start_in_contract..end_in_contract]);
 
         // Increment the frame code size by len defined in memory
         let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;

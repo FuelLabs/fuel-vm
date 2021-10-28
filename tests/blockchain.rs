@@ -278,11 +278,10 @@ fn load_external_contract_code() {
     let maturity = 0;
 
     // Start by creating and deploying a new example contract
-    #[rustfmt::skip]
     let contract_code: Vec<Opcode> = vec![
-        Opcode::RET(REG_ZERO),
+        Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
         Opcode::RET(REG_ONE),
-        Opcode::RET(0xaa),
+        Opcode::RET(REG_ZERO), // Pad to make length uneven to test padding
     ];
 
     let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
@@ -315,11 +314,10 @@ fn load_external_contract_code() {
 
     let count = ContractId::LEN as Immediate12;
 
-    #[rustfmt::skip]
     let mut load_contract: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),   // r[a] := 0
-        Opcode::ORI(reg_a, reg_a, count),   // r[a] := r[a] | ContractId::LEN
-        Opcode::ALOC(reg_a),                // Reserve space for contract id in the heap
+        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
+        Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+        Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
     ];
 
     // Generate code for pushing contract id to heap
@@ -344,8 +342,23 @@ fn load_external_contract_code() {
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
         Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
         Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
-        Opcode::RET(REG_ONE),                           // Done, success
+        Opcode::NOOP,                                   // Patched to the jump later
     ]);
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        load_contract.clone().into_iter().collect(),
+        vec![],
+        vec![input0.clone()],
+        vec![output1],
+        vec![],
+    );
+
+    // Patch the code with correct jump address
+    let transaction_end_addr = tx_deploy_loader.serialized_size() - Transaction::script_offset();
+    *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
 
     let tx_deploy_loader = Transaction::script(
         gas_price,
@@ -363,7 +376,13 @@ fn load_external_contract_code() {
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
         code.extend(&[0; 4]);
-        assert_eq!(digest, &Hasher::hash(&code));
+        assert_eq!(digest, &Hasher::hash(&code), "Loaded code digest incorrect");
+    } else {
+        panic!("Script did not return a value");
+    }
+
+    if let Receipt::Log { ra, .. } = receipts.get(1).expect("No receipt") {
+        assert_eq!(*ra, 1, "Invalid log from loaded code");
     } else {
         panic!("Script did not return a value");
     }

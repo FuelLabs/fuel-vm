@@ -1,4 +1,4 @@
-use crate::opcode::OpcodeRepr;
+use crate::opcode::{Opcode, OpcodeRepr};
 
 use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 
@@ -187,6 +187,12 @@ impl Instruction {
 impl From<u32> for Instruction {
     fn from(instruction: u32) -> Self {
         Self::new(instruction)
+    }
+}
+
+impl From<Opcode> for Instruction {
+    fn from(op: Opcode) -> Self {
+        u32::from(op).into()
     }
 }
 

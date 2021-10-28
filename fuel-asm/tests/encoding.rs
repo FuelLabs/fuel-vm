@@ -118,6 +118,9 @@ fn opcode() {
         let op_bytes = op_p.to_be_bytes().to_vec();
 
         let ins = Instruction::from(op_p);
+        let ins_p = Instruction::from(op);
+
+        assert_eq!(ins, ins_p);
 
         let (_, _, _, _, _, imm_ins) = ins.into_inner();
         let imm_op = op.immediate().unwrap_or_default();

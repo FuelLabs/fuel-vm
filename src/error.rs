@@ -1,5 +1,6 @@
 use fuel_asm::{Opcode, OpcodeRepr};
 use fuel_tx::ValidationError;
+use fuel_types::RegisterId;
 
 use std::convert::Infallible;
 use std::error::Error as StdError;
@@ -32,7 +33,7 @@ pub enum InterpreterError {
     WitnessNotFound,
     TxMaturity,
     MetadataIdentifierUndefined,
-    RegisterNotWritable,
+    RegisterNotWritable(RegisterId),
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

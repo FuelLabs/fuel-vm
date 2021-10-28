@@ -75,7 +75,7 @@ impl<S> Interpreter<S> {
         if ra >= REG_WRITABLE {
             Ok(())
         } else {
-            Err(InterpreterError::RegisterNotWritable)
+            Err(InterpreterError::RegisterNotWritable(ra))
         }
     }
 

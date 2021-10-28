@@ -72,7 +72,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), InterpreterError> {
-        if ra > REG_FLAG {
+        if ra >= REG_WRITABLE {
             Ok(())
         } else {
             Err(InterpreterError::RegisterNotWritable)

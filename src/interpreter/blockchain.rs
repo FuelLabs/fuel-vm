@@ -48,9 +48,12 @@ where
         }
 
         // Fetch the contract id
-        // Safety: Memory bounds are checked by the interpreter
-        let contract_id_bytes = &self.memory[id_addr..id_addr + ContractId::LEN];
-        let contract_id = unsafe { ContractId::as_ref_unchecked(contract_id_bytes) };
+        let contract_id = unsafe {
+            // Safety: this area of memory will not be modified until this ref is dropped
+            let bytes = core::slice::from_raw_parts(self.memory.as_ptr().add(id_addr), ContractId::LEN);
+            // Safety: Memory bounds are checked by the interpreter
+            ContractId::as_ref_unchecked(bytes)
+        };
 
         // Check that the contract exists
         if !self.tx.input_contracts().any(|id| id == contract_id) {
@@ -64,11 +67,9 @@ where
         // Calculate the word aligned padded len based on $rC
         let padded_len = bytes::padded_len(&contract[..length_to_copy_unpadded as usize]);
         let padding_len = padded_len - (length_to_copy_unpadded as usize);
-
-        // Fetch the code from the contract
         let contract_len = contract.len();
         let end_in_contract = (start_in_contract + padded_len).min(contract_len);
-        let code = &contract[start_in_contract..end_in_contract].to_vec();
+        let copy_len = end_in_contract - start_in_contract;
 
         // Increment the frame code size by len defined in memory
         let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;
@@ -81,7 +82,13 @@ where
         self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
 
         // Push the contract code to the stack
-        self.push_stack(&code)?;
+        // Safety: Pushing to stack doesn't modify the contract
+        let cow_contract = self.contract(contract_id)?;
+        let contract = cow_contract.as_ref().as_ref();
+        unsafe {
+            let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
+            self.push_stack(&code)?;
+        }
         self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
         self.registers[REG_SP] = ssp + (padded_len as u64);
 

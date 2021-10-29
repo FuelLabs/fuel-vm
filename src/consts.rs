@@ -65,6 +65,9 @@ pub const REG_RETL: usize = 0x0e;
 /// Flags register.
 pub const REG_FLAG: usize = 0x0f;
 
+/// Smallest writable register
+pub const REG_WRITABLE: usize = 0x10;
+
 /* END */
 
 // max sizes in u64 words

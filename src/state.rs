@@ -27,6 +27,20 @@ pub enum ExecuteState {
     DebugEvent(DebugEval),
 }
 
+impl ExecuteState {
+    pub const fn should_continue(&self) -> bool {
+        #[cfg(not(feature = "debug"))]
+        {
+            matches!(self, Self::Proceed)
+        }
+
+        #[cfg(feature = "debug")]
+        {
+            matches!(self, Self::Proceed | Self::DebugEvent(DebugEval::Continue))
+        }
+    }
+}
+
 impl Default for ExecuteState {
     fn default() -> Self {
         Self::Proceed

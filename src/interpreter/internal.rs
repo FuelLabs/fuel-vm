@@ -3,6 +3,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::InterpreterError;
 
+use fuel_asm::Instruction;
 use fuel_tx::consts::*;
 use fuel_tx::Transaction;
 use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
@@ -46,7 +47,7 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn inc_pc(&mut self) -> Result<(), InterpreterError> {
         self.registers[REG_PC]
-            .checked_add(4)
+            .checked_add(Instruction::LEN as Word)
             .ok_or(InterpreterError::ProgramOverflow)
             .map(|pc| self.registers[REG_PC] = pc)
     }
@@ -71,8 +72,12 @@ impl<S> Interpreter<S> {
         matches!(self.context, Context::Predicate)
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> bool {
-        ra > REG_FLAG
+    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), InterpreterError> {
+        if ra >= REG_WRITABLE {
+            Ok(())
+        } else {
+            Err(InterpreterError::RegisterNotWritable(ra))
+        }
     }
 
     pub(crate) const fn transaction(&self) -> &Transaction {

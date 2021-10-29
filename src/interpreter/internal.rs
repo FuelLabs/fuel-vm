@@ -3,6 +3,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::InterpreterError;
 
+use fuel_asm::Instruction;
 use fuel_tx::consts::*;
 use fuel_tx::Transaction;
 use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
@@ -46,7 +47,7 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn inc_pc(&mut self) -> Result<(), InterpreterError> {
         self.registers[REG_PC]
-            .checked_add(4)
+            .checked_add(Instruction::LEN as Word)
             .ok_or(InterpreterError::ProgramOverflow)
             .map(|pc| self.registers[REG_PC] = pc)
     }

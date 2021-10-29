@@ -27,11 +27,15 @@ where
             .map(Instruction::parse_word)
             .ok_or(InterpreterError::ProgramOverflow)?;
 
-        let pc = self.registers[REG_PC];
+        // Store the expected `$pc` after executing `hi`
+        let pc = self.registers[REG_PC] + Instruction::LEN as Word;
         let state = self.instruction(hi)?;
 
         // TODO optimize
-        if state.should_continue() && self.registers[REG_PC] == pc + 4 {
+        // Should execute `lo` only if there is no rupture in the flow - that means
+        // either a breakpoint or some instruction that would skip `lo` such as
+        // `RET`, `JI` or `CALL`
+        if self.registers[REG_PC] == pc && state.should_continue() {
             self.instruction(lo)
         } else {
             Ok(state)

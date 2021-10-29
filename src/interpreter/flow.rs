@@ -5,6 +5,7 @@ use crate::error::InterpreterError;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::Instruction;
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -46,7 +47,7 @@ where
     }
 
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), InterpreterError> {
-        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(4));
+        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
         if j > VM_MAX_RAM - 1 {
             Err(InterpreterError::MemoryOverflow)

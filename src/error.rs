@@ -10,6 +10,7 @@ use std::{fmt, io};
 pub enum InterpreterError {
     OpcodeFailure(Opcode),
     OpcodeUnimplemented(Opcode),
+    OpcodeInvalid(OpcodeRepr),
     OpcodeRepresentationUnimplemented(OpcodeRepr),
     ValidationError(ValidationError),
     Io(io::Error),

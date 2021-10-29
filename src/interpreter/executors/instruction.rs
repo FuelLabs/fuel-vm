@@ -447,11 +447,13 @@ where
                 self.metadata(ra, imm as Immediate18)?;
             }
 
+            // list of currently unimplemented opcodes
             OpcodeRepr::LDC | OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
                 return Err(InterpreterError::OpcodeRepresentationUnimplemented(op))
             }
 
-            _ => return Err(InterpreterError::OpcodeRepresentationUnimplemented(op)),
+            // wildcard match for unused opcodes such as `RESERV01`
+            _ => return Err(InterpreterError::OpcodeInvalid(op)),
         }
 
         Ok(ExecuteState::Proceed)

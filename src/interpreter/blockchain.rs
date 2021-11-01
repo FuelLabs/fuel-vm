@@ -60,14 +60,14 @@ where
             return Err(InterpreterError::ContractNotInTxInputs);
         };
 
-        // Fetch the contract code
-        let cow_contract = self.contract(contract_id)?;
-        let contract = cow_contract.as_ref().as_ref();
-
         // Calculate the word aligned padded len based on $rC
-        let padded_len = bytes::padded_len(&contract[..length_to_copy_unpadded as usize]);
+        let contract_len = {
+            let cow_contract = self.contract(contract_id)?;
+            let contract = cow_contract.as_ref().as_ref();
+            contract.len()
+        };
+        let padded_len = bytes::padded_len_usize(length_to_copy_unpadded as usize);
         let padding_len = padded_len - (length_to_copy_unpadded as usize);
-        let contract_len = contract.len();
         let end_in_contract = (start_in_contract + padded_len).min(contract_len);
         let copy_len = end_in_contract - start_in_contract;
 
@@ -82,9 +82,9 @@ where
         self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
 
         // Push the contract code to the stack
-        // Safety: Pushing to stack doesn't modify the contract
         let cow_contract = self.contract(contract_id)?;
         let contract = cow_contract.as_ref().as_ref();
+        // Safety: Pushing to stack doesn't modify the contract
         unsafe {
             let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
             self.push_stack(&code)?;

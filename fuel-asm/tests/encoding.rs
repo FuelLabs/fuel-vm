@@ -1,5 +1,6 @@
 #[test]
 fn opcode() {
+    // TODO maybe split this test case into several smaller ones?
     use fuel_asm::*;
     use std::io::{Read, Write};
 
@@ -93,6 +94,13 @@ fn opcode() {
 
     let bytes: Vec<u8> = data.iter().copied().collect();
 
+    let data_p = Opcode::from_bytes_iter(bytes.clone());
+    let data_q = Instruction::from_bytes_iter(bytes.clone());
+    let data_q: Vec<Opcode> = data_q.into_iter().collect();
+
+    assert_eq!(data, data_p);
+    assert_eq!(data, data_q);
+
     let pairs = bytes.chunks(8).into_iter().map(|chunk| {
         let mut arr = [0; core::mem::size_of::<Word>()];
         arr.copy_from_slice(chunk);
@@ -107,7 +115,7 @@ fn opcode() {
     assert_eq!(data, result);
 
     let mut bytes: Vec<u8> = vec![];
-    let mut buffer = [0u8; 4];
+    let mut buffer = [0u8; Opcode::LEN];
 
     for mut op in data.clone() {
         op.read(&mut buffer)
@@ -128,7 +136,7 @@ fn opcode() {
         assert_eq!(imm_op, imm_ins);
 
         let op_p = Opcode::from(op_p);
-        let op_q = Opcode::from_bytes_unchecked(op_bytes.as_slice());
+        let op_q = unsafe { Opcode::from_bytes_unchecked(op_bytes.as_slice()) };
 
         assert_eq!(op, Opcode::from(ins));
         assert_eq!(op, op_p);
@@ -138,10 +146,10 @@ fn opcode() {
 
         // Assert opcode can be created from big slices
         op_bytes.extend_from_slice(&[0xff; 25]);
-        while op_bytes.len() > Opcode::BYTES_SIZE {
+        while op_bytes.len() > Opcode::LEN {
             op_bytes.pop();
 
-            let op_r = Opcode::from_bytes_unchecked(op_bytes.as_slice());
+            let op_r = unsafe { Opcode::from_bytes_unchecked(op_bytes.as_slice()) };
             let op_s = Opcode::from_bytes(op_bytes.as_slice())
                 .expect("Failed to safely generate op from bytes!");
 
@@ -165,10 +173,13 @@ fn opcode() {
     }
 
     let mut op_p = Opcode::Undefined;
-    bytes.chunks(4).zip(data.iter()).for_each(|(chunk, op)| {
-        op_p.write(chunk)
-            .expect("Failed to parse opcode from chunk");
+    bytes
+        .chunks(Opcode::LEN)
+        .zip(data.iter())
+        .for_each(|(chunk, op)| {
+            op_p.write(chunk)
+                .expect("Failed to parse opcode from chunk");
 
-        assert_eq!(op, &op_p);
-    });
+            assert_eq!(op, &op_p);
+        });
 }

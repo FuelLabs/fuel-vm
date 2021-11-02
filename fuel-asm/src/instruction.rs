@@ -117,9 +117,11 @@ impl Instruction {
     ///
     /// The caller must ensure that the slice is has at least `Self::LEN` bytes.
     pub unsafe fn from_slice_unchecked(buf: &[u8]) -> Self {
-        debug_assert!(buf.len() >= 4);
+        debug_assert!(buf.len() >= Self::LEN);
+
         let instr = fuel_types::bytes::from_slice_unchecked(buf);
         let instr = u32::from_be_bytes(instr);
+
         Self::from(instr)
     }
 
@@ -187,6 +189,12 @@ impl Instruction {
 impl From<u32> for Instruction {
     fn from(instruction: u32) -> Self {
         Self::new(instruction)
+    }
+}
+
+impl From<[u8; Instruction::LEN]> for Instruction {
+    fn from(instruction: [u8; Instruction::LEN]) -> Self {
+        u32::from_be_bytes(instruction).into()
     }
 }
 
@@ -318,6 +326,39 @@ impl Instruction {
             unsafe { Ok(Self::from_slice_unchecked(bytes)) }
         }
     }
+
+    /// Create a set of `Instruction` from an iterator of bytes
+    ///
+    /// If not padded to [`Self::LEN`], will consume the unaligned bytes but won't try to parse an
+    /// instruction from them.
+    pub fn from_bytes_iter<I>(bytes: I) -> Vec<Self>
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        let mut bytes = bytes.into_iter();
+        let mut buf = [0u8; Self::LEN];
+        let mut ret = Vec::with_capacity(bytes.size_hint().0 / Self::LEN);
+
+        loop {
+            let n = bytes
+                .by_ref()
+                .take(Self::LEN)
+                .zip(buf.as_mut().iter_mut())
+                .fold(0, |n, (x, b)| {
+                    *b = x;
+
+                    n + 1
+                });
+
+            if n < Self::LEN {
+                break;
+            }
+
+            ret.push(Self::from(buf));
+        }
+
+        ret
+    }
 }
 
 #[cfg(feature = "std")]
@@ -330,5 +371,15 @@ impl iter::FromIterator<Instruction> for Vec<u8> {
             .map(Instruction::to_bytes)
             .flatten()
             .collect()
+    }
+}
+
+#[cfg(feature = "std")]
+impl iter::FromIterator<Opcode> for Vec<Instruction> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Opcode>,
+    {
+        iter.into_iter().map(Instruction::from).collect()
     }
 }

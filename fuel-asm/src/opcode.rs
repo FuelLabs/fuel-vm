@@ -1,6 +1,4 @@
-use fuel_types::{Immediate12, Immediate18, Immediate24, RegisterId, Word};
-
-use core::convert::TryFrom;
+use fuel_types::{bytes, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 
 #[cfg(feature = "std")]
 use std::{io, iter};
@@ -1255,7 +1253,7 @@ pub enum Opcode {
 
 impl Opcode {
     /// Size of the struct when serialized into bytes
-    pub const BYTES_SIZE: usize = 4;
+    pub const LEN: usize = 4;
 
     /// Create a new [`Opcode`] given the internal attributes
     pub const fn new(instruction: Instruction) -> Self {
@@ -1355,21 +1353,20 @@ impl Opcode {
 
     /// Create a `Opcode` from a slice of bytes
     ///
-    /// # Panics
+    /// # Safety
     ///
-    /// This function will panic if the length of the bytes is smaller than
-    /// [`Opcode::BYTES_SIZE`].
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
-        assert!(Self::BYTES_SIZE <= bytes.len());
+    /// Reflects the requirements of [`bytes::from_slice_unchecked`]
+    pub unsafe fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        debug_assert!(Self::LEN <= bytes.len());
 
-        <[u8; Self::BYTES_SIZE]>::try_from(&bytes[..Self::BYTES_SIZE])
-            .map(u32::from_be_bytes)
-            .map(Self::from)
-            .unwrap_or_else(|_| unreachable!())
+        let op = bytes::from_slice_unchecked(bytes);
+        let op = u32::from_be_bytes(op);
+
+        op.into()
     }
 
     /// Convert the opcode to bytes representation
-    pub fn to_bytes(self) -> [u8; Self::BYTES_SIZE] {
+    pub fn to_bytes(self) -> [u8; Self::LEN] {
         u32::from(self).to_be_bytes()
     }
 
@@ -1550,22 +1547,62 @@ impl Opcode {
     /// Create a `Opcode` from a slice of bytes
     ///
     /// This function will fail if the length of the bytes is smaller than
-    /// [`Opcode::BYTES_SIZE`].
+    /// [`Opcode::LEN`].
     pub fn from_bytes(bytes: &[u8]) -> io::Result<Self> {
-        if bytes.len() < Self::BYTES_SIZE {
+        if bytes.len() < Self::LEN {
             Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "The provided buffer is not big enough!",
             ))
         } else {
-            Ok(Self::from_bytes_unchecked(bytes))
+            // Safety: checked length
+            Ok(unsafe { Self::from_bytes_unchecked(bytes) })
         }
+    }
+
+    /// Create a set of `Opcode` from an iterator of bytes
+    ///
+    /// If not padded to [`Self::LEN`], will consume the unaligned bytes but won't try to parse an
+    /// opcode from them.
+    pub fn from_bytes_iter<I>(bytes: I) -> Vec<Self>
+    where
+        I: IntoIterator<Item = u8>,
+    {
+        let mut bytes = bytes.into_iter();
+        let mut buf = [0u8; Self::LEN];
+        let mut ret = Vec::with_capacity(bytes.size_hint().0 / Self::LEN);
+
+        loop {
+            let n = bytes
+                .by_ref()
+                .take(Self::LEN)
+                .zip(buf.as_mut().iter_mut())
+                .fold(0, |n, (x, b)| {
+                    *b = x;
+
+                    n + 1
+                });
+
+            if n < Self::LEN {
+                break;
+            }
+
+            ret.push(Self::from(buf));
+        }
+
+        ret
     }
 }
 
 impl From<Instruction> for Opcode {
     fn from(parsed: Instruction) -> Self {
         Self::new(parsed)
+    }
+}
+
+impl From<[u8; Opcode::LEN]> for Opcode {
+    fn from(b: [u8; Opcode::LEN]) -> Self {
+        u32::from_be_bytes(b).into()
     }
 }
 
@@ -1940,10 +1977,10 @@ impl From<Opcode> for u32 {
 #[cfg(feature = "std")]
 impl io::Read for Opcode {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        buf.chunks_exact_mut(4)
+        buf.chunks_exact_mut(Opcode::LEN)
             .next()
             .map(|chunk| chunk.copy_from_slice(&u32::from(*self).to_be_bytes()))
-            .map(|_| 4)
+            .map(|_| Opcode::LEN)
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::UnexpectedEof,
@@ -1956,7 +1993,8 @@ impl io::Read for Opcode {
 #[cfg(feature = "std")]
 impl io::Write for Opcode {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        buf.chunks_exact(4)
+        // Safety: checked length
+        buf.chunks_exact(Opcode::LEN)
             .next()
             .ok_or_else(|| {
                 io::Error::new(
@@ -1964,8 +2002,8 @@ impl io::Write for Opcode {
                     "The provided buffer is not big enough!",
                 )
             })
-            .map(|bytes| *self = Self::from_bytes_unchecked(bytes))
-            .map(|_| 4)
+            .map(|bytes| *self = unsafe { Self::from_bytes_unchecked(bytes) })
+            .map(|_| Opcode::LEN)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -1980,5 +2018,15 @@ impl iter::FromIterator<Opcode> for Vec<u8> {
         T: IntoIterator<Item = Opcode>,
     {
         iter.into_iter().map(Opcode::to_bytes).flatten().collect()
+    }
+}
+
+#[cfg(feature = "std")]
+impl iter::FromIterator<Instruction> for Vec<Opcode> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Instruction>,
+    {
+        iter.into_iter().map(Opcode::from).collect()
     }
 }

@@ -6,7 +6,6 @@ use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::Opcode;
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -122,13 +121,7 @@ where
                 return Err(InterpreterError::ProgramOverflow);
             }
 
-            let op = self.memory[self.registers[REG_PC] as usize..]
-                .chunks_exact(4)
-                .next()
-                .map(Opcode::from_bytes_unchecked)
-                .ok_or(InterpreterError::ProgramOverflow)?;
-
-            match self.execute(op)? {
+            match self.execute()? {
                 ExecuteState::Return(r) => {
                     return Ok(ProgramState::Return(r));
                 }
@@ -137,12 +130,16 @@ where
                     return Ok(ProgramState::ReturnData(d));
                 }
 
+                ExecuteState::Revert(r) => {
+                    return Ok(ProgramState::Revert(r));
+                }
+
+                ExecuteState::Proceed => (),
+
                 #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::RunProgram(d));
                 }
-
-                _ => (),
             }
         }
     }

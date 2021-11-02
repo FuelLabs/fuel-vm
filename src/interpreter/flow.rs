@@ -5,10 +5,11 @@ use crate::error::InterpreterError;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::Instruction;
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, Receipt};
 use fuel_types::bytes::SerializableVec;
-use fuel_types::{Color, RegisterId, Word};
+use fuel_types::{Bytes32, Color, RegisterId, Word};
 
 use std::cmp;
 use std::convert::TryFrom;
@@ -19,6 +20,8 @@ where
 {
     // TODO add CIMV tests
     pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         match self.tx.inputs().get(b as usize) {
             Some(Input::Coin { maturity, .. }) if maturity <= &c => {
                 self.registers[ra] = 1;
@@ -32,6 +35,8 @@ where
 
     // TODO add CTMV tests
     pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         if b <= self.tx.maturity() {
             self.registers[ra] = 1;
 
@@ -42,7 +47,7 @@ where
     }
 
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), InterpreterError> {
-        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(4));
+        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
         if j > VM_MAX_RAM - 1 {
             Err(InterpreterError::MemoryOverflow)
@@ -156,10 +161,11 @@ where
         self.registers[REG_RET] = a;
         self.registers[REG_RETL] = 0;
 
+        // TODO if ret instruction is in memory boundary, inc_pc shouldn't fail
         self.return_from_context(receipt)
     }
 
-    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, InterpreterError> {
         if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
             return Err(InterpreterError::MemoryOverflow);
         }
@@ -179,6 +185,30 @@ where
         self.registers[REG_RET] = a;
         self.registers[REG_RETL] = b;
 
-        self.return_from_context(receipt)
+        self.return_from_context(receipt)?;
+
+        Ok(digest)
+    }
+
+    pub(crate) fn revert(&mut self, a: Word) -> Result<(), InterpreterError> {
+        let receipt = Receipt::revert(
+            self.internal_contract_or_default(),
+            a,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.receipts.push(receipt);
+
+        // TODO
+        // All OutputContract outputs will have the same amount and stateRoot as on
+        // initialization.
+        //
+        // All OutputVariable outputs will have to and amount of zero.
+        //
+        // All OutputContractConditional outputs will have contractID, amount, and
+        // stateRoot of zero.
+
+        Ok(())
     }
 }

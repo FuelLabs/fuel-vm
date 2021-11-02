@@ -11,7 +11,7 @@ pub mod state;
 pub mod storage;
 
 pub mod prelude {
-    pub use fuel_asm::Opcode;
+    pub use fuel_asm::{Instruction, Opcode, OpcodeRepr};
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     pub use fuel_tx::{Input, Output, Receipt, Transaction, ValidationError, Witness};
     pub use fuel_types::{

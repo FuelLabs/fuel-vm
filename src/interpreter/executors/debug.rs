@@ -17,6 +17,8 @@ where
 
             ProgramState::ReturnData(d) => Ok(ProgramState::ReturnData(d)),
 
+            ProgramState::Revert(w) => Ok(ProgramState::Revert(w)),
+
             ProgramState::RunProgram(_) => self.run_program(),
 
             ProgramState::VerifyPredicate(_) => unimplemented!(),

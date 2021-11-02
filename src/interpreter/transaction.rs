@@ -7,6 +7,7 @@ use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn transaction_input_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
             .inputs()
@@ -18,6 +19,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn transaction_input_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = (VM_TX_MEMORY
             + self
                 .tx
@@ -28,6 +30,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn transaction_output_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
             .outputs()
@@ -39,6 +42,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn transaction_output_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = (VM_TX_MEMORY
             + self
                 .tx
@@ -49,6 +53,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn transaction_witness_length(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
             .witnesses()
@@ -60,6 +65,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn transaction_witness_start(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
         self.registers[ra] = (VM_TX_MEMORY
             + self
                 .tx

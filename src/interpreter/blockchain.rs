@@ -199,6 +199,8 @@ where
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+        Self::is_register_writable(ra)?;
+
         if b > VM_MAX_RAM - ContractId::LEN as Word {
             return Err(InterpreterError::MemoryOverflow);
         }

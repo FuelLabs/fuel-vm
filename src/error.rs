@@ -1,5 +1,6 @@
-use fuel_asm::Opcode;
+use fuel_asm::{Opcode, OpcodeRepr};
 use fuel_tx::ValidationError;
+use fuel_types::RegisterId;
 
 use std::convert::Infallible;
 use std::error::Error as StdError;
@@ -9,6 +10,8 @@ use std::{fmt, io};
 pub enum InterpreterError {
     OpcodeFailure(Opcode),
     OpcodeUnimplemented(Opcode),
+    OpcodeInvalid(OpcodeRepr),
+    OpcodeRepresentationUnimplemented(OpcodeRepr),
     ValidationError(ValidationError),
     Io(io::Error),
     TransactionCreateStaticContractNotFound,
@@ -32,6 +35,7 @@ pub enum InterpreterError {
     WitnessNotFound,
     TxMaturity,
     MetadataIdentifierUndefined,
+    RegisterNotWritable(RegisterId),
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,

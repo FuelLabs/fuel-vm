@@ -2,7 +2,7 @@
 name = "fuel-types"
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/FuelLabs/fuel-types"
 description = "Fuel data types."
 

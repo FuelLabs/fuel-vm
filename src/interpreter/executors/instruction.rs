@@ -357,6 +357,11 @@ where
                 self.code_size(ra, self.registers[rb])?;
             }
 
+            OpcodeRepr::LDC => {
+                self.gas_charge(GAS_LDC)?;
+                self.load_contract_code(a, b, c)?;
+            }
+
             OpcodeRepr::LOG => {
                 self.gas_charge(GAS_LOG)?;
                 self.log(a, b, c, d)?;
@@ -448,7 +453,7 @@ where
             }
 
             // list of currently unimplemented opcodes
-            OpcodeRepr::LDC | OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
+            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
                 return Err(InterpreterError::OpcodeRepresentationUnimplemented(op))
             }
 

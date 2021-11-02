@@ -59,6 +59,7 @@ pub const GAS_CB: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CCP: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CROO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CSIZ: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_LDC: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_LOG: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_LOGD: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_MINT: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);

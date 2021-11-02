@@ -61,15 +61,23 @@ where
         };
 
         // Calculate the word aligned padded len based on $rC
-        let contract_len = {
-            let cow_contract = self.contract(contract_id)?;
-            let contract = cow_contract.as_ref().as_ref();
-            contract.len()
-        };
+        let cow_contract = self.contract(contract_id)?;
+        let contract = cow_contract.as_ref().as_ref();
+        let contract_len = contract.len();
+
         let padded_len = bytes::padded_len_usize(length_to_copy_unpadded as usize);
         let padding_len = padded_len - (length_to_copy_unpadded as usize);
         let end_in_contract = (start_in_contract + padded_len).min(contract_len);
         let copy_len = end_in_contract - start_in_contract;
+
+        // Push the contract code to the stack
+        // Safety: Pushing to stack doesn't modify the contract
+        unsafe {
+            let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
+            self.push_stack(&code)?;
+        }
+        self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
+        self.registers[REG_SP] = ssp + (padded_len as u64);
 
         // Increment the frame code size by len defined in memory
         let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;
@@ -80,17 +88,6 @@ where
         });
         let new = ((old as usize) + padded_len) as Word;
         self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
-
-        // Push the contract code to the stack
-        let cow_contract = self.contract(contract_id)?;
-        let contract = cow_contract.as_ref().as_ref();
-        // Safety: Pushing to stack doesn't modify the contract
-        unsafe {
-            let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
-            self.push_stack(&code)?;
-        }
-        self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
-        self.registers[REG_SP] = ssp + (padded_len as u64);
 
         self.inc_pc()
     }

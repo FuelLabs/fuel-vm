@@ -9,7 +9,7 @@ fn opcode() {
     let imm18 = 0x2ffff;
     let imm24 = 0xbfffff;
 
-    let data = vec![
+    let mut data = vec![
         Opcode::ADD(r, r, r),
         Opcode::ADDI(r, r, imm12),
         Opcode::AND(r, r, r),
@@ -53,6 +53,7 @@ fn opcode() {
         Opcode::MCL(r, r),
         Opcode::MCLI(r, imm18),
         Opcode::MCP(r, r, r),
+        Opcode::MCPI(r, r, imm12),
         Opcode::MEQ(r, r, r, r),
         Opcode::SB(r, r, imm12),
         Opcode::SW(r, r, imm12),
@@ -89,8 +90,12 @@ fn opcode() {
         Opcode::FLAG(r),
         Opcode::GM(r, imm18),
         Opcode::Undefined,
-        Opcode::Undefined,
     ];
+
+    // Pad to even length
+    if data.len() % 2 != 0 {
+        data.push(Opcode::Undefined);
+    }
 
     let bytes: Vec<u8> = data.iter().copied().collect();
 

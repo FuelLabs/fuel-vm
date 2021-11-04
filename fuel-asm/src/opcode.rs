@@ -682,6 +682,24 @@ pub enum Opcode {
     ///   check](./main.md#ownership)
     MCP(RegisterId, RegisterId, RegisterId),
 
+    /// Copy bytes in memory.
+    ///
+    /// | Operation   | ```MEM[$rA, imm] = MEM[$rB, imm];``` |
+    /// | Syntax      | `mcpi $rA, $rB, imm`                 |
+    /// | Encoding    | `0x00 rA rB i i`                     |
+    ///
+    /// #### Panics
+    ///
+    /// - `$rA + imm` overflows
+    /// - `$rB + imm` overflows
+    /// - `$rA + imm > VM_MAX_RAM`
+    /// - `$rB + imm > VM_MAX_RAM`
+    /// - `imm > MEM_MAX_ACCESS_SIZE`
+    /// - The memory ranges `MEM[$rA, imm]` and `MEM[$rB, imm]` overlap
+    /// - The memory range `MEM[$rA, imm]`  does not pass [ownership
+    ///   check](./main.md#ownership)
+    MCPI(RegisterId, RegisterId, Immediate12),
+
     /// Compare bytes in memory.
     ///
     /// | Operation   | ```$rA = MEM[$rB, $rD] == MEM[$rC, $rD];``` |
@@ -1312,6 +1330,7 @@ impl Opcode {
             OpcodeRepr::MCL => Opcode::MCL(ra, rb),
             OpcodeRepr::MCLI => Opcode::MCLI(ra, imm18),
             OpcodeRepr::MCP => Opcode::MCP(ra, rb, rc),
+            OpcodeRepr::MCPI => Opcode::MCPI(ra, rb, imm12),
             OpcodeRepr::MEQ => Opcode::MEQ(ra, rb, rc, rd),
             OpcodeRepr::SB => Opcode::SB(ra, rb, imm12),
             OpcodeRepr::SW => Opcode::SW(ra, rb, imm12),
@@ -1417,6 +1436,7 @@ impl Opcode {
             Self::MCL(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::MCLI(ra, _) => [Some(*ra), None, None, None],
             Self::MCP(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::MCPI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::MEQ(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::SB(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::SW(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
@@ -1471,6 +1491,7 @@ impl Opcode {
             | Self::SUBI(_, _, imm)
             | Self::XORI(_, _, imm)
             | Self::JNEI(_, _, imm)
+            | Self::MCPI(_, _, imm)
             | Self::LB(_, _, imm)
             | Self::LW(_, _, imm)
             | Self::SB(_, _, imm)
@@ -1829,6 +1850,12 @@ impl From<Opcode> for u32 {
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | ((rc as u32) << 6)
+            }
+            Opcode::MCPI(ra, rb, imm12) => {
+                ((OpcodeRepr::MCPI as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | (imm12 as u32)
             }
             Opcode::MEQ(ra, rb, rc, rd) => {
                 ((OpcodeRepr::MEQ as u32) << 24)

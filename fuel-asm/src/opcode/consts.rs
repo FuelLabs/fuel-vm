@@ -201,8 +201,8 @@ pub enum OpcodeRepr {
     SB = 0x5e,
     /// SW
     SW = 0x5f,
-    /// RESERV60
-    RESERV60 = 0x60,
+    /// MCPI
+    MCPI = 0x60,
     /// RESERV61
     RESERV61 = 0x61,
     /// RESERV62

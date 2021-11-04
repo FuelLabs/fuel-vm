@@ -85,7 +85,9 @@ const GAS_OP_MEMORY_WRITE: Word = GasUnit::MemoryWrite(0).unit_price();
 const GAS_MCL_BASE: Word = Interpreter::<()>::gas_cost_monad_base(OpcodeRepr::MCL);
 const GAS_MCLI_BASE: Word = Interpreter::<()>::gas_cost_monad_base(OpcodeRepr::MCLI);
 const GAS_MCP_BASE: Word = Interpreter::<()>::gas_cost_monad_base(OpcodeRepr::MCP);
+const GAS_MCPI_BASE: Word = Interpreter::<()>::gas_cost_monad_base(OpcodeRepr::MCPI);
 
 pub const GAS_MCL: fn(Word) -> Word = |m| GAS_MCL_BASE + GAS_OP_MEMORY_WRITE * m;
 pub const GAS_MCLI: fn(Word) -> Word = |m| GAS_MCLI_BASE + GAS_OP_MEMORY_WRITE * m;
 pub const GAS_MCP: fn(Word) -> Word = |m| GAS_MCP_BASE + GAS_OP_MEMORY_WRITE * m;
+pub const GAS_MCPI: fn(Word) -> Word = |m| GAS_MCPI_BASE + GAS_OP_MEMORY_WRITE * m;

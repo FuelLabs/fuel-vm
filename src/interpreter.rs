@@ -64,6 +64,10 @@ impl<S> Interpreter<S> {
         &self.registers
     }
 
+    pub fn call_stack(&self) -> &[CallFrame] {
+        self.frames.as_slice()
+    }
+
     pub const fn debugger(&self) -> &Debugger {
         &self.debugger
     }

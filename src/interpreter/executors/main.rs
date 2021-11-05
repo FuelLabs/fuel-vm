@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::InterpreterError;
+use crate::error::{Backtrace, InterpreterError};
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
@@ -156,10 +156,29 @@ where
         Ok(transition)
     }
 
+    pub fn transition_with_backtrace(storage: S, tx: Transaction) -> Result<StateTransition, Backtrace> {
+        let mut vm = Interpreter::with_storage(storage);
+
+        let state = vm.init(tx).and_then(|_| vm.run()).map_err(|e| e.backtrace(&vm))?;
+
+        let (tx, receipts) = vm.into_inner();
+        let transition = StateTransition::new(state, tx, receipts);
+
+        Ok(transition)
+    }
+
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         self.init(tx)?;
 
         let state = self.run()?;
+        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
+
+        Ok(transition)
+    }
+
+    pub fn transact_with_backtrace(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, Backtrace> {
+        let state = self.init(tx).and_then(|_| self.run()).map_err(|e| e.backtrace(&self))?;
+
         let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
 
         Ok(transition)

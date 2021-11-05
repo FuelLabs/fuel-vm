@@ -302,6 +302,11 @@ where
                 self.memcopy(a, b, c)?;
             }
 
+            OpcodeRepr::MCPI => {
+                self.gas_charge_monad(GAS_MCPI, imm)?;
+                self.memcopy(a, b, imm)?;
+            }
+
             OpcodeRepr::MEQ => {
                 self.gas_charge(GAS_MEQ)?;
                 self.memeq(ra, b, c, d)?;

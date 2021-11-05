@@ -46,7 +46,7 @@ impl<S> Interpreter<S> {
         match op {
             MCL | MCLI => GasUnit::Arithmetic(1).join(GasUnit::MemoryOwnership(1)),
 
-            MCP => GasUnit::Arithmetic(2).join(GasUnit::MemoryOwnership(1)),
+            MCP | MCPI => GasUnit::Arithmetic(2).join(GasUnit::MemoryOwnership(1)),
 
             // TODO Compile-time panic didn't land in stable yet
             // https://github.com/rust-lang/rust/issues/51999

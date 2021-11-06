@@ -55,7 +55,10 @@ impl<S> Interpreter<S> {
         .cost()
     }
 
-    pub(crate) fn gas_charge_monad(&mut self, monad: fn(Word) -> Word, arg: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn gas_charge_monad<F>(&mut self, monad: F, arg: Word) -> Result<(), InterpreterError>
+    where
+        F: FnOnce(Word) -> Word,
+    {
         self.gas_charge(monad(arg))
     }
 

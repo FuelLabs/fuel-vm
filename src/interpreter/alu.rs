@@ -5,13 +5,10 @@ use crate::error::InterpreterError;
 use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn alu_overflow<B, C>(
-        &mut self,
-        ra: RegisterId,
-        f: fn(B, C) -> (Word, bool),
-        b: B,
-        c: C,
-    ) -> Result<(), InterpreterError> {
+    pub(crate) fn alu_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), InterpreterError>
+    where
+        F: FnOnce(B, C) -> (Word, bool),
+    {
         Self::is_register_writable(ra)?;
 
         let (result, overflow) = f(b, c);
@@ -30,14 +27,17 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn alu_error<B, C>(
+    pub(crate) fn alu_error<F, B, C>(
         &mut self,
         ra: RegisterId,
-        f: fn(B, C) -> Word,
+        f: F,
         b: B,
         c: C,
         err: bool,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterError>
+    where
+        F: FnOnce(B, C) -> Word,
+    {
         Self::is_register_writable(ra)?;
 
         self.registers[REG_OF] = 0;

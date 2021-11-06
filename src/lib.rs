@@ -24,7 +24,7 @@ pub mod prelude {
     pub use crate::client::{MemoryClient, MemoryStorage};
     pub use crate::context::Context;
     pub use crate::contract::Contract;
-    pub use crate::error::InterpreterError;
+    pub use crate::error::{Backtrace, InterpreterError};
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
     pub use crate::storage::InterpreterStorage;

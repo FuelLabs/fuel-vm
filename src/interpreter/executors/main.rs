@@ -169,18 +169,29 @@ where
         Ok(transition)
     }
 
+    /// Allocate internally a new instance of [`Interpreter`] with the provided
+    /// storage, initialize it with the provided transaction and return the
+    /// result of th execution in form of [`StateTransition`]
     pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
         Self::transition_internal(|_, e| e, storage, tx)
     }
 
+    /// Execute the same procedure as [`Self::transition`], but in case of
+    /// error, allocate additional data to compose a [`Backtrace`]
     pub fn transition_with_backtrace(storage: S, tx: Transaction) -> Result<StateTransition, Backtrace> {
         Self::transition_internal(|vm, e| e.backtrace(vm), storage, tx)
     }
 
+    /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
+    /// transaction and execute it. The result will be bound to the lifetime
+    /// of the interpreter and will avoid unnecessary copy with the data
+    /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         self.transact_internal(|_, e| e, tx)
     }
 
+    /// Execute the same procedure as [`Self::transact`], but in case of
+    /// error, allocate additional data to compose a [`Backtrace`]
     pub fn transact_with_backtrace(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, Backtrace> {
         self.transact_internal(|interpreter, e| e.backtrace(interpreter), tx)
     }

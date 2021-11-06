@@ -28,6 +28,11 @@ random = [ "fuel-types/random", "fuel-tx/random" ]
 serde-types = [ "fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde" ]
 
 [[test]]
+name = "test-backtrace"
+path = "tests/backtrace.rs"
+required-features = [ "random" ]
+
+[[test]]
 name = "test-blockchain"
 path = "tests/blockchain.rs"
 required-features = [ "random" ]

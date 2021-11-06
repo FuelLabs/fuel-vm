@@ -264,11 +264,10 @@ impl<S> Interpreter<S> {
         a < self.registers[REG_SP]
     }
 
-    pub(crate) fn stack_pointer_overflow(
-        &mut self,
-        f: fn(Word, Word) -> (Word, bool),
-        v: Word,
-    ) -> Result<(), InterpreterError> {
+    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), InterpreterError>
+    where
+        F: FnOnce(Word, Word) -> (Word, bool),
+    {
         let (result, overflow) = f(self.registers[REG_SP], v);
 
         if overflow || result > self.registers[REG_HP] {

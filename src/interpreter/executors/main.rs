@@ -144,43 +144,44 @@ where
         }
     }
 
-    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
+    fn transition_internal<F, E>(err: F, storage: S, tx: Transaction) -> Result<StateTransition, E>
+    where
+        F: FnOnce(&Self, InterpreterError) -> E,
+    {
         let mut vm = Interpreter::with_storage(storage);
 
-        vm.init(tx)?;
+        let state = vm.init(tx).and_then(|_| vm.run()).map_err(|e| err(&vm, e))?;
 
-        let state = vm.run()?;
         let (tx, receipts) = vm.into_inner();
         let transition = StateTransition::new(state, tx, receipts);
 
         Ok(transition)
+    }
+
+    fn transact_internal<F, E>(&mut self, err: F, tx: Transaction) -> Result<StateTransitionRef<'_>, E>
+    where
+        F: FnOnce(&Interpreter<S>, InterpreterError) -> E,
+    {
+        let state = self.init(tx).and_then(|_| self.run()).map_err(|e| err(&self, e))?;
+
+        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
+
+        Ok(transition)
+    }
+
+    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
+        Self::transition_internal(|_, e| e, storage, tx)
     }
 
     pub fn transition_with_backtrace(storage: S, tx: Transaction) -> Result<StateTransition, Backtrace> {
-        let mut vm = Interpreter::with_storage(storage);
-
-        let state = vm.init(tx).and_then(|_| vm.run()).map_err(|e| e.backtrace(&vm))?;
-
-        let (tx, receipts) = vm.into_inner();
-        let transition = StateTransition::new(state, tx, receipts);
-
-        Ok(transition)
+        Self::transition_internal(|vm, e| e.backtrace(vm), storage, tx)
     }
 
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        self.init(tx)?;
-
-        let state = self.run()?;
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
+        self.transact_internal(|_, e| e, tx)
     }
 
     pub fn transact_with_backtrace(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, Backtrace> {
-        let state = self.init(tx).and_then(|_| self.run()).map_err(|e| e.backtrace(&self))?;
-
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
+        self.transact_internal(|interpreter, e| e.backtrace(interpreter), tx)
     }
 }

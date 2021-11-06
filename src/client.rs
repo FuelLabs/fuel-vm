@@ -1,4 +1,4 @@
-use crate::error::InterpreterError;
+use crate::error::{Backtrace, InterpreterError};
 use crate::interpreter::Interpreter;
 
 use fuel_tx::{Receipt, Transaction};
@@ -35,10 +35,14 @@ impl MemoryClient {
         Self { storage }
     }
 
-    pub fn transition<I: IntoIterator<Item = Transaction>>(
+    fn transition_internal<F, E, I: IntoIterator<Item = Transaction>>(
         &mut self,
+        err: F,
         txs: I,
-    ) -> Result<Vec<Receipt>, InterpreterError> {
+    ) -> Result<Vec<Receipt>, E>
+    where
+        F: Fn(&Interpreter<&mut MemoryStorage>, InterpreterError) -> E,
+    {
         let mut interpreter = Interpreter::with_storage(&mut self.storage);
 
         // A transaction that is considered valid will be reverted if the runtime
@@ -64,9 +68,24 @@ impl MemoryClient {
                 }
 
                 Err(InterpreterError::ValidationError(e)) => {
+                    let err = err(&interpreter, e.into());
                     interpreter.as_mut().rollback();
 
-                    Err(InterpreterError::ValidationError(e))
+                    Err(err)
+                }
+
+                Err(InterpreterError::OpcodeRepresentationUnimplemented(op)) => {
+                    let err = err(&interpreter, InterpreterError::OpcodeRepresentationUnimplemented(op));
+                    interpreter.as_mut().rollback();
+
+                    Err(err)
+                }
+
+                Err(InterpreterError::OpcodeInvalid(op)) => {
+                    let err = err(&interpreter, InterpreterError::OpcodeInvalid(op));
+                    interpreter.as_mut().rollback();
+
+                    Err(err)
                 }
 
                 // TODO VM is to return a `RVRT` receipt on runtime error. This way, the return of
@@ -82,5 +101,19 @@ impl MemoryClient {
         self.storage.persist();
 
         Ok(receipts)
+    }
+
+    pub fn transition<I: IntoIterator<Item = Transaction>>(
+        &mut self,
+        txs: I,
+    ) -> Result<Vec<Receipt>, InterpreterError> {
+        self.transition_internal(|_, e| e, txs)
+    }
+
+    pub fn transition_with_backtrace<I: IntoIterator<Item = Transaction>>(
+        &mut self,
+        txs: I,
+    ) -> Result<Vec<Receipt>, Backtrace> {
+        self.transition_internal(|interpreter, e| e.backtrace(interpreter), txs)
     }
 }

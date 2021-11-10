@@ -7,8 +7,8 @@ use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
 
-#[derive(Debug)]
 /// Interpreter runtime error variants.
+#[derive(Debug)]
 pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.

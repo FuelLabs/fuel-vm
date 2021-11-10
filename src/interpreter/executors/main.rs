@@ -1,8 +1,9 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::{InterpreterError, RuntimeError};
+use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
+use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
@@ -205,12 +206,26 @@ where
         }
     }
 
+    /// Allocate internally a new instance of [`Interpreter`] with the provided
+    /// storage, initialize it with the provided transaction and return the
+    /// result of th execution in form of [`StateTransition`]
+    pub fn transact_owned(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
+        Interpreter::with_storage(storage)
+            .transact(tx)
+            .map(|st| st.into_owned())
+    }
+
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        let state = self.init(tx).and_then(|_| self.run())?;
+        let state_result = self.init(tx).and_then(|_| self.run());
+
+        #[cfg(feature = "profile-any")]
+        self.profiler.on_transaction(&state_result);
+
+        let state = state_result?;
 
         let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
 

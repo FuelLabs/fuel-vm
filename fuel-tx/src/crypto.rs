@@ -21,6 +21,16 @@ impl Hasher {
         Self(self.0.chain(data))
     }
 
+    pub fn extend_chain<B, I>(mut self, iter: I) -> Self
+    where
+        B: AsRef<[u8]>,
+        I: IntoIterator<Item = B>,
+    {
+        self.extend(iter);
+
+        self
+    }
+
     pub fn reset(&mut self) {
         self.0.reset();
     }

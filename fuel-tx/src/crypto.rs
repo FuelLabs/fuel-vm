@@ -52,3 +52,12 @@ where
         iter.into_iter().fold(Hasher::default(), Hasher::chain)
     }
 }
+
+impl<B> Extend<B> for Hasher
+where
+    B: AsRef<[u8]>,
+{
+    fn extend<T: IntoIterator<Item = B>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|b| self.input(b))
+    }
+}

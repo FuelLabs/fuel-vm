@@ -4,8 +4,14 @@ use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
 
-use std::convert::TryFrom;
 use std::mem;
+
+// As in celestia-specs, the leaves and nodes are prefixed to avoid
+// second-preimage attacks
+//
+// https://github.com/celestiaorg/celestia-specs/blob/master/src/specs/data_structures.md#binary-merkle-tree
+const LEAF_PREFIX: u8 = 0x00;
+const NODE_PREFIX: u8 = 0x01;
 
 /// Sign a given message and compress the `v` to the signature
 ///
@@ -62,7 +68,10 @@ where
     let mut len = leaves.len() as f32;
 
     if width <= 2 {
-        return leaves.collect::<Hasher>().digest();
+        hasher.input(&[LEAF_PREFIX]);
+        hasher.extend(leaves);
+
+        return hasher.digest();
     }
 
     width /= 2;
@@ -74,8 +83,8 @@ where
     current.iter_mut().for_each(|l| {
         hasher.reset();
 
-        leaves.next().map(|a| hasher.input(a));
-        leaves.next().map(|b| hasher.input(b));
+        hasher.input(&[LEAF_PREFIX]);
+        hasher.extend(leaves.by_ref().take(2));
 
         *l = hasher.digest();
     });
@@ -93,8 +102,8 @@ where
         next.iter_mut().take(width).for_each(|n| {
             hasher.reset();
 
-            c.next().map(|a| hasher.input(a));
-            c.next().map(|b| hasher.input(b));
+            hasher.input(&[NODE_PREFIX]);
+            hasher.extend(c.by_ref().take(2));
 
             *n = hasher.digest();
         });
@@ -113,7 +122,7 @@ mod tests {
     use rand::{Rng, RngCore, SeedableRng};
     use secp256k1::PublicKey;
 
-    use std::convert::TryFrom;
+    use std::iter;
 
     #[test]
     fn ecrecover() {
@@ -146,10 +155,12 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
         // Test for 0 leaves
+        //
+        // Expected root is `h(0x00)`
         let empty: Vec<Address> = vec![];
 
         let root = ephemeral_merkle_root(empty.iter());
-        let empty = Hasher::default().digest();
+        let empty = Hasher::default().chain(&[LEAF_PREFIX]).digest();
 
         assert_eq!(empty, root);
 
@@ -162,32 +173,33 @@ mod tests {
 
         let initial = [a, b, c, d, e];
 
-        let a = [a, b].iter().collect::<Hasher>().digest();
-        let b = [c, d].iter().collect::<Hasher>().digest();
-        let c = [e].iter().collect::<Hasher>().digest();
+        let a = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([a, b]).digest();
+        let b = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([c, d]).digest();
+        let c = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([e]).digest();
 
-        let a = [a, b].iter().collect::<Hasher>().digest();
-        let b = [c].iter().collect::<Hasher>().digest();
+        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+        let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c]).digest();
 
-        let root = [a, b].iter().collect::<Hasher>().digest();
+        let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
         let root_p = ephemeral_merkle_root(initial.iter());
 
         assert_eq!(root, root_p);
 
         // Test for n leaves
-        let mut inputs = vec![Address::default(); 64];
-
-        inputs.iter_mut().for_each(|i| *i = rng.gen());
+        let inputs = iter::repeat(()).map(|_| rng.gen()).take(64).collect::<Vec<Address>>();
 
         (0..65).into_iter().for_each(|w| {
             let initial: Vec<&Address> = inputs.iter().take(w).collect();
             let mut level: Vec<Bytes32> = initial
                 .chunks(2)
-                .map(|c| c.iter().collect::<Hasher>().digest())
+                .map(|c| Hasher::default().chain(&[LEAF_PREFIX]).extend_chain(c).digest())
                 .collect();
 
             while level.len() > 1 {
-                level = level.chunks(2).map(|c| c.iter().collect::<Hasher>().digest()).collect();
+                level = level
+                    .chunks(2)
+                    .map(|c| Hasher::default().chain(&[NODE_PREFIX]).extend_chain(c).digest())
+                    .collect();
             }
 
             let root = level.first().copied().unwrap_or(empty);

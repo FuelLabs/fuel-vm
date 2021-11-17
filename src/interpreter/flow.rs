@@ -12,7 +12,6 @@ use fuel_types::bytes::SerializableVec;
 use fuel_types::{Bytes32, Color, RegisterId, Word};
 
 use std::cmp;
-use std::convert::TryFrom;
 
 impl<S> Interpreter<S>
 where

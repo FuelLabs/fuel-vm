@@ -6,7 +6,6 @@ use fuel_tx::{Transaction, ValidationError};
 use fuel_types::{Bytes32, ContractId, Salt};
 
 use std::cmp;
-use std::convert::TryFrom;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]

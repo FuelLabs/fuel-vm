@@ -4,8 +4,6 @@ use crate::error::InterpreterError;
 
 use fuel_types::{Immediate18, RegisterId, Word};
 
-use std::convert::TryFrom;
-
 const IS_CALLER_EXTERNAL: Immediate18 = 0x000001;
 const GET_CALLER: Immediate18 = 0x000002;
 

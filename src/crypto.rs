@@ -58,36 +58,34 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
 /// The space complexity of this operation is O(n). This means it expects small
 /// sets. For bigger sets (e.g. blockchain state), use a storage backed merkle
 /// implementation
-pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
+// TODO use fuel-merkle https://github.com/FuelLabs/fuel-vm/issues/49
+pub fn ephemeral_merkle_root<L, I>(leaves: I) -> Bytes32
 where
     L: AsRef<[u8]>,
     I: Iterator<Item = L> + ExactSizeIterator,
 {
+    let size = leaves.len();
+
+    let mut width = size.next_power_of_two();
+    let mut len = size as f32;
     let mut hasher = Hasher::default();
-    let mut width = leaves.len().next_power_of_two();
-    let mut len = leaves.len() as f32;
 
-    if width <= 2 {
-        hasher.input(&[LEAF_PREFIX]);
-        hasher.extend(leaves);
+    let mut current: Vec<Bytes32> = leaves
+        .map(|l| {
+            hasher.reset();
 
-        return hasher.digest();
+            hasher.input(&[LEAF_PREFIX]);
+            hasher.input(l);
+
+            hasher.digest()
+        })
+        .collect();
+
+    if size == 0 {
+        return Hasher::default().digest();
+    } else if width <= 2 {
+        return Hasher::default().chain(&[NODE_PREFIX]).extend_chain(current).digest();
     }
-
-    width /= 2;
-    len /= 2.0;
-
-    let mut current = vec![Bytes32::default(); width];
-
-    // Drain the leaves
-    current.iter_mut().for_each(|l| {
-        hasher.reset();
-
-        hasher.input(&[LEAF_PREFIX]);
-        hasher.extend(leaves.by_ref().take(2));
-
-        *l = hasher.digest();
-    });
 
     let mut next = current.clone();
 
@@ -160,7 +158,7 @@ mod tests {
         let empty: Vec<Address> = vec![];
 
         let root = ephemeral_merkle_root(empty.iter());
-        let empty = Hasher::default().chain(&[LEAF_PREFIX]).digest();
+        let empty = Hasher::default().digest();
 
         assert_eq!(empty, root);
 
@@ -173,9 +171,15 @@ mod tests {
 
         let initial = [a, b, c, d, e];
 
-        let a = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([a, b]).digest();
-        let b = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([c, d]).digest();
-        let c = Hasher::default().chain(&[LEAF_PREFIX]).extend_chain([e]).digest();
+        let a = Hasher::default().chain(&[LEAF_PREFIX]).chain(a).digest();
+        let b = Hasher::default().chain(&[LEAF_PREFIX]).chain(b).digest();
+        let c = Hasher::default().chain(&[LEAF_PREFIX]).chain(c).digest();
+        let d = Hasher::default().chain(&[LEAF_PREFIX]).chain(d).digest();
+        let e = Hasher::default().chain(&[LEAF_PREFIX]).chain(e).digest();
+
+        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+        let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
+        let c = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([e]).digest();
 
         let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
         let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c]).digest();
@@ -191,9 +195,13 @@ mod tests {
         (0..65).into_iter().for_each(|w| {
             let initial: Vec<&Address> = inputs.iter().take(w).collect();
             let mut level: Vec<Bytes32> = initial
-                .chunks(2)
-                .map(|c| Hasher::default().chain(&[LEAF_PREFIX]).extend_chain(c).digest())
+                .iter()
+                .map(|i| Hasher::default().chain(&[LEAF_PREFIX]).chain(i).digest())
                 .collect();
+
+            if level.len() == 1 {
+                level[0] = Hasher::default().chain(&[NODE_PREFIX]).extend_chain(&level).digest();
+            }
 
             while level.len() > 1 {
                 level = level

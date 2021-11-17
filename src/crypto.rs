@@ -154,7 +154,7 @@ mod tests {
 
         // Test for 0 leaves
         //
-        // Expected root is `h(0x00)`
+        // Expected root is `h()`
         let empty: Vec<Address> = vec![];
 
         let root = ephemeral_merkle_root(empty.iter());

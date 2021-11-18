@@ -83,7 +83,9 @@ where
 
     if size == 0 {
         return Hasher::default().digest();
-    } else if width <= 2 {
+    } else if size == 1 {
+        return current[0];
+    } else if size == 2 {
         return Hasher::default().chain(&[NODE_PREFIX]).extend_chain(current).digest();
     }
 
@@ -198,10 +200,6 @@ mod tests {
                 .iter()
                 .map(|i| Hasher::default().chain(&[LEAF_PREFIX]).chain(i).digest())
                 .collect();
-
-            if level.len() == 1 {
-                level[0] = Hasher::default().chain(&[NODE_PREFIX]).extend_chain(&level).digest();
-            }
 
             while level.len() > 1 {
                 level = level

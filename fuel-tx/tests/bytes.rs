@@ -200,6 +200,7 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
         ),
+        Receipt::script_result(rng.gen(), rng.gen()),
     ]);
 }
 

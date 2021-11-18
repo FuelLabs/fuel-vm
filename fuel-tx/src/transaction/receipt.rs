@@ -18,6 +18,7 @@ enum ReceiptRepr {
     LogData = 0x06,
     Transfer = 0x07,
     TransferOut = 0x08,
+    ScriptResult = 0x09,
 }
 
 impl ReceiptRepr {
@@ -72,6 +73,11 @@ impl ReceiptRepr {
                 + WORD_SIZE // amount
                 + Color::LEN // digest
             }
+
+            Self::ScriptResult => {
+                WORD_SIZE // status
+                + WORD_SIZE // gas_used
+            }
         }
     }
 }
@@ -88,6 +94,7 @@ impl From<&Receipt> for ReceiptRepr {
             Receipt::LogData { .. } => Self::LogData,
             Receipt::Transfer { .. } => Self::Transfer,
             Receipt::TransferOut { .. } => Self::TransferOut,
+            Receipt::ScriptResult { .. } => Self::ScriptResult,
         }
     }
 }
@@ -106,6 +113,7 @@ impl TryFrom<Word> for ReceiptRepr {
             0x06 => Ok(Self::LogData),
             0x07 => Ok(Self::Transfer),
             0x08 => Ok(Self::TransferOut),
+            0x09 => Ok(Self::ScriptResult),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "The provided identifier is invalid!",
@@ -196,6 +204,11 @@ pub enum Receipt {
         color: Color,
         pc: Word,
         is: Word,
+    },
+
+    ScriptResult {
+        status: bool,
+        gas_used: Word,
     },
 }
 
@@ -333,45 +346,52 @@ impl Receipt {
         }
     }
 
-    pub const fn id(&self) -> &ContractId {
+    pub const fn script_result(status: bool, gas_used: Word) -> Self {
+        Self::ScriptResult { status, gas_used }
+    }
+
+    pub const fn id(&self) -> Option<&ContractId> {
         match self {
-            Self::Call { id, .. } => id,
-            Self::Return { id, .. } => id,
-            Self::ReturnData { id, .. } => id,
-            Self::Panic { id, .. } => id,
-            Self::Revert { id, .. } => id,
-            Self::Log { id, .. } => id,
-            Self::LogData { id, .. } => id,
-            Self::Transfer { id, .. } => id,
-            Self::TransferOut { id, .. } => id,
+            Self::Call { id, .. } => Some(id),
+            Self::Return { id, .. } => Some(id),
+            Self::ReturnData { id, .. } => Some(id),
+            Self::Panic { id, .. } => Some(id),
+            Self::Revert { id, .. } => Some(id),
+            Self::Log { id, .. } => Some(id),
+            Self::LogData { id, .. } => Some(id),
+            Self::Transfer { id, .. } => Some(id),
+            Self::TransferOut { id, .. } => Some(id),
+            Self::ScriptResult { .. } => None,
         }
     }
 
-    pub const fn pc(&self) -> Word {
+    pub const fn pc(&self) -> Option<Word> {
         match self {
-            Self::Call { pc, .. } => *pc,
-            Self::Return { pc, .. } => *pc,
-            Self::ReturnData { pc, .. } => *pc,
-            Self::Panic { pc, .. } => *pc,
-            Self::Revert { pc, .. } => *pc,
-            Self::Log { pc, .. } => *pc,
-            Self::LogData { pc, .. } => *pc,
-            Self::Transfer { pc, .. } => *pc,
-            Self::TransferOut { pc, .. } => *pc,
+            Self::Call { pc, .. } => Some(*pc),
+            Self::Return { pc, .. } => Some(*pc),
+            Self::ReturnData { pc, .. } => Some(*pc),
+            Self::Panic { pc, .. } => Some(*pc),
+            Self::Revert { pc, .. } => Some(*pc),
+            Self::Log { pc, .. } => Some(*pc),
+            Self::LogData { pc, .. } => Some(*pc),
+            Self::Transfer { pc, .. } => Some(*pc),
+            Self::TransferOut { pc, .. } => Some(*pc),
+            Self::ScriptResult { .. } => None,
         }
     }
 
-    pub const fn is(&self) -> Word {
+    pub const fn is(&self) -> Option<Word> {
         match self {
-            Self::Call { is, .. } => *is,
-            Self::Return { is, .. } => *is,
-            Self::ReturnData { is, .. } => *is,
-            Self::Panic { is, .. } => *is,
-            Self::Revert { is, .. } => *is,
-            Self::Log { is, .. } => *is,
-            Self::LogData { is, .. } => *is,
-            Self::Transfer { is, .. } => *is,
-            Self::TransferOut { is, .. } => *is,
+            Self::Call { is, .. } => Some(*is),
+            Self::Return { is, .. } => Some(*is),
+            Self::ReturnData { is, .. } => Some(*is),
+            Self::Panic { is, .. } => Some(*is),
+            Self::Revert { is, .. } => Some(*is),
+            Self::Log { is, .. } => Some(*is),
+            Self::LogData { is, .. } => Some(*is),
+            Self::Transfer { is, .. } => Some(*is),
+            Self::TransferOut { is, .. } => Some(*is),
+            Self::ScriptResult { .. } => None,
         }
     }
 
@@ -494,6 +514,20 @@ impl Receipt {
     pub const fn rd(&self) -> Option<Word> {
         match self {
             Self::Log { rd, .. } => Some(*rd),
+            _ => None,
+        }
+    }
+
+    pub const fn status(&self) -> Option<bool> {
+        match self {
+            Self::ScriptResult { status, .. } => Some(*status),
+            _ => None,
+        }
+    }
+
+    pub const fn gas_used(&self) -> Option<Word> {
+        match self {
+            Self::ScriptResult { gas_used, .. } => Some(*gas_used),
             _ => None,
         }
     }
@@ -654,6 +688,13 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
+
+            Self::ScriptResult { status, gas_used } => {
+                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::ScriptResult as Word);
+
+                let buf = bytes::store_number_unchecked(buf, *status as Word);
+                bytes::store_number_unchecked(buf, *gas_used);
+            }
         }
 
         Ok(len)
@@ -800,6 +841,15 @@ impl io::Write for Receipt {
                 let color = color.into();
 
                 *self = Self::transfer_out(id, to, amount, color, pc, is);
+            }
+
+            ReceiptRepr::ScriptResult => {
+                let (status, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (gas_used, _) = unsafe { bytes::restore_word_unchecked(buf) };
+
+                let status = status != 0;
+
+                *self = Self::script_result(status, gas_used);
             }
         }
 

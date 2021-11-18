@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum StorageError {}
 
 #[derive(Debug)]

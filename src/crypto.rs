@@ -1,17 +1,11 @@
-use fuel_tx::crypto::Hasher;
+//use fuel_merkle::binary::{empty_sum, leaf_sum, node_sum, Data, MerkleTree,
+// Node};
+use fuel_merkle::binary::MerkleTree;
+use fuel_merkle::common::StorageMap;
 use fuel_types::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
-
-use std::mem;
-
-// As in celestia-specs, the leaves and nodes are prefixed to avoid
-// second-preimage attacks
-//
-// https://github.com/celestiaorg/celestia-specs/blob/master/src/specs/data_structures.md#binary-merkle-tree
-const LEAF_PREFIX: u8 = 0x00;
-const NODE_PREFIX: u8 = 0x01;
 
 /// Sign a given message and compress the `v` to the signature
 ///
@@ -59,57 +53,19 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
 /// sets. For bigger sets (e.g. blockchain state), use a storage backed merkle
 /// implementation
 // TODO use fuel-merkle https://github.com/FuelLabs/fuel-vm/issues/49
-pub fn ephemeral_merkle_root<L, I>(leaves: I) -> Bytes32
+pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
 where
     L: AsRef<[u8]>,
     I: Iterator<Item = L> + ExactSizeIterator,
 {
-    let size = leaves.len();
+    let mut storage = StorageMap::new();
+    let mut tree = MerkleTree::new(&mut storage);
 
-    let mut width = size.next_power_of_two();
-    let mut len = size as f32;
-    let mut hasher = Hasher::default();
-
-    let mut current: Vec<Bytes32> = leaves
-        .map(|l| {
-            hasher.reset();
-
-            hasher.input(&[LEAF_PREFIX]);
-            hasher.input(l);
-
-            hasher.digest()
-        })
-        .collect();
-
-    if size == 0 {
-        return Hasher::default().digest();
-    } else if size == 1 {
-        return current[0];
-    } else if size == 2 {
-        return Hasher::default().chain(&[NODE_PREFIX]).extend_chain(current).digest();
-    }
-
-    let mut next = current.clone();
-
-    // Cheap loop with no realloc
-    while width > 1 {
-        mem::swap(&mut current, &mut next);
-
-        let mut c = current.iter().take(len.ceil() as usize);
-
-        width /= 2;
-        len /= 2.0;
-        next.iter_mut().take(width).for_each(|n| {
-            hasher.reset();
-
-            hasher.input(&[NODE_PREFIX]);
-            hasher.extend(c.by_ref().take(2));
-
-            *n = hasher.digest();
-        });
-    }
-
-    next[0]
+    leaves
+        .try_for_each(|l| tree.push(l.as_ref()))
+        .and_then(|_| tree.root())
+        .expect("In-memory impl should be infallible")
+        .into()
 }
 
 #[cfg(all(test, feature = "random"))]
@@ -121,8 +77,6 @@ mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use secp256k1::PublicKey;
-
-    use std::iter;
 
     #[test]
     fn ecrecover() {
@@ -154,6 +108,9 @@ mod tests {
     fn ephemeral_merkle_root_works() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
+        const LEAF_PREFIX: u8 = 0x00;
+        const NODE_PREFIX: u8 = 0x01;
+
         // Test for 0 leaves
         //
         // Expected root is `h()`
@@ -181,37 +138,14 @@ mod tests {
 
         let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
         let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
-        let c = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([e]).digest();
+        let c = e;
 
         let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
-        let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c]).digest();
+        let b = c;
 
         let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
         let root_p = ephemeral_merkle_root(initial.iter());
 
         assert_eq!(root, root_p);
-
-        // Test for n leaves
-        let inputs = iter::repeat(()).map(|_| rng.gen()).take(64).collect::<Vec<Address>>();
-
-        (0..65).into_iter().for_each(|w| {
-            let initial: Vec<&Address> = inputs.iter().take(w).collect();
-            let mut level: Vec<Bytes32> = initial
-                .iter()
-                .map(|i| Hasher::default().chain(&[LEAF_PREFIX]).chain(i).digest())
-                .collect();
-
-            while level.len() > 1 {
-                level = level
-                    .chunks(2)
-                    .map(|c| Hasher::default().chain(&[NODE_PREFIX]).extend_chain(c).digest())
-                    .collect();
-            }
-
-            let root = level.first().copied().unwrap_or(empty);
-            let root_p = ephemeral_merkle_root(initial.iter());
-
-            assert_eq!(root, root_p);
-        });
     }
 }

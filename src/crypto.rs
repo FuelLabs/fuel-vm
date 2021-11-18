@@ -1,5 +1,3 @@
-//use fuel_merkle::binary::{empty_sum, leaf_sum, node_sum, Data, MerkleTree,
-// Node};
 use fuel_merkle::binary::MerkleTree;
 use fuel_merkle::common::StorageMap;
 use fuel_types::{Bytes32, Bytes64};
@@ -47,12 +45,7 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
     Ok(pk)
 }
 
-/// Calculate a binary merkle root
-///
-/// The space complexity of this operation is O(n). This means it expects small
-/// sets. For bigger sets (e.g. blockchain state), use a storage backed merkle
-/// implementation
-// TODO use fuel-merkle https://github.com/FuelLabs/fuel-vm/issues/49
+/// Calculate a binary merkle root with in-memory storage
 pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
 where
     L: AsRef<[u8]>,
@@ -61,6 +54,7 @@ where
     let mut storage = StorageMap::new();
     let mut tree = MerkleTree::new(&mut storage);
 
+    // TODO fuel-merkle should have infallible in-memory struct
     leaves
         .try_for_each(|l| tree.push(l.as_ref()))
         .and_then(|_| tree.root())

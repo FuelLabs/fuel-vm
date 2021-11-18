@@ -10,6 +10,7 @@ description = "FuelVM interpreter."
 
 [dependencies]
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+fuel-merkle = { git = "ssh://git@github.com/FuelLabs/fuel-merkle.git" }
 fuel-storage = { git = "ssh://git@github.com/FuelLabs/fuel-storage.git" }
 fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
 fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git" }

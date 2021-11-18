@@ -10,8 +10,6 @@ use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
-use std::convert::TryFrom;
-
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,

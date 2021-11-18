@@ -8,7 +8,6 @@ use fuel_tx::consts::*;
 use fuel_tx::Transaction;
 use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
 
-use std::convert::TryFrom;
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();

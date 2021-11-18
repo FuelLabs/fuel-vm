@@ -4,7 +4,6 @@ use crate::error::InterpreterError;
 
 use fuel_types::{RegisterId, Word};
 
-use std::convert::TryFrom;
 use std::{ops, ptr};
 
 // Memory bounds must be manually checked and cannot follow general PartialEq

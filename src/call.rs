@@ -4,7 +4,6 @@ use crate::contract::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{Color, ContractId, Word};
 
-use std::convert::TryFrom;
 use std::io::{self, Write};
 use std::mem;
 

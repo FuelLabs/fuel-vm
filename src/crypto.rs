@@ -1,11 +1,9 @@
-use fuel_tx::crypto::Hasher;
+use fuel_merkle::binary::MerkleTree;
+use fuel_merkle::common::StorageMap;
 use fuel_types::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
-
-use std::convert::TryFrom;
-use std::mem;
 
 /// Sign a given message and compress the `v` to the signature
 ///
@@ -47,60 +45,21 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
     Ok(pk)
 }
 
-/// Calculate a binary merkle root
-///
-/// The space complexity of this operation is O(n). This means it expects small
-/// sets. For bigger sets (e.g. blockchain state), use a storage backed merkle
-/// implementation
+/// Calculate a binary merkle root with in-memory storage
 pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
 where
     L: AsRef<[u8]>,
     I: Iterator<Item = L> + ExactSizeIterator,
 {
-    let mut hasher = Hasher::default();
-    let mut width = leaves.len().next_power_of_two();
-    let mut len = leaves.len() as f32;
+    let mut storage = StorageMap::new();
+    let mut tree = MerkleTree::new(&mut storage);
 
-    if width <= 2 {
-        return leaves.collect::<Hasher>().digest();
-    }
-
-    width /= 2;
-    len /= 2.0;
-
-    let mut current = vec![Bytes32::default(); width];
-
-    // Drain the leaves
-    current.iter_mut().for_each(|l| {
-        hasher.reset();
-
-        leaves.next().map(|a| hasher.input(a));
-        leaves.next().map(|b| hasher.input(b));
-
-        *l = hasher.digest();
-    });
-
-    let mut next = current.clone();
-
-    // Cheap loop with no realloc
-    while width > 1 {
-        mem::swap(&mut current, &mut next);
-
-        let mut c = current.iter().take(len.ceil() as usize);
-
-        width /= 2;
-        len /= 2.0;
-        next.iter_mut().take(width).for_each(|n| {
-            hasher.reset();
-
-            c.next().map(|a| hasher.input(a));
-            c.next().map(|b| hasher.input(b));
-
-            *n = hasher.digest();
-        });
-    }
-
-    next[0]
+    // TODO fuel-merkle should have infallible in-memory struct
+    leaves
+        .try_for_each(|l| tree.push(l.as_ref()))
+        .and_then(|_| tree.root())
+        .expect("In-memory impl should be infallible")
+        .into()
 }
 
 #[cfg(all(test, feature = "random"))]
@@ -112,8 +71,6 @@ mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use secp256k1::PublicKey;
-
-    use std::convert::TryFrom;
 
     #[test]
     fn ecrecover() {
@@ -145,7 +102,12 @@ mod tests {
     fn ephemeral_merkle_root_works() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
+        const LEAF_PREFIX: u8 = 0x00;
+        const NODE_PREFIX: u8 = 0x01;
+
         // Test for 0 leaves
+        //
+        // Expected root is `h()`
         let empty: Vec<Address> = vec![];
 
         let root = ephemeral_merkle_root(empty.iter());
@@ -162,38 +124,22 @@ mod tests {
 
         let initial = [a, b, c, d, e];
 
-        let a = [a, b].iter().collect::<Hasher>().digest();
-        let b = [c, d].iter().collect::<Hasher>().digest();
-        let c = [e].iter().collect::<Hasher>().digest();
+        let a = Hasher::default().chain(&[LEAF_PREFIX]).chain(a).digest();
+        let b = Hasher::default().chain(&[LEAF_PREFIX]).chain(b).digest();
+        let c = Hasher::default().chain(&[LEAF_PREFIX]).chain(c).digest();
+        let d = Hasher::default().chain(&[LEAF_PREFIX]).chain(d).digest();
+        let e = Hasher::default().chain(&[LEAF_PREFIX]).chain(e).digest();
 
-        let a = [a, b].iter().collect::<Hasher>().digest();
-        let b = [c].iter().collect::<Hasher>().digest();
+        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+        let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
+        let c = e;
 
-        let root = [a, b].iter().collect::<Hasher>().digest();
+        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+        let b = c;
+
+        let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
         let root_p = ephemeral_merkle_root(initial.iter());
 
         assert_eq!(root, root_p);
-
-        // Test for n leaves
-        let mut inputs = vec![Address::default(); 64];
-
-        inputs.iter_mut().for_each(|i| *i = rng.gen());
-
-        (0..65).into_iter().for_each(|w| {
-            let initial: Vec<&Address> = inputs.iter().take(w).collect();
-            let mut level: Vec<Bytes32> = initial
-                .chunks(2)
-                .map(|c| c.iter().collect::<Hasher>().digest())
-                .collect();
-
-            while level.len() > 1 {
-                level = level.chunks(2).map(|c| c.iter().collect::<Hasher>().digest()).collect();
-            }
-
-            let root = level.first().copied().unwrap_or(empty);
-            let root_p = ephemeral_merkle_root(initial.iter());
-
-            assert_eq!(root, root_p);
-        });
     }
 }

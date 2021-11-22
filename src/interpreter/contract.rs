@@ -144,7 +144,9 @@ mod tests {
             vec![],
         );
 
-        assert!(vm.transact(tx).is_err());
+        let state = vm.transact(tx).expect("Expect revert receipt");
+        assert!(matches!(state.state(), &ProgramState::Revert(0)));
+
         assert_eq!(balance as Word, vm.balance(&contract, &color).unwrap());
 
         // Burn some of the balance

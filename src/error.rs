@@ -2,7 +2,7 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::interpreter::Interpreter;
 
-use fuel_asm::{Opcode, OpcodeRepr};
+use fuel_asm::OpcodeRepr;
 use fuel_tx::ValidationError;
 use fuel_types::{ContractId, RegisterId, Word};
 
@@ -92,11 +92,10 @@ impl StdError for Backtrace {
 
 #[derive(Debug)]
 pub enum InterpreterError {
-    OpcodeFailure(Opcode),
-    OpcodeUnimplemented(Opcode),
     OpcodeInvalid(OpcodeRepr),
-    OpcodeRepresentationUnimplemented(OpcodeRepr),
+    OpcodeUnimplemented(OpcodeRepr),
     ValidationError(ValidationError),
+    RegisterNotWritable(RegisterId),
     Io(io::Error),
     TransactionCreateStaticContractNotFound,
     TransactionCreateIdNotInTx,
@@ -119,7 +118,6 @@ pub enum InterpreterError {
     WitnessNotFound,
     TxMaturity,
     MetadataIdentifierUndefined,
-    RegisterNotWritable(RegisterId),
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,
@@ -129,15 +127,23 @@ impl InterpreterError {
     pub fn backtrace<S>(self, vm: &Interpreter<S>) -> Backtrace {
         Backtrace::from_vm_error(vm, self)
     }
+
+    /// Return if the error variant should propagate as VM panic
+    pub const fn is_panic(&self) -> bool {
+        matches!(
+            self,
+            Self::OpcodeInvalid(_)
+                | Self::OpcodeUnimplemented(_)
+                | Self::ValidationError(_)
+                | Self::RegisterNotWritable(_)
+                | Self::Io(_)
+        )
+    }
 }
 
 impl fmt::Display for InterpreterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::OpcodeFailure(op) => {
-                write!(f, "Failed to execute the opcode: {:?}", op)
-            }
-
             Self::ValidationError(e) => {
                 write!(f, "Failed to validate the transaction: {}", e)
             }

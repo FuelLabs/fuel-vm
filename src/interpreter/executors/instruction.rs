@@ -459,7 +459,7 @@ where
 
             // list of currently unimplemented opcodes
             OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
-                return Err(InterpreterError::OpcodeRepresentationUnimplemented(op))
+                return Err(InterpreterError::OpcodeUnimplemented(op))
             }
 
             // wildcard match for unused opcodes such as `RESERV01`

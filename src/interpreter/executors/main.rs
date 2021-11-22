@@ -6,6 +6,7 @@ use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::Opcode;
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -90,7 +91,33 @@ where
 
                 // TODO set tree balance
 
-                state = self.run_program()?;
+                let program = self.run_program();
+                let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
+
+                // According to the specs, the VM should not spawn script errors - except of
+                // tx validity, invalid opcode or some general error (e.g. I/O).
+                //
+                // For other cases, a script result receipt should be created, consuming the
+                // used gas.
+                let (status, program) = match program {
+                    Ok(s) => (true, s),
+                    Err(e) if e.is_panic() => return Err(e),
+
+                    _ => {
+                        if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
+                            // TODO define strategy for out of gas when
+                            // reverting after generic
+                            // error
+                        }
+
+                        (false, ProgramState::Revert(0))
+                    }
+                };
+
+                let receipt = Receipt::script_result(status, gas_used);
+                self.receipts.push(receipt);
+
+                state = program;
             }
         }
 

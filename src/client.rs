@@ -67,22 +67,9 @@ impl MemoryClient {
                     Ok(receipts)
                 }
 
-                Err(InterpreterError::ValidationError(e)) => {
-                    let err = err(&interpreter, e.into());
-                    interpreter.as_mut().rollback();
+                Err(e) if e.is_panic() => {
+                    let err = err(&interpreter, e);
 
-                    Err(err)
-                }
-
-                Err(InterpreterError::OpcodeRepresentationUnimplemented(op)) => {
-                    let err = err(&interpreter, InterpreterError::OpcodeRepresentationUnimplemented(op));
-                    interpreter.as_mut().rollback();
-
-                    Err(err)
-                }
-
-                Err(InterpreterError::OpcodeInvalid(op)) => {
-                    let err = err(&interpreter, InterpreterError::OpcodeInvalid(op));
                     interpreter.as_mut().rollback();
 
                     Err(err)

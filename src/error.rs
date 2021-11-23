@@ -132,11 +132,7 @@ impl InterpreterError {
     pub const fn is_panic(&self) -> bool {
         matches!(
             self,
-            Self::OpcodeInvalid(_)
-                | Self::OpcodeUnimplemented(_)
-                | Self::ValidationError(_)
-                | Self::RegisterNotWritable(_)
-                | Self::Io(_)
+            Self::ValidationError(_) | Self::RegisterNotWritable(_) | Self::Io(_)
         )
     }
 }

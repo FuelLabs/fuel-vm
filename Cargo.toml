@@ -25,40 +25,40 @@ rand = "0.8"
 
 [features]
 debug = []
-random = [ "fuel-types/random", "fuel-tx/random" ]
-serde-types = [ "fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde" ]
+random = ["fuel-types/random", "fuel-tx/random"]
+serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde"]
 
 [[test]]
 name = "test-backtrace"
 path = "tests/backtrace.rs"
-required-features = [ "random" ]
+required-features = ["random"]
 
 [[test]]
 name = "test-blockchain"
 path = "tests/blockchain.rs"
-required-features = [ "random" ]
+required-features = ["random"]
 
 [[test]]
 name = "test-debug"
 path = "tests/debug.rs"
-required-features = [ "debug" ]
+required-features = ["debug"]
 
 [[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
-required-features = [ "random" ]
+required-features = ["random"]
 
 [[test]]
 name = "test-flow"
 path = "tests/flow.rs"
-required-features = [ "random" ]
+required-features = ["random"]
 
 [[test]]
 name = "test-metadata"
 path = "tests/metadata.rs"
-required-features = [ "random" ]
+required-features = ["random"]
 
 [[test]]
 name = "test-predicate"
 path = "tests/predicate.rs"
-required-features = [ "random" ]
+required-features = ["random"]

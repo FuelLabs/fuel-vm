@@ -17,23 +17,23 @@ serde = { version = "1.0", default-features = false, features = ["derive"], opti
 sha2 = { version = "0.9", optional = true }
 
 [features]
-default = [ "fuel-asm/default", "fuel-types/default", "std" ]
-random = [ "fuel-types/random" ]
-std = [ "fuel-asm/std", "fuel-types/std", "itertools", "rand", "sha2" ]
-serde-types = [ "fuel-asm/serde-types", "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std" ]
-serde-types-minimal = [ "fuel-asm/serde-types-minimal", "fuel-types/serde-types-minimal", "serde" ]
+default = ["fuel-asm/default", "fuel-types/default", "std"]
+random = ["fuel-types/random"]
+std = ["fuel-asm/std", "fuel-types/std", "itertools", "rand", "sha2"]
+serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
+serde-types-minimal = ["fuel-asm/serde-types-minimal", "fuel-types/serde-types-minimal", "serde"]
 
 [[test]]
 name = "test-bytes"
 path = "tests/bytes.rs"
-required-features = [ "random", "std" ]
+required-features = ["random", "std"]
 
 [[test]]
 name = "test-offsets"
 path = "tests/offset.rs"
-required-features = [ "random", "std" ]
+required-features = ["random", "std"]
 
 [[test]]
 name = "test-valid"
 path = "tests/valid.rs"
-required-features = [ "random", "std" ]
+required-features = ["random", "std"]

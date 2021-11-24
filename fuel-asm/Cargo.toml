@@ -13,10 +13,10 @@ fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git", default-fea
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 
 [features]
-default = [ "fuel-types/default", "std" ]
-std = [ "fuel-types/std" ]
-serde-types = [ "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std" ]
-serde-types-minimal = [ "fuel-types/serde-types-minimal", "serde" ]
+default = ["fuel-types/default", "std"]
+std = ["fuel-types/std"]
+serde-types = ["fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
+serde-types-minimal = ["fuel-types/serde-types-minimal", "serde"]
 
 [[test]]
 name = "test-encoding"

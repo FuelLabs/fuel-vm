@@ -1,6 +1,6 @@
 use crate::contract::Contract;
-use crate::error::InterpreterError;
 
+use fuel_asm::PanicReason;
 use fuel_storage::{MerkleStorage, Storage};
 use fuel_types::{Address, Bytes32, Color, ContractId, Salt, Word};
 
@@ -16,13 +16,13 @@ pub trait InterpreterStorage:
     + MerkleStorage<ContractId, Color, Word, Error = Self::DataError>
     + MerkleStorage<ContractId, Bytes32, Bytes32, Error = Self::DataError>
 {
-    type DataError: StdError + Into<InterpreterError>;
+    type DataError: StdError + Into<PanicReason>;
 
     fn block_height(&self) -> Result<u32, Self::DataError>;
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
     fn coinbase(&self) -> Result<Address, Self::DataError>;
 
-    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, InterpreterError> {
+    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, PanicReason> {
         <Self as Storage<ContractId, Contract>>::get(self, id).map_err(|e| e.into())
     }
 
@@ -30,15 +30,15 @@ pub trait InterpreterStorage:
         &mut self,
         id: &ContractId,
         contract: &Contract,
-    ) -> Result<Option<Contract>, InterpreterError> {
+    ) -> Result<Option<Contract>, PanicReason> {
         <Self as Storage<ContractId, Contract>>::insert(self, id, contract).map_err(|e| e.into())
     }
 
-    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, InterpreterError> {
+    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, PanicReason> {
         <Self as Storage<ContractId, Contract>>::contains_key(self, id).map_err(|e| e.into())
     }
 
-    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, InterpreterError> {
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, PanicReason> {
         <Self as Storage<ContractId, (Salt, Bytes32)>>::get(self, id).map_err(|e| e.into())
     }
 
@@ -47,15 +47,11 @@ pub trait InterpreterStorage:
         id: &ContractId,
         salt: &Salt,
         root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, InterpreterError> {
+    ) -> Result<Option<(Salt, Bytes32)>, PanicReason> {
         <Self as Storage<ContractId, (Salt, Bytes32)>>::insert(self, id, &(*salt, *root)).map_err(|e| e.into())
     }
 
-    fn merkle_contract_state(
-        &self,
-        id: &ContractId,
-        key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, InterpreterError> {
+    fn merkle_contract_state(&self, id: &ContractId, key: &Bytes32) -> Result<Option<Cow<'_, Bytes32>>, PanicReason> {
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, id, key).map_err(|e| e.into())
     }
 
@@ -64,11 +60,11 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
         value: &Bytes32,
-    ) -> Result<Option<Bytes32>, InterpreterError> {
+    ) -> Result<Option<Bytes32>, PanicReason> {
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value).map_err(|e| e.into())
     }
 
-    fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, InterpreterError> {
+    fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, PanicReason> {
         let balance = <Self as MerkleStorage<ContractId, Color, Word>>::get(self, id, color)
             .map_err(|e| e.into())?
             .map(Cow::into_owned);
@@ -81,7 +77,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         color: &Color,
         value: Word,
-    ) -> Result<Option<Word>, InterpreterError> {
+    ) -> Result<Option<Word>, PanicReason> {
         <Self as MerkleStorage<ContractId, Color, Word>>::insert(self, contract, color, &value).map_err(|e| e.into())
     }
 }

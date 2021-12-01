@@ -6,8 +6,8 @@ use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::Opcode;
-use fuel_tx::{Input, Output, Receipt, Transaction};
+use fuel_asm::{Opcode, PanicReason};
+use fuel_tx::{Input, Output, Receipt, ScriptResult, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
@@ -19,6 +19,7 @@ where
         (self.tx, self.receipts)
     }
 
+    // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
 
@@ -30,7 +31,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(InterpreterError::TransactionCreateStaticContractNotFound)?
+                    Err(InterpreterError::Panic(PanicReason::ContractNotFound))?
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -43,7 +44,7 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(InterpreterError::TransactionCreateIdNotInTx)?;
+                    Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))?;
                 }
 
                 self.storage.storage_contract_insert(&id, &contract)?;
@@ -100,18 +101,19 @@ where
                 // For other cases, a script result receipt should be created, consuming the
                 // used gas.
                 let (status, program) = match program {
-                    Ok(s) => (true, s),
-                    Err(e) if e.is_panic() => return Err(e),
+                    Ok(s) => (ScriptResult::success(), s),
 
-                    _ => {
+                    Err(InterpreterError::PanicInstruction(reason, instruction)) => {
                         if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
                             // TODO define strategy for out of gas when
                             // reverting after generic
                             // error
                         }
 
-                        (false, ProgramState::Revert(0))
+                        (ScriptResult::error(reason, instruction), ProgramState::Revert(0))
                     }
+
+                    Err(_) => unimplemented!(),
                 };
 
                 let receipt = Receipt::script_result(status, gas_used);
@@ -140,10 +142,43 @@ where
         Ok(state)
     }
 
+    pub(crate) fn run_call(&mut self) -> Result<ProgramState, PanicReason> {
+        loop {
+            if self.registers[REG_PC] >= VM_MAX_RAM {
+                return Err(PanicReason::MemoryOverflow);
+            }
+
+            let state = self
+                .execute()
+                .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
+
+            match state {
+                ExecuteState::Return(r) => {
+                    return Ok(ProgramState::Return(r));
+                }
+
+                ExecuteState::ReturnData(d) => {
+                    return Ok(ProgramState::ReturnData(d));
+                }
+
+                ExecuteState::Revert(r) => {
+                    return Ok(ProgramState::Revert(r));
+                }
+
+                ExecuteState::Proceed => (),
+
+                #[cfg(feature = "debug")]
+                ExecuteState::DebugEvent(d) => {
+                    return Ok(ProgramState::RunProgram(d));
+                }
+            }
+        }
+    }
+
     pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
             if self.registers[REG_PC] >= VM_MAX_RAM {
-                return Err(InterpreterError::ProgramOverflow);
+                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
             match self.execute()? {

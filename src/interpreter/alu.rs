@@ -1,11 +1,11 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
 
+use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn alu_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), InterpreterError>
+    pub(crate) fn alu_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), PanicReason>
     where
         F: FnOnce(B, C) -> (Word, bool),
     {
@@ -27,14 +27,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn alu_error<F, B, C>(
-        &mut self,
-        ra: RegisterId,
-        f: F,
-        b: B,
-        c: C,
-        err: bool,
-    ) -> Result<(), InterpreterError>
+    pub(crate) fn alu_error<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C, err: bool) -> Result<(), PanicReason>
     where
         F: FnOnce(B, C) -> Word,
     {
@@ -48,7 +41,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
         Self::is_register_writable(ra)?;
 
         self.registers[REG_OF] = 0;
@@ -59,7 +52,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn alu_clear(&mut self) -> Result<(), InterpreterError> {
+    pub(crate) fn alu_clear(&mut self) -> Result<(), PanicReason> {
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = 0;
 

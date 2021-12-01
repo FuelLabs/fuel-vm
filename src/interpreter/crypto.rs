@@ -1,18 +1,18 @@
 use super::Interpreter;
 use crate::consts::{MEM_MAX_ACCESS_SIZE, VM_MAX_RAM};
 use crate::crypto;
-use crate::error::InterpreterError;
 
+use fuel_asm::PanicReason;
 use fuel_tx::crypto::Hasher;
 use fuel_types::{Bytes32, Bytes64, Word};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes64::LEN as Word
             || b > VM_MAX_RAM - Bytes64::LEN as Word
             || c > VM_MAX_RAM - Bytes32::LEN as Word
         {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);
@@ -38,11 +38,11 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), PanicReason> {
         use sha3::{Digest, Keccak256};
 
         if a > VM_MAX_RAM - Bytes32::LEN as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);
@@ -57,9 +57,9 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || c > MEM_MAX_ACCESS_SIZE || b > VM_MAX_RAM - c {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b, c) = (a as usize, b as usize, c as usize);

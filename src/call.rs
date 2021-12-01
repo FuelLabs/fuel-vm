@@ -1,6 +1,7 @@
 use crate::consts::*;
 use crate::contract::Contract;
 
+use fuel_asm::PanicReason;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{Color, ContractId, Word};
 
@@ -85,12 +86,12 @@ impl io::Write for Call {
 }
 
 impl TryFrom<&[u8]> for Call {
-    type Error = io::Error;
+    type Error = PanicReason;
 
-    fn try_from(bytes: &[u8]) -> io::Result<Self> {
+    fn try_from(bytes: &[u8]) -> Result<Self, PanicReason> {
         let mut call = Self::default();
 
-        call.write(bytes)?;
+        call.write(bytes).map_err(|_| PanicReason::MalformedCallStructure)?;
 
         Ok(call)
     }

@@ -1,13 +1,12 @@
 use super::Interpreter;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
-use crate::error::InterpreterError;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::Instruction;
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Input, Receipt};
+use fuel_tx::{Input, PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{Bytes32, Color, RegisterId, Word};
 
@@ -18,7 +17,7 @@ where
     S: InterpreterStorage,
 {
     // TODO add CIMV tests
-    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), PanicReason> {
         Self::is_register_writable(ra)?;
 
         match self.tx.inputs().get(b as usize) {
@@ -28,12 +27,12 @@ where
                 self.inc_pc()
             }
 
-            _ => Err(InterpreterError::InputNotFound),
+            _ => Err(PanicReason::InputNotFound),
         }
     }
 
     // TODO add CTMV tests
-    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
         Self::is_register_writable(ra)?;
 
         if b <= self.tx.maturity() {
@@ -41,15 +40,15 @@ where
 
             self.inc_pc()
         } else {
-            Err(InterpreterError::TxMaturity)
+            Err(PanicReason::TransactionMaturity)
         }
     }
 
-    pub(crate) fn jump(&mut self, j: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn jump(&mut self, j: Word) -> Result<(), PanicReason> {
         let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
         if j > VM_MAX_RAM - 1 {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow)
         } else {
             self.registers[REG_PC] = j;
 
@@ -57,7 +56,7 @@ where
         }
     }
 
-    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> Result<(), PanicReason> {
         if a != b {
             self.jump(imm)
         } else {
@@ -65,13 +64,13 @@ where
         }
     }
 
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, PanicReason> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
 
         if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let call = Call::try_from(&self.memory[a as usize..])?;
@@ -82,7 +81,7 @@ where
         }
 
         if !self.tx.input_contracts().any(|contract| call.to() == contract) {
-            return Err(InterpreterError::ContractNotInTxInputs);
+            return Err(PanicReason::ContractNotInInputs);
         }
 
         // TODO validate external and internal context
@@ -94,7 +93,7 @@ where
         let len = stack.len() as Word;
 
         if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
-            return Err(InterpreterError::StackOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         self.registers[REG_FP] = self.registers[REG_SP];
@@ -125,10 +124,10 @@ where
         self.receipts.push(receipt);
         self.frames.push(frame);
 
-        self.run_program()
+        self.run_call()
     }
 
-    pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), InterpreterError> {
+    pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), PanicReason> {
         if let Some(frame) = self.frames.pop() {
             self.registers[REG_CGAS] += frame.context_gas();
 
@@ -149,7 +148,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn ret(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn ret(&mut self, a: Word) -> Result<(), PanicReason> {
         let receipt = Receipt::ret(
             self.internal_contract_or_default(),
             a,
@@ -164,9 +163,9 @@ where
         self.return_from_context(receipt)
     }
 
-    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, InterpreterError> {
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, PanicReason> {
         if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let ab = (a + b) as usize;
@@ -189,7 +188,7 @@ where
         Ok(digest)
     }
 
-    pub(crate) fn revert(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn revert(&mut self, a: Word) -> Result<(), PanicReason> {
         let receipt = Receipt::revert(
             self.internal_contract_or_default(),
             a,

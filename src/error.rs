@@ -2,13 +2,13 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::interpreter::Interpreter;
 
-use fuel_asm::OpcodeRepr;
-use fuel_tx::ValidationError;
-use fuel_types::{ContractId, RegisterId, Word};
+use fuel_asm::Instruction;
+use fuel_tx::{PanicReason, ValidationError};
+use fuel_types::{ContractId, Word};
 
 use std::convert::Infallible;
 use std::error::Error as StdError;
-use std::{fmt, io};
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Backtrace {
@@ -92,32 +92,11 @@ impl StdError for Backtrace {
 
 #[derive(Debug)]
 pub enum InterpreterError {
-    OpcodeInvalid(OpcodeRepr),
-    OpcodeUnimplemented(OpcodeRepr),
+    PanicInstruction(PanicReason, Instruction),
+    Panic(PanicReason),
+    Initialization(PanicReason),
     ValidationError(ValidationError),
-    RegisterNotWritable(RegisterId),
-    Io(io::Error),
-    TransactionCreateStaticContractNotFound,
-    TransactionCreateIdNotInTx,
-    ArithmeticOverflow,
-    StackOverflow,
-    PredicateOverflow,
-    ProgramOverflow,
     PredicateFailure,
-    ContractNotFound,
-    MemoryOverflow,
-    MemoryOwnership,
-    ExpectedEmptyStack,
-    ContractNotInTxInputs,
-    NotEnoughBalance,
-    ExpectedInternalContext,
-    ExternalColorNotFound,
-    OutOfGas,
-    InputNotFound,
-    OutputNotFound,
-    WitnessNotFound,
-    TxMaturity,
-    MetadataIdentifierUndefined,
 
     #[cfg(feature = "debug")]
     DebugStateNotInitialized,
@@ -130,10 +109,21 @@ impl InterpreterError {
 
     /// Return if the error variant should propagate as VM panic
     pub const fn is_panic(&self) -> bool {
-        matches!(
-            self,
-            Self::ValidationError(_) | Self::RegisterNotWritable(_) | Self::Io(_)
-        )
+        matches!(self, Self::ValidationError(_))
+    }
+
+    pub const fn panic_reason(&self) -> Option<PanicReason> {
+        match self {
+            Self::PanicInstruction(reason, _) | Self::Panic(reason) | Self::Initialization(reason) => Some(*reason),
+            _ => None,
+        }
+    }
+
+    pub const fn instruction(&self) -> Option<&Instruction> {
+        match self {
+            Self::PanicInstruction(_, instruction) => Some(instruction),
+            _ => None,
+        }
     }
 }
 
@@ -142,10 +132,6 @@ impl fmt::Display for InterpreterError {
         match self {
             Self::ValidationError(e) => {
                 write!(f, "Failed to validate the transaction: {}", e)
-            }
-
-            Self::Io(e) => {
-                write!(f, "I/O failure: {}", e)
             }
 
             _ => write!(f, "Execution error: {:?}", self),
@@ -157,7 +143,6 @@ impl StdError for InterpreterError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Self::ValidationError(e) => Some(e),
-            Self::Io(e) => Some(e),
             _ => None,
         }
     }
@@ -169,14 +154,14 @@ impl From<ValidationError> for InterpreterError {
     }
 }
 
-impl From<io::Error> for InterpreterError {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
 impl From<Infallible> for InterpreterError {
     fn from(_i: Infallible) -> InterpreterError {
         unreachable!()
+    }
+}
+
+impl From<PanicReason> for InterpreterError {
+    fn from(_r: PanicReason) -> Self {
+        unimplemented!()
     }
 }

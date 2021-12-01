@@ -5,7 +5,7 @@ use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr};
+use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
@@ -25,7 +25,7 @@ where
             .map(|b| unsafe { bytes::from_slice_unchecked(b) })
             .map(Word::from_be_bytes)
             .map(Instruction::parse_word)
-            .ok_or(InterpreterError::ProgramOverflow)?;
+            .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
         let pc = self.registers[REG_PC] + Instruction::LEN as Word;
@@ -51,6 +51,11 @@ where
             }
         }
 
+        self._instruction(instruction)
+            .map_err(|reason| InterpreterError::PanicInstruction(reason, instruction))
+    }
+
+    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, PanicReason> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
@@ -458,12 +463,9 @@ where
             }
 
             // list of currently unimplemented opcodes
-            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
-                return Err(InterpreterError::OpcodeUnimplemented(op))
+            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO | _ => {
+                return Err(PanicReason::ErrorFlag);
             }
-
-            // wildcard match for unused opcodes such as `RESERV01`
-            _ => return Err(InterpreterError::OpcodeInvalid(op)),
         }
 
         Ok(ExecuteState::Proceed)

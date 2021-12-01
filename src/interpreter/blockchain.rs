@@ -1,8 +1,8 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::PanicReason;
 use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
 use fuel_types::{bytes, Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 
@@ -14,7 +14,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn coinbase(&self) -> Result<Address, InterpreterError> {
+    pub(crate) fn coinbase(&self) -> Result<Address, PanicReason> {
         self.storage.coinbase().map_err(|e| e.into())
     }
 
@@ -25,7 +25,7 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), PanicReason> {
         let ssp = self.registers[REG_SSP];
         let sp = self.registers[REG_SP];
         let hp = self.registers[REG_HP];
@@ -40,11 +40,11 @@ where
             || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
             || length_to_copy_unpadded > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
         {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         if ssp != sp {
-            return Err(InterpreterError::ExpectedEmptyStack);
+            return Err(PanicReason::ExpectedUnallocatedStack);
         }
 
         // Fetch the contract id
@@ -57,7 +57,7 @@ where
 
         // Check that the contract exists
         if !self.tx.input_contracts().any(|id| id == contract_id) {
-            return Err(InterpreterError::ContractNotInTxInputs);
+            return Err(PanicReason::ContractNotInInputs);
         };
 
         // Calculate the word aligned padded len based on $rC
@@ -92,7 +92,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn burn(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn burn(&mut self, a: Word) -> Result<(), PanicReason> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -100,7 +100,7 @@ where
         let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, color)?;
-        let balance = balance.checked_sub(a).ok_or(InterpreterError::NotEnoughBalance)?;
+        let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
 
         self.storage
             .merkle_contract_color_balance_insert(contract, color, balance)?;
@@ -108,7 +108,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn mint(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn mint(&mut self, a: Word) -> Result<(), PanicReason> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -116,7 +116,7 @@ where
         let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, color)?;
-        let balance = balance.checked_add(a).ok_or(InterpreterError::ArithmeticOverflow)?;
+        let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
 
         self.storage
             .merkle_contract_color_balance_insert(contract, color, balance)?;
@@ -124,13 +124,13 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), PanicReason> {
         if d > MEM_MAX_ACCESS_SIZE
             || a > VM_MAX_RAM - d
             || b > VM_MAX_RAM - ContractId::LEN as Word
             || c > VM_MAX_RAM - d
         {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b, c, d) = (a as usize, b as usize, c as usize, d as usize);
@@ -147,7 +147,7 @@ where
             .iter()
             .any(|input| matches!(input, Input::Contract { contract_id, .. } if contract_id == contract))
         {
-            return Err(InterpreterError::ContractNotInTxInputs);
+            return Err(PanicReason::ContractNotInInputs);
         }
 
         let contract = self.contract(contract)?.into_owned();
@@ -161,7 +161,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), PanicReason> {
         let hash = self.storage.block_hash(b as u32).map_err(|e| e.into())?;
 
         self.try_mem_write(a as usize, hash.as_ref())?;
@@ -169,16 +169,16 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), PanicReason> {
         self.coinbase()
             .and_then(|data| self.try_mem_write(a as usize, data.as_ref()))?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - ContractId::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b) = (a as usize, b as usize);
@@ -190,7 +190,7 @@ where
             .storage
             .storage_contract_root(contract_id)
             .transpose()
-            .ok_or(InterpreterError::ContractNotFound)??
+            .ok_or(PanicReason::ContractNotFound)??
             .into_owned();
 
         self.try_mem_write(a, root.as_ref())?;
@@ -198,11 +198,11 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
         Self::is_register_writable(ra)?;
 
         if b > VM_MAX_RAM - ContractId::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let b = b as usize;
@@ -215,9 +215,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
         if b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let b = b as usize;
@@ -237,9 +237,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b) = (a as usize, b as usize);
@@ -260,9 +260,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let a = a as usize;
@@ -281,9 +281,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), PanicReason> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let (a, b) = (a as usize, b as usize);

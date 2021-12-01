@@ -1,13 +1,13 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
 
+use fuel_asm::PanicReason;
 use fuel_tx::crypto::Hasher;
 use fuel_tx::Receipt;
 use fuel_types::Word;
 
 impl<S> Interpreter<S> {
-    pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), PanicReason> {
         let receipt = Receipt::log(
             self.internal_contract_or_default(),
             a,
@@ -23,9 +23,9 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), PanicReason> {
         if d > MEM_MAX_ACCESS_SIZE || c >= VM_MAX_RAM - d {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow);
         }
 
         let cd = (c + d) as usize;

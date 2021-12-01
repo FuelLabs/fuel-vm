@@ -1,8 +1,8 @@
 use super::Interpreter;
 use crate::contract::Contract;
-use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::PanicReason;
 use fuel_types::{Color, ContractId, Word};
 
 use std::borrow::Cow;
@@ -11,18 +11,18 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn contract(&self, contract: &ContractId) -> Result<Cow<'_, Contract>, InterpreterError> {
+    pub(crate) fn contract(&self, contract: &ContractId) -> Result<Cow<'_, Contract>, PanicReason> {
         self.storage
             .storage_contract(contract)
             .transpose()
-            .ok_or(InterpreterError::ContractNotFound)?
+            .ok_or(PanicReason::ContractNotFound)?
     }
 
-    pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, InterpreterError> {
+    pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, PanicReason> {
         self.storage.storage_contract_exists(contract)
     }
 
-    pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, InterpreterError> {
+    pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, PanicReason> {
         Ok(self
             .storage
             .merkle_contract_color_balance(contract, color)?

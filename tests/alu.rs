@@ -42,9 +42,16 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
-    let result = Interpreter::transition(storage, tx);
+    let result = Interpreter::transition(storage, tx).expect("Failed to execute ALU script!");
 
-    assert!(matches!(result, Err(InterpreterError::RegisterNotWritable(_))));
+    let result = result
+        .receipts()
+        .iter()
+        .find_map(Receipt::result)
+        .map(|r| *r.result())
+        .expect("Expected script result");
+
+    assert_eq!(PanicReason::ReservedRegisterNotWritable, result);
 }
 
 #[test]

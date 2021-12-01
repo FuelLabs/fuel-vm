@@ -151,8 +151,8 @@ pub enum OpcodeRepr {
     NOOP = 0x47,
     /// FLAG
     FLAG = 0x48,
-    /// RESERV49
-    RESERV49 = 0x49,
+    /// BAL
+    BAL = 0x49,
     /// RESERV4A
     RESERV4A = 0x4a,
     /// RESERV4B

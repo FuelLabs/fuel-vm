@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
     feature = "serde-types-minimal",
@@ -518,4 +520,17 @@ pub enum PanicReason {
     RESERVFE = 0xfe,
     /// RESERVFF
     RESERVFF = 0xff,
+}
+
+impl fmt::Display for PanicReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for PanicReason {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
 }

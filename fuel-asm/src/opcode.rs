@@ -742,6 +742,25 @@ pub enum Opcode {
     ///   check](./main.md#ownership)
     SW(RegisterId, RegisterId, Immediate12),
 
+    /// Set `$rA` to the balance of color at `$rB` for contract with ID at
+    /// `$rC`. Where helper
+    /// `balance(color: byte[32], contract_id: byte[32]) -> uint64`
+    /// returns the current balance of `color` of contract with ID
+    /// `contract_id`.
+    ///
+    /// | Operation   | ```$rA = balance(MEM[$rB, 32], MEM[$rC, 32]);``` |
+    /// | Syntax      | `bal $rA, $rB, $rC`                              |
+    /// | Encoding    | `0x00 rA rB rC -`                                |
+    ///
+    /// #### Panics
+    /// - `$rA` is a [reserved register](./main.md#semantics)
+    /// - `$rB + 32` overflows
+    /// - `$rB + 32 > VM_MAX_RAM`
+    /// - `$rC + 32` overflows
+    /// - `$rC + 32 > VM_MAX_RAM`
+    /// - Contract with ID `MEM[$rC, 32]` is not in `tx.inputs`
+    BAL(RegisterId, RegisterId, RegisterId),
+
     /// Get block header hash.
     ///
     /// | Operation   | ```MEM[$rA, 32] = blockhash($rB);``` |
@@ -1334,6 +1353,7 @@ impl Opcode {
             OpcodeRepr::MEQ => Opcode::MEQ(ra, rb, rc, rd),
             OpcodeRepr::SB => Opcode::SB(ra, rb, imm12),
             OpcodeRepr::SW => Opcode::SW(ra, rb, imm12),
+            OpcodeRepr::BAL => Opcode::BAL(ra, rb, rc),
             OpcodeRepr::BHSH => Opcode::BHSH(ra, rb),
             OpcodeRepr::BHEI => Opcode::BHEI(ra),
             OpcodeRepr::BURN => Opcode::BURN(ra),
@@ -1440,6 +1460,7 @@ impl Opcode {
             Self::MEQ(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::SB(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::SW(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
+            Self::BAL(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::BHSH(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::BHEI(ra) => [Some(*ra), None, None, None],
             Self::BURN(ra) => [Some(*ra), None, None, None],
@@ -1527,6 +1548,7 @@ impl Opcode {
             | Self::MCL(_, _)
             | Self::MCP(_, _, _)
             | Self::MEQ(_, _, _, _)
+            | Self::BAL(_, _, _)
             | Self::BHSH(_, _)
             | Self::BHEI(_)
             | Self::BURN(_)
@@ -1875,6 +1897,12 @@ impl From<Opcode> for u32 {
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | (imm12 as u32)
+            }
+            Opcode::BAL(ra, rb, rc) => {
+                ((OpcodeRepr::BAL as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
             }
             Opcode::BHSH(ra, rb) => {
                 ((OpcodeRepr::BHSH as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)

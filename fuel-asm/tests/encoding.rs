@@ -57,6 +57,7 @@ fn opcode() {
         Opcode::MEQ(r, r, r, r),
         Opcode::SB(r, r, imm12),
         Opcode::SW(r, r, imm12),
+        Opcode::BAL(r, r, r),
         Opcode::BHSH(r, r),
         Opcode::BHEI(r),
         Opcode::BURN(r),

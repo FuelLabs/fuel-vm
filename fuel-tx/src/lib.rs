@@ -24,4 +24,4 @@ mod receipt;
 pub use transaction::{Input, Metadata, Output, Transaction, ValidationError, Witness};
 
 #[cfg(feature = "std")]
-pub use receipt::{Receipt, ScriptResult, ScriptResultRepr};
+pub use receipt::{PanicReason, Receipt, ScriptResult};

@@ -1,9 +1,9 @@
+use fuel_asm::*;
+use std::io::{Read, Write};
+
 #[test]
 fn opcode() {
     // TODO maybe split this test case into several smaller ones?
-    use fuel_asm::*;
-    use std::io::{Read, Write};
-
     let r = 0x3f;
     let imm12 = 0xbff;
     let imm18 = 0x2ffff;
@@ -187,4 +187,51 @@ fn opcode() {
 
             assert_eq!(op, &op_p);
         });
+}
+
+#[test]
+fn panic_reason() {
+    let data = vec![
+        PanicReason::Revert,
+        PanicReason::OutOfGas,
+        PanicReason::TransactionValidity,
+        PanicReason::MemoryOverflow,
+        PanicReason::ArithmeticOverflow,
+        PanicReason::ContractNotFound,
+        PanicReason::MemoryOwnership,
+        PanicReason::NotEnoughBalance,
+        PanicReason::ExpectedInternalContext,
+        PanicReason::ColorNotFound,
+        PanicReason::InputNotFound,
+        PanicReason::OutputNotFound,
+        PanicReason::WitnessNotFound,
+        PanicReason::TransactionMaturity,
+        PanicReason::InvalidMetadataIdentifier,
+        PanicReason::MalformedCallStructure,
+        PanicReason::ReservedRegisterNotWritable,
+        PanicReason::ErrorFlag,
+        PanicReason::InvalidImmediateValue,
+        PanicReason::ExpectedCoinInput,
+        PanicReason::MaxMemoryAccess,
+        PanicReason::MemoryWriteOverlap,
+        PanicReason::ContractNotInInputs,
+        PanicReason::InternalBalanceOverflow,
+        PanicReason::ContractMaxSize,
+        PanicReason::ExpectedUnallocatedStack,
+        PanicReason::MaxStaticContractsReached,
+        PanicReason::TransferAmountCannotBeZero,
+        PanicReason::ExpectedOutputVariable,
+        PanicReason::ExpectedParentInternalContext,
+    ];
+
+    for r in data {
+        let b = u8::from(r);
+        let r_p = PanicReason::from(b);
+
+        let w = Word::from(r);
+        let r_q = PanicReason::from(w);
+
+        assert_eq!(r, r_p);
+        assert_eq!(r, r_q);
+    }
 }

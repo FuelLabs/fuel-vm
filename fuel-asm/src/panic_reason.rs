@@ -1,156 +1,157 @@
-/// Byte representation of an opcode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+#[cfg_attr(
+    feature = "serde-types-minimal",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[repr(u8)]
-pub enum OpcodeRepr {
-    /// RESERV00
+/// Panic reason representation for the interpreter.
+pub enum PanicReason {
+    /// Representation reserved per protocol.
     RESERV00 = 0x00,
-    /// RESERV01
-    RESERV01 = 0x01,
-    /// RESERV02
-    RESERV02 = 0x02,
-    /// RESERV03
-    RESERV03 = 0x03,
-    /// RESERV04
-    RESERV04 = 0x04,
-    /// RESERV05
-    RESERV05 = 0x05,
-    /// RESERV06
-    RESERV06 = 0x06,
-    /// RESERV07
-    RESERV07 = 0x07,
-    /// RESERV08
-    RESERV08 = 0x08,
-    /// RESERV09
-    RESERV09 = 0x09,
-    /// RESERV0A
-    RESERV0A = 0x0a,
-    /// RESERV0B
-    RESERV0B = 0x0b,
-    /// RESERV0C
-    RESERV0C = 0x0c,
-    /// RESERV0D
-    RESERV0D = 0x0d,
-    /// RESERV0E
-    RESERV0E = 0x0e,
-    /// RESERV0F
-    RESERV0F = 0x0f,
-
-    // Classes 0x1_-0x4_ - No immediate value
-    /// ADD
-    ADD = 0x10,
-    /// AND
-    AND = 0x11,
-    /// DIV
-    DIV = 0x12,
-    /// EQ
-    EQ = 0x13,
-    /// EXP
-    EXP = 0x14,
-    /// GT
-    GT = 0x15,
-    /// LT
-    LT = 0x16,
-    /// MLOG
-    MLOG = 0x17,
-    /// MROO
-    MROO = 0x18,
-    /// MOD
-    MOD = 0x19,
-    /// MOVE
-    MOVE = 0x1a,
-    /// MUL
-    MUL = 0x1b,
-    /// NOT
-    NOT = 0x1c,
-    /// OR
-    OR = 0x1d,
-    /// SLL
-    SLL = 0x1e,
-    /// SRL
-    SRL = 0x1f,
-    /// SUB
-    SUB = 0x20,
-    /// XOR
-    XOR = 0x21,
-    /// CIMV
-    CIMV = 0x22,
-    /// CTMV
-    CTMV = 0x23,
-    /// RET
-    RET = 0x24,
-    /// RETD
-    RETD = 0x25,
-    /// ALOC
-    ALOC = 0x26,
-    /// MCL
-    MCL = 0x27,
-    /// MCP
-    MCP = 0x28,
-    /// MEQ
-    MEQ = 0x29,
-    /// BHSH
-    BHSH = 0x2a,
-    /// BHEI
-    BHEI = 0x2b,
-    /// BURN
-    BURN = 0x2c,
-    /// CALL
-    CALL = 0x2d,
-    /// CCP
-    CCP = 0x2e,
-    /// CROO
-    CROO = 0x2f,
-    /// CSIZ
-    CSIZ = 0x30,
-    /// CB
-    CB = 0x31,
-    /// LDC
-    LDC = 0x32,
-    /// LOG
-    LOG = 0x33,
-    /// LOGD
-    LOGD = 0x34,
-    /// MINT
-    MINT = 0x35,
-    /// RVRT
-    RVRT = 0x36,
-    /// SLDC
-    SLDC = 0x37,
-    /// SRW
-    SRW = 0x38,
-    /// SRWQ
-    SRWQ = 0x39,
-    /// SWW
-    SWW = 0x3a,
-    /// SWWQ
-    SWWQ = 0x3b,
-    /// TR
-    TR = 0x3c,
-    /// TRO
-    TRO = 0x3d,
-    /// ECR
-    ECR = 0x3e,
-    /// K256
-    K256 = 0x3f,
-    /// S256
-    S256 = 0x40,
-    /// XIL
-    XIL = 0x41,
-    /// XIS
-    XIS = 0x42,
-    /// XOL
-    XOL = 0x43,
-    /// XOS
-    XOS = 0x44,
-    /// XWL
-    XWL = 0x45,
-    /// XWS
-    XWS = 0x46,
-    /// NOOP
-    NOOP = 0x47,
-    /// FLAG
-    FLAG = 0x48,
+    /// Found `RVRT` instruction.
+    Revert = 0x01,
+    /// Execution ran out of gas.
+    OutOfGas = 0x02,
+    /// The transaction validity is violated.
+    TransactionValidity = 0x03,
+    /// Attempt to write outside interpreter memory boundaries.
+    MemoryOverflow = 0x04,
+    /// Overflow while executing arithmetic operation.
+    ArithmeticOverflow = 0x05,
+    /// Designed contract was not found in the storage.
+    ContractNotFound = 0x06,
+    /// Memory ownership rules are violated.
+    MemoryOwnership = 0x07,
+    /// The color balance isn't enough for the instruction.
+    NotEnoughBalance = 0x08,
+    /// The interpreter is expected to be in internal context.
+    ExpectedInternalContext = 0x09,
+    /// The queried color was not found in the state.
+    ColorNotFound = 0x0a,
+    /// The provided input is not found in the transaction.
+    InputNotFound = 0x0b,
+    /// The provided output is not found in the transaction.
+    OutputNotFound = 0x0c,
+    /// The provided witness is not found in the transaction.
+    WitnessNotFound = 0x0d,
+    /// The transaction maturity is not valid for this request.
+    TransactionMaturity = 0x0e,
+    /// The metadata identifier is invalid.
+    InvalidMetadataIdentifier = 0x0f,
+    /// The call structure is not valid.
+    MalformedCallStructure = 0x10,
+    /// The provided register does not allow write operations.
+    ReservedRegisterNotWritable = 0x11,
+    /// The execution resulted in an erroneous state of the interpreter.
+    ErrorFlag = 0x12,
+    /// The provided immediate value is not valid for this instruction.
+    InvalidImmediateValue = 0x13,
+    /// The provided transaction input is not of type `Coin`.
+    ExpectedCoinInput = 0x14,
+    /// The requested memory access exceeds the limits of the interpreter.
+    MaxMemoryAccess = 0x15,
+    /// Two segments of the interpreter memory should not intersect for write operations.
+    MemoryWriteOverlap = 0x16,
+    /// The requested contract is not listed in the transaction inputs.
+    ContractNotInInputs = 0x17,
+    /// The internal color balance overflowed with the provided instruction.
+    InternalBalanceOverflow = 0x18,
+    /// The maximum allowed contract size is violated.
+    ContractMaxSize = 0x19,
+    /// This instruction expects the stack area to be unallocated for this call.
+    ExpectedUnallocatedStack = 0x1a,
+    /// The maximum allowed number of static contracts was reached for this transaction.
+    MaxStaticContractsReached = 0x1b,
+    /// The requested transfer amount cannot be zero.
+    TransferAmountCannotBeZero = 0x1c,
+    /// The provided transaction output should be of type `Variable`.
+    ExpectedOutputVariable = 0x1d,
+    /// The expected context of the stack parent is internal.
+    ExpectedParentInternalContext = 0x1e,
+    /// RESERV1F
+    RESERV1F = 0x1f,
+    /// RESERV20
+    RESERV20 = 0x20,
+    /// RESERV21
+    RESERV21 = 0x21,
+    /// RESERV22
+    RESERV22 = 0x22,
+    /// RESERV23
+    RESERV23 = 0x23,
+    /// RESERV24
+    RESERV24 = 0x24,
+    /// RESERV25
+    RESERV25 = 0x25,
+    /// RESERV26
+    RESERV26 = 0x26,
+    /// RESERV27
+    RESERV27 = 0x27,
+    /// RESERV28
+    RESERV28 = 0x28,
+    /// RESERV29
+    RESERV29 = 0x29,
+    /// RESERV2A
+    RESERV2A = 0x2a,
+    /// RESERV2B
+    RESERV2B = 0x2b,
+    /// RESERV2C
+    RESERV2C = 0x2c,
+    /// RESERV2D
+    RESERV2D = 0x2d,
+    /// RESERV2E
+    RESERV2E = 0x2e,
+    /// RESERV2F
+    RESERV2F = 0x2f,
+    /// RESERV30
+    RESERV30 = 0x30,
+    /// RESERV31
+    RESERV31 = 0x31,
+    /// RESERV32
+    RESERV32 = 0x32,
+    /// RESERV33
+    RESERV33 = 0x33,
+    /// RESERV34
+    RESERV34 = 0x34,
+    /// RESERV35
+    RESERV35 = 0x35,
+    /// RESERV36
+    RESERV36 = 0x36,
+    /// RESERV37
+    RESERV37 = 0x37,
+    /// RESERV38
+    RESERV38 = 0x38,
+    /// RESERV39
+    RESERV39 = 0x39,
+    /// RESERV3A
+    RESERV3A = 0x3a,
+    /// RESERV3B
+    RESERV3B = 0x3b,
+    /// RESERV3C
+    RESERV3C = 0x3c,
+    /// RESERV3D
+    RESERV3D = 0x3d,
+    /// RESERV3E
+    RESERV3E = 0x3e,
+    /// RESERV3F
+    RESERV3F = 0x3f,
+    /// RESERV40
+    RESERV40 = 0x40,
+    /// RESERV41
+    RESERV41 = 0x41,
+    /// RESERV42
+    RESERV42 = 0x42,
+    /// RESERV43
+    RESERV43 = 0x43,
+    /// RESERV44
+    RESERV44 = 0x44,
+    /// RESERV45
+    RESERV45 = 0x45,
+    /// RESERV46
+    RESERV46 = 0x46,
+    /// RESERV47
+    RESERV47 = 0x47,
+    /// RESERV48
+    RESERV48 = 0x48,
     /// RESERV49
     RESERV49 = 0x49,
     /// RESERV4A
@@ -165,42 +166,40 @@ pub enum OpcodeRepr {
     RESERV4E = 0x4e,
     /// RESERV4F
     RESERV4F = 0x4f,
-
-    // Classes 0x5_-0x6_ - Immediate 12 bits
-    /// ADDI
-    ADDI = 0x50,
-    /// ANDI
-    ANDI = 0x51,
-    /// DIVI
-    DIVI = 0x52,
-    /// EXPI
-    EXPI = 0x53,
-    /// MODI
-    MODI = 0x54,
-    /// MULI
-    MULI = 0x55,
-    /// ORI
-    ORI = 0x56,
-    /// SLLI
-    SLLI = 0x57,
-    /// SRLI
-    SRLI = 0x58,
-    /// SUBI
-    SUBI = 0x59,
-    /// XORI
-    XORI = 0x5a,
-    /// JNEI
-    JNEI = 0x5b,
-    /// LB
-    LB = 0x5c,
-    /// LW
-    LW = 0x5d,
-    /// SB
-    SB = 0x5e,
-    /// SW
-    SW = 0x5f,
-    /// MCPI
-    MCPI = 0x60,
+    /// RESERV50
+    RESERV50 = 0x50,
+    /// RESERV51
+    RESERV51 = 0x51,
+    /// RESERV52
+    RESERV52 = 0x52,
+    /// RESERV53
+    RESERV53 = 0x53,
+    /// RESERV54
+    RESERV54 = 0x54,
+    /// RESERV55
+    RESERV55 = 0x55,
+    /// RESERV56
+    RESERV56 = 0x56,
+    /// RESERV57
+    RESERV57 = 0x57,
+    /// RESERV58
+    RESERV58 = 0x58,
+    /// RESERV59
+    RESERV59 = 0x59,
+    /// RESERV5A
+    RESERV5A = 0x5a,
+    /// RESERV5B
+    RESERV5B = 0x5b,
+    /// RESERV5C
+    RESERV5C = 0x5c,
+    /// RESERV5D
+    RESERV5D = 0x5d,
+    /// RESERV5E
+    RESERV5E = 0x5e,
+    /// RESERV5F
+    RESERV5F = 0x5f,
+    /// RESERV60
+    RESERV60 = 0x60,
     /// RESERV61
     RESERV61 = 0x61,
     /// RESERV62
@@ -231,12 +230,10 @@ pub enum OpcodeRepr {
     RESERV6E = 0x6e,
     /// RESERV6F
     RESERV6F = 0x6f,
-
-    // Classes 0x7_-0x8_ - Immediate 18 bits
-    /// MCLI
-    MCLI = 0x70,
-    /// GM
-    GM = 0x71,
+    /// RESERV70
+    RESERV70 = 0x70,
+    /// RESERV71
+    RESERV71 = 0x71,
     /// RESERV72
     RESERV72 = 0x72,
     /// RESERV73
@@ -297,14 +294,12 @@ pub enum OpcodeRepr {
     RESERV8E = 0x8e,
     /// RESERV8F
     RESERV8F = 0x8f,
-
-    // Classes 0x9_-0xa_ - Immediate 24 bits
-    /// JI
-    JI = 0x90,
-    /// CFEI
-    CFEI = 0x91,
-    /// CFSI
-    CFSI = 0x92,
+    /// RESERV90
+    RESERV90 = 0x90,
+    /// RESERV91
+    RESERV91 = 0x91,
+    /// RESERV92
+    RESERV92 = 0x92,
     /// RESERV93
     RESERV93 = 0x93,
     /// RESERV94
@@ -363,7 +358,6 @@ pub enum OpcodeRepr {
     RESERVAE = 0xae,
     /// RESERVAF
     RESERVAF = 0xaf,
-
     /// RESERVB0
     RESERVB0 = 0xb0,
     /// RESERVB1
@@ -396,7 +390,6 @@ pub enum OpcodeRepr {
     RESERVBE = 0xbe,
     /// RESERVBF
     RESERVBF = 0xbf,
-
     /// RESERVC0
     RESERVC0 = 0xc0,
     /// RESERVC1
@@ -429,7 +422,6 @@ pub enum OpcodeRepr {
     RESERVCE = 0xce,
     /// RESERVCF
     RESERVCF = 0xcf,
-
     /// RESERVD0
     RESERVD0 = 0xd0,
     /// RESERVD1
@@ -462,7 +454,6 @@ pub enum OpcodeRepr {
     RESERVDE = 0xde,
     /// RESERVDF
     RESERVDF = 0xdf,
-
     /// RESERVE0
     RESERVE0 = 0xe0,
     /// RESERVE1
@@ -495,7 +486,6 @@ pub enum OpcodeRepr {
     RESERVEE = 0xee,
     /// RESERVEF
     RESERVEF = 0xef,
-
     /// RESERVF0
     RESERVF0 = 0xf0,
     /// RESERVF1

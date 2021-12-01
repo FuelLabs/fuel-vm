@@ -18,4 +18,10 @@ pub mod crypto;
 mod transaction;
 
 #[cfg(feature = "std")]
-pub use transaction::{Input, Metadata, Output, Receipt, Transaction, ValidationError, Witness};
+mod receipt;
+
+#[cfg(feature = "std")]
+pub use transaction::{Input, Metadata, Output, Transaction, ValidationError, Witness};
+
+#[cfg(feature = "std")]
+pub use receipt::{Receipt, ScriptResult, ScriptResultRepr};

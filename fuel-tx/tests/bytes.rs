@@ -1,5 +1,6 @@
+use fuel_asm::Opcode;
 use fuel_tx::*;
-use fuel_types::{bytes, ContractId};
+use fuel_types::{bytes, ContractId, Immediate24};
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 use std::fmt;
@@ -200,7 +201,223 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
         ),
-        Receipt::script_result(rng.gen(), rng.gen()),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::Success,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::Revert,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::OutOfGas,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::TransactionValidity,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MemoryOverflow,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ArithmeticOverflow,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ContractNotFound,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MemoryOwnership,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::NotEnoughBalance,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ExpectedInternalContext,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ColorNotFound,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::InputNotFound,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::OutputNotFound,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::WitnessNotFound,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::TransactionMaturity,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::InvalidMetadataIdentifier,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MalformedCallStructure,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ReservedRegisterNotWritable,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ErrorFlag,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::InvalidImmediateValue,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ExpectedCoinInput,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MaxMemoryAccess,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MemoryWriteOverlap,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ContractNotInInputs,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::InternalBalanceOverflow,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ContractMaxSize,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ExpectedUnallocatedStack,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::MaxStaticContractsReached,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::TransferAmountCannotBeZero,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ExpectedOutputVariable,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
+        Receipt::script_result(
+            ScriptResult::new(
+                ScriptResultRepr::ExpectedParentInternalContext,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+        ),
     ]);
 }
 

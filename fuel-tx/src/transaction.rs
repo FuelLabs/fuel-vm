@@ -9,13 +9,11 @@ use std::{io, mem};
 mod id;
 mod metadata;
 mod offset;
-mod receipt;
 mod txio;
 mod types;
 mod validation;
 
 pub use metadata::Metadata;
-pub use receipt::Receipt;
 pub use types::{Input, Output, Witness};
 pub use validation::ValidationError;
 

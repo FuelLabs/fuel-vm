@@ -22,7 +22,7 @@ const fn hex_val(c: u8) -> Option<u8> {
 
 macro_rules! key {
     ($i:ident, $s:expr) => {
-        #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(
             feature = "serde-types-minimal",
             derive(serde::Serialize, serde::Deserialize)
@@ -42,7 +42,7 @@ macro_rules! key {
 
 macro_rules! key_no_default {
     ($i:ident, $s:expr) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         // TODO serde is not implemented for arrays bigger than 32 bytes
         pub struct $i([u8; $s]);
 
@@ -176,6 +176,18 @@ macro_rules! key_methods {
                 }
 
                 self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b))
+            }
+        }
+
+        impl fmt::Debug for $i {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{:#x}", self)
+            }
+        }
+
+        impl fmt::Display for $i {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{:#x}", self)
             }
         }
 

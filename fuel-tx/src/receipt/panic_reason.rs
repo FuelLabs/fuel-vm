@@ -7,7 +7,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
-pub enum ScriptResultRepr {
+pub enum PanicReason {
     Success = 0x00,
     Revert = 0x01,
     OutOfGas = 0x02,
@@ -42,13 +42,13 @@ pub enum ScriptResultRepr {
     InvalidRepresentation = 0xff,
 }
 
-impl From<ScriptResultRepr> for Word {
-    fn from(r: ScriptResultRepr) -> Word {
+impl From<PanicReason> for Word {
+    fn from(r: PanicReason) -> Word {
         r as Word
     }
 }
 
-impl From<Word> for ScriptResultRepr {
+impl From<Word> for PanicReason {
     fn from(b: Word) -> Self {
         match b {
             0x00 => Self::Success,
@@ -90,19 +90,19 @@ impl From<Word> for ScriptResultRepr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub struct ScriptResult {
-    result: ScriptResultRepr,
+    result: PanicReason,
     instruction: Instruction,
 }
 
 impl ScriptResult {
-    pub const fn new(result: ScriptResultRepr, instruction: Instruction) -> Self {
+    pub const fn new(result: PanicReason, instruction: Instruction) -> Self {
         Self {
             result,
             instruction,
         }
     }
 
-    pub const fn result(&self) -> &ScriptResultRepr {
+    pub const fn result(&self) -> &PanicReason {
         &self.result
     }
 
@@ -125,7 +125,7 @@ impl From<ScriptResult> for Word {
 
 impl From<Word> for ScriptResult {
     fn from(val: Word) -> Self {
-        let result = ScriptResultRepr::from(val >> RESULT_OFFSET);
+        let result = PanicReason::from(val >> RESULT_OFFSET);
         let instruction = Instruction::from((val >> INSTR_OFFSET) as u32);
 
         Self::new(result, instruction)
@@ -144,7 +144,7 @@ impl From<ScriptResult> for Opcode {
     }
 }
 
-impl From<ScriptResult> for ScriptResultRepr {
+impl From<ScriptResult> for PanicReason {
     fn from(r: ScriptResult) -> Self {
         r.result
     }

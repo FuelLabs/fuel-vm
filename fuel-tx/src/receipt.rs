@@ -5,122 +5,14 @@ use std::convert::TryFrom;
 use std::io::{self, Write};
 use std::mem;
 
+mod receipt_repr;
+mod script_result;
+
+use receipt_repr::ReceiptRepr;
+
+pub use script_result::{ScriptResult, ScriptResultRepr};
+
 const WORD_SIZE: usize = mem::size_of::<Word>();
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum ReceiptRepr {
-    Call = 0x00,
-    Return = 0x01,
-    ReturnData = 0x02,
-    Panic = 0x03,
-    Revert = 0x04,
-    Log = 0x05,
-    LogData = 0x06,
-    Transfer = 0x07,
-    TransferOut = 0x08,
-    ScriptResult = 0x09,
-}
-
-impl ReceiptRepr {
-    pub const fn len(&self) -> usize {
-        ContractId::LEN // id
-                + WORD_SIZE // pc
-                + WORD_SIZE // is
-        + match self {
-            Self::Call => {
-                ContractId::LEN // to
-                + WORD_SIZE // amount
-                + Color::LEN // color
-                + WORD_SIZE // gas
-                + WORD_SIZE // a
-                + WORD_SIZE // b
-            }
-
-            Self::Return => WORD_SIZE, // val
-
-            Self::ReturnData => {
-                WORD_SIZE // ptr
-                + WORD_SIZE // len
-                + Bytes32::LEN // digest
-            }
-
-            Self::Panic => WORD_SIZE, // reason
-            Self::Revert => WORD_SIZE, // ra
-
-            Self::Log => {
-                WORD_SIZE // ra
-                + WORD_SIZE // rb
-                + WORD_SIZE // rc
-                + WORD_SIZE // rd
-            }
-
-            Self::LogData => {
-                WORD_SIZE // ra
-                + WORD_SIZE // rb
-                + WORD_SIZE // ptr
-                + WORD_SIZE // len
-                + Bytes32::LEN // digest
-            }
-
-            Self::Transfer => {
-                ContractId::LEN // to
-                + WORD_SIZE // amount
-                + Color::LEN // digest
-            }
-
-            Self::TransferOut => {
-                Address::LEN // to
-                + WORD_SIZE // amount
-                + Color::LEN // digest
-            }
-
-            Self::ScriptResult => {
-                WORD_SIZE // status
-                + WORD_SIZE // gas_used
-            }
-        }
-    }
-}
-
-impl From<&Receipt> for ReceiptRepr {
-    fn from(receipt: &Receipt) -> Self {
-        match receipt {
-            Receipt::Call { .. } => Self::Call,
-            Receipt::Return { .. } => Self::Return,
-            Receipt::ReturnData { .. } => Self::ReturnData,
-            Receipt::Panic { .. } => Self::Panic,
-            Receipt::Revert { .. } => Self::Revert,
-            Receipt::Log { .. } => Self::Log,
-            Receipt::LogData { .. } => Self::LogData,
-            Receipt::Transfer { .. } => Self::Transfer,
-            Receipt::TransferOut { .. } => Self::TransferOut,
-            Receipt::ScriptResult { .. } => Self::ScriptResult,
-        }
-    }
-}
-
-impl TryFrom<Word> for ReceiptRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Call),
-            0x01 => Ok(Self::Return),
-            0x02 => Ok(Self::ReturnData),
-            0x03 => Ok(Self::Panic),
-            0x04 => Ok(Self::Revert),
-            0x05 => Ok(Self::Log),
-            0x06 => Ok(Self::LogData),
-            0x07 => Ok(Self::Transfer),
-            0x08 => Ok(Self::TransferOut),
-            0x09 => Ok(Self::ScriptResult),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
-            )),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
@@ -207,7 +99,7 @@ pub enum Receipt {
     },
 
     ScriptResult {
-        status: bool,
+        result: ScriptResult,
         gas_used: Word,
     },
 }
@@ -346,8 +238,8 @@ impl Receipt {
         }
     }
 
-    pub const fn script_result(status: bool, gas_used: Word) -> Self {
-        Self::ScriptResult { status, gas_used }
+    pub const fn script_result(result: ScriptResult, gas_used: Word) -> Self {
+        Self::ScriptResult { result, gas_used }
     }
 
     pub const fn id(&self) -> Option<&ContractId> {
@@ -518,9 +410,9 @@ impl Receipt {
         }
     }
 
-    pub const fn status(&self) -> Option<bool> {
+    pub const fn result(&self) -> Option<ScriptResult> {
         match self {
-            Self::ScriptResult { status, .. } => Some(*status),
+            Self::ScriptResult { result, .. } => Some(*result),
             _ => None,
         }
     }
@@ -689,10 +581,12 @@ impl io::Read for Receipt {
                 bytes::store_number_unchecked(buf, *is);
             }
 
-            Self::ScriptResult { status, gas_used } => {
+            Self::ScriptResult { result, gas_used } => {
                 let buf = bytes::store_number_unchecked(buf, ReceiptRepr::ScriptResult as Word);
 
-                let buf = bytes::store_number_unchecked(buf, *status as Word);
+                let result = Word::from(*result);
+                let buf = bytes::store_number_unchecked(buf, result);
+
                 bytes::store_number_unchecked(buf, *gas_used);
             }
         }
@@ -844,12 +738,12 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::ScriptResult => {
-                let (status, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (result, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (gas_used, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
-                let status = status != 0;
+                let result = ScriptResult::from(result);
 
-                *self = Self::script_result(status, gas_used);
+                *self = Self::script_result(result, gas_used);
             }
         }
 

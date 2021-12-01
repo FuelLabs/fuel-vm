@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{convert, fmt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -532,5 +532,11 @@ impl fmt::Display for PanicReason {
 impl std::error::Error for PanicReason {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
+    }
+}
+
+impl From<convert::Infallible> for PanicReason {
+    fn from(_i: convert::Infallible) -> Self {
+        unreachable!()
     }
 }

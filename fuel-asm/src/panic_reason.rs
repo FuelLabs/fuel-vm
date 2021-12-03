@@ -1,4 +1,8 @@
-use core::{convert, fmt};
+use crate::{Instruction, Opcode, Word};
+
+use core::{convert, fmt, mem};
+
+const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -538,5 +542,103 @@ impl std::error::Error for PanicReason {
 impl From<convert::Infallible> for PanicReason {
     fn from(_i: convert::Infallible) -> Self {
         unreachable!()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "serde-types-minimal",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+/// Describe a panic reason with the instruction that generated it
+pub struct InstructionResult {
+    reason: PanicReason,
+    instruction: Instruction,
+}
+
+impl InstructionResult {
+    /// Represents success
+    pub const fn success() -> Self {
+        let reason = PanicReason::from_u8(0);
+        let instruction = Instruction::new(0);
+
+        Self {
+            reason,
+            instruction,
+        }
+    }
+
+    /// Represents an error described by a reason and an instruction.
+    pub const fn error(reason: PanicReason, instruction: Instruction) -> Self {
+        Self {
+            reason,
+            instruction,
+        }
+    }
+
+    /// Underlying panic reason
+    pub const fn reason(&self) -> &PanicReason {
+        &self.reason
+    }
+
+    /// Underlying instruction
+    pub const fn instruction(&self) -> &Instruction {
+        &self.instruction
+    }
+
+    /// This result represents success?
+    pub const fn is_success(&self) -> bool {
+        (self.reason as u8) == 0u8
+    }
+
+    /// This result represents error?
+    pub const fn is_error(&self) -> bool {
+        !self.is_success()
+    }
+}
+
+const REASON_OFFSET: Word = (WORD_SIZE * 8 - 8) as Word;
+const INSTR_OFFSET: Word = ((WORD_SIZE - mem::size_of::<u32>()) * 8 - 8) as Word;
+
+impl From<InstructionResult> for Word {
+    fn from(r: InstructionResult) -> Word {
+        let reason = Word::from(r.reason);
+        let instruction = (reason != 0) as Word * u32::from(r.instruction) as Word;
+
+        (reason << REASON_OFFSET) | (instruction << INSTR_OFFSET)
+    }
+}
+
+impl From<Word> for InstructionResult {
+    fn from(val: Word) -> Self {
+        let reason = val >> REASON_OFFSET;
+        let instruction = val >> INSTR_OFFSET;
+        let instruction = (reason != 0) as Word * instruction;
+
+        let reason = PanicReason::from(reason);
+        let instruction = Instruction::from(instruction as u32);
+
+        Self {
+            reason,
+            instruction,
+        }
+    }
+}
+
+impl From<InstructionResult> for Instruction {
+    fn from(r: InstructionResult) -> Self {
+        r.instruction
+    }
+}
+
+impl From<InstructionResult> for Opcode {
+    fn from(r: InstructionResult) -> Self {
+        r.instruction.into()
+    }
+}
+
+impl From<InstructionResult> for PanicReason {
+    fn from(r: InstructionResult) -> Self {
+        r.reason
     }
 }

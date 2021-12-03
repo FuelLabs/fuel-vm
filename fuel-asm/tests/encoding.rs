@@ -191,8 +191,10 @@ fn opcode() {
 }
 
 #[test]
-fn panic_reason() {
-    let data = vec![
+fn panic_reason_description() {
+    let imm24 = 0xbfffff;
+
+    let reasons = vec![
         PanicReason::Revert,
         PanicReason::OutOfGas,
         PanicReason::TransactionValidity,
@@ -225,7 +227,14 @@ fn panic_reason() {
         PanicReason::ExpectedParentInternalContext,
     ];
 
-    for r in data {
+    let pd = InstructionResult::success();
+
+    let w = Word::from(pd);
+    let pd_p = InstructionResult::from(w);
+
+    assert_eq!(pd, pd_p);
+
+    for r in reasons {
         let b = u8::from(r);
         let r_p = PanicReason::from(b);
 
@@ -234,5 +243,13 @@ fn panic_reason() {
 
         assert_eq!(r, r_p);
         assert_eq!(r, r_q);
+
+        let op = Opcode::JI(imm24);
+        let pd = InstructionResult::error(r, op.into());
+
+        let w = Word::from(pd);
+        let pd_p = InstructionResult::from(w);
+
+        assert_eq!(pd, pd_p);
     }
 }

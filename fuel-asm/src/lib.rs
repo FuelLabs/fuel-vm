@@ -12,4 +12,4 @@ mod macros;
 pub use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId, Word};
 pub use instruction::Instruction;
 pub use opcode::{Opcode, OpcodeRepr};
-pub use panic_reason::PanicReason;
+pub use panic_reason::{InstructionResult, PanicReason};

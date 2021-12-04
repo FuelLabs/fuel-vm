@@ -78,9 +78,3 @@ impl From<Infallible> for InterpreterError {
         unreachable!()
     }
 }
-
-impl From<PanicReason> for InterpreterError {
-    fn from(_r: PanicReason) -> Self {
-        unimplemented!()
-    }
-}

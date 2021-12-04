@@ -43,8 +43,13 @@ where
                     Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))?;
                 }
 
-                self.storage.storage_contract_insert(&id, &contract)?;
-                self.storage.storage_contract_root_insert(&id, salt, &root)?;
+                self.storage
+                    .storage_contract_insert(&id, &contract)
+                    .map_err(InterpreterError::Panic)?;
+
+                self.storage
+                    .storage_contract_root_insert(&id, salt, &root)
+                    .map_err(InterpreterError::Panic)?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification

@@ -1,3 +1,5 @@
+//! VM parameters
+
 use fuel_tx::consts::*;
 use fuel_types::{Bytes32, Color, Word};
 

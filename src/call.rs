@@ -1,3 +1,5 @@
+//! Inter-contract call supporting structures
+
 use crate::consts::*;
 use crate::contract::Contract;
 

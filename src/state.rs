@@ -1,3 +1,5 @@
+//! Runtime state representation for the VM
+
 use fuel_tx::{Receipt, Transaction};
 use fuel_types::{Bytes32, Word};
 

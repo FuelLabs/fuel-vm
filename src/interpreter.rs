@@ -1,3 +1,5 @@
+//! [`Interpreter`] implementation
+
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
@@ -8,7 +10,7 @@ use fuel_types::Word;
 
 mod alu;
 mod blockchain;
-mod builder;
+mod constructors;
 mod contract;
 mod crypto;
 mod executors;
@@ -58,13 +60,15 @@ impl<S> Interpreter<S> {
         &self.debugger
     }
 
-    // TODO convert to private scope after using internally
-    pub const fn is_unsafe_math(&self) -> bool {
+    // TODO use this in ALU
+    #[allow(dead_code)]
+    pub(crate) const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }
 
-    // TODO convert to private scope after using internally
-    pub const fn is_wrapping(&self) -> bool {
+    // TODO use this in ALU
+    #[allow(dead_code)]
+    pub(crate) const fn is_wrapping(&self) -> bool {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }
 

@@ -13,6 +13,8 @@ pub mod storage;
 pub mod transactor;
 
 pub mod prelude {
+    //! Required implementations for full functionality
+
     pub use fuel_asm::{Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     pub use fuel_tx::{Input, Output, Receipt, Transaction, ValidationError, Witness};

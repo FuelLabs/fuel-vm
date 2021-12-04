@@ -1,3 +1,5 @@
+//! Runtime interpreter error implementation
+
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
 use fuel_tx::ValidationError;
 

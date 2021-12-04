@@ -1,3 +1,5 @@
+//! Chain contract definition
+
 use crate::crypto;
 use crate::error::InterpreterError;
 

@@ -1,4 +1,4 @@
-//! Builder pattern implementation for [`Interpreter`]
+//! Builder pattern for [`Interpreter`]
 //!
 //! Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
 //!

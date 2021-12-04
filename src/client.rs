@@ -1,3 +1,5 @@
+//! In-memory client implementation
+
 use crate::backtrace::Backtrace;
 use crate::error::InterpreterError;
 use crate::transactor::Transactor;

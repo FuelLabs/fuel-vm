@@ -1,3 +1,5 @@
+//! VM runtime context definitions
+
 use fuel_tx::Transaction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

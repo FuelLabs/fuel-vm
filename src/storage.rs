@@ -1,3 +1,5 @@
+//! Trait definitions for storage backend
+
 use crate::contract::Contract;
 
 use fuel_asm::PanicReason;

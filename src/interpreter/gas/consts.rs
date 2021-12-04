@@ -51,6 +51,7 @@ pub const GAS_LW: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_MEQ: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_SB: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_SW: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_BAL: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_BHEI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_BHSH: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_BURN: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);

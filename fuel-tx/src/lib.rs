@@ -9,6 +9,7 @@
 
 pub mod consts;
 
+pub use fuel_asm::{InstructionResult, PanicReason};
 pub use fuel_types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt};
 
 #[cfg(feature = "std")]
@@ -24,4 +25,4 @@ mod receipt;
 pub use transaction::{Input, Metadata, Output, Transaction, ValidationError, Witness};
 
 #[cfg(feature = "std")]
-pub use receipt::{PanicReason, Receipt, ScriptResult};
+pub use receipt::Receipt;

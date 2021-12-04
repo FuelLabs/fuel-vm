@@ -112,6 +112,10 @@ impl StateTransition {
         &self.tx
     }
 
+    pub fn should_revert(&self) -> bool {
+        self.receipts.iter().any(|r| matches!(r, Receipt::Revert { .. }))
+    }
+
     pub fn receipts(&self) -> &[Receipt] {
         self.receipts.as_slice()
     }
@@ -149,6 +153,10 @@ impl<'a> StateTransitionRef<'a> {
 
     pub const fn receipts(&self) -> &[Receipt] {
         self.receipts
+    }
+
+    pub fn should_revert(&self) -> bool {
+        self.receipts.iter().any(|r| matches!(r, Receipt::Revert { .. }))
     }
 
     pub fn into_owned(self) -> StateTransition {

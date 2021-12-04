@@ -1,13 +1,13 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::{Backtrace, InterpreterError};
+use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
-use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
+use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Opcode, PanicReason};
-use fuel_tx::{Input, Output, Receipt, ScriptResult, Transaction};
+use fuel_asm::{InstructionResult, Opcode, PanicReason};
+use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
@@ -15,10 +15,6 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    fn into_inner(self) -> (Transaction, Vec<Receipt>) {
-        (self.tx, self.receipts)
-    }
-
     // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
@@ -95,28 +91,30 @@ where
                 let program = self.run_program();
                 let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
 
-                // According to the specs, the VM should not spawn script errors - except of
-                // tx validity, invalid opcode or some general error (e.g. I/O).
-                //
-                // For other cases, a script result receipt should be created, consuming the
-                // used gas.
+                // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {
-                    Ok(s) => (ScriptResult::success(), s),
+                    Ok(s) => (InstructionResult::success(), s),
 
-                    Err(InterpreterError::PanicInstruction(reason, instruction)) => {
-                        if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
-                            // TODO define strategy for out of gas when
-                            // reverting after generic
-                            // error
+                    Err(e) => match e.instruction_result() {
+                        Some(result) => {
+                            if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
+                                // TODO define strategy for out of gas when
+                                // reverting after generic error
+                            }
+
+                            (result, ProgramState::Revert(0))
                         }
 
-                        (ScriptResult::error(reason, instruction), ProgramState::Revert(0))
-                    }
-
-                    Err(_) => unimplemented!(),
+                        // This isn't a specified case of an erroneous program and should be
+                        // propagated. If applicable, OS errors will fall into this category.
+                        None => {
+                            return Err(e);
+                        }
+                    },
                 };
 
                 let receipt = Receipt::script_result(status, gas_used);
+
                 self.receipts.push(receipt);
 
                 state = program;
@@ -204,55 +202,15 @@ where
         }
     }
 
-    fn transition_internal<F, E>(err: F, storage: S, tx: Transaction) -> Result<StateTransition, E>
-    where
-        F: FnOnce(&Self, InterpreterError) -> E,
-    {
-        let mut vm = Interpreter::with_storage(storage);
-
-        let state = vm.init(tx).and_then(|_| vm.run()).map_err(|e| err(&vm, e))?;
-
-        let (tx, receipts) = vm.into_inner();
-        let transition = StateTransition::new(state, tx, receipts);
-
-        Ok(transition)
-    }
-
-    fn transact_internal<F, E>(&mut self, err: F, tx: Transaction) -> Result<StateTransitionRef<'_>, E>
-    where
-        F: FnOnce(&Interpreter<S>, InterpreterError) -> E,
-    {
-        let state = self.init(tx).and_then(|_| self.run()).map_err(|e| err(&self, e))?;
-
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
-    }
-
-    /// Allocate internally a new instance of [`Interpreter`] with the provided
-    /// storage, initialize it with the provided transaction and return the
-    /// result of th execution in form of [`StateTransition`]
-    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
-        Self::transition_internal(|_, e| e, storage, tx)
-    }
-
-    /// Execute the same procedure as [`Self::transition`], but in case of
-    /// error, allocate additional data to compose a [`Backtrace`]
-    pub fn transition_with_backtrace(storage: S, tx: Transaction) -> Result<StateTransition, Backtrace> {
-        Self::transition_internal(|vm, e| e.backtrace(vm), storage, tx)
-    }
-
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        self.transact_internal(|_, e| e, tx)
-    }
+        let state = self.init(tx).and_then(|_| self.run())?;
 
-    /// Execute the same procedure as [`Self::transact`], but in case of
-    /// error, allocate additional data to compose a [`Backtrace`]
-    pub fn transact_with_backtrace(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, Backtrace> {
-        self.transact_internal(|interpreter, e| e.backtrace(interpreter), tx)
+        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
+
+        Ok(transition)
     }
 }

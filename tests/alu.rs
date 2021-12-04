@@ -15,15 +15,14 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
-    let state = Interpreter::transition(storage, tx).expect("Failed to execute ALU script!");
+    let receipts = Transactor::new(storage)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute ALU script!")
+        .to_owned();
 
     assert_eq!(
-        state
-            .receipts()
-            .first()
-            .expect("Receipt not found")
-            .ra()
-            .expect("$ra expected"),
+        receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
         expected
     );
 }
@@ -42,13 +41,16 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
-    let result = Interpreter::transition(storage, tx).expect("Failed to execute ALU script!");
-
-    let result = result
+    let receipts = Transactor::new(storage)
+        .transact(tx)
         .receipts()
+        .expect("Failed to execute ALU script!")
+        .to_owned();
+
+    let result = receipts
         .iter()
         .find_map(Receipt::result)
-        .map(|r| *r.result())
+        .map(|r| *r.reason())
         .expect("Expected script result");
 
     assert_eq!(PanicReason::ReservedRegisterNotWritable, result);

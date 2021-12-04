@@ -1,5 +1,4 @@
 use crate::call::CallFrame;
-use crate::client::MemoryStorage;
 use crate::consts::*;
 use crate::context::Context;
 use crate::state::Debugger;
@@ -9,6 +8,7 @@ use fuel_types::Word;
 
 mod alu;
 mod blockchain;
+mod builder;
 mod contract;
 mod crypto;
 mod executors;
@@ -42,20 +42,6 @@ pub struct Interpreter<S> {
 }
 
 impl<S> Interpreter<S> {
-    pub fn with_storage(storage: S) -> Self {
-        Self {
-            registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; VM_MAX_RAM as usize],
-            frames: vec![],
-            receipts: vec![],
-            tx: Transaction::default(),
-            storage,
-            debugger: Debugger::default(),
-            context: Context::default(),
-            block_height: 0,
-        }
-    }
-
     pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
     }
@@ -87,21 +73,15 @@ impl<S> Interpreter<S> {
     }
 }
 
-impl Interpreter<MemoryStorage> {
-    pub fn in_memory() -> Self {
-        Self::with_storage(Default::default())
-    }
-}
-
-impl Interpreter<()> {
-    pub fn ephemeral() -> Self {
-        Self::with_storage(())
-    }
-}
-
 impl<S> From<Interpreter<S>> for Transaction {
     fn from(vm: Interpreter<S>) -> Self {
         vm.tx
+    }
+}
+
+impl<S> AsRef<S> for Interpreter<S> {
+    fn as_ref(&self) -> &S {
+        &self.storage
     }
 }
 

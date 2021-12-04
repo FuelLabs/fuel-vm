@@ -143,7 +143,7 @@ mod tests {
     fn external_balance() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
-        let mut vm = Interpreter::in_memory();
+        let mut vm = Interpreter::with_memory_storage();
 
         let gas_price = 0;
         let gas_limit = 1_000_000;

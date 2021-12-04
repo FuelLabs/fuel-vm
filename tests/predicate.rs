@@ -8,7 +8,7 @@ use rand::{Rng, SeedableRng};
 fn predicate() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::in_memory();
+    let mut vm = Interpreter::with_memory_storage();
 
     let predicate_data = 0x23 as Word;
     let predicate_data = predicate_data.to_be_bytes().to_vec();
@@ -83,7 +83,7 @@ fn predicate() {
 fn predicate_false() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::in_memory();
+    let mut vm = Interpreter::with_memory_storage();
 
     let predicate_data = 0x24 as Word;
     let predicate_data = predicate_data.to_be_bytes().to_vec();

@@ -86,8 +86,11 @@ fn ecrecover() {
         vec![],
     );
 
-    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
-    let receipts = state.receipts();
+    let receipts = Transactor::new(storage)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute script!")
+        .to_owned();
 
     assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
     assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
@@ -164,8 +167,11 @@ fn sha256() {
         vec![],
     );
 
-    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
-    let receipts = state.receipts();
+    let receipts = Transactor::new(storage)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute script!")
+        .to_owned();
 
     assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
     assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
@@ -247,8 +253,11 @@ fn keccak256() {
         vec![],
     );
 
-    let state = Interpreter::transition(storage, tx).expect("Failed to execute script!");
-    let receipts = state.receipts();
+    let receipts = Transactor::new(storage)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute script!")
+        .to_owned();
 
     assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
     assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);

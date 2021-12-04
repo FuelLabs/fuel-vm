@@ -327,6 +327,11 @@ where
                 self.store_word(a, b, imm)?;
             }
 
+            OpcodeRepr::BAL => {
+                self.gas_charge(GAS_BAL)?;
+                self.contract_balance(ra, b, c)?;
+            }
+
             OpcodeRepr::BHEI => {
                 self.gas_charge(GAS_BHEI)?;
                 self.alu_set(ra, self.block_height() as Word)?;

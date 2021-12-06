@@ -12,7 +12,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_tx::{Receipt, Transaction};
 
-use std::slice;
+use std::{mem, slice};
 
 #[derive(Debug, Clone)]
 pub struct Transactor<'a, S> {
@@ -84,34 +84,30 @@ impl<'a, S> Transactor<'a, S> {
     }
 }
 
-impl<'a, S> Transactor<'a, S>
+impl<S> Transactor<'_, S>
 where
     S: InterpreterStorage,
 {
-    pub fn transact(&mut self, tx: Transaction) -> &'a mut Self {
-        let slf: *mut Self = self;
+    pub fn transact(&mut self, tx: Transaction) -> &mut Self {
+        match self.interpreter.transact(tx) {
+            Ok(s) => {
+                // Safety: cast `StateTransitionRef<'_>` to `StateTransitionRef<'a>` since it
+                // was generated with the same lifetime of `self.interpreter`
+                //
+                // `self.interpreter` is bound to `'a` since its bound to `self`
+                let s = unsafe { mem::transmute(s) };
 
-        // Safety: the compiler isn't aware that `'a` encompasses `Interpreter` as well
-        //
-        // This is a safe call because both `Interpreter` and `StateTransitionRef` are
-        // owned by `'a` via `Transactor`
-        unsafe {
-            match slf.as_mut().unwrap().interpreter.transact(tx) {
-                Ok(s) => {
-                    self.state_transition.replace(s);
-                    self.error.take();
+                self.state_transition.replace(s);
+                self.error.take();
+            }
 
-                    (self as *mut Self).as_mut().unwrap()
-                }
-
-                Err(e) => {
-                    self.state_transition.take();
-                    self.error.replace(e);
-
-                    (self as *mut Self).as_mut().unwrap()
-                }
+            Err(e) => {
+                self.state_transition.take();
+                self.error.replace(e);
             }
         }
+
+        self
     }
 }
 

@@ -103,8 +103,20 @@ where
                     Err(e) => match e.instruction_result() {
                         Some(result) => {
                             if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
-                                // TODO define strategy for out of gas when
-                                // reverting after generic error
+                                // TODO `RVRT` consumes gas. If we are out of
+                                // gas to run this instruction, then we might
+                                // need to execute it anyway.
+                                //
+                                // Should we invalidate the entirety of the
+                                // transaction (so it cannot produce a valid
+                                // block), or should we just execute `RVRT`
+                                // regardless of being out of gas?
+                                //
+                                // If we opt to invalidate the entirety of the
+                                // transaction, then we produce a new class of
+                                // panic reason `OutOfGasHalt` since the regular
+                                // `OutOfGas` won't halt the execution and will
+                                // produce valid blocks.
                             }
 
                             (result, ProgramState::Revert(0))

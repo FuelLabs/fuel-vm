@@ -119,7 +119,7 @@ where
                                 // produce valid blocks.
                             }
 
-                            (result, ProgramState::Revert(0))
+                            (*result, ProgramState::Revert(0))
                         }
 
                         // This isn't a specified case of an erroneous program and should be

@@ -9,7 +9,7 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InterpreterError {
-    PanicInstruction(PanicReason, Instruction),
+    PanicInstruction(InstructionResult),
     Panic(PanicReason),
     Initialization(PanicReason),
     ValidationError(ValidationError),
@@ -23,28 +23,24 @@ pub enum InterpreterError {
 impl InterpreterError {
     pub const fn panic_reason(&self) -> Option<PanicReason> {
         match self {
-            Self::PanicInstruction(reason, _) | Self::Panic(reason) | Self::Initialization(reason) => Some(*reason),
+            Self::PanicInstruction(result) => Some(*result.reason()),
+            Self::Panic(reason) | Self::Initialization(reason) => Some(*reason),
             _ => None,
         }
     }
 
     pub const fn instruction(&self) -> Option<&Instruction> {
         match self {
-            Self::PanicInstruction(_, instruction) => Some(instruction),
+            Self::PanicInstruction(result) => Some(result.instruction()),
             _ => None,
         }
     }
 
-    /// Attempt to generate an instruction result variant, depending on the
-    /// class of error.
-    ///
-    /// This instruction result represents runtime errors that are the product
-    /// of wrong programs and should be predicted and well-defined in the
-    /// specs.
-    pub fn instruction_result(&self) -> Option<InstructionResult> {
-        self.panic_reason()
-            .zip(self.instruction().copied())
-            .map(|(r, i)| InstructionResult::error(r, i))
+    pub fn instruction_result(&self) -> Option<&InstructionResult> {
+        match self {
+            Self::PanicInstruction(r) => Some(r),
+            _ => None,
+        }
     }
 }
 
@@ -78,5 +74,11 @@ impl From<ValidationError> for InterpreterError {
 impl From<Infallible> for InterpreterError {
     fn from(_i: Infallible) -> InterpreterError {
         unreachable!()
+    }
+}
+
+impl From<InstructionResult> for InterpreterError {
+    fn from(r: InstructionResult) -> InterpreterError {
+        Self::PanicInstruction(r)
     }
 }

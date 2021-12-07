@@ -5,7 +5,7 @@ use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
+use fuel_asm::{Instruction, InstructionResult, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
@@ -52,7 +52,7 @@ where
         }
 
         self._instruction(instruction)
-            .map_err(|reason| InterpreterError::PanicInstruction(reason, instruction))
+            .map_err(|reason| InterpreterError::from(InstructionResult::error(reason, instruction)))
     }
 
     fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, PanicReason> {

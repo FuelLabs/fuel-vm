@@ -177,7 +177,7 @@ fn call() {
     }
 
     let state = Interpreter::transition(&mut storage, tx).expect("Failed to execute script");
-    let receipt = state.receipts()[1];
+    let receipt = state.receipts()[1].clone();
 
     assert_eq!(receipt.ra().expect("Receipt value failed"), 0x11);
     assert_eq!(receipt.rb().expect("Receipt value failed"), 0x2a);

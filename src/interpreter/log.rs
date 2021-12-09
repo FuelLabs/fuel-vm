@@ -38,6 +38,7 @@ impl<S> Interpreter<S> {
             c,
             d,
             digest,
+            self.memory[c as usize..cd].to_vec(),
             self.registers[REG_PC],
             self.registers[REG_IS],
         );

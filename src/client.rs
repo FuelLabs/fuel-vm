@@ -56,7 +56,7 @@ impl MemoryClient {
         let receipts = txs.into_iter().try_fold(vec![], |mut receipts, tx| {
             match interpreter.transact(tx) {
                 Ok(state) => {
-                    receipts.extend(state.receipts());
+                    receipts.extend(state.receipts().into_iter().cloned());
 
                     if !state.receipts().iter().any(|r| matches!(r, Receipt::Revert { .. })) {
                         interpreter.as_mut().commit();

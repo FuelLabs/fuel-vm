@@ -1,5 +1,5 @@
 use fuel_asm::InstructionResult;
-use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::bytes::{self, padded_len_usize, SizedBytes};
 use fuel_types::{Address, Bytes32, Color, ContractId, Word};
 
 use std::convert::TryFrom;
@@ -12,7 +12,7 @@ use receipt_repr::ReceiptRepr;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
 pub enum Receipt {
     Call {
@@ -39,6 +39,7 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        data: Vec<u8>,
         pc: Word,
         is: Word,
     },
@@ -74,6 +75,7 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        data: Vec<u8>,
         pc: Word,
         is: Word,
     },
@@ -137,6 +139,7 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        data: Vec<u8>,
         pc: Word,
         is: Word,
     ) -> Self {
@@ -145,6 +148,7 @@ impl Receipt {
             ptr,
             len,
             digest,
+            data,
             pc,
             is,
         }
@@ -185,6 +189,7 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        data: Vec<u8>,
         pc: Word,
         is: Word,
     ) -> Self {
@@ -195,6 +200,7 @@ impl Receipt {
             ptr,
             len,
             digest,
+            data,
             pc,
             is,
         }
@@ -370,6 +376,14 @@ impl Receipt {
         }
     }
 
+    pub fn data(&self) -> Option<&[u8]> {
+        match self {
+            Self::ReturnData { data, .. } => Some(data),
+            Self::LogData { data, .. } => Some(data),
+            _ => None,
+        }
+    }
+
     pub const fn reason(&self) -> Option<Word> {
         match self {
             Self::Panic { reason, .. } => Some(*reason),
@@ -421,6 +435,65 @@ impl Receipt {
             _ => None,
         }
     }
+
+    fn variant_len_without_data(variant: ReceiptRepr) -> usize {
+        ContractId::LEN // id
+                + WORD_SIZE // pc
+                + WORD_SIZE // is
+        + match variant {
+            ReceiptRepr::Call => {
+                ContractId::LEN // to
+                + WORD_SIZE // amount
+                + Color::LEN // color
+                + WORD_SIZE // gas
+                + WORD_SIZE // a
+                + WORD_SIZE // b
+            }
+
+            ReceiptRepr::Return => WORD_SIZE, // val
+
+            ReceiptRepr::ReturnData => {
+                WORD_SIZE // ptr
+                + WORD_SIZE // len
+                + Bytes32::LEN // digest
+            }
+
+            ReceiptRepr::Panic => WORD_SIZE, // reason
+            ReceiptRepr::Revert => WORD_SIZE, // ra
+
+            ReceiptRepr::Log => {
+                WORD_SIZE // ra
+                + WORD_SIZE // rb
+                + WORD_SIZE // rc
+                + WORD_SIZE // rd
+            }
+
+            ReceiptRepr::LogData => {
+                WORD_SIZE // ra
+                + WORD_SIZE // rb
+                + WORD_SIZE // ptr
+                + WORD_SIZE // len
+                + Bytes32::LEN // digest
+            }
+
+            ReceiptRepr::Transfer => {
+                ContractId::LEN // to
+                + WORD_SIZE // amount
+                + Color::LEN // digest
+            }
+
+            ReceiptRepr::TransferOut => {
+                Address::LEN // to
+                + WORD_SIZE // amount
+                + Color::LEN // digest
+            }
+
+            ReceiptRepr::ScriptResult => {
+                WORD_SIZE // status
+                + WORD_SIZE // gas_used
+            }
+        }
+    }
 }
 
 impl io::Read for Receipt {
@@ -470,6 +543,7 @@ impl io::Read for Receipt {
                 ptr,
                 len,
                 digest,
+                data,
                 pc,
                 is,
             } => {
@@ -479,6 +553,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *ptr);
                 let buf = bytes::store_number_unchecked(buf, *len);
                 let buf = bytes::store_array_unchecked(buf, digest);
+                let (_, buf) = bytes::store_bytes(buf, data)?;
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
@@ -528,6 +603,7 @@ impl io::Read for Receipt {
                 ptr,
                 len,
                 digest,
+                data,
                 pc,
                 is,
             } => {
@@ -539,6 +615,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *ptr);
                 let buf = bytes::store_number_unchecked(buf, *len);
                 let buf = bytes::store_array_unchecked(buf, digest);
+                let (_, buf) = bytes::store_bytes(buf, data)?;
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
@@ -602,9 +679,11 @@ impl io::Write for Receipt {
         // Safety: buffer size is checked
         let (identifier, buf) = unsafe { bytes::restore_word_unchecked(buf) };
         let identifier = ReceiptRepr::try_from(identifier)?;
-        let len = identifier.len();
 
-        if buf.len() < len {
+        let orig_buf_len = buf.len();
+        let mut used_len = Self::variant_len_without_data(identifier);
+
+        if orig_buf_len < used_len {
             return Err(bytes::eof());
         }
 
@@ -644,13 +723,21 @@ impl io::Write for Receipt {
                 let (ptr, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+
+                let (count, data, buf) = bytes::restore_bytes(buf)?;
+                // Safety: enforce data buffer length check after fetching data
+                used_len += count;
+                if orig_buf_len < used_len {
+                    return Err(bytes::eof());
+                }
+
                 let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::return_data(id, ptr, len, digest, pc, is);
+                *self = Self::return_data(id, ptr, len, digest, data, pc, is);
             }
 
             ReceiptRepr::Panic => {
@@ -696,13 +783,21 @@ impl io::Write for Receipt {
                 let (ptr, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+
+                let (count, data, buf) = bytes::restore_bytes(buf)?;
+                // Safety: enforce data buffer length check after fetching data
+                used_len += count;
+                if orig_buf_len < used_len {
+                    return Err(bytes::eof());
+                }
+
                 let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::log_data(id, ra, rb, ptr, len, digest, pc, is);
+                *self = Self::log_data(id, ra, rb, ptr, len, digest, data, pc, is);
             }
 
             ReceiptRepr::Transfer => {
@@ -745,7 +840,7 @@ impl io::Write for Receipt {
             }
         }
 
-        Ok(len + WORD_SIZE)
+        Ok(used_len + WORD_SIZE)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -755,7 +850,12 @@ impl io::Write for Receipt {
 
 impl SizedBytes for Receipt {
     fn serialized_size(&self) -> usize {
-        ReceiptRepr::from(self).len() + WORD_SIZE
+        let data_len = self
+            .data()
+            .map(|data| WORD_SIZE + padded_len_usize(data.len()))
+            .unwrap_or(0);
+
+        Self::variant_len_without_data(ReceiptRepr::from(self)) + WORD_SIZE + data_len
     }
 }
 

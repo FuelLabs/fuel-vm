@@ -1,8 +1,4 @@
-//! Builder pattern for [`Interpreter`]
-//!
-//! Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-//!
-//! Follows the recommended `Non-consuming builder`.
+//! State machine of the interpreter.
 
 use crate::backtrace::Backtrace;
 use crate::error::InterpreterError;
@@ -15,6 +11,13 @@ use fuel_tx::{Receipt, Transaction};
 use std::{mem, slice};
 
 #[derive(Debug, Clone)]
+/// State machine to execute transactions and provide runtime entities on
+/// demand.
+///
+/// Builder pattern for [`Interpreter`]. Follows the recommended `Non-consuming
+/// builder`.
+///
+/// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
 pub struct Transactor<'a, S> {
     interpreter: Interpreter<S>,
     state_transition: Option<StateTransitionRef<'a>>,
@@ -22,14 +25,23 @@ pub struct Transactor<'a, S> {
 }
 
 impl<'a, S> Transactor<'a, S> {
+    /// Transactor constructor
     pub fn new(storage: S) -> Self {
         Interpreter::with_storage(storage).into()
     }
 
+    /// State transition representation after the execution of a transaction.
+    ///
+    /// Will be `None` if the last transaction resulted in a VM panic, or if no
+    /// transaction was executed.
     pub const fn state_transition(&self) -> Option<&StateTransitionRef<'a>> {
         self.state_transition.as_ref()
     }
 
+    /// Receipts after the execution of a transaction.
+    ///
+    /// Follows the same criteria as [`Self::state_transition`] to return
+    /// `None`.
     pub fn receipts(&self) -> Option<&[Receipt]> {
         // TODO improve implementation without changing signature
 
@@ -47,6 +59,13 @@ impl<'a, S> Transactor<'a, S> {
         })
     }
 
+    /// Interpreter error representation after the execution of a transaction.
+    ///
+    /// Follows the same criteria as [`Self::state_transition`] to return
+    /// `None`.
+    ///
+    /// Will be `None` if the last transaction resulted successful, or if no
+    /// transaction was executed.
     pub const fn error(&self) -> Option<&InterpreterError> {
         self.error.as_ref()
     }
@@ -61,14 +80,19 @@ impl<'a, S> Transactor<'a, S> {
             .map(|result| Backtrace::from_vm_error(&self.interpreter, result))
     }
 
+    /// Returns true if last transaction execution was successful
     pub const fn is_success(&self) -> bool {
-        self.error.is_none()
+        self.state_transition.is_some()
     }
 
+    /// Returns true if last transaction execution was erroneous
     pub const fn is_error(&self) -> bool {
-        !self.is_success()
+        self.error.is_some()
     }
 
+    /// Result representation of the last executed transaction.
+    ///
+    /// Will return `None` if no transaction was executed.
     pub fn result(&self) -> Result<StateTransitionRef<'a>, InterpreterError> {
         match (self.state_transition, &self.error) {
             (Some(s), None) => Ok(s),
@@ -79,6 +103,10 @@ impl<'a, S> Transactor<'a, S> {
         }
     }
 
+    /// Convert this transaction into the underlying VM instance.
+    ///
+    /// This isn't a two-way operation since if you convert this instance into
+    /// the raw VM, then you lose the transactor state.
     pub fn interpreter(self) -> Interpreter<S> {
         self.into()
     }
@@ -88,6 +116,7 @@ impl<S> Transactor<'_, S>
 where
     S: InterpreterStorage,
 {
+    /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Transaction) -> &mut Self {
         match self.interpreter.transact(tx) {
             Ok(s) => {

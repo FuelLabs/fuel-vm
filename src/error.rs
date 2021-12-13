@@ -8,19 +8,33 @@ use std::error::Error as StdError;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Interpreter runtime error variants.
 pub enum InterpreterError {
+    /// The instructions execution resulted in a well-formed panic, caused by an
+    /// explicit instruction.
     PanicInstruction(InstructionResult),
+    /// The VM execution resulted in a well-formed panic. This panic wasn't
+    /// caused by an instruction contained in the transaction or a called
+    /// contract.
     Panic(PanicReason),
+    /// The initalization routine panicked. This is an internal critical error
+    /// and cannot be caused by inconsistent inputs/transactions.
     Initialization(PanicReason),
+    /// The provided transaction isn't valid.
     ValidationError(ValidationError),
+    /// The predicate verification failed.
     PredicateFailure,
+    /// No transaction was initialized in the interpreter. It cannot provide
+    /// state transitions.
     NoTransactionInitialized,
 
     #[cfg(feature = "debug")]
+    /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
 }
 
 impl InterpreterError {
+    /// Return the specified panic reason that caused this error, if applicable.
     pub const fn panic_reason(&self) -> Option<PanicReason> {
         match self {
             Self::PanicInstruction(result) => Some(*result.reason()),
@@ -29,6 +43,7 @@ impl InterpreterError {
         }
     }
 
+    /// Return the instruction that caused this error, if applicable.
     pub const fn instruction(&self) -> Option<&Instruction> {
         match self {
             Self::PanicInstruction(result) => Some(result.instruction()),
@@ -36,6 +51,8 @@ impl InterpreterError {
         }
     }
 
+    /// Return the underlying `InstructionResult` if this instance is
+    /// `PanicInstruction`; returns `None` otherwise.
     pub fn instruction_result(&self) -> Option<&InstructionResult> {
         match self {
             Self::PanicInstruction(r) => Some(r),

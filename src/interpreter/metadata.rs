@@ -8,8 +8,13 @@ const IS_CALLER_EXTERNAL: Immediate18 = 0x000001;
 const GET_CALLER: Immediate18 = 0x000002;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Variants for the `GM` VM instruction.
 pub enum InterpreterMetadata {
+    /// Set `$rA` to `true` if call stack parent is an external context; `false`
+    /// otherwise.
     IsCallerExternal = IS_CALLER_EXTERNAL as isize,
+
+    /// Set `$rA` to `$fp` of the call stack parent.
     GetCaller = GET_CALLER as isize,
 }
 

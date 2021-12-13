@@ -3,19 +3,33 @@
 use fuel_types::Word;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Gas unit cost that embeds a unit price and operations count.
+///
+/// The operations count will be the argument of every variant except
+/// `Accumulated`, that will hold the total acumulated gas.
 pub enum GasUnit {
+    /// Atomic operation.
     Atom(Word),
+    /// Arithmetic operation.
     Arithmetic(Word),
+    /// Expensive arithmetic operation.
     ArithmeticExpensive(Word),
+    /// Write to a register.
     RegisterWrite(Word),
+    /// Branching cost.
     Branching(Word),
+    /// Memory ownership test cost.
     MemoryOwnership(Word),
+    /// Cost of memory write, per byte.
     MemoryWrite(Word),
+    /// Accumulated cost of several operations.
     Accumulated(Word),
+    /// Undefined gas cost.
     Undefined,
 }
 
 impl GasUnit {
+    /// Return the `cost := price · N`.
     pub const fn cost(&self) -> Word {
         use GasUnit::*;
 
@@ -40,6 +54,7 @@ impl GasUnit {
         }
     }
 
+    /// Return the price per unit.
     pub const fn unit_price(&self) -> Word {
         use GasUnit::*;
 
@@ -56,6 +71,7 @@ impl GasUnit {
         }
     }
 
+    /// Combine two gas computations, accumulating their cost.
     pub const fn join(self, other: Self) -> Self {
         Self::Accumulated(self.cost() + other.cost())
     }

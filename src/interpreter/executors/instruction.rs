@@ -17,6 +17,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
+    /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
         let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]
@@ -42,6 +43,7 @@ where
         }
     }
 
+    /// Execute a provided instruction
     pub fn instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {

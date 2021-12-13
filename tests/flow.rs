@@ -13,7 +13,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 fn code_copy() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::with_memory_storage();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -53,7 +53,7 @@ fn code_copy() {
         vec![program.clone()],
     );
 
-    vm.transact(tx).expect("Failed to transact!");
+    client.transact(tx);
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 2048),
@@ -94,9 +94,10 @@ fn code_copy() {
         _ => unreachable!(),
     }
 
-    vm.transact(tx).expect("Failed to transact!");
+    let receipts = client.transact(tx);
+    let ret = receipts.first().expect("A `RET` opcode was part of the program.");
 
-    assert_eq!(1, vm.registers()[0x30]);
+    assert_eq!(1, ret.val().expect("A constant `1` was returned."));
 }
 
 #[test]
@@ -348,7 +349,7 @@ fn revert() {
     );
 
     // Deploy the contract into the blockchain
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -414,7 +415,7 @@ fn revert() {
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
 
     let receipts = client.receipts().expect("Expected receipts");
     let state = client.as_ref().contract_state(&contract, &key);
@@ -466,7 +467,7 @@ fn revert() {
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
     // Expect the correct receipt
-    let receipts = client.transact(tx).expect("Failed to transact");
+    let receipts = client.transact(tx);
 
     assert_eq!(receipts[1].ra().expect("Register value expected"), val + rev);
     assert_eq!(receipts[1].rb().expect("Register value expected"), val);

@@ -1,3 +1,7 @@
+//! FuelVM implementation
+
+#![warn(missing_docs)]
+
 pub mod backtrace;
 pub mod call;
 pub mod client;

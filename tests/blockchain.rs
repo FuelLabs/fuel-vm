@@ -186,10 +186,10 @@ fn state_read_write() {
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.transact(tx_deploy).expect("Failed to transact");
-    client.transact(tx_add_word).expect("Failed to transact");
+    client.transact(tx_deploy);
+    client.transact(tx_add_word);
 
-    let receipts = client.receipts().expect("Expected receipts");
+    let receipts = client.receipts().expect("The transaction was executed");
     let state = client.as_ref().contract_state(&contract, &key);
 
     // Assert the state of `key` is mutated to `val`
@@ -231,7 +231,7 @@ fn state_read_write() {
     );
 
     // Mutate the state
-    client.transact(tx_unpack_xor).expect("Failed to transact");
+    client.transact(tx_unpack_xor);
 
     let receipts = client.receipts().expect("Expected receipts");
 
@@ -307,7 +307,7 @@ fn load_external_contract_code() {
         vec![program.clone()],
     );
 
-    client.transact(tx_create_target).expect("deploy failed");
+    client.transact(tx_create_target);
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -372,7 +372,7 @@ fn load_external_contract_code() {
         vec![],
     );
 
-    let receipts = client.transact(tx_deploy_loader).expect("deploy failed");
+    let receipts = client.transact(tx_deploy_loader);
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();

@@ -44,7 +44,7 @@ fn backtrace() {
         vec![program],
     );
 
-    client.transact(tx_deploy).expect("Failed to deply");
+    client.transact(tx_deploy);
 
     #[rustfmt::skip]
     let mut function_call: Vec<Opcode> = vec![
@@ -84,7 +84,7 @@ fn backtrace() {
         vec![program],
     );
 
-    client.transact(tx_deploy).expect("Failed to deply");
+    client.transact(tx_deploy);
 
     #[rustfmt::skip]
     let mut script: Vec<Opcode> = vec![
@@ -119,7 +119,7 @@ fn backtrace() {
         vec![],
     );
 
-    client.transact(tx_script).expect("Failed to transact");
+    client.transact(tx_script);
 
     let backtrace = client
         .backtrace()

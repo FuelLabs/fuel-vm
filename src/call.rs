@@ -14,6 +14,10 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// Call structure representation, composed of a called contract `to` and two
+/// word arguments.
+///
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract>
 pub struct Call {
     to: ContractId,
     a: Word,
@@ -21,22 +25,27 @@ pub struct Call {
 }
 
 impl Call {
+    /// Create a new call structure representation.
     pub const fn new(to: ContractId, a: Word, b: Word) -> Self {
         Self { to, a, b }
     }
 
+    /// Called contract.
     pub const fn to(&self) -> &ContractId {
         &self.to
     }
 
+    /// `a` argument.
     pub const fn a(&self) -> Word {
         self.a
     }
 
+    /// `b` argument.
     pub const fn b(&self) -> Word {
         self.b
     }
 
+    /// Expose the internal attributes of the call description.
     pub const fn into_inner(self) -> (ContractId, Word, Word) {
         (self.to, self.a, self.b)
     }
@@ -100,6 +109,9 @@ impl TryFrom<&[u8]> for Call {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Call frame representation in the VM stack.
+///
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>
 pub struct CallFrame {
     to: ContractId,
     color: Color,
@@ -110,6 +122,7 @@ pub struct CallFrame {
 }
 
 impl CallFrame {
+    /// Create a new call frame.
     pub const fn new(
         to: ContractId,
         color: Color,
@@ -128,42 +141,52 @@ impl CallFrame {
         }
     }
 
+    /// Contract code of the called (`to`) id.
     pub fn code(&self) -> &[u8] {
         self.code.as_ref()
     }
 
+    /// Contract code memory offset.
     pub const fn code_offset() -> usize {
         ContractId::LEN + Color::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
     }
 
+    /// `a` argument memory offset.
     pub const fn a_offset() -> usize {
         ContractId::LEN + Color::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
     }
 
+    /// `b` argument memory offset.
     pub const fn b_offset() -> usize {
         ContractId::LEN + Color::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
+    /// Registers prior to the called execution.
     pub const fn registers(&self) -> &[Word] {
         &self.registers
     }
 
+    /// Called contract id.
     pub const fn to(&self) -> &ContractId {
         &self.to
     }
 
+    /// `a` argument.
     pub const fn a(&self) -> Word {
         self.a
     }
 
+    /// `b` argument.
     pub const fn b(&self) -> Word {
         self.b
     }
 
+    /// Gas context prior to the called execution.
     pub const fn context_gas(&self) -> Word {
         self.registers[REG_CGAS]
     }
 
+    /// Color of forwarded coins.
     pub const fn color(&self) -> &Color {
         &self.color
     }

@@ -44,11 +44,6 @@ path = "tests/contract.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-debug"
-path = "tests/debug.rs"
-required-features = ["debug"]
-
-[[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
 required-features = ["random"]

@@ -20,6 +20,13 @@ struct MemoryStorageInner {
 }
 
 #[derive(Debug, Clone)]
+/// In-memory storage implementation for the interpreter.
+///
+/// It tracks 3 states:
+///
+/// - memory: the transactions will be applied to this state.
+/// - transacted: will receive the committed `memory` state.
+/// - persisted: will receive the persisted `transacted` state.
 pub struct MemoryStorage {
     block_height: u32,
     coinbase: Address,
@@ -29,6 +36,7 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
+    /// Create a new memory storage.
     pub fn new(block_height: u32, coinbase: Address) -> Self {
         Self {
             block_height,
@@ -39,6 +47,7 @@ impl MemoryStorage {
         }
     }
 
+    /// Fetch a mapping from the contract state.
     pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
         const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
 
@@ -47,19 +56,23 @@ impl MemoryStorage {
             .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
     }
 
+    /// Set the transacted state to the memory state.
     pub fn commit(&mut self) {
         self.transacted = self.memory.clone();
     }
 
+    /// Revert the memory state to the transacted state.
     pub fn revert(&mut self) {
         self.memory = self.transacted.clone();
     }
 
+    /// Revert the memory and transacted changes to the persisted state.
     pub fn rollback(&mut self) {
         self.memory = self.persisted.clone();
         self.transacted = self.persisted.clone();
     }
 
+    /// Persist the changes from transacted to memory+persisted state.
     pub fn persist(&mut self) {
         self.memory = self.transacted.clone();
         self.persisted = self.transacted.clone();

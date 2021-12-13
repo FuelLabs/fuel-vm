@@ -52,7 +52,7 @@ fn mint_burn() {
         vec![program],
     );
 
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -127,14 +127,14 @@ fn mint_burn() {
         vec![],
     );
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(0, storage_balance);
 
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(balance as Word, storage_balance);
@@ -153,14 +153,15 @@ fn mint_burn() {
         vec![],
     );
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(balance as Word, storage_balance);
 
-    client.transact(tx).expect("Out of balance shouldn't propagate error");
+    // Out of balance test
+    client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(balance as Word, storage_balance);
@@ -181,10 +182,10 @@ fn mint_burn() {
         vec![],
     );
 
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
     balance -= burn;
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(balance as Word, storage_balance);
@@ -203,9 +204,9 @@ fn mint_burn() {
         vec![],
     );
 
-    client.transact(tx).expect("Failed to transact");
+    client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone()).expect("Failed to transact")[0]
+    let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(0, storage_balance);

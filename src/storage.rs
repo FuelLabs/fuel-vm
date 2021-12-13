@@ -18,16 +18,28 @@ pub trait InterpreterStorage:
     + MerkleStorage<ContractId, Color, Word, Error = Self::DataError>
     + MerkleStorage<ContractId, Bytes32, Bytes32, Error = Self::DataError>
 {
+    /// Error implementation for reasons unspecified in the protocol.
     type DataError: StdError + Into<PanicReason>;
 
+    /// Provide the current block height in which the transactions should be
+    /// executed.
     fn block_height(&self) -> Result<u32, Self::DataError>;
+
+    /// Provide the block hash from a given height.
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
+
+    /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
 
+    /// Fetch a previously inserted contract code from the chain state for a
+    /// given contract.
     fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, PanicReason> {
         <Self as Storage<ContractId, Contract>>::get(self, id).map_err(|e| e.into())
     }
 
+    /// Append a contract to the chain, provided its identifier.
+    ///
+    /// Canonically, the identifier should be [`Contract::id`].
     fn storage_contract_insert(
         &mut self,
         id: &ContractId,
@@ -36,14 +48,18 @@ pub trait InterpreterStorage:
         <Self as Storage<ContractId, Contract>>::insert(self, id, contract).map_err(|e| e.into())
     }
 
+    /// Check if a provided contract exists in the chain.
     fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, PanicReason> {
         <Self as Storage<ContractId, Contract>>::contains_key(self, id).map_err(|e| e.into())
     }
 
+    /// Fetch a previously inserted salt+root tuple from the chain state for a
+    /// given contract.
     fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, PanicReason> {
         <Self as Storage<ContractId, (Salt, Bytes32)>>::get(self, id).map_err(|e| e.into())
     }
 
+    /// Append the salt+root of a contract that was appended to the chain.
     fn storage_contract_root_insert(
         &mut self,
         id: &ContractId,
@@ -53,10 +69,12 @@ pub trait InterpreterStorage:
         <Self as Storage<ContractId, (Salt, Bytes32)>>::insert(self, id, &(*salt, *root)).map_err(|e| e.into())
     }
 
+    /// Fetch the value form a key-value mapping in a contract storage.
     fn merkle_contract_state(&self, id: &ContractId, key: &Bytes32) -> Result<Option<Cow<'_, Bytes32>>, PanicReason> {
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, id, key).map_err(|e| e.into())
     }
 
+    /// Insert a key-value mapping in a contract storage.
     fn merkle_contract_state_insert(
         &mut self,
         contract: &ContractId,
@@ -66,6 +84,7 @@ pub trait InterpreterStorage:
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value).map_err(|e| e.into())
     }
 
+    /// Fetch the balance of a color in a contract storage.
     fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, PanicReason> {
         let balance = <Self as MerkleStorage<ContractId, Color, Word>>::get(self, id, color)
             .map_err(|e| e.into())?
@@ -74,6 +93,7 @@ pub trait InterpreterStorage:
         Ok(balance)
     }
 
+    /// Update the balance of a color in a contract storage.
     fn merkle_contract_color_balance_insert(
         &mut self,
         contract: &ContractId,

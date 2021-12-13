@@ -6,10 +6,11 @@ use fuel_types::{RegisterId, Word};
 
 use std::{ops, ptr};
 
-// Memory bounds must be manually checked and cannot follow general PartialEq
-// rules
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// Memory range representation for the VM.
+///
+/// `start` is inclusive, and `end` is exclusive.
 pub struct MemoryRange {
     start: ops::Bound<Word>,
     end: ops::Bound<Word>,
@@ -17,6 +18,7 @@ pub struct MemoryRange {
 }
 
 impl MemoryRange {
+    /// Create a new memory range represented as `[address, address + size[`.
     pub const fn new(address: Word, size: Word) -> Self {
         let start = ops::Bound::Included(address);
         let end = ops::Bound::Excluded(address.saturating_add(size));
@@ -25,6 +27,7 @@ impl MemoryRange {
         Self { start, end, len }
     }
 
+    /// Beginning of the memory range.
     pub const fn start(&self) -> Word {
         use ops::Bound::*;
 
@@ -35,6 +38,7 @@ impl MemoryRange {
         }
     }
 
+    /// End of the memory range.
     pub const fn end(&self) -> Word {
         use ops::Bound::*;
 
@@ -45,10 +49,12 @@ impl MemoryRange {
         }
     }
 
+    /// Bytes count of this memory range.
     pub const fn len(&self) -> Word {
         self.len
     }
 
+    /// Return `true` if the length is `0`.
     pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -135,6 +141,8 @@ where
     }
 }
 
+// Memory bounds must be manually checked and cannot follow general PartialEq
+// rules
 impl PartialEq for MemoryRange {
     fn eq(&self, other: &MemoryRange) -> bool {
         use ops::Bound::*;

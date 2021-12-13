@@ -177,6 +177,7 @@ where
             a,
             b,
             digest,
+            self.memory[a as usize..ab].to_vec(),
             self.registers[REG_PC],
             self.registers[REG_IS],
         );

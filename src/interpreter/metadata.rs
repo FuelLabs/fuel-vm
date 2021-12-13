@@ -1,5 +1,6 @@
 use super::Interpreter;
 use crate::consts::*;
+use crate::error::RuntimeError;
 
 use fuel_asm::PanicReason;
 use fuel_types::{Immediate18, RegisterId, Word};
@@ -40,12 +41,12 @@ impl From<InterpreterMetadata> for Immediate18 {
 }
 
 impl<S> Interpreter<S> {
-    pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), PanicReason> {
+    pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
         // Both metadata implementations should panic if external context
         if self.is_external_context() {
-            return Err(PanicReason::ExpectedInternalContext);
+            return Err(PanicReason::ExpectedInternalContext.into());
         }
 
         let parent = self
@@ -61,13 +62,13 @@ impl<S> Interpreter<S> {
 
             GET_CALLER => {
                 if parent == 0 {
-                    return Err(PanicReason::ExpectedInternalContext);
+                    return Err(PanicReason::ExpectedInternalContext.into());
                 }
 
                 self.registers[ra] = parent;
             }
 
-            _ => return Err(PanicReason::InvalidMetadataIdentifier),
+            _ => return Err(PanicReason::InvalidMetadataIdentifier.into()),
         }
 
         self.inc_pc()

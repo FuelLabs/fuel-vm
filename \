@@ -71,7 +71,7 @@ impl<'a> MemoryClient<'a> {
 
         self.transactor
             .receipts()
-            .expect("The transaction was provided to the transactor.")
+            .expect("The transaction was provided to the transactor")
     }
 
     /// Persist the changes caused by [`Self::transact`].

@@ -1,11 +1,11 @@
 use crate::consts::*;
-use crate::error::InterpreterError;
+use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::gas::consts::*;
 use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, InstructionResult, OpcodeRepr, PanicReason};
+use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
@@ -54,10 +54,10 @@ where
         }
 
         self._instruction(instruction)
-            .map_err(|reason| InterpreterError::from(InstructionResult::error(reason, instruction)))
+            .map_err(|e| InterpreterError::from_runtime(e, instruction))
     }
 
-    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, PanicReason> {
+    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
@@ -471,7 +471,7 @@ where
 
             // list of currently unimplemented opcodes
             OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO | _ => {
-                return Err(PanicReason::ErrorFlag);
+                return Err(PanicReason::ErrorFlag.into());
             }
         }
 

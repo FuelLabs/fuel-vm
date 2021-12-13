@@ -1,6 +1,7 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
+use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::consts::*;
@@ -12,11 +13,11 @@ use std::mem;
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 impl<S> Interpreter<S> {
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), PanicReason> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
         if overflow || !self.is_external_context() && ssp > self.registers[REG_SP] {
-            Err(PanicReason::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
             self.registers[REG_SSP] = ssp;
@@ -29,7 +30,7 @@ impl<S> Interpreter<S> {
         self.block_height
     }
 
-    pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), PanicReason> {
+    pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.registers[REG_FLAG] = a;
 
         self.inc_pc()
@@ -43,10 +44,10 @@ impl<S> Interpreter<S> {
         self.registers[REG_ERR] = 1;
     }
 
-    pub(crate) fn inc_pc(&mut self) -> Result<(), PanicReason> {
+    pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
         self.registers[REG_PC]
             .checked_add(Instruction::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)
+            .ok_or(PanicReason::ArithmeticOverflow.into())
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
@@ -70,11 +71,11 @@ impl<S> Interpreter<S> {
         matches!(self.context, Context::Predicate)
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), PanicReason> {
+    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
         if ra >= REG_WRITABLE {
             Ok(())
         } else {
-            Err(PanicReason::ReservedRegisterNotWritable)
+            Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
         }
     }
 
@@ -82,7 +83,7 @@ impl<S> Interpreter<S> {
         &self.tx
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, PanicReason> {
+    pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -98,7 +99,7 @@ impl<S> Interpreter<S> {
             .unwrap_or_default()
     }
 
-    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), PanicReason> {
+    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), RuntimeError> {
         self.is_internal_context()
             .then(|| {
                 let c = self.registers[REG_FP] as usize;
@@ -106,10 +107,10 @@ impl<S> Interpreter<S> {
 
                 (c, cx)
             })
-            .ok_or(PanicReason::ExpectedInternalContext)
+            .ok_or(PanicReason::ExpectedInternalContext.into())
     }
 
-    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), PanicReason> {
+    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), RuntimeError> {
         if value == 0 {
             return Ok(());
         }

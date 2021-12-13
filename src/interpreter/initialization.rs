@@ -10,7 +10,7 @@ use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Color, Word};
 use itertools::Itertools;
 
-use std::mem;
+use std::{io, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -22,10 +22,7 @@ where
         tx.validate(self.block_height() as Word)?;
         tx.precompute_metadata();
 
-        self.block_height = self
-            .storage
-            .block_height()
-            .map_err(|e| InterpreterError::Initialization(e.into()))?;
+        self.block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
         self.context = Context::from(&tx);
 
         self.frames.clear();
@@ -41,12 +38,13 @@ where
         self.registers[REG_HP] = VM_MAX_RAM - 1;
 
         self.push_stack(tx.id().as_ref())
-            .map_err(InterpreterError::Initialization)?;
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         let zeroes = &[0; MAX_INPUTS as usize * (Color::LEN + WORD_SIZE)];
         let ssp = self.registers[REG_SSP] as usize;
 
-        self.push_stack(zeroes).map_err(InterpreterError::Initialization)?;
+        self.push_stack(zeroes)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         if tx.is_script() {
             tx.inputs()
@@ -76,9 +74,9 @@ where
         }
 
         self.push_stack(&tx_size.to_be_bytes())
-            .map_err(InterpreterError::Initialization)?;
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         self.push_stack(tx.to_bytes().as_slice())
-            .map_err(InterpreterError::Initialization)?;
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         self.registers[REG_SP] = self.registers[REG_SSP];
 

@@ -10,7 +10,7 @@ use fuel_tx::{Receipt, Transaction};
 
 use std::{mem, slice};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
 /// demand.
 ///
@@ -93,13 +93,16 @@ impl<'a, S> Transactor<'a, S> {
     /// Result representation of the last executed transaction.
     ///
     /// Will return `None` if no transaction was executed.
-    pub fn result(&self) -> Result<StateTransitionRef<'a>, InterpreterError> {
-        match (self.state_transition, &self.error) {
+    pub fn result(&self) -> Result<&StateTransitionRef<'a>, &InterpreterError> {
+        let state = self.state_transition.as_ref();
+        let error = self.error.as_ref();
+
+        match (state, error) {
             (Some(s), None) => Ok(s),
-            (None, Some(e)) => Err(e.clone()),
+            (None, Some(e)) => Err(e),
 
             // Cover also inconsistent states such as `(Some, Some)`
-            _ => Err(InterpreterError::NoTransactionInitialized),
+            _ => Err(&InterpreterError::NoTransactionInitialized),
         }
     }
 

@@ -1,12 +1,13 @@
 use super::Interpreter;
 use crate::consts::*;
+use crate::error::RuntimeError;
 
 use fuel_asm::PanicReason;
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn transaction_input_length(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_input_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
@@ -18,7 +19,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn transaction_input_start(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_input_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] =
             (VM_TX_MEMORY + self.tx.input_offset(b as usize).ok_or(PanicReason::InputNotFound)?) as Word;
@@ -26,7 +27,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn transaction_output_length(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_output_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
@@ -38,7 +39,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn transaction_output_start(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_output_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] =
             (VM_TX_MEMORY + self.tx.output_offset(b as usize).ok_or(PanicReason::OutputNotFound)?) as Word;
@@ -46,7 +47,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn transaction_witness_length(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_witness_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
             .tx
@@ -58,7 +59,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    pub(crate) fn transaction_witness_start(&mut self, ra: RegisterId, b: Word) -> Result<(), PanicReason> {
+    pub(crate) fn transaction_witness_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] =
             (VM_TX_MEMORY + self.tx.witness_offset(b as usize).ok_or(PanicReason::WitnessNotFound)?) as Word;

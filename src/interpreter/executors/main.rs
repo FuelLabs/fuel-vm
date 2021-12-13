@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::InterpreterError;
+use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
@@ -45,11 +45,11 @@ where
 
                 self.storage
                     .storage_contract_insert(&id, &contract)
-                    .map_err(InterpreterError::Panic)?;
+                    .map_err(InterpreterError::from_io)?;
 
                 self.storage
                     .storage_contract_root_insert(&id, salt, &root)
-                    .map_err(InterpreterError::Panic)?;
+                    .map_err(InterpreterError::from_io)?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
@@ -157,10 +157,10 @@ where
         Ok(state)
     }
 
-    pub(crate) fn run_call(&mut self) -> Result<ProgramState, PanicReason> {
+    pub(crate) fn run_call(&mut self) -> Result<ProgramState, RuntimeError> {
         loop {
             if self.registers[REG_PC] >= VM_MAX_RAM {
-                return Err(PanicReason::MemoryOverflow);
+                return Err(PanicReason::MemoryOverflow.into());
             }
 
             let state = self

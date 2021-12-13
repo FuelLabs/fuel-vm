@@ -1,5 +1,6 @@
 use crate::contract::Contract;
 use crate::crypto;
+use crate::error::Infallible;
 use crate::storage::InterpreterStorage;
 
 use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
@@ -9,7 +10,6 @@ use itertools::Itertools;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::convert::Infallible;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {

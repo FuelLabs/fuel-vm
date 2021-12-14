@@ -2,7 +2,9 @@ use crate::Word;
 
 const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
+/// Define the amount of bytes for a serialization implementation.
 pub trait SizedBytes {
+    /// Return the expected serialized size for an instance of the type.
     fn serialized_size(&self) -> usize;
 }
 
@@ -181,11 +183,15 @@ mod vec_io {
     use std::convert::TryFrom;
     use std::io;
 
+    /// Auto-trait to create variable sized vectors out of [`SizedBytes`] implementations.
     pub trait SerializableVec: SizedBytes {
+        /// Create a variable size vector of bytes from the instance.
         fn to_bytes(&mut self) -> Vec<u8>;
     }
 
+    /// Describe the ability to deserialize the type from sets of bytes.
     pub trait Deserializable: Sized {
+        /// Deserialization from variable length slices of bytes.
         fn from_bytes(bytes: &[u8]) -> io::Result<Self>;
     }
 
@@ -224,6 +230,7 @@ mod vec_io {
         }
     }
 
+    /// End of file error representation.
     pub fn eof() -> io::Error {
         io::Error::new(
             io::ErrorKind::UnexpectedEof,
@@ -231,6 +238,11 @@ mod vec_io {
         )
     }
 
+    /// Attempt to store into the provided buffer the length of `bytes` as big-endian, and then
+    /// the bytes itself. The `bytes` will be padded to be word-aligned.
+    ///
+    /// If the buffer is big enough to store length+bytes, will return the amount of bytes written
+    /// and the remainder of the buffer. Return [`std::io::Error`] otherwise.
     pub fn store_bytes<'a>(
         mut buf: &'a mut [u8],
         bytes: &[u8],
@@ -256,6 +268,11 @@ mod vec_io {
         Ok((WORD_SIZE + bytes.len() + pad, buf))
     }
 
+    /// Attempt to store into the provided buffer the provided bytes. They will be padded to be
+    /// word-aligned.
+    ///
+    /// If the buffer is big enough to store the padded bytes, will return the amount of bytes
+    /// written and the remainder of the buffer. Return [`std::io::Error`] otherwise.
     pub fn store_raw_bytes<'a>(
         mut buf: &'a mut [u8],
         bytes: &[u8],
@@ -277,6 +294,9 @@ mod vec_io {
         Ok((bytes.len() + pad, buf))
     }
 
+    /// Attempt to restore a variable size bytes from a buffer.
+    ///
+    /// Will read the length, the bytes amount (word-aligned), and return the remainder buffer.
     pub fn restore_bytes(mut buf: &[u8]) -> io::Result<(usize, Vec<u8>, &[u8])> {
         // Safety: chunks_exact will guarantee the size of the slice is correct
         let len = buf
@@ -300,6 +320,7 @@ mod vec_io {
         Ok((WORD_SIZE + len + pad, data, buf))
     }
 
+    /// Attempt to restore a variable size bytes with the length specified as argument.
     pub fn restore_raw_bytes(buf: &[u8], len: usize) -> io::Result<(usize, Vec<u8>, &[u8])> {
         let pad = len % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
@@ -313,6 +334,8 @@ mod vec_io {
         Ok((len + pad, data, buf))
     }
 
+    /// Convert a number to a word, store it in the buffer, and return a tuple containing the
+    /// number of written bytes and the remainder of the buffer.
     pub fn store_number<T>(buf: &mut [u8], number: T) -> io::Result<(usize, &mut [u8])>
     where
         T: Into<Word>,
@@ -325,6 +348,9 @@ mod vec_io {
         Ok((WORD_SIZE, &mut buf[WORD_SIZE..]))
     }
 
+    /// Attempt to read a word-aligned number stored in the buffer.
+    ///
+    /// Return the readon number and the remainder buffer, if successful.
     pub fn restore_number<T>(buf: &[u8]) -> io::Result<(T, &[u8])>
     where
         T: From<Word>,
@@ -340,6 +366,7 @@ mod vec_io {
         Ok((number, &buf[WORD_SIZE..]))
     }
 
+    /// Store a statically sized array into a buffer, returning the remainder of the buffer.
     pub fn store_array<'a, const N: usize>(
         buf: &'a mut [u8],
         array: &[u8; N],
@@ -352,6 +379,8 @@ mod vec_io {
         Ok(&mut buf[N..])
     }
 
+    /// Restore a statically sized array from a buffer, returning the array and the remainder of
+    /// the buffer.
     pub fn restore_array<const N: usize>(buf: &[u8]) -> io::Result<([u8; N], &[u8])> {
         <[u8; N]>::try_from(&buf[..N])
             .map_err(|_| eof())

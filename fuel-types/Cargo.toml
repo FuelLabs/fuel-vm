@@ -2,17 +2,24 @@
 name = "fuel-types"
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
 edition = "2021"
+homepage = "https://fuel.network/"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/fuel-types"
-description = "Fuel data types."
+description = "Atomic types of the FuelVM."
 
 [dependencies]
-rand = { version = "0.8", optional = true }
+rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+[dev-dependencies]
+rand = "0.8"
 
 [features]
 default = ["std"]
 std = []
-random = ["rand", "std"]
+random = ["rand"]
 serde-types = ["serde-types-minimal", "serde/default", "std"]
 serde-types-minimal = ["serde"]

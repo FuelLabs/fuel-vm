@@ -27,6 +27,7 @@ macro_rules! key {
             feature = "serde-types-minimal",
             derive(serde::Serialize, serde::Deserialize)
         )]
+        /// FuelVM atomic type.
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -44,6 +45,7 @@ macro_rules! key_no_default {
     ($i:ident, $s:expr) => {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         // TODO serde is not implemented for arrays bigger than 32 bytes
+        /// FuelVM atomic type.
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -73,11 +75,12 @@ macro_rules! key_methods {
             /// Memory length of the type
             pub const LEN: usize = $s;
 
+            /// Bytes constructor.
             pub const fn new(bytes: [u8; $s]) -> Self {
                 Self(bytes)
             }
 
-            // Similar behavior to Default::default but with `const` directive
+            /// Zeroes bytes constructor.
             pub const fn zeroed() -> $i {
                 $i([0; $s])
             }
@@ -231,10 +234,13 @@ key!(Salt, 32);
 key_no_default!(Bytes64, 64);
 
 impl ContractId {
+    /// Seed for the calculation of the contract id from its code.
+    ///
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 }
 
-#[cfg(all(test, feature = "random"))]
+#[cfg(all(test, feature = "std", feature = "random"))]
 mod tests_random {
     use crate::*;
     use rand::rngs::StdRng;

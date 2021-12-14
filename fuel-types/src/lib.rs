@@ -1,7 +1,11 @@
+//! Atomic types of the FuelVM.
+
 #![cfg_attr(not(feature = "std"), no_std)]
+#![warn(missing_docs)]
 
 mod types;
 
+/// Word-aligned bytes serialization functions.
 pub mod bytes;
 pub use types::*;
 

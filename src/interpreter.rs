@@ -52,10 +52,12 @@ pub struct Interpreter<S> {
 }
 
 impl<S> Interpreter<S> {
+    /// Returns the current state of the VM memory
     pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
     }
 
+    /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
     }

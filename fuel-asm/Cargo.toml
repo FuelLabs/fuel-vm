@@ -1,12 +1,14 @@
 [package]
 name = "fuel-asm"
-description = "Defines all opcodes available in the FuelVM."
 version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
-edition = "2021"
-repository = "https://github.com/FuelLabs/fuel-asm"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
+edition = "2021"
+homepage = "https://fuel.network/"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/fuel-asm"
+description = "Defines all opcodes available in the FuelVM."
 
 [dependencies]
 fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git", default-features = false }

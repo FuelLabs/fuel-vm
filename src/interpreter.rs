@@ -52,11 +52,13 @@ pub struct Interpreter<S> {
 }
 
 impl<S> Interpreter<S> {
-    pub(crate) fn memory(&self) -> &[u8] {
+    /// Returns the current state of the VM memory
+    pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
     }
 
-    pub(crate) const fn registers(&self) -> &[Word] {
+    /// Returns the current state of the registers
+    pub const fn registers(&self) -> &[Word] {
         &self.registers
     }
 

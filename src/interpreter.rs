@@ -52,11 +52,11 @@ pub struct Interpreter<S> {
 }
 
 impl<S> Interpreter<S> {
-    pub(crate) fn memory(&self) -> &[u8] {
+    pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
     }
 
-    pub(crate) const fn registers(&self) -> &[Word] {
+    pub const fn registers(&self) -> &[Word] {
         &self.registers
     }
 

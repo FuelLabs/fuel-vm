@@ -1,3 +1,5 @@
+//! Chain contract definition
+
 use crate::crypto;
 use crate::error::InterpreterError;
 
@@ -9,9 +11,13 @@ use std::cmp;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// Deployable representation of a contract code.
 pub struct Contract(Vec<u8>);
 
 impl Contract {
+    /// Calculate the code root from a contract.
+    ///
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn root(&self) -> Bytes32 {
         let root = self.0.chunks(8).map(|c| {
             let mut bytes = [0u8; 8];
@@ -25,6 +31,9 @@ impl Contract {
         crypto::ephemeral_merkle_root(root)
     }
 
+    /// Calculate and return the contract id, provided a salt and a code root.
+    ///
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 

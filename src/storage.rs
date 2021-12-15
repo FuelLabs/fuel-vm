@@ -1,11 +1,13 @@
+//! Trait definitions for storage backend
+
 use crate::contract::Contract;
-use crate::error::InterpreterError;
 
 use fuel_storage::{MerkleStorage, Storage};
 use fuel_types::{Address, Bytes32, Color, ContractId, Salt, Word};
 
 use std::borrow::Cow;
 use std::error::Error as StdError;
+use std::io;
 use std::ops::Deref;
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
@@ -16,73 +18,91 @@ pub trait InterpreterStorage:
     + MerkleStorage<ContractId, Color, Word, Error = Self::DataError>
     + MerkleStorage<ContractId, Bytes32, Bytes32, Error = Self::DataError>
 {
-    type DataError: StdError + Into<InterpreterError>;
+    /// Error implementation for reasons unspecified in the protocol.
+    type DataError: StdError + Into<io::Error>;
 
+    /// Provide the current block height in which the transactions should be
+    /// executed.
     fn block_height(&self) -> Result<u32, Self::DataError>;
+
+    /// Provide the block hash from a given height.
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
+
+    /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
 
-    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, InterpreterError> {
-        <Self as Storage<ContractId, Contract>>::get(self, id).map_err(|e| e.into())
+    /// Fetch a previously inserted contract code from the chain state for a
+    /// given contract.
+    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
+        <Self as Storage<ContractId, Contract>>::get(self, id)
     }
 
+    /// Append a contract to the chain, provided its identifier.
+    ///
+    /// Canonically, the identifier should be [`Contract::id`].
     fn storage_contract_insert(
         &mut self,
         id: &ContractId,
         contract: &Contract,
-    ) -> Result<Option<Contract>, InterpreterError> {
-        <Self as Storage<ContractId, Contract>>::insert(self, id, contract).map_err(|e| e.into())
+    ) -> Result<Option<Contract>, Self::DataError> {
+        <Self as Storage<ContractId, Contract>>::insert(self, id, contract)
     }
 
-    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, InterpreterError> {
-        <Self as Storage<ContractId, Contract>>::contains_key(self, id).map_err(|e| e.into())
+    /// Check if a provided contract exists in the chain.
+    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, Self::DataError> {
+        <Self as Storage<ContractId, Contract>>::contains_key(self, id)
     }
 
-    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, InterpreterError> {
-        <Self as Storage<ContractId, (Salt, Bytes32)>>::get(self, id).map_err(|e| e.into())
+    /// Fetch a previously inserted salt+root tuple from the chain state for a
+    /// given contract.
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
+        <Self as Storage<ContractId, (Salt, Bytes32)>>::get(self, id)
     }
 
+    /// Append the salt+root of a contract that was appended to the chain.
     fn storage_contract_root_insert(
         &mut self,
         id: &ContractId,
         salt: &Salt,
         root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, InterpreterError> {
-        <Self as Storage<ContractId, (Salt, Bytes32)>>::insert(self, id, &(*salt, *root)).map_err(|e| e.into())
+    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
+        <Self as Storage<ContractId, (Salt, Bytes32)>>::insert(self, id, &(*salt, *root))
     }
 
+    /// Fetch the value form a key-value mapping in a contract storage.
     fn merkle_contract_state(
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, InterpreterError> {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, id, key).map_err(|e| e.into())
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, id, key)
     }
 
+    /// Insert a key-value mapping in a contract storage.
     fn merkle_contract_state_insert(
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
         value: &Bytes32,
-    ) -> Result<Option<Bytes32>, InterpreterError> {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value).map_err(|e| e.into())
+    ) -> Result<Option<Bytes32>, Self::DataError> {
+        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value)
     }
 
-    fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, InterpreterError> {
-        let balance = <Self as MerkleStorage<ContractId, Color, Word>>::get(self, id, color)
-            .map_err(|e| e.into())?
-            .map(Cow::into_owned);
+    /// Fetch the balance of a color in a contract storage.
+    fn merkle_contract_color_balance(&self, id: &ContractId, color: &Color) -> Result<Option<Word>, Self::DataError> {
+        let balance = <Self as MerkleStorage<ContractId, Color, Word>>::get(self, id, color)?.map(Cow::into_owned);
 
         Ok(balance)
     }
 
+    /// Update the balance of a color in a contract storage.
     fn merkle_contract_color_balance_insert(
         &mut self,
         contract: &ContractId,
         color: &Color,
         value: Word,
-    ) -> Result<Option<Word>, InterpreterError> {
-        <Self as MerkleStorage<ContractId, Color, Word>>::insert(self, contract, color, &value).map_err(|e| e.into())
+    ) -> Result<Option<Word>, Self::DataError> {
+        <Self as MerkleStorage<ContractId, Color, Word>>::insert(self, contract, color, &value)
     }
 }
 

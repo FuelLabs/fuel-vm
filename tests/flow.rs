@@ -13,7 +13,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 fn code_copy() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::in_memory();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -53,7 +53,7 @@ fn code_copy() {
         vec![program.clone()],
     );
 
-    vm.transact(tx).expect("Failed to transact!");
+    client.transact(tx);
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 2048),
@@ -94,9 +94,10 @@ fn code_copy() {
         _ => unreachable!(),
     }
 
-    vm.transact(tx).expect("Failed to transact!");
+    let receipts = client.transact(tx);
+    let ret = receipts.first().expect("A `RET` opcode was part of the program.");
 
-    assert_eq!(1, vm.registers()[0x30]);
+    assert_eq!(1, ret.val().expect("A constant `1` was returned."));
 }
 
 #[test]
@@ -141,7 +142,7 @@ fn call() {
         vec![program.clone()],
     );
 
-    Interpreter::transition(&mut storage, tx).expect("Failed to deploy contract");
+    assert!(Transactor::new(&mut storage).transact(tx).is_success());
 
     let mut script_ops = vec![
         Opcode::ADDI(0x10, REG_ZERO, 0x00),
@@ -176,12 +177,15 @@ fn call() {
         _ => unreachable!(),
     }
 
-    let state = Interpreter::transition(&mut storage, tx).expect("Failed to execute script");
-    let receipt = state.receipts()[1].clone();
+    let receipts = Transactor::new(&mut storage)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute script")
+        .to_owned();
 
-    assert_eq!(receipt.ra().expect("Receipt value failed"), 0x11);
-    assert_eq!(receipt.rb().expect("Receipt value failed"), 0x2a);
-    assert_eq!(receipt.rc().expect("Receipt value failed"), 0x3b);
+    assert_eq!(receipts[1].ra().expect("Receipt value failed"), 0x11);
+    assert_eq!(receipts[1].rb().expect("Receipt value failed"), 0x2a);
+    assert_eq!(receipts[1].rc().expect("Receipt value failed"), 0x3b);
 }
 
 #[test]
@@ -227,7 +231,7 @@ fn call_frame_code_offset() {
         vec![program.clone().into()],
     );
 
-    Interpreter::transition(&mut storage, deploy).expect("Failed to deploy");
+    assert!(Transactor::new(&mut storage).transact(deploy).is_success());
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -345,7 +349,7 @@ fn revert() {
     );
 
     // Deploy the contract into the blockchain
-    client.transition(vec![tx]).expect("Failed to transact");
+    client.transact(tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -411,7 +415,9 @@ fn revert() {
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    let receipts = client.transition(vec![tx]).expect("Failed to transact");
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
     let state = client.as_ref().contract_state(&contract, &key);
 
     // Assert the state of `key` is mutated to `val`
@@ -455,13 +461,14 @@ fn revert() {
         vec![],
     );
 
-    let receipts = client.transition(vec![tx]).expect("Failed to transact");
+    // Assert the state of `key` is reverted to `val`
     let state = client.as_ref().contract_state(&contract, &key);
 
-    // Assert the state of `key` is reverted to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
     // Expect the correct receipt
+    let receipts = client.transact(tx);
+
     assert_eq!(receipts[1].ra().expect("Register value expected"), val + rev);
     assert_eq!(receipts[1].rb().expect("Register value expected"), val);
 

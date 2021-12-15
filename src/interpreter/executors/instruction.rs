@@ -1,11 +1,11 @@
 use crate::consts::*;
-use crate::error::InterpreterError;
+use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::gas::consts::*;
 use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr};
+use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
@@ -17,6 +17,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
+    /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
         let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]
@@ -25,7 +26,7 @@ where
             .map(|b| unsafe { bytes::from_slice_unchecked(b) })
             .map(Word::from_be_bytes)
             .map(Instruction::parse_word)
-            .ok_or(InterpreterError::ProgramOverflow)?;
+            .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
         let pc = self.registers[REG_PC] + Instruction::LEN as Word;
@@ -42,6 +43,7 @@ where
         }
     }
 
+    /// Execute a provided instruction
     pub fn instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
@@ -51,6 +53,11 @@ where
             }
         }
 
+        self._instruction(instruction)
+            .map_err(|e| InterpreterError::from_runtime(e, instruction))
+    }
+
+    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
@@ -257,7 +264,7 @@ where
 
             OpcodeRepr::RVRT => {
                 self.gas_charge(GAS_RVRT)?;
-                self.revert(a)?;
+                self.revert(a);
 
                 return Ok(ExecuteState::Revert(a));
             }
@@ -463,12 +470,9 @@ where
             }
 
             // list of currently unimplemented opcodes
-            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO => {
-                return Err(InterpreterError::OpcodeRepresentationUnimplemented(op))
+            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO | _ => {
+                return Err(PanicReason::ErrorFlag.into());
             }
-
-            // wildcard match for unused opcodes such as `RESERV01`
-            _ => return Err(InterpreterError::OpcodeInvalid(op)),
         }
 
         Ok(ExecuteState::Proceed)

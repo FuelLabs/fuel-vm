@@ -1,8 +1,9 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
+use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::PanicReason;
 use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
 use fuel_types::{bytes, Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
 
@@ -14,8 +15,8 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn coinbase(&self) -> Result<Address, InterpreterError> {
-        self.storage.coinbase().map_err(|e| e.into())
+    pub(crate) fn coinbase(&self) -> Result<Address, RuntimeError> {
+        self.storage.coinbase().map_err(RuntimeError::from_io)
     }
 
     /// Loads contract ID pointed by `a`, and then for that contract,
@@ -25,7 +26,7 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let ssp = self.registers[REG_SSP];
         let sp = self.registers[REG_SP];
         let hp = self.registers[REG_HP];
@@ -40,11 +41,11 @@ where
             || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
             || length_to_copy_unpadded > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
         {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         if ssp != sp {
-            return Err(InterpreterError::ExpectedEmptyStack);
+            return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
         // Fetch the contract id
@@ -57,7 +58,7 @@ where
 
         // Check that the contract exists
         if !self.tx.input_contracts().any(|id| id == contract_id) {
-            return Err(InterpreterError::ContractNotInTxInputs);
+            return Err(PanicReason::ContractNotInInputs.into());
         };
 
         // Calculate the word aligned padded len based on $rC
@@ -92,7 +93,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn burn(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn burn(&mut self, a: Word) -> Result<(), RuntimeError> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -100,15 +101,16 @@ where
         let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, color)?;
-        let balance = balance.checked_sub(a).ok_or(InterpreterError::NotEnoughBalance)?;
+        let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)?;
+            .merkle_contract_color_balance_insert(contract, color, balance)
+            .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn mint(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn mint(&mut self, a: Word) -> Result<(), RuntimeError> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -116,21 +118,22 @@ where
         let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, color)?;
-        let balance = balance.checked_add(a).ok_or(InterpreterError::ArithmeticOverflow)?;
+        let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)?;
+            .merkle_contract_color_balance_insert(contract, color, balance)
+            .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         if d > MEM_MAX_ACCESS_SIZE
             || a > VM_MAX_RAM - d
             || b > VM_MAX_RAM - ContractId::LEN as Word
             || c > VM_MAX_RAM - d
         {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b, c, d) = (a as usize, b as usize, c as usize, d as usize);
@@ -147,7 +150,7 @@ where
             .iter()
             .any(|input| matches!(input, Input::Contract { contract_id, .. } if contract_id == contract))
         {
-            return Err(InterpreterError::ContractNotInTxInputs);
+            return Err(PanicReason::ContractNotInInputs.into());
         }
 
         let contract = self.contract(contract)?.into_owned();
@@ -161,7 +164,7 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let hash = self.storage.block_hash(b as u32).map_err(|e| e.into())?;
 
         self.try_mem_write(a as usize, hash.as_ref())?;
@@ -169,16 +172,16 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.coinbase()
             .and_then(|data| self.try_mem_write(a as usize, data.as_ref()))?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - ContractId::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
@@ -190,7 +193,8 @@ where
             .storage
             .storage_contract_root(contract_id)
             .transpose()
-            .ok_or(InterpreterError::ContractNotFound)??
+            .ok_or(PanicReason::ContractNotFound)?
+            .map_err(RuntimeError::from_io)?
             .into_owned();
 
         self.try_mem_write(a, root.as_ref())?;
@@ -198,11 +202,11 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
         if b > VM_MAX_RAM - ContractId::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let b = b as usize;
@@ -215,9 +219,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         if b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let b = b as usize;
@@ -229,7 +233,8 @@ where
 
         self.registers[ra] = self
             .storage
-            .merkle_contract_state(contract, key)?
+            .merkle_contract_state(contract, key)
+            .map_err(RuntimeError::from_io)?
             .map(|state| unsafe { Bytes8::from_slice_unchecked(state.as_ref().as_ref()).into() })
             .map(Word::from_be_bytes)
             .unwrap_or(0);
@@ -237,9 +242,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
@@ -251,7 +256,8 @@ where
 
         let state = self
             .storage
-            .merkle_contract_state(contract, key)?
+            .merkle_contract_state(contract, key)
+            .map_err(RuntimeError::from_io)?
             .map(|s| s.into_owned())
             .unwrap_or_default();
 
@@ -260,9 +266,9 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let a = a as usize;
@@ -276,14 +282,16 @@ where
 
         (&mut value[..WORD_SIZE]).copy_from_slice(&b.to_be_bytes());
 
-        self.storage.merkle_contract_state_insert(contract, key, &value)?;
+        self.storage
+            .merkle_contract_state_insert(contract, key, &value)
+            .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
-            return Err(InterpreterError::MemoryOverflow);
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
@@ -294,7 +302,9 @@ where
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..a + Bytes32::LEN]) };
         let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..b + Bytes32::LEN]) };
 
-        self.storage.merkle_contract_state_insert(contract, key, value)?;
+        self.storage
+            .merkle_contract_state_insert(contract, key, value)
+            .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
     }

@@ -3,7 +3,7 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use std::{iter, mem};
+use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -44,9 +44,7 @@ fn backtrace() {
         vec![program],
     );
 
-    client
-        .transition_with_backtrace(iter::once(tx_deploy))
-        .expect("Failed to deploy contract");
+    client.transact(tx_deploy);
 
     #[rustfmt::skip]
     let mut function_call: Vec<Opcode> = vec![
@@ -86,9 +84,7 @@ fn backtrace() {
         vec![program],
     );
 
-    client
-        .transition_with_backtrace(iter::once(tx_deploy))
-        .expect("Failed to deploy contract");
+    client.transact(tx_deploy);
 
     #[rustfmt::skip]
     let mut script: Vec<Opcode> = vec![
@@ -123,9 +119,11 @@ fn backtrace() {
         vec![],
     );
 
+    client.transact(tx_script);
+
     let backtrace = client
-        .transition_with_backtrace(iter::once(tx_script))
-        .expect_err("Undefined opcode should err!");
+        .backtrace()
+        .expect("Expected erroneous state for undefined opcode");
 
     assert_eq!(backtrace.contract(), &contract_undefined);
 

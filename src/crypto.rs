@@ -1,3 +1,5 @@
+//! Crypto implementations for the instructions
+
 use fuel_merkle::binary::MerkleTree;
 use fuel_merkle::common::StorageMap;
 use fuel_types::{Bytes32, Bytes64};

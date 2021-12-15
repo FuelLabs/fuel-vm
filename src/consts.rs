@@ -1,15 +1,9 @@
+//! VM parameters
+
 use fuel_tx::consts::*;
 use fuel_types::{Bytes32, Color, Word};
 
 use std::mem;
-
-/* MEMORY TYPES */
-
-/// Maximum VM RAM, in bytes.
-pub const VM_MAX_RAM: u64 = 1024 * 1024;
-
-/// Maximum memory access size, in bytes.
-pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
 /* FLAG AND REGISTER TYPES */
 
@@ -70,26 +64,33 @@ pub const REG_WRITABLE: usize = 0x10;
 
 /* END */
 
-// max sizes in u64 words
-// pub const FUEL_MAX_MEMORY_SIZE: usize = 32 * /* MB */ 1024 * /* KB */ 1024;
-// use a small size for now
-pub const FUEL_MAX_MEMORY_SIZE: u8 = 64;
+/* MEMORY TYPES */
 
-// constraints for program input
-// pub const FUEL_MAX_PROGRAM_SIZE: usize = 16 * /* KB */ 1024;
-// use a small size for now
-pub const FUEL_MAX_PROGRAM_SIZE: u8 = 16;
+/// Length of a word, in bytes
+pub const WORD_SIZE: usize = mem::size_of::<Word>();
+
+/// Maximum memory word count
+pub const FUEL_MAX_MEMORY_SIZE: u64 = 64;
+
+/// Maximum VM RAM, in bytes.
+pub const VM_MAX_RAM: u64 = 16 * 1024 * FUEL_MAX_MEMORY_SIZE * WORD_SIZE as u64;
+
+/// Maximum memory access size, in bytes.
+pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
+
+/// Maximum size of a fuel program (unused)
+pub const FUEL_MAX_PROGRAM_SIZE: usize = 16 * /* KB */ 1024;
 
 // no limits to heap for now.
 
-// register-based addressing for 32MB of memory in bytecode-land
-// used for serder
+/// Encoded len of a register id in an instruction (unused)
 pub const VM_REGISTER_WIDTH: u8 = 6;
 
+/// Transaction offset in the VM memory
 pub const VM_TX_MEMORY: usize = Bytes32::LEN // Tx ID
-            + mem::size_of::<Word>() // Tx size
+            + WORD_SIZE // Tx size
             + MAX_INPUTS as usize * (
-                Color::LEN + mem::size_of::<Word>()
+                Color::LEN + WORD_SIZE
                 ); // Color/Balance coin input pairs
 
 /// Empty merkle root for receipts tree

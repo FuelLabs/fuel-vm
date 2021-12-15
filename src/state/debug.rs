@@ -3,6 +3,12 @@ use fuel_types::{ContractId, Word};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// Breakpoint description that binds a tuple `(contract, $pc)` to a debugger
+/// implementation.
+///
+/// Breakpoints should be context-sensitive; hence, should target contract Ids.
+///
+/// For script/predicate verification, the contract id should be zero.
 pub struct Breakpoint {
     contract: ContractId,
     pc: Word,
@@ -34,10 +40,12 @@ impl Breakpoint {
         Self::new(contract, pc)
     }
 
+    /// Contract that will trigger the breakpoint.
     pub const fn contract(&self) -> &ContractId {
         &self.contract
     }
 
+    /// Program counter that will trigger the breakpoint.
     pub const fn pc(&self) -> Word {
         self.pc
     }
@@ -45,8 +53,13 @@ impl Breakpoint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// State evaluation of the interpreter that will describe if a program should
+/// break or continue.
 pub enum DebugEval {
+    /// This evaluation should break the program in the location described in
+    /// `Breakpoint`.
     Breakpoint(Breakpoint),
+    /// This evaluation should not break the program.
     Continue,
 }
 
@@ -63,6 +76,7 @@ impl From<Breakpoint> for DebugEval {
 }
 
 impl DebugEval {
+    /// Flag whether the program execution should break.
     pub const fn should_continue(&self) -> bool {
         match self {
             Self::Continue => true,
@@ -70,6 +84,8 @@ impl DebugEval {
         }
     }
 
+    /// Return a breakpoint description if the current evaluation should break;
+    /// return `None` otherwise.
     pub const fn breakpoint(&self) -> Option<&Breakpoint> {
         match self {
             Self::Breakpoint(b) => Some(b),

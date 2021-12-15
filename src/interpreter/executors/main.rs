@@ -1,11 +1,12 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::{Backtrace, InterpreterError};
+use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::{Interpreter, MemoryRange};
-use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
+use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::{InstructionResult, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -14,10 +15,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    fn into_inner(self) -> (Transaction, Vec<Receipt>) {
-        (self.tx, self.receipts)
-    }
-
+    // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
 
@@ -29,7 +27,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(InterpreterError::TransactionCreateStaticContractNotFound)?
+                    Err(InterpreterError::Panic(PanicReason::ContractNotFound))?
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -42,11 +40,16 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(InterpreterError::TransactionCreateIdNotInTx)?;
+                    Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))?;
                 }
 
-                self.storage.storage_contract_insert(&id, &contract)?;
-                self.storage.storage_contract_root_insert(&id, salt, &root)?;
+                self.storage
+                    .storage_contract_insert(&id, &contract)
+                    .map_err(InterpreterError::from_io)?;
+
+                self.storage
+                    .storage_contract_root_insert(&id, salt, &root)
+                    .map_err(InterpreterError::from_io)?;
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
@@ -90,7 +93,34 @@ where
 
                 // TODO set tree balance
 
-                state = self.run_program()?;
+                let program = self.run_program();
+                let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
+
+                // Catch VM panic and don't propagate, generating a receipt
+                let (status, program) = match program {
+                    Ok(s) => (InstructionResult::success(), s),
+
+                    Err(e) => match e.instruction_result() {
+                        Some(result) => {
+                            self.append_panic_receipt(*result);
+                            self.apply_revert();
+
+                            (*result, ProgramState::Revert(0))
+                        }
+
+                        // This isn't a specified case of an erroneous program and should be
+                        // propagated. If applicable, OS errors will fall into this category.
+                        None => {
+                            return Err(e);
+                        }
+                    },
+                };
+
+                let receipt = Receipt::script_result(status, gas_used);
+
+                self.receipts.push(receipt);
+
+                state = program;
             }
         }
 
@@ -113,10 +143,43 @@ where
         Ok(state)
     }
 
+    pub(crate) fn run_call(&mut self) -> Result<ProgramState, RuntimeError> {
+        loop {
+            if self.registers[REG_PC] >= VM_MAX_RAM {
+                return Err(PanicReason::MemoryOverflow.into());
+            }
+
+            let state = self
+                .execute()
+                .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
+
+            match state {
+                ExecuteState::Return(r) => {
+                    return Ok(ProgramState::Return(r));
+                }
+
+                ExecuteState::ReturnData(d) => {
+                    return Ok(ProgramState::ReturnData(d));
+                }
+
+                ExecuteState::Revert(r) => {
+                    return Ok(ProgramState::Revert(r));
+                }
+
+                ExecuteState::Proceed => (),
+
+                #[cfg(feature = "debug")]
+                ExecuteState::DebugEvent(d) => {
+                    return Ok(ProgramState::RunProgram(d));
+                }
+            }
+        }
+    }
+
     pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
             if self.registers[REG_PC] >= VM_MAX_RAM {
-                return Err(InterpreterError::ProgramOverflow);
+                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
             match self.execute()? {
@@ -142,55 +205,15 @@ where
         }
     }
 
-    fn transition_internal<F, E>(err: F, storage: S, tx: Transaction) -> Result<StateTransition, E>
-    where
-        F: FnOnce(&Self, InterpreterError) -> E,
-    {
-        let mut vm = Interpreter::with_storage(storage);
-
-        let state = vm.init(tx).and_then(|_| vm.run()).map_err(|e| err(&vm, e))?;
-
-        let (tx, receipts) = vm.into_inner();
-        let transition = StateTransition::new(state, tx, receipts);
-
-        Ok(transition)
-    }
-
-    fn transact_internal<F, E>(&mut self, err: F, tx: Transaction) -> Result<StateTransitionRef<'_>, E>
-    where
-        F: FnOnce(&Interpreter<S>, InterpreterError) -> E,
-    {
-        let state = self.init(tx).and_then(|_| self.run()).map_err(|e| err(&self, e))?;
-
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
-    }
-
-    /// Allocate internally a new instance of [`Interpreter`] with the provided
-    /// storage, initialize it with the provided transaction and return the
-    /// result of th execution in form of [`StateTransition`]
-    pub fn transition(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
-        Self::transition_internal(|_, e| e, storage, tx)
-    }
-
-    /// Execute the same procedure as [`Self::transition`], but in case of
-    /// error, allocate additional data to compose a [`Backtrace`]
-    pub fn transition_with_backtrace(storage: S, tx: Transaction) -> Result<StateTransition, Backtrace> {
-        Self::transition_internal(|vm, e| e.backtrace(vm), storage, tx)
-    }
-
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        self.transact_internal(|_, e| e, tx)
-    }
+        let state = self.init(tx).and_then(|_| self.run())?;
 
-    /// Execute the same procedure as [`Self::transact`], but in case of
-    /// error, allocate additional data to compose a [`Backtrace`]
-    pub fn transact_with_backtrace(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, Backtrace> {
-        self.transact_internal(|interpreter, e| e.backtrace(interpreter), tx)
+        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
+
+        Ok(transition)
     }
 }

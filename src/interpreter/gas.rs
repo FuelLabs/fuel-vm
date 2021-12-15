@@ -1,9 +1,9 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
+use crate::error::RuntimeError;
 use crate::gas::GasUnit;
 
-use fuel_asm::OpcodeRepr;
+use fuel_asm::{OpcodeRepr, PanicReason};
 use fuel_types::Word;
 
 pub mod consts;
@@ -55,21 +55,21 @@ impl<S> Interpreter<S> {
         .cost()
     }
 
-    pub(crate) fn gas_charge_monad<F>(&mut self, monad: F, arg: Word) -> Result<(), InterpreterError>
+    pub(crate) fn gas_charge_monad<F>(&mut self, monad: F, arg: Word) -> Result<(), RuntimeError>
     where
         F: FnOnce(Word) -> Word,
     {
         self.gas_charge(monad(arg))
     }
 
-    pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
         let gas = !self.is_predicate() as Word * gas;
 
         if gas > self.registers[REG_CGAS] {
             self.registers[REG_GGAS] -= self.registers[REG_CGAS];
             self.registers[REG_CGAS] = 0;
 
-            Err(InterpreterError::OutOfGas)
+            Err(PanicReason::OutOfGas.into())
         } else {
             self.registers[REG_CGAS] -= gas;
 

@@ -1,15 +1,17 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::InterpreterError;
+use crate::error::RuntimeError;
 
+use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 use std::{ops, ptr};
 
-// Memory bounds must be manually checked and cannot follow general PartialEq
-// rules
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+/// Memory range representation for the VM.
+///
+/// `start` is inclusive, and `end` is exclusive.
 pub struct MemoryRange {
     start: ops::Bound<Word>,
     end: ops::Bound<Word>,
@@ -17,6 +19,7 @@ pub struct MemoryRange {
 }
 
 impl MemoryRange {
+    /// Create a new memory range represented as `[address, address + size[`.
     pub const fn new(address: Word, size: Word) -> Self {
         let start = ops::Bound::Included(address);
         let end = ops::Bound::Excluded(address.saturating_add(size));
@@ -25,6 +28,7 @@ impl MemoryRange {
         Self { start, end, len }
     }
 
+    /// Beginning of the memory range.
     pub const fn start(&self) -> Word {
         use ops::Bound::*;
 
@@ -35,6 +39,7 @@ impl MemoryRange {
         }
     }
 
+    /// End of the memory range.
     pub const fn end(&self) -> Word {
         use ops::Bound::*;
 
@@ -45,10 +50,12 @@ impl MemoryRange {
         }
     }
 
+    /// Bytes count of this memory range.
     pub const fn len(&self) -> Word {
         self.len
     }
 
+    /// Return `true` if the length is `0`.
     pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -135,6 +142,8 @@ where
     }
 }
 
+// Memory bounds must be manually checked and cannot follow general PartialEq
+// rules
 impl PartialEq for MemoryRange {
     fn eq(&self, other: &MemoryRange) -> bool {
         use ops::Bound::*;
@@ -175,43 +184,37 @@ impl<S> Interpreter<S> {
     /// # Panics
     ///
     /// Will panic if data overlaps with `addr[..|data|[`
-    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), InterpreterError> {
-        addr.checked_add(data.len())
-            .ok_or(InterpreterError::ArithmeticOverflow)
-            .and_then(|ax| {
-                (ax <= VM_MAX_RAM as usize)
-                    .then(|| MemoryRange::new(addr as Word, 32))
-                    .ok_or(InterpreterError::MemoryOverflow)
-            })
-            .and_then(|range| {
-                self.has_ownership_range(&range)
-                    .then(|| {
-                        let src = data.as_ptr();
-                        let dst = &mut self.memory[addr] as *mut u8;
+    pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
+        let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
 
-                        unsafe {
-                            ptr::copy_nonoverlapping(src, dst, data.len());
-                        }
-                    })
-                    .ok_or(InterpreterError::MemoryOwnership)
+        let range = (ax <= VM_MAX_RAM as usize)
+            .then(|| MemoryRange::new(addr as Word, 32))
+            .ok_or(PanicReason::MemoryOverflow)?;
+
+        self.has_ownership_range(&range)
+            .then(|| {
+                let src = data.as_ptr();
+                let dst = &mut self.memory[addr] as *mut u8;
+
+                unsafe {
+                    ptr::copy_nonoverlapping(src, dst, data.len());
+                }
             })
+            .ok_or(PanicReason::MemoryOwnership.into())
     }
 
-    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), InterpreterError> {
-        addr.checked_add(len)
-            .ok_or(InterpreterError::ArithmeticOverflow)
-            .and_then(|ax| {
-                (ax <= VM_MAX_RAM as usize)
-                    .then(|| MemoryRange::new(addr as Word, 32))
-                    .ok_or(InterpreterError::MemoryOverflow)
+    pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
+        let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
+
+        let range = (ax <= VM_MAX_RAM as usize)
+            .then(|| MemoryRange::new(addr as Word, 32))
+            .ok_or(PanicReason::MemoryOverflow)?;
+
+        self.has_ownership_range(&range)
+            .then(|| {
+                (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
             })
-            .and_then(|range| {
-                self.has_ownership_range(&range)
-                    .then(|| {
-                        (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
-                    })
-                    .ok_or(InterpreterError::MemoryOwnership)
-            })
+            .ok_or(PanicReason::MemoryOwnership.into())
     }
 
     /// Grant ownership of the range `[a..ab[`
@@ -263,14 +266,14 @@ impl<S> Interpreter<S> {
         a < self.registers[REG_SP]
     }
 
-    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), InterpreterError>
+    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
         let (result, overflow) = f(self.registers[REG_SP], v);
 
         if overflow || result > self.registers[REG_HP] {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.registers[REG_SP] = result;
 
@@ -278,11 +281,11 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> Result<(), RuntimeError> {
         let bc = b.saturating_add(c as RegisterId);
 
         if bc >= VM_MAX_RAM as RegisterId {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.registers[ra] = self.memory[bc] as Word;
 
@@ -290,7 +293,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         // C is expressed in words; mul by 8
         let (bc, overflow) = b.overflowing_add(c * 8);
         let (bcw, of) = bc.overflowing_add(8);
@@ -300,7 +303,7 @@ impl<S> Interpreter<S> {
         let bcw = bcw as usize;
 
         if overflow || bcw > VM_MAX_RAM as RegisterId {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             // Safe conversion of sized slice
             self.registers[ra] = <[u8; 8]>::try_from(&self.memory[bc..bcw])
@@ -311,11 +314,11 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (ac, overflow) = a.overflowing_add(c);
 
         if overflow || ac >= VM_MAX_RAM || !(self.has_ownership_stack(ac) || self.has_ownership_heap(ac)) {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.memory[ac as usize] = b as u8;
 
@@ -323,7 +326,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         // C is expressed in words; mul by 8
         let (ac, overflow) = a.overflowing_add(c * 8);
         let (acw, of) = ac.overflowing_add(8);
@@ -331,7 +334,7 @@ impl<S> Interpreter<S> {
 
         let range = MemoryRange::new(ac, 8);
         if overflow || acw > VM_MAX_RAM || !self.has_ownership_range(&range) {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.memory[ac as usize..acw as usize].copy_from_slice(&b.to_be_bytes());
 
@@ -339,11 +342,11 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
         let (result, overflow) = self.registers[REG_HP].overflowing_sub(a);
 
         if overflow || result < self.registers[REG_SP] {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.registers[REG_HP] = result;
 
@@ -351,12 +354,12 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let (ab, overflow) = a.overflowing_add(b);
 
         let range = MemoryRange::new(a, b);
         if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !self.has_ownership_range(&range) {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             // trivial compiler optimization for memset
             for i in &mut self.memory[a as usize..ab as usize] {
@@ -367,7 +370,7 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (ac, overflow) = a.overflowing_add(c);
         let (bc, of) = b.overflowing_add(c);
         let overflow = overflow || of;
@@ -381,7 +384,7 @@ impl<S> Interpreter<S> {
             || b <= a && a < bc
             || !self.has_ownership_range(&range)
         {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             // The pointers are granted to be aligned so this is a safe
             // operation
@@ -396,13 +399,13 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (bd, overflow) = b.overflowing_add(d);
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
 
         if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-            Err(InterpreterError::MemoryOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.registers[ra] = (self.memory[b as usize..bd as usize] == self.memory[c as usize..cd as usize]) as Word;
 
@@ -418,7 +421,7 @@ mod tests {
 
     #[test]
     fn memcopy() {
-        let mut vm = Interpreter::in_memory();
+        let mut vm = Interpreter::with_memory_storage();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         let alloc = 1024;
@@ -469,7 +472,7 @@ mod tests {
         let m_p = MemoryRange::new(0, 1024);
         assert_eq!(m, m_p);
 
-        let mut vm = Interpreter::in_memory();
+        let mut vm = Interpreter::with_memory_storage();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         let bytes = 1024;
@@ -495,7 +498,7 @@ mod tests {
 
     #[test]
     fn stack_alloc_ownership() {
-        let mut vm = Interpreter::in_memory();
+        let mut vm = Interpreter::with_memory_storage();
         vm.init(Transaction::default()).expect("Failed to init VM");
 
         vm.instruction(Opcode::MOVE(0x10, REG_SP).into()).unwrap();

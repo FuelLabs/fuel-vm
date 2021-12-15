@@ -7,6 +7,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
+    /// Continue the execution from a previously interrupted program flow.
     pub fn resume(&mut self) -> Result<ProgramState, InterpreterError> {
         let state = self
             .debugger_last_state()

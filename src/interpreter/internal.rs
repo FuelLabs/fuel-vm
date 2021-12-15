@@ -1,9 +1,9 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
-use crate::error::InterpreterError;
+use crate::error::RuntimeError;
 
-use fuel_asm::Instruction;
+use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::consts::*;
 use fuel_tx::Transaction;
 use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
@@ -13,11 +13,11 @@ use std::mem;
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 impl<S> Interpreter<S> {
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), InterpreterError> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
 
         if overflow || !self.is_external_context() && ssp > self.registers[REG_SP] {
-            Err(InterpreterError::StackOverflow)
+            Err(PanicReason::MemoryOverflow.into())
         } else {
             self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
             self.registers[REG_SSP] = ssp;
@@ -30,7 +30,7 @@ impl<S> Interpreter<S> {
         self.block_height
     }
 
-    pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.registers[REG_FLAG] = a;
 
         self.inc_pc()
@@ -44,10 +44,10 @@ impl<S> Interpreter<S> {
         self.registers[REG_ERR] = 1;
     }
 
-    pub(crate) fn inc_pc(&mut self) -> Result<(), InterpreterError> {
+    pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
         self.registers[REG_PC]
             .checked_add(Instruction::LEN as Word)
-            .ok_or(InterpreterError::ProgramOverflow)
+            .ok_or(PanicReason::ArithmeticOverflow.into())
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
@@ -71,11 +71,11 @@ impl<S> Interpreter<S> {
         matches!(self.context, Context::Predicate)
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), InterpreterError> {
+    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
         if ra >= REG_WRITABLE {
             Ok(())
         } else {
-            Err(InterpreterError::RegisterNotWritable(ra))
+            Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
         }
     }
 
@@ -83,7 +83,7 @@ impl<S> Interpreter<S> {
         &self.tx
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, InterpreterError> {
+    pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
@@ -99,7 +99,7 @@ impl<S> Interpreter<S> {
             .unwrap_or_default()
     }
 
-    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), InterpreterError> {
+    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), RuntimeError> {
         self.is_internal_context()
             .then(|| {
                 let c = self.registers[REG_FP] as usize;
@@ -107,10 +107,10 @@ impl<S> Interpreter<S> {
 
                 (c, cx)
             })
-            .ok_or(InterpreterError::ExpectedInternalContext)
+            .ok_or(PanicReason::ExpectedInternalContext.into())
     }
 
-    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), InterpreterError> {
+    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), RuntimeError> {
         if value == 0 {
             return Ok(());
         }
@@ -121,11 +121,11 @@ impl<S> Interpreter<S> {
             .chunks_mut(LEN)
             .find(|chunk| &chunk[..Color::LEN] == color.as_ref())
             .map(|chunk| &mut chunk[Color::LEN..])
-            .ok_or(InterpreterError::ExternalColorNotFound)?;
+            .ok_or(PanicReason::ColorNotFound)?;
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
         let balance = Word::from_be_bytes(balance);
-        let balance = balance.checked_sub(value).ok_or(InterpreterError::NotEnoughBalance)?;
+        let balance = balance.checked_sub(value).ok_or(PanicReason::NotEnoughBalance)?;
         let balance = balance.to_be_bytes();
 
         balance_memory.copy_from_slice(&balance);
@@ -144,7 +144,7 @@ mod tests {
     fn external_balance() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
-        let mut vm = Interpreter::in_memory();
+        let mut vm = Interpreter::with_memory_storage();
 
         let gas_price = 0;
         let gas_limit = 1_000_000;

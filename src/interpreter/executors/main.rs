@@ -6,7 +6,7 @@ use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{InstructionResult, Opcode, PanicReason};
+use fuel_asm::{Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -102,21 +102,24 @@ where
 
                     Err(e) => match e.instruction_result() {
                         Some(result) => {
-                            if self.instruction(Opcode::RVRT(REG_ZERO).into()).is_err() {
-                                // TODO `RVRT` consumes gas. If we are out of
-                                // gas to run this instruction, then we might
-                                // need to execute it anyway.
+                            const RVRT: Instruction = Instruction::new((OpcodeRepr::RVRT as u32) << 24);
+                            debug_assert_eq!(RVRT, Opcode::RVRT(REG_ZERO).into());
+
+                            // The only possible well-formed panic for `RVRT` is out of gas.
+                            match self.instruction(RVRT).err() {
+                                // Recoverable panic that consumes all remaining local gas and reverts the tx's state
+                                // changes.
+                                Some(e) if e.panic_reason() == Some(PanicReason::OutOfGas) => (),
+                                None => (),
+
+                                // This case is unreachable according to specs.
                                 //
-                                // Should we invalidate the entirety of the
-                                // transaction (so it cannot produce a valid
-                                // block), or should we just execute `RVRT`
-                                // regardless of being out of gas?
-                                //
-                                // If we opt to invalidate the entirety of the
-                                // transaction, then we produce a new class of
-                                // panic reason `OutOfGasHalt` since the regular
-                                // `OutOfGas` won't halt the execution and will
-                                // produce valid blocks.
+                                // If this code is reached, it is an implementation problem and a
+                                // bug should be filed.
+                                Some(e) if e.panic_reason().is_some() => return Err(e),
+
+                                // Any other variant is a halt error.
+                                Some(e) => return Err(e),
                             }
 
                             (*result, ProgramState::Revert(0))

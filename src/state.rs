@@ -139,7 +139,9 @@ impl StateTransition {
 
     /// Flag whether the client should revert after execution.
     pub fn should_revert(&self) -> bool {
-        self.receipts.iter().any(|r| matches!(r, Receipt::Revert { .. }))
+        self.receipts
+            .iter()
+            .any(|r| matches!(r, Receipt::Revert { .. } | Receipt::Panic { .. }))
     }
 
     /// Transaction receipts representing the state transition.
@@ -191,7 +193,9 @@ impl<'a> StateTransitionRef<'a> {
 
     /// Flag whether the client should revert after execution.
     pub fn should_revert(&self) -> bool {
-        self.receipts.iter().any(|r| matches!(r, Receipt::Revert { .. }))
+        self.receipts
+            .iter()
+            .any(|r| matches!(r, Receipt::Revert { .. } | Receipt::Panic { .. }))
     }
 
     /// Convert this instance into an owned state transition, cloning its

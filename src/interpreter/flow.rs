@@ -5,7 +5,7 @@ use crate::error::RuntimeError;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::Instruction;
+use fuel_asm::{Instruction, InstructionResult};
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -190,7 +190,7 @@ where
         Ok(digest)
     }
 
-    pub(crate) fn revert(&mut self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn revert(&mut self, a: Word) {
         let receipt = Receipt::revert(
             self.internal_contract_or_default(),
             a,
@@ -199,16 +199,26 @@ where
         );
 
         self.receipts.push(receipt);
+        self.apply_revert();
+    }
 
+    pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
+        let pc = self.registers[REG_PC];
+        let is = self.registers[REG_IS];
+
+        let receipt = Receipt::panic(self.internal_contract_or_default(), Word::from(result), pc, is);
+
+        self.receipts.push(receipt);
+    }
+
+    pub(crate) fn apply_revert(&mut self) {
         // TODO
-        // All OutputContract outputs will have the same amount and stateRoot as on
-        // initialization.
+        // All OutputContract outputs will have the same amount and stateRoot as
+        // on initialization.
         //
         // All OutputVariable outputs will have to and amount of zero.
         //
-        // All OutputContractConditional outputs will have contractID, amount, and
-        // stateRoot of zero.
-
-        Ok(())
+        // All OutputContractConditional outputs will have contractID, amount,
+        // and stateRoot of zero.
     }
 }

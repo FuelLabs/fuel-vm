@@ -264,7 +264,7 @@ where
 
             OpcodeRepr::RVRT => {
                 self.gas_charge(GAS_RVRT)?;
-                self.revert(a)?;
+                self.revert(a);
 
                 return Ok(ExecuteState::Revert(a));
             }

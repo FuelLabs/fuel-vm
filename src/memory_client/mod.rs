@@ -35,6 +35,11 @@ impl<'a> MemoryClient<'a> {
         }
     }
 
+    /// Create a new instance of the memory client out of a provided storage.
+    pub fn from_txtor(transactor: Transactor<'a, MemoryStorage>) -> Self {
+        Self { transactor }
+    }
+
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
     pub fn backtrace(&self) -> Option<Backtrace> {

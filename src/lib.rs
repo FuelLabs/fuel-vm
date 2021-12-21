@@ -4,7 +4,6 @@
 
 pub mod backtrace;
 pub mod call;
-pub mod client;
 pub mod consts;
 pub mod context;
 pub mod contract;
@@ -12,9 +11,13 @@ pub mod crypto;
 pub mod error;
 pub mod gas;
 pub mod interpreter;
+pub mod memory_client;
 pub mod state;
 pub mod storage;
 pub mod transactor;
+
+#[cfg(feature = "profile-any")]
+pub mod profiler;
 
 pub mod prelude {
     //! Required implementations for full functionality
@@ -30,11 +33,11 @@ pub mod prelude {
 
     pub use crate::backtrace::Backtrace;
     pub use crate::call::{Call, CallFrame};
-    pub use crate::client::{MemoryClient, MemoryStorage};
     pub use crate::context::Context;
     pub use crate::contract::Contract;
     pub use crate::error::{Infallible, InterpreterError, RuntimeError};
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
+    pub use crate::memory_client::{MemoryClient, MemoryStorage};
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
     pub use crate::storage::InterpreterStorage;
     pub use crate::transactor::Transactor;

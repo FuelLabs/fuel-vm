@@ -25,7 +25,7 @@ use crate::common::Msb;
 /// maximum height of 3, and a maximum number of leaf nodes 2<sup>3</sup> = 8. For demonstration,
 /// internal nodes are numbered using in-order indices (note that this would require an integer type
 /// with 4 bits or more in practice). In-order indexing provides a deterministic way to descend from
-/// one node to the next.
+/// one node to the next (see [Position](crate::common::Position)).
 ///
 /// ```text
 ///                             07
@@ -55,7 +55,7 @@ use crate::common::Msb;
 /// ```
 ///
 /// Starting at the tree's root at index `07`, we can follow the instructions encoded by the binary
-/// representation of leaf `06` (`0b110`). In combination with our in-order index rules for
+/// representation of leaf `6` (`0b110`). In combination with our in-order index rules for
 /// descending nodes, we evaluate the following:
 /// 1. The first bit is `1`; move right from `07` to `11`.
 /// 2. The next bit is `1`; move right from `11` to `13`.
@@ -101,8 +101,8 @@ where
         // 7      0                        127                    Offset = Bits - Height = 8 - 7 = 1
         //                                 / \
         //                                /   \
-        //                               /     \
-        // ...                         ...     ...
+        // ...                          ...   ...
+        //                              /       \
         //                             /         \
         // 3       4                  07         247              Offset = Bits - Height = 8 - 3 = 5
         //                           /  \        / \

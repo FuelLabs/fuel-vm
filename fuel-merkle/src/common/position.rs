@@ -50,7 +50,7 @@
 /// Because the `Position` indices are calculated from in-order traversal starting with the leaves,
 /// the deterministic quality of the indices holds true for imbalanced binary trees, including
 /// Merle Mountain Ranges. Consider the following binary tree construction comprised of seven
-/// leaves (with leaf indices 0 through 7):
+/// leaves (with leaf indices 0 through 6):
 ///
 /// ```text
 ///       03
@@ -62,7 +62,7 @@
 /// ```
 ///
 /// Note the absence of internal nodes that would be present in a fully balanced tree: inner nodes
-/// with indices 7 and 11 are absent. This is owing to the fact that nodes indices are calculated
+/// with indices 7 and 11 are absent. This is owing to the fact that node indices are calculated
 /// deterministically through in-order traversal, not calculated as a sequence.
 ///
 /// Traversal of a Merkle Mountain Range is still done in the same manner as a balanced Merkle tree,
@@ -71,6 +71,9 @@
 ///
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Position(u64);
+
+const LEFT_CHILD_DIRECTION: i64 = -1;
+const RIGHT_CHILD_DIRECTION: i64 = 1;
 
 impl Position {
     pub fn in_order_index(self) -> u64 {
@@ -111,6 +114,18 @@ impl Position {
         self.parent().sibling()
     }
 
+    /// The left child position.
+    /// See [child](Self::child).
+    pub fn left_child(self) -> Self {
+        self.child(LEFT_CHILD_DIRECTION)
+    }
+
+    /// The right child position.
+    /// See [child](Self::child).
+    pub fn right_child(self) -> Self {
+        self.child(RIGHT_CHILD_DIRECTION)
+    }
+
     /// The height of the index in a binary tree.
     /// Leaf nodes represent height 0. A leaf's parent represents height 1.
     /// Height values monotonically increase as you ascend the tree.
@@ -134,7 +149,41 @@ impl Position {
         (!self.in_order_index()).trailing_zeros()
     }
 
+    /// Whether or not this position represents a leaf node.
+    /// Returns `true` if the position is a leaf node.
+    /// Returns `false` if the position is an internal node.
+    ///
+    /// A position is a leaf node if and only if its in-order index is even. A position is an
+    /// internal node if and only if its in-order index is odd.
+    pub fn is_leaf(self) -> bool {
+        self.in_order_index() % 2 == 0
+    }
+
+    /// Whether or not this position represents an internal node.
+    /// Returns `false` if the position is a leaf node.
+    /// Returns `true` if the position is an internal node.
+    ///
+    /// When a position is an internal node, the position will have both a left and right child.
+    pub fn is_node(self) -> bool {
+        !self.is_leaf()
+    }
+
     // PRIVATE
+
+    /// The child position of the current position given by the direction.
+    /// A direction of `-1` denotes the left child. A direction of `+1` denotes the right child. A
+    /// child position has a height less 1 than the current position.
+    ///
+    /// A child position is calculated as a function of the current position's index and height, and
+    /// the supplied direction. The left child position has the in-order index arriving before the
+    /// current index; the right child position has the in-order index arriving after the current
+    /// index.
+    fn child(self, direction: i64) -> Self {
+        assert!(self.is_node());
+        let shift = 1 << (self.height() - 1);
+        let index = self.in_order_index() as i64 + shift * direction;
+        Self::from_in_order_index(index as u64)
+    }
 
     /// Orientation of the position index relative to its parent.
     /// Returns 0 if the index is left of its parent.
@@ -254,5 +303,49 @@ mod test {
         assert_eq!(Position(5).uncle(), Position(11));
         assert_eq!(Position(9).uncle(), Position(3));
         assert_eq!(Position(13).uncle(), Position(3));
+    }
+
+    #[test]
+    fn test_left_child() {
+        assert_eq!(Position(7).left_child(), Position(3));
+        assert_eq!(Position(3).left_child(), Position(1));
+        assert_eq!(Position(1).left_child(), Position(0));
+        assert_eq!(Position(11).left_child(), Position(9));
+        assert_eq!(Position(9).left_child(), Position(8));
+    }
+
+    #[test]
+    fn test_right_child() {
+        assert_eq!(Position(7).right_child(), Position(11));
+        assert_eq!(Position(3).right_child(), Position(5));
+        assert_eq!(Position(1).right_child(), Position(2));
+        assert_eq!(Position(11).right_child(), Position(13));
+        assert_eq!(Position(9).right_child(), Position(10));
+    }
+
+    #[test]
+    fn test_is_leaf() {
+        assert_eq!(Position(0).is_leaf(), true);
+        assert_eq!(Position(2).is_leaf(), true);
+        assert_eq!(Position(4).is_leaf(), true);
+        assert_eq!(Position(6).is_leaf(), true);
+
+        assert_eq!(Position(1).is_leaf(), false);
+        assert_eq!(Position(5).is_leaf(), false);
+        assert_eq!(Position(9).is_leaf(), false);
+        assert_eq!(Position(13).is_leaf(), false);
+    }
+
+    #[test]
+    fn test_is_node() {
+        assert_eq!(Position(0).is_node(), false);
+        assert_eq!(Position(2).is_node(), false);
+        assert_eq!(Position(4).is_node(), false);
+        assert_eq!(Position(6).is_node(), false);
+
+        assert_eq!(Position(1).is_node(), true);
+        assert_eq!(Position(5).is_node(), true);
+        assert_eq!(Position(9).is_node(), true);
+        assert_eq!(Position(13).is_node(), true);
     }
 }

@@ -1,7 +1,7 @@
 [package]
 name = "fuel-types"
 version = "0.1.0"
-authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
 edition = "2021"
 homepage = "https://fuel.network/"

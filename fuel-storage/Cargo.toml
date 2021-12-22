@@ -1,8 +1,11 @@
 [package]
 name = "fuel-storage"
 version = "0.1.0"
-authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
+homepage = "https://fuel.network/"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/fuel-storage"
 description = "Storage traits for Fuel storage-backed data structures."
 

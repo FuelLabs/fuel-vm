@@ -1,6 +1,6 @@
 [package]
 name = "fuel-merkle"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 homepage = "https://fuel.network/"
@@ -10,14 +10,14 @@ repository = "https://github.com/FuelLabs/fuel-merkle"
 description = "Fuel Merkle tree libraries."
 
 [dependencies]
-bytes = "~1.1"
-digest = "~0.9.0"
-fuel-storage = { version = "0.1" }
-generic-array = "~0.14.4"
-hex = "~0.4.3"
-lazy_static = "~1.4.0"
-sha2 = "~0.9.5"
-thiserror = "1.0.28"
+bytes = "1.0"
+digest = "0.9"
+fuel-storage = "0.1"
+generic-array = "0.14"
+hex = "0.4"
+lazy_static = "1.4"
+sha2 = "0.9"
+thiserror = "1.0"
 
 [dev-dependencies]
 fuel-merkle-test-helpers = { path = "test-helpers" }

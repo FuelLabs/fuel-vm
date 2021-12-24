@@ -11,7 +11,7 @@ repository = "https://github.com/FuelLabs/fuel-asm"
 description = "Defines all opcodes available in the FuelVM."
 
 [dependencies]
-fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git", default-features = false }
+fuel-types = { version = "0.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 
 [features]

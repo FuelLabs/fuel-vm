@@ -11,11 +11,11 @@ repository = "https://github.com/FuelLabs/fuel-vm"
 description = "FuelVM interpreter."
 
 [dependencies]
-fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-merkle = { git = "ssh://git@github.com/FuelLabs/fuel-merkle.git" }
-fuel-storage = { git = "ssh://git@github.com/FuelLabs/fuel-storage.git" }
-fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git" }
+fuel-asm = "0.1"
+fuel-merkle = "0.1"
+fuel-storage = "0.1"
+fuel-tx = "0.1"
+fuel-types = "0.1"
 itertools = "0.10"
 secp256k1 = { version = "0.20", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"], optional = true }

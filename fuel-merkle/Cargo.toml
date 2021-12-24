@@ -1,9 +1,13 @@
 [package]
 name = "fuel-merkle"
 version = "0.1.0"
-authors = ["Brandon Vrooman <brandon.vrooman@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://fuel.network/"
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/fuel-merkle"
+description = "Fuel Merkle tree libraries."
 
 [dependencies]
 bytes = "~1.1"

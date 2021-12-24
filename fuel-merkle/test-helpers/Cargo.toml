@@ -1,7 +1,7 @@
 [package]
 name = "fuel-merkle-test-helpers"
 version = "0.1.0"
-authors = ["Brandon Vrooman <brandon.vrooman@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 
 [dependencies]

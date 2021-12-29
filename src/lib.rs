@@ -16,7 +16,10 @@ pub mod state;
 pub mod storage;
 pub mod transactor;
 
-#[cfg(feature = "profile-any")]
+#[cfg(feature = "debug")]
+pub mod debug;
+
+#[cfg(feature = "profiler-any")]
 pub mod profiler;
 
 pub mod prelude {
@@ -38,10 +41,19 @@ pub mod prelude {
     pub use crate::error::{Infallible, InterpreterError, RuntimeError};
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
     pub use crate::memory_client::{MemoryClient, MemoryStorage};
-    pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
+    pub use crate::state::{ProgramState, StateTransition, StateTransitionRef};
     pub use crate::storage::InterpreterStorage;
     pub use crate::transactor::Transactor;
 
     #[cfg(feature = "debug")]
-    pub use crate::state::{Breakpoint, DebugEval};
+    pub use crate::debug::{Breakpoint, DebugEval, Debugger};
+
+    #[cfg(feature = "profiler-any")]
+    pub use crate::profiler::{
+        InstructionLocation, PerLocation, PerLocationIter, PerLocationKeys, PerLocationValues, ProfileReceiver,
+        Profiler, ProfilerStderrReceiver, ProfilingData,
+    };
+
+    #[cfg(feature = "profiler-gas")]
+    pub use crate::profiler::GasProfilingData;
 }

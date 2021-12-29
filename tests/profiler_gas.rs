@@ -1,11 +1,10 @@
-use std::sync::{Arc, Mutex};
-
 use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use fuel_vm::profiler::{ProfileReceiver, ProfilingData};
+use std::sync::{Arc, Mutex};
+
+use fuel_vm::prelude::*;
 
 #[test]
 fn profile_gas() {

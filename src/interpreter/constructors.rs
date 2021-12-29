@@ -1,15 +1,17 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use fuel_tx::Transaction;
-
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
-use crate::prelude::*;
-use crate::state::Debugger;
+use crate::memory_client::MemoryStorage;
 
-#[cfg(feature = "profile-any")]
+#[cfg(feature = "debug")]
+use crate::debug::Debugger;
+
+#[cfg(feature = "profiler-any")]
 use crate::profiler::{ProfileReceiver, Profiler};
+
+use fuel_tx::Transaction;
 
 impl<S> Interpreter<S> {
     /// Create a new interpreter instance out of a storage implementation.
@@ -25,16 +27,19 @@ impl<S> Interpreter<S> {
             receipts: vec![],
             tx: Transaction::default(),
             storage,
-            debugger: Debugger::default(),
             context: Context::default(),
             block_height: 0,
-            #[cfg(feature = "profile-any")]
+
+            #[cfg(feature = "debug")]
+            debugger: Debugger::default(),
+
+            #[cfg(feature = "profiler-any")]
             profiler: Profiler::default(),
         }
     }
 
     /// Sets a profiler for the VM
-    #[cfg(feature = "profile-any")]
+    #[cfg(feature = "profiler-any")]
     pub fn with_profiling(mut self, receiver: Box<dyn ProfileReceiver>) -> Self {
         self.profiler.set_receiver(receiver);
         self

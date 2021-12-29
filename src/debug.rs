@@ -1,5 +1,11 @@
+//! Debugger implementation for the VM
+
 use fuel_asm::Opcode;
 use fuel_types::{ContractId, Word};
+
+mod debugger;
+
+pub use debugger::Debugger;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]

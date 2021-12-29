@@ -3,10 +3,18 @@
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
-use crate::state::Debugger;
+
+#[cfg(feature = "debug")]
+use crate::debug::Debugger;
+
+#[cfg(feature = "profiler-any")]
+use crate::profiler::Profiler;
 
 use fuel_tx::{Receipt, Transaction};
 use fuel_types::Word;
+
+pub use memory::MemoryRange;
+pub use metadata::InterpreterMetadata;
 
 mod alu;
 mod blockchain;
@@ -27,12 +35,6 @@ mod transaction;
 #[cfg(feature = "debug")]
 mod debug;
 
-#[cfg(feature = "profile-any")]
-use crate::profiler::{InstructionLocation, Profiler};
-
-pub use memory::MemoryRange;
-pub use metadata::InterpreterMetadata;
-
 #[derive(Debug, Clone)]
 /// VM interpreter.
 ///
@@ -49,10 +51,13 @@ pub struct Interpreter<S> {
     receipts: Vec<Receipt>,
     tx: Transaction,
     storage: S,
-    debugger: Debugger,
     context: Context,
     block_height: u32,
-    #[cfg(feature = "profile-any")]
+
+    #[cfg(feature = "debug")]
+    debugger: Debugger,
+
+    #[cfg(feature = "profiler-any")]
     profiler: Profiler,
 }
 
@@ -71,11 +76,6 @@ impl<S> Interpreter<S> {
         self.frames.as_slice()
     }
 
-    /// Debug handler
-    pub const fn debugger(&self) -> &Debugger {
-        &self.debugger
-    }
-
     // TODO use this in ALU
     #[allow(dead_code)]
     pub(crate) const fn is_unsafe_math(&self) -> bool {
@@ -92,14 +92,21 @@ impl<S> Interpreter<S> {
     pub fn receipts(&self) -> &[Receipt] {
         self.receipts.as_slice()
     }
+}
 
-    #[cfg(feature = "profile-any")]
-    fn current_location(&self) -> InstructionLocation {
-        use crate::consts::*;
-        InstructionLocation::new(
-            self.frames.last().map(|frame| *frame.to()),
-            self.registers[REG_PC] - self.registers[REG_IS],
-        )
+#[cfg(feature = "debug")]
+impl<S> Interpreter<S> {
+    /// Debug handler
+    pub const fn debugger(&self) -> &Debugger {
+        &self.debugger
+    }
+}
+
+#[cfg(feature = "profiler-any")]
+impl<S> Interpreter<S> {
+    /// Profiler handler
+    pub const fn profiler(&self) -> &Profiler {
+        &self.profiler
     }
 }
 

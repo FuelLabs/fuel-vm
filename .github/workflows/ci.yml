@@ -58,7 +58,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --features random,profile-gas
+        args: --verbose --features random,profiler-gas
 
     - name: Run debug tests
       uses: actions-rs/cargo@v1

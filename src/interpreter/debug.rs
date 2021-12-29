@@ -1,7 +1,8 @@
 use super::Interpreter;
 use crate::call::CallFrame;
 use crate::consts::*;
-use crate::state::{Breakpoint, DebugEval, ProgramState};
+use crate::debug::{Breakpoint, DebugEval};
+use crate::state::ProgramState;
 
 impl<S> Interpreter<S> {
     /// Set a new breakpoint for the provided location.

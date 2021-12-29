@@ -1,13 +1,21 @@
 //! Profiler, can be used to export profiling data from VM runs
 
-use std::collections::HashMap;
-use std::fmt;
+use crate::consts::*;
+use crate::error::InterpreterError;
+use crate::interpreter::Interpreter;
+use crate::state::ProgramState;
 
 use dyn_clone::DynClone;
-
 use fuel_types::ContractId;
 
-use crate::prelude::*;
+use std::collections::{hash_map, HashMap};
+use std::fmt;
+
+#[cfg(feature = "profiler-gas")]
+mod gas;
+
+#[cfg(feature = "profiler-gas")]
+pub use gas::GasProfilingData;
 
 /// Location of an instructing collected during runtime
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,6 +31,16 @@ impl InstructionLocation {
     /// New location from context and offset
     pub const fn new(context: Option<ContractId>, offset: u64) -> Self {
         Self { context, offset }
+    }
+
+    /// Create an instruction location from a given VM context.
+    pub fn from_vm_context<S>(vm: &Interpreter<S>) -> Self {
+        let context = vm.internal_contract().ok().copied();
+
+        let registers = vm.registers();
+        let offset = registers[REG_PC] - registers[REG_IS];
+
+        Self::new(context, offset)
     }
 
     /// Context, i.e. current contract
@@ -52,10 +70,13 @@ impl fmt::Display for InstructionLocation {
     }
 }
 
-type PerLocation<T> = HashMap<InstructionLocation, T>;
+/// Mapping from a contextualized instruction location to a concrete profiler
+/// instance
+pub type PerLocation<T> = HashMap<InstructionLocation, T>;
 
 /// Iterates through location (key, value) pairs
-pub struct PerLocationIter<'a, T>(std::collections::hash_map::Iter<'a, InstructionLocation, T>);
+pub struct PerLocationIter<'a, T>(hash_map::Iter<'a, InstructionLocation, T>);
+
 impl<'a, T> Iterator for PerLocationIter<'a, T> {
     type Item = (&'a InstructionLocation, &'a T);
 
@@ -65,7 +86,8 @@ impl<'a, T> Iterator for PerLocationIter<'a, T> {
 }
 
 /// Iterates through location keys
-pub struct PerLocationKeys<'a, T>(std::collections::hash_map::Keys<'a, InstructionLocation, T>);
+pub struct PerLocationKeys<'a, T>(hash_map::Keys<'a, InstructionLocation, T>);
+
 impl<'a, T> Iterator for PerLocationKeys<'a, T> {
     type Item = &'a InstructionLocation;
 
@@ -75,7 +97,8 @@ impl<'a, T> Iterator for PerLocationKeys<'a, T> {
 }
 
 /// Iterates through location values
-pub struct PerLocationValues<'a, T>(std::collections::hash_map::Values<'a, InstructionLocation, T>);
+pub struct PerLocationValues<'a, T>(hash_map::Values<'a, InstructionLocation, T>);
+
 impl<'a, T> Iterator for PerLocationValues<'a, T> {
     type Item = &'a T;
 
@@ -94,9 +117,9 @@ dyn_clone::clone_trait_object!(ProfileReceiver);
 
 /// Prints profiling info to stderr
 #[derive(Clone)]
-pub struct StderrReceiver;
+pub struct ProfilerStderrReceiver;
 
-impl ProfileReceiver for StderrReceiver {
+impl ProfileReceiver for ProfilerStderrReceiver {
     fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
         eprintln!("PROFILER: {:?} {:?}", state, data);
     }
@@ -106,6 +129,7 @@ impl ProfileReceiver for StderrReceiver {
 #[derive(Default, Clone)]
 pub struct Profiler {
     /// Settings
+    // TODO document why we are avoiding generics here
     receiver: Option<Box<dyn ProfileReceiver>>,
     /// Collected profiling data
     data: ProfilingData,
@@ -151,69 +175,10 @@ impl fmt::Debug for Profiler {
 }
 
 /// Profiling data separated by profiler
+// TODO external consumers should be able to inject custom profilers into `ProfilingData`
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ProfilingData {
-    #[cfg(feature = "profile-gas")]
+    #[cfg(feature = "profiler-gas")]
     gas: GasProfilingData,
-}
-
-impl ProfilingData {
-    /// Gas profiling info, immutable
-    #[cfg(feature = "profile-gas")]
-    pub fn gas(&self) -> &GasProfilingData {
-        &self.gas
-    }
-
-    /// Gas profiling info, mutable
-    #[cfg(feature = "profile-gas")]
-    pub fn gas_mut(&mut self) -> &mut GasProfilingData {
-        &mut self.gas
-    }
-}
-
-/// Used gas per memory address
-#[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct GasProfilingData {
-    gas_use: PerLocation<u64>,
-}
-
-impl<'a> GasProfilingData {
-    /// Get total gas used at location
-    pub fn get(&self, location: &InstructionLocation) -> u64 {
-        self.gas_use.get(location).copied().unwrap_or(0)
-    }
-
-    /// Increase gas used at location
-    pub fn add(&mut self, location: InstructionLocation, amount: u64) {
-        *self.gas_use.entry(location).or_insert(0) += amount;
-    }
-
-    /// Iterate through locations and gas values
-    pub fn iter(&'a self) -> PerLocationIter<'a, u64> {
-        PerLocationIter(self.gas_use.iter())
-    }
-
-    /// Iterate through locations
-    pub fn keys(&'a self) -> PerLocationKeys<'a, u64> {
-        PerLocationKeys(self.gas_use.keys())
-    }
-
-    /// Iterate through gas values
-    /// Can be used to get whole gas usage with `.sum()`
-    pub fn values(&'a self) -> PerLocationValues<'a, u64> {
-        PerLocationValues(self.gas_use.values())
-    }
-}
-
-impl fmt::Display for GasProfilingData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut items: Vec<(_, _)> = self.iter().collect();
-        items.sort();
-        for (addr, count) in items {
-            writeln!(f, "{}: {}", addr, count)?;
-        }
-        Ok(())
-    }
 }

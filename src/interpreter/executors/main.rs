@@ -1,10 +1,9 @@
 use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
-use crate::error::InterpreterError;
+use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::{Interpreter, MemoryRange};
-use crate::prelude::*;
-use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
+use crate::state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{InstructionResult, PanicReason};
@@ -222,7 +221,7 @@ where
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         let state_result = self.init(tx).and_then(|_| self.run());
 
-        #[cfg(feature = "profile-any")]
+        #[cfg(feature = "profiler-any")]
         self.profiler.on_transaction(&state_result);
 
         let state = state_result?;

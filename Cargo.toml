@@ -2,73 +2,73 @@
 name = "fuel-vm"
 version = "0.1.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
-categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
+categories = [ "concurrency", "cryptography::cryptocurrencies", "emulators" ]
 edition = "2021"
 homepage = "https://fuel.network/"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+keywords = [ "blockchain", "cryptocurrencies", "fuel-vm", "vm" ]
 license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
 description = "FuelVM interpreter."
 
 [dependencies]
+dyn-clone = { version = "1.0", optional = true }
 fuel-asm = "0.1"
 fuel-merkle = "0.1"
 fuel-storage = "0.1"
 fuel-tx = "0.1"
 fuel-types = "0.1"
 itertools = "0.10"
-secp256k1 = { version = "0.20", features = ["recovery"] }
-serde = { version = "1.0", features = ["derive"], optional = true }
+secp256k1 = { version = "0.20", features = [ "recovery" ] }
+serde = { version = "1.0", features = [ "derive" ], optional = true }
 sha3 = "0.9"
 tracing = "0.1"
-dyn-clone = { version = "1.0", optional = true }
 
 [dev-dependencies]
 rand = "0.8"
 
 [features]
 debug = []
-profile-gas = [ "profile-any" ]
-profile-any = [ "dyn-clone" ] # All profiling features should depend on this
+profiler-any = [ "dyn-clone" ] # All profiling features should depend on this
+profiler-gas = [ "profiler-any" ]
 random = [ "fuel-types/random", "fuel-tx/random" ]
 serde-types = [ "fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde" ]
 
 [[test]]
 name = "test-backtrace"
 path = "tests/backtrace.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
 name = "test-blockchain"
 path = "tests/blockchain.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
 name = "test-contract"
 path = "tests/contract.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
-name = "test-profile-gas"
-path = "tests/profile_gas.rs"
-required-features = [ "random", "profile-gas" ]
+name = "test-profiler-gas"
+path = "tests/profiler_gas.rs"
+required-features = [ "random", "profiler-gas" ]
 
 [[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
 name = "test-flow"
 path = "tests/flow.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
 name = "test-metadata"
 path = "tests/metadata.rs"
-required-features = ["random"]
+required-features = [ "random" ]
 
 [[test]]
 name = "test-predicate"
 path = "tests/predicate.rs"
-required-features = ["random"]
+required-features = [ "random" ]

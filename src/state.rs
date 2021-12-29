@@ -4,20 +4,7 @@ use fuel_tx::{Receipt, Transaction};
 use fuel_types::{Bytes32, Word};
 
 #[cfg(feature = "debug")]
-mod debug;
-
-#[cfg(feature = "debug")]
-mod debugger;
-
-#[cfg(feature = "debug")]
-pub use debug::{Breakpoint, DebugEval};
-
-#[cfg(feature = "debug")]
-pub use debugger::Debugger;
-
-#[cfg(not(feature = "debug"))]
-/// Fallback functionless implementation if `debug` feature isn't enabled.
-pub type Debugger = ();
+use crate::debug::{Breakpoint, DebugEval};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Resulting state of an instruction set execution.

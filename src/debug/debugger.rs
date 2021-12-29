@@ -1,4 +1,5 @@
-use crate::state::{Breakpoint, DebugEval, ProgramState};
+use super::{Breakpoint, DebugEval};
+use crate::state::ProgramState;
 
 use fuel_types::{ContractId, Word};
 

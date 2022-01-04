@@ -154,6 +154,8 @@ impl fmt::Debug for Profiler {
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ProfilingData {
+    #[cfg(feature = "profile-coverage")]
+    coverage: CoverageProfilingData,
     #[cfg(feature = "profile-gas")]
     gas: GasProfilingData,
 }
@@ -169,6 +171,50 @@ impl ProfilingData {
     #[cfg(feature = "profile-gas")]
     pub fn gas_mut(&mut self) -> &mut GasProfilingData {
         &mut self.gas
+    }
+
+    /// Coverage profiling info, immutable
+    #[cfg(feature = "profile-coverage")]
+    pub fn coverage(&self) -> &CoverageProfilingData {
+        &self.coverage
+    }
+
+    /// Coverage profiling info, mutable
+    #[cfg(feature = "profile-coverage")]
+    pub fn coverage_mut(&mut self) -> &mut CoverageProfilingData {
+        &mut self.coverage
+    }
+}
+
+/// Excuted memory addresses
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CoverageProfilingData {
+    executed: PerLocation<()>,
+}
+
+impl<'a> CoverageProfilingData {
+    /// Get total gas used at location
+    pub fn get(&self, location: &InstructionLocation) -> bool {
+        self.executed.contains_key(location)
+    }
+
+    /// Increase gas used at location
+    pub fn set(&mut self, location: InstructionLocation) {
+        self.executed.insert(location, ());
+    }
+
+    /// Iterate through locations
+    pub fn iter(&'a self) -> PerLocationKeys<'a, ()> {
+        PerLocationKeys(self.executed.keys())
+    }
+}
+
+impl fmt::Display for CoverageProfilingData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut items: Vec<_> = self.iter().collect();
+        items.sort();
+        writeln!(f, "{:?}", items)
     }
 }
 

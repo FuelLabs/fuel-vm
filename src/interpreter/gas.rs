@@ -65,6 +65,12 @@ impl<S> Interpreter<S> {
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
         let gas = !self.is_predicate() as Word * gas;
 
+        #[cfg(feature = "profile-coverage")]
+        {
+            let location = self.current_location();
+            self.profiler.data_mut().coverage_mut().set(location);
+        }
+
         #[cfg(feature = "profile-gas")]
         {
             let gas_use = gas.min(self.registers[REG_CGAS]);

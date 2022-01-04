@@ -29,6 +29,7 @@ rand = "0.8"
 [features]
 debug = []
 profile-gas = [ "profile-any" ]
+profile-coverage = [ "profile-any" ]
 profile-any = [ "dyn-clone" ] # All profiling features should depend on this
 random = [ "fuel-types/random", "fuel-tx/random" ]
 serde-types = [ "fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde" ]
@@ -52,6 +53,11 @@ required-features = ["random"]
 name = "test-profile-gas"
 path = "tests/profile_gas.rs"
 required-features = [ "random", "profile-gas" ]
+
+[[test]]
+name = "test-code-coverage"
+path = "tests/code_coverage.rs"
+required-features = [ "random", "profile-coverage" ]
 
 [[test]]
 name = "test-encoding"

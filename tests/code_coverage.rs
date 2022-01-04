@@ -7,6 +7,8 @@ use rand::{Rng, SeedableRng};
 
 use fuel_vm::profiler::{InstructionLocation, ProfileReceiver, ProfilingData};
 
+const HALF_WORD_SIZE: u64 = 4;
+
 #[test]
 fn code_coverage() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -46,7 +48,7 @@ fn code_coverage() {
         vec![],
     );
 
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     struct ProfilingOutput {
         data: Arc<Mutex<Option<ProfilingData>>>,
     }
@@ -58,9 +60,7 @@ fn code_coverage() {
         }
     }
 
-    let output = ProfilingOutput {
-        data: Arc::new(Mutex::new(None)),
-    };
+    let output = ProfilingOutput::default();
 
     let mut client = MemoryClient::from_txtor(
         Interpreter::with_memory_storage()
@@ -89,6 +89,6 @@ fn code_coverage() {
     println!("{:?}", items);
 
     for (item, expect) in items.into_iter().zip(expect.into_iter()) {
-        assert_eq!(*item, InstructionLocation::new(None, expect * 4));
+        assert_eq!(*item, InstructionLocation::new(None, expect * HALF_WORD_SIZE));
     }
 }

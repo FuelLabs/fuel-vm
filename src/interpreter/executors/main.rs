@@ -89,8 +89,6 @@ where
 
                 self.registers[REG_PC] = offset;
                 self.registers[REG_IS] = offset;
-                self.registers[REG_GGAS] = self.tx.gas_limit();
-                self.registers[REG_CGAS] = self.tx.gas_limit();
 
                 // TODO set tree balance
 

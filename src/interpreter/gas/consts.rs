@@ -4,6 +4,9 @@ use crate::interpreter::Interpreter;
 use fuel_asm::OpcodeRepr;
 use fuel_types::Word;
 
+// The amount of gas used by each transaction byte
+pub const GAS_PER_BYTE: Word = 1;
+
 pub const GAS_ADD: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_ADDI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADDI);
 pub const GAS_AND: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::AND);

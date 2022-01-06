@@ -2,6 +2,7 @@ use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
 use crate::error::InterpreterError;
+use crate::interpreter::gas::consts::GAS_PER_BYTE;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
@@ -19,6 +20,8 @@ where
     // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
+
+        let mut gas_refund = 0;
 
         match &self.tx {
             Transaction::Create {
@@ -94,6 +97,7 @@ where
 
                 let program = self.run_program();
                 let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
+                gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {
@@ -138,6 +142,9 @@ where
 
             self.tx.set_receipts_root(receipts_root);
         }
+
+        let revert = matches!(state, ProgramState::Revert(_));
+        self.update_change_amounts(gas_refund, revert)?;
 
         Ok(state)
     }

@@ -4,9 +4,10 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
 use crate::state::Debugger;
+use std::collections::HashMap;
 
 use fuel_tx::{Receipt, Transaction};
-use fuel_types::Word;
+use fuel_types::{Color, Word};
 
 mod alu;
 mod blockchain;
@@ -22,6 +23,7 @@ mod internal;
 mod log;
 mod memory;
 mod metadata;
+mod post_execution;
 mod transaction;
 
 #[cfg(feature = "debug")]
@@ -54,6 +56,7 @@ pub struct Interpreter<S> {
     block_height: u32,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
+    free_balances: HashMap<Color, Word>,
 }
 
 impl<S> Interpreter<S> {

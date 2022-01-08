@@ -30,6 +30,7 @@ impl<S> Interpreter<S> {
             block_height: 0,
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
+            free_balances: Default::default(),
         }
     }
 

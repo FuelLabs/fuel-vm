@@ -2,7 +2,6 @@ use crate::consts::*;
 use crate::contract::Contract;
 use crate::crypto;
 use crate::error::InterpreterError;
-use crate::interpreter::gas::consts::GAS_PER_BYTE;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
@@ -87,7 +86,11 @@ where
                 }
             }
 
-            Transaction::Script { .. } => {
+            Transaction::Script {
+                gas_limit, gas_price, ..
+            } => {
+                let gas_limit = *gas_limit;
+                let gas_price = *gas_price;
                 let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
@@ -96,8 +99,8 @@ where
                 // TODO set tree balance
 
                 let program = self.run_program();
-                let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
-                gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
+                let gas_used = gas_limit - self.registers[REG_GGAS];
+                gas_refund = self.registers[REG_GGAS] * gas_price;
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {

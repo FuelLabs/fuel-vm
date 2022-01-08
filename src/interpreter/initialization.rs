@@ -4,17 +4,12 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::consts::*;
 use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Color, Word};
-use itertools::Itertools;
 
-use crate::interpreter::gas::consts::GAS_PER_BYTE;
 use std::collections::HashMap;
-use std::{io, mem};
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
+use std::io;
 
 impl<S> Interpreter<S>
 where
@@ -46,9 +41,9 @@ where
 
         let tx_size = tx.serialized_size() as Word;
 
-        if tx.is_script() {
-            self.registers[REG_GGAS] = tx.gas_limit();
-            self.registers[REG_CGAS] = tx.gas_limit();
+        if let Transaction::Script { gas_limit, .. } = tx {
+            self.registers[REG_GGAS] = gas_limit;
+            self.registers[REG_CGAS] = gas_limit;
         }
 
         self.push_stack(&tx_size.to_be_bytes())
@@ -68,26 +63,31 @@ where
         let mut balances = HashMap::<Color, Word>::new();
 
         // Add up all the inputs for each color
-        for (color, amount) in tx.inputs().filter_map(|input| match input {
+        for (color, amount) in tx.inputs().iter().filter_map(|input| match input {
             Input::Coin { color, amount, .. } => Some((color, amount)),
             _ => None,
         }) {
-            *balances.entry(color).or_default() += amount;
+            *balances.entry(*color).or_default() += amount;
         }
 
         // Reduce by unavailable balances
-        let byte_balance = (tx.serialized_size() as Word) * GAS_PER_BYTE * tx.gas_price();
-        let gas_balance = tx.gas_limit() * tx.gas_price();
-        // remove gas and byte costs from base asset spendable balance
-        *balances[&Color::default()] -= byte_balance - gas_balance;
+
+        let base_asset = Color::default();
+        // remove byte costs from base asset spendable balance
+        let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
+        *balances.get_mut(&base_asset).unwrap() -= byte_balance;
+        // remove gas costs from base asset spendable balance
+        if let (Some(gas_limit), Some(gas_price)) = (tx.gas_limit(), tx.gas_price()) {
+            *balances.get_mut(&base_asset).unwrap() -= gas_limit * gas_price;
+        }
 
         // reduce free balances by coin and withdrawal outputs
-        for (color, amount) in tx.outputs().filter_map(|output| match output {
+        for (color, amount) in tx.outputs().iter().filter_map(|output| match output {
             Output::Coin { color, amount, .. } => Some((color, amount)),
             Output::Withdrawal { color, amount, .. } => Some((color, amount)),
             _ => None,
         }) {
-            *balances[&color] -= amount;
+            *balances.get_mut(&color).unwrap() -= amount;
         }
 
         balances

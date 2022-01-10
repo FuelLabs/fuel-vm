@@ -13,6 +13,7 @@ fn ecrecover() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let secp = Secp256k1::new();
@@ -78,6 +79,7 @@ fn ecrecover() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
@@ -102,6 +104,7 @@ fn sha256() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
@@ -159,6 +162,7 @@ fn sha256() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
@@ -185,6 +189,7 @@ fn keccak256() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
@@ -245,6 +250,7 @@ fn keccak256() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],

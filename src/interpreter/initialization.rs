@@ -71,14 +71,15 @@ where
         }
 
         // Reduce by unavailable balances
-
         let base_asset = Color::default();
-        // remove byte costs from base asset spendable balance
-        let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
-        *balances.get_mut(&base_asset).unwrap() -= byte_balance;
-        // remove gas costs from base asset spendable balance
-        if let (Some(gas_limit), Some(gas_price)) = (tx.gas_limit(), tx.gas_price()) {
-            *balances.get_mut(&base_asset).unwrap() -= gas_limit * gas_price;
+        if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
+            // remove byte costs from base asset spendable balance
+            let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
+            *base_asset_balance -= byte_balance;
+            // remove gas costs from base asset spendable balance
+            if let (Some(gas_limit), Some(gas_price)) = (tx.gas_limit(), tx.gas_price()) {
+                *base_asset_balance -= gas_limit * gas_price;
+            }
         }
 
         // reduce free balances by coin and withdrawal outputs

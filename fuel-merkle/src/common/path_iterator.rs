@@ -119,7 +119,7 @@ where
         // 0       7    00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        let initial_offset = T::key_size_in_bits() - T::max_height();
+        let initial_offset = T::key_size_in_bits() - root.height() as usize;
         Self {
             leaf: leaf.clone(),
             current: Some(initial),
@@ -180,11 +180,11 @@ mod test {
     use crate::common::{AsPathIterator, Bytes8, Node, ParentNode};
 
     #[derive(Debug, Clone, PartialEq)]
-    struct TestNode<const LEAF_BITS: usize> {
+    struct TestNode {
         value: u64,
     }
 
-    impl<const LEAF_BITS: usize> TestNode<LEAF_BITS> {
+    impl TestNode {
         pub fn in_order_index(&self) -> u64 {
             self.value
         }
@@ -217,11 +217,11 @@ mod test {
         }
     }
 
-    impl<const LEAF_BITS: usize> Node for TestNode<LEAF_BITS> {
+    impl Node for TestNode {
         type Key = Bytes8;
 
-        fn max_height() -> usize {
-            LEAF_BITS
+        fn height(&self) -> u32 {
+            TestNode::height(self)
         }
 
         fn leaf_key(&self) -> Self::Key {
@@ -233,7 +233,7 @@ mod test {
         }
     }
 
-    impl<const LEAF_BITS: usize> ParentNode for TestNode<LEAF_BITS> {
+    impl ParentNode for TestNode {
         fn left_child(&self) -> Self {
             TestNode::child(self, -1)
         }
@@ -261,7 +261,7 @@ mod test {
         // 00  02  04  06  08  10  12  14
         // 00  01  02  03  04  05  06  07
         //
-        type Node = TestNode<3>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(7);
 
         {
@@ -387,7 +387,7 @@ mod test {
         // 00  02  04  06  08  10  12  14
         // 00  01  02  03  04  05  06  07
         //
-        type Node = TestNode<3>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(7); // 2^3 - 1
 
         {
@@ -497,7 +497,7 @@ mod test {
 
     #[test]
     fn test_path_iter_height_4() {
-        type Node = TestNode<4>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(15); // 2^4 - 1
         let leaf = Node::from_leaf_index(4); // 0b0100
 
@@ -516,7 +516,7 @@ mod test {
 
     #[test]
     fn test_path_iter_height_8() {
-        type Node = TestNode<8>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(255); // 2^8 - 1
         let leaf = Node::from_leaf_index(61); // 0b00111101
 
@@ -539,7 +539,7 @@ mod test {
 
     #[test]
     fn test_path_iter_returns_root_root_when_root_is_leaf() {
-        type Node = TestNode<1>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(0);
         let leaf = Node::from_leaf_index(0);
 
@@ -552,7 +552,7 @@ mod test {
 
     #[test]
     fn test_path_iter_into_path_nodes_and_side_nodes() {
-        type Node = TestNode<3>;
+        type Node = TestNode;
         let root = Node::from_in_order_index(7);
         let leaf = Node::from_leaf_index(0);
         let iter = root.as_path_iter(&leaf);

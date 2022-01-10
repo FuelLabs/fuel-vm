@@ -4,6 +4,7 @@ mod msb;
 mod node;
 mod path_iterator;
 mod position;
+mod position_path;
 mod storage_map;
 mod subtree;
 
@@ -13,6 +14,8 @@ pub use path_iterator::AsPathIterator;
 pub use position::Position;
 pub use storage_map::{StorageError, StorageMap};
 pub use subtree::Subtree;
+
+pub(crate) use position_path::PositionPath;
 
 pub const NODE: u8 = 0x01;
 pub const LEAF: u8 = 0x00;

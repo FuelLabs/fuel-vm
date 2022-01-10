@@ -1,3 +1,5 @@
+use crate::common::{Bytes8, PositionPath};
+
 /// #Position
 ///
 /// A `Position` represents a node's position in a binary tree by encapsulating the node's index
@@ -78,6 +80,11 @@ const RIGHT_CHILD_DIRECTION: i64 = 1;
 impl Position {
     pub fn in_order_index(self) -> u64 {
         self.0
+    }
+
+    pub fn leaf_index(self) -> u64 {
+        assert!(self.is_leaf());
+        self.in_order_index() / 2
     }
 
     /// Construct a position from an in-order index.
@@ -168,6 +175,14 @@ impl Position {
         !self.is_leaf()
     }
 
+    /// Given a leaf position and the total count of leaves in a tree, get the path from this
+    /// position to the given leaf position. The shape of the tree is defined by the `leaves_count`
+    /// parameter and constrains the path.
+    /// See [PositionPath](crate::common::PositionPath).
+    pub fn path(self, leaf: &Self, leaves_count: u64) -> PositionPath {
+        PositionPath::new(self, *leaf, leaves_count)
+    }
+
     // PRIVATE
 
     /// The child position of the current position given by the direction.
@@ -215,6 +230,32 @@ impl Position {
     fn direction(self) -> i64 {
         let scale = self.orientation() as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
         -scale
+    }
+}
+
+impl crate::common::Node for Position {
+    type Key = Bytes8;
+
+    fn height(&self) -> u32 {
+        Position::height(*self)
+    }
+
+    fn leaf_key(&self) -> Self::Key {
+        Position::leaf_index(*self).to_be_bytes()
+    }
+
+    fn is_leaf(&self) -> bool {
+        Position::is_leaf(*self)
+    }
+}
+
+impl crate::common::ParentNode for Position {
+    fn left_child(&self) -> Self {
+        Position::left_child(*self)
+    }
+
+    fn right_child(&self) -> Self {
+        Position::right_child(*self)
     }
 }
 

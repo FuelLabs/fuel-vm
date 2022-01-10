@@ -1,7 +1,6 @@
 //! VM parameters
 
-use fuel_tx::consts::*;
-use fuel_types::{Bytes32, Color, Word};
+use fuel_types::{Bytes32, Word};
 
 use std::mem;
 
@@ -88,10 +87,7 @@ pub const VM_REGISTER_WIDTH: u8 = 6;
 
 /// Transaction offset in the VM memory
 pub const VM_TX_MEMORY: usize = Bytes32::LEN // Tx ID
-            + WORD_SIZE // Tx size
-            + MAX_INPUTS as usize * (
-                Color::LEN + WORD_SIZE
-                ); // Color/Balance coin input pairs
+            + WORD_SIZE; // Tx size
 
 /// Empty merkle root for receipts tree
 pub const EMPTY_RECEIPTS_MERKLE_ROOT: [u8; 32] = [

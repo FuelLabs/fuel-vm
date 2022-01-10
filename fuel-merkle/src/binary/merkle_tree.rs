@@ -1,7 +1,7 @@
 use fuel_storage::Storage;
 
-use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
-use crate::common::{Position, Subtree};
+use crate::binary::{empty_sum, Node};
+use crate::common::{Bytes32, Subtree};
 
 #[derive(Debug, thiserror::Error)]
 pub enum MerkleTreeError {
@@ -9,13 +9,12 @@ pub enum MerkleTreeError {
     InvalidProofIndex(u64),
 }
 
-type DataNode = Node<Data>;
-type ProofSet = Vec<Data>;
+type ProofSet = Vec<Bytes32>;
 
 pub struct MerkleTree<'storage, StorageError> {
-    storage: &'storage mut dyn Storage<Data, DataNode, Error = StorageError>,
-    head: Option<Box<Subtree<DataNode>>>,
-    leaves: Vec<Data>,
+    storage: &'storage mut dyn Storage<Bytes32, Node, Error = StorageError>,
+    head: Option<Box<Subtree<Node>>>,
+    leaves: Vec<Bytes32>,
     leaves_count: u64,
 }
 
@@ -23,16 +22,16 @@ impl<'storage, StorageError> MerkleTree<'storage, StorageError>
 where
     StorageError: std::error::Error + 'static,
 {
-    pub fn new(storage: &'storage mut dyn Storage<Data, DataNode, Error = StorageError>) -> Self {
+    pub fn new(storage: &'storage mut dyn Storage<Bytes32, Node, Error = StorageError>) -> Self {
         Self {
             storage,
             head: None,
-            leaves: Vec::<Data>::default(),
+            leaves: Vec::<Bytes32>::default(),
             leaves_count: 0,
         }
     }
 
-    pub fn root(&mut self) -> Result<Data, Box<dyn std::error::Error>> {
+    pub fn root(&mut self) -> Result<Bytes32, Box<dyn std::error::Error>> {
         let root = match self.head {
             None => *empty_sum(),
             Some(ref initial) => {
@@ -52,7 +51,7 @@ where
     pub fn prove(
         &mut self,
         proof_index: u64,
-    ) -> Result<(Data, ProofSet), Box<dyn std::error::Error>> {
+    ) -> Result<(Bytes32, ProofSet), Box<dyn std::error::Error>> {
         if proof_index + 1 > self.leaves_count {
             return Err(Box::new(MerkleTreeError::InvalidProofIndex(proof_index)));
         }
@@ -73,16 +72,12 @@ where
     }
 
     pub fn push(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-        let node = {
-            let position = Position::from_leaf_index(self.leaves_count);
-            let leaf_sum = leaf_sum(data);
-            DataNode::new(position, leaf_sum)
-        };
+        let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node)?;
         self.leaves.push(node.key());
 
         let next = self.head.take();
-        let head = Box::new(Subtree::<DataNode>::new(node, next));
+        let head = Box::new(Subtree::<Node>::new(node, next));
         self.head = Some(head);
         self.join_all_subtrees()?;
 
@@ -119,20 +114,10 @@ where
 
     fn join_subtrees(
         &mut self,
-        lhs: &mut Subtree<DataNode>,
-        rhs: &mut Subtree<DataNode>,
-    ) -> Result<Box<Subtree<DataNode>>, Box<dyn std::error::Error>> {
-        let mut joined_node = {
-            let position = lhs.node().position().parent();
-            let node_sum = node_sum(&lhs.node().key(), &rhs.node().key());
-            DataNode::new(position, node_sum)
-        };
-
-        joined_node.set_left_key(Some(lhs.node().key()));
-        joined_node.set_right_key(Some(rhs.node().key()));
-        lhs.node_mut().set_parent_key(Some(joined_node.key()));
-        rhs.node_mut().set_parent_key(Some(joined_node.key()));
-
+        lhs: &mut Subtree<Node>,
+        rhs: &mut Subtree<Node>,
+    ) -> Result<Box<Subtree<Node>>, Box<dyn std::error::Error>> {
+        let joined_node = Node::create_node(lhs.node_mut(), rhs.node_mut());
         self.storage.insert(&joined_node.key(), &joined_node)?;
         self.storage.insert(&lhs.node().key(), lhs.node())?;
         self.storage.insert(&rhs.node().key(), rhs.node())?;
@@ -145,16 +130,15 @@ where
 #[cfg(test)]
 mod test {
     use super::{MerkleTree, Storage};
-    use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
-    use crate::common::{StorageError, StorageMap};
+    use crate::binary::{empty_sum, leaf_sum, node_sum, Node};
+    use crate::common::{Bytes32, StorageError, StorageMap};
     use fuel_merkle_test_helpers::TEST_DATA;
 
-    type DataNode = Node<Data>;
     type MT<'a> = MerkleTree<'a, StorageError>;
 
     #[test]
     fn test_push_builds_internal_tree_structure() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves
@@ -248,7 +232,7 @@ mod test {
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let root = tree.root().unwrap();
@@ -257,7 +241,7 @@ mod test {
 
     #[test]
     fn root_returns_the_merkle_root_for_1_leaf() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..1]; // 1 leaf
@@ -273,7 +257,7 @@ mod test {
 
     #[test]
     fn root_returns_the_merkle_root_for_7_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves
@@ -317,7 +301,7 @@ mod test {
 
     #[test]
     fn prove_returns_invalid_proof_index_error_for_0_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let proof = tree.prove(0);
@@ -326,7 +310,7 @@ mod test {
 
     #[test]
     fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
@@ -340,7 +324,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_1_leaf() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..1]; // 1 leaf
@@ -362,7 +346,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_4_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..4]; // 4 leaves
@@ -431,7 +415,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_5_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
@@ -518,7 +502,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_7_leaves() {
-        let mut storage_map = StorageMap::<Data, DataNode>::new();
+        let mut storage_map = StorageMap::<Bytes32, Node>::new();
         let mut tree = MT::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves

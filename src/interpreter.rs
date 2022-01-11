@@ -56,6 +56,7 @@ pub struct Interpreter<S> {
     block_height: u32,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
+    // track the offset for each unused balance in memory
     unused_balance_index: HashMap<Color, usize>,
 }
 

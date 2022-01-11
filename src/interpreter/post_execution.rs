@@ -27,7 +27,8 @@ where
                 if revert {
                     *amount = init_balances[&color] + refund;
                 } else {
-                    *amount = self.external_color_balance(&color)? + refund;
+                    let balance = self.external_color_balance(&color)?;
+                    *amount = balance + refund;
                 }
             }
         }

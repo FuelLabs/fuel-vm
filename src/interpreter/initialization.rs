@@ -113,7 +113,10 @@ where
             Output::Withdrawal { color, amount, .. } => Some((color, amount)),
             _ => None,
         }) {
-            *balances.get_mut(&color).unwrap() -= amount;
+            let balance = balances.get_mut(&color).unwrap();
+            *balance = balance
+                .checked_sub(*amount)
+                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
         }
 
         Ok(balances)

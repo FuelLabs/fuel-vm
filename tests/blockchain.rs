@@ -17,6 +17,7 @@ fn state_read_write() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -111,8 +112,7 @@ fn state_read_write() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -174,6 +174,7 @@ fn state_read_write() {
     let tx_add_word = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.clone(),
         script_data,
@@ -222,6 +223,7 @@ fn state_read_write() {
     let tx_unpack_xor = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -276,6 +278,7 @@ fn load_external_contract_code() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     // Start by creating and deploying a new example contract
@@ -296,8 +299,7 @@ fn load_external_contract_code() {
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         0,
         salt,
@@ -349,6 +351,7 @@ fn load_external_contract_code() {
     let tx_deploy_loader = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         load_contract.clone().into_iter().collect(),
         vec![],
@@ -364,6 +367,7 @@ fn load_external_contract_code() {
     let tx_deploy_loader = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         load_contract.into_iter().collect(),
         vec![],

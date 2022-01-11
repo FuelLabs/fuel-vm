@@ -56,8 +56,7 @@ fn predicate() {
     );
     let output = Output::contract_created(contract);
 
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
+    let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
     let inputs = vec![input];
@@ -65,8 +64,7 @@ fn predicate() {
     let witnesses = vec![witness.into()];
 
     let tx = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness_index,
         salt,
@@ -131,8 +129,7 @@ fn predicate_false() {
     );
     let output = Output::contract_created(contract);
 
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
+    let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
     let inputs = vec![input];
@@ -140,8 +137,7 @@ fn predicate_false() {
     let witnesses = vec![witness.into()];
 
     let tx = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness_index,
         salt,

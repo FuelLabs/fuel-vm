@@ -13,6 +13,7 @@ fn mint_burn() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -41,8 +42,7 @@ fn mint_burn() {
 
     let bytecode_witness = 0;
     let tx = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -68,6 +68,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         vec![],
@@ -84,6 +85,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -105,6 +107,7 @@ fn mint_burn() {
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script_check_balance.iter().copied().collect(),
         vec![],
@@ -119,6 +122,7 @@ fn mint_burn() {
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
@@ -145,6 +149,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -174,6 +179,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -196,6 +202,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,

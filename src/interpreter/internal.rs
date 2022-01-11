@@ -4,13 +4,8 @@ use crate::context::Context;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
-use fuel_tx::consts::*;
 use fuel_tx::Transaction;
-use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
-
-use std::mem;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
+use fuel_types::{Color, ContractId, RegisterId, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
@@ -115,20 +110,8 @@ impl<S> Interpreter<S> {
             return Ok(());
         }
 
-        const LEN: usize = Color::LEN + WORD_SIZE;
-
-        let balance_memory = self.memory[Bytes32::LEN..Bytes32::LEN + MAX_INPUTS as usize * LEN]
-            .chunks_mut(LEN)
-            .find(|chunk| &chunk[..Color::LEN] == color.as_ref())
-            .map(|chunk| &mut chunk[Color::LEN..])
-            .ok_or(PanicReason::ColorNotFound)?;
-
-        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
-        let balance = Word::from_be_bytes(balance);
-        let balance = balance.checked_sub(value).ok_or(PanicReason::NotEnoughBalance)?;
-        let balance = balance.to_be_bytes();
-
-        balance_memory.copy_from_slice(&balance);
+        let balance = self.free_balances.get_mut(&color).ok_or(PanicReason::ColorNotFound)?;
+        *balance = balance.checked_sub(value).ok_or(PanicReason::NotEnoughBalance)?;
 
         Ok(())
     }
@@ -149,6 +132,7 @@ mod tests {
         let gas_price = 0;
         let gas_limit = 1_000_000;
         let maturity = 0;
+        let byte_price = 0;
 
         let script = vec![Opcode::RET(0x01)].iter().copied().collect();
         let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
@@ -161,6 +145,7 @@ mod tests {
         let tx = Transaction::script(
             gas_price,
             gas_limit,
+            byte_price,
             maturity,
             script,
             vec![],

@@ -15,6 +15,7 @@ fn backtrace() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     #[rustfmt::skip]
@@ -33,8 +34,7 @@ fn backtrace() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -73,8 +73,7 @@ fn backtrace() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -111,6 +110,7 @@ fn backtrace() {
     let tx_script = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],

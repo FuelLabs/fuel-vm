@@ -14,6 +14,7 @@ fn profile_gas() {
 
     let gas_price = 1;
     let gas_limit = 1_000;
+    let byte_price = 0;
     let maturity = 0;
 
     // Deploy contract with loops
@@ -40,6 +41,7 @@ fn profile_gas() {
         let tx_deploy = Transaction::script(
             gas_price,
             gas_limit,
+            byte_price,
             maturity,
             contract_code.clone().into_iter().collect(),
             vec![],

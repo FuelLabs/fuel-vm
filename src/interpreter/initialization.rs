@@ -34,10 +34,11 @@ where
         // Set heap area
         self.registers[REG_HP] = VM_MAX_RAM - 1;
 
+        // Set initial free balances
+        self.free_balances = Self::initial_free_balances(&mut tx);
+
         self.push_stack(tx.id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        self.free_balances = Self::initial_free_balances(&mut tx);
 
         let tx_size = tx.serialized_size() as Word;
 

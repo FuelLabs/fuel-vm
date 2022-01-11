@@ -1,5 +1,5 @@
 use crate::crypto::Hasher;
-use crate::{Input, Metadata, Output, Transaction, Witness};
+use crate::{Input, Metadata, Output, Transaction, UtxoId, Witness};
 
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Bytes32;
@@ -30,7 +30,7 @@ impl Transaction {
         self.metadata()
             .map(Metadata::id)
             .copied()
-            .unwrap_or(self._id())
+            .unwrap_or_else(|| self._id())
     }
 
     pub(crate) fn _id(&self) -> Bytes32 {
@@ -51,7 +51,7 @@ impl Transaction {
                 ..
             } = input
             {
-                utxo_id.iter_mut().for_each(|b| *b = 0);
+                *utxo_id = UtxoId::default();
                 balance_root.iter_mut().for_each(|b| *b = 0);
                 state_root.iter_mut().for_each(|b| *b = 0);
             }

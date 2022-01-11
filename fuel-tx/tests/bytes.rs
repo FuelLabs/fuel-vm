@@ -28,7 +28,7 @@ where
 
         let mut d_p = data.clone();
 
-        buffer = vec![0u8; 1024];
+        buffer = vec![0u8; 2048];
         let read_size = d.read(buffer.as_mut_slice()).expect("Failed to read");
         let write_size = d_p.write(buffer.as_slice()).expect("Failed to write");
 

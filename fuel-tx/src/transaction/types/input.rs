@@ -1,3 +1,4 @@
+use crate::UtxoId;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{Address, Bytes32, Color, ContractId, Word};
 
@@ -6,8 +7,9 @@ use std::{io, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
-const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + Bytes32::LEN // UTXO Id
+const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier  
+    + Bytes32::LEN // UtxoId tx_id
+    + WORD_SIZE // UtxoId output_index
     + Address::LEN // Owner
     + WORD_SIZE // Amount
     + Color::LEN // Color
@@ -17,7 +19,8 @@ const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE; // Predicate data size
 
 const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + Bytes32::LEN // UTXO Id
+    + Bytes32::LEN // UtxoId tx_id
+    + WORD_SIZE // UtxoId output_index
     + Bytes32::LEN // Balance root
     + Bytes32::LEN // State root
     + ContractId::LEN; // Contract address
@@ -50,7 +53,7 @@ impl TryFrom<Word> for InputRepr {
 )]
 pub enum Input {
     Coin {
-        utxo_id: Bytes32,
+        utxo_id: UtxoId,
         owner: Address,
         amount: Word,
         color: Color,
@@ -61,7 +64,7 @@ pub enum Input {
     },
 
     Contract {
-        utxo_id: Bytes32,
+        utxo_id: UtxoId,
         balance_root: Bytes32,
         state_root: Bytes32,
         contract_id: ContractId,
@@ -99,7 +102,7 @@ impl bytes::SizedBytes for Input {
 
 impl Input {
     pub const fn coin(
-        utxo_id: Bytes32,
+        utxo_id: UtxoId,
         owner: Address,
         amount: Word,
         color: Color,
@@ -121,7 +124,7 @@ impl Input {
     }
 
     pub const fn contract(
-        utxo_id: Bytes32,
+        utxo_id: UtxoId,
         balance_root: Bytes32,
         state_root: Bytes32,
         contract_id: ContractId,
@@ -134,10 +137,10 @@ impl Input {
         }
     }
 
-    pub const fn utxo_id(&self) -> &Bytes32 {
+    pub const fn utxo_id(&self) -> &UtxoId {
         match self {
-            Self::Coin { utxo_id, .. } => &utxo_id,
-            Self::Contract { utxo_id, .. } => &utxo_id,
+            Self::Coin { utxo_id, .. } => utxo_id,
+            Self::Contract { utxo_id, .. } => utxo_id,
         }
     }
 
@@ -155,10 +158,7 @@ impl Input {
     }
 
     pub const fn is_coin(&self) -> bool {
-        match self {
-            Input::Coin { .. } => true,
-            _ => false,
-        }
+        matches!(self, Input::Coin { .. })
     }
 
     pub const fn coin_predicate_offset() -> usize {
@@ -195,7 +195,8 @@ impl io::Read for Input {
                 predicate_data,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
-                let buf = bytes::store_array_unchecked(buf, utxo_id);
+                let buf = bytes::store_array_unchecked(buf, utxo_id.tx_id());
+                let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
                 let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, color);
@@ -216,7 +217,8 @@ impl io::Read for Input {
                 contract_id,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
-                let buf = bytes::store_array_unchecked(buf, utxo_id);
+                let buf = bytes::store_array_unchecked(buf, utxo_id.tx_id());
+                let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
                 let buf = bytes::store_array_unchecked(buf, balance_root);
                 let buf = bytes::store_array_unchecked(buf, state_root);
                 bytes::store_array_unchecked(buf, contract_id);
@@ -244,7 +246,8 @@ impl io::Write for Input {
                 let mut n = INPUT_COIN_FIXED_SIZE;
 
                 // Safety: buf len is checked
-                let (utxo_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (output_index, buf) = unsafe { bytes::restore_number_unchecked::<Word>(buf) };
                 let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
@@ -260,7 +263,7 @@ impl io::Write for Input {
                 let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
                 n += size;
 
-                let utxo_id = utxo_id.into();
+                let utxo_id = UtxoId::new(tx_id.into(), output_index as u8);
                 let owner = owner.into();
                 let color = color.into();
 
@@ -282,12 +285,13 @@ impl io::Write for Input {
 
             InputRepr::Contract => {
                 // Safety: checked buffer len
-                let (utxo_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (output_index, buf) = unsafe { bytes::restore_number_unchecked::<Word>(buf) };
                 let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (state_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
-                let utxo_id = utxo_id.into();
+                let utxo_id = UtxoId::new(tx_id.into(), output_index as u8);
                 let balance_root = balance_root.into();
                 let state_root = state_root.into();
                 let contract_id = contract_id.into();

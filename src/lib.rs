@@ -24,7 +24,7 @@ pub mod prelude {
 
     pub use fuel_asm::{Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
-    pub use fuel_tx::{Input, Output, Receipt, Transaction, ValidationError, Witness};
+    pub use fuel_tx::{Input, Output, Receipt, Transaction, UtxoId, ValidationError, Witness};
     pub use fuel_types::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
         Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Immediate06, Immediate12, Immediate18,

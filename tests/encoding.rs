@@ -96,7 +96,7 @@ fn witness() {
 fn input() {
     assert_encoding_correct(&[
         Input::coin(
-            [0xaa; 32].into(),
+            UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
@@ -106,7 +106,7 @@ fn input() {
             vec![0xee; 23].into(),
         ),
         Input::coin(
-            [0xaa; 32].into(),
+            UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
@@ -116,7 +116,7 @@ fn input() {
             vec![0xee; 23],
         ),
         Input::coin(
-            [0xaa; 32].into(),
+            UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
@@ -126,7 +126,7 @@ fn input() {
             vec![],
         ),
         Input::coin(
-            [0xaa; 32].into(),
+            UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
@@ -136,7 +136,7 @@ fn input() {
             vec![],
         ),
         Input::contract(
-            [0xaa; 32].into(),
+            UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             [0xdd; 32].into(),
@@ -159,7 +159,7 @@ fn output() {
 #[test]
 fn transaction() {
     let i = Input::contract(
-        [0xaa; 32].into(),
+        UtxoId::new([0xaa; 32].into(), 0),
         [0xbb; 32].into(),
         [0xcc; 32].into(),
         [0xdd; 32].into(),

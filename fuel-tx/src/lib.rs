@@ -22,7 +22,9 @@ mod transaction;
 mod receipt;
 
 #[cfg(feature = "std")]
-pub use transaction::{Input, Metadata, Output, Transaction, ValidationError, Witness};
+pub use transaction::{
+    Input, Metadata, Output, Transaction, TxId, UtxoId, ValidationError, Witness,
+};
 
 #[cfg(feature = "std")]
 pub use receipt::Receipt;

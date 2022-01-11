@@ -16,7 +16,7 @@ impl Transaction {
     pub fn script_data_offset(&self) -> Option<usize> {
         self.metadata()
             .map(Metadata::script_data_offset)
-            .unwrap_or(self._script_data_offset())
+            .unwrap_or_else(|| self._script_data_offset())
     }
 
     pub(crate) fn _script_data_offset(&self) -> Option<usize> {
@@ -34,7 +34,7 @@ impl Transaction {
     pub fn input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
         self.metadata()
             .map(|m| m.input_coin_predicate_offset(index))
-            .unwrap_or(self._input_coin_predicate_offset(index))
+            .unwrap_or_else(|| self._input_coin_predicate_offset(index))
     }
 
     pub(crate) fn _input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
@@ -49,7 +49,7 @@ impl Transaction {
     pub fn input_offset(&self, index: usize) -> Option<usize> {
         self.metadata()
             .map(|m| m.inputs_offset(index))
-            .unwrap_or(self._input_offset(index))
+            .unwrap_or_else(|| self._input_offset(index))
     }
 
     pub(crate) fn inputs_offset(&self) -> usize {
@@ -88,7 +88,7 @@ impl Transaction {
     pub fn output_offset(&self, index: usize) -> Option<usize> {
         self.metadata()
             .map(|m| m.outputs_offset(index))
-            .unwrap_or(self._output_offset(index))
+            .unwrap_or_else(|| self._output_offset(index))
     }
 
     pub(crate) fn outputs_offset(&self) -> usize {
@@ -135,7 +135,7 @@ impl Transaction {
     pub fn witness_offset(&self, index: usize) -> Option<usize> {
         self.metadata()
             .map(|m| m.witnesses_offset(index))
-            .unwrap_or(self._witness_offset(index))
+            .unwrap_or_else(|| self._witness_offset(index))
     }
 
     pub(crate) fn witnesses_offset(&self) -> usize {

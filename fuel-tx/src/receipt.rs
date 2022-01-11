@@ -368,6 +368,14 @@ impl Receipt {
         }
     }
 
+    pub const fn is_empty(&self) -> Option<bool> {
+        match self.len() {
+            Some(0) => Some(true),
+            Some(_) => Some(false),
+            None => None,
+        }
+    }
+
     pub const fn digest(&self) -> Option<&Bytes32> {
         match self {
             Self::ReturnData { digest, .. } => Some(digest),
@@ -863,7 +871,9 @@ impl bytes::Deserializable for Receipt {
     fn from_bytes(bytes: &[u8]) -> io::Result<Self> {
         let mut instance = Self::ret(Default::default(), 0, 0, 0);
 
-        instance.write(bytes)?;
+        // We are sure that all needed bytes are written or error would happen.
+        // unused let is here to silence clippy warning for this check.
+        let _ = instance.write(bytes)?;
 
         Ok(instance)
     }

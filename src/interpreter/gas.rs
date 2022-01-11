@@ -85,6 +85,7 @@ impl<S> Interpreter<S> {
             Err(PanicReason::OutOfGas.into())
         } else {
             self.registers[REG_CGAS] -= gas;
+            self.registers[REG_GGAS] -= gas;
 
             Ok(())
         }

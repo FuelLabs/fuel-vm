@@ -56,7 +56,7 @@ pub struct Interpreter<S> {
     block_height: u32,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
-    free_balances: HashMap<Color, Word>,
+    unused_balance_index: HashMap<Color, usize>,
 }
 
 impl<S> Interpreter<S> {

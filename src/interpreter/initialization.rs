@@ -8,6 +8,8 @@ use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Color, Word};
 
+use fuel_tx::consts::MAX_INPUTS;
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
 
@@ -34,11 +36,27 @@ where
         // Set heap area
         self.registers[REG_HP] = VM_MAX_RAM - 1;
 
-        // Set initial free balances
-        self.free_balances = Self::initial_free_balances(&mut tx);
-
         self.push_stack(tx.id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+        // Set initial unused balances
+        let free_balances = Self::initial_free_balances(&mut tx);
+        for (color, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
+            // push color
+            self.push_stack(color.as_ref())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            // stack position
+            let color_offset = self.registers[REG_SSP] as usize;
+            self.unused_balance_index.insert(*color, color_offset);
+            // push spendable amount
+            self.push_stack(&amount.to_be_bytes())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        }
+        // zero out remaining unused balance types
+        for _i in free_balances.len()..(MAX_INPUTS as usize) {
+            self.push_stack(&[0; Color::LEN + WORD_SIZE])
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        }
 
         let tx_size = tx.serialized_size() as Word;
 
@@ -49,6 +67,7 @@ where
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
         self.push_stack(tx.to_bytes().as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 

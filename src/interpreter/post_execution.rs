@@ -8,7 +8,11 @@ where
     S: InterpreterStorage,
 {
     /// Set the appropriate change output values after execution has concluded.
-    pub fn update_change_amounts(&mut self, unused_gas_cost: Word, revert: bool) -> Result<(), InterpreterError> {
+    pub(crate) fn update_change_amounts(
+        &mut self,
+        unused_gas_cost: Word,
+        revert: bool,
+    ) -> Result<(), InterpreterError> {
         let init_balances = Self::initial_free_balances(&mut self.tx);
 
         // Update each output based on free balance
@@ -23,9 +27,9 @@ where
                 if revert {
                     *amount = init_balances[&color] + refund;
                 } else {
-                    *amount = self.free_balances[&color] + refund;
+                    *amount = self.external_color_balance(&color)? + refund;
                     // zero out free balance for this color
-                    self.free_balances.insert(*color, 0);
+                    self.external_color_balance_sub(&color, *amount);
                 }
             }
         }

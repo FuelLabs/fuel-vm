@@ -5,7 +5,7 @@ use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::Transaction;
-use fuel_types::{Color, ContractId, RegisterId, Word};
+use fuel_types::{Bytes32, Color, ContractId, RegisterId, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
@@ -105,13 +105,28 @@ impl<S> Interpreter<S> {
             .ok_or(PanicReason::ExpectedInternalContext.into())
     }
 
+    pub(crate) fn external_color_balance(&self, color: &Color) -> Result<Word, RuntimeError> {
+        Ok(0)
+    }
+
     pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), RuntimeError> {
         if value == 0 {
             return Ok(());
         }
 
-        let balance = self.free_balances.get_mut(&color).ok_or(PanicReason::ColorNotFound)?;
-        *balance = balance.checked_sub(value).ok_or(PanicReason::NotEnoughBalance)?;
+        let offset = *self
+            .unused_balance_index
+            .get(&color)
+            .ok_or(PanicReason::ColorNotFound)?;
+
+        let mut balance_memory = &mut self.memory[offset..offset + Bytes32::LEN];
+
+        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
+        let balance = Word::from_be_bytes(balance);
+        let balance = balance.checked_sub(value).ok_or(PanicReason::NotEnoughBalance)?;
+        let balance = balance.to_be_bytes();
+
+        balance_memory.copy_from_slice(&balance);
 
         Ok(())
     }

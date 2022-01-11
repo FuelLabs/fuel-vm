@@ -8,6 +8,7 @@ use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Color, Word};
 
+use fuel_asm::PanicReason;
 use fuel_tx::consts::MAX_INPUTS;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -40,7 +41,7 @@ where
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         // Set initial unused balances
-        let free_balances = Self::initial_free_balances(&mut tx);
+        let free_balances = Self::initial_free_balances(&mut tx)?;
         for (color, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
             // push color
             self.push_stack(color.as_ref())
@@ -79,7 +80,7 @@ where
     }
 
     // compute the initial free balances for each asset type
-    pub(crate) fn initial_free_balances(tx: &mut Transaction) -> HashMap<Color, Word> {
+    pub(crate) fn initial_free_balances(tx: &Transaction) -> Result<HashMap<Color, Word>, InterpreterError> {
         let mut balances = HashMap::<Color, Word>::new();
 
         // Add up all the inputs for each color
@@ -95,10 +96,14 @@ where
         if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
             // remove byte costs from base asset spendable balance
             let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
-            *base_asset_balance -= byte_balance;
+            *base_asset_balance = base_asset_balance
+                .checked_sub(byte_balance)
+                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
             // remove gas costs from base asset spendable balance
             if let (Some(gas_limit), Some(gas_price)) = (tx.gas_limit(), tx.gas_price()) {
-                *base_asset_balance -= gas_limit * gas_price;
+                *base_asset_balance = base_asset_balance
+                    .checked_sub(gas_limit * gas_price)
+                    .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
             }
         }
 
@@ -111,6 +116,6 @@ where
             *balances.get_mut(&color).unwrap() -= amount;
         }
 
-        balances
+        Ok(balances)
     }
 }

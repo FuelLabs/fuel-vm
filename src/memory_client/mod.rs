@@ -21,6 +21,12 @@ impl<'a> AsRef<MemoryStorage> for MemoryClient<'a> {
     }
 }
 
+impl<'a> AsRef<Transactor<'a, MemoryStorage>> for MemoryClient<'a> {
+    fn as_ref(&self) -> &Transactor<'a, MemoryStorage> {
+        &self.transactor
+    }
+}
+
 impl<'a> AsMut<MemoryStorage> for MemoryClient<'a> {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()

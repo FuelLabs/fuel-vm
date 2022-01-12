@@ -46,9 +46,7 @@ impl<S> Interpreter<S> {
 
             MCP | MCPI => GasUnit::Arithmetic(2).join(GasUnit::MemoryOwnership(1)),
 
-            // TODO Compile-time panic didn't land in stable yet
-            // https://github.com/rust-lang/rust/issues/51999
-            _ => loop {}, //panic!("Opcode is not variable gas"),
+            _ => panic!("Opcode is not variable gas"),
         }
         .cost()
     }

@@ -469,8 +469,13 @@ where
                 self.metadata(ra, imm as Immediate18)?;
             }
 
+            OpcodeRepr::TR => {
+                self.gas_charge(GAS_TR)?;
+                self.transfer(a, b, c)?;
+            }
+
             // list of currently unimplemented opcodes
-            OpcodeRepr::SLDC | OpcodeRepr::TR | OpcodeRepr::TRO | _ => {
+            OpcodeRepr::SLDC | OpcodeRepr::TRO | _ => {
                 return Err(PanicReason::ErrorFlag.into());
             }
         }

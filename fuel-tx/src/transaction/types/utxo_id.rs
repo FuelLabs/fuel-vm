@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use crate::TxId;
 use fuel_types::Bytes32;
+#[cfg(feature = "random")]
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -37,6 +38,7 @@ impl UtxoId {
     }
 }
 
+#[cfg(feature = "random")]
 impl Distribution<UtxoId> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> UtxoId {
         let mut tx_id = Bytes32::default();

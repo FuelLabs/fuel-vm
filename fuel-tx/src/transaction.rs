@@ -256,6 +256,13 @@ impl Transaction {
         }
     }
 
+    pub fn set_witnesses(&mut self, new_witnesses: Vec<Witness>) {
+        match self {
+            Self::Script { witnesses, .. } => *witnesses = new_witnesses,
+            Self::Create { witnesses, .. } => *witnesses = new_witnesses,
+        }
+    }
+
     pub fn try_from_bytes(bytes: &[u8]) -> io::Result<(usize, Self)> {
         let mut tx = Self::default();
 

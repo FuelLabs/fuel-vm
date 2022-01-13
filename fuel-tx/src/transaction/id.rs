@@ -42,6 +42,7 @@ impl Transaction {
 
     fn prepare_sign(&mut self) {
         self.set_receipts_root(Default::default());
+        self.set_witnesses(vec![]);
 
         self.inputs_mut().iter_mut().for_each(|input| {
             if let Input::Contract {
@@ -229,7 +230,7 @@ mod tests {
         }
 
         if !tx.witnesses().is_empty() {
-            assert_id_ne(tx, |t| {
+            assert_id_eq(tx, |t| {
                 inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut())
             });
         }

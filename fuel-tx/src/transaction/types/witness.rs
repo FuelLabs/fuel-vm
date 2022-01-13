@@ -1,7 +1,9 @@
 use fuel_types::{bytes, Word};
-
-use rand::distributions::{Distribution, Standard};
-use rand::Rng;
+#[cfg(feature = "random")]
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
 use std::{io, mem};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -59,6 +61,7 @@ impl Extend<u8> for Witness {
     }
 }
 
+#[cfg(feature = "random")]
 impl Distribution<Witness> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Witness {
         let len = rng.gen_range(0..512);

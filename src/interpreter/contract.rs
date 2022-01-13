@@ -103,6 +103,10 @@ where
         self.inc_pc()
     }
 
+    pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+
     pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, RuntimeError> {
         self.storage
             .storage_contract_exists(contract)

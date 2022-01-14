@@ -25,6 +25,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 fuel-tx = { git = "https://github.com/fuellabs/fuel-tx.git", branch = "byte-price", features = ["random"]}
+fuel-vm = { path = ".", default-features = false, features = ["random", "test-helpers"]}
 rand = "0.8"
 
 [features]
@@ -34,6 +35,7 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-types/random", "fuel-tx/random"]
 serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde"]
+test-helpers = []
 
 [[test]]
 name = "test-backtrace"

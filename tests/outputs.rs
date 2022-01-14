@@ -1,3 +1,4 @@
+use dyn_clone::clone;
 use fuel_vm::consts::{REG_ONE, REG_ZERO, VM_TX_MEMORY};
 use fuel_vm::prelude::*;
 use itertools::Itertools;
@@ -26,17 +27,14 @@ fn full_change_with_no_fees() {
     let gas_price = 0;
     let byte_price = 0;
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(Color::default(), input_amount)
         .change_output(Color::default())
-        .execute();
+        .execute_get_change(Color::default());
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount == &input_amount && color == &Color::default())
-    );
+    assert_eq!(change, input_amount);
 }
 
 #[test]
@@ -45,17 +43,14 @@ fn byte_fees_are_deducted_from_base_asset_change() {
     let gas_price = 0;
     let byte_price = 1;
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(Color::default(), input_amount)
         .change_output(Color::default())
-        .execute();
+        .execute_get_change(Color::default());
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount < &input_amount && color == &Color::default())
-    );
+    assert!(change < input_amount);
 }
 
 #[test]
@@ -64,17 +59,14 @@ fn used_gas_is_deducted_from_base_asset_change() {
     let gas_price = 1;
     let byte_price = 0;
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(Color::default(), input_amount)
         .change_output(Color::default())
-        .execute();
+        .execute_get_change(Color::default());
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount < &input_amount && color == &Color::default())
-    );
+    asset!(change < input_amount);
 }
 
 #[test]
@@ -83,7 +75,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
     let gas_price = 1;
     let byte_price = 0;
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .script(vec![
             // Log some dummy data to burn extra gas
             Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
@@ -94,12 +86,9 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
         .byte_price(byte_price)
         .coin_input(Color::default(), input_amount)
         .change_output(Color::default())
-        .execute();
+        .execute_get_change(Color::default());
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount < &input_amount && color == &Color::default())
-    );
+    assert!(change < input_amount);
 }
 
 #[test]
@@ -110,18 +99,15 @@ fn correct_change_is_provided_for_coin_outputs() {
     let spend_amount = 600;
     let color = Color::default();
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(color, input_amount)
         .change_output(color)
         .coin_output(color, spend_amount)
-        .execute();
+        .execute_get_change(color);
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount == &(input_amount - spend_amount) && color == &Color::default())
-    );
+    assert_eq!(change, input_amount - spend_amount);
 }
 
 #[test]
@@ -132,18 +118,15 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
     let spend_amount = 650;
     let color = Color::default();
 
-    let outputs = TestBuilder::new(2322u64)
+    let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(color, input_amount)
         .change_output(color)
         .withdrawal_output(color, spend_amount)
-        .execute();
+        .execute_get_change(color);
 
-    let output = outputs.first().unwrap();
-    assert!(
-        matches!(output, Output::Change {amount, color, ..} if amount == &(input_amount - spend_amount) && color == &Color::default())
-    );
+    assert_eq!(change, input_amount - spend_amount);
 }
 
 #[test]

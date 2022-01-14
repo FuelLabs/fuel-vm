@@ -24,6 +24,7 @@ sha3 = "0.9"
 tracing = "0.1"
 
 [dev-dependencies]
+fuel-tx = { git = "https://github.com/fuellabs/fuel-tx.git", branch = "byte-price", features = ["random"]}
 rand = "0.8"
 
 [features]

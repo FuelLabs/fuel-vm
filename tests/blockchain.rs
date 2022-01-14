@@ -112,6 +112,8 @@ fn state_read_write() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness,
@@ -299,6 +301,8 @@ fn load_external_contract_code() {
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         0,

@@ -248,6 +248,8 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
+            Word::MAX >> 3,
+            Word::MAX >> 4,
             0xba,
             [0xdd; 32].into(),
             vec![[0xce; 32].into()],
@@ -258,6 +260,8 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
+            Word::MAX >> 3,
+            Word::MAX >> 4,
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -268,6 +272,8 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
+            Word::MAX >> 3,
+            Word::MAX >> 4,
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -278,6 +284,8 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
+            Word::MAX >> 3,
+            Word::MAX >> 4,
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -288,6 +296,8 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
+            Word::MAX >> 3,
+            Word::MAX >> 4,
             0xba,
             [0xdd; 32].into(),
             vec![],

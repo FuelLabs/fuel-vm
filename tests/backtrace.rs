@@ -34,6 +34,8 @@ fn backtrace() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness,
@@ -73,6 +75,8 @@ fn backtrace() {
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness,

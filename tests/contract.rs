@@ -42,6 +42,8 @@ fn mint_burn() {
 
     let bytecode_witness = 0;
     let tx = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness,

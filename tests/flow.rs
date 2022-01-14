@@ -43,6 +43,8 @@ fn code_copy() {
 
     // Deploy the contract
     let tx = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         0,
@@ -133,6 +135,8 @@ fn call() {
 
     // Deploy the contract
     let tx = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         0,
@@ -223,6 +227,8 @@ fn call_frame_code_offset() {
     let output = Output::contract_created(id);
 
     let deploy = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness_index,
@@ -341,6 +347,8 @@ fn revert() {
 
     let bytecode_witness = 0;
     let tx = Transaction::create(
+        gas_price,
+        gas_limit,
         byte_price,
         maturity,
         bytecode_witness,

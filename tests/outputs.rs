@@ -1,5 +1,4 @@
-use dyn_clone::clone;
-use fuel_vm::consts::{REG_ONE, REG_ZERO, VM_TX_MEMORY};
+use fuel_vm::consts::{REG_ONE, REG_ZERO};
 use fuel_vm::prelude::*;
 use itertools::Itertools;
 use rand::rngs::StdRng;
@@ -66,7 +65,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
         .change_output(Color::default())
         .execute_get_change(Color::default());
 
-    asset!(change < input_amount);
+    assert!(change < input_amount);
 }
 
 #[test]
@@ -228,7 +227,6 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let maturity = 0;
     let asset_id = Color::default();
 
     // setup state for test

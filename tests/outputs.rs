@@ -1,22 +1,11 @@
-use fuel_vm::consts::{REG_ONE, REG_ZERO};
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    consts::{REG_ONE, REG_ZERO},
+    prelude::*,
+    script_with_data_offset,
+};
 use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-
-macro_rules! script_with_offset {
-    ($offset:ident, $script:expr) => {{
-        use fuel_types::bytes;
-        use fuel_vm::consts::VM_TX_MEMORY;
-        let $offset = 0;
-        let script_bytes: Vec<u8> = { $script }.into_iter().collect();
-        let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
-        let $offset = data_offset;
-        {
-            $script
-        }
-    }};
-}
 
 /// Testing of post-execution output handling
 
@@ -180,7 +169,7 @@ fn change_is_reduced_by_external_transfer() {
         .unwrap();
 
     // setup script for transfer
-    let script = script_with_offset!(
+    let script = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to contract id
@@ -243,7 +232,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
         .unwrap();
 
     // setup script for transfer
-    let script = script_with_offset!(
+    let script = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to contract id

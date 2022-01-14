@@ -15,6 +15,7 @@ pub mod memory_client;
 pub mod state;
 pub mod storage;
 pub mod transactor;
+pub mod bundle_transactor;
 
 #[cfg(feature = "profile-any")]
 pub mod profiler;

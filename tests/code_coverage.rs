@@ -5,12 +5,12 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use fuel_vm::profiler::{InstructionLocation, ProfileReceiver, ProfilingData};
-
 const HALF_WORD_SIZE: u64 = 4;
 
 #[test]
 fn code_coverage() {
+    use fuel_vm::profiler::{InstructionLocation, ProfileReceiver, ProfilingData};
+
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 

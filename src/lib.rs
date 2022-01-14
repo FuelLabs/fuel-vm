@@ -1,4 +1,10 @@
 //! FuelVM implementation
+//!
+//! ## Introduction on functionalities of VM
+//!
+//! Most notable components:
+//! * [`Transactor`] Wrapper around Interpretor, give us utility to execute transaction.
+//! * [`SubStorage`] Allows having three layer storage: `dyn InterpreterStorage`, commited storage, pending storage.
 
 #![warn(missing_docs)]
 
@@ -14,6 +20,7 @@ pub mod interpreter;
 pub mod memory_client;
 pub mod state;
 pub mod storage;
+pub mod substorage;
 pub mod transactor;
 
 #[cfg(feature = "profile-any")]

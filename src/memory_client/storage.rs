@@ -49,11 +49,11 @@ impl MemoryStorage {
 
     /// Fetch a mapping from the contract state.
     pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
-        const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
+        const DEFAULT_STORAGE: Bytes32 = Bytes32::zeroed();
 
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, contract, key)
             .expect("Infallible")
-            .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
+            .unwrap_or(Cow::Borrowed(&DEFAULT_STORAGE))
     }
 
     /// Set the transacted state to the memory state.

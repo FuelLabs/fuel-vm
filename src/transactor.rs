@@ -113,6 +113,12 @@ impl<'a, S> Transactor<'a, S> {
     pub fn interpreter(self) -> Interpreter<S> {
         self.into()
     }
+
+    /// Clear state of previous execution
+    pub fn clear(&mut self) {
+        self.state_transition = None;
+        self.error = None;
+    }
 }
 
 impl<S> Transactor<'_, S>

@@ -5,10 +5,9 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use fuel_vm::profiler::{ProfileReceiver, ProfilingData};
-
 #[test]
 fn profile_gas() {
+    use fuel_vm::profiler::{ProfileReceiver, ProfilingData};
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 

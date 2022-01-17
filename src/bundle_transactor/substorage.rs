@@ -1,13 +1,13 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use fuel_asm::Word;
 use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
-use fuel_tx::{Address, Bytes32, Color, ContractId, Output, Salt, Transaction, UtxoId};
+use fuel_tx::{Address, Bytes32, Color, ContractId, Salt};
+use hashbrown::{hash_map::Entry, HashMap};
+use std::borrow::Cow;
 
-use crate::{contract::Contract, prelude::Infallible, storage::InterpreterStorage};
+use crate::{contract::Contract, storage::InterpreterStorage};
 
-/// Substate of transaction bundle execution
-pub struct SubState<STORAGE> {
+/// SubStorage of transaction bundle execution
+pub struct SubStorage<STORAGE> {
     /// State from database targeted for a particular block number or maybe even block hash.
     state: STORAGE,
     /// Commited storage
@@ -19,11 +19,25 @@ pub struct SubState<STORAGE> {
 }
 
 /// Metadata needed for execution of VM
+#[derive(Default, Copy, Clone)]
 pub struct Metadata {
     coinbase: Address,
     block_height: u32,
 }
 
+impl Metadata {
+    pub fn new(coinbase: Address, block_height: u32) -> Self {
+        Self { coinbase, block_height }
+    }
+    pub fn coinbase(&self) -> &Address {
+        &self.coinbase
+    }
+    pub fn block_height(&self) -> u32 {
+        self.block_height
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ContractData {
     bytecode: Option<Contract>,
     balance: HashMap<Color, Option<Word>>,
@@ -42,7 +56,7 @@ impl Default for ContractData {
     }
 }
 
-impl<STORAGE> SubState<STORAGE> {
+impl<STORAGE> SubStorage<STORAGE> {
     /// constructor
     pub fn new(state: STORAGE, metadata: Metadata) -> Self {
         Self {
@@ -53,13 +67,39 @@ impl<STORAGE> SubState<STORAGE> {
         }
     }
 
+    /// Take pending_storage and merge it inside commited_storage
+    pub fn commit_pending(&mut self) {
+        for (contract_id, data) in self.pending_storage.drain() {
+            match self.commited_storage.entry(contract_id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(data);
+                }
+                Entry::Occupied(mut entry) => {
+                    // merge diff
+                    let commited = entry.get_mut();
+                    commited.balance.extend(data.balance.into_iter());
+                    commited.storage.extend(data.storage.into_iter());
+                    if data.bytecode.is_some() {
+                        commited.bytecode = data.bytecode;
+                    }
+                    // todo check how is this going to be calculated.
+                    commited.root = data.root;
+                }
+            }
+        }
+    }
+
+    pub fn reject_pending(&mut self) {
+        self.pending_storage.clear();
+    }
+
     /// commited state
     pub fn commited_storage(&self) -> &HashMap<ContractId, ContractData> {
         &self.commited_storage
     }
 }
 
-impl<STORAGE> Storage<ContractId, Contract> for SubState<STORAGE>
+impl<STORAGE> Storage<ContractId, Contract> for SubStorage<STORAGE>
 where
     STORAGE: InterpreterStorage,
 {
@@ -117,7 +157,7 @@ where
     }
 }
 
-impl<STORAGE> Storage<ContractId, (Salt, Bytes32)> for SubState<STORAGE>
+impl<STORAGE> Storage<ContractId, (Salt, Bytes32)> for SubStorage<STORAGE>
 where
     STORAGE: InterpreterStorage,
 {
@@ -159,7 +199,7 @@ where
     }
 }
 
-impl<STORAGE> MerkleStorage<ContractId, Bytes32, Bytes32> for SubState<STORAGE>
+impl<STORAGE> MerkleStorage<ContractId, Bytes32, Bytes32> for SubStorage<STORAGE>
 where
     STORAGE: InterpreterStorage,
 {
@@ -209,7 +249,7 @@ where
     }
 }
 
-impl<STORAGE> MerkleStorage<ContractId, Color, Word> for SubState<STORAGE>
+impl<STORAGE> MerkleStorage<ContractId, Color, Word> for SubStorage<STORAGE>
 where
     STORAGE: InterpreterStorage,
 {
@@ -286,7 +326,7 @@ merkle_contract_color_balance_insert
 <Self as MerkleStorage<ContractId, Color, Word>>::insert(self, contract, color, &value)
 */
 
-impl<STORAGE> InterpreterStorage for SubState<STORAGE>
+impl<STORAGE> InterpreterStorage for SubStorage<STORAGE>
 where
     STORAGE: InterpreterStorage,
 {

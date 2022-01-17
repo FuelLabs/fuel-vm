@@ -22,9 +22,11 @@ secp256k1 = { version = "0.20", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.9"
 tracing = "0.1"
+hashbrown = "0.12"
 
 [dev-dependencies]
 rand = "0.8"
+fuel-vm = { path = ".",  default-features = false, features = ["random"]}
 
 [features]
 debug = []
@@ -33,6 +35,12 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-types/random", "fuel-tx/random"]
 serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde"]
+
+
+[[test]]
+name = "test-bundler"
+path = "tests/bundler.rs"
+required-features = ["random"]
 
 [[test]]
 name = "test-backtrace"

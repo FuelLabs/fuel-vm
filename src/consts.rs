@@ -78,9 +78,6 @@ pub const VM_MAX_RAM: u64 = 16 * 1024 * FUEL_MAX_MEMORY_SIZE * WORD_SIZE as u64;
 /// Maximum memory access size, in bytes.
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
-/// Maximum size of a fuel program (unused)
-pub const FUEL_MAX_PROGRAM_SIZE: usize = 16 * /* KB */ 1024;
-
 // no limits to heap for now.
 
 /// Encoded len of a register id in an instruction (unused)

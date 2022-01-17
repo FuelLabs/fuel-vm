@@ -1,5 +1,5 @@
 /// Maximum contract size, in bytes.
-pub const CONTRACT_MAX_SIZE: u64 = 16 * 1024;
+pub const CONTRACT_MAX_SIZE: u64 = 16 * 1024 * 1024;
 
 /// Maximum number of inputs.
 pub const MAX_INPUTS: u8 = 8;

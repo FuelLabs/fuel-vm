@@ -727,7 +727,7 @@ fn create() {
             vec![],
         )],
         vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
-        vec![vec![0xfau8; 1 + CONTRACT_MAX_SIZE as usize / 4].into()],
+        vec![vec![0xfau8; 1 + CONTRACT_MAX_SIZE as usize].into()],
     )
     .validate(block_height)
     .err()

@@ -156,7 +156,7 @@ impl Transaction {
                 ..
             } => {
                 match witnesses.get(*bytecode_witness_index as usize) {
-                    Some(witness) if witness.as_ref().len() as u64 * 4 > CONTRACT_MAX_SIZE => {
+                    Some(witness) if witness.as_ref().len() as u64 > CONTRACT_MAX_SIZE => {
                         Err(ValidationError::TransactionCreateBytecodeLen)?
                     }
                     None => Err(ValidationError::TransactionCreateBytecodeWitnessIndex)?,

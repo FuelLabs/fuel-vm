@@ -80,7 +80,7 @@ pub const GAS_XWS: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_FLAG: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_GM: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_TR: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
-// pub const GAS_TRO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_TRO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 
 // Variable gas cost
 const GAS_OP_MEMORY_WRITE: Word = GasUnit::MemoryWrite(0).unit_price();

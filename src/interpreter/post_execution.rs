@@ -31,6 +31,12 @@ where
                     *amount = balance + refund;
                 }
             }
+            if let Output::Variable { amount, .. } = output {
+                if revert {
+                    // reset amounts to zero on revert
+                    *amount = 0;
+                }
+            }
         }
         // set outputs on tx
         match &mut self.tx {

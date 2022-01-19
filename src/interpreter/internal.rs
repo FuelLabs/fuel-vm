@@ -2,10 +2,11 @@ use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
+use std::io::Read;
 
 use fuel_asm::{Instruction, PanicReason};
-use fuel_tx::Transaction;
-use fuel_types::{Color, ContractId, RegisterId, Word};
+use fuel_tx::{Output, Transaction};
+use fuel_types::{Address, Color, ContractId, RegisterId, Word};
 
 impl<S> Interpreter<S> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
@@ -141,6 +142,45 @@ impl<S> Interpreter<S> {
 
         Ok(())
     }
+
+    /// Increase the variable output with a given color. Modifies both the referenced tx and the
+    /// serialized tx in vm memory.
+    pub(crate) fn set_variable_output(
+        &mut self,
+        out_idx: usize,
+        color_to_update: Color,
+        amount_to_set: Word,
+        owner_to_set: Address,
+    ) -> Result<(), RuntimeError> {
+        let outputs = self.tx.outputs();
+
+        if out_idx >= outputs.len() {
+            return Err(PanicReason::OutputNotFound.into());
+        }
+        let output = outputs[out_idx];
+        match output {
+            Output::Variable { amount, .. } if amount == 0 => Ok(()),
+            Output::Variable { amount, .. } if amount != 0 => Err(PanicReason::MemoryWriteOverlap),
+            _ => Err(PanicReason::ExpectedOutputVariable),
+        }?;
+
+        // update the local copy of the output
+        let mut output = Output::variable(owner_to_set, amount_to_set, color_to_update);
+
+        // update serialized memory state
+        let offset = self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        let bytes = &mut self.memory[offset..];
+        let _ = output.read(bytes)?;
+
+        let outputs = match &mut self.tx {
+            Transaction::Script { outputs, .. } => outputs,
+            Transaction::Create { outputs, .. } => outputs,
+        };
+        // update referenced tx
+        outputs[out_idx] = output;
+
+        Ok(())
+    }
 }
 
 #[cfg(all(test, feature = "random"))]
@@ -148,6 +188,7 @@ mod tests {
     use crate::prelude::*;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
+    use std::io::Write;
 
     #[test]
     fn external_balance() {
@@ -189,5 +230,58 @@ mod tests {
             vm.external_color_balance_sub(&color, 10).unwrap();
             assert!(vm.external_color_balance_sub(&color, 1).is_err());
         }
+    }
+
+    #[test]
+    fn variable_output_updates_in_memory() {
+        let mut rng = StdRng::seed_from_u64(2322u64);
+
+        let mut vm = Interpreter::with_memory_storage();
+
+        let gas_price = 0;
+        let gas_limit = 1_000_000;
+        let maturity = 0;
+        let byte_price = 0;
+        let color_to_update: Color = rng.gen();
+        let amount_to_set: Word = 100;
+        let owner: Address = rng.gen();
+
+        let variable_output = Output::Variable {
+            to: rng.gen(),
+            amount: 0,
+            color: rng.gen(),
+        };
+
+        let tx = Transaction::script(
+            gas_price,
+            gas_limit,
+            byte_price,
+            maturity,
+            vec![],
+            vec![],
+            vec![],
+            vec![variable_output],
+            vec![Witness::default()],
+        );
+
+        vm.init(tx).expect("Failed to init VM!");
+
+        // increase variable output
+        vm.set_variable_output(0, color_to_update, amount_to_set, owner)
+            .unwrap();
+
+        // verify the referenced tx output is updated properly
+        assert!(matches!(
+            vm.tx.outputs()[0],
+            Output::Variable {amount, color, to} if amount == amount_to_set
+                                                    && color == color_to_update
+                                                    && to == owner
+        ));
+
+        // verify the vm memory is updated properly
+        let position = vm.tx.output_offset(0).unwrap();
+        let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
+        let _ = mem_output.write(&vm.memory()[position..]).unwrap();
+        assert_eq!(vm.tx.outputs()[0], mem_output);
     }
 }

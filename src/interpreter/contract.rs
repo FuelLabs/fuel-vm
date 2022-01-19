@@ -6,7 +6,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
 use fuel_tx::Receipt;
-use fuel_types::{Color, ContractId};
+use fuel_types::{Address, Color, ContractId};
 
 use std::borrow::Cow;
 
@@ -80,16 +80,12 @@ where
         if let Some(source_contract) = internal_context {
             // debit funding source (source contract balance)
             self.balance_decrease(&source_contract, &asset_id, amount)?;
-
-            // credit destination
-            self.balance_increase(&destination, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. UTXOs)
             self.external_color_balance_sub(&asset_id, amount)?;
-
-            // credit destination
-            self.balance_increase(&destination, &asset_id, amount)?;
         }
+        // credit destination contract
+        self.balance_increase(&destination, &asset_id, amount)?;
 
         self.receipts.push(Receipt::transfer(
             internal_context.unwrap_or_default(),
@@ -104,7 +100,41 @@ where
     }
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        Ok(())
+        let (ax, overflow) = a.overflowing_add(32);
+        let (dx, of) = d.overflowing_add(32);
+        let overflow = overflow || of;
+        let out_idx = b as usize;
+
+        if overflow || ax > VM_MAX_RAM || dx > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
+        let asset_id =
+            Color::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");
+        let amount = c;
+
+        let internal_context = match self.internal_contract() {
+            // optimistically attempt to load the internal contract id
+            Ok(source_contract) => Some(*source_contract),
+            // revert to external context if no internal contract is set
+            Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
+            // bubble up any other kind of errors
+            Err(e) => return Err(e),
+        };
+
+        if let Some(source_contract) = internal_context {
+            // debit funding source (source contract balance)
+            self.balance_decrease(&source_contract, &asset_id, amount)?;
+        } else {
+            // debit external funding source (i.e. UTXOs)
+            self.external_color_balance_sub(&asset_id, amount)?;
+        }
+
+        // credit variable output
+        self.set_variable_output(out_idx, asset_id, amount, to)?;
+
+        self.inc_pc()
     }
 
     pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, RuntimeError> {

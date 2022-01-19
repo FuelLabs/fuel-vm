@@ -220,3 +220,11 @@ fn mint_burn() {
         .expect("Balance expected");
     assert_eq!(0, storage_balance);
 }
+
+#[test]
+#[ignore]
+fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance() {}
+
+#[test]
+#[ignore]
+fn internal_transfer_cant_exceed_more_than_source_contract_balance() {}

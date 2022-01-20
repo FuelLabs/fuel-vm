@@ -1,10 +1,8 @@
-use fuel_types::bytes;
-use fuel_vm::consts::{REG_FP, VM_TX_MEMORY};
-use fuel_vm::util::test_helpers::TestBuilder;
 use fuel_vm::{
-    consts::{REG_ONE, REG_ZERO},
+    consts::{REG_FP, REG_ONE, REG_ZERO},
     prelude::*,
     script_with_data_offset,
+    util::test_helpers::TestBuilder,
 };
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -462,7 +460,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
             Opcode::RET(REG_ONE),
-        ],
+        ]
     );
 
     let script_data: Vec<u8> = [
@@ -555,7 +553,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             // call contract without any tokens to transfer in
             Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
             Opcode::RET(REG_ONE),
-        ],
+        ]
     );
 
     let script_data: Vec<u8> = [

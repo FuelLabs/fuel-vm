@@ -100,11 +100,9 @@ where
                 .checked_sub(byte_balance)
                 .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
             // remove gas costs from base asset spendable balance
-            if let (Some(gas_limit), Some(gas_price)) = (tx.gas_limit(), tx.gas_price()) {
-                *base_asset_balance = base_asset_balance
-                    .checked_sub(gas_limit * gas_price)
-                    .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
-            }
+            *base_asset_balance = base_asset_balance
+                .checked_sub(tx.gas_limit() * tx.gas_price())
+                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
         }
 
         // reduce free balances by coin and withdrawal outputs

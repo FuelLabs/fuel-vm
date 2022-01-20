@@ -28,10 +28,10 @@
 /// // Use the macro since we don't know the exact offset for script_data.
 /// let (script, data_offset) = script_with_data_offset!(data_offset, vec![
 ///     // use data_offset to reference the location of the call bytes inside script_data
-///     Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
+///     Opcode::ADDI(0x10, REG_ZERO, data_offset),
 ///     Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
 ///     // use data_offset again to reference the location of the asset id inside of script data
-///     Opcode::ADDI(0x12, REG_ZERO, (data_offset + call.len()) as Immediate12),
+///     Opcode::ADDI(0x12, REG_ZERO, data_offset + call.len() as Immediate12),
 ///     Opcode::ADDI(0x13, REG_ZERO, gas_to_forward as Immediate12),
 ///     Opcode::CALL(0x10, 0x11, 0x12, 0x13),
 ///     Opcode::RET(REG_ONE),
@@ -41,8 +41,8 @@
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr) => {{
         use fuel_types::{bytes, Immediate12};
-        use fuel_vm::consts::VM_TX_MEMORY;
-        use fuel_vm::prelude::Transaction;
+        use $crate::consts::VM_TX_MEMORY;
+        use $crate::prelude::Transaction;
         let $offset = 0 as Immediate12;
         let script_bytes: Vec<u8> = { $script }.into_iter().collect();
         let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
@@ -198,7 +198,6 @@ pub mod test_helpers {
         }
 
         pub fn build_get_balance_tx(contract_id: &ContractId, asset_id: &Color) -> Transaction {
-            use crate as fuel_vm;
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![

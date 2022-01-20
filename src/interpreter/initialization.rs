@@ -4,12 +4,11 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::PanicReason;
+use fuel_tx::consts::MAX_INPUTS;
 use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Color, Word};
-
-use fuel_asm::PanicReason;
-use fuel_tx::consts::MAX_INPUTS;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
@@ -60,11 +59,8 @@ where
         }
 
         let tx_size = tx.serialized_size() as Word;
-
-        if let Transaction::Script { gas_limit, .. } = tx {
-            self.registers[REG_GGAS] = gas_limit;
-            self.registers[REG_CGAS] = gas_limit;
-        }
+        self.registers[REG_GGAS] = tx.gas_limit();
+        self.registers[REG_CGAS] = tx.gas_limit();
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

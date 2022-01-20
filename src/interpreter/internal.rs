@@ -2,11 +2,11 @@ use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
-use std::io::Read;
 
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::{Output, Transaction};
 use fuel_types::{Address, Color, ContractId, RegisterId, Word};
+use std::io::Read;
 
 impl<S> Interpreter<S> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
@@ -114,7 +114,7 @@ impl<S> Interpreter<S> {
             .ok_or(PanicReason::ColorNotFound)?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
-        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
+        let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
         let balance = Word::from_be_bytes(balance);
 
         Ok(balance)
@@ -160,6 +160,7 @@ impl<S> Interpreter<S> {
         let output = outputs[out_idx];
         match output {
             Output::Variable { amount, .. } if amount == 0 => Ok(()),
+            // if variable output was already set, panic with memory write overlap error.
             Output::Variable { amount, .. } if amount != 0 => Err(PanicReason::MemoryWriteOverlap),
             _ => Err(PanicReason::ExpectedOutputVariable),
         }?;

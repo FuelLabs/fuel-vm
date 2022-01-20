@@ -12,6 +12,7 @@ fn gas_price() {
     let block_height = 1000;
 
     Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -20,25 +21,12 @@ fn gas_price() {
         vec![],
         vec![],
         vec![],
-    )
-    .validate(block_height)
-    .unwrap();
-
-    Transaction::create(
-        MAX_GAS_PER_TX,
-        rng.next_u64(),
-        maturity,
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![vec![0xfau8].into()],
     )
     .validate(block_height)
     .unwrap();
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX + 1,
         rng.next_u64(),
         maturity,
@@ -47,22 +35,6 @@ fn gas_price() {
         vec![],
         vec![],
         vec![],
-    )
-    .validate(block_height)
-    .err()
-    .unwrap();
-    assert_eq!(ValidationError::TransactionGasLimit, err);
-
-    let err = Transaction::create(
-        MAX_GAS_PER_TX + 1,
-        rng.next_u64(),
-        maturity,
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![rng.gen()],
     )
     .validate(block_height)
     .err()
@@ -78,6 +50,7 @@ fn maturity() {
     let block_height = 1000;
 
     Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         block_height,
@@ -91,6 +64,7 @@ fn maturity() {
     .unwrap();
 
     Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         1000,
@@ -105,6 +79,7 @@ fn maturity() {
     .unwrap();
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         1001,
@@ -120,6 +95,7 @@ fn maturity() {
     assert_eq!(ValidationError::TransactionMaturity, err);
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         1001,
@@ -145,6 +121,7 @@ fn max_iow() {
     let block_height = 1000;
 
     Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -170,6 +147,7 @@ fn max_iow() {
     .unwrap();
 
     Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -196,6 +174,7 @@ fn max_iow() {
     .unwrap();
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -211,6 +190,7 @@ fn max_iow() {
     assert_eq!(ValidationError::TransactionInputsMax, err);
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -226,6 +206,7 @@ fn max_iow() {
     assert_eq!(ValidationError::TransactionOutputsMax, err);
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -254,6 +235,7 @@ fn output_change_color() {
     let c = rng.gen();
 
     Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -291,6 +273,7 @@ fn output_change_color() {
     .unwrap();
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -330,6 +313,7 @@ fn output_change_color() {
     assert_eq!(ValidationError::TransactionOutputChangeColorDuplicated, err);
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -379,6 +363,7 @@ fn script() {
 
     let color = rng.gen();
     Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -401,6 +386,7 @@ fn script() {
     .unwrap();
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -428,6 +414,7 @@ fn script() {
     );
 
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -453,6 +440,7 @@ fn script() {
 
     let color = rng.gen();
     let err = Transaction::script(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -486,6 +474,7 @@ fn create() {
     let block_height = 1000;
 
     Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -509,6 +498,7 @@ fn create() {
     .unwrap();
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -529,6 +519,7 @@ fn create() {
 
     let color = rng.gen();
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -557,6 +548,7 @@ fn create() {
     );
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -594,13 +586,11 @@ fn create() {
     .validate(block_height)
     .err()
     .unwrap();
-    assert_eq!(
-        ValidationError::TransactionCreateOutputChangeColorZero { index: 1 },
-        err
-    );
+    assert_eq!(ValidationError::TransactionOutputChangeColorDuplicated, err);
 
     let color = rng.gen();
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -639,11 +629,12 @@ fn create() {
     .err()
     .unwrap();
     assert_eq!(
-        ValidationError::TransactionCreateOutputChangeColorNonZero { index: 1 },
+        ValidationError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
         err
     );
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -687,6 +678,7 @@ fn create() {
     );
 
     Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -710,6 +702,7 @@ fn create() {
     .unwrap();
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -735,6 +728,7 @@ fn create() {
     assert_eq!(ValidationError::TransactionCreateBytecodeLen, err);
 
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -768,6 +762,7 @@ fn create() {
         .collect::<Vec<ContractId>>();
 
     Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -793,6 +788,7 @@ fn create() {
     id.iter_mut().for_each(|i| *i = 0xff);
     static_contracts.push(id);
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,
@@ -820,6 +816,7 @@ fn create() {
     static_contracts.pop();
     static_contracts[0][0] = 0xff;
     let err = Transaction::create(
+        rng.next_u64(),
         MAX_GAS_PER_TX,
         rng.next_u64(),
         maturity,

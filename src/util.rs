@@ -26,7 +26,7 @@
 ///                     .collect_vec();
 ///
 /// // Use the macro since we don't know the exact offset for script_data.
-/// let script = script_with_data_offset!(data_offset, vec![
+/// let (script, data_offset) = script_with_data_offset!(data_offset, vec![
 ///     // use data_offset to reference the location of the call bytes inside script_data
 ///     Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
 ///     Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
@@ -47,7 +47,7 @@ macro_rules! script_with_data_offset {
         let script_bytes: Vec<u8> = { $script }.into_iter().collect();
         let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
         let $offset = data_offset as Immediate12;
-        $script
+        ($script, $offset)
     }};
 }
 
@@ -55,7 +55,7 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
-    use crate::consts::REG_ONE;
+    use crate::consts::{REG_ONE, REG_ZERO};
     use crate::prelude::{MemoryClient, MemoryStorage, Transactor};
     use fuel_asm::Opcode;
     use fuel_tx::{Input, Output, Transaction, Witness};
@@ -197,6 +197,36 @@ pub mod test_helpers {
             )
         }
 
+        pub fn build_get_balance_tx(contract_id: &ContractId, asset_id: &Color) -> Transaction {
+            use crate as fuel_vm;
+            let (script, _) = script_with_data_offset!(
+                data_offset,
+                vec![
+                    Opcode::ADDI(0x11, REG_ZERO, data_offset),
+                    Opcode::ADDI(0x12, 0x11, Color::LEN as Immediate12),
+                    Opcode::BAL(0x10, 0x11, 0x12),
+                    Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
+                    Opcode::RET(REG_ONE)
+                ]
+            );
+
+            let script_data: Vec<u8> = [asset_id.as_ref(), contract_id.as_ref()]
+                .into_iter()
+                .flatten()
+                .copied()
+                .collect();
+
+            TestBuilder::new(2322u64)
+                .gas_price(0)
+                .byte_price(0)
+                .gas_limit(1_000_000)
+                .script(script)
+                .script_data(script_data)
+                .contract_input(*contract_id)
+                .contract_output(contract_id)
+                .build()
+        }
+
         pub fn execute(&mut self) -> Vec<Output> {
             let tx = self.build();
             let mut client = MemoryClient::new(self.storage.clone());
@@ -221,5 +251,11 @@ pub mod test_helpers {
             });
             change.expect(format!("no change matching color {:x} was found", &find_color).as_str())
         }
+    }
+
+    pub fn get_contract_balance(client: &mut MemoryClient, contract_id: &ContractId, asset_id: &Color) -> Word {
+        let tx = TestBuilder::build_get_balance_tx(contract_id, asset_id);
+        let receipts = client.transact(tx);
+        receipts[0].ra().expect("Balance expected")
     }
 }

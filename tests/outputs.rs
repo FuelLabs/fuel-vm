@@ -171,7 +171,7 @@ fn change_is_reduced_by_external_transfer() {
         .unwrap();
 
     // setup script for transfer
-    let script = script_with_data_offset!(
+    let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to contract id
@@ -234,7 +234,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
         .unwrap();
 
     // setup script for transfer
-    let script = script_with_data_offset!(
+    let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to contract id
@@ -285,7 +285,7 @@ fn variable_output_set_by_external_transfer_out() {
     let asset_id = Color::default();
     let owner: Address = rng.gen();
 
-    let script = script_with_data_offset!(
+    let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
             // load amount of coins to 0x10
@@ -353,7 +353,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let asset_id = Color::default();
     let owner: Address = rng.gen();
 
-    let script = script_with_data_offset!(
+    let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
             // load amount of coins to 0x10
@@ -452,21 +452,19 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .merkle_contract_color_balance_insert(&contract_id, &asset_id, internal_balance)
         .unwrap();
 
-    let script = script_with_data_offset!(
+    let (script, data_offset) = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to call data
             Opcode::ADDI(0x10, REG_ZERO, (data_offset + 64) as Immediate12),
             // set reg 0x11 to transfer amount
             Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-            // call contract without any tokens to transfer in
-            Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+            // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
             Opcode::RET(REG_ONE),
-        ]
+        ],
     );
 
-    let script_bytes: Vec<u8> = script.clone().into_iter().collect();
-    let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
         owner.as_ref(),
@@ -547,21 +545,19 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         .merkle_contract_color_balance_insert(&contract_id, &asset_id, internal_balance)
         .unwrap();
 
-    let script = script_with_data_offset!(
+    let (script, data_offset) = script_with_data_offset!(
         data_offset,
         vec![
             // set reg 0x10 to call data
             Opcode::ADDI(0x10, REG_ZERO, (data_offset + 64) as Immediate12),
-            // set reg 0x11 to transfer amount
+            // set reg 0x11 to gas forward amount
             Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
             // call contract without any tokens to transfer in
             Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
             Opcode::RET(REG_ONE),
-        ]
+        ],
     );
 
-    let script_bytes: Vec<u8> = script.clone().into_iter().collect();
-    let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
         owner.as_ref(),

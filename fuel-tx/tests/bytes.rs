@@ -1,4 +1,5 @@
 use fuel_asm::Opcode;
+use fuel_tx::consts::MAX_GAS_PER_TX;
 use fuel_tx::*;
 use fuel_types::{bytes, ContractId, Immediate24};
 use rand::rngs::StdRng;
@@ -39,8 +40,8 @@ where
         buffer = vec![0u8; read_size];
 
         // Minimum size buffer assertion
-        d.read(buffer.as_mut_slice()).expect("Failed to read");
-        d_p.write(buffer.as_slice()).expect("Failed to write");
+        let _ = d.read(buffer.as_mut_slice()).expect("Failed to read");
+        let _ = d_p.write(buffer.as_slice()).expect("Failed to write");
         assert_eq!(d, d_p);
         assert_eq!(d_bytes.as_slice(), buffer.as_slice());
 
@@ -431,56 +432,62 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
-            vec![i.clone()],
-            vec![o.clone()],
-            vec![w.clone()],
-        ),
-        Transaction::script(
-            rng.next_u64(),
-            rng.next_u64(),
-            rng.next_u64(),
-            vec![],
-            rng.gen::<Witness>().into_inner(),
-            vec![i.clone()],
-            vec![o.clone()],
-            vec![w.clone()],
-        ),
-        Transaction::script(
-            rng.next_u64(),
-            rng.next_u64(),
             rng.next_u64(),
             rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::script(
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.next_u64(),
+            vec![],
+            rng.gen::<Witness>().into_inner(),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::script(
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.gen::<Witness>().into_inner(),
             vec![],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
+            rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
             vec![],
             vec![],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.next_u64(),
             vec![],
             vec![],
             vec![],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
+            rng.next_u64(),
             vec![],
             vec![],
             vec![],
@@ -488,6 +495,7 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::script(
+            rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
             rng.next_u64(),
@@ -499,39 +507,43 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
+            MAX_GAS_PER_TX,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
             vec![rng.gen()],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
             rng.next_u64(),
+            MAX_GAS_PER_TX,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
             vec![],
-            vec![i.clone()],
-            vec![o.clone()],
+            vec![i],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
             rng.next_u64(),
+            MAX_GAS_PER_TX,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
             vec![],
             vec![],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
             rng.next_u64(),
+            MAX_GAS_PER_TX,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -539,10 +551,11 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![w.clone()],
+            vec![w],
         ),
         Transaction::create(
             rng.next_u64(),
+            MAX_GAS_PER_TX,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -562,6 +575,7 @@ fn create_input_coin_data_offset() {
 
     let gas_price = 100;
     let gas_limit = 1000;
+    let byte_price = 20;
     let maturity = 10;
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
@@ -593,7 +607,7 @@ fn create_input_coin_data_offset() {
         rng.gen(),
         rng.next_u64(),
         predicate.clone(),
-        predicate_data.clone(),
+        predicate_data,
     );
 
     let mut buffer = vec![0u8; 4096];
@@ -608,6 +622,7 @@ fn create_input_coin_data_offset() {
                     let mut tx = Transaction::create(
                         gas_price,
                         gas_limit,
+                        byte_price,
                         maturity,
                         bytecode_witness_index,
                         salt,
@@ -621,7 +636,8 @@ fn create_input_coin_data_offset() {
                     tx_p.precompute_metadata();
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
-                    tx.read(buffer.as_mut_slice())
+                    let _ = tx
+                        .read(buffer.as_mut_slice())
                         .expect("Failed to serialize input");
 
                     let offset = tx
@@ -650,6 +666,7 @@ fn script_input_coin_data_offset() {
 
     let gas_price = 100;
     let gas_limit = 1000;
+    let byte_price = 20;
     let maturity = 10;
 
     let script: Vec<Vec<u8>> = vec![vec![], rng.gen::<Witness>().into_inner()];
@@ -684,7 +701,7 @@ fn script_input_coin_data_offset() {
         rng.gen(),
         rng.next_u64(),
         predicate.clone(),
-        predicate_data.clone(),
+        predicate_data,
     );
 
     let mut buffer = vec![0u8; 4096];
@@ -700,6 +717,7 @@ fn script_input_coin_data_offset() {
                         let mut tx = Transaction::script(
                             gas_price,
                             gas_limit,
+                            byte_price,
                             maturity,
                             script.clone(),
                             script_data.clone(),
@@ -712,7 +730,8 @@ fn script_input_coin_data_offset() {
                         tx_p.precompute_metadata();
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
-                        tx.read(buffer.as_mut_slice())
+                        let _ = tx
+                            .read(buffer.as_mut_slice())
                             .expect("Failed to serialize input");
 
                         let script_offset = Transaction::script_offset();

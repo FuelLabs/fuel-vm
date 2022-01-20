@@ -66,7 +66,7 @@ impl Output {
 
 impl Transaction {
     pub fn validate(&self, block_height: Word) -> Result<(), ValidationError> {
-        if self.gas_price() > MAX_GAS_PER_TX {
+        if self.gas_limit() > MAX_GAS_PER_TX {
             Err(ValidationError::TransactionGasLimit)?
         }
 
@@ -88,21 +88,32 @@ impl Transaction {
 
         let input_colors: Vec<&Color> = self.input_colors().collect();
         for input_color in input_colors.as_slice() {
+            // check for duplicate change outputs
             if self
                 .outputs()
                 .iter()
                 .filter_map(|output| match output {
-                    Output::Change { color, .. }
-                        if color != &Color::default() && input_color == &color =>
-                    {
-                        Some(())
-                    }
+                    Output::Change { color, .. } if input_color == &color => Some(()),
                     _ => None,
                 })
                 .count()
                 > 1
             {
                 Err(ValidationError::TransactionOutputChangeColorDuplicated)?
+            }
+
+            // check for duplicate variable outputs
+            if self
+                .outputs()
+                .iter()
+                .filter_map(|output| match output {
+                    Output::Variable { color, .. } if input_color == &color => Some(()),
+                    _ => None,
+                })
+                .count()
+                > 1
+            {
+                Err(ValidationError::TransactionOutputVariableColorDuplicated)?
             }
         }
 
@@ -181,7 +192,6 @@ impl Transaction {
                     }
                 }
 
-                let mut change_color_zero = false;
                 let mut contract_created = false;
                 for (index, output) in outputs.iter().enumerate() {
                     match output {
@@ -192,16 +202,8 @@ impl Transaction {
                             Err(ValidationError::TransactionCreateOutputVariable { index })?
                         }
 
-                        Output::Change { color, .. }
-                            if color == &Color::default() && change_color_zero =>
-                        {
-                            Err(ValidationError::TransactionCreateOutputChangeColorZero { index })?
-                        }
-                        Output::Change { color, .. } if color == &Color::default() => {
-                            change_color_zero = true
-                        }
-                        Output::Change { .. } => {
-                            Err(ValidationError::TransactionCreateOutputChangeColorNonZero {
+                        Output::Change { color, .. } if color != &Color::default() => {
+                            Err(ValidationError::TransactionCreateOutputChangeNotBaseAsset {
                                 index,
                             })?
                         }

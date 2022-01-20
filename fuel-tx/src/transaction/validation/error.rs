@@ -14,8 +14,7 @@ pub enum ValidationError {
     TransactionCreateInputContract { index: usize },
     TransactionCreateOutputContract { index: usize },
     TransactionCreateOutputVariable { index: usize },
-    TransactionCreateOutputChangeColorZero { index: usize },
-    TransactionCreateOutputChangeColorNonZero { index: usize },
+    TransactionCreateOutputChangeNotBaseAsset { index: usize },
     TransactionCreateOutputContractCreatedMultiple { index: usize },
     TransactionCreateBytecodeLen,
     TransactionCreateBytecodeWitnessIndex,
@@ -31,6 +30,7 @@ pub enum ValidationError {
     TransactionWitnessesMax,
     TransactionOutputChangeColorDuplicated,
     TransactionOutputChangeColorNotFound,
+    TransactionOutputVariableColorDuplicated,
 }
 
 impl fmt::Display for ValidationError {

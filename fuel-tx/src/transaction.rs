@@ -2,6 +2,7 @@ use fuel_asm::Opcode;
 use fuel_types::{Bytes32, Color, ContractId, Salt, Word};
 use itertools::Itertools;
 
+use fuel_types::bytes::SizedBytes;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::{io, mem};
@@ -22,6 +23,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
     + WORD_SIZE // Gas limit
+    + WORD_SIZE // Byte price
     + WORD_SIZE // Maturity
     + WORD_SIZE // Script size
     + WORD_SIZE // Script data size
@@ -33,6 +35,7 @@ const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
 const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
     + WORD_SIZE // Gas limit
+    + WORD_SIZE // Byte price
     + WORD_SIZE // Maturity
     + WORD_SIZE // Bytecode size
     + WORD_SIZE // Bytecode witness index
@@ -75,6 +78,7 @@ pub enum Transaction {
     Script {
         gas_price: Word,
         gas_limit: Word,
+        byte_price: Word,
         maturity: Word,
         receipts_root: Bytes32,
         script: Vec<u8>,
@@ -88,6 +92,7 @@ pub enum Transaction {
     Create {
         gas_price: Word,
         gas_limit: Word,
+        byte_price: Word,
         maturity: Word,
         bytecode_witness_index: u8,
         salt: Salt,
@@ -106,7 +111,7 @@ impl Default for Transaction {
         // The Return op is mandatory for the execution of any context
         let script = Opcode::RET(0x10).to_bytes().to_vec();
 
-        Transaction::script(0, 1000000, 0, script, vec![], vec![], vec![], vec![])
+        Transaction::script(0, 1000000, 0, 0, script, vec![], vec![], vec![], vec![])
     }
 }
 
@@ -114,6 +119,7 @@ impl Transaction {
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,
+        byte_price: Word,
         maturity: Word,
         script: Vec<u8>,
         script_data: Vec<u8>,
@@ -126,6 +132,7 @@ impl Transaction {
         Self::Script {
             gas_price,
             gas_limit,
+            byte_price,
             maturity,
             receipts_root,
             script,
@@ -140,6 +147,7 @@ impl Transaction {
     pub const fn create(
         gas_price: Word,
         gas_limit: Word,
+        byte_price: Word,
         maturity: Word,
         bytecode_witness_index: u8,
         salt: Salt,
@@ -151,6 +159,7 @@ impl Transaction {
         Self::Create {
             gas_price,
             gas_limit,
+            byte_price,
             maturity,
             bytecode_witness_index,
             salt,
@@ -207,6 +216,20 @@ impl Transaction {
         match self {
             Self::Script { gas_limit, .. } => *gas_limit = limit,
             Self::Create { gas_limit, .. } => *gas_limit = limit,
+        }
+    }
+
+    pub const fn byte_price(&self) -> Word {
+        match self {
+            Self::Script { byte_price, .. } => *byte_price,
+            Self::Create { byte_price, .. } => *byte_price,
+        }
+    }
+
+    pub fn set_byte_price(&mut self, price: Word) {
+        match self {
+            Self::Script { byte_price, .. } => *byte_price = price,
+            Self::Create { byte_price, .. } => *byte_price = price,
         }
     }
 
@@ -284,5 +307,91 @@ impl Transaction {
 
             _ => None,
         }
+    }
+
+    /// Used for accounting purposes when charging byte based fees
+    pub fn metered_bytes_size(&self) -> usize {
+        // Just use the default serialized size for now until
+        // the compressed representation for accounting purposes
+        // is defined. Witness data should still be excluded.
+        let witness_data = self
+            .witnesses()
+            .iter()
+            .map(|w| w.serialized_size())
+            .sum::<usize>();
+
+        self.serialized_size() - witness_data // Witness data size
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metered_data_excludes_witnesses() {
+        // test script
+        let script_with_no_witnesses = Transaction::Script {
+            gas_price: 0,
+            gas_limit: 0,
+            byte_price: 0,
+            maturity: 0,
+            receipts_root: Default::default(),
+            script: vec![],
+            script_data: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![],
+            metadata: None,
+        };
+        let script_with_witnesses = Transaction::Script {
+            gas_price: 0,
+            gas_limit: 0,
+            byte_price: 0,
+            maturity: 0,
+            receipts_root: Default::default(),
+            script: vec![],
+            script_data: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![[0u8; 64].to_vec().into()],
+            metadata: None,
+        };
+
+        assert_eq!(
+            script_with_witnesses.metered_bytes_size(),
+            script_with_no_witnesses.metered_bytes_size()
+        );
+        // test create
+        let create_with_no_witnesses = Transaction::Create {
+            gas_price: 0,
+            gas_limit: 0,
+            byte_price: 0,
+            maturity: 0,
+            bytecode_witness_index: 0,
+            salt: Default::default(),
+            static_contracts: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![],
+            metadata: None,
+        };
+        let create_with_witnesses = Transaction::Create {
+            gas_price: 0,
+            gas_limit: 0,
+            byte_price: 0,
+            maturity: 0,
+            bytecode_witness_index: 0,
+            salt: Default::default(),
+            static_contracts: vec![],
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![[0u8; 64].to_vec().into()],
+            metadata: None,
+        };
+        assert_eq!(
+            create_with_witnesses.metered_bytes_size(),
+            create_with_no_witnesses.metered_bytes_size()
+        );
     }
 }

@@ -7,12 +7,16 @@ use crate::common::{Bytes32, Position, Subtree};
 pub enum MerkleTreeError {
     #[error("proof index {0} is not valid")]
     InvalidProofIndex(u64),
+
+    #[error("cannot load node with key {0}; the key is not found in storage")]
+    LoadError(u64),
 }
 
 type ProofSet = Vec<Bytes32>;
+type StorageType<StorageError> = dyn Storage<u64, Node, Error = StorageError>;
 
 pub struct MerkleTree<'storage, StorageError> {
-    storage: &'storage mut dyn Storage<u64, Node, Error = StorageError>,
+    storage: &'storage mut StorageType<StorageError>,
     head: Option<Box<Subtree<Node>>>,
     leaves_count: u64,
 }
@@ -21,12 +25,27 @@ impl<'storage, StorageError> MerkleTree<'storage, StorageError>
 where
     StorageError: std::error::Error + 'static,
 {
-    pub fn new(storage: &'storage mut dyn Storage<u64, Node, Error = StorageError>) -> Self {
+    pub fn new(storage: &'storage mut StorageType<StorageError>) -> Self {
         Self {
             storage,
             head: None,
             leaves_count: 0,
         }
+    }
+
+    pub fn load(
+        storage: &'storage mut StorageType<StorageError>,
+        leaves_count: u64,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut tree = Self {
+            storage,
+            head: None,
+            leaves_count,
+        };
+
+        tree.build()?;
+
+        Ok(tree)
     }
 
     pub fn root(&mut self) -> Result<Bytes32, Box<dyn std::error::Error>> {
@@ -38,6 +57,7 @@ where
 
         Ok(root)
     }
+
     pub fn prove(
         &mut self,
         proof_index: u64,
@@ -67,13 +87,13 @@ where
             proof_set.push(*node.hash());
         }
 
-        Ok((self.root()?, proof_set))
+        let root = *root_node.hash();
+        Ok((root, proof_set))
     }
 
     pub fn push(&mut self, data: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node)?;
-
         let next = self.head.take();
         let head = Box::new(Subtree::<Node>::new(node, next));
         self.head = Some(head);
@@ -87,6 +107,23 @@ where
     //
     // PRIVATE
     //
+
+    fn build(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let keys = (0..self.leaves_count).map(|i| Position::from_leaf_index(i).in_order_index());
+        for key in keys {
+            let node = self
+                .storage
+                .get(&key)?
+                .ok_or(MerkleTreeError::LoadError(key))?
+                .into_owned();
+            let next = self.head.take();
+            let head = Box::new(Subtree::<Node>::new(node, next));
+            self.head = Some(head);
+            self.join_all_subtrees()?;
+        }
+
+        Ok(())
+    }
 
     fn root_node(&mut self) -> Result<Option<Node>, Box<dyn std::error::Error>> {
         let root_node = match self.head {
@@ -168,10 +205,10 @@ mod test {
         //       03              11
         //      /  \            /  \
         //     /    \          /    \
-        //   01      05       09     \
-        //  /  \    /  \     /  \     \
-        // 00  02  04  06   08  10    12
-        // 00  01  02  03   04  05    06
+        //   01      05      09      \
+        //  /  \    /  \    /  \      \
+        // 00  02  04  06  08  10     12
+        // 00  01  02  03  04  05     06
 
         let leaf_0 = leaf_sum(&data[0]);
         let leaf_1 = leaf_sum(&data[1]);
@@ -208,6 +245,47 @@ mod test {
         assert_eq!(s_node_5.hash(), &node_5);
         assert_eq!(s_node_9.hash(), &node_9);
         assert_eq!(s_node_3.hash(), &node_3);
+    }
+
+    #[test]
+    fn load_returns_a_valid_tree() {
+        const LEAVES_COUNT: u64 = 7;
+
+        let mut storage_map = StorageMap::<u64, Node>::new();
+
+        let root_1 = {
+            let mut tree = MT::new(&mut storage_map);
+            let data = &TEST_DATA[0..LEAVES_COUNT as usize];
+            for datum in data.iter() {
+                let _ = tree.push(datum);
+            }
+            tree.root().unwrap()
+        };
+
+        let root_2 = {
+            let mut tree = MT::load(&mut storage_map, LEAVES_COUNT).unwrap();
+            tree.root().unwrap()
+        };
+
+        assert_eq!(root_1, root_2);
+    }
+
+    #[test]
+    fn load_returns_a_load_error_if_the_storage_is_not_valid_for_the_leaves_count() {
+        let mut storage_map = StorageMap::<u64, Node>::new();
+
+        {
+            let mut tree = MT::new(&mut storage_map);
+            let data = &TEST_DATA[0..5];
+            for datum in data.iter() {
+                let _ = tree.push(datum);
+            }
+        }
+
+        {
+            let tree = MT::load(&mut storage_map, 10);
+            assert!(tree.is_err());
+        }
     }
 
     #[test]
@@ -255,10 +333,10 @@ mod test {
         //       03              11
         //      /  \            /  \
         //     /    \          /    \
-        //   01      05       09     \
-        //  /  \    /  \     /  \     \
-        // 00  02  04  06   08  10    12
-        // 00  01  02  03   04  05    06
+        //   01      05      09      \
+        //  /  \    /  \    /  \      \
+        // 00  02  04  06  08  10     12
+        // 00  01  02  03  04  05     06
 
         let leaf_0 = leaf_sum(&data[0]);
         let leaf_1 = leaf_sum(&data[1]);
@@ -500,10 +578,10 @@ mod test {
         //       03              11
         //      /  \            /  \
         //     /    \          /    \
-        //   01      05       09     \
-        //  /  \    /  \     /  \     \
-        // 00  02  04  06   08  10    12
-        // 00  01  02  03   04  05    06
+        //   01      05      09      \
+        //  /  \    /  \    /  \      \
+        // 00  02  04  06  08  10     12
+        // 00  01  02  03  04  05     06
 
         let leaf_0 = leaf_sum(&data[0]);
         let leaf_1 = leaf_sum(&data[1]);

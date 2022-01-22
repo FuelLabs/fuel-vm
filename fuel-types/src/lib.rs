@@ -3,11 +3,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 mod types;
+
+pub use types::*;
 
 /// Word-aligned bytes serialization functions.
 pub mod bytes;
-pub use types::*;
 
 /// Register ID type
 pub type RegisterId = usize;

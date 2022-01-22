@@ -1,6 +1,13 @@
 use crate::Word;
 
-const WORD_SIZE: usize = core::mem::size_of::<Word>();
+#[cfg(feature = "std")]
+pub use use_std::*;
+
+#[cfg(feature = "alloc")]
+pub use use_alloc::*;
+
+/// Memory size of a [`Word`]
+pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
 /// Define the amount of bytes for a serialization implementation.
 pub trait SizedBytes {
@@ -174,20 +181,24 @@ pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
     *ptr
 }
 
-#[cfg(feature = "std")]
-pub use vec_io::*;
-
-#[cfg(feature = "std")]
-mod vec_io {
+#[cfg(feature = "alloc")]
+mod use_alloc {
     use super::*;
-    use std::convert::TryFrom;
-    use std::io;
+
+    use alloc::vec::Vec;
 
     /// Auto-trait to create variable sized vectors out of [`SizedBytes`] implementations.
     pub trait SerializableVec: SizedBytes {
         /// Create a variable size vector of bytes from the instance.
         fn to_bytes(&mut self) -> Vec<u8>;
     }
+}
+
+#[cfg(feature = "std")]
+mod use_std {
+    use super::*;
+
+    use std::io;
 
     /// Describe the ability to deserialize the type from sets of bytes.
     pub trait Deserializable: Sized {
@@ -385,47 +396,5 @@ mod vec_io {
         <[u8; N]>::try_from(&buf[..N])
             .map_err(|_| eof())
             .map(|array| (array, &buf[N..]))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn padded_len_to_fit_word_len() {
-        assert_eq!(WORD_SIZE * 0, padded_len(&[]));
-        assert_eq!(WORD_SIZE * 1, padded_len(&[0]));
-        assert_eq!(WORD_SIZE * 1, padded_len(&[0; WORD_SIZE]));
-        assert_eq!(WORD_SIZE * 2, padded_len(&[0; WORD_SIZE + 1]));
-        assert_eq!(WORD_SIZE * 2, padded_len(&[0; WORD_SIZE * 2]));
-    }
-
-    #[test]
-    fn store_restore_number_unchecked_works() {
-        fn store_restore<T>(n: T, x: usize, f: unsafe fn(&[u8]) -> (T, &[u8]))
-        where
-            T: core::fmt::Debug + Copy + Eq,
-            Word: From<T>,
-        {
-            let mut buffer = [0u8; 255];
-
-            assert_eq!(0, store_number_unchecked(&mut buffer[..WORD_SIZE], n).len());
-            assert_eq!(n, unsafe { f(&buffer).0 });
-            assert_eq!(0, unsafe { f(&buffer[..WORD_SIZE]).1.len() });
-
-            assert_eq!(
-                x,
-                store_number_unchecked(&mut buffer[..WORD_SIZE + x], n).len()
-            );
-            assert_eq!(n, unsafe { f(&buffer).0 });
-            assert_eq!(x, unsafe { f(&buffer[..WORD_SIZE + x]).1.len() });
-        }
-
-        store_restore::<Word>(65, 5, restore_number_unchecked);
-        store_restore::<Word>(65, 5, restore_word_unchecked);
-        store_restore::<u8>(65, 5, restore_u8_unchecked);
-        store_restore::<u16>(65, 5, restore_u16_unchecked);
-        store_restore::<u32>(65, 5, restore_u32_unchecked);
     }
 }

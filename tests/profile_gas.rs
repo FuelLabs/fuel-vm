@@ -2,16 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
 use fuel_vm::profiler::{ProfileReceiver, ProfilingData};
 
 #[test]
 fn profile_gas() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
-
     let gas_price = 1;
     let gas_limit = 1_000;
     let byte_price = 0;
@@ -22,7 +16,7 @@ fn profile_gas() {
 
     let case_out_of_gas = 1_000;
     let mut rounds = [2, 12, 22, case_out_of_gas].into_iter().map(|count| {
-        let contract_code: Vec<Opcode> = vec![
+        let script_code: Vec<Opcode> = vec![
             Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
             Opcode::ORI(reg_a, reg_a, count), // r[a] := count
             Opcode::SUBI(reg_a, reg_a, 1),    // r[a] -= count  <-|
@@ -30,23 +24,15 @@ fn profile_gas() {
             Opcode::RET(REG_ONE),
         ];
 
-        let program: Witness = contract_code.clone().into_iter().collect::<Vec<u8>>().into();
-        let contract = Contract::from(program.as_ref());
-        let contract_root = contract.root();
-        let contract_id = contract.id(&salt, &contract_root);
-
-        let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
-        let output = Output::contract(0, rng.gen(), rng.gen());
-
         let tx_deploy = Transaction::script(
             gas_price,
             gas_limit,
             byte_price,
             maturity,
-            contract_code.clone().into_iter().collect(),
+            script_code.into_iter().collect(),
             vec![],
-            vec![input],
-            vec![output],
+            vec![],
+            vec![],
             vec![],
         );
 

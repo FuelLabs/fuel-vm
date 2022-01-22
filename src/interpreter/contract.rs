@@ -81,7 +81,7 @@ where
             // debit funding source (source contract balance)
             self.balance_decrease(&source_contract, &asset_id, amount)?;
         } else {
-            // debit external funding source (i.e. UTXOs)
+            // debit external funding source (i.e. free balance)
             self.external_color_balance_sub(&asset_id, amount)?;
         }
         // credit destination contract

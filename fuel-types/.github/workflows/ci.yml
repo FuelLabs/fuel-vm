@@ -46,12 +46,6 @@ jobs:
         command: fmt
         args: --all --verbose -- --check
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
-
     - name: Build no-std
       uses: actions-rs/cargo@v1
       with:
@@ -64,11 +58,23 @@ jobs:
         command: build
         args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
 
-    - name: Run tests
+    - name: Build no-std alloc
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
+
+    - name: Run tests all features
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --features random
+        args: --verbose --all-features
+
+    - name: Run tests serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features serde-types
 
     - name: Run tests no-std
       uses: actions-rs/cargo@v1
@@ -76,11 +82,23 @@ jobs:
         command: test
         args: --verbose --no-default-features
 
+    - name: Run tests no-std alloc
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features --features alloc
+
     - name: Run tests serde no-std
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --verbose --no-default-features --features serde-types-minimal
+
+    - name: Run tests serde no-std alloc
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features --features alloc-serde
 
     - name: Run tests serde
       uses: actions-rs/cargo@v1

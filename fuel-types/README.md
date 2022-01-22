@@ -10,6 +10,8 @@ Rust implementation of the atomic types for the [FuelVM](https://github.com/Fuel
 ## Compile features
 
 - `std`: Unless set, the crate will link to the core-crate instead of the std-crate. More info [here](https://docs.rust-embedded.org/book/intro/no-std.html).
+- `alloc`: Use [Vec](https://doc.rust-lang.org/alloc/vec/struct.Vec.html) from [alloc](https://doc.rust-lang.org/alloc/index.html) for `no-std`.
+- `alloc-serde`: Enable `alloc`, `serde/alloc` and `serde-types-minimal`.
 - `random`: Implement `no-std` [rand](https://crates.io/crates/rand) features for the provided types.
 - `serde-types`: Add support for [serde](https://crates.io/crates/serde) for the provided types.
 - `serde-types-minimal`: Add support for `no-std` [serde](https://crates.io/crates/serde) for the provided types.

@@ -46,8 +46,8 @@ where
     }
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(32);
-        let (cx, of) = c.overflowing_add(32);
+        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
+        let (cx, of) = c.overflowing_add(Color::LEN as Word);
         let overflow = overflow || of;
 
         if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
@@ -100,8 +100,8 @@ where
     }
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(32);
-        let (dx, of) = d.overflowing_add(32);
+        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
+        let (dx, of) = d.overflowing_add(Color::LEN as Word);
         let overflow = overflow || of;
         let out_idx = b as usize;
 

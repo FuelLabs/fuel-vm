@@ -132,7 +132,7 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
         .coin_input(color, input_amount)
         .change_output(color)
         .change_output(color)
-        .execute();
+        .execute_get_outputs();
 
     let mut total_change = 0;
     for output in outputs {
@@ -146,8 +146,6 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
 
 #[test]
 fn change_is_reduced_by_external_transfer() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
     let input_amount = 1000;
     let transfer_amount: Word = 400;
     let gas_price = 0;
@@ -155,18 +153,11 @@ fn change_is_reduced_by_external_transfer() {
     let byte_price = 0;
     let asset_id = Color::default();
 
-    // setup state for test
-    let mut storage = MemoryStorage::default();
     // simple dummy contract for transferring value to
-    let contract_code = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
-    let contract = Contract::from(contract_code.as_ref());
-    let salt: Salt = rng.gen();
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-    storage.storage_contract_insert(&contract_id, &contract).unwrap();
-    storage
-        .storage_contract_root_insert(&contract_id, &salt, &contract_root)
-        .unwrap();
+    let contract_code = vec![Opcode::RET(REG_ONE)];
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context.setup_contract(contract_code, None).contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -191,7 +182,7 @@ fn change_is_reduced_by_external_transfer() {
         .collect();
 
     // execute and get change
-    let change = TestBuilder::new(2322u64)
+    let change = test_context
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -208,8 +199,6 @@ fn change_is_reduced_by_external_transfer() {
 
 #[test]
 fn change_is_not_reduced_by_external_transfer_on_revert() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
     let input_amount = 1000;
     // attempt overspend to cause a revert
     let transfer_amount: Word = input_amount + 100;
@@ -219,17 +208,11 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let asset_id = Color::default();
 
     // setup state for test
-    let mut storage = MemoryStorage::default();
     // simple dummy contract for transferring value to
-    let contract_code = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
-    let contract = Contract::from(contract_code.as_ref());
-    let salt: Salt = rng.gen();
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-    storage.storage_contract_insert(&contract_id, &contract).unwrap();
-    storage
-        .storage_contract_root_insert(&contract_id, &salt, &contract_root)
-        .unwrap();
+    let contract_code = vec![Opcode::RET(REG_ONE)];
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context.setup_contract(contract_code, None).contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -254,7 +237,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
         .collect();
 
     // execute and get change
-    let change = TestBuilder::new(2322u64)
+    let change = test_context
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -321,7 +304,7 @@ fn variable_output_set_by_external_transfer_out() {
         .change_output(asset_id)
         .script(script)
         .script_data(script_data)
-        .execute();
+        .execute_get_outputs();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, to, color }
@@ -389,7 +372,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         .change_output(asset_id)
         .script(script)
         .script_data(script_data)
-        .execute();
+        .execute_get_outputs();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
@@ -418,8 +401,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let owner: Address = rng.gen();
 
     // setup state for test
-    let mut storage = MemoryStorage::default();
-    let contract_code: Witness = [
+    let contract_code = vec![
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
@@ -432,23 +414,11 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         Opcode::ADDI(0x13, REG_ZERO, 0 as Immediate12),
         Opcode::TRO(0x12, 0x13, 0x10, 0x11),
         Opcode::RET(REG_ONE),
-    ]
-    .iter()
-    .copied()
-    .collect::<Vec<u8>>()
-    .into();
-    let contract = Contract::from(contract_code.as_ref());
-    let salt: Salt = rng.gen();
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-    storage.storage_contract_insert(&contract_id, &contract).unwrap();
-    storage
-        .storage_contract_root_insert(&contract_id, &salt, &contract_root)
-        .unwrap();
-    // set internal contract balance
-    storage
-        .merkle_contract_color_balance_insert(&contract_id, &asset_id, internal_balance)
-        .unwrap();
+    ];
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context
+        .setup_contract(contract_code, Some((asset_id, internal_balance)))
+        .contract_id;
 
     let (script, data_offset) = script_with_data_offset!(
         data_offset,
@@ -476,8 +446,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
-        .storage(storage)
+    let outputs = test_context
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -486,7 +455,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .contract_output(&contract_id)
         .script(script)
         .script_data(script_data)
-        .execute();
+        .execute_get_outputs();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, to, color }
@@ -511,8 +480,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let owner: Address = rng.gen();
 
     // setup state for test
-    let mut storage = MemoryStorage::default();
-    let contract_code: Witness = [
+    let contract_code = vec![
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
@@ -525,23 +493,12 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         Opcode::ADDI(0x13, REG_ZERO, 0 as Immediate12),
         Opcode::TRO(0x12, 0x13, 0x10, 0x11),
         Opcode::RET(REG_ONE),
-    ]
-    .iter()
-    .copied()
-    .collect::<Vec<u8>>()
-    .into();
-    let contract = Contract::from(contract_code.as_ref());
-    let salt: Salt = rng.gen();
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-    storage.storage_contract_insert(&contract_id, &contract).unwrap();
-    storage
-        .storage_contract_root_insert(&contract_id, &salt, &contract_root)
-        .unwrap();
-    // set internal contract balance
-    storage
-        .merkle_contract_color_balance_insert(&contract_id, &asset_id, internal_balance)
-        .unwrap();
+    ];
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context
+        .setup_contract(contract_code, Some((asset_id, internal_balance)))
+        .contract_id;
 
     let (script, data_offset) = script_with_data_offset!(
         data_offset,
@@ -569,8 +526,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
-        .storage(storage)
+    let outputs = test_context
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -579,7 +535,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         .contract_output(&contract_id)
         .script(script)
         .script_data(script_data)
-        .execute();
+        .execute_get_outputs();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0

@@ -1,7 +1,7 @@
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use fuel_vm::script_with_data_offset;
-use fuel_vm::util::test_helpers::{get_contract_balance, TestBuilder};
+use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -232,22 +232,10 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     let transfer_amount = 500;
     let initial_internal_balance = 1_000_000;
 
-    // setup state for test
-    let mut storage = MemoryStorage::default();
+    let mut test_context = TestBuilder::new(2322u64);
+    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
 
-    let destination_contract = Contract::from(vec![]);
-    let salt: Salt = rng.gen();
-    let dest_contract_root = destination_contract.root();
-    let dest_contract_id = destination_contract.id(&salt, &dest_contract_root);
-
-    storage
-        .storage_contract_insert(&dest_contract_id, &destination_contract)
-        .unwrap();
-    storage
-        .storage_contract_root_insert(&dest_contract_id, &salt, &dest_contract_root)
-        .unwrap();
-
-    let program: Witness = vec![
+    let program = vec![
         // load amount of tokens
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
@@ -258,24 +246,10 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
         Opcode::TR(0x12, 0x10, 0x11),
         Opcode::RET(REG_ONE),
-    ]
-    .iter()
-    .copied()
-    .collect::<Vec<u8>>()
-    .into();
-    let sender_contract = Contract::from(program.as_ref());
-    let salt: Salt = rng.gen();
-    let sender_contract_root = sender_contract.root();
-    let sender_contract_id = sender_contract.id(&salt, &sender_contract_root);
-    storage
-        .storage_contract_insert(&sender_contract_id, &sender_contract)
-        .unwrap();
-    storage
-        .storage_contract_root_insert(&sender_contract_id, &salt, &sender_contract_root)
-        .unwrap();
-    storage
-        .merkle_contract_color_balance_insert(&sender_contract_id, &asset_id, initial_internal_balance)
-        .unwrap();
+    ];
+    let sender_contract_id = test_context
+        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .contract_id;
 
     let (script_ops, offset) = script_with_data_offset!(
         data_offset,
@@ -301,15 +275,14 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     .copied()
     .collect();
 
-    let mut client = MemoryClient::from(storage);
-
     // assert initial balance state
-    let dest_balance = get_contract_balance(&mut client, &dest_contract_id, &asset_id);
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = get_contract_balance(&mut client, &sender_contract_id, &asset_id);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
-    let transfer_tx = TestBuilder::new(2322u64)
+    // initiate the transfer between contracts
+    let transfer_tx = test_context
         .gas_limit(gas_limit)
         .gas_price(0)
         .byte_price(0)
@@ -319,15 +292,15 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         .contract_output(&dest_contract_id)
         .script(script_ops)
         .script_data(script_data)
-        .build();
+        .execute();
 
-    // Execute transfer contract
-    client.transact(transfer_tx);
+    // Ensure transfer tx processed correctly
+    assert!(!transfer_tx.should_revert());
 
     // verify balance transfer occurred
-    let dest_balance = get_contract_balance(&mut client, &dest_contract_id, &asset_id);
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, transfer_amount);
-    let source_balance = get_contract_balance(&mut client, &sender_contract_id, &asset_id);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance - transfer_amount);
 }
 
@@ -338,24 +311,13 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     let gas_limit = 1_000_000;
     let asset_id: Color = rng.gen();
     let transfer_amount = 500;
+    // set initial internal balance to < transfer amount
     let initial_internal_balance = 100;
 
-    // setup state for test
-    let mut storage = MemoryStorage::default();
+    let mut test_context = TestBuilder::new(2322u64);
+    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
 
-    let destination_contract = Contract::from(vec![]);
-    let salt: Salt = rng.gen();
-    let dest_contract_root = destination_contract.root();
-    let dest_contract_id = destination_contract.id(&salt, &dest_contract_root);
-
-    storage
-        .storage_contract_insert(&dest_contract_id, &destination_contract)
-        .unwrap();
-    storage
-        .storage_contract_root_insert(&dest_contract_id, &salt, &dest_contract_root)
-        .unwrap();
-
-    let program: Witness = vec![
+    let program = vec![
         // load amount of tokens
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
@@ -366,24 +328,11 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
         Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
         Opcode::TR(0x12, 0x10, 0x11),
         Opcode::RET(REG_ONE),
-    ]
-    .iter()
-    .copied()
-    .collect::<Vec<u8>>()
-    .into();
-    let sender_contract = Contract::from(program.as_ref());
-    let salt: Salt = rng.gen();
-    let sender_contract_root = sender_contract.root();
-    let sender_contract_id = sender_contract.id(&salt, &sender_contract_root);
-    storage
-        .storage_contract_insert(&sender_contract_id, &sender_contract)
-        .unwrap();
-    storage
-        .storage_contract_root_insert(&sender_contract_id, &salt, &sender_contract_root)
-        .unwrap();
-    storage
-        .merkle_contract_color_balance_insert(&sender_contract_id, &asset_id, initial_internal_balance)
-        .unwrap();
+    ];
+
+    let sender_contract_id = test_context
+        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .contract_id;
 
     let (script_ops, offset) = script_with_data_offset!(
         data_offset,
@@ -409,15 +358,13 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     .copied()
     .collect();
 
-    let mut client = MemoryClient::from(storage);
-
     // assert initial balance state
-    let dest_balance = get_contract_balance(&mut client, &dest_contract_id, &asset_id);
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = get_contract_balance(&mut client, &sender_contract_id, &asset_id);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
-    let transfer_tx = TestBuilder::new(2322u64)
+    let transfer_tx = test_context
         .gas_limit(gas_limit)
         .gas_price(0)
         .byte_price(0)
@@ -427,14 +374,14 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
         .contract_output(&dest_contract_id)
         .script(script_ops)
         .script_data(script_data)
-        .build();
+        .execute();
 
-    // Execute transfer contract
-    client.transact(transfer_tx);
+    // Ensure transfer tx reverts since transfer amount is too large
+    assert!(transfer_tx.should_revert());
 
     // verify balance transfer did not occur
-    let dest_balance = get_contract_balance(&mut client, &dest_contract_id, &asset_id);
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = get_contract_balance(&mut client, &sender_contract_id, &asset_id);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 }

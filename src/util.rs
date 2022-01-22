@@ -56,13 +56,20 @@ macro_rules! script_with_data_offset {
 /// Testing utilities
 pub mod test_helpers {
     use crate::consts::{REG_ONE, REG_ZERO};
-    use crate::prelude::{MemoryClient, MemoryStorage, Transactor};
+    use crate::prelude::{InterpreterStorage, MemoryClient, MemoryStorage, Transactor};
+    use crate::state::StateTransition;
     use fuel_asm::Opcode;
     use fuel_tx::{Input, Output, Transaction, Witness};
-    use fuel_types::{Color, ContractId, Word};
+    use fuel_types::{Color, ContractId, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
+
+    pub struct CreatedContract {
+        pub tx: Transaction,
+        pub contract_id: ContractId,
+        pub salt: Salt,
+    }
 
     pub struct TestBuilder {
         rng: StdRng,
@@ -226,17 +233,69 @@ pub mod test_helpers {
                 .build()
         }
 
-        pub fn execute(&mut self) -> Vec<Output> {
-            let tx = self.build();
+        pub fn setup_contract(
+            &mut self,
+            contract: Vec<Opcode>,
+            initial_balance: Option<(Color, Word)>,
+        ) -> CreatedContract {
+            let salt: Salt = self.rng.gen();
+            let program: Witness = contract.iter().copied().collect::<Vec<u8>>().into();
+            let contract = crate::contract::Contract::from(program.as_ref());
+            let contract_root = contract.root();
+            let contract_id = contract.id(&salt, &contract_root);
+
+            let tx = Transaction::create(
+                self.gas_price,
+                self.gas_limit,
+                self.byte_price,
+                0,
+                0,
+                salt,
+                vec![],
+                vec![],
+                vec![Output::contract_created(contract_id)],
+                vec![program],
+            );
+
+            // setup a contract in current test state
+            let state = self.execute_tx(tx);
+
+            // set initial contract balance
+            if let Some((asset_id, amount)) = initial_balance {
+                self.storage
+                    .merkle_contract_color_balance_insert(&contract_id, &asset_id, amount)
+                    .unwrap();
+            }
+
+            CreatedContract {
+                tx: state.tx().clone(),
+                contract_id,
+                salt,
+            }
+        }
+
+        fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
             let mut client = MemoryClient::new(self.storage.clone());
             client.transact(tx);
+            let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
-            let outputs = txtor.state_transition().unwrap().tx().outputs();
-            outputs.to_vec()
+            let state = txtor.state_transition().unwrap().into_owned();
+            self.storage = storage;
+            state
+        }
+
+        /// Build test tx and execute it
+        pub fn execute(&mut self) -> StateTransition {
+            let tx = self.build();
+            self.execute_tx(tx)
+        }
+
+        pub fn execute_get_outputs(&mut self) -> Vec<Output> {
+            self.execute().tx().outputs().to_vec()
         }
 
         pub fn execute_get_change(&mut self, find_color: Color) -> Word {
-            let outputs = self.execute();
+            let outputs = self.execute_get_outputs();
             let change = outputs.into_iter().find_map(|output| {
                 if let Output::Change { amount, color, .. } = output {
                     if &color == &find_color {
@@ -250,11 +309,12 @@ pub mod test_helpers {
             });
             change.expect(format!("no change matching color {:x} was found", &find_color).as_str())
         }
-    }
 
-    pub fn get_contract_balance(client: &mut MemoryClient, contract_id: &ContractId, asset_id: &Color) -> Word {
-        let tx = TestBuilder::build_get_balance_tx(contract_id, asset_id);
-        let receipts = client.transact(tx);
-        receipts[0].ra().expect("Balance expected")
+        pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &Color) -> Word {
+            let tx = TestBuilder::build_get_balance_tx(contract_id, asset_id);
+            let state = self.execute_tx(tx);
+            let receipts = state.receipts();
+            receipts[0].ra().expect("Balance expected")
+        }
     }
 }

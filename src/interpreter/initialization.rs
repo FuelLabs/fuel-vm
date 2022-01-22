@@ -40,7 +40,7 @@ where
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         // Set initial unused balances
-        let free_balances = Self::initial_free_balances(&mut tx)?;
+        let free_balances = Self::initial_free_balances(&tx)?;
         for (color, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
             // push color
             self.push_stack(color.as_ref())
@@ -107,7 +107,7 @@ where
             Output::Withdrawal { color, amount, .. } => Some((color, amount)),
             _ => None,
         }) {
-            let balance = balances.get_mut(&color).unwrap();
+            let balance = balances.get_mut(color).unwrap();
             *balance = balance
                 .checked_sub(*amount)
                 .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;

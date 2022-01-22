@@ -30,7 +30,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(InterpreterError::Panic(PanicReason::ContractNotFound))?
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -43,7 +43,7 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))?;
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
                 }
 
                 self.storage
@@ -87,8 +87,21 @@ where
             }
 
             Transaction::Script {
-                gas_limit, gas_price, ..
+                gas_limit,
+                gas_price,
+                inputs,
+                ..
             } => {
+                if inputs.iter().any(|input| {
+                    if let Input::Contract { contract_id, .. } = input {
+                        !self.check_contract_exists(contract_id).unwrap_or(false)
+                    } else {
+                        false
+                    }
+                }) {
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
+                }
+
                 let gas_limit = *gas_limit;
                 let gas_price = *gas_price;
                 let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;

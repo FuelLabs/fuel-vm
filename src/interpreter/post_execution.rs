@@ -25,9 +25,9 @@ where
                 let refund = if *color == Color::default() { unused_gas_cost } else { 0 };
 
                 if revert {
-                    *amount = init_balances[&color] + refund;
+                    *amount = init_balances[color] + refund;
                 } else {
-                    let balance = self.external_color_balance(&color)?;
+                    let balance = self.external_color_balance(color)?;
                     *amount = balance + refund;
                 }
             }

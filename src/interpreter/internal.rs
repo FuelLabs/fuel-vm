@@ -108,10 +108,7 @@ impl<S> Interpreter<S> {
 
     /// Retrieve the unspent balance for a given color
     pub(crate) fn external_color_balance(&self, color: &Color) -> Result<Word, RuntimeError> {
-        let offset = *self
-            .unused_balance_index
-            .get(&color)
-            .ok_or(PanicReason::ColorNotFound)?;
+        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
@@ -126,10 +123,7 @@ impl<S> Interpreter<S> {
             return Ok(());
         }
 
-        let offset = *self
-            .unused_balance_index
-            .get(&color)
-            .ok_or(PanicReason::ColorNotFound)?;
+        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
 
         let balance_memory = &mut self.memory[offset..offset + WORD_SIZE];
 

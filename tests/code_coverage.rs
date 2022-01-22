@@ -2,26 +2,21 @@ use std::sync::{Arc, Mutex};
 
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
 use fuel_vm::profiler::{InstructionLocation, ProfileReceiver, ProfilingData};
 
 const HALF_WORD_SIZE: u64 = 4;
 
 #[test]
 fn code_coverage() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
-
     let gas_price = 1;
     let gas_limit = 1_000;
+    let byte_price = 0;
     let maturity = 0;
 
     // Deploy contract with loops
     let reg_a = 0x20;
 
-    let contract_code: Vec<Opcode> = vec![
+    let script_code: Vec<Opcode> = vec![
         Opcode::JNEI(REG_ZERO, REG_ONE, 2),  // Skip next
         Opcode::XOR(reg_a, reg_a, reg_a),    // Skipped
         Opcode::JNEI(REG_ZERO, REG_ZERO, 2), // Do not skip
@@ -29,22 +24,15 @@ fn code_coverage() {
         Opcode::RET(REG_ONE),
     ];
 
-    let program: Witness = contract_code.clone().into_iter().collect::<Vec<u8>>().into();
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output = Output::contract(0, rng.gen(), rng.gen());
-
-    let tx_deploy = Transaction::script(
+    let tx_script = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
-        contract_code.clone().into_iter().collect(),
+        script_code.into_iter().collect(),
         vec![],
-        vec![input],
-        vec![output],
+        vec![],
+        vec![],
         vec![],
     );
 
@@ -68,7 +56,7 @@ fn code_coverage() {
             .into(),
     );
 
-    let receipts = client.transact(tx_deploy);
+    let receipts = client.transact(tx_script);
 
     if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
         assert!(result.is_success());

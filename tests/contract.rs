@@ -1,5 +1,7 @@
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
+use fuel_vm::script_with_data_offset;
+use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -13,6 +15,7 @@ fn mint_burn() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -43,6 +46,7 @@ fn mint_burn() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -68,6 +72,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         vec![],
@@ -84,6 +89,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -105,6 +111,7 @@ fn mint_burn() {
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script_check_balance.iter().copied().collect(),
         vec![],
@@ -119,6 +126,7 @@ fn mint_burn() {
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
@@ -145,6 +153,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -174,6 +183,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -196,6 +206,7 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -210,4 +221,167 @@ fn mint_burn() {
         .ra()
         .expect("Balance expected");
     assert_eq!(0, storage_balance);
+}
+
+#[test]
+fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let gas_limit = 1_000_000;
+    let asset_id: Color = rng.gen();
+    let transfer_amount = 500;
+    let initial_internal_balance = 1_000_000;
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
+
+    let program = vec![
+        // load amount of tokens
+        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        Opcode::LW(0x10, 0x10, 0),
+        // load color
+        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        Opcode::LW(0x11, 0x11, 0),
+        // load contract id
+        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        Opcode::TR(0x12, 0x10, 0x11),
+        Opcode::RET(REG_ONE),
+    ];
+    let sender_contract_id = test_context
+        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .contract_id;
+
+    let (script_ops, offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load call data to 0x10
+            Opcode::ADDI(0x10, REG_ZERO, data_offset + 64),
+            // load gas forward to 0x11
+            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            // call the transfer contract
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::RET(REG_ONE),
+        ]
+    );
+    let script_data: Vec<u8> = [
+        asset_id.as_ref(),
+        dest_contract_id.as_ref(),
+        Call::new(sender_contract_id, transfer_amount, offset as Word)
+            .to_bytes()
+            .as_slice(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
+
+    // assert initial balance state
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
+    assert_eq!(dest_balance, 0);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    assert_eq!(source_balance, initial_internal_balance);
+
+    // initiate the transfer between contracts
+    let transfer_tx = test_context
+        .gas_limit(gas_limit)
+        .gas_price(0)
+        .byte_price(0)
+        .contract_input(sender_contract_id)
+        .contract_input(dest_contract_id)
+        .contract_output(&sender_contract_id)
+        .contract_output(&dest_contract_id)
+        .script(script_ops)
+        .script_data(script_data)
+        .execute();
+
+    // Ensure transfer tx processed correctly
+    assert!(!transfer_tx.should_revert());
+
+    // verify balance transfer occurred
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
+    assert_eq!(dest_balance, transfer_amount);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    assert_eq!(source_balance, initial_internal_balance - transfer_amount);
+}
+
+#[test]
+fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let gas_limit = 1_000_000;
+    let asset_id: Color = rng.gen();
+    let transfer_amount = 500;
+    // set initial internal balance to < transfer amount
+    let initial_internal_balance = 100;
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
+
+    let program = vec![
+        // load amount of tokens
+        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        Opcode::LW(0x10, 0x10, 0),
+        // load color
+        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        Opcode::LW(0x11, 0x11, 0),
+        // load contract id
+        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        Opcode::TR(0x12, 0x10, 0x11),
+        Opcode::RET(REG_ONE),
+    ];
+
+    let sender_contract_id = test_context
+        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .contract_id;
+
+    let (script_ops, offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load call data to 0x10
+            Opcode::ADDI(0x10, REG_ZERO, data_offset + 64),
+            // load gas forward to 0x11
+            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            // call the transfer contract
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::RET(REG_ONE),
+        ]
+    );
+    let script_data: Vec<u8> = [
+        asset_id.as_ref(),
+        dest_contract_id.as_ref(),
+        Call::new(sender_contract_id, transfer_amount, offset as Word)
+            .to_bytes()
+            .as_slice(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
+
+    // assert initial balance state
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
+    assert_eq!(dest_balance, 0);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    assert_eq!(source_balance, initial_internal_balance);
+
+    let transfer_tx = test_context
+        .gas_limit(gas_limit)
+        .gas_price(0)
+        .byte_price(0)
+        .contract_input(sender_contract_id)
+        .contract_input(dest_contract_id)
+        .contract_output(&sender_contract_id)
+        .contract_output(&dest_contract_id)
+        .script(script_ops)
+        .script_data(script_data)
+        .execute();
+
+    // Ensure transfer tx reverts since transfer amount is too large
+    assert!(transfer_tx.should_revert());
+
+    // verify balance transfer did not occur
+    let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
+    assert_eq!(dest_balance, 0);
+    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    assert_eq!(source_balance, initial_internal_balance);
 }

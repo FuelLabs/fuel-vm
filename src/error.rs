@@ -120,6 +120,15 @@ impl From<InstructionResult> for InterpreterError {
     }
 }
 
+impl From<RuntimeError> for InterpreterError {
+    fn from(error: RuntimeError) -> Self {
+        match error {
+            RuntimeError::Recoverable(e) => Self::Panic(e),
+            RuntimeError::Halt(e) => Self::Io(e),
+        }
+    }
+}
+
 #[derive(Debug)]
 #[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime error description that should either be specified in the protocol or

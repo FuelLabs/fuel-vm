@@ -6,6 +6,7 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let script = registers_init
@@ -14,7 +15,17 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
     let receipts = Transactor::new(storage)
         .transact(tx)
         .receipts()
@@ -32,6 +43,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let script = registers_init
@@ -40,7 +52,17 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
     let receipts = Transactor::new(storage)
         .transact(tx)
         .receipts()

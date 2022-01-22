@@ -28,7 +28,7 @@ where
                     .iter()
                     .any(|id| !self.check_contract_exists(id).unwrap_or(false))
                 {
-                    Err(InterpreterError::Panic(PanicReason::ContractNotFound))?
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
                 }
 
                 let contract = Contract::try_from(&self.tx)?;
@@ -41,7 +41,7 @@ where
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
                 {
-                    Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))?;
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
                 }
 
                 self.storage
@@ -84,13 +84,21 @@ where
                 }
             }
 
-            Transaction::Script { .. } => {
+            Transaction::Script { inputs, .. } => {
+                if inputs.iter().any(|input| {
+                    if let Input::Contract { contract_id, .. } = input {
+                        !self.check_contract_exists(contract_id).unwrap_or(false)
+                    } else {
+                        false
+                    }
+                }) {
+                    return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
+                }
+
                 let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
                 self.registers[REG_IS] = offset;
-                self.registers[REG_GGAS] = self.tx.gas_limit();
-                self.registers[REG_CGAS] = self.tx.gas_limit();
 
                 // TODO set tree balance
 
@@ -140,6 +148,11 @@ where
 
             self.tx.set_receipts_root(receipts_root);
         }
+
+        // refund remaining global gas
+        let gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
+        let revert = matches!(state, ProgramState::Revert(_));
+        self.update_change_amounts(gas_refund, revert)?;
 
         Ok(state)
     }

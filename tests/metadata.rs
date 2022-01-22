@@ -12,6 +12,7 @@ fn metadata() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     #[rustfmt::skip]
@@ -40,6 +41,7 @@ fn metadata() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -82,6 +84,7 @@ fn metadata() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -120,7 +123,17 @@ fn metadata() {
 
     let script = script.iter().copied().collect::<Vec<u8>>();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![]);
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        inputs,
+        outputs,
+        vec![],
+    );
 
     let receipts = Transactor::new(&mut storage)
         .transact(tx)

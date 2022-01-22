@@ -29,9 +29,7 @@ impl<S> Interpreter<S> {
                 .join(GasUnit::Branching(1))
                 .join(GasUnit::RegisterWrite(1)),
 
-            // TODO Compile-time panic didn't land in stable yet
-            // https://github.com/rust-lang/rust/issues/51999
-            _ => loop {}, //panic!("Opcode is not gas constant"),
+            _ => panic!("Opcode is not gas constant"),
         }
         .cost()
     }
@@ -48,9 +46,7 @@ impl<S> Interpreter<S> {
 
             MCP | MCPI => GasUnit::Arithmetic(2).join(GasUnit::MemoryOwnership(1)),
 
-            // TODO Compile-time panic didn't land in stable yet
-            // https://github.com/rust-lang/rust/issues/51999
-            _ => loop {}, //panic!("Opcode is not variable gas"),
+            _ => panic!("Opcode is not variable gas"),
         }
         .cost()
     }
@@ -85,6 +81,7 @@ impl<S> Interpreter<S> {
             Err(PanicReason::OutOfGas.into())
         } else {
             self.registers[REG_CGAS] -= gas;
+            self.registers[REG_GGAS] -= gas;
 
             Ok(())
         }

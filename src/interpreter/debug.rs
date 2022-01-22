@@ -41,6 +41,7 @@ fn breakpoint_script() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let script = vec![
@@ -55,7 +56,17 @@ fn breakpoint_script() {
     .copied()
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![]);
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
 
     let suite = vec![
         (

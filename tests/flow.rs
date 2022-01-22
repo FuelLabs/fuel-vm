@@ -17,6 +17,7 @@ fn code_copy() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -44,6 +45,7 @@ fn code_copy() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         0,
         salt,
@@ -77,6 +79,7 @@ fn code_copy() {
     let mut tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -108,6 +111,7 @@ fn call() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
     let salt: Salt = rng.gen();
 
@@ -133,6 +137,7 @@ fn call() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         0,
         salt,
@@ -160,6 +165,7 @@ fn call() {
     let mut tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -196,6 +202,7 @@ fn call_frame_code_offset() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -222,6 +229,7 @@ fn call_frame_code_offset() {
     let deploy = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         bytecode_witness_index,
         salt,
@@ -262,6 +270,7 @@ fn call_frame_code_offset() {
     let script = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script,
         script_data,
@@ -300,6 +309,7 @@ fn revert() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
+    let byte_price = 0;
     let maturity = 0;
 
     let salt: Salt = rng.gen();
@@ -339,6 +349,7 @@ fn revert() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -403,6 +414,7 @@ fn revert() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.clone(),
         script_data,
@@ -453,6 +465,7 @@ fn revert() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
+        byte_price,
         maturity,
         script.clone(),
         script_data,

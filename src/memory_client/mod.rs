@@ -90,3 +90,9 @@ impl<'a> From<MemoryStorage> for MemoryClient<'a> {
         Self::new(s)
     }
 }
+
+impl<'a> From<MemoryClient<'a>> for Transactor<'a, MemoryStorage> {
+    fn from(client: MemoryClient<'a>) -> Self {
+        client.transactor
+    }
+}

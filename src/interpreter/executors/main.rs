@@ -20,8 +20,6 @@ where
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let mut state: ProgramState;
 
-        let mut gas_refund = 0;
-
         match &self.tx {
             Transaction::Create {
                 salt, static_contracts, ..
@@ -86,12 +84,7 @@ where
                 }
             }
 
-            Transaction::Script {
-                gas_limit,
-                gas_price,
-                inputs,
-                ..
-            } => {
+            Transaction::Script { inputs, .. } => {
                 if inputs.iter().any(|input| {
                     if let Input::Contract { contract_id, .. } = input {
                         !self.check_contract_exists(contract_id).unwrap_or(false)
@@ -102,8 +95,6 @@ where
                     return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
                 }
 
-                let gas_limit = *gas_limit;
-                let gas_price = *gas_price;
                 let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
@@ -112,8 +103,7 @@ where
                 // TODO set tree balance
 
                 let program = self.run_program();
-                let gas_used = gas_limit - self.registers[REG_GGAS];
-                gas_refund = self.registers[REG_GGAS] * gas_price;
+                let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {
@@ -159,6 +149,8 @@ where
             self.tx.set_receipts_root(receipts_root);
         }
 
+        // refund remaining global gas
+        let gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
         let revert = matches!(state, ProgramState::Revert(_));
         self.update_change_amounts(gas_refund, revert)?;
 

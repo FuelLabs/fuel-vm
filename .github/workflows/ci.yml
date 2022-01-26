@@ -8,119 +8,99 @@ on:
   release:
     types: [published]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - command: fmt
-            args: --all -- --check
-          - command: clippy
-            args: --all-targets --all-features -- -D warnings -D clippy::dbg_macro
-          - command: check
-            args: --all-targets
-          - command: check
-            args: --all-targets --no-default-features
-          - command: check
-            args: --all-targets --all-features
-          - command: check
-            args: --verbose -p fuel-asm -p fuel-storage --target thumbv6m-none-eabi --no-default-features
-          - command: test
-            args: --all-targets --all-features
-          - command: test
-            args: --all-targets --no-default-features
-          - command: test
-            args: --all-targets --no-default-features --features serde
-          - command: test
-            args: --all-targets --no-default-features --features alloc
-          - command: test
-            args: --all-targets --features random
-          - command: test
-            args: --all-targets --features serde
-          - command: test
-            args: --all-targets --features random,profile-gas,profile-coverage,serde
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: thumbv6m-none-eabi
-      - name: ${{ matrix.command }} ${{ matrix.args }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: ${{ matrix.command }}
-          args: ${{ matrix.args }}
 
-  cargo-toml-fmt-check:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - name: Install Cargo.toml linter
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-toml-lint
-          version: "0.1"
-      - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-  cargo-unused-deps-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          default: true
-      - uses: Swatinem/rust-cache@v1
-      - name: Install cargo-udeps
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-udeps
-      - name: Check Unused Deps
-        uses: actions-rs/cargo@v1
-        with:
-          command: udeps
-          args: --all-targets --all-features
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
 
-  verifications-complete:
-    needs:
-      - cargo
-      - cargo-toml-fmt-check
-      - cargo-unused-deps-check
-    runs-on: ubuntu-latest
-    steps:
-      - run: true
+    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+    #
+    # Can be replaced by other targets that guarantee bare-minimum no-std
+    - name: Install toolchain no-std
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: thumbv6m-none-eabi
+        override: true
+
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+
+    - name: Check formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --verbose -- --check
+
+    - name: Build no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features
+
+    - name: Build no-std serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
+
+    - name: Run tests all features
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --all-features
+
+    - name: Run tests serde
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --features serde-types
+
+    - name: Run tests no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features
+
+    - name: Run tests serde no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features --features serde-types-minimal
 
   publish:
-    # Only do this job if publishing a release and all checks pass.
-    needs: verifications-complete
+    # Only do this job if publishing a release
+    needs: build
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
 
       - name: Verify tag version
         run: |
-          curl -sSLf "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -L -o dasel && chmod +x dasel
-          mv ./dasel /usr/local/bin/dasel
+          cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate

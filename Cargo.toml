@@ -1,17 +1,34 @@
-[workspace]
-members = [
-    "fuel-asm",
-    "fuel-storage",
-    "fuel-types",
-    "fuel-tx",
-    "fuel-tx/test-helpers",
-    "fuel-types",
-    "fuel-vm",
-]
+[package]
+name = "fuel-crypto"
+version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+categories = ["cryptography::cryptocurrencies", "data-structures"]
+edition = "2021"
+homepage = "https://fuel.network/"
+keywords = ["blockchain", "cryptocurrencies"]
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/fuel-crypto"
+description = "Fuel cryptographic primitives."
 
-# We have a dependency cycle between repositories where `fuel-crypto` depends
-# on `fuel-types`, while `fuel-tx` depends on both `fuel-crypto` and
-# `fuel-types`. This temporarily works around the issue by forcing all
-# instances of `fuel-types` within the graph to point to our local copy.
-[patch.crates-io]
-fuel-types = { path = "./fuel-types" }
+[dependencies]
+fuel-types = { version = "0.2", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
+secp256k1 = { version = "0.20", features = ["recovery"], optional = true }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+sha2 = { version = "0.9", default-features = false }
+
+[dev-dependencies]
+fuel-crypto = { path = ".", default-features = false, features = ["random"] }
+rand = { version = "0.8", default-features = false, features = ["std_rng"] }
+
+[features]
+default = ["fuel-types/default", "std"]
+random = ["fuel-types/random", "rand"]
+serde-types = ["fuel-types/serde-types", "secp256k1/serde", "serde-types-minimal", "serde/default", "std"]
+serde-types-minimal = ["fuel-types/serde-types-minimal", "serde"]
+std = ["fuel-types/default", "secp256k1"]
+
+[[test]]
+name = "test-signature"
+path = "tests/signature.rs"
+required-features = ["std"]

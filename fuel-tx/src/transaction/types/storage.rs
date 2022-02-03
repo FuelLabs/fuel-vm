@@ -20,6 +20,14 @@ impl StorageSlot {
     pub fn new(key: Bytes32, value: Bytes32) -> Self {
         StorageSlot { key, value }
     }
+
+    pub fn key(&self) -> &Bytes32 {
+        &self.key
+    }
+
+    pub fn value(&self) -> &Bytes32 {
+        &self.value
+    }
 }
 
 #[cfg(feature = "random")]

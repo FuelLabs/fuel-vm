@@ -2,6 +2,7 @@ use fuel_tx::consts::*;
 use fuel_tx::*;
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
+use std::io::Write;
 
 #[test]
 fn gas_price() {
@@ -73,6 +74,7 @@ fn maturity() {
         vec![],
         vec![],
         vec![],
+        vec![],
         vec![rng.gen()],
     )
     .validate(block_height)
@@ -101,6 +103,7 @@ fn maturity() {
         1001,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![],
         vec![],
@@ -153,6 +156,7 @@ fn max_iow() {
         maturity,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![
             Input::coin(
@@ -481,6 +485,7 @@ fn create() {
         0,
         rng.gen(),
         vec![],
+        vec![],
         vec![Input::coin(
             rng.gen(),
             rng.gen(),
@@ -505,6 +510,7 @@ fn create() {
         0,
         rng.gen(),
         vec![],
+        vec![],
         vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())],
         vec![Output::contract(0, rng.gen(), rng.gen())],
         vec![rng.gen()],
@@ -525,6 +531,7 @@ fn create() {
         maturity,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![Input::coin(
             rng.gen(),
@@ -554,6 +561,7 @@ fn create() {
         maturity,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![
             Input::coin(
@@ -596,6 +604,7 @@ fn create() {
         maturity,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![
             Input::coin(
@@ -641,6 +650,7 @@ fn create() {
         0,
         rng.gen(),
         vec![],
+        vec![],
         vec![
             Input::coin(
                 rng.gen(),
@@ -685,6 +695,7 @@ fn create() {
         0,
         rng.gen(),
         vec![],
+        vec![],
         vec![Input::coin(
             rng.gen(),
             rng.gen(),
@@ -708,6 +719,7 @@ fn create() {
         maturity,
         0,
         rng.gen(),
+        vec![],
         vec![],
         vec![Input::coin(
             rng.gen(),
@@ -734,6 +746,7 @@ fn create() {
         maturity,
         1,
         rng.gen(),
+        vec![],
         vec![],
         vec![Input::coin(
             rng.gen(),
@@ -769,6 +782,7 @@ fn create() {
         0,
         rng.gen(),
         static_contracts.clone(),
+        vec![],
         vec![Input::coin(
             rng.gen(),
             rng.gen(),
@@ -795,6 +809,7 @@ fn create() {
         0,
         rng.gen(),
         static_contracts.clone(),
+        vec![],
         vec![Input::coin(
             rng.gen(),
             rng.gen(),
@@ -823,6 +838,7 @@ fn create() {
         0,
         rng.gen(),
         static_contracts,
+        vec![],
         vec![Input::coin(
             rng.gen(),
             rng.gen(),
@@ -840,4 +856,102 @@ fn create() {
     .err()
     .unwrap();
     assert_eq!(ValidationError::TransactionCreateStaticContractsOrder, err);
+
+    let mut slot_data = [0u8; 64];
+    let mut slot = StorageSlot::default();
+    let mut storage_slots = (0..MAX_STORAGE_SLOTS as u64)
+        .map(|i| {
+            slot_data[..8].copy_from_slice(&i.to_be_bytes());
+            let _ = slot.write(&slot_data).unwrap();
+            slot.clone()
+        })
+        .collect::<Vec<StorageSlot>>();
+
+    // Test max slots is valid
+    Transaction::create(
+        rng.next_u64(),
+        MAX_GAS_PER_TX,
+        rng.next_u64(),
+        maturity,
+        0,
+        rng.gen(),
+        vec![],
+        storage_slots.clone(),
+        vec![Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            Color::default(),
+            0,
+            rng.next_u64(),
+            vec![],
+            vec![],
+        )],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
+    )
+    .validate(block_height)
+    .unwrap();
+
+    // Test max slots can't be exceeded
+    let s = StorageSlot::new([255u8; 32].into(), Default::default());
+    storage_slots.push(s);
+    let err = Transaction::create(
+        rng.next_u64(),
+        MAX_GAS_PER_TX,
+        rng.next_u64(),
+        maturity,
+        0,
+        rng.gen(),
+        vec![],
+        storage_slots.clone(),
+        vec![Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            Color::default(),
+            0,
+            rng.next_u64(),
+            vec![],
+            vec![],
+        )],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
+    )
+    .validate(block_height)
+    .err()
+    .unwrap();
+
+    assert_eq!(ValidationError::TransactionCreateStorageSlotMax, err);
+
+    // Test storage slots must be sorted correctly
+    storage_slots.pop();
+    storage_slots.reverse();
+    let err = Transaction::create(
+        rng.next_u64(),
+        MAX_GAS_PER_TX,
+        rng.next_u64(),
+        maturity,
+        0,
+        rng.gen(),
+        vec![],
+        storage_slots.clone(),
+        vec![Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            Color::default(),
+            0,
+            rng.next_u64(),
+            vec![],
+            vec![],
+        )],
+        vec![Output::change(rng.gen(), rng.next_u64(), Color::default())],
+        vec![rng.gen()],
+    )
+    .validate(block_height)
+    .err()
+    .unwrap();
+
+    assert_eq!(ValidationError::TransactionCreateStorageSlotOrder, err);
 }

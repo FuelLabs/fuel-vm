@@ -15,7 +15,7 @@ mod types;
 mod validation;
 
 pub use metadata::Metadata;
-pub use types::{Input, Output, UtxoId, Witness};
+pub use types::{Input, Output, StorageSlot, UtxoId, Witness};
 pub use validation::ValidationError;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -40,6 +40,7 @@ const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Bytecode size
     + WORD_SIZE // Bytecode witness index
     + WORD_SIZE // Static contracts size
+    + WORD_SIZE // Storage slots size
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
@@ -97,6 +98,7 @@ pub enum Transaction {
         bytecode_witness_index: u8,
         salt: Salt,
         static_contracts: Vec<ContractId>,
+        storage_slots: Vec<StorageSlot>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -152,6 +154,7 @@ impl Transaction {
         bytecode_witness_index: u8,
         salt: Salt,
         static_contracts: Vec<ContractId>,
+        storage_slots: Vec<StorageSlot>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -164,6 +167,7 @@ impl Transaction {
             bytecode_witness_index,
             salt,
             static_contracts,
+            storage_slots,
             inputs,
             outputs,
             witnesses,
@@ -371,6 +375,7 @@ mod tests {
             bytecode_witness_index: 0,
             salt: Default::default(),
             static_contracts: vec![],
+            storage_slots: vec![],
             inputs: vec![],
             outputs: vec![],
             witnesses: vec![],
@@ -384,6 +389,7 @@ mod tests {
             bytecode_witness_index: 0,
             salt: Default::default(),
             static_contracts: vec![],
+            storage_slots: vec![],
             inputs: vec![],
             outputs: vec![],
             witnesses: vec![[0u8; 64].to_vec().into()],

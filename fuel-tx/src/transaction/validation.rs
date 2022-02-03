@@ -164,6 +164,7 @@ impl Transaction {
                 witnesses,
                 bytecode_witness_index,
                 static_contracts,
+                storage_slots,
                 ..
             } => {
                 match witnesses.get(*bytecode_witness_index as usize) {
@@ -180,6 +181,16 @@ impl Transaction {
 
                 if !static_contracts.as_slice().windows(2).all(|w| w[0] <= w[1]) {
                     Err(ValidationError::TransactionCreateStaticContractsOrder)?;
+                }
+
+                // Restrict to subset of u16::MAX, allowing this to be increased in the future in
+                // a non-breaking way.
+                if storage_slots.len() > MAX_STORAGE_SLOTS as usize {
+                    return Err(ValidationError::TransactionCreateStorageSlotMax);
+                }
+
+                if !storage_slots.as_slice().windows(2).all(|s| s[0] <= s[1]) {
+                    return Err(ValidationError::TransactionCreateStorageSlotOrder);
                 }
 
                 // TODO Any contract with ADDRESS in staticContracts is not in the state

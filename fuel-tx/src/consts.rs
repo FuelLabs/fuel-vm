@@ -24,6 +24,9 @@ pub const MAX_SCRIPT_DATA_LENGTH: u64 = 1024 * 1024 * 1024;
 /// Maximum number of static contracts.
 pub const MAX_STATIC_CONTRACTS: u64 = 255;
 
+/// Maximum number of initial storage slots.
+pub const MAX_STORAGE_SLOTS: u16 = 255;
+
 // TODO set max predicate length value
 /// Maximum length of predicate, in instructions.
 pub const MAX_PREDICATE_LENGTH: u64 = 1024 * 1024;

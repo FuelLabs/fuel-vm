@@ -20,6 +20,8 @@ pub enum ValidationError {
     TransactionCreateBytecodeWitnessIndex,
     TransactionCreateStaticContractsMax,
     TransactionCreateStaticContractsOrder,
+    TransactionCreateStorageSlotMax,
+    TransactionCreateStorageSlotOrder,
     TransactionScriptLength,
     TransactionScriptDataLength,
     TransactionScriptOutputContractCreated { index: usize },

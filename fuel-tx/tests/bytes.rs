@@ -426,6 +426,7 @@ fn transaction() {
     let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let o = Output::coin(rng.gen(), rng.next_u64(), rng.gen());
     let w = rng.gen::<Witness>();
+    let s = rng.gen::<StorageSlot>();
 
     assert_encoding_correct(&[
         Transaction::script(
@@ -513,6 +514,7 @@ fn transaction() {
             rng.gen(),
             rng.gen(),
             vec![rng.gen()],
+            vec![s.clone()],
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
@@ -524,6 +526,20 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
+            vec![],
+            vec![s],
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::create(
+            rng.next_u64(),
+            MAX_GAS_PER_TX,
+            rng.next_u64(),
+            rng.next_u64(),
+            rng.gen(),
+            rng.gen(),
+            vec![],
             vec![],
             vec![i],
             vec![o],
@@ -538,6 +554,7 @@ fn transaction() {
             rng.gen(),
             vec![],
             vec![],
+            vec![],
             vec![o],
             vec![w.clone()],
         ),
@@ -551,6 +568,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
+            vec![],
             vec![w],
         ),
         Transaction::create(
@@ -560,6 +578,7 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
+            vec![],
             vec![],
             vec![],
             vec![],
@@ -581,6 +600,8 @@ fn create_input_coin_data_offset() {
     let salt = rng.gen();
 
     let static_contracts: Vec<Vec<ContractId>> =
+        vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
+    let storage_slots: Vec<Vec<StorageSlot>> =
         vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
@@ -612,47 +633,50 @@ fn create_input_coin_data_offset() {
 
     let mut buffer = vec![0u8; 4096];
     for static_contracts in static_contracts.iter() {
-        for inputs in inputs.iter() {
-            for outputs in outputs.iter() {
-                for witnesses in witnesses.iter() {
-                    let mut inputs = inputs.clone();
-                    let last_input = inputs.len();
-                    inputs.push(input_coin.clone());
+        for storage_slot in storage_slots.iter() {
+            for inputs in inputs.iter() {
+                for outputs in outputs.iter() {
+                    for witnesses in witnesses.iter() {
+                        let mut inputs = inputs.clone();
+                        let last_input = inputs.len();
+                        inputs.push(input_coin.clone());
 
-                    let mut tx = Transaction::create(
-                        gas_price,
-                        gas_limit,
-                        byte_price,
-                        maturity,
-                        bytecode_witness_index,
-                        salt,
-                        static_contracts.clone(),
-                        inputs,
-                        outputs.clone(),
-                        witnesses.clone(),
-                    );
+                        let mut tx = Transaction::create(
+                            gas_price,
+                            gas_limit,
+                            byte_price,
+                            maturity,
+                            bytecode_witness_index,
+                            salt,
+                            static_contracts.clone(),
+                            storage_slot.clone(),
+                            inputs,
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
 
-                    let mut tx_p = tx.clone();
-                    tx_p.precompute_metadata();
+                        let mut tx_p = tx.clone();
+                        tx_p.precompute_metadata();
 
-                    buffer.iter_mut().for_each(|b| *b = 0x00);
-                    let _ = tx
-                        .read(buffer.as_mut_slice())
-                        .expect("Failed to serialize input");
+                        buffer.iter_mut().for_each(|b| *b = 0x00);
+                        let _ = tx
+                            .read(buffer.as_mut_slice())
+                            .expect("Failed to serialize input");
 
-                    let offset = tx
-                        .input_coin_predicate_offset(last_input)
-                        .expect("Failed to fetch offset");
+                        let offset = tx
+                            .input_coin_predicate_offset(last_input)
+                            .expect("Failed to fetch offset");
 
-                    let offset_p = tx_p
-                        .input_coin_predicate_offset(last_input)
-                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+                        let offset_p = tx_p
+                            .input_coin_predicate_offset(last_input)
+                            .expect("Failed to fetch offset from tx with precomputed metadata!");
 
-                    assert_eq!(offset, offset_p);
-                    assert_eq!(
-                        predicate.as_slice(),
-                        &buffer[offset..offset + predicate.len()]
-                    );
+                        assert_eq!(offset, offset_p);
+                        assert_eq!(
+                            predicate.as_slice(),
+                            &buffer[offset..offset + predicate.len()]
+                        );
+                    }
                 }
             }
         }

@@ -4,6 +4,7 @@ use crate::{Input, Output, Transaction, Witness};
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{ContractId, Word};
 
+use crate::transaction::types::{StorageSlot, SLOT_SIZE};
 use std::convert::TryFrom;
 use std::{io, mem};
 
@@ -39,8 +40,14 @@ impl bytes::SizedBytes for Transaction {
             }
 
             Self::Create {
-                static_contracts, ..
-            } => TRANSACTION_CREATE_FIXED_SIZE + static_contracts.len() * ContractId::LEN,
+                static_contracts,
+                storage_slots,
+                ..
+            } => {
+                TRANSACTION_CREATE_FIXED_SIZE
+                    + static_contracts.len() * ContractId::LEN
+                    + storage_slots.len() * SLOT_SIZE
+            }
         };
 
         n + inputs + outputs + witnesses
@@ -94,6 +101,7 @@ impl io::Read for Transaction {
                 bytecode_witness_index,
                 salt,
                 static_contracts,
+                storage_slots,
                 inputs,
                 outputs,
                 witnesses,
@@ -112,6 +120,7 @@ impl io::Read for Transaction {
                 let buf = bytes::store_number_unchecked(buf, bytecode_length);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_witness_index);
                 let buf = bytes::store_number_unchecked(buf, static_contracts.len() as Word);
+                let buf = bytes::store_number_unchecked(buf, storage_slots.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, inputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, witnesses.len() as Word);
@@ -119,6 +128,11 @@ impl io::Read for Transaction {
 
                 for static_contract in static_contracts.iter() {
                     buf = bytes::store_array_unchecked(buf, static_contract);
+                }
+
+                for storage_slot in storage_slots.iter_mut() {
+                    let storage_len = storage_slot.read(buf)?;
+                    buf = &mut buf[storage_len..];
                 }
 
                 buf
@@ -233,6 +247,7 @@ impl io::Write for Transaction {
                 let (_bytecode_length, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
                 let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
                 let (static_contracts_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let (storage_slots_len, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
                 let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
@@ -249,6 +264,13 @@ impl io::Write for Transaction {
                 for static_contract in static_contracts.iter_mut() {
                     static_contract.copy_from_slice(&buf[..ContractId::LEN]);
                     buf = &buf[ContractId::LEN..];
+                }
+
+                let mut storage_slots = vec![StorageSlot::default(); storage_slots_len as usize];
+                n += SLOT_SIZE * storage_slots_len as usize;
+                for storage_slot in storage_slots.iter_mut() {
+                    let _ = storage_slot.write(buf)?;
+                    buf = &buf[SLOT_SIZE..];
                 }
 
                 let mut inputs = vec![Input::default(); inputs_len];
@@ -280,6 +302,7 @@ impl io::Write for Transaction {
                     bytecode_witness_index,
                     salt,
                     static_contracts,
+                    storage_slots,
                     inputs,
                     outputs,
                     witnesses,
@@ -301,6 +324,10 @@ impl io::Write for Transaction {
         self.witnesses_mut()
             .iter_mut()
             .try_for_each(|witness| witness.flush())?;
+
+        if let Transaction::Create { storage_slots, .. } = self {
+            storage_slots.iter_mut().try_for_each(|slot| slot.flush())?;
+        }
 
         Ok(())
     }

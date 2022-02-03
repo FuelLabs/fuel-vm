@@ -91,6 +91,7 @@ mod tests {
     use crate::*;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
+    use std::io::{Read, Write};
     use std::mem;
     use std::ops::Not;
 
@@ -102,13 +103,20 @@ mod tests {
     }
 
     fn invert_utxo_id(utxo_id: &mut UtxoId) {
-        let mut tx_id = utxo_id.tx_id().clone();
+        let mut tx_id = *utxo_id.tx_id();
         let mut out_idx = [utxo_id.output_index()];
 
         invert(&mut tx_id);
         invert(&mut out_idx);
 
         *utxo_id = UtxoId::new(tx_id, out_idx[0])
+    }
+
+    fn invert_storage_slot(storage_slot: &mut StorageSlot) {
+        let mut data = [0u8; 64];
+        let _ = storage_slot.read(&mut data).unwrap();
+        invert(&mut data);
+        let _ = storage_slot.write(&data).unwrap();
     }
 
     fn inv_v(bytes: &mut Vec<u8>) {
@@ -285,6 +293,7 @@ mod tests {
             rng.gen::<Witness>().into_inner(),
         ];
         let static_contracts = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
 
         for inputs in inputs.iter() {
             for outputs in outputs.iter() {
@@ -318,42 +327,54 @@ mod tests {
                     }
 
                     for static_contracts in static_contracts.iter() {
-                        let tx = Transaction::create(
-                            rng.next_u64(),
-                            MAX_GAS_PER_TX,
-                            rng.next_u64(),
-                            rng.next_u64(),
-                            rng.next_u32().to_be_bytes()[0],
-                            rng.gen(),
-                            static_contracts.clone(),
-                            inputs.clone(),
-                            outputs.clone(),
-                            witnesses.clone(),
-                        );
+                        for storage_slots in storage_slots.iter() {
+                            let tx = Transaction::create(
+                                rng.next_u64(),
+                                MAX_GAS_PER_TX,
+                                rng.next_u64(),
+                                rng.next_u64(),
+                                rng.next_u32().to_be_bytes()[0],
+                                rng.gen(),
+                                static_contracts.clone(),
+                                storage_slots.clone(),
+                                inputs.clone(),
+                                outputs.clone(),
+                                witnesses.clone(),
+                            );
 
-                        assert_id_ne(&tx, |t| match t {
-                            Transaction::Create {
-                                bytecode_witness_index,
-                                ..
-                            } => not(bytecode_witness_index),
-                            _ => unreachable!(),
-                        });
-
-                        assert_id_ne(&tx, |t| match t {
-                            Transaction::Create { salt, .. } => invert(salt),
-                            _ => unreachable!(),
-                        });
-
-                        if !static_contracts.is_empty() {
                             assert_id_ne(&tx, |t| match t {
                                 Transaction::Create {
-                                    static_contracts, ..
-                                } => invert(static_contracts.first_mut().unwrap()),
+                                    bytecode_witness_index,
+                                    ..
+                                } => not(bytecode_witness_index),
                                 _ => unreachable!(),
                             });
-                        }
 
-                        assert_id_common_attrs(&tx);
+                            assert_id_ne(&tx, |t| match t {
+                                Transaction::Create { salt, .. } => invert(salt),
+                                _ => unreachable!(),
+                            });
+
+                            if !static_contracts.is_empty() {
+                                assert_id_ne(&tx, |t| match t {
+                                    Transaction::Create {
+                                        static_contracts, ..
+                                    } => invert(static_contracts.first_mut().unwrap()),
+                                    _ => unreachable!(),
+                                });
+                            }
+
+                            if !storage_slots.is_empty() {
+                                assert_id_ne(&tx, |t| match t {
+                                    Transaction::Create { storage_slots, .. } => {
+                                        invert_storage_slot(storage_slots.first_mut().unwrap())
+                                    }
+                                    _ => unreachable!(),
+                                });
+                            }
+
+                            assert_id_common_attrs(&tx);
+                        }
                     }
                 }
             }

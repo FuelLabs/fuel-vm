@@ -64,6 +64,7 @@ impl TransactionFactory {
         let inputs = self.rng.gen_range(0..10);
         let outputs = self.rng.gen_range(0..10);
         let witnesses = self.rng.gen_range(0..10);
+        let storage = self.rng.gen_range(0..10);
 
         match variant {
             0 => Transaction::script(
@@ -86,6 +87,7 @@ impl TransactionFactory {
                 self.rng.gen(),
                 self.rng.gen(),
                 (0..contracts).map(|_| self.rng.gen()).collect(),
+                (0..storage).map(|_| self.rng.gen()).collect(),
                 (0..inputs).map(|_| self.input()).collect(),
                 (0..outputs).map(|_| self.output()).collect(),
                 (0..witnesses).map(|_| self.rng.gen()).collect(),

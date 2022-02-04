@@ -22,7 +22,10 @@ where
 
         match &self.tx {
             Transaction::Create {
-                salt, static_contracts, ..
+                salt,
+                static_contracts,
+                storage_slots,
+                ..
             } => {
                 if static_contracts
                     .iter()
@@ -33,13 +36,14 @@ where
 
                 let contract = Contract::try_from(&self.tx)?;
                 let root = contract.root();
-                let id = contract.id(salt, &root);
+                let storage_root = Contract::initial_state_root(storage_slots);
+                let id = contract.id(salt, &root, &storage_root);
 
                 if !&self
                     .tx
                     .outputs()
                     .iter()
-                    .any(|output| matches!(output, Output::ContractCreated { contract_id } if contract_id == &id))
+                    .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
                 {
                     return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
                 }
@@ -51,6 +55,12 @@ where
                 self.storage
                     .storage_contract_root_insert(&id, salt, &root)
                     .map_err(InterpreterError::from_io)?;
+
+                for storage_slot in storage_slots {
+                    self.storage
+                        .merkle_contract_state_insert(&id, storage_slot.key(), storage_slot.value())
+                        .map_err(InterpreterError::from_io)?;
+                }
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification

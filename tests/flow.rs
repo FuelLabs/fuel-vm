@@ -36,10 +36,11 @@ fn code_copy() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let contract_size = program.as_ref().len();
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     // Deploy the contract
     let tx = Transaction::create(
@@ -49,6 +50,7 @@ fn code_copy() {
         maturity,
         0,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],
@@ -129,9 +131,10 @@ fn call() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     // Deploy the contract
     let tx = Transaction::create(
@@ -141,6 +144,7 @@ fn call() {
         maturity,
         0,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],
@@ -221,10 +225,11 @@ fn call_frame_code_offset() {
 
     let contract = Contract::from(program.as_slice());
     let root = contract.root();
-    let id = contract.id(&salt, &root);
+    let state_root = Contract::default_state_root();
+    let id = contract.id(&salt, &root, &state_root);
 
     let input = Input::coin(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity, vec![], vec![]);
-    let output = Output::contract_created(id);
+    let output = Output::contract_created(id, state_root);
 
     let deploy = Transaction::create(
         gas_price,
@@ -233,6 +238,7 @@ fn call_frame_code_offset() {
         maturity,
         bytecode_witness_index,
         salt,
+        vec![],
         vec![],
         vec![input],
         vec![output],
@@ -341,9 +347,10 @@ fn revert() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
     let tx = Transaction::create(
@@ -353,6 +360,7 @@ fn revert() {
         maturity,
         bytecode_witness,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],

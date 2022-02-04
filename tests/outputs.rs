@@ -157,7 +157,7 @@ fn change_is_reduced_by_external_transfer() {
     let contract_code = vec![Opcode::RET(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None).contract_id;
+    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -212,7 +212,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let contract_code = vec![Opcode::RET(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None).contract_id;
+    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -417,7 +417,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     ];
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context
-        .setup_contract(contract_code, Some((asset_id, internal_balance)))
+        .setup_contract(contract_code, Some((asset_id, internal_balance)), None)
         .contract_id;
 
     let (script, data_offset) = script_with_data_offset!(
@@ -497,7 +497,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context
-        .setup_contract(contract_code, Some((asset_id, internal_balance)))
+        .setup_contract(contract_code, Some((asset_id, internal_balance)), None)
         .contract_id;
 
     let (script, data_offset) = script_with_data_offset!(

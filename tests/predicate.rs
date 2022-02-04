@@ -42,7 +42,8 @@ fn predicate() {
 
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let input = Input::coin(
         rng.gen(),
@@ -54,13 +55,14 @@ fn predicate() {
         predicate,
         predicate_data,
     );
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
+    let storage_slots = vec![];
     let inputs = vec![input];
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
@@ -73,6 +75,7 @@ fn predicate() {
         bytecode_witness_index,
         salt,
         static_contracts,
+        storage_slots,
         inputs,
         outputs,
         witnesses,
@@ -119,7 +122,8 @@ fn predicate_false() {
 
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let input = Input::coin(
         rng.gen(),
@@ -131,13 +135,14 @@ fn predicate_false() {
         predicate,
         predicate_data,
     );
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
+    let storage_slots = vec![];
     let inputs = vec![input];
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
@@ -150,6 +155,7 @@ fn predicate_false() {
         bytecode_witness_index,
         salt,
         static_contracts,
+        storage_slots,
         inputs,
         outputs,
         witnesses,

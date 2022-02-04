@@ -5,6 +5,9 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
+use fuel_tx::StorageSlot;
+use fuel_vm::script_with_data_offset;
+use fuel_vm::util::test_helpers::TestBuilder;
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -106,9 +109,10 @@ fn state_read_write() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
@@ -118,6 +122,7 @@ fn state_read_write() {
         maturity,
         bytecode_witness,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],
@@ -294,10 +299,11 @@ fn load_external_contract_code() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract_id = contract.id(&salt, &contract_root, &state_root);
 
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract_created(contract_id);
+    let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = Transaction::create(
@@ -307,6 +313,7 @@ fn load_external_contract_code() {
         maturity,
         0,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output0],
@@ -394,5 +401,71 @@ fn load_external_contract_code() {
         assert_eq!(*ra, 1, "Invalid log from loaded code");
     } else {
         panic!("Script did not return a value");
+    }
+}
+
+#[test]
+fn can_read_state_from_initial_storage_slots() {
+    // the initial key and value pair for the contract
+    let key = Hasher::hash(b"initial key");
+    let value = [128u8; 32].into();
+
+    let program = vec![
+        // load memory location of reference to key
+        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        // deref key memory location from script data to 0x10
+        Opcode::LW(0x10, 0x10, 0),
+        // alloc 32 bytes stack space
+        Opcode::ADDI(0x11, REG_SP, 0),
+        Opcode::CFEI(32 as Immediate24),
+        // load state value to stack
+        Opcode::SRWQ(0x11, 0x10),
+        // log value
+        Opcode::ADDI(0x12, REG_ZERO, 32 as Immediate12),
+        Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
+        Opcode::RET(REG_ONE),
+    ];
+
+    let init_storage = vec![StorageSlot::new(key, value)];
+
+    let gas_limit = 1_000_000;
+    let mut builder = TestBuilder::new(2023u64);
+    let contract = builder.setup_contract(program, None, Some(init_storage)).contract_id;
+
+    let (script, offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load position of call arguments from script data
+            Opcode::ADDI(0x10, REG_ZERO, data_offset + 32),
+            // load gas limit
+            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::RET(REG_ONE),
+        ]
+    );
+
+    let script_data: Vec<u8> = [
+        key.as_ref(),
+        Call::new(contract, offset as Word, 0).to_bytes().as_slice(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
+
+    let log_tx = builder
+        .gas_limit(gas_limit)
+        .gas_price(0)
+        .byte_price(0)
+        .contract_input(contract)
+        .contract_output(&contract)
+        .script(script)
+        .script_data(script_data)
+        .execute();
+
+    for receipt in log_tx.receipts() {
+        if let Receipt::LogData { data, .. } = receipt {
+            assert_eq!(data.as_slice(), value.as_slice())
+        }
     }
 }

@@ -43,11 +43,16 @@ impl Contract {
         crypto::ephemeral_merkle_root(leaves)
     }
 
+    /// The default state root value without any entries
+    pub fn default_state_root() -> Bytes32 {
+        Self::initial_state_root(&[])
+    }
+
     /// Calculate and return the contract id, provided a salt and a code root.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
-        let default_root = Self::initial_state_root(&[]);
+        let default_root = Self::default_state_root();
         self.id_with_init_storage(salt, root, &default_root)
     }
 

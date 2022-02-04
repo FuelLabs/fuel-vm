@@ -36,7 +36,7 @@ fn code_copy() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let state_root = Contract::initial_state_root(&[]);
+    let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root);
 
     let contract_size = program.as_ref().len();
@@ -131,7 +131,7 @@ fn call() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let state_root = Contract::initial_state_root(&[]);
+    let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root);
 
     let output = Output::contract_created(contract, state_root);
@@ -225,7 +225,7 @@ fn call_frame_code_offset() {
 
     let contract = Contract::from(program.as_slice());
     let root = contract.root();
-    let state_root = Contract::initial_state_root(&[]);
+    let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root);
 
     let input = Input::coin(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity, vec![], vec![]);
@@ -347,7 +347,7 @@ fn revert() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
-    let state_root = Contract::initial_state_root(&[]);
+    let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root);
 
     let output = Output::contract_created(contract, state_root);

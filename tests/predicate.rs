@@ -42,7 +42,7 @@ fn predicate() {
 
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
-    let storage_root = Contract::initial_state_root(&[]);
+    let storage_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root);
 
     let input = Input::coin(
@@ -122,7 +122,7 @@ fn predicate_false() {
 
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
-    let state_root = Contract::initial_state_root(&[]);
+    let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root);
 
     let input = Input::coin(

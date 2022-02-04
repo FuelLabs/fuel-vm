@@ -109,9 +109,10 @@ fn state_read_write() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract);
+    let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
@@ -298,10 +299,11 @@ fn load_external_contract_code() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract_id = contract.id(&salt, &contract_root);
 
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract_created(contract_id);
+    let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = Transaction::create(

@@ -33,9 +33,10 @@ fn metadata() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract_metadata = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract_metadata);
+    let output = Output::contract_created(contract_metadata, state_root);
 
     let bytecode_witness = 0;
     let tx = Transaction::create(
@@ -77,9 +78,10 @@ fn metadata() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract_call = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract_call);
+    let output = Output::contract_created(contract_call, state_root);
 
     let bytecode_witness = 0;
     let tx = Transaction::create(

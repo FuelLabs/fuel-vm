@@ -152,7 +152,7 @@ fn output() {
         Output::withdrawal([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::change([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::variable([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
-        Output::contract_created([0xaa; 32].into()),
+        Output::contract_created([0xaa; 32].into(), [0xaa; 32].into()),
     ]);
 }
 

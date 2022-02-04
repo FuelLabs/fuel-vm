@@ -28,9 +28,10 @@ fn backtrace() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract_undefined = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract_undefined);
+    let output = Output::contract_created(contract_undefined, state_root);
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(
@@ -70,9 +71,10 @@ fn backtrace() {
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
+    let state_root = Contract::initial_state_root(&[]);
     let contract_call = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract_call);
+    let output = Output::contract_created(contract_call, state_root);
 
     let bytecode_witness = 0;
     let tx_deploy = Transaction::create(

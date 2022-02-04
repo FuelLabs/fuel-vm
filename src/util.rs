@@ -246,7 +246,7 @@ pub mod test_helpers {
             };
             let salt: Salt = self.rng.gen();
             let program: Witness = contract.iter().copied().collect::<Vec<u8>>().into();
-            let storage_root = crate::contract::Contract::initial_storage_root(&storage_slots);
+            let storage_root = crate::contract::Contract::initial_state_root(&storage_slots);
             let contract = crate::contract::Contract::from(program.as_ref());
             let contract_root = contract.root();
             let contract_id = contract.id_with_init_storage(&salt, &contract_root, &storage_root);
@@ -261,7 +261,7 @@ pub mod test_helpers {
                 vec![],
                 storage_slots,
                 vec![],
-                vec![Output::contract_created(contract_id)],
+                vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
             );
 

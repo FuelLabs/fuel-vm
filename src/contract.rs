@@ -32,7 +32,8 @@ impl Contract {
     }
 
     /// Calculate the root of the initial storage slots for this contract
-    pub fn initial_storage_root(storage_slots: &[StorageSlot]) -> Bytes32 {
+    /// TODO: Use a sparse merkle tree once the implementation is available
+    pub fn initial_state_root(storage_slots: &[StorageSlot]) -> Bytes32 {
         let leaves = storage_slots.iter().map(|slot| {
             let mut buf = [0u8; 64];
             buf[..32].copy_from_slice(slot.key().as_slice());
@@ -46,7 +47,7 @@ impl Contract {
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
-        let default_root = Self::initial_storage_root(&[]);
+        let default_root = Self::initial_state_root(&[]);
         self.id_with_init_storage(salt, root, &default_root)
     }
 

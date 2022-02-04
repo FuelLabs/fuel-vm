@@ -17,7 +17,8 @@ const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + Bytes32::LEN; // State root
 
 const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
-    + ContractId::LEN; // Contract Id
+    + ContractId::LEN // Contract Id
+    + Bytes32::LEN;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum OutputRepr {
@@ -99,6 +100,7 @@ pub enum Output {
 
     ContractCreated {
         contract_id: ContractId,
+        state_root: Bytes32,
     },
 }
 
@@ -106,6 +108,7 @@ impl Default for Output {
     fn default() -> Self {
         Self::ContractCreated {
             contract_id: Default::default(),
+            state_root: Default::default(),
         }
     }
 }
@@ -150,8 +153,11 @@ impl Output {
         Self::Variable { to, amount, color }
     }
 
-    pub const fn contract_created(contract_id: ContractId) -> Self {
-        Self::ContractCreated { contract_id }
+    pub const fn contract_created(contract_id: ContractId, state_root: Bytes32) -> Self {
+        Self::ContractCreated {
+            contract_id,
+            state_root,
+        }
     }
 
     pub const fn color(&self) -> Option<&Color> {
@@ -195,8 +201,12 @@ impl io::Read for Output {
                 bytes::store_array_unchecked(buf, state_root);
             }
 
-            Self::ContractCreated { contract_id } => {
-                bytes::store_array_unchecked(buf, contract_id);
+            Self::ContractCreated {
+                contract_id,
+                state_root,
+            } => {
+                buf = bytes::store_array_unchecked(buf, contract_id);
+                bytes::store_array_unchecked(buf, state_root);
             }
         }
 
@@ -276,10 +286,16 @@ impl io::Write for Output {
 
             OutputRepr::ContractCreated => {
                 // Safety: buf len is checked
-                let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
-                let contract_id = contract_id.into();
+                let (contract_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (state_root, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
-                *self = Self::ContractCreated { contract_id };
+                let contract_id = contract_id.into();
+                let state_root = state_root.into();
+
+                *self = Self::ContractCreated {
+                    contract_id,
+                    state_root,
+                };
 
                 Ok(OUTPUT_CONTRACT_CREATED_SIZE)
             }

@@ -419,7 +419,8 @@ fn can_read_state_from_initial_storage_slots() {
         // load state value to stack
         Opcode::SRWQ(0x11, 0x10),
         // log value
-        Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, REG_SP),
+        Opcode::ADDI(0x12, REG_ZERO, 32 as Immediate12),
+        Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
         Opcode::RET(REG_ONE),
     ];
 

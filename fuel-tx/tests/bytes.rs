@@ -137,7 +137,7 @@ fn output() {
         Output::withdrawal(rng.gen(), rng.next_u64(), rng.gen()),
         Output::change(rng.gen(), rng.next_u64(), rng.gen()),
         Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
-        Output::contract_created(rng.gen()),
+        Output::contract_created(rng.gen(), rng.gen()),
     ]);
 }
 

@@ -406,7 +406,7 @@ fn script() {
             rng.gen::<Witness>().into_inner(),
             rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::contract_created(rng.gen())],
+        vec![Output::contract_created(rng.gen(), rng.gen())],
         vec![rng.gen()],
     )
     .validate(block_height)
@@ -434,7 +434,7 @@ fn script() {
             rng.gen::<Witness>().into_inner(),
             rng.gen::<Witness>().into_inner(),
         )],
-        vec![Output::contract_created(rng.gen())],
+        vec![Output::contract_created(rng.gen(), rng.gen())],
         vec![rng.gen()],
     )
     .validate(block_height)
@@ -674,8 +674,8 @@ fn create() {
             ),
         ],
         vec![
-            Output::contract_created(rng.gen()),
-            Output::contract_created(rng.gen()),
+            Output::contract_created(rng.gen(), rng.gen()),
+            Output::contract_created(rng.gen(), rng.gen()),
         ],
         vec![rng.gen()],
     )

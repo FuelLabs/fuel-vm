@@ -52,7 +52,7 @@ impl TransactionFactory {
             2 => Output::withdrawal(self.rng.gen(), self.rng.gen(), self.rng.gen()),
             3 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
             4 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-            5 => Output::contract_created(self.rng.gen()),
+            5 => Output::contract_created(self.rng.gen(), self.rng.gen()),
 
             _ => unreachable!(),
         }

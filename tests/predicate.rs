@@ -42,8 +42,8 @@ fn predicate() {
 
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
-    let storage_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root);
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let input = Input::coin(
         rng.gen(),
@@ -55,7 +55,7 @@ fn predicate() {
         predicate,
         predicate_data,
     );
-    let output = Output::contract_created(contract, storage_root);
+    let output = Output::contract_created(contract, state_root);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -123,7 +123,7 @@ fn predicate_false() {
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root);
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let input = Input::coin(
         rng.gen(),

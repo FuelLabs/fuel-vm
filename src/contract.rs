@@ -48,24 +48,16 @@ impl Contract {
         Self::initial_state_root(&[])
     }
 
-    /// Calculate and return the contract id, provided a salt and a code root.
+    /// Calculate and return the contract id, provided a salt, code root and state root.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
-    pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
-        let default_root = Self::default_state_root();
-        self.id_with_init_storage(salt, root, &default_root)
-    }
-
-    /// Calculate and return the contract id, provided a salt, code root and initial storage root.
-    ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
-    pub fn id_with_init_storage(&self, salt: &Salt, root: &Bytes32, storage_root: &Bytes32) -> ContractId {
+    pub fn id(&self, salt: &Salt, root: &Bytes32, state_root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 
         hasher.input(ContractId::SEED);
         hasher.input(salt);
         hasher.input(root);
-        hasher.input(storage_root);
+        hasher.input(state_root);
 
         ContractId::from(*hasher.digest())
     }

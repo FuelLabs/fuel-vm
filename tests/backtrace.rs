@@ -29,7 +29,7 @@ fn backtrace() {
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
-    let contract_undefined = contract.id(&salt, &contract_root);
+    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
 
     let output = Output::contract_created(contract_undefined, state_root);
 
@@ -72,7 +72,7 @@ fn backtrace() {
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
-    let contract_call = contract.id(&salt, &contract_root);
+    let contract_call = contract.id(&salt, &contract_root, &state_root);
 
     let output = Output::contract_created(contract_call, state_root);
 

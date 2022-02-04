@@ -37,7 +37,7 @@ where
                 let contract = Contract::try_from(&self.tx)?;
                 let root = contract.root();
                 let storage_root = Contract::initial_state_root(storage_slots);
-                let id = contract.id_with_init_storage(salt, &root, &storage_root);
+                let id = contract.id(salt, &root, &storage_root);
 
                 if !&self
                     .tx

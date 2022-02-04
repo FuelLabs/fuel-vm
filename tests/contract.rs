@@ -38,7 +38,7 @@ fn mint_burn() {
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root);
+    let contract = contract.id(&salt, &contract_root, &state_root);
 
     let color = Color::from(*contract);
     let output = Output::contract_created(contract, state_root);

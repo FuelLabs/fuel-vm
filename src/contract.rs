@@ -50,7 +50,7 @@ impl Contract {
         self.id_with_init_storage(salt, root, &default_root)
     }
 
-    /// Calculate and return the contract id, provided a salt, code root and a initial storage root.
+    /// Calculate and return the contract id, provided a salt, code root and initial storage root.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn id_with_init_storage(&self, salt: &Salt, root: &Bytes32, storage_root: &Bytes32) -> ContractId {

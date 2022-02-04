@@ -52,6 +52,7 @@ fn mint_burn() {
         salt,
         vec![],
         vec![],
+        vec![],
         vec![output],
         vec![program],
     );
@@ -233,7 +234,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     let initial_internal_balance = 1_000_000;
 
     let mut test_context = TestBuilder::new(2322u64);
-    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
+    let dest_contract_id = test_context.setup_contract(vec![], None, None).contract_id;
 
     let program = vec![
         // load amount of tokens
@@ -248,7 +249,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         Opcode::RET(REG_ONE),
     ];
     let sender_contract_id = test_context
-        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
         .contract_id;
 
     let (script_ops, offset) = script_with_data_offset!(
@@ -315,7 +316,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     let initial_internal_balance = 100;
 
     let mut test_context = TestBuilder::new(2322u64);
-    let dest_contract_id = test_context.setup_contract(vec![], None).contract_id;
+    let dest_contract_id = test_context.setup_contract(vec![], None, None).contract_id;
 
     let program = vec![
         // load amount of tokens
@@ -331,7 +332,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     ];
 
     let sender_contract_id = test_context
-        .setup_contract(program, Some((asset_id, initial_internal_balance)))
+        .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
         .contract_id;
 
     let (script_ops, offset) = script_with_data_offset!(

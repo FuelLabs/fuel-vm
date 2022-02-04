@@ -59,7 +59,7 @@ pub mod test_helpers {
     use crate::prelude::{InterpreterStorage, MemoryClient, MemoryStorage, Transactor};
     use crate::state::StateTransition;
     use fuel_asm::Opcode;
-    use fuel_tx::{Input, Output, Transaction, Witness};
+    use fuel_tx::{Input, Output, StorageSlot, Transaction, Witness};
     use fuel_types::{Color, ContractId, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
@@ -237,12 +237,19 @@ pub mod test_helpers {
             &mut self,
             contract: Vec<Opcode>,
             initial_balance: Option<(Color, Word)>,
+            initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
+            let storage_slots = if let Some(slots) = initial_state {
+                slots
+            } else {
+                Default::default()
+            };
             let salt: Salt = self.rng.gen();
             let program: Witness = contract.iter().copied().collect::<Vec<u8>>().into();
+            let storage_root = crate::contract::Contract::initial_storage_root(&storage_slots);
             let contract = crate::contract::Contract::from(program.as_ref());
             let contract_root = contract.root();
-            let contract_id = contract.id(&salt, &contract_root);
+            let contract_id = contract.id_with_init_storage(&salt, &contract_root, &storage_root);
 
             let tx = Transaction::create(
                 self.gas_price,
@@ -252,6 +259,7 @@ pub mod test_helpers {
                 0,
                 salt,
                 vec![],
+                storage_slots,
                 vec![],
                 vec![Output::contract_created(contract_id)],
                 vec![program],

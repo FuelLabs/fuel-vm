@@ -51,6 +51,7 @@ fn code_copy() {
         salt,
         vec![],
         vec![],
+        vec![],
         vec![output],
         vec![program.clone()],
     );
@@ -143,6 +144,7 @@ fn call() {
         salt,
         vec![],
         vec![],
+        vec![],
         vec![output],
         vec![program.clone()],
     );
@@ -233,6 +235,7 @@ fn call_frame_code_offset() {
         maturity,
         bytecode_witness_index,
         salt,
+        vec![],
         vec![],
         vec![input],
         vec![output],
@@ -353,6 +356,7 @@ fn revert() {
         maturity,
         bytecode_witness,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],

@@ -61,6 +61,7 @@ fn predicate() {
     let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
+    let storage_slots = vec![];
     let inputs = vec![input];
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
@@ -73,6 +74,7 @@ fn predicate() {
         bytecode_witness_index,
         salt,
         static_contracts,
+        storage_slots,
         inputs,
         outputs,
         witnesses,
@@ -138,6 +140,7 @@ fn predicate_false() {
     let byte_price = 0;
     let bytecode_witness_index = 0;
     let static_contracts = vec![];
+    let storage_slots = vec![];
     let inputs = vec![input];
     let outputs = vec![output];
     let witnesses = vec![witness.into()];
@@ -150,6 +153,7 @@ fn predicate_false() {
         bytecode_witness_index,
         salt,
         static_contracts,
+        storage_slots,
         inputs,
         outputs,
         witnesses,

@@ -47,6 +47,7 @@ fn metadata() {
         salt,
         vec![],
         vec![],
+        vec![],
         vec![output],
         vec![program],
     );
@@ -88,6 +89,7 @@ fn metadata() {
         maturity,
         bytecode_witness,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],

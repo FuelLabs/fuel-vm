@@ -42,6 +42,7 @@ fn backtrace() {
         salt,
         vec![],
         vec![],
+        vec![],
         vec![output],
         vec![program],
     );
@@ -81,6 +82,7 @@ fn backtrace() {
         maturity,
         bytecode_witness,
         salt,
+        vec![],
         vec![],
         vec![],
         vec![output],

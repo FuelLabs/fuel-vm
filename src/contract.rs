@@ -4,7 +4,7 @@ use crate::crypto;
 use crate::error::InterpreterError;
 
 use fuel_tx::crypto::Hasher;
-use fuel_tx::{Transaction, ValidationError};
+use fuel_tx::{StorageSlot, Transaction, ValidationError};
 use fuel_types::{Bytes32, ContractId, Salt};
 
 use std::cmp;
@@ -31,15 +31,35 @@ impl Contract {
         crypto::ephemeral_merkle_root(root)
     }
 
+    /// Calculate the root of the initial storage slots for this contract
+    pub fn initial_storage_root(storage_slots: &[StorageSlot]) -> Bytes32 {
+        let leaves = storage_slots.iter().map(|slot| {
+            let mut buf = [0u8; 64];
+            buf[..32].copy_from_slice(slot.key().as_slice());
+            buf[32..].copy_from_slice(slot.value().as_slice());
+            buf
+        });
+        crypto::ephemeral_merkle_root(leaves)
+    }
+
     /// Calculate and return the contract id, provided a salt and a code root.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub fn id(&self, salt: &Salt, root: &Bytes32) -> ContractId {
+        let default_root = Self::initial_storage_root(&[]);
+        self.id_with_init_storage(salt, root, &default_root)
+    }
+
+    /// Calculate and return the contract id, provided a salt, code root and a initial storage root.
+    ///
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
+    pub fn id_with_init_storage(&self, salt: &Salt, root: &Bytes32, storage_root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 
         hasher.input(ContractId::SEED);
         hasher.input(salt);
         hasher.input(root);
+        hasher.input(storage_root);
 
         ContractId::from(*hasher.digest())
     }

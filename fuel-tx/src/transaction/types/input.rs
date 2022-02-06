@@ -38,9 +38,9 @@ impl TryFrom<Word> for InputRepr {
         match b {
             0x00 => Ok(Self::Coin),
             0x01 => Ok(Self::Contract),
-            _ => Err(io::Error::new(
+            id => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
+                format!("The provided input identifier ({}) is invalid!", id),
             )),
         }
     }

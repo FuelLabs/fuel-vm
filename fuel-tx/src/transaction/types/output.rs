@@ -41,9 +41,9 @@ impl TryFrom<Word> for OutputRepr {
             0x03 => Ok(Self::Change),
             0x04 => Ok(Self::Variable),
             0x05 => Ok(Self::ContractCreated),
-            _ => Err(io::Error::new(
+            i => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
+                format!("The provided output identifier ({}) is invalid!", i),
             )),
         }
     }

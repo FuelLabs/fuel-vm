@@ -62,9 +62,9 @@ impl TryFrom<Word> for TransactionRepr {
         match b {
             0x00 => Ok(Self::Script),
             0x01 => Ok(Self::Create),
-            _ => Err(io::Error::new(
+            i => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
+                format!("The provided transaction identifier ({}) is invalid!", i),
             )),
         }
     }

@@ -49,9 +49,9 @@ impl TryFrom<Word> for ReceiptRepr {
             0x07 => Ok(Self::Transfer),
             0x08 => Ok(Self::TransferOut),
             0x09 => Ok(Self::ScriptResult),
-            _ => Err(io::Error::new(
+            i => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
+                format!("The provided receipt identifier ({}) is invalid!", i),
             )),
         }
     }

@@ -1,3 +1,5 @@
+// serde-big-array doesn't allow documentation of its generated structure
+#![allow(missing_docs)]
 use crate::bytes;
 
 use core::array::TryFromSliceError;
@@ -41,12 +43,25 @@ macro_rules! key {
     };
 }
 
-macro_rules! key_no_default {
+macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
+        #[cfg(feature = "serde-types-minimal")]
+        use serde_big_array::big_array;
+        #[cfg(feature = "serde-types-minimal")]
+        big_array! {
+            BigArray;
+            $s,
+        }
+
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        // TODO serde is not implemented for arrays bigger than 32 bytes
+        #[cfg_attr(
+            feature = "serde-types-minimal",
+            derive(serde::Serialize, serde::Deserialize)
+        )]
         /// FuelVM atomic type.
-        pub struct $i([u8; $s]);
+        pub struct $i(
+            #[cfg_attr(feature = "serde-types-minimal", serde(with = "BigArray"))] [u8; $s],
+        );
 
         key_methods!($i, $s);
 
@@ -231,7 +246,7 @@ key!(Bytes8, 8);
 key!(Bytes32, 32);
 key!(Salt, 32);
 
-key_no_default!(Bytes64, 64);
+key_with_big_array!(Bytes64, 64);
 
 impl ContractId {
     /// Seed for the calculation of the contract id from its code.

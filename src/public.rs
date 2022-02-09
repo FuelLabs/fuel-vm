@@ -5,10 +5,7 @@ use fuel_types::{Bytes32, Bytes64};
 use core::fmt;
 use core::ops::Deref;
 
-/// Signature public key
-///
-/// The compression scheme is described in
-/// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
+/// Asymmetric public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 // TODO serde implementation blocked by https://github.com/FuelLabs/fuel-types/issues/13
@@ -79,6 +76,12 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
+impl AsMut<[u8]> for PublicKey {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
 impl From<PublicKey> for [u8; PublicKey::LEN] {
     fn from(salt: PublicKey) -> [u8; PublicKey::LEN] {
         salt.0.into()
@@ -112,39 +115,21 @@ impl fmt::Display for PublicKey {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
-    use crate::{Error, SecretKey, Signature};
+    use crate::{Error, SecretKey};
 
-    use secp256k1::{
-        recovery::{RecoverableSignature, RecoveryId},
-        {Error as Secp256k1Error, Message, PublicKey as Secp256k1PublicKey, Secp256k1},
-    };
+    use secp256k1::{Error as Secp256k1Error, PublicKey as Secp256k1PublicKey, Secp256k1};
 
     use core::borrow::Borrow;
     use core::str;
 
     const UNCOMPRESSED_PUBLIC_KEY_SIZE: usize = 65;
 
+    // Internal secp256k1 identifier for uncompressed point
+    //
+    // https://github.com/rust-bitcoin/rust-secp256k1/blob/ecb62612b57bf3aa8d8017d611d571f86bfdb5dd/secp256k1-sys/depend/secp256k1/include/secp256k1.h#L196
+    const SECP_UNCOMPRESSED_FLAG: u8 = 4;
+
     impl PublicKey {
-        /// Convert an uncompressed public key representation into self.
-        ///
-        /// # Safety
-        ///
-        /// Will not check elliptic-curve correctness.
-        pub unsafe fn from_uncompressed_unchecked(
-            pk: [u8; UNCOMPRESSED_PUBLIC_KEY_SIZE],
-        ) -> PublicKey {
-            debug_assert_eq!(
-                UNCOMPRESSED_PUBLIC_KEY_SIZE,
-                secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE
-            );
-
-            // Ignore the first byte of the compressed flag
-            let pk = &pk[1..];
-
-            // Safety: compile-time assertion of size correctness
-            Self::from_slice_unchecked(pk)
-        }
-
         /// Check if the provided slice represents a public key that is in the
         /// curve.
         ///
@@ -178,58 +163,33 @@ mod use_std {
             unsafe { Self::is_slice_in_curve_unchecked(self.as_ref()) }
         }
 
-        /// Recover the public key from a signature performed with
-        /// [`SecretKey::sign`]
-        pub fn recover<M>(signature: Signature, message: M) -> Result<PublicKey, Error>
-        where
-            M: AsRef<[u8]>,
-        {
-            let message = SecretKey::normalize_message(message);
+        pub(crate) fn from_secp(pk: &Secp256k1PublicKey) -> PublicKey {
+            debug_assert_eq!(
+                UNCOMPRESSED_PUBLIC_KEY_SIZE,
+                secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE
+            );
 
-            Self::_recover(signature, &message)
-        }
+            let pk = pk.serialize_uncompressed();
 
-        /// Recover the public key from a signature performed with
-        /// [`SecretKey::sign`]
-        ///
-        /// # Safety
-        ///
-        /// The protocol expects the message to be the result of a hash -
-        /// otherwise, its verification is malleable. The output of the
-        /// hash must be 32 bytes.
-        ///
-        /// The unsafe directive of this function is related only to the message
-        /// input. It might fail if the signature is inconsistent.
-        pub unsafe fn recover_unchecked<M>(
-            signature: Signature,
-            message: M,
-        ) -> Result<PublicKey, Error>
-        where
-            M: AsRef<[u8]>,
-        {
-            let message = SecretKey::cast_message(message.as_ref());
+            debug_assert_eq!(SECP_UNCOMPRESSED_FLAG, pk[0]);
 
-            Self::_recover(signature, message)
-        }
-
-        fn _recover(mut signature: Signature, message: &Message) -> Result<PublicKey, Error> {
-            let v = ((signature.as_mut()[32] & 0x90) >> 7) as i32;
-            signature.as_mut()[32] &= 0x7f;
-
-            let v = RecoveryId::from_i32(v)?;
-            let signature = RecoverableSignature::from_compact(signature.as_ref(), v)?;
-
-            let pk = Secp256k1::new()
-                .recover(message, &signature)?
-                .serialize_uncompressed();
-
-            // Ignore the first byte of the compressed flag
+            // Ignore the first byte of the compression flag
             let pk = &pk[1..];
 
-            // Safety: secp256k1 protocol specifies 65 bytes output
-            let pk = unsafe { Bytes64::from_slice_unchecked(pk) };
+            // Safety: compile-time assertion of size correctness
+            unsafe { Self::from_slice_unchecked(pk) }
+        }
 
-            Ok(Self(pk))
+        pub(crate) fn _to_secp(&self) -> Result<Secp256k1PublicKey, Error> {
+            let mut pk = [SECP_UNCOMPRESSED_FLAG; UNCOMPRESSED_PUBLIC_KEY_SIZE];
+
+            debug_assert_eq!(SECP_UNCOMPRESSED_FLAG, pk[0]);
+
+            (&mut pk[1..]).copy_from_slice(self.as_ref());
+
+            let pk = Secp256k1PublicKey::from_slice(&pk)?;
+
+            Ok(pk)
         }
     }
 
@@ -264,11 +224,9 @@ mod use_std {
 
             // Copy here is unavoidable since there is no API in secp256k1 to create
             // uncompressed keys directly
-            let public =
-                Secp256k1PublicKey::from_secret_key(&secp, secret).serialize_uncompressed();
+            let public = Secp256k1PublicKey::from_secret_key(&secp, secret);
 
-            // Safety: FFI is guaranteed to return valid public key.
-            unsafe { PublicKey::from_uncompressed_unchecked(public) }
+            Self::from_secp(&public)
         }
     }
 

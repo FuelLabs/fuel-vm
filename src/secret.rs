@@ -3,7 +3,7 @@ use fuel_types::Bytes32;
 use core::fmt;
 use core::ops::Deref;
 
-/// Signature secret key
+/// Asymmetric secret key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(
     feature = "serde-types-minimal",
@@ -103,9 +103,9 @@ impl fmt::Display for SecretKey {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
-    use crate::{Error, Hasher, PublicKey, Signature};
+    use crate::{Error, PublicKey};
 
-    use secp256k1::{Error as Secp256k1Error, Message, Secp256k1, SecretKey as Secp256k1SecretKey};
+    use secp256k1::{Error as Secp256k1Error, SecretKey as Secp256k1SecretKey};
 
     use core::borrow::Borrow;
     use core::str;
@@ -117,49 +117,6 @@ mod use_std {
     };
 
     impl SecretKey {
-        /// Sign a given message and compress the `v` to the signature
-        ///
-        /// The compression scheme is described in
-        /// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
-        pub fn sign<M>(&self, message: M) -> Signature
-        where
-            M: AsRef<[u8]>,
-        {
-            let message = Self::normalize_message(message);
-
-            self._sign(&message)
-        }
-
-        /// Sign a given message and compress the `v` to the signature
-        ///
-        /// The compression scheme is described in
-        /// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
-        /// # Safety
-        ///
-        /// The protocol expects the message to be the result of a hash -
-        /// otherwise, its verification is malleable. The output of the
-        /// hash must be 32 bytes.
-        pub unsafe fn sign_unchecked<M>(&self, message: M) -> Signature
-        where
-            M: AsRef<[u8]>,
-        {
-            let message = SecretKey::cast_message(message.as_ref());
-
-            self._sign(message)
-        }
-
-        fn _sign(&self, message: &Message) -> Signature {
-            let secret = self.borrow();
-
-            let signature = Secp256k1::new().sign_recoverable(message, secret);
-            let (v, mut signature) = signature.serialize_compact();
-
-            let v = v.to_i32();
-            signature[32] |= (v << 7) as u8;
-
-            signature.into()
-        }
-
         /// Create a new random secret
         #[cfg(feature = "random")]
         pub fn random<R>(rng: &mut R) -> Self
@@ -196,24 +153,6 @@ mod use_std {
             }
 
             Self(secret)
-        }
-
-        pub(crate) fn normalize_message<M>(message: M) -> Message
-        where
-            M: AsRef<[u8]>,
-        {
-            let message = Hasher::hash(message);
-
-            // The only validation performed by `Message::from_slice` is to check if it is
-            // 32 bytes. This validation exists to prevent users from signing
-            // non-hashed messages, which is a severe violation of the protocol
-            // security.
-            debug_assert_eq!(Hasher::OUTPUT_LEN, secp256k1::constants::MESSAGE_SIZE);
-            Message::from_slice(message.as_ref()).expect("Unreachable error")
-        }
-
-        pub(crate) unsafe fn cast_message(message: &[u8]) -> &Message {
-            &*(message.as_ptr() as *const Message)
         }
 
         /// Check if the provided slice represents a scalar that fits the field.

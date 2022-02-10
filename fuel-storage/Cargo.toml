@@ -10,3 +10,4 @@ repository = "https://github.com/FuelLabs/fuel-storage"
 description = "Storage traits for Fuel storage-backed data structures."
 
 [dependencies]
+auto_impl = "0.5"

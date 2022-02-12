@@ -1,0 +1,12 @@
+[package]
+name = "fuel-tx-test-helpers"
+version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+fuel-crypto = { version = "0.2", default-features = false, features = ["random"] }
+fuel-tx = { path = "../../fuel-tx", default-features = false, features = ["alloc","builder","internals","random"] }
+fuel-types = { version = "0.2", default-features = false, features = ["random"] }
+rand = { version = "0.8", default-features = false }

@@ -1,4 +1,7 @@
-use std::{error, fmt, io};
+use core::fmt;
+
+#[cfg(feature = "std")]
+use std::{error, io};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -9,6 +12,7 @@ pub enum ValidationError {
     InputCoinPredicateLength { index: usize },
     InputCoinPredicateDataLength { index: usize },
     InputCoinWitnessIndexBounds { index: usize },
+    InputCoinInvalidSignature { index: usize },
     InputContractAssociatedOutputContract { index: usize },
     OutputContractInputIndex { index: usize },
     TransactionCreateInputContract { index: usize },
@@ -42,12 +46,14 @@ impl fmt::Display for ValidationError {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for ValidationError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         None
     }
 }
 
+#[cfg(feature = "std")]
 impl From<ValidationError> for io::Error {
     fn from(v: ValidationError) -> io::Error {
         io::Error::new(io::ErrorKind::Other, v)

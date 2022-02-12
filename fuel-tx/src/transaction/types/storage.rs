@@ -1,7 +1,14 @@
 use fuel_types::{bytes, Bytes32, Bytes64};
+
 #[cfg(feature = "random")]
-use rand::{distributions::Standard, prelude::Distribution, Rng};
-use std::cmp::Ordering;
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
+
+use core::cmp::Ordering;
+
+#[cfg(feature = "std")]
 use std::io;
 
 pub const SLOT_SIZE: usize = Bytes64::LEN;
@@ -40,6 +47,7 @@ impl Distribution<StorageSlot> for Standard {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Read for StorageSlot {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         if buf.len() < SLOT_SIZE {
@@ -51,6 +59,7 @@ impl io::Read for StorageSlot {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Write for StorageSlot {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() < SLOT_SIZE {

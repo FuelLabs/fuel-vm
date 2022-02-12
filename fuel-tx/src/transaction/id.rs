@@ -1,6 +1,6 @@
-use crate::crypto::Hasher;
 use crate::{Input, Metadata, Output, Transaction, UtxoId, Witness};
 
+use fuel_crypto::Hasher;
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Bytes32;
 
@@ -40,11 +40,25 @@ impl Transaction {
         Hasher::hash(tx.to_bytes().as_slice())
     }
 
-    fn prepare_sign(&mut self) {
+    pub(crate) fn prepare_sign(&mut self) {
         self.set_receipts_root(Default::default());
-        self.set_witnesses(vec![]);
 
-        self.inputs_mut().iter_mut().for_each(|input| {
+        let (inputs, outputs, witnesses) = match self {
+            Self::Create {
+                inputs,
+                outputs,
+                witnesses,
+                ..
+            } => (inputs, outputs, witnesses),
+            Self::Script {
+                inputs,
+                outputs,
+                witnesses,
+                ..
+            } => (inputs, outputs, witnesses),
+        };
+
+        inputs.iter_mut().for_each(|input| {
             if let Input::Contract {
                 utxo_id,
                 balance_root,
@@ -58,30 +72,30 @@ impl Transaction {
             }
         });
 
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(|output| match output {
-                Output::Contract {
-                    balance_root,
-                    state_root,
-                    ..
-                } => {
-                    balance_root.iter_mut().for_each(|b| *b = 0);
-                    state_root.iter_mut().for_each(|b| *b = 0);
-                }
+        outputs.iter_mut().for_each(|output| match output {
+            Output::Contract {
+                balance_root,
+                state_root,
+                ..
+            } => {
+                balance_root.iter_mut().for_each(|b| *b = 0);
+                state_root.iter_mut().for_each(|b| *b = 0);
+            }
 
-                Output::Change { amount, .. } => *amount = 0,
+            Output::Change { amount, .. } => *amount = 0,
 
-                Output::Variable {
-                    to, amount, color, ..
-                } => {
-                    to.iter_mut().for_each(|b| *b = 0);
-                    *amount = 0;
-                    color.iter_mut().for_each(|b| *b = 0);
-                }
+            Output::Variable {
+                to, amount, color, ..
+            } => {
+                to.iter_mut().for_each(|b| *b = 0);
+                *amount = 0;
+                color.iter_mut().for_each(|b| *b = 0);
+            }
 
-                _ => (),
-            });
+            _ => (),
+        });
+
+        witnesses.clear();
     }
 }
 
@@ -89,6 +103,8 @@ impl Transaction {
 mod tests {
     use crate::consts::MAX_GAS_PER_TX;
     use crate::*;
+
+    use fuel_tx_test_helpers::generate_bytes;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use std::io::{Read, Write};
@@ -248,8 +264,7 @@ mod tests {
 
     #[test]
     fn id() {
-        let mut rng_base = StdRng::seed_from_u64(8586);
-        let rng = &mut rng_base;
+        let rng = &mut StdRng::seed_from_u64(8586);
 
         let inputs = vec![
             vec![],
@@ -261,8 +276,8 @@ mod tests {
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
-                    rng.gen::<Witness>().into_inner(),
-                    rng.gen::<Witness>().into_inner(),
+                    generate_bytes(rng),
+                    generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
@@ -280,18 +295,13 @@ mod tests {
             ],
         ];
 
-        let witnesses = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let witnesses = vec![
+            vec![],
+            vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
+        ];
 
-        let scripts = vec![
-            vec![],
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
-        ];
-        let script_data = vec![
-            vec![],
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
-        ];
+        let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
+        let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let static_contracts = vec![vec![], vec![rng.gen(), rng.gen()]];
         let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
 
@@ -363,6 +373,11 @@ mod tests {
                                     _ => unreachable!(),
                                 });
                             }
+
+                            assert_id_ne(&tx, |t| match t {
+                                Transaction::Create { salt, .. } => invert(salt),
+                                _ => unreachable!(),
+                            });
 
                             if !storage_slots.is_empty() {
                                 assert_id_ne(&tx, |t| match t {

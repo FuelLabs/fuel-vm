@@ -1,14 +1,75 @@
+use super::{Input, Output, Transaction, Witness};
 use crate::consts::*;
-use crate::{Input, Output, Transaction, Witness};
 
 use fuel_types::{Color, Word};
+
+#[cfg(feature = "std")]
+use fuel_types::Bytes32;
+
+#[cfg(feature = "std")]
+use fuel_crypto::{Message, Signature};
 
 mod error;
 
 pub use error::ValidationError;
 
 impl Input {
+    #[cfg(feature = "std")]
     pub fn validate(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        outputs: &[Output],
+        witnesses: &[Witness],
+    ) -> Result<(), ValidationError> {
+        self.validate_without_signature(index, outputs, witnesses)?;
+        self.validate_signature(index, txhash, witnesses)?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "std")]
+    pub fn validate_signature(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        witnesses: &[Witness],
+    ) -> Result<(), ValidationError> {
+        if let Input::Coin {
+            witness_index,
+            owner,
+            ..
+        } = self
+        {
+            let witness = witnesses
+                .get(*witness_index as usize)
+                .ok_or(ValidationError::InputCoinWitnessIndexBounds { index })?
+                .as_ref();
+
+            if witness.len() != Signature::LEN {
+                return Err(ValidationError::InputCoinInvalidSignature { index });
+            }
+
+            // Safety: checked length
+            let signature = unsafe { Signature::as_ref_unchecked(witness) };
+
+            // Safety: checked length
+            let message = unsafe { Message::as_ref_unchecked(txhash.as_ref()) };
+
+            let pk = signature
+                .recover(message)
+                .map_err(|_| ValidationError::InputCoinInvalidSignature { index })
+                .map(|pk| Input::coin_owner(&pk))?;
+
+            if owner != &pk {
+                return Err(ValidationError::InputCoinInvalidSignature { index });
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn validate_without_signature(
         &self,
         index: usize,
         outputs: &[Output],
@@ -28,6 +89,8 @@ impl Input {
             Self::Coin { witness_index, .. } if *witness_index as usize >= witnesses.len() => {
                 Err(ValidationError::InputCoinWitnessIndexBounds { index })
             }
+
+            Self::Coin { .. } => Ok(()),
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex = inputContract.index
             Self::Contract { .. }
@@ -65,7 +128,29 @@ impl Output {
 }
 
 impl Transaction {
+    #[cfg(feature = "std")]
     pub fn validate(&self, block_height: Word) -> Result<(), ValidationError> {
+        self.validate_without_signature(block_height)?;
+        self.validate_input_signature()?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "std")]
+    pub fn validate_input_signature(&self) -> Result<(), ValidationError> {
+        let id = self.id();
+
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.validate_signature(index, &id, self.witnesses())
+            })?;
+
+        Ok(())
+    }
+
+    pub fn validate_without_signature(&self, block_height: Word) -> Result<(), ValidationError> {
         if self.gas_limit() > MAX_GAS_PER_TX {
             Err(ValidationError::TransactionGasLimit)?
         }
@@ -86,20 +171,24 @@ impl Transaction {
             Err(ValidationError::TransactionWitnessesMax)?
         }
 
-        let input_colors: Vec<&Color> = self.input_colors().collect();
-        for input_color in input_colors.as_slice() {
+        self.input_colors_unique().try_for_each(|input_color| {
             // check for duplicate change outputs
             if self
                 .outputs()
                 .iter()
                 .filter_map(|output| match output {
-                    Output::Change { color, .. } if input_color == &color => Some(()),
+                    Output::Change { color, .. } if input_color == color => Some(()),
+                    Output::Change { color, .. }
+                        if color != &Color::default() && input_color == color =>
+                    {
+                        Some(())
+                    }
                     _ => None,
                 })
                 .count()
                 > 1
             {
-                Err(ValidationError::TransactionOutputChangeColorDuplicated)?
+                return Err(ValidationError::TransactionOutputChangeColorDuplicated);
             }
 
             // check for duplicate variable outputs
@@ -107,28 +196,39 @@ impl Transaction {
                 .outputs()
                 .iter()
                 .filter_map(|output| match output {
-                    Output::Variable { color, .. } if input_color == &color => Some(()),
+                    Output::Variable { color, .. } if input_color == color => Some(()),
                     _ => None,
                 })
                 .count()
                 > 1
             {
-                Err(ValidationError::TransactionOutputVariableColorDuplicated)?
+                return Err(ValidationError::TransactionOutputVariableColorDuplicated);
             }
-        }
 
-        for (index, input) in self.inputs().iter().enumerate() {
-            input.validate(index, self.outputs(), self.witnesses())?;
-        }
+            Ok(())
+        })?;
 
-        for (index, output) in self.outputs().iter().enumerate() {
-            output.validate(index, self.inputs())?;
-            if let Output::Change { color, .. } = output {
-                if !input_colors.iter().any(|input_color| input_color == &color) {
-                    Err(ValidationError::TransactionOutputChangeColorNotFound)?
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.validate_without_signature(index, self.outputs(), self.witnesses())
+            })?;
+
+        self.outputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, output)| {
+                output.validate(index, self.inputs())?;
+
+                if let Output::Change { color, .. } = output {
+                    if !self.input_colors().any(|input_color| input_color == color) {
+                        return Err(ValidationError::TransactionOutputChangeColorNotFound);
+                    }
                 }
-            }
-        }
+
+                Ok(())
+            })?;
 
         match self {
             Self::Script {
@@ -183,8 +283,8 @@ impl Transaction {
                     Err(ValidationError::TransactionCreateStaticContractsOrder)?;
                 }
 
-                // Restrict to subset of u16::MAX, allowing this to be increased in the future in
-                // a non-breaking way.
+                // Restrict to subset of u16::MAX, allowing this to be increased in the future
+                // in a non-breaking way.
                 if storage_slots.len() > MAX_STORAGE_SLOTS as usize {
                     return Err(ValidationError::TransactionCreateStorageSlotMax);
                 }
@@ -197,38 +297,46 @@ impl Transaction {
                 // TODO The computed contract ADDRESS (see below) is not equal to the
                 // contractADDRESS of the one OutputType.ContractCreated output
 
-                for (index, input) in inputs.iter().enumerate() {
+                inputs.iter().enumerate().try_for_each(|(index, input)| {
                     if let Input::Contract { .. } = input {
-                        Err(ValidationError::TransactionCreateInputContract { index })?
+                        return Err(ValidationError::TransactionCreateInputContract { index });
                     }
-                }
+
+                    Ok(())
+                })?;
 
                 let mut contract_created = false;
-                for (index, output) in outputs.iter().enumerate() {
-                    match output {
+                outputs
+                    .iter()
+                    .enumerate()
+                    .try_for_each(|(index, output)| match output {
                         Output::Contract { .. } => {
-                            Err(ValidationError::TransactionCreateOutputContract { index })?
+                            Err(ValidationError::TransactionCreateOutputContract { index })
                         }
                         Output::Variable { .. } => {
-                            Err(ValidationError::TransactionCreateOutputVariable { index })?
+                            Err(ValidationError::TransactionCreateOutputVariable { index })
                         }
 
                         Output::Change { color, .. } if color != &Color::default() => {
                             Err(ValidationError::TransactionCreateOutputChangeNotBaseAsset {
                                 index,
-                            })?
+                            })
                         }
 
                         Output::ContractCreated { .. } if contract_created => Err(
                             ValidationError::TransactionCreateOutputContractCreatedMultiple {
                                 index,
                             },
-                        )?,
-                        Output::ContractCreated { .. } => contract_created = true,
+                        ),
 
-                        _ => (),
-                    }
-                }
+                        Output::ContractCreated { .. } => {
+                            contract_created = true;
+
+                            Ok(())
+                        }
+
+                        _ => Ok(()),
+                    })?;
 
                 Ok(())
             }

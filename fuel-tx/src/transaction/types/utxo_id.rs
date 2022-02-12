@@ -1,7 +1,9 @@
-use std::str::FromStr;
-
 use crate::TxId;
+
 use fuel_types::Bytes32;
+
+use core::str::FromStr;
+
 #[cfg(feature = "random")]
 use rand::{
     distributions::{Distribution, Standard},

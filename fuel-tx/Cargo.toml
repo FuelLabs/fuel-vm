@@ -12,22 +12,28 @@ description = "FuelVM transaction."
 
 [dependencies]
 fuel-asm = { version = "0.1", default-features = false }
-fuel-types = { version = "0.1", default-features = false }
-itertools = { version = "0.10", optional = true }
-rand = { version = "0.8", optional = true }
+fuel-crypto = { version = "0.2", default-features = false }
+fuel-types = { version = "0.2", default-features = false }
+itertools = { version = "0.10", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
-sha2 = { version = "0.9", optional = true }
 
 [dev-dependencies]
-fuel-types = { version = "0.1", default-features = false, features = ["random"] }
-fuel-tx = { path = ".",  default-features = false, features = ["random"]}
+fuel-crypto = { version = "0.2", default-features = false, features = ["random"] }
+fuel-tx = { path = ".", features = ["builder", "random"] }
+fuel-tx-test-helpers = { path = "test-helpers" }
+fuel-types = { version = "0.2", default-features = false, features = ["random"] }
+rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 
 [features]
 default = ["fuel-asm/default", "fuel-types/default", "std"]
-random = ["fuel-types/random", "rand"]
-std = ["fuel-asm/std", "fuel-types/std", "itertools", "sha2"]
-serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
-serde-types-minimal = ["fuel-asm/serde-types-minimal", "fuel-types/serde-types-minimal", "serde"]
+alloc = ["fuel-types/alloc", "itertools/use_alloc", "serde/alloc"]
+builder = ["alloc"]
+internals = []
+random = ["fuel-crypto/random", "fuel-types/random", "rand"]
+std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-types/std", "itertools/default", "rand/default"]
+serde-types = ["fuel-asm/serde-types", "fuel-crypto/serde", "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
+serde-types-minimal = ["fuel-asm/serde-types-minimal", "fuel-crypto/serde-types-minimal", "fuel-types/serde-types-minimal", "serde"]
 
 [[test]]
 name = "test-bytes"

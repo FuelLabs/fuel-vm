@@ -138,7 +138,8 @@ impl Transaction {
         })
     }
 
-    /// Return the serialized bytes offset of the witness with the provided index
+    /// Return the serialized bytes offset of the witness with the provided
+    /// index
     ///
     /// Return `None` if `index` is invalid
     pub fn witness_offset(&self, index: usize) -> Option<usize> {

@@ -7,24 +7,31 @@
 
 // TODO Add docs
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 pub mod consts;
 
 pub use fuel_asm::{InstructionResult, PanicReason};
-pub use fuel_types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt};
+pub use fuel_types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt, Word};
 
-#[cfg(feature = "std")]
-pub mod crypto;
+#[cfg(feature = "builder")]
+mod builder;
 
-#[cfg(feature = "std")]
-mod transaction;
-
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 mod receipt;
 
-#[cfg(feature = "std")]
-pub use transaction::{
-    Input, Metadata, Output, StorageSlot, Transaction, TxId, UtxoId, ValidationError, Witness,
-};
+#[cfg(feature = "alloc")]
+mod transaction;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "builder")]
+pub use builder::TransactionBuilder;
+
+#[cfg(feature = "alloc")]
 pub use receipt::Receipt;
+
+#[cfg(feature = "alloc")]
+pub use transaction::{
+    Input, Metadata, Output, StorageSlot, Transaction, TransactionRepr, TxId, UtxoId,
+    ValidationError, Witness,
+};

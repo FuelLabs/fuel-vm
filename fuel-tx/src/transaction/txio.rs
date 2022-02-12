@@ -1,14 +1,21 @@
 use super::{TransactionRepr, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
+use crate::transaction::types::{StorageSlot, SLOT_SIZE};
 use crate::{Input, Output, Transaction, Witness};
 
-use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
 use fuel_types::{ContractId, Word};
 
-use crate::transaction::types::{StorageSlot, SLOT_SIZE};
-use std::convert::TryFrom;
-use std::{io, mem};
+use std::io::{self, Write};
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
+impl Transaction {
+    pub fn try_from_bytes(bytes: &[u8]) -> io::Result<(usize, Self)> {
+        let mut tx = Self::default();
+
+        let n = tx.write(bytes)?;
+
+        Ok((n, tx))
+    }
+}
 
 impl bytes::SizedBytes for Transaction {
     fn serialized_size(&self) -> usize {

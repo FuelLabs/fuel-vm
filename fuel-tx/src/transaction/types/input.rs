@@ -1,11 +1,18 @@
 use crate::UtxoId;
-use fuel_types::bytes::{self, SizedBytes};
+
+use fuel_types::bytes::{self, WORD_SIZE};
 use fuel_types::{Address, Bytes32, Color, ContractId, Word};
 
-use std::convert::TryFrom;
-use std::{io, mem};
+#[cfg(feature = "std")]
+use fuel_crypto::PublicKey;
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
+#[cfg(feature = "std")]
+use fuel_types::bytes::SizedBytes;
+
+use alloc::vec::Vec;
+
+#[cfg(feature = "std")]
+use std::io;
 
 const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier  
     + Bytes32::LEN // UtxoId tx_id
@@ -26,11 +33,13 @@ const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + ContractId::LEN; // Contract address
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg(feature = "std")]
 enum InputRepr {
     Coin = 0x00,
     Contract = 0x01,
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<Word> for InputRepr {
     type Error = io::Error;
 
@@ -101,6 +110,13 @@ impl bytes::SizedBytes for Input {
 }
 
 impl Input {
+    #[cfg(feature = "std")]
+    pub fn coin_owner(pk: &PublicKey) -> Address {
+        let owner: [u8; Address::LEN] = pk.hash().into();
+
+        owner.into()
+    }
+
     pub const fn coin(
         utxo_id: UtxoId,
         owner: Address,
@@ -144,7 +160,8 @@ impl Input {
         }
     }
 
-    /// Return a tuple containing the predicate and its data if the input is of type `Coin`
+    /// Return a tuple containing the predicate and its data if the input is of
+    /// type `Coin`
     pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
         match self {
             Input::Coin {
@@ -176,6 +193,7 @@ impl Input {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Read for Input {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
@@ -229,6 +247,7 @@ impl io::Read for Input {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Write for Input {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() < WORD_SIZE {

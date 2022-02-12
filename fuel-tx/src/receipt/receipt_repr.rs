@@ -1,7 +1,4 @@
 use crate::receipt::Receipt;
-use fuel_types::Word;
-
-use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReceiptRepr {
@@ -30,29 +27,6 @@ impl From<&Receipt> for ReceiptRepr {
             Receipt::Transfer { .. } => Self::Transfer,
             Receipt::TransferOut { .. } => Self::TransferOut,
             Receipt::ScriptResult { .. } => Self::ScriptResult,
-        }
-    }
-}
-
-impl TryFrom<Word> for ReceiptRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Call),
-            0x01 => Ok(Self::Return),
-            0x02 => Ok(Self::ReturnData),
-            0x03 => Ok(Self::Panic),
-            0x04 => Ok(Self::Revert),
-            0x05 => Ok(Self::Log),
-            0x06 => Ok(Self::LogData),
-            0x07 => Ok(Self::Transfer),
-            0x08 => Ok(Self::TransferOut),
-            0x09 => Ok(Self::ScriptResult),
-            i => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("The provided receipt identifier ({}) is invalid!", i),
-            )),
         }
     }
 }

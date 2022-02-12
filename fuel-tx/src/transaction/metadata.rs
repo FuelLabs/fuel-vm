@@ -1,7 +1,12 @@
-use crate::Transaction;
+#[cfg(feature = "std")]
+use super::Transaction;
 
+#[cfg(feature = "std")]
 use fuel_types::bytes::SizedBytes;
+
 use fuel_types::Bytes32;
+
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -64,6 +69,7 @@ impl Metadata {
     }
 }
 
+#[cfg(feature = "std")]
 impl Transaction {
     fn metadata_mut(&mut self) -> &mut Option<Metadata> {
         match self {

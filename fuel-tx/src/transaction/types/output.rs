@@ -1,10 +1,11 @@
-use fuel_types::bytes::{self, SizedBytes};
+use fuel_types::bytes::{self, WORD_SIZE};
 use fuel_types::{Address, Bytes32, Color, ContractId, Word};
 
-use std::convert::TryFrom;
-use std::{io, mem};
+#[cfg(feature = "std")]
+use fuel_types::bytes::SizedBytes;
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
+#[cfg(feature = "std")]
+use std::io;
 
 const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
     + Address::LEN // To
@@ -30,6 +31,7 @@ enum OutputRepr {
     ContractCreated = 0x05,
 }
 
+#[cfg(feature = "std")]
 impl TryFrom<Word> for OutputRepr {
     type Error = io::Error;
 
@@ -171,6 +173,7 @@ impl Output {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Read for Output {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
@@ -214,6 +217,7 @@ impl io::Read for Output {
     }
 }
 
+#[cfg(feature = "std")]
 impl io::Write for Output {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() < WORD_SIZE {

@@ -1,4 +1,5 @@
 use fuel_tx::*;
+use fuel_tx_test_helpers::generate_bytes;
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 
@@ -28,8 +29,8 @@ fn contract() {
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
-                    rng.gen::<Witness>().into_inner(),
-                    rng.gen::<Witness>().into_inner(),
+                    generate_bytes(rng),
+                    generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
@@ -47,8 +48,8 @@ fn contract() {
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
-                    rng.gen::<Witness>().into_inner(),
-                    rng.gen::<Witness>().into_inner(),
+                    generate_bytes(rng),
+                    generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
@@ -68,8 +69,8 @@ fn contract() {
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
-                    rng.gen::<Witness>().into_inner(),
-                    rng.gen::<Witness>().into_inner(),
+                    generate_bytes(rng),
+                    generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],

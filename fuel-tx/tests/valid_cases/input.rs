@@ -1,103 +1,187 @@
+use fuel_crypto::SecretKey;
 use fuel_tx::consts::*;
 use fuel_tx::*;
+use fuel_tx_test_helpers::TransactionFactory;
 use rand::rngs::StdRng;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 
 #[test]
 fn coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let witnesses = vec![rng.gen()];
+    let mut factory = TransactionFactory::from_seed(3493);
+    let txs = factory.by_ref();
 
-    Input::coin(
-        rng.gen(),
-        rng.gen(),
-        rng.next_u64(),
-        rng.gen(),
-        0,
-        rng.next_u64(),
+    fn validate_coin_inputs(tx: Transaction) -> Result<(), ValidationError> {
+        let txhash = tx.id();
+        let outputs = tx.outputs();
+        let witnesses = tx.witnesses();
+
+        tx.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| match input {
+                Input::Coin { .. } => input.validate(index, &txhash, outputs, witnesses),
+                _ => Ok(()),
+            })
+    }
+
+    fn sign_coin_and_validate<R, I>(
+        rng: &mut R,
+        mut iter: I,
+        utxo_id: UtxoId,
+        amount: Word,
+        color: Color,
+        maturity: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Result<(), ValidationError>
+    where
+        R: Rng,
+        I: Iterator<Item = (Transaction, Vec<SecretKey>)>,
+    {
+        let (mut tx, keys) = iter.next().expect("Failed to generate a transaction");
+
+        let secret = SecretKey::random(rng);
+        let public = secret.public_key();
+
+        tx.add_unsigned_coin_input(
+            utxo_id,
+            &public,
+            amount,
+            color,
+            maturity,
+            predicate,
+            predicate_data,
+        );
+
+        tx.sign_inputs(&secret);
+        keys.iter().for_each(|sk| tx.sign_inputs(sk));
+
+        validate_coin_inputs(tx)
+    }
+
+    txs.take(10)
+        .map(|(tx, _)| tx)
+        .try_for_each(validate_coin_inputs)
+        .expect("Failed to validate transactions");
+
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let color = rng.gen();
+    let maturity = rng.gen();
+    sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        color,
+        maturity,
         vec![0u8; MAX_PREDICATE_LENGTH as usize],
         vec![],
     )
-    .validate(1, &[], witnesses.as_slice())
-    .unwrap();
+    .expect("Failed to validate transaction");
 
-    Input::coin(
-        rng.gen(),
-        rng.gen(),
-        rng.next_u64(),
-        rng.gen(),
-        0,
-        rng.next_u64(),
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let color = rng.gen();
+    let maturity = rng.gen();
+    sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        color,
+        maturity,
         vec![],
         vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize],
     )
-    .validate(1, &[], witnesses.as_slice())
-    .unwrap();
+    .expect("Failed to validate transaction");
 
-    let err = Input::coin(
-        rng.gen(),
-        rng.gen(),
-        rng.next_u64(),
-        rng.gen(),
-        0,
-        rng.next_u64(),
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let color = rng.gen();
+    let maturity = rng.gen();
+    let err = sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        color,
+        maturity,
         vec![0u8; MAX_PREDICATE_LENGTH as usize + 1],
         vec![],
     )
-    .validate(1, &[], witnesses.as_slice())
     .err()
-    .unwrap();
-    assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
+    .expect("Expected failure");
 
-    let err = Input::coin(
-        rng.gen(),
-        rng.gen(),
-        rng.next_u64(),
-        rng.gen(),
-        0,
-        rng.next_u64(),
+    assert!(matches!(
+        err,
+        ValidationError::InputCoinPredicateLength { .. }
+    ));
+
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let color = rng.gen();
+    let maturity = rng.gen();
+    let err = sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        color,
+        maturity,
         vec![],
         vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize + 1],
     )
-    .validate(1, &[], witnesses.as_slice())
     .err()
-    .unwrap();
-    assert_eq!(
-        ValidationError::InputCoinPredicateDataLength { index: 1 },
-        err
-    );
+    .expect("Expected failure");
 
-    let err = Input::coin(
+    assert!(matches!(
+        err,
+        ValidationError::InputCoinPredicateDataLength { .. }
+    ));
+
+    let mut tx = Transaction::default();
+
+    let input = Input::coin(
         rng.gen(),
         rng.gen(),
-        rng.next_u64(),
         rng.gen(),
-        1,
-        rng.next_u64(),
+        rng.gen(),
+        0,
+        rng.gen(),
         vec![],
         vec![],
-    )
-    .validate(1, &[], witnesses.as_slice())
-    .err()
-    .unwrap();
-    assert_eq!(
-        ValidationError::InputCoinWitnessIndexBounds { index: 1 },
-        err
     );
+    tx.add_input(input);
+
+    let block_height = rng.gen();
+    let err = tx.validate(block_height).err().expect("Expected failure");
+
+    assert!(matches!(
+        err,
+        ValidationError::InputCoinWitnessIndexBounds { .. }
+    ));
 }
 
 #[test]
 fn contract() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.gen();
 
     Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .validate(1, &[Output::contract(1, rng.gen(), rng.gen())], &[])
+        .validate(
+            1,
+            &txhash,
+            &[Output::contract(1, rng.gen(), rng.gen())],
+            &[],
+        )
         .unwrap();
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .validate(1, &[], &[])
+        .validate(1, &txhash, &[], &[])
         .err()
         .unwrap();
     assert_eq!(
@@ -108,7 +192,8 @@ fn contract() {
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .validate(
             1,
-            &[Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
+            &txhash,
+            &[Output::coin(rng.gen(), rng.gen(), rng.gen())],
             &[],
         )
         .err()
@@ -119,7 +204,12 @@ fn contract() {
     );
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .validate(1, &[Output::contract(2, rng.gen(), rng.gen())], &[])
+        .validate(
+            1,
+            &txhash,
+            &[Output::contract(2, rng.gen(), rng.gen())],
+            &[],
+        )
         .err()
         .unwrap();
     assert_eq!(

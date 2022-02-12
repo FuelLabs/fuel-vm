@@ -1,24 +1,35 @@
+use crate::consts::*;
+
 use fuel_asm::Opcode;
+use fuel_types::bytes::WORD_SIZE;
 use fuel_types::{Bytes32, Color, ContractId, Salt, Word};
-use itertools::Itertools;
 
+#[cfg(feature = "std")]
 use fuel_types::bytes::SizedBytes;
-use std::convert::TryFrom;
-use std::io::Write;
-use std::{io, mem};
 
-mod id;
+#[cfg(feature = "std")]
+use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
+
+use alloc::vec::Vec;
+use core::mem;
+
+mod internals;
 mod metadata;
 mod offset;
-mod txio;
+mod repr;
 mod types;
 mod validation;
 
+#[cfg(feature = "std")]
+mod id;
+
+#[cfg(feature = "std")]
+mod txio;
+
 pub use metadata::Metadata;
+pub use repr::TransactionRepr;
 pub use types::{Input, Output, StorageSlot, UtxoId, Witness};
 pub use validation::ValidationError;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
 
 const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
@@ -48,27 +59,6 @@ const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum TransactionRepr {
-    Script = 0x00,
-    Create = 0x01,
-}
-
-impl TryFrom<Word> for TransactionRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Script),
-            0x01 => Ok(Self::Create),
-            i => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("The provided transaction identifier ({}) is invalid!", i),
-            )),
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -108,12 +98,24 @@ pub enum Transaction {
 
 impl Default for Transaction {
     fn default() -> Self {
+        use alloc::vec;
+
         // Create a valid transaction with a single return instruction
         //
         // The Return op is mandatory for the execution of any context
         let script = Opcode::RET(0x10).to_bytes().to_vec();
 
-        Transaction::script(0, 1000000, 0, 0, script, vec![], vec![], vec![], vec![])
+        Transaction::script(
+            0,
+            MAX_GAS_PER_TX,
+            0,
+            0,
+            script,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
     }
 }
 
@@ -176,16 +178,30 @@ impl Transaction {
     }
 
     pub fn input_colors(&self) -> impl Iterator<Item = &Color> {
-        self.inputs()
-            .iter()
-            .filter_map(|input| match input {
-                Input::Coin { color, .. } => Some(color),
-                _ => None,
-            })
-            .unique()
+        self.inputs().iter().filter_map(|input| match input {
+            Input::Coin { color, .. } => Some(color),
+            _ => None,
+        })
     }
 
+    pub fn input_colors_unique(&self) -> impl Iterator<Item = &Color> {
+        use itertools::Itertools;
+
+        let colors = self.input_colors();
+
+        #[cfg(feature = "std")]
+        let colors = colors.unique();
+
+        #[cfg(not(feature = "std"))]
+        let colors = colors.sorted().dedup();
+
+        colors
+    }
+
+    #[cfg(feature = "std")]
     pub fn input_contracts(&self) -> impl Iterator<Item = &ContractId> {
+        use itertools::Itertools;
+
         self.inputs()
             .iter()
             .filter_map(|input| match input {
@@ -290,14 +306,6 @@ impl Transaction {
         }
     }
 
-    pub fn try_from_bytes(bytes: &[u8]) -> io::Result<(usize, Self)> {
-        let mut tx = Self::default();
-
-        let n = tx.write(bytes)?;
-
-        Ok((n, tx))
-    }
-
     pub const fn receipts_root(&self) -> Option<&Bytes32> {
         match self {
             Self::Script { receipts_root, .. } => Some(receipts_root),
@@ -307,13 +315,91 @@ impl Transaction {
 
     pub fn set_receipts_root(&mut self, root: Bytes32) -> Option<Bytes32> {
         match self {
-            Self::Script { receipts_root, .. } => Some(std::mem::replace(receipts_root, root)),
+            Self::Script { receipts_root, .. } => Some(mem::replace(receipts_root, root)),
 
             _ => None,
         }
     }
 
+    /// Append a new unsigned input to the transaction.
+    ///
+    /// When the transaction is constructed, [`Transaction::sign_inputs`] should
+    /// be called for every secret key used with this method.
+    ///
+    /// The production of the signatures can be done only after the full
+    /// transaction skeleton is built because the input of the hash message
+    /// is the ID of the final transaction.
+    #[cfg(feature = "std")]
+    pub fn add_unsigned_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        color: Color,
+        maturity: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) {
+        let owner = Input::coin_owner(owner);
+
+        let witness_index = self.witnesses().len() as u8;
+        let input = Input::coin(
+            utxo_id,
+            owner,
+            amount,
+            color,
+            witness_index,
+            maturity,
+            predicate,
+            predicate_data,
+        );
+
+        self._add_witness(Witness::default());
+        self._add_input(input);
+    }
+
+    /// For all inputs of type `coin`, check if its `owner` equals the public
+    /// counterpart of the provided key. Sign all matches.
+    #[cfg(feature = "std")]
+    pub fn sign_inputs(&mut self, secret: &SecretKey) {
+        use itertools::Itertools;
+
+        let pk = PublicKey::from(secret);
+        let pk = Input::coin_owner(&pk);
+        let id = self.id();
+
+        // Safety: checked length
+        let message = unsafe { Message::as_ref_unchecked(id.as_ref()) };
+
+        let signature = Signature::sign(secret, message);
+
+        let (inputs, witnesses) = match self {
+            Self::Script {
+                inputs, witnesses, ..
+            } => (inputs, witnesses),
+            Self::Create {
+                inputs, witnesses, ..
+            } => (inputs, witnesses),
+        };
+
+        inputs
+            .iter()
+            .filter_map(|input| match input {
+                Input::Coin {
+                    owner,
+                    witness_index,
+                    ..
+                } if owner == &pk => Some(*witness_index as usize),
+                _ => None,
+            })
+            .dedup()
+            .for_each(|w| {
+                witnesses.get_mut(w).map(|w| *w = signature.as_ref().into());
+            });
+    }
+
     /// Used for accounting purposes when charging byte based fees
+    #[cfg(feature = "std")]
     pub fn metered_bytes_size(&self) -> usize {
         // Just use the default serialized size for now until
         // the compressed representation for accounting purposes

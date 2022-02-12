@@ -15,11 +15,11 @@ pub const MAX_GAS_PER_TX: u64 = 1000000;
 
 // TODO set max script length const
 /// Maximum length of script, in instructions.
-pub const MAX_SCRIPT_LENGTH: u64 = 1024 * 1024 * 1024;
+pub const MAX_SCRIPT_LENGTH: u64 = 1024 * 1024;
 
 // TODO set max script length const
 /// Maximum length of script data, in bytes.
-pub const MAX_SCRIPT_DATA_LENGTH: u64 = 1024 * 1024 * 1024;
+pub const MAX_SCRIPT_DATA_LENGTH: u64 = 1024 * 1024;
 
 /// Maximum number of static contracts.
 pub const MAX_STATIC_CONTRACTS: u64 = 255;

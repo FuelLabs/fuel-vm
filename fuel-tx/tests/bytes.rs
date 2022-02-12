@@ -1,9 +1,11 @@
 use fuel_asm::Opcode;
 use fuel_tx::consts::MAX_GAS_PER_TX;
 use fuel_tx::*;
+use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::{bytes, ContractId, Immediate24};
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
+
 use std::fmt;
 use std::io::{self, Read, Write};
 
@@ -73,7 +75,8 @@ fn witness() {
     let mut rng_base = StdRng::seed_from_u64(8586);
     let rng = &mut rng_base;
 
-    assert_encoding_correct(&[rng.gen(), Witness::default()]);
+    let w = generate_bytes(rng).into();
+    assert_encoding_correct(&[w, Witness::default()]);
 }
 
 #[test]
@@ -89,8 +92,8 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
+            generate_bytes(rng),
+            generate_bytes(rng),
         ),
         Input::coin(
             rng.gen(),
@@ -100,7 +103,7 @@ fn input() {
             rng.gen(),
             rng.next_u64(),
             vec![],
-            rng.gen::<Witness>().into_inner(),
+            generate_bytes(rng),
         ),
         Input::coin(
             rng.gen(),
@@ -109,7 +112,7 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
-            rng.gen::<Witness>().into_inner(),
+            generate_bytes(rng),
             vec![],
         ),
         Input::coin(
@@ -446,7 +449,7 @@ fn transaction() {
             rng.next_u64(),
             rng.next_u64(),
             vec![],
-            rng.gen::<Witness>().into_inner(),
+            generate_bytes(rng),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
@@ -616,10 +619,14 @@ fn create_input_coin_data_offset() {
             Output::withdrawal(rng.gen(), rng.next_u64(), rng.gen()),
         ],
     ];
-    let witnesses: Vec<Vec<Witness>> = vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
+    let witnesses: Vec<Vec<Witness>> = vec![
+        vec![],
+        vec![generate_bytes(rng).into()],
+        vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
+    ];
 
-    let predicate = rng.gen::<Witness>().into_inner();
-    let predicate_data = rng.gen::<Witness>().into_inner();
+    let predicate = generate_bytes(rng);
+    let predicate_data = generate_bytes(rng);
     let input_coin = Input::coin(
         rng.gen(),
         rng.gen(),
@@ -693,9 +700,8 @@ fn script_input_coin_data_offset() {
     let byte_price = 20;
     let maturity = 10;
 
-    let script: Vec<Vec<u8>> = vec![vec![], rng.gen::<Witness>().into_inner()];
-
-    let script_data: Vec<Vec<u8>> = vec![vec![], rng.gen::<Witness>().into_inner()];
+    let script: Vec<Vec<u8>> = vec![vec![], generate_bytes(rng)];
+    let script_data: Vec<Vec<u8>> = vec![vec![], generate_bytes(rng)];
 
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
@@ -713,10 +719,14 @@ fn script_input_coin_data_offset() {
             Output::withdrawal(rng.gen(), rng.next_u64(), rng.gen()),
         ],
     ];
-    let witnesses: Vec<Vec<Witness>> = vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
+    let witnesses: Vec<Vec<Witness>> = vec![
+        vec![],
+        vec![generate_bytes(rng).into()],
+        vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
+    ];
 
-    let predicate = rng.gen::<Witness>().into_inner();
-    let predicate_data = rng.gen::<Witness>().into_inner();
+    let predicate = generate_bytes(rng);
+    let predicate_data = generate_bytes(rng);
     let input_coin = Input::coin(
         rng.gen(),
         rng.gen(),
@@ -754,6 +764,7 @@ fn script_input_coin_data_offset() {
                         tx_p.precompute_metadata();
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
+
                         let _ = tx
                             .read(buffer.as_mut_slice())
                             .expect("Failed to serialize input");

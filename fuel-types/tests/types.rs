@@ -49,7 +49,7 @@ fn from_slice_unchecked_safety() {
 
     for _ in 0..100 {
         check_consistency!(Address, rng, bytes);
-        check_consistency!(Color, rng, bytes);
+        check_consistency!(AssetId, rng, bytes);
         check_consistency!(ContractId, rng, bytes);
         check_consistency!(Bytes4, rng, bytes);
         check_consistency!(Bytes8, rng, bytes);
@@ -94,7 +94,7 @@ fn hex_encoding() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     encode_decode(rng.gen::<Address>());
-    encode_decode(rng.gen::<Color>());
+    encode_decode(rng.gen::<AssetId>());
     encode_decode(rng.gen::<ContractId>());
     encode_decode(rng.gen::<Bytes4>());
     encode_decode(rng.gen::<Bytes8>());

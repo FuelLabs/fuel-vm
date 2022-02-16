@@ -25,7 +25,7 @@ pub enum Error {
 mod use_std {
     use super::*;
     use secp256k1::Error as Secp256k1Error;
-    use std::{error, fmt};
+    use std::{error, fmt, io};
 
     impl From<Secp256k1Error> for Error {
         fn from(secp: Secp256k1Error) -> Self {
@@ -52,6 +52,12 @@ mod use_std {
     impl error::Error for Error {
         fn source(&self) -> Option<&(dyn error::Error + 'static)> {
             None
+        }
+    }
+
+    impl From<Error> for io::Error {
+        fn from(e: Error) -> io::Error {
+            io::Error::new(io::ErrorKind::Other, e)
         }
     }
 }

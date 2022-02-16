@@ -11,6 +11,7 @@ repository = "https://github.com/FuelLabs/fuel-crypto"
 description = "Fuel cryptographic primitives."
 
 [dependencies]
+borrown = "0.1"
 fuel-types = { version = "0.2", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 secp256k1 = { version = "0.20", features = ["recovery"], optional = true }
@@ -31,4 +32,9 @@ std = ["fuel-types/default", "secp256k1"]
 [[test]]
 name = "test-signature"
 path = "tests/signature.rs"
+required-features = ["std"]
+
+[[test]]
+name = "test-signer"
+path = "tests/signer.rs"
 required-features = ["std"]

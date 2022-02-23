@@ -57,7 +57,7 @@ impl<S> Interpreter<S> {
 
         match imm {
             IS_CALLER_EXTERNAL => {
-                self.registers[ra] = (parent != 0) as Word;
+                self.registers[ra] = (parent == 0) as Word;
             }
 
             GET_CALLER => {

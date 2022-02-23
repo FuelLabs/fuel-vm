@@ -148,12 +148,12 @@ fn metadata() {
     let ra = receipts[1]
         .ra()
         .expect("IsCallerExternal should set $rA as boolean flag");
-    assert_eq!(0, ra);
+    assert_eq!(1, ra);
 
     let ra = receipts[3]
         .ra()
         .expect("IsCallerExternal should set $rA as boolean flag");
-    assert_eq!(1, ra);
+    assert_eq!(0, ra);
 
     let contract_call = Hasher::hash(contract_call.as_ref());
     let digest = receipts[4].digest().expect("GetCaller should return contract Id");

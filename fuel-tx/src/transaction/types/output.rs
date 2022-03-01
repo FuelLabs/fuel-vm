@@ -1,5 +1,5 @@
 use fuel_types::bytes::{self, WORD_SIZE};
-use fuel_types::{Address, Bytes32, Color, ContractId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SizedBytes;
@@ -10,7 +10,7 @@ use std::io;
 const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
     + Address::LEN // To
     + WORD_SIZE // Amount
-    + Color::LEN; // Color
+    + AssetId::LEN; // AssetId
 
 const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Input index
@@ -73,7 +73,7 @@ pub enum Output {
     Coin {
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
     },
 
     Contract {
@@ -85,19 +85,19 @@ pub enum Output {
     Withdrawal {
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
     },
 
     Change {
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
     },
 
     Variable {
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
     },
 
     ContractCreated {
@@ -131,8 +131,12 @@ impl bytes::SizedBytes for Output {
 }
 
 impl Output {
-    pub const fn coin(to: Address, amount: Word, color: Color) -> Self {
-        Self::Coin { to, amount, color }
+    pub const fn coin(to: Address, amount: Word, asset_id: AssetId) -> Self {
+        Self::Coin {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
     pub const fn contract(input_index: u8, balance_root: Bytes32, state_root: Bytes32) -> Self {
@@ -143,16 +147,28 @@ impl Output {
         }
     }
 
-    pub const fn withdrawal(to: Address, amount: Word, color: Color) -> Self {
-        Self::Withdrawal { to, amount, color }
+    pub const fn withdrawal(to: Address, amount: Word, asset_id: AssetId) -> Self {
+        Self::Withdrawal {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
-    pub const fn change(to: Address, amount: Word, color: Color) -> Self {
-        Self::Change { to, amount, color }
+    pub const fn change(to: Address, amount: Word, asset_id: AssetId) -> Self {
+        Self::Change {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
-    pub const fn variable(to: Address, amount: Word, color: Color) -> Self {
-        Self::Variable { to, amount, color }
+    pub const fn variable(to: Address, amount: Word, asset_id: AssetId) -> Self {
+        Self::Variable {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
     pub const fn contract_created(contract_id: ContractId, state_root: Bytes32) -> Self {
@@ -162,12 +178,12 @@ impl Output {
         }
     }
 
-    pub const fn color(&self) -> Option<&Color> {
+    pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Self::Coin { color, .. } => Some(color),
-            Self::Withdrawal { color, .. } => Some(color),
-            Self::Change { color, .. } => Some(color),
-            Self::Variable { color, .. } => Some(color),
+            Self::Coin { asset_id, .. } => Some(asset_id),
+            Self::Withdrawal { asset_id, .. } => Some(asset_id),
+            Self::Change { asset_id, .. } => Some(asset_id),
+            Self::Variable { asset_id, .. } => Some(asset_id),
             _ => None,
         }
     }
@@ -185,13 +201,29 @@ impl io::Read for Output {
         buf = bytes::store_number_unchecked(buf, identifier as Word);
 
         match self {
-            Self::Coin { to, amount, color }
-            | Self::Withdrawal { to, amount, color }
-            | Self::Change { to, amount, color }
-            | Self::Variable { to, amount, color } => {
+            Self::Coin {
+                to,
+                amount,
+                asset_id,
+            }
+            | Self::Withdrawal {
+                to,
+                amount,
+                asset_id,
+            }
+            | Self::Change {
+                to,
+                amount,
+                asset_id,
+            }
+            | Self::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
                 buf = bytes::store_array_unchecked(buf, to);
                 buf = bytes::store_number_unchecked(buf, *amount);
-                bytes::store_array_unchecked(buf, color);
+                bytes::store_array_unchecked(buf, asset_id);
             }
 
             Self::Contract {
@@ -253,16 +285,40 @@ impl io::Write for Output {
                 // Safety: buf len is checked
                 let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (color, _) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (asset_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let to = to.into();
-                let color = color.into();
+                let asset_id = asset_id.into();
 
                 match identifier {
-                    OutputRepr::Coin => *self = Self::Coin { to, amount, color },
-                    OutputRepr::Withdrawal => *self = Self::Withdrawal { to, amount, color },
-                    OutputRepr::Change => *self = Self::Change { to, amount, color },
-                    OutputRepr::Variable => *self = Self::Variable { to, amount, color },
+                    OutputRepr::Coin => {
+                        *self = Self::Coin {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
+                    OutputRepr::Withdrawal => {
+                        *self = Self::Withdrawal {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
+                    OutputRepr::Change => {
+                        *self = Self::Change {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
+                    OutputRepr::Variable => {
+                        *self = Self::Variable {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
 
                     _ => unreachable!(),
                 }

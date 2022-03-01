@@ -1,6 +1,6 @@
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{Address, Bytes32, Color, ContractId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
 
 use alloc::vec::Vec;
 
@@ -21,7 +21,7 @@ pub enum Receipt {
         id: ContractId,
         to: ContractId,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         gas: Word,
         a: Word,
         b: Word,
@@ -86,7 +86,7 @@ pub enum Receipt {
         id: ContractId,
         to: ContractId,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         pc: Word,
         is: Word,
     },
@@ -95,7 +95,7 @@ pub enum Receipt {
         id: ContractId,
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         pc: Word,
         is: Word,
     },
@@ -111,7 +111,7 @@ impl Receipt {
         id: ContractId,
         to: ContractId,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         gas: Word,
         a: Word,
         b: Word,
@@ -122,7 +122,7 @@ impl Receipt {
             id,
             to,
             amount,
-            color,
+            asset_id,
             gas,
             a,
             b,
@@ -212,7 +212,7 @@ impl Receipt {
         id: ContractId,
         to: ContractId,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         pc: Word,
         is: Word,
     ) -> Self {
@@ -220,7 +220,7 @@ impl Receipt {
             id,
             to,
             amount,
-            color,
+            asset_id,
             pc,
             is,
         }
@@ -230,7 +230,7 @@ impl Receipt {
         id: ContractId,
         to: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         pc: Word,
         is: Word,
     ) -> Self {
@@ -238,7 +238,7 @@ impl Receipt {
             id,
             to,
             amount,
-            color,
+            asset_id,
             pc,
             is,
         }
@@ -317,11 +317,11 @@ impl Receipt {
         }
     }
 
-    pub const fn color(&self) -> Option<&Color> {
+    pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Self::Call { color, .. } => Some(color),
-            Self::Transfer { color, .. } => Some(color),
-            Self::TransferOut { color, .. } => Some(color),
+            Self::Call { asset_id, .. } => Some(asset_id),
+            Self::Transfer { asset_id, .. } => Some(asset_id),
+            Self::TransferOut { asset_id, .. } => Some(asset_id),
             _ => None,
         }
     }
@@ -454,7 +454,7 @@ impl Receipt {
             ReceiptRepr::Call => {
                 ContractId::LEN // to
                 + WORD_SIZE // amount
-                + Color::LEN // color
+                + AssetId::LEN // asset_id
                 + WORD_SIZE // gas
                 + WORD_SIZE // a
                 + WORD_SIZE // b
@@ -489,13 +489,13 @@ impl Receipt {
             ReceiptRepr::Transfer => {
                 ContractId::LEN // to
                 + WORD_SIZE // amount
-                + Color::LEN // digest
+                + AssetId::LEN // digest
             }
 
             ReceiptRepr::TransferOut => {
                 Address::LEN // to
                 + WORD_SIZE // amount
-                + Color::LEN // digest
+                + AssetId::LEN // digest
             }
 
             ReceiptRepr::ScriptResult => {

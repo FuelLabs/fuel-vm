@@ -34,9 +34,9 @@ pub enum ValidationError {
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
-    TransactionOutputChangeColorDuplicated,
-    TransactionOutputChangeColorNotFound,
-    TransactionOutputVariableColorDuplicated,
+    TransactionOutputChangeAssetIdDuplicated,
+    TransactionOutputChangeAssetIdNotFound,
+    TransactionOutputVariableAssetIdDuplicated,
 }
 
 impl fmt::Display for ValidationError {

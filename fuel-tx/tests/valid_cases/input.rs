@@ -31,7 +31,7 @@ fn coin() {
         mut iter: I,
         utxo_id: UtxoId,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -49,7 +49,7 @@ fn coin() {
             utxo_id,
             &public,
             amount,
-            color,
+            asset_id,
             maturity,
             predicate,
             predicate_data,
@@ -68,14 +68,14 @@ fn coin() {
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
-    let color = rng.gen();
+    let asset_id = rng.gen();
     let maturity = rng.gen();
     sign_coin_and_validate(
         rng,
         txs.by_ref(),
         utxo_id,
         amount,
-        color,
+        asset_id,
         maturity,
         vec![0u8; MAX_PREDICATE_LENGTH as usize],
         vec![],
@@ -84,14 +84,14 @@ fn coin() {
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
-    let color = rng.gen();
+    let asset_id = rng.gen();
     let maturity = rng.gen();
     sign_coin_and_validate(
         rng,
         txs.by_ref(),
         utxo_id,
         amount,
-        color,
+        asset_id,
         maturity,
         vec![],
         vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize],
@@ -100,14 +100,14 @@ fn coin() {
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
-    let color = rng.gen();
+    let asset_id = rng.gen();
     let maturity = rng.gen();
     let err = sign_coin_and_validate(
         rng,
         txs.by_ref(),
         utxo_id,
         amount,
-        color,
+        asset_id,
         maturity,
         vec![0u8; MAX_PREDICATE_LENGTH as usize + 1],
         vec![],
@@ -122,14 +122,14 @@ fn coin() {
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
-    let color = rng.gen();
+    let asset_id = rng.gen();
     let maturity = rng.gen();
     let err = sign_coin_and_validate(
         rng,
         txs.by_ref(),
         utxo_id,
         amount,
-        color,
+        asset_id,
         maturity,
         vec![],
         vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize + 1],

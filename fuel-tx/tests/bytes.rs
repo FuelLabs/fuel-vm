@@ -273,7 +273,7 @@ fn receipt() {
         ),
         Receipt::script_result(
             InstructionResult::error(
-                PanicReason::ColorNotFound,
+                PanicReason::AssetIdNotFound,
                 Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
             rng.gen(),

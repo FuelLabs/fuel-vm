@@ -1,7 +1,7 @@
 use crate::{Input, Output, StorageSlot, Transaction, UtxoId, Witness};
 
 use fuel_crypto::SecretKey;
-use fuel_types::{Color, ContractId, Salt, Word};
+use fuel_types::{AssetId, ContractId, Salt, Word};
 
 use alloc::vec::Vec;
 use core::mem;
@@ -86,7 +86,7 @@ impl<'a> TransactionBuilder<'a> {
         utxo_id: UtxoId,
         secret: &'a SecretKey,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -98,7 +98,7 @@ impl<'a> TransactionBuilder<'a> {
             utxo_id,
             &pk,
             amount,
-            color,
+            asset_id,
             maturity,
             predicate,
             predicate_data,

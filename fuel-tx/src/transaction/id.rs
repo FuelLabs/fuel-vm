@@ -85,11 +85,14 @@ impl Transaction {
             Output::Change { amount, .. } => *amount = 0,
 
             Output::Variable {
-                to, amount, color, ..
+                to,
+                amount,
+                asset_id,
+                ..
             } => {
                 to.iter_mut().for_each(|b| *b = 0);
                 *amount = 0;
-                color.iter_mut().for_each(|b| *b = 0);
+                asset_id.iter_mut().for_each(|b| *b = 0);
             }
 
             _ => (),
@@ -213,7 +216,7 @@ mod tests {
             assert_io_ne!(tx, inputs_mut, Input::Coin, utxo_id, invert_utxo_id);
             assert_io_ne!(tx, inputs_mut, Input::Coin, owner, invert);
             assert_io_ne!(tx, inputs_mut, Input::Coin, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::Coin, color, invert);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, asset_id, invert);
             assert_io_ne!(tx, inputs_mut, Input::Coin, witness_index, not);
             assert_io_ne!(tx, inputs_mut, Input::Coin, maturity, not);
             assert_io_ne!(tx, inputs_mut, Input::Coin, predicate, inv_v);
@@ -228,7 +231,7 @@ mod tests {
         if !tx.outputs().is_empty() {
             assert_io_ne!(tx, outputs_mut, Output::Coin, to, invert);
             assert_io_ne!(tx, outputs_mut, Output::Coin, amount, not);
-            assert_io_ne!(tx, outputs_mut, Output::Coin, color, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Coin, asset_id, invert);
 
             assert_io_ne!(tx, outputs_mut, Output::Contract, input_index, not);
             assert_io_eq!(tx, outputs_mut, Output::Contract, balance_root, invert);
@@ -236,15 +239,15 @@ mod tests {
 
             assert_io_ne!(tx, outputs_mut, Output::Withdrawal, to, invert);
             assert_io_ne!(tx, outputs_mut, Output::Withdrawal, amount, not);
-            assert_io_ne!(tx, outputs_mut, Output::Withdrawal, color, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Withdrawal, asset_id, invert);
 
             assert_io_ne!(tx, outputs_mut, Output::Change, to, invert);
             assert_io_eq!(tx, outputs_mut, Output::Change, amount, not);
-            assert_io_ne!(tx, outputs_mut, Output::Change, color, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Change, asset_id, invert);
 
             assert_io_eq!(tx, outputs_mut, Output::Variable, to, invert);
             assert_io_eq!(tx, outputs_mut, Output::Variable, amount, not);
-            assert_io_eq!(tx, outputs_mut, Output::Variable, color, invert);
+            assert_io_eq!(tx, outputs_mut, Output::Variable, asset_id, invert);
 
             assert_io_ne!(
                 tx,

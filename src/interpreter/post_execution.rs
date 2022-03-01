@@ -31,7 +31,7 @@ where
                 if revert {
                     *amount = init_balances[asset_id] + refund;
                 } else {
-                    let balance = self.external_color_balance(asset_id)?;
+                    let balance = self.external_asset_id_balance(asset_id)?;
                     *amount = balance + refund;
                 }
             }

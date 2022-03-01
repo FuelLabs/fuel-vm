@@ -342,6 +342,9 @@ where
     pub fn left_child(&self) -> Option<Self> {
         assert!(self.is_node());
         let key = self.node.left_child_key();
+        if key == zero_sum() {
+            return Some(Self::new(self.storage, Node::create_placeholder()));
+        }
         let buffer = self.storage.get(key).unwrap();
         buffer.map(|b| {
             let node = Node::from_buffer(*b);
@@ -350,8 +353,11 @@ where
     }
 
     pub fn right_child(&self) -> Option<Self> {
-        assert!(self.node.is_node());
+        assert!(self.is_node());
         let key = self.node.right_child_key();
+        if key == zero_sum() {
+            return Some(Self::new(self.storage, Node::create_placeholder()));
+        }
         let buffer = self.storage.get(key).unwrap();
         buffer.map(|b| {
             let node = Node::from_buffer(*b);
@@ -627,5 +633,37 @@ mod test_storage_node {
         let child = storage_node.right_child().unwrap();
 
         assert_eq!(child.hash(), leaf_1.hash());
+    }
+
+    #[test]
+    fn test_node_left_child_returns_placeholder_when_key_is_zero_sum() {
+        let mut s = StorageMap::<Bytes32, Buffer>::new();
+
+        let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
+        let _ = s.insert(&leaf.hash(), leaf.as_buffer());
+
+        let node_0 = Node::create_node(&Node::create_placeholder(), &leaf);
+        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+
+        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let child = storage_node.left_child().unwrap();
+
+        assert!(child.node.is_placeholder());
+    }
+
+    #[test]
+    fn test_node_right_child_returns_placeholder_when_key_is_zero_sum() {
+        let mut s = StorageMap::<Bytes32, Buffer>::new();
+
+        let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
+        let _ = s.insert(&leaf.hash(), leaf.as_buffer());
+
+        let node_0 = Node::create_node(&leaf, &Node::create_placeholder());
+        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+
+        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let child = storage_node.right_child().unwrap();
+
+        assert!(child.node.is_placeholder());
     }
 }

@@ -43,8 +43,9 @@ impl Node {
     pub fn create_node(left_child: &Node, right_child: &Node) -> Self {
         let buffer = Self::default_buffer();
         let mut node = Self { buffer };
-        node.set_height(left_child.height() + 1);
-        node.set_prefix(NODE);
+        let height = std::cmp::max(left_child.height(), right_child.height()) + 1;
+        node.set_height(height);
+        node.set_bytes_prefix(&[NODE]);
         node.set_bytes_lo(&left_child.hash());
         node.set_bytes_hi(&right_child.hash());
         node

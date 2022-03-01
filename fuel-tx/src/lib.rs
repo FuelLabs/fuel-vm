@@ -13,7 +13,7 @@ extern crate alloc;
 pub mod consts;
 
 pub use fuel_asm::{InstructionResult, PanicReason};
-pub use fuel_types::{Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Salt, Word};
+pub use fuel_types::{Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, Salt, Word};
 
 #[cfg(feature = "builder")]
 mod builder;

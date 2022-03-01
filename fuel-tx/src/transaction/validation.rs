@@ -1,7 +1,7 @@
 use super::{Input, Output, Transaction, Witness};
 use crate::consts::*;
 
-use fuel_types::{Color, Word};
+use fuel_types::{AssetId, Word};
 
 #[cfg(feature = "std")]
 use fuel_types::Bytes32;
@@ -171,42 +171,43 @@ impl Transaction {
             Err(ValidationError::TransactionWitnessesMax)?
         }
 
-        self.input_colors_unique().try_for_each(|input_color| {
-            // check for duplicate change outputs
-            if self
-                .outputs()
-                .iter()
-                .filter_map(|output| match output {
-                    Output::Change { color, .. } if input_color == color => Some(()),
-                    Output::Change { color, .. }
-                        if color != &Color::default() && input_color == color =>
-                    {
-                        Some(())
-                    }
-                    _ => None,
-                })
-                .count()
-                > 1
-            {
-                return Err(ValidationError::TransactionOutputChangeColorDuplicated);
-            }
+        self.input_asset_ids_unique()
+            .try_for_each(|input_asset_id| {
+                // check for duplicate change outputs
+                if self
+                    .outputs()
+                    .iter()
+                    .filter_map(|output| match output {
+                        Output::Change { asset_id, .. } if input_asset_id == asset_id => Some(()),
+                        Output::Change { asset_id, .. }
+                            if asset_id != &AssetId::default() && input_asset_id == asset_id =>
+                        {
+                            Some(())
+                        }
+                        _ => None,
+                    })
+                    .count()
+                    > 1
+                {
+                    return Err(ValidationError::TransactionOutputChangeAssetIdDuplicated);
+                }
 
-            // check for duplicate variable outputs
-            if self
-                .outputs()
-                .iter()
-                .filter_map(|output| match output {
-                    Output::Variable { color, .. } if input_color == color => Some(()),
-                    _ => None,
-                })
-                .count()
-                > 1
-            {
-                return Err(ValidationError::TransactionOutputVariableColorDuplicated);
-            }
+                // check for duplicate variable outputs
+                if self
+                    .outputs()
+                    .iter()
+                    .filter_map(|output| match output {
+                        Output::Variable { asset_id, .. } if input_asset_id == asset_id => Some(()),
+                        _ => None,
+                    })
+                    .count()
+                    > 1
+                {
+                    return Err(ValidationError::TransactionOutputVariableAssetIdDuplicated);
+                }
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
 
         self.inputs()
             .iter()
@@ -221,9 +222,12 @@ impl Transaction {
             .try_for_each(|(index, output)| {
                 output.validate(index, self.inputs())?;
 
-                if let Output::Change { color, .. } = output {
-                    if !self.input_colors().any(|input_color| input_color == color) {
-                        return Err(ValidationError::TransactionOutputChangeColorNotFound);
+                if let Output::Change { asset_id, .. } = output {
+                    if !self
+                        .input_asset_ids()
+                        .any(|input_asset_id| input_asset_id == asset_id)
+                    {
+                        return Err(ValidationError::TransactionOutputChangeAssetIdNotFound);
                     }
                 }
 
@@ -317,7 +321,7 @@ impl Transaction {
                             Err(ValidationError::TransactionCreateOutputVariable { index })
                         }
 
-                        Output::Change { color, .. } if color != &Color::default() => {
+                        Output::Change { asset_id, .. } if asset_id != &AssetId::default() => {
                             Err(ValidationError::TransactionCreateOutputChangeNotBaseAsset {
                                 index,
                             })

@@ -1,7 +1,7 @@
 use crate::UtxoId;
 
 use fuel_types::bytes::{self, WORD_SIZE};
-use fuel_types::{Address, Bytes32, Color, ContractId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
 
 #[cfg(feature = "std")]
 use fuel_crypto::PublicKey;
@@ -19,7 +19,7 @@ const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // UtxoId output_index
     + Address::LEN // Owner
     + WORD_SIZE // Amount
-    + Color::LEN // Color
+    + AssetId::LEN // AssetId
     + WORD_SIZE // Witness index
     + WORD_SIZE // Maturity
     + WORD_SIZE // Predicate size
@@ -65,7 +65,7 @@ pub enum Input {
         utxo_id: UtxoId,
         owner: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         witness_index: u8,
         maturity: Word,
         predicate: Vec<u8>,
@@ -121,7 +121,7 @@ impl Input {
         utxo_id: UtxoId,
         owner: Address,
         amount: Word,
-        color: Color,
+        asset_id: AssetId,
         witness_index: u8,
         maturity: Word,
         predicate: Vec<u8>,
@@ -131,7 +131,7 @@ impl Input {
             utxo_id,
             owner,
             amount,
-            color,
+            asset_id,
             witness_index,
             maturity,
             predicate,
@@ -206,7 +206,7 @@ impl io::Read for Input {
                 utxo_id,
                 owner,
                 amount,
-                color,
+                asset_id,
                 witness_index,
                 maturity,
                 predicate,
@@ -217,7 +217,7 @@ impl io::Read for Input {
                 let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
                 let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, color);
+                let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *witness_index);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
 
@@ -269,7 +269,7 @@ impl io::Write for Input {
                 let (output_index, buf) = unsafe { bytes::restore_number_unchecked::<Word>(buf) };
                 let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
 
@@ -284,13 +284,13 @@ impl io::Write for Input {
 
                 let utxo_id = UtxoId::new(tx_id.into(), output_index as u8);
                 let owner = owner.into();
-                let color = color.into();
+                let asset_id = asset_id.into();
 
                 *self = Self::Coin {
                     utxo_id,
                     owner,
                     amount,
-                    color,
+                    asset_id,
                     witness_index,
                     maturity,
                     predicate,

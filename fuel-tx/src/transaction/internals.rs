@@ -49,7 +49,10 @@ impl Transaction {
 
     pub(crate) fn _set_script(&mut self, _script: Vec<u8>) -> Option<()> {
         match self {
-            Self::Script { script, .. } => Some(*script = _script),
+            Self::Script { script, .. } => {
+                *script = _script;
+                Some(())
+            }
             Self::Create { .. } => None,
         }
     }

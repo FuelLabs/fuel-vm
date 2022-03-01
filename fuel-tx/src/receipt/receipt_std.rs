@@ -19,7 +19,7 @@ impl io::Read for Receipt {
                 id,
                 to,
                 amount,
-                color,
+                asset_id,
                 gas,
                 a,
                 b,
@@ -31,7 +31,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_array_unchecked(buf, to);
                 let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, color);
+                let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *gas);
                 let buf = bytes::store_number_unchecked(buf, *a);
                 let buf = bytes::store_number_unchecked(buf, *b);
@@ -134,7 +134,7 @@ impl io::Read for Receipt {
                 id,
                 to,
                 amount,
-                color,
+                asset_id,
                 pc,
                 is,
             } => {
@@ -143,7 +143,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_array_unchecked(buf, to);
                 let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, color);
+                let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
@@ -152,7 +152,7 @@ impl io::Read for Receipt {
                 id,
                 to,
                 amount,
-                color,
+                asset_id,
                 pc,
                 is,
             } => {
@@ -161,7 +161,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_array_unchecked(buf, to);
                 let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, color);
+                let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
@@ -203,7 +203,7 @@ impl io::Write for Receipt {
                 let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (gas, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
@@ -212,9 +212,9 @@ impl io::Write for Receipt {
 
                 let id = id.into();
                 let to = to.into();
-                let color = color.into();
+                let asset_id = asset_id.into();
 
-                *self = Self::call(id, to, amount, color, gas, a, b, pc, is);
+                *self = Self::call(id, to, amount, asset_id, gas, a, b, pc, is);
             }
 
             ReceiptRepr::Return => {
@@ -314,30 +314,30 @@ impl io::Write for Receipt {
                 let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let to = to.into();
-                let color = color.into();
+                let asset_id = asset_id.into();
 
-                *self = Self::transfer(id, to, amount, color, pc, is);
+                *self = Self::transfer(id, to, amount, asset_id, pc, is);
             }
 
             ReceiptRepr::TransferOut => {
                 let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let to = to.into();
-                let color = color.into();
+                let asset_id = asset_id.into();
 
-                *self = Self::transfer_out(id, to, amount, color, pc, is);
+                *self = Self::transfer_out(id, to, amount, asset_id, pc, is);
             }
 
             ReceiptRepr::ScriptResult => {

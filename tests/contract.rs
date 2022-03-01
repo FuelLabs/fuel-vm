@@ -40,7 +40,7 @@ fn mint_burn() {
     let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let color = AssetId::from(*contract);
+    let asset_id = AssetId::from(*contract);
     let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
@@ -100,7 +100,12 @@ fn mint_burn() {
         vec![],
     );
 
-    let script_data_check_balance: Vec<u8> = color.as_ref().iter().chain(contract.as_ref().iter()).copied().collect();
+    let script_data_check_balance: Vec<u8> = asset_id
+        .as_ref()
+        .iter()
+        .chain(contract.as_ref().iter())
+        .copied()
+        .collect();
     let mut script_check_balance = vec![
         Opcode::NOOP,
         Opcode::MOVE(0x11, 0x10),
@@ -241,7 +246,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         // load amount of tokens
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color
+        // load asset id
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load contract id
@@ -323,7 +328,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
         // load amount of tokens
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color
+        // load asset id
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load contract id

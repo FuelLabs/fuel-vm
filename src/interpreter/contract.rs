@@ -31,14 +31,14 @@ where
         let (b, c) = (b as usize, c as usize);
 
         // Safety: memory bounds checked
-        let color = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..c + ContractId::LEN]) };
 
         if !self.tx.input_contracts().any(|input| contract == input) {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
 
         self.registers[ra] = balance;
 
@@ -82,7 +82,7 @@ where
             self.balance_decrease(&source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. free balance)
-            self.external_color_balance_sub(&asset_id, amount)?;
+            self.external_asset_id_balance_sub(&asset_id, amount)?;
         }
         // credit destination contract
         self.balance_increase(&destination, &asset_id, amount)?;
@@ -128,7 +128,7 @@ where
             self.balance_decrease(&source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. UTXOs)
-            self.external_color_balance_sub(&asset_id, amount)?;
+            self.external_asset_id_balance_sub(&asset_id, amount)?;
         }
 
         // credit variable output
@@ -143,10 +143,10 @@ where
             .map_err(RuntimeError::from_io)
     }
 
-    pub(crate) fn balance(&self, contract: &ContractId, color: &AssetId) -> Result<Word, RuntimeError> {
+    pub(crate) fn balance(&self, contract: &ContractId, asset_id: &AssetId) -> Result<Word, RuntimeError> {
         Ok(self
             .storage
-            .merkle_contract_color_balance(contract, color)
+            .merkle_contract_asset_id_balance(contract, asset_id)
             .map_err(RuntimeError::from_io)?
             .unwrap_or_default())
     }
@@ -161,7 +161,7 @@ where
         let balance = self.balance(&contract, &asset_id)?;
         let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
         self.storage
-            .merkle_contract_color_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }
@@ -176,7 +176,7 @@ where
         let balance = self.balance(&contract, &asset_id)?;
         let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
         self.storage
-            .merkle_contract_color_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }

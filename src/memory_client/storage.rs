@@ -152,7 +152,7 @@ impl MerkleStorage<ContractId, AssetId, Word> for MemoryStorage {
             .memory
             .balances
             .iter()
-            .filter_map(|((contract, color), balance)| (contract == parent).then(|| (color, balance)))
+            .filter_map(|((contract, asset_id), balance)| (contract == parent).then(|| (asset_id, balance)))
             .sorted_by_key(|t| t.0)
             .map(|(_, &balance)| balance)
             .map(Word::to_be_bytes);

@@ -85,15 +85,15 @@ fn correct_change_is_provided_for_coin_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 600;
-    let color = AssetId::default();
+    let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .coin_output(color, spend_amount)
-        .execute_get_change(color);
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .coin_output(asset_id, spend_amount)
+        .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
 }
@@ -104,15 +104,15 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 650;
-    let color = AssetId::default();
+    let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .withdrawal_output(color, spend_amount)
-        .execute_get_change(color);
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .withdrawal_output(asset_id, spend_amount)
+        .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
 }
@@ -124,14 +124,14 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
     let input_amount = 1000;
     let gas_price = 0;
     let byte_price = 0;
-    let color = AssetId::default();
+    let asset_id = AssetId::default();
 
     let outputs = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .change_output(color)
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .change_output(asset_id)
         .execute_get_outputs();
 
     let mut total_change = 0;
@@ -167,9 +167,9 @@ fn change_is_reduced_by_external_transfer() {
             Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
             // set reg 0x11 to transfer amount
             Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
-            // set reg 0x12 to color
+            // set reg 0x12 to asset id
             Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the color at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
         ]
@@ -222,9 +222,9 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
             // set reg 0x11 to transfer amount
             Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
-            // set reg 0x12 to color
+            // set reg 0x12 to asset id
             Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the color at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
         ]
@@ -272,7 +272,7 @@ fn variable_output_set_by_external_transfer_out() {
             // load amount of coins to 0x10
             Opcode::ADDI(0x10, REG_ZERO, data_offset),
             Opcode::LW(0x10, 0x10, 0),
-            // load color to 0x11
+            // load asset id to 0x11
             Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
             // load address to 0x12
             Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
@@ -340,7 +340,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             // load amount of coins to 0x10
             Opcode::ADDI(0x10, REG_ZERO, data_offset),
             Opcode::LW(0x10, 0x10, 0),
-            // load color to 0x11
+            // load asset id to 0x11
             Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
             // load address to 0x12
             Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
@@ -405,7 +405,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color to 0x11
+        // load asset id to 0x11
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load address to 0x12
@@ -484,7 +484,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color to 0x11
+        // load asset id to 0x11
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load to address to 0x12

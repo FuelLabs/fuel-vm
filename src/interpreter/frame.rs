@@ -9,13 +9,13 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn call_frame(&self, call: Call, color: AssetId) -> Result<CallFrame, RuntimeError> {
+    pub(crate) fn call_frame(&self, call: Call, asset_id: AssetId) -> Result<CallFrame, RuntimeError> {
         let (to, a, b) = call.into_inner();
 
         let code = self.contract(&to)?.into_owned();
         let registers = self.registers;
 
-        let frame = CallFrame::new(to, color, registers, a, b, code);
+        let frame = CallFrame::new(to, asset_id, registers, a, b, code);
 
         Ok(frame)
     }

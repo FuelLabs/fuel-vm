@@ -115,23 +115,23 @@ pub mod test_helpers {
             self
         }
 
-        pub fn change_output(&mut self, color: AssetId) -> &mut TestBuilder {
-            self.outputs.push(Output::change(self.rng.gen(), 0, color));
+        pub fn change_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
+            self.outputs.push(Output::change(self.rng.gen(), 0, asset_id));
             self
         }
 
-        pub fn coin_output(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
-            self.outputs.push(Output::coin(self.rng.gen(), amount, color));
+        pub fn coin_output(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
+            self.outputs.push(Output::coin(self.rng.gen(), amount, asset_id));
             self
         }
 
-        pub fn withdrawal_output(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
-            self.outputs.push(Output::withdrawal(self.rng.gen(), amount, color));
+        pub fn withdrawal_output(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
+            self.outputs.push(Output::withdrawal(self.rng.gen(), amount, asset_id));
             self
         }
 
-        pub fn variable_output(&mut self, color: AssetId) -> &mut TestBuilder {
-            self.outputs.push(Output::variable(self.rng.gen(), 0, color));
+        pub fn variable_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
+            self.outputs.push(Output::variable(self.rng.gen(), 0, asset_id));
             self
         }
 
@@ -146,12 +146,12 @@ pub mod test_helpers {
             self
         }
 
-        pub fn coin_input(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
+        pub fn coin_input(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
             self.inputs.push(Input::coin(
                 self.rng.gen(),
                 self.rng.gen(),
                 amount,
-                color,
+                asset_id,
                 0,
                 0,
                 vec![],
@@ -271,7 +271,7 @@ pub mod test_helpers {
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
                 self.storage
-                    .merkle_contract_color_balance_insert(&contract_id, &asset_id, amount)
+                    .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, amount)
                     .unwrap();
             }
 
@@ -302,11 +302,11 @@ pub mod test_helpers {
             self.execute().tx().outputs().to_vec()
         }
 
-        pub fn execute_get_change(&mut self, find_color: AssetId) -> Word {
+        pub fn execute_get_change(&mut self, find_asset_id: AssetId) -> Word {
             let outputs = self.execute_get_outputs();
             let change = outputs.into_iter().find_map(|output| {
                 if let Output::Change { amount, asset_id, .. } = output {
-                    if &asset_id == &find_color {
+                    if &asset_id == &find_asset_id {
                         Some(amount)
                     } else {
                         None
@@ -315,7 +315,7 @@ pub mod test_helpers {
                     None
                 }
             });
-            change.expect(format!("no change matching color {:x} was found", &find_color).as_str())
+            change.expect(format!("no change matching asset ID {:x} was found", &find_asset_id).as_str())
         }
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {

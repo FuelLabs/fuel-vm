@@ -88,21 +88,25 @@ pub trait InterpreterStorage:
         <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value)
     }
 
-    /// Fetch the balance of a color in a contract storage.
-    fn merkle_contract_color_balance(&self, id: &ContractId, color: &AssetId) -> Result<Option<Word>, Self::DataError> {
-        let balance = <Self as MerkleStorage<ContractId, AssetId, Word>>::get(self, id, color)?.map(Cow::into_owned);
+    /// Fetch the balance of an asset ID in a contract storage.
+    fn merkle_contract_asset_id_balance(
+        &self,
+        id: &ContractId,
+        asset_id: &AssetId,
+    ) -> Result<Option<Word>, Self::DataError> {
+        let balance = <Self as MerkleStorage<ContractId, AssetId, Word>>::get(self, id, asset_id)?.map(Cow::into_owned);
 
         Ok(balance)
     }
 
-    /// Update the balance of a color in a contract storage.
-    fn merkle_contract_color_balance_insert(
+    /// Update the balance of an asset ID in a contract storage.
+    fn merkle_contract_asset_id_balance_insert(
         &mut self,
         contract: &ContractId,
-        color: &AssetId,
+        asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        <Self as MerkleStorage<ContractId, AssetId, Word>>::insert(self, contract, color, &value)
+        <Self as MerkleStorage<ContractId, AssetId, Word>>::insert(self, contract, asset_id, &value)
     }
 }
 

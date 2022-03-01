@@ -75,11 +75,11 @@ where
         }
 
         let call = Call::try_from(&self.memory[a as usize..])?;
-        let color =
+        let asset_id =
             AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
         if self.is_external_context() {
-            self.external_color_balance_sub(&color, b)?;
+            self.external_asset_id_balance_sub(&asset_id, b)?;
         }
 
         if !self.tx.input_contracts().any(|contract| call.to() == contract) {
@@ -87,9 +87,9 @@ where
         }
 
         // TODO validate external and internal context
-        // TODO update color balance
+        // TODO update asset ID balance
 
-        let mut frame = self.call_frame(call, color)?;
+        let mut frame = self.call_frame(call, asset_id)?;
 
         let stack = frame.to_bytes();
         let len = stack.len() as Word;
@@ -115,7 +115,7 @@ where
             self.internal_contract_or_default(),
             *frame.to(),
             b,
-            *frame.color(),
+            *frame.asset_id(),
             d,
             frame.a(),
             frame.b(),

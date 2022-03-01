@@ -98,13 +98,13 @@ where
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let color = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
@@ -115,13 +115,13 @@ where
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let color = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()

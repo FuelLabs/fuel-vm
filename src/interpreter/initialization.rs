@@ -41,13 +41,13 @@ where
 
         // Set initial unused balances
         let free_balances = Self::initial_free_balances(&tx)?;
-        for (color, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
-            // push color
-            self.push_stack(color.as_ref())
+        for (asset_id, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
+            // push asset ID
+            self.push_stack(asset_id.as_ref())
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
             // stack position
-            let color_offset = self.registers[REG_SSP] as usize;
-            self.unused_balance_index.insert(*color, color_offset);
+            let asset_id_offset = self.registers[REG_SSP] as usize;
+            self.unused_balance_index.insert(*asset_id, asset_id_offset);
             // push spendable amount
             self.push_stack(&amount.to_be_bytes())
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -79,12 +79,12 @@ where
     pub(crate) fn initial_free_balances(tx: &Transaction) -> Result<HashMap<AssetId, Word>, InterpreterError> {
         let mut balances = HashMap::<AssetId, Word>::new();
 
-        // Add up all the inputs for each color
-        for (color, amount) in tx.inputs().iter().filter_map(|input| match input {
+        // Add up all the inputs for each asset ID
+        for (asset_id, amount) in tx.inputs().iter().filter_map(|input| match input {
             Input::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
             _ => None,
         }) {
-            *balances.entry(*color).or_default() += amount;
+            *balances.entry(*asset_id).or_default() += amount;
         }
 
         // Reduce by unavailable balances
@@ -102,12 +102,12 @@ where
         }
 
         // reduce free balances by coin and withdrawal outputs
-        for (color, amount) in tx.outputs().iter().filter_map(|output| match output {
+        for (asset_id, amount) in tx.outputs().iter().filter_map(|output| match output {
             Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
             Output::Withdrawal { asset_id, amount, .. } => Some((asset_id, amount)),
             _ => None,
         }) {
-            let balance = balances.get_mut(color).unwrap();
+            let balance = balances.get_mut(asset_id).unwrap();
             *balance = balance
                 .checked_sub(*amount)
                 .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;

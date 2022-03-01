@@ -88,7 +88,7 @@ pub const VM_TX_MEMORY: usize = Bytes32::LEN // Tx ID
             + WORD_SIZE // Tx size
             + MAX_INPUTS as usize * (
                 AssetId::LEN + WORD_SIZE
-                ); // Color/Balance coin input pairs
+                ); // Asset ID/Balance coin input pairs
 
 /// Empty merkle root for receipts tree
 pub const EMPTY_RECEIPTS_MERKLE_ROOT: [u8; 32] = [

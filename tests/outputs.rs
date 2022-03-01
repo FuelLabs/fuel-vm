@@ -18,9 +18,9 @@ fn full_change_with_no_fees() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert_eq!(change, input_amount);
 }
@@ -34,9 +34,9 @@ fn byte_fees_are_deducted_from_base_asset_change() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -50,9 +50,9 @@ fn used_gas_is_deducted_from_base_asset_change() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -72,9 +72,9 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
         ])
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -85,7 +85,7 @@ fn correct_change_is_provided_for_coin_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 600;
-    let color = Color::default();
+    let color = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -104,7 +104,7 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 650;
-    let color = Color::default();
+    let color = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -118,13 +118,13 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
 }
 
 #[test]
-#[should_panic(expected = "ValidationError(TransactionOutputChangeColorDuplicated)")]
+#[should_panic(expected = "ValidationError(TransactionOutputChangeAssetIdDuplicated)")]
 fn change_is_not_duplicated_for_each_base_asset_change_output() {
     // create multiple change outputs for the base asset and ensure the total change is correct
     let input_amount = 1000;
     let gas_price = 0;
     let byte_price = 0;
-    let color = Color::default();
+    let color = AssetId::default();
 
     let outputs = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -151,7 +151,7 @@ fn change_is_reduced_by_external_transfer() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
 
     // simple dummy contract for transferring value to
     let contract_code = vec![Opcode::RET(REG_ONE)];
@@ -205,7 +205,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
 
     // setup state for test
     // simple dummy contract for transferring value to
@@ -263,7 +263,7 @@ fn variable_output_set_by_external_transfer_out() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     let (script, _) = script_with_data_offset!(
@@ -307,16 +307,16 @@ fn variable_output_set_by_external_transfer_out() {
         .execute_get_outputs();
 
     assert!(matches!(
-        outputs[0], Output::Variable { amount, to, color }
+        outputs[0], Output::Variable { amount, to, asset_id }
             if amount == transfer_amount
             && to == owner
-            && color == asset_id
+            && asset_id == asset_id
     ));
 
     assert!(matches!(
-        outputs[1], Output::Change {amount, color, .. }
+        outputs[1], Output::Change {amount, asset_id, .. }
             if amount == external_balance - transfer_amount
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -331,7 +331,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     let (script, _) = script_with_data_offset!(
@@ -380,9 +380,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     // full input amount is converted into change
     assert!(matches!(
-        outputs[1], Output::Change {amount, color, .. }
+        outputs[1], Output::Change {amount, asset_id, .. }
             if amount == external_balance
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -397,7 +397,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     // setup state for test
@@ -458,10 +458,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .execute_get_outputs();
 
     assert!(matches!(
-        outputs[0], Output::Variable { amount, to, color }
+        outputs[0], Output::Variable { amount, to, asset_id }
             if amount == transfer_amount
             && to == owner
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -476,7 +476,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     // setup state for test

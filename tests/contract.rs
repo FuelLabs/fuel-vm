@@ -40,7 +40,7 @@ fn mint_burn() {
     let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let color = Color::from(*contract);
+    let color = AssetId::from(*contract);
     let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
@@ -104,7 +104,7 @@ fn mint_burn() {
     let mut script_check_balance = vec![
         Opcode::NOOP,
         Opcode::MOVE(0x11, 0x10),
-        Opcode::ADDI(0x12, 0x10, Color::LEN as Immediate12),
+        Opcode::ADDI(0x12, 0x10, AssetId::LEN as Immediate12),
         Opcode::BAL(0x10, 0x11, 0x12),
         Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
         Opcode::RET(REG_ONE),
@@ -230,7 +230,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
-    let asset_id: Color = rng.gen();
+    let asset_id: AssetId = rng.gen();
     let transfer_amount = 500;
     let initial_internal_balance = 1_000_000;
 
@@ -311,7 +311,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
-    let asset_id: Color = rng.gen();
+    let asset_id: AssetId = rng.gen();
     let transfer_amount = 500;
     // set initial internal balance to < transfer amount
     let initial_internal_balance = 100;

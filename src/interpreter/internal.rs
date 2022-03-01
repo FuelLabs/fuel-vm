@@ -243,7 +243,7 @@ mod tests {
         let gas_limit = 1_000_000;
         let maturity = 0;
         let byte_price = 0;
-        let color_to_update: Color = rng.gen();
+        let color_to_update: AssetId = rng.gen();
         let amount_to_set: Word = 100;
         let owner: Address = rng.gen();
 
@@ -275,7 +275,7 @@ mod tests {
         assert!(matches!(
             vm.tx.outputs()[0],
             Output::Variable {amount, asset_id, to} if amount == amount_to_set
-                                                    && color == color_to_update
+                                                    && asset_id == color_to_update
                                                     && to == owner
         ));
 

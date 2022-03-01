@@ -34,7 +34,7 @@ impl Node {
         let buffer = Self::default_buffer();
         let mut node = Self { buffer };
         node.set_height(0);
-        node.set_bytes_prefix(&[LEAF]);
+        node.set_prefix(LEAF);
         node.set_bytes_lo(key);
         node.set_bytes_hi(&sum(data));
         node
@@ -44,7 +44,7 @@ impl Node {
         let buffer = Self::default_buffer();
         let mut node = Self { buffer };
         node.set_height(left_child.height() + 1);
-        node.set_bytes_prefix(&[NODE]);
+        node.set_prefix(NODE);
         node.set_bytes_lo(&left_child.hash());
         node.set_bytes_hi(&right_child.hash());
         node
@@ -73,6 +73,11 @@ impl Node {
 
     pub fn prefix(&self) -> u8 {
         self.bytes_prefix()[0]
+    }
+
+    pub fn set_prefix(&mut self, prefix: u8) {
+        let bytes = prefix.to_be_bytes();
+        self.set_bytes_prefix(&bytes);
     }
 
     pub fn leaf_key(&self) -> &Bytes32 {

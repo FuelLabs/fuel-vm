@@ -6,7 +6,7 @@ use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, InstructionResult};
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use fuel_tx::{Input, PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, RegisterId, Word};

@@ -4,7 +4,7 @@ use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::PanicReason;
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use fuel_types::{Bytes32, Bytes64, Word};
 
 impl<S> Interpreter<S> {

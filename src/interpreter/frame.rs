@@ -3,13 +3,13 @@ use crate::call::{Call, CallFrame};
 use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
-use fuel_types::Color;
+use fuel_types::AssetId;
 
 impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn call_frame(&self, call: Call, color: Color) -> Result<CallFrame, RuntimeError> {
+    pub(crate) fn call_frame(&self, call: Call, color: AssetId) -> Result<CallFrame, RuntimeError> {
         let (to, a, b) = call.into_inner();
 
         let code = self.contract(&to)?.into_owned();

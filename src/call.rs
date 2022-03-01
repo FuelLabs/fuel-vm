@@ -5,7 +5,7 @@ use crate::contract::Contract;
 
 use fuel_asm::PanicReason;
 use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::{Color, ContractId, Word};
+use fuel_types::{AssetId, ContractId, Word};
 
 use std::io::{self, Write};
 use std::mem;
@@ -114,7 +114,7 @@ impl TryFrom<&[u8]> for Call {
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>
 pub struct CallFrame {
     to: ContractId,
-    color: Color,
+    color: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
     a: Word,
     b: Word,
@@ -125,7 +125,7 @@ impl CallFrame {
     /// Create a new call frame.
     pub const fn new(
         to: ContractId,
-        color: Color,
+        color: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
         a: Word,
         b: Word,
@@ -148,17 +148,17 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
     }
 
     /// `a` argument memory offset.
     pub const fn a_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
     }
 
     /// `b` argument memory offset.
     pub const fn b_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// Registers prior to the called execution.
@@ -187,7 +187,7 @@ impl CallFrame {
     }
 
     /// Color of forwarded coins.
-    pub const fn color(&self) -> &Color {
+    pub const fn color(&self) -> &AssetId {
         &self.color
     }
 }

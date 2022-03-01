@@ -5,7 +5,7 @@ use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::{Output, Transaction};
-use fuel_types::{Address, Color, ContractId, RegisterId, Word};
+use fuel_types::{Address, AssetId, ContractId, RegisterId, Word};
 use std::io::Read;
 
 impl<S> Interpreter<S> {
@@ -107,8 +107,11 @@ impl<S> Interpreter<S> {
     }
 
     /// Retrieve the unspent balance for a given color
-    pub(crate) fn external_color_balance(&self, color: &Color) -> Result<Word, RuntimeError> {
-        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
+    pub(crate) fn external_color_balance(&self, color: &AssetId) -> Result<Word, RuntimeError> {
+        let offset = *self
+            .unused_balance_index
+            .get(color)
+            .ok_or(PanicReason::AssetIdNotFound)?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
@@ -118,12 +121,15 @@ impl<S> Interpreter<S> {
     }
 
     /// Reduces the unspent balance of a given color
-    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn external_color_balance_sub(&mut self, color: &AssetId, value: Word) -> Result<(), RuntimeError> {
         if value == 0 {
             return Ok(());
         }
 
-        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
+        let offset = *self
+            .unused_balance_index
+            .get(color)
+            .ok_or(PanicReason::AssetIdNotFound)?;
 
         let balance_memory = &mut self.memory[offset..offset + WORD_SIZE];
 
@@ -142,7 +148,7 @@ impl<S> Interpreter<S> {
     pub(crate) fn set_variable_output(
         &mut self,
         out_idx: usize,
-        color_to_update: Color,
+        color_to_update: AssetId,
         amount_to_set: Word,
         owner_to_set: Address,
     ) -> Result<(), RuntimeError> {
@@ -244,7 +250,7 @@ mod tests {
         let variable_output = Output::Variable {
             to: rng.gen(),
             amount: 0,
-            color: rng.gen(),
+            asset_id: rng.gen(),
         };
 
         let tx = Transaction::script(
@@ -268,7 +274,7 @@ mod tests {
         // verify the referenced tx output is updated properly
         assert!(matches!(
             vm.tx.outputs()[0],
-            Output::Variable {amount, color, to} if amount == amount_to_set
+            Output::Variable {amount, asset_id, to} if amount == amount_to_set
                                                     && color == color_to_update
                                                     && to == owner
         ));

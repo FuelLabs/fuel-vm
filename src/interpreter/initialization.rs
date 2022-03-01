@@ -8,7 +8,7 @@ use fuel_asm::PanicReason;
 use fuel_tx::consts::MAX_INPUTS;
 use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{Color, Word};
+use fuel_types::{AssetId, Word};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
@@ -54,7 +54,7 @@ where
         }
         // zero out remaining unused balance types
         for _i in free_balances.len()..(MAX_INPUTS as usize) {
-            self.push_stack(&[0; Color::LEN + WORD_SIZE])
+            self.push_stack(&[0; AssetId::LEN + WORD_SIZE])
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         }
 
@@ -76,19 +76,19 @@ where
     }
 
     // compute the initial free balances for each asset type
-    pub(crate) fn initial_free_balances(tx: &Transaction) -> Result<HashMap<Color, Word>, InterpreterError> {
-        let mut balances = HashMap::<Color, Word>::new();
+    pub(crate) fn initial_free_balances(tx: &Transaction) -> Result<HashMap<AssetId, Word>, InterpreterError> {
+        let mut balances = HashMap::<AssetId, Word>::new();
 
         // Add up all the inputs for each color
         for (color, amount) in tx.inputs().iter().filter_map(|input| match input {
-            Input::Coin { color, amount, .. } => Some((color, amount)),
+            Input::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
             _ => None,
         }) {
             *balances.entry(*color).or_default() += amount;
         }
 
         // Reduce by unavailable balances
-        let base_asset = Color::default();
+        let base_asset = AssetId::default();
         if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
             // remove byte costs from base asset spendable balance
             let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
@@ -103,8 +103,8 @@ where
 
         // reduce free balances by coin and withdrawal outputs
         for (color, amount) in tx.outputs().iter().filter_map(|output| match output {
-            Output::Coin { color, amount, .. } => Some((color, amount)),
-            Output::Withdrawal { color, amount, .. } => Some((color, amount)),
+            Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
+            Output::Withdrawal { asset_id, amount, .. } => Some((asset_id, amount)),
             _ => None,
         }) {
             let balance = balances.get_mut(color).unwrap();

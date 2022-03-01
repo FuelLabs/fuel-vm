@@ -9,7 +9,7 @@ use fuel_asm::{Instruction, InstructionResult};
 use fuel_tx::crypto::Hasher;
 use fuel_tx::{Input, PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
-use fuel_types::{Bytes32, Color, RegisterId, Word};
+use fuel_types::{AssetId, Bytes32, RegisterId, Word};
 
 use std::cmp;
 
@@ -75,7 +75,8 @@ where
         }
 
         let call = Call::try_from(&self.memory[a as usize..])?;
-        let color = Color::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+        let color =
+            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
         if self.is_external_context() {
             self.external_color_balance_sub(&color, b)?;

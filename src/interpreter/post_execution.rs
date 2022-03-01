@@ -1,7 +1,7 @@
 use crate::error::InterpreterError;
 use crate::prelude::{Interpreter, InterpreterStorage};
 use fuel_tx::{Output, Transaction};
-use fuel_types::{Color, Word};
+use fuel_types::{AssetId, Word};
 
 impl<S> Interpreter<S>
 where
@@ -21,13 +21,17 @@ where
         };
         // Update each output based on free balance
         for output in update_outputs.iter_mut() {
-            if let Output::Change { color, amount, .. } = output {
-                let refund = if *color == Color::default() { unused_gas_cost } else { 0 };
+            if let Output::Change { asset_id, amount, .. } = output {
+                let refund = if *asset_id == AssetId::default() {
+                    unused_gas_cost
+                } else {
+                    0
+                };
 
                 if revert {
-                    *amount = init_balances[color] + refund;
+                    *amount = init_balances[asset_id] + refund;
                 } else {
-                    let balance = self.external_color_balance(color)?;
+                    let balance = self.external_color_balance(asset_id)?;
                     *amount = balance + refund;
                 }
             }

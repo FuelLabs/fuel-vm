@@ -60,7 +60,7 @@ pub mod test_helpers {
     use crate::state::StateTransition;
     use fuel_asm::Opcode;
     use fuel_tx::{Input, Output, StorageSlot, Transaction, Witness};
-    use fuel_types::{Color, ContractId, Salt, Word};
+    use fuel_types::{AssetId, ContractId, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
@@ -115,22 +115,22 @@ pub mod test_helpers {
             self
         }
 
-        pub fn change_output(&mut self, color: Color) -> &mut TestBuilder {
+        pub fn change_output(&mut self, color: AssetId) -> &mut TestBuilder {
             self.outputs.push(Output::change(self.rng.gen(), 0, color));
             self
         }
 
-        pub fn coin_output(&mut self, color: Color, amount: Word) -> &mut TestBuilder {
+        pub fn coin_output(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
             self.outputs.push(Output::coin(self.rng.gen(), amount, color));
             self
         }
 
-        pub fn withdrawal_output(&mut self, color: Color, amount: Word) -> &mut TestBuilder {
+        pub fn withdrawal_output(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
             self.outputs.push(Output::withdrawal(self.rng.gen(), amount, color));
             self
         }
 
-        pub fn variable_output(&mut self, color: Color) -> &mut TestBuilder {
+        pub fn variable_output(&mut self, color: AssetId) -> &mut TestBuilder {
             self.outputs.push(Output::variable(self.rng.gen(), 0, color));
             self
         }
@@ -146,7 +146,7 @@ pub mod test_helpers {
             self
         }
 
-        pub fn coin_input(&mut self, color: Color, amount: Word) -> &mut TestBuilder {
+        pub fn coin_input(&mut self, color: AssetId, amount: Word) -> &mut TestBuilder {
             self.inputs.push(Input::coin(
                 self.rng.gen(),
                 self.rng.gen(),
@@ -204,12 +204,12 @@ pub mod test_helpers {
             )
         }
 
-        pub fn build_get_balance_tx(contract_id: &ContractId, asset_id: &Color) -> Transaction {
+        pub fn build_get_balance_tx(contract_id: &ContractId, asset_id: &AssetId) -> Transaction {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
                     Opcode::ADDI(0x11, REG_ZERO, data_offset),
-                    Opcode::ADDI(0x12, 0x11, Color::LEN as Immediate12),
+                    Opcode::ADDI(0x12, 0x11, AssetId::LEN as Immediate12),
                     Opcode::BAL(0x10, 0x11, 0x12),
                     Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
                     Opcode::RET(REG_ONE)
@@ -236,7 +236,7 @@ pub mod test_helpers {
         pub fn setup_contract(
             &mut self,
             contract: Vec<Opcode>,
-            initial_balance: Option<(Color, Word)>,
+            initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
             let storage_slots = if let Some(slots) = initial_state {
@@ -302,11 +302,11 @@ pub mod test_helpers {
             self.execute().tx().outputs().to_vec()
         }
 
-        pub fn execute_get_change(&mut self, find_color: Color) -> Word {
+        pub fn execute_get_change(&mut self, find_color: AssetId) -> Word {
             let outputs = self.execute_get_outputs();
             let change = outputs.into_iter().find_map(|output| {
-                if let Output::Change { amount, color, .. } = output {
-                    if &color == &find_color {
+                if let Output::Change { amount, asset_id, .. } = output {
+                    if &asset_id == &find_color {
                         Some(amount)
                     } else {
                         None
@@ -318,7 +318,7 @@ pub mod test_helpers {
             change.expect(format!("no change matching color {:x} was found", &find_color).as_str())
         }
 
-        pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &Color) -> Word {
+        pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {
             let tx = TestBuilder::build_get_balance_tx(contract_id, asset_id);
             let state = self.execute_tx(tx);
             let receipts = state.receipts();

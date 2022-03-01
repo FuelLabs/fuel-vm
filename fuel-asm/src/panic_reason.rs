@@ -28,12 +28,12 @@ pub enum PanicReason {
     ContractNotFound = 0x06,
     /// Memory ownership rules are violated.
     MemoryOwnership = 0x07,
-    /// The color balance isn't enough for the instruction.
+    /// The asset ID balance isn't enough for the instruction.
     NotEnoughBalance = 0x08,
     /// The interpreter is expected to be in internal context.
     ExpectedInternalContext = 0x09,
-    /// The queried color was not found in the state.
-    ColorNotFound = 0x0a,
+    /// The queried asset ID was not found in the state.
+    AssetIdNotFound = 0x0a,
     /// The provided input is not found in the transaction.
     InputNotFound = 0x0b,
     /// The provided output is not found in the transaction.
@@ -60,7 +60,7 @@ pub enum PanicReason {
     MemoryWriteOverlap = 0x16,
     /// The requested contract is not listed in the transaction inputs.
     ContractNotInInputs = 0x17,
-    /// The internal color balance overflowed with the provided instruction.
+    /// The internal asset ID balance overflowed with the provided instruction.
     InternalBalanceOverflow = 0x18,
     /// The maximum allowed contract size is violated.
     ContractMaxSize = 0x19,

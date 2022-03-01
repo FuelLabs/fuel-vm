@@ -204,7 +204,7 @@ fn panic_reason_description() {
         PanicReason::MemoryOwnership,
         PanicReason::NotEnoughBalance,
         PanicReason::ExpectedInternalContext,
-        PanicReason::ColorNotFound,
+        PanicReason::AssetIdNotFound,
         PanicReason::InputNotFound,
         PanicReason::OutputNotFound,
         PanicReason::WitnessNotFound,

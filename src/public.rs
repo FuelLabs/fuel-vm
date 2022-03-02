@@ -83,8 +83,8 @@ impl AsMut<[u8]> for PublicKey {
 }
 
 impl From<PublicKey> for [u8; PublicKey::LEN] {
-    fn from(salt: PublicKey) -> [u8; PublicKey::LEN] {
-        salt.0.into()
+    fn from(pk: PublicKey) -> [u8; PublicKey::LEN] {
+        pk.0.into()
     }
 }
 
@@ -144,7 +144,7 @@ mod use_std {
 
             let mut public_with_flag = [0u8; UNCOMPRESSED_PUBLIC_KEY_SIZE];
 
-            (&mut public_with_flag[1..]).copy_from_slice(public.as_ref());
+            public_with_flag[1..].copy_from_slice(public.as_ref());
 
             // Safety: FFI call
             let curve = ffi::secp256k1_ec_pubkey_parse(
@@ -185,7 +185,7 @@ mod use_std {
 
             debug_assert_eq!(SECP_UNCOMPRESSED_FLAG, pk[0]);
 
-            (&mut pk[1..]).copy_from_slice(self.as_ref());
+            pk[1..].copy_from_slice(self.as_ref());
 
             let pk = Secp256k1PublicKey::from_slice(&pk)?;
 

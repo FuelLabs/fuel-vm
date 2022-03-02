@@ -10,9 +10,21 @@ pub trait Keystore {
     /// Identifier for the keypair
     type KeyId;
 
-    /// Public key for a given id
-    fn public(&self, id: Self::KeyId) -> Result<Borrown<'_, PublicKey>, Self::Error>;
-
     /// Secret key for a given id
-    fn secret(&self, id: Self::KeyId) -> Result<Borrown<'_, SecretKey>, Self::Error>;
+    fn secret(&self, id: &Self::KeyId) -> Result<Option<Borrown<'_, SecretKey>>, Self::Error>;
+
+    /// Public key for a given id
+    #[cfg(not(feature = "std"))]
+    fn public(&self, id: &Self::KeyId) -> Result<Option<Borrown<'_, PublicKey>>, Self::Error>;
+
+    /// Public key for a given id
+    #[cfg(feature = "std")]
+    fn public(&self, id: &Self::KeyId) -> Result<Option<Borrown<'_, PublicKey>>, Self::Error> {
+        let secret = self.secret(id)?;
+        let public = secret
+            .map(|s| PublicKey::from(s.as_ref()))
+            .map(Borrown::Owned);
+
+        Ok(public)
+    }
 }

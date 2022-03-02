@@ -1,3 +1,5 @@
+use core::convert::Infallible;
+
 /// Crypto error variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -17,8 +19,26 @@ pub enum Error {
     /// Invalid secp256k1 signature
     InvalidSignature,
 
+    /// The provided key wasn't found
+    KeyNotFound,
+
+    /// The keystore isn't available or is corrupted
+    KeystoreNotAvailable,
+
     /// Out of preallocated memory
     NotEnoughMemory,
+}
+
+impl From<Error> for Infallible {
+    fn from(_: Error) -> Infallible {
+        unreachable!()
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(_: Infallible) -> Error {
+        unreachable!()
+    }
 }
 
 #[cfg(feature = "std")]

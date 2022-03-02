@@ -3,9 +3,9 @@ use crate::crypto;
 use crate::error::Infallible;
 use crate::storage::InterpreterStorage;
 
+use fuel_crypto::Hasher;
 use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
-use fuel_tx::crypto::Hasher;
-use fuel_types::{Address, Bytes32, Color, ContractId, Salt, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
 
 use std::borrow::Cow;
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
     contracts: HashMap<ContractId, Contract>,
-    balances: HashMap<(ContractId, Color), Word>,
+    balances: HashMap<(ContractId, AssetId), Word>,
     contract_state: HashMap<(ContractId, Bytes32), Bytes32>,
     contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
 }
@@ -128,22 +128,22 @@ impl Storage<ContractId, (Salt, Bytes32)> for MemoryStorage {
     }
 }
 
-impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
+impl MerkleStorage<ContractId, AssetId, Word> for MemoryStorage {
     type Error = Infallible;
 
-    fn insert(&mut self, parent: &ContractId, key: &Color, value: &Word) -> Result<Option<Word>, Infallible> {
+    fn insert(&mut self, parent: &ContractId, key: &AssetId, value: &Word) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.insert((*parent, *key), *value))
     }
 
-    fn get(&self, parent: &ContractId, key: &Color) -> Result<Option<Cow<'_, Word>>, Infallible> {
+    fn get(&self, parent: &ContractId, key: &AssetId) -> Result<Option<Cow<'_, Word>>, Infallible> {
         Ok(self.memory.balances.get(&(*parent, *key)).copied().map(Cow::Owned))
     }
 
-    fn remove(&mut self, parent: &ContractId, key: &Color) -> Result<Option<Word>, Infallible> {
+    fn remove(&mut self, parent: &ContractId, key: &AssetId) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.remove(&(*parent, *key)))
     }
 
-    fn contains_key(&self, parent: &ContractId, key: &Color) -> Result<bool, Infallible> {
+    fn contains_key(&self, parent: &ContractId, key: &AssetId) -> Result<bool, Infallible> {
         Ok(self.memory.balances.contains_key(&(*parent, *key)))
     }
 
@@ -152,7 +152,7 @@ impl MerkleStorage<ContractId, Color, Word> for MemoryStorage {
             .memory
             .balances
             .iter()
-            .filter_map(|((contract, color), balance)| (contract == parent).then(|| (color, balance)))
+            .filter_map(|((contract, asset_id), balance)| (contract == parent).then(|| (asset_id, balance)))
             .sorted_by_key(|t| t.0)
             .map(|(_, &balance)| balance)
             .map(Word::to_be_bytes);

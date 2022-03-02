@@ -3,7 +3,7 @@
 use crate::crypto;
 use crate::error::InterpreterError;
 
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use fuel_tx::{StorageSlot, Transaction, ValidationError};
 use fuel_types::{Bytes32, ContractId, Salt};
 

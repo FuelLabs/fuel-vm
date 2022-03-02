@@ -6,7 +6,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
 use fuel_tx::Receipt;
-use fuel_types::{Address, Color, ContractId};
+use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
 
@@ -22,7 +22,7 @@ where
     }
 
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        if b > VM_MAX_RAM - Color::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
+        if b > VM_MAX_RAM - AssetId::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -31,14 +31,14 @@ where
         let (b, c) = (b as usize, c as usize);
 
         // Safety: memory bounds checked
-        let color = unsafe { Color::as_ref_unchecked(&self.memory[b..b + Color::LEN]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..c + ContractId::LEN]) };
 
         if !self.tx.input_contracts().any(|input| contract == input) {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
 
         self.registers[ra] = balance;
 
@@ -47,7 +47,7 @@ where
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (cx, of) = c.overflowing_add(Color::LEN as Word);
+        let (cx, of) = c.overflowing_add(AssetId::LEN as Word);
         let overflow = overflow || of;
 
         if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
@@ -58,7 +58,7 @@ where
         let destination =
             ContractId::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
         let asset_id =
-            Color::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
         if !self.tx.input_contracts().any(|contract| &destination == contract) {
             return Err(PanicReason::ContractNotInInputs.into());
@@ -82,7 +82,7 @@ where
             self.balance_decrease(&source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. free balance)
-            self.external_color_balance_sub(&asset_id, amount)?;
+            self.external_asset_id_balance_sub(&asset_id, amount)?;
         }
         // credit destination contract
         self.balance_increase(&destination, &asset_id, amount)?;
@@ -101,7 +101,7 @@ where
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (dx, of) = d.overflowing_add(Color::LEN as Word);
+        let (dx, of) = d.overflowing_add(AssetId::LEN as Word);
         let overflow = overflow || of;
         let out_idx = b as usize;
 
@@ -111,7 +111,7 @@ where
 
         let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
         let asset_id =
-            Color::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");
+            AssetId::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");
         let amount = c;
 
         let internal_context = match self.internal_contract() {
@@ -128,7 +128,7 @@ where
             self.balance_decrease(&source_contract, &asset_id, amount)?;
         } else {
             // debit external funding source (i.e. UTXOs)
-            self.external_color_balance_sub(&asset_id, amount)?;
+            self.external_asset_id_balance_sub(&asset_id, amount)?;
         }
 
         // credit variable output
@@ -143,10 +143,10 @@ where
             .map_err(RuntimeError::from_io)
     }
 
-    pub(crate) fn balance(&self, contract: &ContractId, color: &Color) -> Result<Word, RuntimeError> {
+    pub(crate) fn balance(&self, contract: &ContractId, asset_id: &AssetId) -> Result<Word, RuntimeError> {
         Ok(self
             .storage
-            .merkle_contract_color_balance(contract, color)
+            .merkle_contract_asset_id_balance(contract, asset_id)
             .map_err(RuntimeError::from_io)?
             .unwrap_or_default())
     }
@@ -155,13 +155,13 @@ where
     pub(crate) fn balance_increase(
         &mut self,
         contract: &ContractId,
-        asset_id: &Color,
+        asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
         let balance = self.balance(&contract, &asset_id)?;
         let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
         self.storage
-            .merkle_contract_color_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }
@@ -170,13 +170,13 @@ where
     pub(crate) fn balance_decrease(
         &mut self,
         contract: &ContractId,
-        asset_id: &Color,
+        asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
         let balance = self.balance(&contract, &asset_id)?;
         let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
         self.storage
-            .merkle_contract_color_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }

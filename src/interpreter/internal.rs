@@ -5,7 +5,7 @@ use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::{Output, Transaction};
-use fuel_types::{Address, Color, ContractId, RegisterId, Word};
+use fuel_types::{Address, AssetId, ContractId, RegisterId, Word};
 use std::io::Read;
 
 impl<S> Interpreter<S> {
@@ -106,9 +106,12 @@ impl<S> Interpreter<S> {
             .ok_or(PanicReason::ExpectedInternalContext.into())
     }
 
-    /// Retrieve the unspent balance for a given color
-    pub(crate) fn external_color_balance(&self, color: &Color) -> Result<Word, RuntimeError> {
-        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
+    /// Retrieve the unspent balance for a given asset ID
+    pub(crate) fn external_asset_id_balance(&self, asset_id: &AssetId) -> Result<Word, RuntimeError> {
+        let offset = *self
+            .unused_balance_index
+            .get(asset_id)
+            .ok_or(PanicReason::AssetIdNotFound)?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
@@ -117,13 +120,20 @@ impl<S> Interpreter<S> {
         Ok(balance)
     }
 
-    /// Reduces the unspent balance of a given color
-    pub(crate) fn external_color_balance_sub(&mut self, color: &Color, value: Word) -> Result<(), RuntimeError> {
+    /// Reduces the unspent balance of a given asset ID
+    pub(crate) fn external_asset_id_balance_sub(
+        &mut self,
+        asset_id: &AssetId,
+        value: Word,
+    ) -> Result<(), RuntimeError> {
         if value == 0 {
             return Ok(());
         }
 
-        let offset = *self.unused_balance_index.get(color).ok_or(PanicReason::ColorNotFound)?;
+        let offset = *self
+            .unused_balance_index
+            .get(asset_id)
+            .ok_or(PanicReason::AssetIdNotFound)?;
 
         let balance_memory = &mut self.memory[offset..offset + WORD_SIZE];
 
@@ -137,12 +147,12 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    /// Increase the variable output with a given color. Modifies both the referenced tx and the
+    /// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
     /// serialized tx in vm memory.
     pub(crate) fn set_variable_output(
         &mut self,
         out_idx: usize,
-        color_to_update: Color,
+        asset_id_to_update: AssetId,
         amount_to_set: Word,
         owner_to_set: Address,
     ) -> Result<(), RuntimeError> {
@@ -160,7 +170,7 @@ impl<S> Interpreter<S> {
         }?;
 
         // update the local copy of the output
-        let mut output = Output::variable(owner_to_set, amount_to_set, color_to_update);
+        let mut output = Output::variable(owner_to_set, amount_to_set, asset_id_to_update);
 
         // update serialized memory state
         let offset = self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
@@ -201,7 +211,9 @@ mod tests {
 
         let inputs = balances
             .iter()
-            .map(|(color, amount)| Input::coin(rng.gen(), rng.gen(), *amount, *color, 0, maturity, vec![], vec![]))
+            .map(|(asset_id, amount)| {
+                Input::coin(rng.gen(), rng.gen(), *amount, *asset_id, 0, maturity, vec![], vec![])
+            })
             .collect();
 
         let tx = Transaction::script(
@@ -218,12 +230,12 @@ mod tests {
 
         vm.init(tx).expect("Failed to init VM!");
 
-        for (color, amount) in balances {
-            assert!(vm.external_color_balance_sub(&color, amount + 1).is_err());
-            vm.external_color_balance_sub(&color, amount - 10).unwrap();
-            assert!(vm.external_color_balance_sub(&color, 11).is_err());
-            vm.external_color_balance_sub(&color, 10).unwrap();
-            assert!(vm.external_color_balance_sub(&color, 1).is_err());
+        for (asset_id, amount) in balances {
+            assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
+            vm.external_asset_id_balance_sub(&asset_id, amount - 10).unwrap();
+            assert!(vm.external_asset_id_balance_sub(&asset_id, 11).is_err());
+            vm.external_asset_id_balance_sub(&asset_id, 10).unwrap();
+            assert!(vm.external_asset_id_balance_sub(&asset_id, 1).is_err());
         }
     }
 
@@ -237,14 +249,14 @@ mod tests {
         let gas_limit = 1_000_000;
         let maturity = 0;
         let byte_price = 0;
-        let color_to_update: Color = rng.gen();
+        let asset_id_to_update: AssetId = rng.gen();
         let amount_to_set: Word = 100;
         let owner: Address = rng.gen();
 
         let variable_output = Output::Variable {
             to: rng.gen(),
             amount: 0,
-            color: rng.gen(),
+            asset_id: rng.gen(),
         };
 
         let tx = Transaction::script(
@@ -262,14 +274,14 @@ mod tests {
         vm.init(tx).expect("Failed to init VM!");
 
         // increase variable output
-        vm.set_variable_output(0, color_to_update, amount_to_set, owner)
+        vm.set_variable_output(0, asset_id_to_update, amount_to_set, owner)
             .unwrap();
 
         // verify the referenced tx output is updated properly
         assert!(matches!(
             vm.tx.outputs()[0],
-            Output::Variable {amount, color, to} if amount == amount_to_set
-                                                    && color == color_to_update
+            Output::Variable {amount, asset_id, to} if amount == amount_to_set
+                                                    && asset_id == asset_id_to_update
                                                     && to == owner
         ));
 

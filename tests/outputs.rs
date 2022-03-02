@@ -18,9 +18,9 @@ fn full_change_with_no_fees() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert_eq!(change, input_amount);
 }
@@ -34,9 +34,9 @@ fn byte_fees_are_deducted_from_base_asset_change() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -50,9 +50,9 @@ fn used_gas_is_deducted_from_base_asset_change() {
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -72,9 +72,9 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
         ])
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(Color::default(), input_amount)
-        .change_output(Color::default())
-        .execute_get_change(Color::default());
+        .coin_input(AssetId::default(), input_amount)
+        .change_output(AssetId::default())
+        .execute_get_change(AssetId::default());
 
     assert!(change < input_amount);
 }
@@ -85,15 +85,15 @@ fn correct_change_is_provided_for_coin_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 600;
-    let color = Color::default();
+    let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .coin_output(color, spend_amount)
-        .execute_get_change(color);
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .coin_output(asset_id, spend_amount)
+        .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
 }
@@ -104,34 +104,34 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
     let gas_price = 0;
     let byte_price = 0;
     let spend_amount = 650;
-    let color = Color::default();
+    let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .withdrawal_output(color, spend_amount)
-        .execute_get_change(color);
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .withdrawal_output(asset_id, spend_amount)
+        .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
 }
 
 #[test]
-#[should_panic(expected = "ValidationError(TransactionOutputChangeColorDuplicated)")]
+#[should_panic(expected = "ValidationError(TransactionOutputChangeAssetIdDuplicated)")]
 fn change_is_not_duplicated_for_each_base_asset_change_output() {
     // create multiple change outputs for the base asset and ensure the total change is correct
     let input_amount = 1000;
     let gas_price = 0;
     let byte_price = 0;
-    let color = Color::default();
+    let asset_id = AssetId::default();
 
     let outputs = TestBuilder::new(2322u64)
         .gas_price(gas_price)
         .byte_price(byte_price)
-        .coin_input(color, input_amount)
-        .change_output(color)
-        .change_output(color)
+        .coin_input(asset_id, input_amount)
+        .change_output(asset_id)
+        .change_output(asset_id)
         .execute_get_outputs();
 
     let mut total_change = 0;
@@ -151,7 +151,7 @@ fn change_is_reduced_by_external_transfer() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
 
     // simple dummy contract for transferring value to
     let contract_code = vec![Opcode::RET(REG_ONE)];
@@ -167,9 +167,9 @@ fn change_is_reduced_by_external_transfer() {
             Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
             // set reg 0x11 to transfer amount
             Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
-            // set reg 0x12 to color
+            // set reg 0x12 to asset id
             Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the color at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
         ]
@@ -205,7 +205,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
 
     // setup state for test
     // simple dummy contract for transferring value to
@@ -222,9 +222,9 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
             // set reg 0x11 to transfer amount
             Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
-            // set reg 0x12 to color
+            // set reg 0x12 to asset id
             Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the color at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
         ]
@@ -263,7 +263,7 @@ fn variable_output_set_by_external_transfer_out() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     let (script, _) = script_with_data_offset!(
@@ -272,7 +272,7 @@ fn variable_output_set_by_external_transfer_out() {
             // load amount of coins to 0x10
             Opcode::ADDI(0x10, REG_ZERO, data_offset),
             Opcode::LW(0x10, 0x10, 0),
-            // load color to 0x11
+            // load asset id to 0x11
             Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
             // load address to 0x12
             Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
@@ -307,16 +307,16 @@ fn variable_output_set_by_external_transfer_out() {
         .execute_get_outputs();
 
     assert!(matches!(
-        outputs[0], Output::Variable { amount, to, color }
+        outputs[0], Output::Variable { amount, to, asset_id }
             if amount == transfer_amount
             && to == owner
-            && color == asset_id
+            && asset_id == asset_id
     ));
 
     assert!(matches!(
-        outputs[1], Output::Change {amount, color, .. }
+        outputs[1], Output::Change {amount, asset_id, .. }
             if amount == external_balance - transfer_amount
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -331,7 +331,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     let (script, _) = script_with_data_offset!(
@@ -340,7 +340,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             // load amount of coins to 0x10
             Opcode::ADDI(0x10, REG_ZERO, data_offset),
             Opcode::LW(0x10, 0x10, 0),
-            // load color to 0x11
+            // load asset id to 0x11
             Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
             // load address to 0x12
             Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
@@ -380,9 +380,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     // full input amount is converted into change
     assert!(matches!(
-        outputs[1], Output::Change {amount, color, .. }
+        outputs[1], Output::Change {amount, asset_id, .. }
             if amount == external_balance
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -397,7 +397,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     // setup state for test
@@ -405,7 +405,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color to 0x11
+        // load asset id to 0x11
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load address to 0x12
@@ -458,10 +458,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .execute_get_outputs();
 
     assert!(matches!(
-        outputs[0], Output::Variable { amount, to, color }
+        outputs[0], Output::Variable { amount, to, asset_id }
             if amount == transfer_amount
             && to == owner
-            && color == asset_id
+            && asset_id == asset_id
     ));
 }
 
@@ -476,7 +476,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let asset_id = Color::default();
+    let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
     // setup state for test
@@ -484,7 +484,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         // load amount of coins to 0x10
         Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         Opcode::LW(0x10, 0x10, 0),
-        // load color to 0x11
+        // load asset id to 0x11
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load to address to 0x12

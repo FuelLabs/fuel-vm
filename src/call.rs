@@ -5,7 +5,7 @@ use crate::contract::Contract;
 
 use fuel_asm::PanicReason;
 use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::{Color, ContractId, Word};
+use fuel_types::{AssetId, ContractId, Word};
 
 use std::io::{self, Write};
 use std::mem;
@@ -114,7 +114,7 @@ impl TryFrom<&[u8]> for Call {
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>
 pub struct CallFrame {
     to: ContractId,
-    color: Color,
+    asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
     a: Word,
     b: Word,
@@ -125,7 +125,7 @@ impl CallFrame {
     /// Create a new call frame.
     pub const fn new(
         to: ContractId,
-        color: Color,
+        asset_id: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
         a: Word,
         b: Word,
@@ -133,7 +133,7 @@ impl CallFrame {
     ) -> Self {
         Self {
             to,
-            color,
+            asset_id,
             registers,
             a,
             b,
@@ -148,17 +148,17 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
     }
 
     /// `a` argument memory offset.
     pub const fn a_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
     }
 
     /// `b` argument memory offset.
     pub const fn b_offset() -> usize {
-        ContractId::LEN + Color::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// Registers prior to the called execution.
@@ -186,9 +186,9 @@ impl CallFrame {
         self.registers[REG_CGAS]
     }
 
-    /// Color of forwarded coins.
-    pub const fn color(&self) -> &Color {
-        &self.color
+    /// Asset ID of forwarded coins.
+    pub const fn asset_id(&self) -> &AssetId {
+        &self.asset_id
     }
 }
 
@@ -206,7 +206,7 @@ impl io::Read for CallFrame {
         }
 
         let buf = bytes::store_array_unchecked(buf, &self.to);
-        let buf = bytes::store_array_unchecked(buf, &self.color);
+        let buf = bytes::store_array_unchecked(buf, &self.asset_id);
         let buf = self
             .registers
             .iter()
@@ -231,7 +231,7 @@ impl io::Write for CallFrame {
 
         // Safety: checked buffer length
         let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (color, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
         let buf = self.registers.iter_mut().fold(buf, |buf, reg| {
             let (r, buf) = unsafe { bytes::restore_word_unchecked(buf) };
@@ -247,7 +247,7 @@ impl io::Write for CallFrame {
         n += bytes;
 
         self.to = to.into();
-        self.color = color.into();
+        self.asset_id = asset_id.into();
         self.a = a;
         self.b = b;
         self.code = code.into();

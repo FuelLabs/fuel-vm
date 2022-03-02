@@ -5,7 +5,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
 use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
-use fuel_types::{bytes, Address, Bytes32, Bytes8, Color, ContractId, RegisterId, Word};
+use fuel_types::{bytes, Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use std::mem;
 
@@ -81,7 +81,7 @@ where
         self.registers[REG_SP] = ssp + (padded_len as u64);
 
         // Increment the frame code size by len defined in memory
-        let offset_in_frame = ContractId::LEN + Color::LEN + WORD_SIZE * VM_REGISTER_COUNT;
+        let offset_in_frame = ContractId::LEN + AssetId::LEN + WORD_SIZE * VM_REGISTER_COUNT;
         let start = (fp as usize) + offset_in_frame;
         // Safety: bounds enforced by the interpreter
         let old = Word::from_be_bytes(unsafe {
@@ -98,13 +98,13 @@ where
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()
@@ -115,13 +115,13 @@ where
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let color = unsafe { Color::as_ref_unchecked(&self.memory[c..cx]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let balance = self.balance(contract, color)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
 
         self.storage
-            .merkle_contract_color_balance_insert(contract, color, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
         self.inc_pc()

@@ -3,7 +3,7 @@ use crate::consts::*;
 use crate::error::RuntimeError;
 
 use fuel_asm::PanicReason;
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use fuel_tx::Receipt;
 use fuel_types::Word;
 

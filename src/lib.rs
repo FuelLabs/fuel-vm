@@ -28,7 +28,7 @@ pub mod prelude {
     pub use fuel_tx::{Input, Output, Receipt, Transaction, UtxoId, ValidationError, Witness};
     pub use fuel_types::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
-        Address, Bytes32, Bytes4, Bytes64, Bytes8, Color, ContractId, Immediate06, Immediate12, Immediate18,
+        Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, Immediate06, Immediate12, Immediate18,
         Immediate24, RegisterId, Salt, Word,
     };
 

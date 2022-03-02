@@ -69,7 +69,7 @@ mod tests {
     use super::*;
     use crate::prelude::*;
 
-    use fuel_tx::crypto::Hasher;
+    use fuel_crypto::Hasher;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use secp256k1::PublicKey;

@@ -1,4 +1,4 @@
-use fuel_tx::crypto::Hasher;
+use fuel_crypto::Hasher;
 use fuel_types::bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
@@ -289,10 +289,10 @@ fn call_frame_code_offset() {
 
     vm.transact(script).expect("Failed to call deployed contract");
 
-    let color = Color::default();
+    let asset_id = AssetId::default();
     let contract = Contract::from(program.as_ref());
 
-    let mut frame = CallFrame::new(id, color, [0; VM_REGISTER_COUNT], 0, 0, contract);
+    let mut frame = CallFrame::new(id, asset_id, [0; VM_REGISTER_COUNT], 0, 0, contract);
     let stack = frame.to_bytes().len() as Word;
 
     let receipts = vm.receipts();

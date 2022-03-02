@@ -7,7 +7,7 @@ use crate::state::Debugger;
 use std::collections::HashMap;
 
 use fuel_tx::{Receipt, Transaction};
-use fuel_types::{Color, Word};
+use fuel_types::{AssetId, Word};
 
 mod alu;
 mod blockchain;
@@ -57,7 +57,7 @@ pub struct Interpreter<S> {
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
     // track the offset for each unused balance in memory
-    unused_balance_index: HashMap<Color, usize>,
+    unused_balance_index: HashMap<AssetId, usize>,
 }
 
 impl<S> Interpreter<S> {

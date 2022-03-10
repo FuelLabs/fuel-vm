@@ -63,13 +63,17 @@ fn from_slice_unchecked_safety() {
 fn hex_encoding() {
     fn encode_decode<T>(t: T)
     where
-        T: fmt::LowerHex + fmt::UpperHex + str::FromStr + Eq + fmt::Debug,
+        T: fmt::LowerHex + fmt::UpperHex + str::FromStr + Eq + fmt::Debug + AsRef<[u8]>,
         <T as str::FromStr>::Err: fmt::Debug,
     {
         let lower = format!("{:x}", t);
+        let lower_w0 = format!("{:0x}", t);
         let lower_alternate = format!("{:#x}", t);
+        let lower_alternate_w0 = format!("{:#0x}", t);
         let upper = format!("{:X}", t);
+        let upper_w0 = format!("{:0X}", t);
         let upper_alternate = format!("{:#X}", t);
+        let upper_alternate_w0 = format!("{:#X}", t);
 
         assert_ne!(lower, lower_alternate);
         assert_ne!(lower, upper);
@@ -77,6 +81,11 @@ fn hex_encoding() {
         assert_ne!(lower_alternate, upper);
         assert_ne!(lower_alternate, upper_alternate);
         assert_ne!(upper, upper_alternate);
+
+        assert_eq!(lower, lower_w0);
+        assert_eq!(lower_alternate, lower_alternate_w0);
+        assert_eq!(upper, upper_w0);
+        assert_eq!(upper_alternate, upper_alternate_w0);
 
         let lower = T::from_str(lower.as_str()).expect("Failed to parse lower");
         let lower_alternate =
@@ -89,18 +98,33 @@ fn hex_encoding() {
         assert_eq!(t, lower_alternate);
         assert_eq!(t, upper);
         assert_eq!(t, upper_alternate);
+
+        let reduced = t.as_ref().iter().fold(0u8, |acc, x| acc ^ x);
+
+        let x = hex::encode(&[reduced]);
+        let y = format!("{:2x}", t);
+
+        assert_eq!(x, y);
+
+        let x = format!("{:0x}", t).len();
+        let y = format!("{:2x}", t).len();
+        let z = format!("{:4x}", t).len();
+
+        assert_eq!(t.as_ref().len() * 2, x);
+        assert_eq!(2, y);
+        assert_eq!(4, z);
     }
 
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    encode_decode(rng.gen::<Address>());
-    encode_decode(rng.gen::<AssetId>());
-    encode_decode(rng.gen::<ContractId>());
-    encode_decode(rng.gen::<Bytes4>());
-    encode_decode(rng.gen::<Bytes8>());
-    encode_decode(rng.gen::<Bytes32>());
-    encode_decode(rng.gen::<Bytes64>());
-    encode_decode(rng.gen::<Salt>());
+    encode_decode::<Address>(rng.gen());
+    encode_decode::<AssetId>(rng.gen());
+    encode_decode::<ContractId>(rng.gen());
+    encode_decode::<Bytes4>(rng.gen());
+    encode_decode::<Bytes8>(rng.gen());
+    encode_decode::<Bytes32>(rng.gen());
+    encode_decode::<Bytes64>(rng.gen());
+    encode_decode::<Salt>(rng.gen());
 }
 
 #[test]

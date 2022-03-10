@@ -17,8 +17,9 @@ serde-big-array = { version = "0.3.2", default-features = false, optional = true
 
 [dev-dependencies]
 fuel-types = { path = ".", features = ["random"] }
+hex = "0.4"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
-serde_json = "1.0.59"
+serde_json = "1.0"
 
 [features]
 default = ["std"]

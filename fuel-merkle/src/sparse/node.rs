@@ -45,7 +45,7 @@ impl Node {
         let mut node = Self { buffer };
         let height = std::cmp::max(left_child.height(), right_child.height()) + 1;
         node.set_height(height);
-        node.set_bytes_prefix(&[NODE]);
+        node.set_prefix(NODE);
         node.set_bytes_lo(&left_child.hash());
         node.set_bytes_hi(&right_child.hash());
         node

@@ -5,7 +5,7 @@ use crate::state::{Breakpoint, DebugEval, ProgramState};
 
 impl<S> Interpreter<S> {
     /// Get single-stepping mode
-    pub fn single_stepping(&self) -> bool {
+    pub const fn single_stepping(&self) -> bool {
         self.debugger.single_stepping()
     }
 

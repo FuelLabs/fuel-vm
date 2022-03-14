@@ -18,7 +18,7 @@ pub struct Debugger {
 
 impl Debugger {
     /// Get single-stepping mode
-    pub fn single_stepping(&self) -> bool {
+    pub const fn single_stepping(&self) -> bool {
         self.single_stepping
     }
 

@@ -93,7 +93,7 @@ impl<S> Interpreter<S> {
     }
 
     /// The current transaction
-    pub fn transaction(&self) -> &Transaction {
+    pub const fn transaction(&self) -> &Transaction {
         &self.tx
     }
 

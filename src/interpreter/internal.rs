@@ -75,10 +75,6 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) const fn transaction(&self) -> &Transaction {
-        &self.tx
-    }
-
     pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
         let (c, cx) = self.internal_contract_bounds()?;
 

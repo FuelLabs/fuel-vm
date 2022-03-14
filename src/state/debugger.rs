@@ -10,11 +10,23 @@ use std::collections::{HashMap, HashSet};
 /// Required features:
 /// - `debug`
 pub struct Debugger {
+    /// Single-stepping mode triggers a breakpoint after each instruction
+    single_stepping: bool,
     breakpoints: HashMap<ContractId, HashSet<Word>>,
     last_state: Option<ProgramState>,
 }
 
 impl Debugger {
+    /// Get single-stepping mode
+    pub const fn single_stepping(&self) -> bool {
+        self.single_stepping
+    }
+
+    /// Set single-stepping mode
+    pub fn set_single_stepping(&mut self, single_stepping: bool) {
+        self.single_stepping = single_stepping;
+    }
+
     /// Set a new breakpoint in the provided location.
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
         let contract = *breakpoint.contract();
@@ -47,17 +59,22 @@ impl Debugger {
         let contract = contract.copied().unwrap_or_default();
         let last_state = self.last_state.take();
 
+        let current = Breakpoint::raw(contract, pc);
+
+        if self.single_stepping {
+            return match last_state {
+                Some(s) if s == current => DebugEval::Continue,
+                _ => current.into(),
+            };
+        }
+
         self.breakpoints
             .get(&contract)
             .map(|set| set.get(&pc))
             .flatten()
-            .map(|_| {
-                let breakpoint = Breakpoint::raw(contract, pc);
-
-                match last_state {
-                    Some(s) if s == breakpoint => DebugEval::Continue,
-                    _ => breakpoint.into(),
-                }
+            .map(|_| match last_state {
+                Some(s) if s == current => DebugEval::Continue,
+                _ => current.into(),
             })
             .unwrap_or_default()
     }

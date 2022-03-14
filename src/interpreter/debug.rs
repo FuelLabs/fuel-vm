@@ -4,6 +4,16 @@ use crate::consts::*;
 use crate::state::{Breakpoint, DebugEval, ProgramState};
 
 impl<S> Interpreter<S> {
+    /// Get single-stepping mode
+    pub const fn single_stepping(&self) -> bool {
+        self.debugger.single_stepping()
+    }
+
+    /// Set single-stepping mode
+    pub fn set_single_stepping(&mut self, single_stepping: bool) {
+        self.debugger.set_single_stepping(single_stepping)
+    }
+
     /// Set a new breakpoint for the provided location.
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
         self.debugger.set_breakpoint(breakpoint)
@@ -105,4 +115,59 @@ fn breakpoint_script() {
 
         vm.resume().expect("Failed to resume")
     });
+}
+
+#[test]
+fn single_stepping() {
+    use crate::consts::*;
+    use crate::prelude::*;
+
+    let mut vm = Interpreter::with_memory_storage();
+
+    let gas_price = 0;
+    let gas_limit = 1_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    // Repeats the middle two instructions five times
+    let script = vec![
+        Opcode::ADDI(0x10, REG_ZERO, 5),
+        Opcode::ADDI(0x11, 0x11, 1),
+        Opcode::JNEI(0x10, 0x11, 1),
+        Opcode::RET(0x10),
+    ]
+    .iter()
+    .copied()
+    .collect();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    vm.set_single_stepping(true);
+
+    let mut state = vm
+        .transact(tx)
+        .map(ProgramState::from)
+        .expect("Failed to execute script!");
+
+    let mut stops = Vec::new();
+
+    while let Some(debug) = state.debug_ref() {
+        let b = debug.breakpoint().expect("State without expected breakpoint");
+
+        stops.push(b.pc());
+
+        state = vm.resume().expect("Failed to resume");
+    }
+
+    assert_eq!(stops, vec![0, 4, 8, 4, 8, 4, 8, 4, 8, 4, 8, 12]);
 }

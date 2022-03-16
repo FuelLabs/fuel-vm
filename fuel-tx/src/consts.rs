@@ -2,13 +2,13 @@
 pub const CONTRACT_MAX_SIZE: u64 = 16 * 1024 * 1024;
 
 /// Maximum number of inputs.
-pub const MAX_INPUTS: u8 = 8;
+pub const MAX_INPUTS: u8 = 255;
 
 /// Maximum number of outputs.
-pub const MAX_OUTPUTS: u8 = 8;
+pub const MAX_OUTPUTS: u8 = 255;
 
 /// Maximum number of witnesses.
-pub const MAX_WITNESSES: u8 = 16;
+pub const MAX_WITNESSES: u8 = 255;
 
 /// Maximum gas per transaction.
 pub const MAX_GAS_PER_TX: u64 = 1000000;

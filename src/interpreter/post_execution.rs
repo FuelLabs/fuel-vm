@@ -15,37 +15,34 @@ where
     ) -> Result<(), InterpreterError> {
         let init_balances = Self::initial_free_balances(&self.tx)?;
 
-        let mut update_outputs = match &self.tx {
+        let update_outputs = match &self.tx {
             Transaction::Script { outputs, .. } => outputs.clone(),
             Transaction::Create { outputs, .. } => outputs.clone(),
         };
+
         // Update each output based on free balance
-        for output in update_outputs.iter_mut() {
-            if let Output::Change { asset_id, amount, .. } = output {
+        for (idx, output) in update_outputs.iter().enumerate() {
+            if let Output::Change { asset_id, .. } = output {
                 let refund = if *asset_id == AssetId::default() {
                     unused_gas_cost
                 } else {
                     0
                 };
 
-                if revert {
-                    *amount = init_balances[asset_id] + refund;
+                let amount = if revert {
+                    init_balances[asset_id] + refund
                 } else {
                     let balance = self.external_asset_id_balance(asset_id)?;
-                    *amount = balance + refund;
-                }
+                    balance + refund
+                };
+                self.set_change_output(idx, amount)?;
             }
-            if let Output::Variable { amount, .. } = output {
+            if let Output::Variable { .. } = output {
                 if revert {
                     // reset amounts to zero on revert
-                    *amount = 0;
+                    self.revert_variable_output(idx)?;
                 }
             }
-        }
-        // set outputs on tx
-        match &mut self.tx {
-            Transaction::Script { outputs, .. } => *outputs = update_outputs,
-            Transaction::Create { outputs, .. } => *outputs = update_outputs,
         }
 
         Ok(())

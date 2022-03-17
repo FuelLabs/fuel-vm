@@ -156,6 +156,7 @@ where
                 crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
             };
 
+            // TODO: also set this on the serialized tx in memory to keep serialized form consistent
             self.tx.set_receipts_root(receipts_root);
         }
 

@@ -166,10 +166,41 @@ impl<S> Interpreter<S> {
         }?;
 
         // update the local copy of the output
-        let mut output = Output::variable(owner_to_set, amount_to_set, asset_id_to_update);
+        let output = Output::variable(owner_to_set, amount_to_set, asset_id_to_update);
+        self.set_output(out_idx, output)
+    }
+
+    pub(crate) fn revert_variable_output(&mut self, out_idx: usize) -> Result<(), RuntimeError> {
+        if out_idx >= self.tx.outputs().len() {
+            return Err(PanicReason::OutputNotFound.into());
+        }
+
+        let reverted_variable_output = Output::variable(Default::default(), 0, Default::default());
+        self.set_output(out_idx, reverted_variable_output)
+    }
+
+    pub(crate) fn set_change_output(&mut self, out_idx: usize, update_amount: Word) -> Result<(), RuntimeError> {
+        let mut output = *self.tx.outputs().get(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        if let Output::Change { amount, .. } = &mut output {
+            *amount = update_amount;
+        } else {
+            // TODO: make a panic reason for ExpectedChangeOutput
+            return Err(PanicReason::OutputNotFound.into());
+        }
+        self.set_output(out_idx, output)
+    }
+
+    /// update an output both in serialized form in-memory and on the referenced tx
+    fn set_output(&mut self, out_idx: usize, mut output: Output) -> Result<(), RuntimeError> {
+        // verify output type matches out_idx type
+        let tx_out = self.tx.outputs().get(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        if std::mem::discriminant(tx_out) != std::mem::discriminant(&output) {
+            // TODO: need a panic reason for a generic UnexpectedOutputType
+            return Err(PanicReason::OutputNotFound.into());
+        }
 
         // update serialized memory state
-        let offset = self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        let offset = VM_TX_MEMORY + self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
         let bytes = &mut self.memory[offset..];
         let _ = output.read(bytes)?;
 
@@ -186,6 +217,7 @@ impl<S> Interpreter<S> {
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
+    use crate::consts::VM_TX_MEMORY;
     use crate::prelude::*;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -282,7 +314,7 @@ mod tests {
         ));
 
         // verify the vm memory is updated properly
-        let position = vm.tx.output_offset(0).unwrap();
+        let position = VM_TX_MEMORY + vm.tx.output_offset(0).unwrap();
         let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
         let _ = mem_output.write(&vm.memory()[position..]).unwrap();
         assert_eq!(vm.tx.outputs()[0], mem_output);

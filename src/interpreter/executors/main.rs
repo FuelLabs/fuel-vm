@@ -7,6 +7,7 @@ use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
+use crate::interpreter::validation::CheckedTransaction;
 use fuel_asm::{InstructionResult, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
@@ -243,6 +244,16 @@ where
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
+        let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
+        let checked_tx = Self::check_transaction(tx, block_height as Word)?;
+        self.checked_transact(checked_tx)
+    }
+
+    /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
+    /// checked transaction and execute it. The result will be bound to the lifetime
+    /// of the interpreter and will avoid unnecessary copy with the data
+    /// that can be referenced from the interpreter instance itself.
+    pub fn checked_transact(&mut self, tx: CheckedTransaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         let state_result = self.init(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]

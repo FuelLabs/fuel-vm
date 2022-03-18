@@ -224,6 +224,8 @@ mod tests {
             vec![vec![].into()],
         );
 
+        let tx = Interpreter::<()>::check_transaction(tx, 0).unwrap();
+
         vm.init(tx).expect("Failed to init VM!");
 
         for (asset_id, amount) in balances {
@@ -266,6 +268,8 @@ mod tests {
             vec![variable_output],
             vec![Witness::default()],
         );
+
+        let tx = Interpreter::<()>::check_transaction(tx, 0).unwrap();
 
         vm.init(tx).expect("Failed to init VM!");
 

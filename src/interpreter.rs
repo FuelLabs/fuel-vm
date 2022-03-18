@@ -25,6 +25,7 @@ mod memory;
 mod metadata;
 mod post_execution;
 mod transaction;
+mod validation;
 
 #[cfg(feature = "debug")]
 mod debug;

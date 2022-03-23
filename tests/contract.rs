@@ -310,8 +310,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
         .setup_contract(
             vec![
                 // log the balance register
-                Opcode::LOG(REG_BAL, REG_ZERO, REG_ZERO, REG_ZERO),
-                Opcode::RET(REG_ZERO),
+                Opcode::RET(REG_BAL),
             ],
             None,
             None,
@@ -328,7 +327,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
         // load contract id
         Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
         Opcode::CALL(0x12, 0x10, 0x11, REG_CGAS),
-        Opcode::RET(REG_ZERO),
+        Opcode::RET(REG_BAL),
     ];
     let sender_contract_id = test_context
         .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
@@ -385,6 +384,13 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
     assert_eq!(dest_balance, call_amount);
     let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance - call_amount);
+
+    // verify balance register of source contract
+    // should be zero because external call transferred nothing
+    assert_eq!(transfer_tx.receipts()[3].val().unwrap(), 0);
+
+    // verify balance register of destination contract
+    assert_eq!(transfer_tx.receipts()[2].val().unwrap(), call_amount);
 }
 
 #[test]

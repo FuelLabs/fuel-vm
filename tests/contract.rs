@@ -272,7 +272,7 @@ fn call_increases_contract_asset_balance_and_balance_register() {
     let start_balance = test_context.get_contract_balance(&contract_id, &asset_id);
     assert_eq!(start_balance, 0);
 
-    // initiate the transfer between contracts
+    // call contract with some amount of coins to forward
     let transfer_tx = test_context
         .gas_limit(gas_limit)
         .gas_price(0)
@@ -363,7 +363,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
     let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
-    // initiate the transfer between contracts
+    // initiate the call between contracts
     let transfer_tx = test_context
         .gas_limit(gas_limit)
         .gas_price(0)

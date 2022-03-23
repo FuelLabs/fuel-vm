@@ -436,7 +436,9 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
         dest_contract_id.as_ref(),
-        Call::new(sender_contract_id, 0, offset as Word).to_bytes().as_slice(),
+        Call::new(sender_contract_id, transfer_amount, offset as Word)
+            .to_bytes()
+            .as_slice(),
     ]
     .into_iter()
     .flatten()

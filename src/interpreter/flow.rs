@@ -80,6 +80,9 @@ where
 
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;
+        } else {
+            let source_contract = *self.internal_contract()?;
+            self.balance_decrease(&source_contract, &asset_id, b)?;
         }
 
         if !self.tx.input_contracts().any(|contract| call.to() == contract) {

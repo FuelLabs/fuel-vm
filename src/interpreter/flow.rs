@@ -86,8 +86,8 @@ where
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        // TODO validate external and internal context
-        // TODO update asset ID balance
+        // credit contract asset_id balance
+        self.balance_increase(call.to(), &asset_id, b)?;
 
         let mut frame = self.call_frame(call, asset_id)?;
 
@@ -104,9 +104,7 @@ where
 
         self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
 
-        // TODO set balance for forward coins to $bal
-        // TODO set forward gas to $cgas
-
+        self.registers[REG_BAL] = b;
         self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
         self.registers[REG_IS] = self.registers[REG_PC];
         self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);

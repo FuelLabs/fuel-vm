@@ -9,8 +9,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{InstructionResult, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
-use fuel_types::bytes::SerializableVec;
-use fuel_types::Word;
+use fuel_types::{bytes::SerializableVec, Word};
 
 impl<S> Interpreter<S>
 where
@@ -163,7 +162,7 @@ where
         // refund remaining global gas
         let gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
         let revert = matches!(state, ProgramState::Revert(_));
-        self.update_change_amounts(gas_refund, revert)?;
+        self.finalize_outputs(gas_refund, revert)?;
 
         Ok(state)
     }

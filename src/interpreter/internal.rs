@@ -6,7 +6,7 @@ use crate::error::RuntimeError;
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::{Output, Transaction};
 use fuel_types::{Address, AssetId, ContractId, RegisterId, Word};
-use std::io::Read;
+use std::io::{self, ErrorKind, Read};
 
 impl<S> Interpreter<S> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
@@ -170,33 +170,20 @@ impl<S> Interpreter<S> {
         self.set_output(out_idx, output)
     }
 
-    pub(crate) fn revert_variable_output(&mut self, out_idx: usize) -> Result<(), RuntimeError> {
-        if out_idx >= self.tx.outputs().len() {
-            return Err(PanicReason::OutputNotFound.into());
-        }
-
-        let reverted_variable_output = Output::variable(Default::default(), 0, Default::default());
-        self.set_output(out_idx, reverted_variable_output)
-    }
-
-    pub(crate) fn set_change_output(&mut self, out_idx: usize, update_amount: Word) -> Result<(), RuntimeError> {
-        let mut output = *self.tx.outputs().get(out_idx).ok_or(PanicReason::OutputNotFound)?;
-        if let Output::Change { amount, .. } = &mut output {
-            *amount = update_amount;
-        } else {
-            // TODO: make a panic reason for ExpectedChangeOutput
-            return Err(PanicReason::OutputNotFound.into());
-        }
-        self.set_output(out_idx, output)
-    }
-
     /// update an output both in serialized form in-memory and on the referenced tx
-    fn set_output(&mut self, out_idx: usize, mut output: Output) -> Result<(), RuntimeError> {
+    pub(crate) fn set_output(&mut self, out_idx: usize, mut output: Output) -> Result<(), RuntimeError> {
         // verify output type matches out_idx type
-        let tx_out = self.tx.outputs().get(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        // Use halt errors as these should already have been validated
+        let tx_out = self.tx.outputs().get(out_idx).ok_or(RuntimeError::Halt(io::Error::new(
+            ErrorKind::Other,
+            "Invalid output index",
+        )))?;
         if std::mem::discriminant(tx_out) != std::mem::discriminant(&output) {
             // TODO: need a panic reason for a generic UnexpectedOutputType
-            return Err(PanicReason::OutputNotFound.into());
+            return Err(RuntimeError::Halt(io::Error::new(
+                ErrorKind::Other,
+                "Invalid output type",
+            )));
         }
 
         // update serialized memory state

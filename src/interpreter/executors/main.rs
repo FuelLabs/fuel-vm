@@ -156,6 +156,7 @@ where
             };
 
             // TODO: also set this on the serialized tx in memory to keep serialized form consistent
+            // https://github.com/FuelLabs/fuel-vm/issues/97
             self.tx.set_receipts_root(receipts_root);
         }
 

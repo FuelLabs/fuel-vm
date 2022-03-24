@@ -179,7 +179,6 @@ impl<S> Interpreter<S> {
             "Invalid output index",
         )))?;
         if std::mem::discriminant(tx_out) != std::mem::discriminant(&output) {
-            // TODO: need a panic reason for a generic UnexpectedOutputType
             return Err(RuntimeError::Halt(io::Error::new(
                 ErrorKind::Other,
                 "Invalid output type",

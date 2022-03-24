@@ -2,6 +2,7 @@ use crate::error::InterpreterError;
 use crate::prelude::{Interpreter, InterpreterStorage};
 use fuel_tx::{Output, Transaction};
 use fuel_types::{AssetId, Word};
+use tracing::debug;
 
 impl<S> Interpreter<S>
 where
@@ -41,6 +42,8 @@ where
                     *amount = 0;
                 }
             }
+
+            debug!("{:?}", output);
         }
         // set outputs on tx
         match &mut self.tx {

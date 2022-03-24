@@ -11,6 +11,7 @@ use fuel_asm::{InstructionResult, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
+use tracing::{debug, trace};
 
 impl<S> Interpreter<S>
 where
@@ -38,6 +39,7 @@ where
                 let root = contract.root();
                 let storage_root = Contract::initial_state_root(storage_slots);
                 let id = contract.id(salt, &root, &storage_root);
+                trace!("{}", id);
 
                 if !&self
                     .tx
@@ -80,11 +82,13 @@ where
                     .map(|(ofs, len)| (ofs + VM_TX_MEMORY as Word, len))
                     .map(|(ofs, len)| MemoryRange::new(ofs, len))
                     .collect();
+                trace!("{:?}", predicates);
 
                 state = ProgramState::Return(1);
+                debug!("{:?}", state);
                 for predicate in predicates {
                     state = self.verify_predicate(&predicate)?;
-
+                    debug!("{:?}", state);
                     #[cfg(feature = "debug")]
                     if state.is_debug() {
                         // TODO should restore the constructed predicates and continue from current
@@ -113,6 +117,7 @@ where
                 // TODO set tree balance
 
                 let program = self.run_program();
+                trace!("{:?}", program);
                 let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
 
                 // Catch VM panic and don't propagate, generating a receipt
@@ -136,10 +141,12 @@ where
                 };
 
                 let receipt = Receipt::script_result(status, gas_used);
+                trace!("{:?}", receipt);
 
                 self.receipts.push(receipt);
 
                 state = program;
+                debug!("{:?}", state);
             }
         }
 
@@ -157,6 +164,7 @@ where
             };
 
             self.tx.set_receipts_root(receipts_root);
+            debug!("{:?}", self.tx);
         }
 
         // refund remaining global gas
@@ -176,6 +184,8 @@ where
             let state = self
                 .execute()
                 .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
+
+            trace!("{:?}", state);
 
             match state {
                 ExecuteState::Return(r) => {
@@ -244,6 +254,7 @@ where
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         let state_result = self.init(tx).and_then(|_| self.run());
+        trace!("{:?}", state_result);
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);
@@ -251,6 +262,7 @@ where
         let state = state_result?;
 
         let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
+        trace!("{:?}", transition);
 
         Ok(transition)
     }

@@ -12,6 +12,7 @@ use fuel_types::{AssetId, Word};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
+use tracing::debug;
 
 impl<S> Interpreter<S>
 where
@@ -20,6 +21,7 @@ where
     pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), InterpreterError> {
         tx.validate_without_signature(self.block_height() as Word)?;
         tx.precompute_metadata();
+        debug!("{:?}", tx);
 
         self.block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
         self.context = Context::from(&tx);

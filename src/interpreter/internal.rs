@@ -181,7 +181,7 @@ impl<S> Interpreter<S> {
             ErrorKind::Other,
             "Invalid output index",
         )))?;
-        if std::mem::discriminant(tx_out) != std::mem::discriminant(&output) {
+        if core::mem::discriminant(tx_out) != core::mem::discriminant(&output) {
             return Err(RuntimeError::Halt(io::Error::new(
                 ErrorKind::Other,
                 "Invalid output type",

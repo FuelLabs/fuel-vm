@@ -28,12 +28,16 @@ where
                     0
                 };
 
+                // Safety: initialization verifies that every output has a compatible input asset
+                // by returning a TransactionOutputChangeAssetIdNotFound or
+                // TransactionOutputCoinAssetIdNotFound error for missing inputs.
                 let final_amount = if revert {
                     init_balances[asset_id] + refund
                 } else {
                     let balance = self.external_asset_id_balance(asset_id)?;
                     balance + refund
                 };
+
                 *amount = final_amount;
                 self.set_output(idx, *output)?;
             }

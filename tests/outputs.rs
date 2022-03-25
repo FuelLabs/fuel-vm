@@ -118,33 +118,6 @@ fn correct_change_is_provided_for_withdrawal_outputs() {
 }
 
 #[test]
-#[should_panic(expected = "ValidationError(TransactionOutputChangeAssetIdDuplicated)")]
-fn change_is_not_duplicated_for_each_base_asset_change_output() {
-    // create multiple change outputs for the base asset and ensure the total change is correct
-    let input_amount = 1000;
-    let gas_price = 0;
-    let byte_price = 0;
-    let asset_id = AssetId::default();
-
-    let outputs = TestBuilder::new(2322u64)
-        .gas_price(gas_price)
-        .byte_price(byte_price)
-        .coin_input(asset_id, input_amount)
-        .change_output(asset_id)
-        .change_output(asset_id)
-        .execute_get_outputs();
-
-    let mut total_change = 0;
-    for output in outputs {
-        if let Output::Change { amount, .. } = output {
-            total_change += amount;
-        }
-    }
-    // verify total change matches the input amount
-    assert_eq!(total_change, input_amount);
-}
-
-#[test]
 fn change_is_reduced_by_external_transfer() {
     let input_amount = 1000;
     let transfer_amount: Word = 400;

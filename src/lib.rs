@@ -36,7 +36,7 @@ pub mod prelude {
     pub use crate::call::{Call, CallFrame};
     pub use crate::context::Context;
     pub use crate::contract::Contract;
-    pub use crate::error::{Infallible, InterpreterError, RuntimeError};
+    pub use crate::error::{Infallible, InterpreterError, RuntimeError, VmValidationError};
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
     pub use crate::memory_client::{MemoryClient, MemoryStorage};
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};

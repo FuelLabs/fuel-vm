@@ -107,7 +107,10 @@ impl<S> Interpreter<S> {
         let offset = *self
             .unused_balance_index
             .get(asset_id)
-            .ok_or(PanicReason::AssetIdNotFound)?;
+            .ok_or(RuntimeError::Halt(io::Error::new(
+                ErrorKind::Other,
+                "AssetId doesn't exist in balances",
+            )))?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");

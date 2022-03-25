@@ -144,15 +144,17 @@ pub enum VmValidationError {
     TransactionOutputCoinAssetIdNotFound(AssetId),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 #[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {
     /// Specified error with well-formed fallback strategy.
-    Recoverable(PanicReason),
+    #[error(transparent)]
+    Recoverable(#[from] PanicReason),
     /// Unspecified error that should halt the execution.
-    Halt(io::Error),
+    #[error(transparent)]
+    Halt(#[from] io::Error),
 }
 
 impl RuntimeError {
@@ -172,36 +174,6 @@ impl RuntimeError {
         E: Into<io::Error>,
     {
         Self::Halt(e.into())
-    }
-}
-
-impl From<PanicReason> for RuntimeError {
-    fn from(r: PanicReason) -> Self {
-        RuntimeError::Recoverable(r)
-    }
-}
-
-impl From<io::Error> for RuntimeError {
-    fn from(e: io::Error) -> Self {
-        RuntimeError::Halt(e)
-    }
-}
-
-impl fmt::Display for RuntimeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Recoverable(e) => e.fmt(f),
-            Self::Halt(e) => e.fmt(f),
-        }
-    }
-}
-
-impl StdError for RuntimeError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::Recoverable(e) => Some(e),
-            Self::Halt(e) => Some(e),
-        }
     }
 }
 

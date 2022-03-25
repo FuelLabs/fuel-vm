@@ -192,20 +192,6 @@ impl Transaction {
                     return Err(ValidationError::TransactionOutputChangeAssetIdDuplicated);
                 }
 
-                // check for duplicate variable outputs
-                if self
-                    .outputs()
-                    .iter()
-                    .filter_map(|output| match output {
-                        Output::Variable { asset_id, .. } if input_asset_id == asset_id => Some(()),
-                        _ => None,
-                    })
-                    .count()
-                    > 1
-                {
-                    return Err(ValidationError::TransactionOutputVariableAssetIdDuplicated);
-                }
-
                 Ok(())
             })?;
 

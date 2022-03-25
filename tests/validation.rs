@@ -92,7 +92,7 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
         .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
-        // make change output with no corresponding input asset
+        // make coin output with no corresponding input asset
         .coin_output(AssetId::from([1; 32]), 0)
         .build();
 

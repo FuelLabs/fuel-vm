@@ -55,11 +55,12 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
-    use crate::consts::{REG_ONE, REG_ZERO};
+    use crate::consts::{REG_ONE, REG_ZERO, VM_TX_MEMORY};
     use crate::prelude::{InterpreterStorage, MemoryClient, MemoryStorage, Transactor};
     use crate::state::StateTransition;
     use fuel_asm::Opcode;
     use fuel_tx::{Input, Output, StorageSlot, Transaction, Witness};
+    use fuel_types::bytes::{Deserializable, SizedBytes};
     use fuel_types::{AssetId, ContractId, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
@@ -288,6 +289,13 @@ pub mod test_helpers {
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
             let state = txtor.state_transition().unwrap().into_owned();
+            let interpreter = txtor.interpreter();
+            // verify serialized tx == referenced tx
+            let tx_mem =
+                &interpreter.memory()[VM_TX_MEMORY..(VM_TX_MEMORY + interpreter.transaction().serialized_size())];
+            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            assert_eq!(deser_tx.outputs(), interpreter.transaction().outputs());
+            // save storage between client instances
             self.storage = storage;
             state
         }

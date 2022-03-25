@@ -1,10 +1,9 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
-use crate::error::InterpreterError;
+use crate::error::{InterpreterError, VmValidationError};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::PanicReason;
 use fuel_tx::consts::MAX_INPUTS;
 use fuel_tx::{Input, Output, Transaction};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
@@ -91,14 +90,30 @@ where
         let base_asset = AssetId::default();
         if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
             // remove byte costs from base asset spendable balance
-            let byte_balance = (tx.metered_bytes_size() as Word) * tx.byte_price();
-            *base_asset_balance = base_asset_balance
-                .checked_sub(byte_balance)
-                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
+            let byte_balance = (tx.metered_bytes_size() as Word)
+                .checked_mul(tx.byte_price())
+                .ok_or(VmValidationError::ArithmeticOverflow)?;
+
             // remove gas costs from base asset spendable balance
-            *base_asset_balance = base_asset_balance
-                .checked_sub(tx.gas_limit() * tx.gas_price())
-                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
+            // gas = limit * price
+            let gas_cost = tx
+                .gas_limit()
+                .checked_mul(tx.gas_price())
+                .ok_or(VmValidationError::ArithmeticOverflow)?;
+
+            // add up total amount of required fees
+            let total_fee = byte_balance
+                .checked_add(gas_cost)
+                .ok_or(VmValidationError::ArithmeticOverflow)?;
+
+            // subtract total fee from base asset balance
+            *base_asset_balance =
+                base_asset_balance
+                    .checked_sub(total_fee)
+                    .ok_or(VmValidationError::InsufficientFeeAmount {
+                        expected: total_fee,
+                        provided: *base_asset_balance,
+                    })?;
         }
 
         // reduce free balances by coin and withdrawal outputs
@@ -107,10 +122,16 @@ where
             Output::Withdrawal { asset_id, amount, .. } => Some((asset_id, amount)),
             _ => None,
         }) {
-            let balance = balances.get_mut(asset_id).unwrap();
+            let balance = balances
+                .get_mut(asset_id)
+                .ok_or(VmValidationError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
             *balance = balance
                 .checked_sub(*amount)
-                .ok_or(InterpreterError::Panic(PanicReason::NotEnoughBalance))?;
+                .ok_or(VmValidationError::InsufficientInputAmount {
+                    asset: *asset_id,
+                    expected: *amount,
+                    provided: *balance,
+                })?;
         }
 
         Ok(balances)

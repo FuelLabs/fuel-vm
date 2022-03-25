@@ -9,8 +9,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{InstructionResult, PanicReason};
 use fuel_tx::{Input, Output, Receipt, Transaction};
-use fuel_types::bytes::SerializableVec;
-use fuel_types::Word;
+use fuel_types::{bytes::SerializableVec, Word};
 
 impl<S> Interpreter<S>
 where
@@ -156,13 +155,15 @@ where
                 crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
             };
 
+            // TODO: also set this on the serialized tx in memory to keep serialized form consistent
+            // https://github.com/FuelLabs/fuel-vm/issues/97
             self.tx.set_receipts_root(receipts_root);
         }
 
         // refund remaining global gas
         let gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
         let revert = matches!(state, ProgramState::Revert(_));
-        self.update_change_amounts(gas_refund, revert)?;
+        self.finalize_outputs(gas_refund, revert)?;
 
         Ok(state)
     }

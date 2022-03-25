@@ -1,33 +1,42 @@
 //! Runtime interpreter error implementation
 
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
-use fuel_tx::ValidationError;
+use fuel_tx::ValidationError as TxValidationError;
 
+use fuel_types::{AssetId, Word};
 use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
+use thiserror::Error;
 
 /// Interpreter runtime error variants.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
+    #[error("Execution error: {0:?}")]
     PanicInstruction(InstructionResult),
     /// The VM execution resulted in a well-formed panic. This panic wasn't
     /// caused by an instruction contained in the transaction or a called
     /// contract.
+    #[error("Execution error: {0:?}")]
     Panic(PanicReason),
     /// The provided transaction isn't valid.
-    ValidationError(ValidationError),
+    #[error("Failed to validate the transaction: {0}")]
+    ValidationError(#[from] VmValidationError),
     /// The predicate verification failed.
+    #[error("Execution error")]
     PredicateFailure,
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
+    #[error("Execution error")]
     NoTransactionInitialized,
     /// I/O and OS related errors.
-    Io(io::Error),
+    #[error("Unrecoverable error: {0}")]
+    Io(#[from] io::Error),
 
     #[cfg(feature = "debug")]
+    #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
 }
@@ -76,41 +85,9 @@ impl InterpreterError {
     }
 }
 
-impl From<io::Error> for InterpreterError {
-    fn from(e: io::Error) -> Self {
-        InterpreterError::Io(e)
-    }
-}
-
-impl fmt::Display for InterpreterError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ValidationError(e) => {
-                write!(f, "Failed to validate the transaction: {}", e)
-            }
-
-            Self::Io(e) => {
-                write!(f, "Unrecoverable error: {}", e)
-            }
-
-            _ => write!(f, "Execution error: {:?}", self),
-        }
-    }
-}
-
-impl StdError for InterpreterError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::ValidationError(e) => Some(e),
-            Self::Io(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl From<ValidationError> for InterpreterError {
-    fn from(e: ValidationError) -> Self {
-        Self::ValidationError(e)
+impl From<TxValidationError> for InterpreterError {
+    fn from(e: TxValidationError) -> Self {
+        Self::ValidationError(VmValidationError::TransactionValidation(e))
     }
 }
 
@@ -129,15 +106,55 @@ impl From<RuntimeError> for InterpreterError {
     }
 }
 
-#[derive(Debug)]
+/// Transaction validation errors the VM checks for. Also wraps errors from the fuel-tx library.
+#[derive(Debug, Error)]
+#[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
+pub enum VmValidationError {
+    /// Wrapped errors from fuel-tx
+    #[error(transparent)]
+    TransactionValidation(#[from] TxValidationError),
+    /// The transaction doesn't provide enough input amount of the native chain asset to cover
+    /// all potential execution fees
+    #[error("Insufficient fee amount provided: [Expected={expected}, Provided={provided}]")]
+    InsufficientFeeAmount {
+        /// The expected amount of fees required to cover the transaction
+        expected: Word,
+        /// The fee amount actually provided for spending
+        provided: Word,
+    },
+    /// The transaction doesn't provide enough input amount of the given asset to cover the
+    /// amounts used in the outputs.
+    #[error("Insufficient input amount [Asset={asset:x}, Expected={expected}, Provided={provided}")]
+    InsufficientInputAmount {
+        /// The asset id being spent
+        asset: AssetId,
+        /// The amount expected by a coin output
+        expected: Word,
+        /// The total amount provided by coin inputs
+        provided: Word,
+    },
+    /// The user provided transaction amounts for coins or gas prices caused an arithmetic
+    /// overflow.
+    #[error("Input causes an invalid arithmetic overflow")]
+    ArithmeticOverflow,
+    /// This error happens when a transaction attempts to create a coin output for an asset type
+    /// that doesn't exist in the coin inputs.
+    // TODO: promote this error variant to fuel-tx
+    #[error("Transaction output coin uses asset id not contained in inputs: {0:x}")]
+    TransactionOutputCoinAssetIdNotFound(AssetId),
+}
+
+#[derive(Debug, Error)]
 #[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {
     /// Specified error with well-formed fallback strategy.
-    Recoverable(PanicReason),
+    #[error(transparent)]
+    Recoverable(#[from] PanicReason),
     /// Unspecified error that should halt the execution.
-    Halt(io::Error),
+    #[error(transparent)]
+    Halt(#[from] io::Error),
 }
 
 impl RuntimeError {
@@ -157,36 +174,6 @@ impl RuntimeError {
         E: Into<io::Error>,
     {
         Self::Halt(e.into())
-    }
-}
-
-impl From<PanicReason> for RuntimeError {
-    fn from(r: PanicReason) -> Self {
-        RuntimeError::Recoverable(r)
-    }
-}
-
-impl From<io::Error> for RuntimeError {
-    fn from(e: io::Error) -> Self {
-        RuntimeError::Halt(e)
-    }
-}
-
-impl fmt::Display for RuntimeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Recoverable(e) => e.fmt(f),
-            Self::Halt(e) => e.fmt(f),
-        }
-    }
-}
-
-impl StdError for RuntimeError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::Recoverable(e) => Some(e),
-            Self::Halt(e) => Some(e),
-        }
     }
 }
 

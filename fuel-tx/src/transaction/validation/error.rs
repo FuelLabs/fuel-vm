@@ -36,6 +36,7 @@ pub enum ValidationError {
     TransactionWitnessesMax,
     TransactionOutputChangeAssetIdDuplicated,
     TransactionOutputChangeAssetIdNotFound,
+    // TODO: remove in future breaking change to this library
     TransactionOutputVariableAssetIdDuplicated,
 }
 

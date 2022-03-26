@@ -164,6 +164,8 @@ fn max_iow() {
 
     let mut builder = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng));
 
+    let asset_id: AssetId = rng.gen();
+
     builder
         .gas_price(rng.gen())
         .gas_limit(MAX_GAS_PER_TX)
@@ -172,14 +174,14 @@ fn max_iow() {
             rng.gen(),
             &secret,
             rng.gen(),
-            rng.gen(),
+            asset_id,
             maturity,
             generate_bytes(rng),
             generate_bytes(rng),
         );
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
-        builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
+        builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
     while builder.witnesses().len() < MAX_WITNESSES as usize {
@@ -203,12 +205,13 @@ fn max_iow() {
         .map(|_| SecretKey::random(rng))
         .collect();
 
+    let asset_id: AssetId = rng.gen();
     secrets.iter().for_each(|k| {
         builder.add_unsigned_coin_input(
             rng.gen(),
             k,
             rng.gen(),
-            rng.gen(),
+            asset_id,
             maturity,
             generate_bytes(rng),
             generate_bytes(rng),
@@ -216,7 +219,7 @@ fn max_iow() {
     });
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
-        builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
+        builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
     while builder.witnesses().len() < MAX_WITNESSES as usize {
@@ -453,7 +456,44 @@ fn output_change_asset_id() {
         .err()
         .expect("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionOutputChangeAssetIdNotFound, err);
+    assert!(matches!(
+        err,
+        ValidationError::TransactionOutputChangeAssetIdNotFound(asset_id) if asset_id == c
+    ));
+
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .gas_limit(MAX_GAS_PER_TX)
+        .gas_price(rng.gen())
+        .maturity(maturity)
+        .add_unsigned_coin_input(
+            rng.gen(),
+            &secret,
+            rng.gen(),
+            a,
+            rng.gen(),
+            generate_bytes(rng),
+            generate_bytes(rng),
+        )
+        .add_unsigned_coin_input(
+            rng.gen(),
+            &secret,
+            rng.gen(),
+            b,
+            rng.gen(),
+            generate_bytes(rng),
+            generate_bytes(rng),
+        )
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
+        .finalize()
+        .validate(block_height)
+        .err()
+        .expect("Expected erroneous transaction");
+
+    assert!(matches!(
+        err,
+        ValidationError::TransactionOutputCoinAssetIdNotFound(asset_id) if asset_id == c
+    ));
 }
 
 #[test]

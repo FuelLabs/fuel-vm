@@ -1,9 +1,8 @@
 //! Runtime interpreter error implementation
 
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
-use fuel_tx::ValidationError as TxValidationError;
+use fuel_tx::ValidationError;
 
-use fuel_types::{AssetId, Word};
 use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
@@ -23,7 +22,7 @@ pub enum InterpreterError {
     Panic(PanicReason),
     /// The provided transaction isn't valid.
     #[error("Failed to validate the transaction: {0}")]
-    ValidationError(#[from] VmValidationError),
+    ValidationError(#[from] ValidationError),
     /// The predicate verification failed.
     #[error("Execution error")]
     PredicateFailure,
@@ -85,12 +84,6 @@ impl InterpreterError {
     }
 }
 
-impl From<TxValidationError> for InterpreterError {
-    fn from(e: TxValidationError) -> Self {
-        Self::ValidationError(VmValidationError::TransactionValidation(e))
-    }
-}
-
 impl From<InstructionResult> for InterpreterError {
     fn from(r: InstructionResult) -> InterpreterError {
         Self::PanicInstruction(r)
@@ -104,44 +97,6 @@ impl From<RuntimeError> for InterpreterError {
             RuntimeError::Halt(e) => Self::Io(e),
         }
     }
-}
-
-/// Transaction validation errors the VM checks for. Also wraps errors from the fuel-tx library.
-#[derive(Debug, Error)]
-#[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
-pub enum VmValidationError {
-    /// Wrapped errors from fuel-tx
-    #[error(transparent)]
-    TransactionValidation(#[from] TxValidationError),
-    /// The transaction doesn't provide enough input amount of the native chain asset to cover
-    /// all potential execution fees
-    #[error("Insufficient fee amount provided: [Expected={expected}, Provided={provided}]")]
-    InsufficientFeeAmount {
-        /// The expected amount of fees required to cover the transaction
-        expected: Word,
-        /// The fee amount actually provided for spending
-        provided: Word,
-    },
-    /// The transaction doesn't provide enough input amount of the given asset to cover the
-    /// amounts used in the outputs.
-    #[error("Insufficient input amount [Asset={asset:x}, Expected={expected}, Provided={provided}")]
-    InsufficientInputAmount {
-        /// The asset id being spent
-        asset: AssetId,
-        /// The amount expected by a coin output
-        expected: Word,
-        /// The total amount provided by coin inputs
-        provided: Word,
-    },
-    /// The user provided transaction amounts for coins or gas prices caused an arithmetic
-    /// overflow.
-    #[error("Input causes an invalid arithmetic overflow")]
-    ArithmeticOverflow,
-    /// This error happens when a transaction attempts to create a coin output for an asset type
-    /// that doesn't exist in the coin inputs.
-    // TODO: promote this error variant to fuel-tx
-    #[error("Transaction output coin uses asset id not contained in inputs: {0:x}")]
-    TransactionOutputCoinAssetIdNotFound(AssetId),
 }
 
 #[derive(Debug, Error)]

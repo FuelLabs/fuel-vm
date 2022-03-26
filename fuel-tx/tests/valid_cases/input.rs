@@ -26,6 +26,7 @@ fn coin() {
             })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn sign_coin_and_validate<R, I>(
         rng: &mut R,
         mut iter: I,

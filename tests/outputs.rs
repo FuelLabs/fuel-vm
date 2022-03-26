@@ -1,3 +1,4 @@
+use fuel_vm::consts::REG_CGAS;
 use fuel_vm::{
     consts::{REG_FP, REG_ONE, REG_ZERO},
     prelude::*,
@@ -137,11 +138,11 @@ fn change_is_reduced_by_external_transfer() {
         data_offset,
         vec![
             // set reg 0x10 to contract id
-            Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
+            Opcode::MOVI(0x10, data_offset as Immediate18),
             // set reg 0x11 to transfer amount
-            Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
+            Opcode::MOVI(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
-            Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
+            Opcode::MOVI(0x12, (data_offset + 32) as Immediate18),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
@@ -192,11 +193,11 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
         data_offset,
         vec![
             // set reg 0x10 to contract id
-            Opcode::ADDI(0x10, REG_ZERO, data_offset as Immediate12),
+            Opcode::MOVI(0x10, data_offset),
             // set reg 0x11 to transfer amount
-            Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
+            Opcode::MOVI(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
-            Opcode::ADDI(0x12, REG_ZERO, (data_offset + 32) as Immediate12),
+            Opcode::MOVI(0x12, data_offset + 32),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
@@ -243,14 +244,14 @@ fn variable_output_set_by_external_transfer_out() {
         data_offset,
         vec![
             // load amount of coins to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset),
+            Opcode::MOVI(0x10, data_offset),
             Opcode::LW(0x10, 0x10, 0),
             // load asset id to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
+            Opcode::MOVI(0x11, data_offset + 8),
             // load address to 0x12
-            Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
+            Opcode::MOVI(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            Opcode::ADDI(0x13, REG_ZERO, 0),
+            Opcode::MOVE(0x13, REG_ZERO),
             // call contract without any tokens to transfer in
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
@@ -297,7 +298,8 @@ fn variable_output_set_by_external_transfer_out() {
 fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    // the initial external (coin) balance (set to less than transfer amount to cause a revert)
+    // the initial external (coin) balance (set to less than transfer amount to
+    // cause a revert)
     let external_balance = 100;
     // the amount to transfer out from external balance
     let transfer_amount: Word = 600;
@@ -311,14 +313,14 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         data_offset,
         vec![
             // load amount of coins to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset),
+            Opcode::MOVI(0x10, data_offset),
             Opcode::LW(0x10, 0x10, 0),
             // load asset id to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, data_offset + 8),
+            Opcode::MOVI(0x11, data_offset + 8),
             // load address to 0x12
-            Opcode::ADDI(0x12, REG_ZERO, data_offset + 40),
+            Opcode::MOVI(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            Opcode::ADDI(0x13, REG_ZERO, 0),
+            Opcode::MOVE(0x13, REG_ZERO),
             // call contract without any tokens to transfer in
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
@@ -384,7 +386,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         // load address to 0x12
         Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        Opcode::ADDI(0x13, REG_ZERO, 0 as Immediate12),
+        Opcode::MOVE(0x13, REG_ZERO),
         Opcode::TRO(0x12, 0x13, 0x10, 0x11),
         Opcode::RET(REG_ONE),
     ];
@@ -397,9 +399,9 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         data_offset,
         vec![
             // set reg 0x10 to call data
-            Opcode::ADDI(0x10, REG_ZERO, (data_offset + 64) as Immediate12),
+            Opcode::MOVI(0x10, (data_offset + 64) as Immediate18),
             // set reg 0x11 to transfer amount
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVE(0x11, REG_CGAS),
             // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
             Opcode::RET(REG_ONE),
@@ -463,7 +465,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         // load to address to 0x12
         Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        Opcode::ADDI(0x13, REG_ZERO, 0 as Immediate12),
+        Opcode::MOVE(0x13, REG_ZERO),
         Opcode::TRO(0x12, 0x13, 0x10, 0x11),
         Opcode::RET(REG_ONE),
     ];
@@ -477,11 +479,9 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         data_offset,
         vec![
             // set reg 0x10 to call data
-            Opcode::ADDI(0x10, REG_ZERO, (data_offset + 64) as Immediate12),
-            // set reg 0x11 to gas forward amount
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVI(0x10, data_offset + 64),
             // call contract without any tokens to transfer in
-            Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );

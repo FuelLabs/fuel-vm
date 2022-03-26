@@ -16,13 +16,13 @@ fn predicate() {
 
     let mut predicate = vec![];
 
-    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x11));
+    predicate.push(Opcode::MOVI(0x10, 0x11));
     predicate.push(Opcode::ADDI(0x11, 0x10, 0x12));
-    predicate.push(Opcode::ADDI(0x12, REG_ZERO, 0x08));
+    predicate.push(Opcode::MOVI(0x12, 0x08));
     predicate.push(Opcode::ALOC(0x12));
     predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
     predicate.push(Opcode::SW(0x12, 0x11, 0));
-    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
+    predicate.push(Opcode::MOVI(0x10, 0x08));
     predicate.push(Opcode::XIL(0x20, 0));
     predicate.push(Opcode::XIS(0x11, 0));
     predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
@@ -96,13 +96,13 @@ fn predicate_false() {
 
     let mut predicate = vec![];
 
-    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x11));
+    predicate.push(Opcode::MOVI(0x10, 0x11));
     predicate.push(Opcode::ADDI(0x11, 0x10, 0x12));
-    predicate.push(Opcode::ADDI(0x12, REG_ZERO, 0x08));
+    predicate.push(Opcode::MOVI(0x12, 0x08));
     predicate.push(Opcode::ALOC(0x12));
     predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
     predicate.push(Opcode::SW(0x12, 0x11, 0));
-    predicate.push(Opcode::ADDI(0x10, REG_ZERO, 0x08));
+    predicate.push(Opcode::MOVI(0x10, 0x08));
     predicate.push(Opcode::XIL(0x20, 0));
     predicate.push(Opcode::XIS(0x11, 0));
     predicate.push(Opcode::ADD(0x11, 0x11, 0x20));

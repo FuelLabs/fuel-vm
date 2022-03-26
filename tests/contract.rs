@@ -64,9 +64,8 @@ fn mint_burn() {
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut script_ops = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 0),
-        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::MOVI(0x10, 0),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RET(REG_ONE),
     ];
 
@@ -84,7 +83,7 @@ fn mint_burn() {
     );
 
     let script_data_offset = VM_TX_MEMORY + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_offset as Immediate12);
+    script_ops[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let script: Vec<u8> = script_ops.iter().copied().collect();
     let script_data = Call::new(contract, 0, balance).to_bytes();
@@ -128,7 +127,7 @@ fn mint_burn() {
     );
 
     let script_data_offset = VM_TX_MEMORY + tx_check_balance.script_data_offset().unwrap();
-    script_check_balance[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_offset as Immediate12);
+    script_check_balance[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let tx_check_balance = Transaction::script(
         gas_price,
@@ -247,15 +246,13 @@ fn call_increases_contract_asset_balance_and_balance_register() {
         data_offset,
         vec![
             // load call data to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset + 32),
-            // load gas forward to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVI(0x10, data_offset + 32),
             // load balance to forward to 0x12
-            Opcode::ADDI(0x12, REG_ZERO, call_amount as Immediate12),
+            Opcode::MOVI(0x11, call_amount as Immediate18),
             // load the asset id to use to 0x13
-            Opcode::ADDI(0x13, REG_ZERO, data_offset),
+            Opcode::MOVI(0x12, data_offset),
             // call the transfer contract
-            Opcode::CALL(0x10, 0x12, 0x13, 0x11),
+            Opcode::CALL(0x10, 0x11, 0x12, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );
@@ -337,11 +334,9 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
         data_offset,
         vec![
             // load call data to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset + 64),
-            // load gas forward to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVI(0x10, data_offset + 64),
             // call the transfer contract
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );
@@ -425,11 +420,9 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         data_offset,
         vec![
             // load call data to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset + 64),
-            // load gas forward to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVI(0x10, data_offset + 64),
             // call the transfer contract
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );
@@ -508,11 +501,9 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
         data_offset,
         vec![
             // load call data to 0x10
-            Opcode::ADDI(0x10, REG_ZERO, data_offset + 64),
-            // load gas forward to 0x11
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+            Opcode::MOVI(0x10, data_offset + 64),
             // call the transfer contract
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );

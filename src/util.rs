@@ -1,16 +1,17 @@
 //! FuelVM utilities
 
-/// A utility macro for writing scripts with the data offset included. Since the script data offset
-/// depends on the length of the script, this macro will evaluate the length and then rewrite the
-/// resultant script output with the correct offset (using the offset parameter).
+/// A utility macro for writing scripts with the data offset included. Since the
+/// script data offset depends on the length of the script, this macro will
+/// evaluate the length and then rewrite the resultant script output with the
+/// correct offset (using the offset parameter).
 ///
 /// # Example
 ///
 /// ```
 /// use itertools::Itertools;
-/// use fuel_types::Word;
+/// use fuel_types::{Word, Immediate18};
 /// use fuel_vm::consts::{REG_ONE, REG_ZERO};
-/// use fuel_vm::prelude::{Opcode, Call, SerializableVec, ContractId, Immediate12};
+/// use fuel_vm::prelude::{Opcode, Call, SerializableVec, ContractId};
 /// use fuel_vm::script_with_data_offset;
 ///
 /// // Example of making a contract call script using script_data for the call info and asset id.
@@ -28,11 +29,11 @@
 /// // Use the macro since we don't know the exact offset for script_data.
 /// let (script, data_offset) = script_with_data_offset!(data_offset, vec![
 ///     // use data_offset to reference the location of the call bytes inside script_data
-///     Opcode::ADDI(0x10, REG_ZERO, data_offset),
-///     Opcode::ADDI(0x11, REG_ZERO, transfer_amount as Immediate12),
+///     Opcode::MOVI(0x10, data_offset),
+///     Opcode::MOVI(0x11, transfer_amount as Immediate18),
 ///     // use data_offset again to reference the location of the asset id inside of script data
-///     Opcode::ADDI(0x12, REG_ZERO, data_offset + call.len() as Immediate12),
-///     Opcode::ADDI(0x13, REG_ZERO, gas_to_forward as Immediate12),
+///     Opcode::MOVI(0x12, data_offset + call.len() as Immediate18),
+///     Opcode::MOVI(0x13,  gas_to_forward as Immediate18),
 ///     Opcode::CALL(0x10, 0x11, 0x12, 0x13),
 ///     Opcode::RET(REG_ONE),
 /// ]);
@@ -40,13 +41,13 @@
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr) => {{
-        use fuel_types::{bytes, Immediate12};
+        use fuel_types::{bytes, Immediate18};
         use $crate::consts::VM_TX_MEMORY;
         use $crate::prelude::Transaction;
-        let $offset = 0 as Immediate12;
+        let $offset = 0 as Immediate18;
         let script_bytes: Vec<u8> = { $script }.into_iter().collect();
         let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
-        let $offset = data_offset as Immediate12;
+        let $offset = data_offset as Immediate18;
         ($script, $offset)
     }};
 }
@@ -61,7 +62,7 @@ pub mod test_helpers {
     use fuel_asm::Opcode;
     use fuel_tx::{Input, Output, StorageSlot, Transaction, Witness};
     use fuel_types::bytes::{Deserializable, SizedBytes};
-    use fuel_types::{AssetId, ContractId, Salt, Word};
+    use fuel_types::{AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
@@ -209,7 +210,7 @@ pub mod test_helpers {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
-                    Opcode::ADDI(0x11, REG_ZERO, data_offset),
+                    Opcode::MOVI(0x11, data_offset),
                     Opcode::ADDI(0x12, 0x11, AssetId::LEN as Immediate12),
                     Opcode::BAL(0x10, 0x11, 0x12),
                     Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),

@@ -148,6 +148,11 @@ where
                 self.alu_set(ra, b)?;
             }
 
+            OpcodeRepr::MOVI => {
+                self.gas_charge(GAS_MOVI)?;
+                self.alu_set(ra, imm)?;
+            }
+
             OpcodeRepr::MROO => {
                 self.gas_charge(GAS_MROO)?;
                 self.alu_error(

@@ -19,6 +19,7 @@ pub const GAS_MLOG: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MLOG);
 pub const GAS_MOD: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MOD);
 pub const GAS_MODI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MODI);
 pub const GAS_MOVE: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MOVE);
+pub const GAS_MOVI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MOVI);
 pub const GAS_MROO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MROO);
 pub const GAS_MUL: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MUL);
 pub const GAS_MULI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::MULI);

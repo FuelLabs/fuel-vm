@@ -28,14 +28,14 @@ fn ecrecover() {
 
     let alloc = e.len() + sig.len() + public.len() + public.len(); // Computed public key
 
-    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc as Immediate12), Opcode::ALOC(0x20)];
+    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
 
     e.iter()
         .chain(sig.iter())
         .chain(public.iter())
         .enumerate()
         .for_each(|(i, b)| {
-            script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+            script.push(Opcode::MOVI(0x21, *b as Immediate18));
             script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
         });
 
@@ -52,7 +52,7 @@ fn ecrecover() {
     script.push(Opcode::ADDI(0x33, 0x32, public.len() as Immediate12));
 
     // Set public key length to 0x34
-    script.push(Opcode::ADDI(0x34, REG_ZERO, public.len() as Immediate12));
+    script.push(Opcode::MOVI(0x34, public.len() as Immediate18));
 
     // Compute the ECRECOVER
     // m[computed public key] := ecrecover(sig, e)
@@ -115,10 +115,10 @@ fn sha256() {
         + 32 // reference hash
         + 32; // computed hash
 
-    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc), Opcode::ALOC(0x20)];
+    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
 
     message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::MOVI(0x21, *b as Immediate18));
         script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
     });
 
@@ -132,10 +132,10 @@ fn sha256() {
     script.push(Opcode::ADDI(0x32, 0x31, 32));
 
     // Set message length to 0x33
-    script.push(Opcode::ADDI(0x33, REG_ZERO, length));
+    script.push(Opcode::MOVI(0x33, length as Immediate18));
 
     // Set hash length to 0x34
-    script.push(Opcode::ADDI(0x34, REG_ZERO, 32));
+    script.push(Opcode::MOVI(0x34, 32));
 
     // Compute the Keccak256
     // m[computed hash] := keccack256(m[message, length])
@@ -203,10 +203,10 @@ fn keccak256() {
         + 32 // reference hash
         + 32; // computed hash
 
-    let mut script = vec![Opcode::ADDI(0x20, REG_ZERO, alloc), Opcode::ALOC(0x20)];
+    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
 
     message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        script.push(Opcode::ADDI(0x21, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::MOVI(0x21, *b as Immediate18));
         script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
     });
 
@@ -220,10 +220,10 @@ fn keccak256() {
     script.push(Opcode::ADDI(0x32, 0x31, 32));
 
     // Set message length to 0x33
-    script.push(Opcode::ADDI(0x33, REG_ZERO, length));
+    script.push(Opcode::MOVI(0x33, length as Immediate18));
 
     // Set hash length to 0x34
-    script.push(Opcode::ADDI(0x34, REG_ZERO, 32));
+    script.push(Opcode::MOVI(0x34, 32));
 
     // Compute the Keccak256
     // m[computed hash] := keccack256(m[message, length])

@@ -20,7 +20,7 @@ fn metadata() {
         Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
         Opcode::GM(0x11, InterpreterMetadata::GetCaller.into()),
         Opcode::LOG(0x10, 0x00, 0x00, 0x00),
-        Opcode::ADDI(0x20, REG_ZERO, ContractId::LEN as Immediate12),
+        Opcode::MOVI(0x20,  ContractId::LEN as Immediate18),
         Opcode::LOGD(0x00, 0x00, 0x11, 0x20),
         Opcode::RET(REG_ONE),
     ];
@@ -59,18 +59,17 @@ fn metadata() {
     let mut routine_call_metadata_contract: Vec<Opcode> = vec![
         Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
         Opcode::LOG(0x10, 0x00, 0x00, 0x00),
-        Opcode::ADDI(0x10, REG_ZERO, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate12),
+        Opcode::MOVI(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         Opcode::ALOC(0x10),
         Opcode::ADDI(0x10, REG_HP, 1),
     ];
 
     contract_metadata.as_ref().iter().enumerate().for_each(|(i, b)| {
-        routine_call_metadata_contract.push(Opcode::ADDI(0x11, REG_ZERO, *b as Immediate12));
+        routine_call_metadata_contract.push(Opcode::MOVI(0x11, *b as Immediate18));
         routine_call_metadata_contract.push(Opcode::SB(0x10, 0x11, i as Immediate12));
     });
 
-    routine_call_metadata_contract.push(Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12));
-    routine_call_metadata_contract.push(Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11));
+    routine_call_metadata_contract.push(Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS));
     routine_call_metadata_contract.push(Opcode::RET(REG_ONE));
 
     let salt: Salt = rng.gen();
@@ -111,18 +110,17 @@ fn metadata() {
     outputs.push(Output::contract(1, rng.gen(), rng.gen()));
 
     let mut script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate12),
+        Opcode::MOVI(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         Opcode::ALOC(0x10),
         Opcode::ADDI(0x10, REG_HP, 1),
     ];
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
-        script.push(Opcode::ADDI(0x11, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::MOVI(0x11, *b as Immediate18));
         script.push(Opcode::SB(0x10, 0x11, i as Immediate12));
     });
 
-    script.push(Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12));
-    script.push(Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11));
+    script.push(Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS));
     script.push(Opcode::RET(REG_ONE));
 
     let script = script.iter().copied().collect::<Vec<u8>>();

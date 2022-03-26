@@ -23,8 +23,8 @@ fn code_copy() {
     let salt: Salt = rng.gen();
 
     let program: Vec<u8> = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 0x11),
-        Opcode::ADDI(0x11, REG_ZERO, 0x2a),
+        Opcode::MOVI(0x10, 0x11),
+        Opcode::MOVI(0x11, 0x2a),
         Opcode::ADD(0x12, 0x10, 0x11),
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x20),
@@ -60,12 +60,12 @@ fn code_copy() {
     client.transact(tx);
 
     let mut script_ops = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 2048),
+        Opcode::MOVI(0x10, 2048),
         Opcode::ALOC(0x10),
         Opcode::ADDI(0x10, REG_HP, 0x01),
-        Opcode::ADDI(0x20, REG_ZERO, 0x00),
+        Opcode::MOVI(0x20, 0x00),
         Opcode::ADD(0x11, REG_ZERO, 0x20),
-        Opcode::ADDI(0x12, REG_ZERO, contract_size as Immediate12),
+        Opcode::MOVI(0x12, contract_size as Immediate18),
         Opcode::CCP(0x10, 0x11, REG_ZERO, 0x12),
         Opcode::ADDI(0x21, 0x20, ContractId::LEN as Immediate12),
         Opcode::MEQ(0x30, 0x21, 0x10, 0x12),
@@ -91,7 +91,7 @@ fn code_copy() {
     );
 
     let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
-    script_ops[3] = Opcode::ADDI(0x20, REG_ZERO, script_data_mem as Immediate12);
+    script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
     match &mut tx {
@@ -118,8 +118,8 @@ fn call() {
     let salt: Salt = rng.gen();
 
     let program: Vec<u8> = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 0x11),
-        Opcode::ADDI(0x11, REG_ZERO, 0x2a),
+        Opcode::MOVI(0x10, 0x11),
+        Opcode::MOVI(0x11, 0x2a),
         Opcode::ADD(0x12, 0x10, 0x11),
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x12),
@@ -154,7 +154,7 @@ fn call() {
     assert!(Transactor::new(&mut storage).transact(tx).is_success());
 
     let mut script_ops = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 0x00),
+        Opcode::MOVI(0x10, 0x00),
         Opcode::ADDI(0x11, 0x10, ContractId::LEN as Immediate12),
         Opcode::CALL(0x10, REG_ZERO, 0x10, 0x10),
         Opcode::RET(0x30),
@@ -179,7 +179,7 @@ fn call() {
     );
 
     let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
-    script_ops[0] = Opcode::ADDI(0x10, REG_ZERO, script_data_mem as Immediate12);
+    script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
     match &mut tx {
@@ -217,7 +217,7 @@ fn call_frame_code_offset() {
         Opcode::NOOP,
         Opcode::NOOP,
         Opcode::NOOP,
-        Opcode::ADDI(0x10, REG_ZERO, 1),
+        Opcode::MOVI(0x10, 1),
         Opcode::RET(REG_ONE),
     ]
     .into_iter()
@@ -250,17 +250,16 @@ fn call_frame_code_offset() {
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
-    let script_len = 24;
+    let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
     let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
-    let script_data_offset = script_data_offset as Immediate12;
+    let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
-        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
+        Opcode::MOVI(0x10, script_data_offset),
         Opcode::LOG(REG_SP, 0, 0, 0),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
     .iter()
@@ -383,12 +382,11 @@ fn revert() {
 
     // Based on the defined script length, we set the appropriate data offset
     let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
-    let script_data_offset = script_data_offset as Immediate12;
+    let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
-        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::MOVI(0x10, script_data_offset),
+        Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
     .iter()
@@ -397,7 +395,7 @@ fn revert() {
 
     // Assert the offsets are set correctnly
     let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate12);
+    assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
 
@@ -449,9 +447,8 @@ fn revert() {
 
     // Create a script with revert instruction
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
-        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::MOVI(0x10, script_data_offset),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RVRT(REG_ONE),
     ]
     .iter()

@@ -34,8 +34,8 @@ fn state_read_write() {
 
     #[rustfmt::skip]
     let function_selector: Vec<Opcode> = vec![
-        Opcode::ADDI(0x30, REG_ZERO, 0),
-        Opcode::ADDI(0x31, REG_ONE, 0),
+        Opcode::MOVE(0x30,  REG_ZERO),
+        Opcode::MOVE(0x31, REG_ONE),
     ];
 
     #[rustfmt::skip]
@@ -60,7 +60,7 @@ fn state_read_write() {
     #[rustfmt::skip]
     let routine_unpack_and_xor_limbs_into_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x31, 45),       // (1, b) Unpack arg into 4x16 and xor into state
-        Opcode::ADDI(0x20, REG_ZERO, 32),   // r[0x20]      := 32
+        Opcode::MOVI(0x20, 32),   // r[0x20]      := 32
         Opcode::ALOC(0x20),                 // aloc            0x20
         Opcode::ADDI(0x20, REG_HP, 1),      // r[0x20]      := $hp+1
         Opcode::SRWQ(0x20, 0x11),           // m[0x20,32]   := s[m[b, 32], 32]
@@ -142,12 +142,11 @@ fn state_read_write() {
 
     // Based on the defined script length, we set the appropriate data offset
     let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
-    let script_data_offset = script_data_offset as Immediate12;
+    let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, script_data_offset),
-        Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-        Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11),
+        Opcode::MOVI(0x10, script_data_offset),
+        Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
     .iter()
@@ -156,7 +155,7 @@ fn state_read_write() {
 
     // Assert the offsets are set correctnly
     let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate12);
+    assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
 
@@ -421,7 +420,7 @@ fn can_read_state_from_initial_storage_slots() {
         // load state value to stack
         Opcode::SRWQ(0x11, 0x10),
         // log value
-        Opcode::ADDI(0x12, REG_ZERO, 32 as Immediate12),
+        Opcode::MOVI(0x12, 32 as Immediate18),
         Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
         Opcode::RET(REG_ONE),
     ];
@@ -436,10 +435,8 @@ fn can_read_state_from_initial_storage_slots() {
         data_offset,
         vec![
             // load position of call arguments from script data
-            Opcode::ADDI(0x10, REG_ZERO, data_offset + 32),
-            // load gas limit
-            Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12),
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
+            Opcode::MOVI(0x10, data_offset + 32),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
     );

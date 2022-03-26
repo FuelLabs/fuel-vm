@@ -52,18 +52,17 @@ fn backtrace() {
 
     #[rustfmt::skip]
     let mut function_call: Vec<Opcode> = vec![
-        Opcode::ADDI(0x10, REG_ZERO, (contract_undefined.as_ref().len() + WORD_SIZE * 2) as Immediate12),
+        Opcode::MOVI(0x10,  (contract_undefined.as_ref().len() + WORD_SIZE * 2) as Immediate18),
         Opcode::ALOC(0x10),
     ];
 
     contract_undefined.as_ref().iter().enumerate().for_each(|(i, b)| {
-        function_call.push(Opcode::ADDI(0x10, REG_ZERO, *b as Immediate12));
+        function_call.push(Opcode::MOVI(0x10, *b as Immediate18));
         function_call.push(Opcode::SB(REG_HP, 0x10, 1 + i as Immediate12));
     });
 
     function_call.push(Opcode::ADDI(0x10, REG_HP, 1));
-    function_call.push(Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12));
-    function_call.push(Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11));
+    function_call.push(Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS));
     function_call.push(Opcode::RET(REG_ONE));
 
     let salt: Salt = rng.gen();
@@ -95,18 +94,17 @@ fn backtrace() {
 
     #[rustfmt::skip]
     let mut script: Vec<Opcode> = vec![
-        Opcode::ADDI(0x10, REG_ZERO, (contract_call.as_ref().len() + WORD_SIZE * 2) as Immediate12),
+        Opcode::MOVI(0x10, (contract_call.as_ref().len() + WORD_SIZE * 2) as Immediate18),
         Opcode::ALOC(0x10),
     ];
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
-        script.push(Opcode::ADDI(0x10, REG_ZERO, *b as Immediate12));
+        script.push(Opcode::MOVI(0x10, *b as Immediate18));
         script.push(Opcode::SB(REG_HP, 0x10, 1 + i as Immediate12));
     });
 
     script.push(Opcode::ADDI(0x10, REG_HP, 1));
-    script.push(Opcode::ADDI(0x11, REG_ZERO, gas_limit as Immediate12));
-    script.push(Opcode::CALL(0x10, REG_ZERO, 0x10, 0x11));
+    script.push(Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS));
     script.push(Opcode::RET(REG_ONE));
 
     let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_undefined);

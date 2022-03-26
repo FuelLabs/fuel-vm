@@ -1,7 +1,7 @@
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId, expected: Word) {
+fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -11,7 +11,7 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| Opcode::ADDI(*r, REG_ZERO, *v))
+        .map(|(r, v)| Opcode::MOVI(*r, *v))
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
@@ -38,7 +38,7 @@ fn alu(registers_init: &[(RegisterId, Immediate12)], op: Opcode, reg: RegisterId
     );
 }
 
-fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
+fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -48,7 +48,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate12)], op: Opcode) {
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| Opcode::ADDI(*r, REG_ZERO, *v))
+        .map(|(r, v)| Opcode::MOVI(*r, *v))
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 

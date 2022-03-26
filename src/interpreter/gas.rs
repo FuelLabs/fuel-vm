@@ -19,7 +19,7 @@ impl<S> Interpreter<S> {
 
             MLOG | MROO => GasUnit::ArithmeticExpensive(1).join(GasUnit::RegisterWrite(3)),
 
-            AND | EQ | GT | LT | OR | XOR | NOT | ANDI | MOVE | ORI | XORI => GasUnit::RegisterWrite(3),
+            AND | EQ | GT | LT | OR | XOR | NOT | ANDI | MOVE | MOVI | ORI | XORI => GasUnit::RegisterWrite(3),
 
             DIV | MOD | DIVI | MODI => GasUnit::Arithmetic(1).join(GasUnit::Branching(1)),
 

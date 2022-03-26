@@ -60,6 +60,7 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
     // make gas price too high for the input amount
     let gas_price = 0;
     let byte_price = 0;
+    let missing_asset = AssetId::from([1; 32]);
 
     let transaction = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -67,7 +68,7 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         // make change output with no corresponding input asset
-        .change_output(AssetId::from([1; 32]))
+        .change_output(missing_asset)
         .build();
 
     let mut interpreter = Interpreter::with_memory_storage();
@@ -75,8 +76,10 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::TransactionValidation(ValidationError::TransactionOutputChangeAssetIdNotFound)
-        ))
+            VmValidationError::TransactionValidation(ValidationError::TransactionOutputChangeAssetIdNotFound(
+                asset
+            ))
+        )) if asset == missing_asset
     ));
 }
 
@@ -86,6 +89,7 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
     // make gas price too high for the input amount
     let gas_price = 0;
     let byte_price = 0;
+    let missing_asset = AssetId::from([1; 32]);
 
     let transaction = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -93,7 +97,7 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         // make coin output with no corresponding input asset
-        .coin_output(AssetId::from([1; 32]), 0)
+        .coin_output(missing_asset, 0)
         .build();
 
     let mut interpreter = Interpreter::with_memory_storage();
@@ -101,8 +105,8 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::TransactionOutputCoinAssetIdNotFound(_)
-        ))
+            VmValidationError::TransactionValidation(ValidationError::TransactionOutputCoinAssetIdNotFound(asset))
+        )) if asset == missing_asset
     ));
 }
 

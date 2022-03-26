@@ -91,6 +91,9 @@ pub enum Opcode {
     /// Copy from one register to another.
     MOVE(RegisterId, RegisterId),
 
+    /// Copy immediate value into a register
+    MOVI(RegisterId, Immediate18),
+
     /// Multiplies two registers.
     MUL(RegisterId, RegisterId, RegisterId),
 
@@ -322,6 +325,7 @@ impl Opcode {
             OpcodeRepr::MOD => Opcode::MOD(ra, rb, rc),
             OpcodeRepr::MODI => Opcode::MODI(ra, rb, imm12),
             OpcodeRepr::MOVE => Opcode::MOVE(ra, rb),
+            OpcodeRepr::MOVI => Opcode::MOVI(ra, imm18),
             OpcodeRepr::MUL => Opcode::MUL(ra, rb, rc),
             OpcodeRepr::MULI => Opcode::MULI(ra, rb, imm12),
             OpcodeRepr::NOT => Opcode::NOT(ra, rb),
@@ -429,6 +433,7 @@ impl Opcode {
             Self::MOD(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::MODI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::MOVE(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::MOVI(ra, _) => [Some(*ra), None, None, None],
             Self::MUL(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::MULI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::NOT(ra, rb) => [Some(*ra), Some(*rb), None, None],
@@ -518,7 +523,7 @@ impl Opcode {
             | Self::SB(_, _, imm)
             | Self::SW(_, _, imm) => Some(*imm as Word),
 
-            Self::MCLI(_, imm) | Self::GM(_, imm) => Some(*imm as Word),
+            Self::MCLI(_, imm) | Self::GM(_, imm) | Self::MOVI(_, imm) => Some(*imm as Word),
 
             Self::JI(imm) | Self::CFEI(imm) | Self::CFSI(imm) => Some(*imm as Word),
 
@@ -750,6 +755,9 @@ impl From<Opcode> for u32 {
             }
             Opcode::MOVE(ra, rb) => {
                 ((OpcodeRepr::MOVE as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            }
+            Opcode::MOVI(ra, imm18) => {
+                ((OpcodeRepr::MOVI as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32)
             }
             Opcode::MUL(ra, rb, rc) => {
                 ((OpcodeRepr::MUL as u32) << 24)

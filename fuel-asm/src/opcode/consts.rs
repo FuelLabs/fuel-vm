@@ -237,8 +237,8 @@ pub enum OpcodeRepr {
     MCLI = 0x70,
     /// GM
     GM = 0x71,
-    /// RESERV72
-    RESERV72 = 0x72,
+    /// MOVI
+    MOVI = 0x72,
     /// RESERV73
     RESERV73 = 0x73,
     /// RESERV74

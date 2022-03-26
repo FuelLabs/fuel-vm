@@ -26,6 +26,7 @@ fn opcode() {
         Opcode::MOD(r, r, r),
         Opcode::MODI(r, r, imm12),
         Opcode::MOVE(r, r),
+        Opcode::MOVI(r, imm18),
         Opcode::MUL(r, r, r),
         Opcode::MULI(r, r, imm12),
         Opcode::NOT(r, r),

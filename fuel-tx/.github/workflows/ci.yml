@@ -12,109 +12,216 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  cancel-previous-runs:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.1
-      with:
-        access_token: ${{ github.token }}
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
 
-    - name: Checkout repository
-      uses: actions/checkout@v2
+  cargo-fmt-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check Formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all --verbose -- --check
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+  cargo-clippy:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Check Clippy Linter
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --all-targets -- -D warnings
 
+  cargo-check:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --verbose
 
-    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
-    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
-    #
-    # Can be replaced by other targets that guarantee bare-minimum no-std
-    - name: Install toolchain no-std
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: thumbv6m-none-eabi
-        override: true
+  cargo-check-no-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+          #
+          # Can be replaced by other targets that guarantee bare-minimum no-std
+          target: thumbv6m-none-eabi
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --verbose --target thumbv6m-none-eabi --no-default-features
 
-    - name: Install rustfmt
-      run: rustup component add rustfmt
+  cargo-check-no-std-alloc:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+          #
+          # Can be replaced by other targets that guarantee bare-minimum no-std
+          target: thumbv6m-none-eabi
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
 
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --verbose -- --check
+  cargo-check-no-std-serde:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+          #
+          # Can be replaced by other targets that guarantee bare-minimum no-std
+          target: thumbv6m-none-eabi
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
 
-    - name: Check Clippy Lints
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --verbose --all-targets
+  cargo-test:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --all --all-features
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
+  cargo-test-no-std:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features
 
-    - name: Build no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features
+  cargo-test-no-std-serde:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features --features serde-types-minimal
 
-    - name: Build no-std alloc
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
+  cargo-test-alloc:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features --features alloc
 
-    - name: Build no-std serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
-
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --all --all-features
-
-    - name: Run tests no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features
-
-    - name: Run tests serde no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features --features serde-types-minimal
-
-    - name: Run tests alloc
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features --features alloc
-
-    - name: Run tests serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features serde-types
+  cargo-test-serde:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --features serde-types
 
   publish:
     # Only do this job if publishing a release
-    needs: build
+    needs:
+      - cargo-fmt-check
+      - cargo-clippy
+      - cargo-check
+      - cargo-check-no-std
+      - cargo-check-no-std-alloc
+      - cargo-check-no-std-serde
+      - cargo-test
+      - cargo-test-no-std
+      - cargo-test-no-std-serde
+      - cargo-test-alloc
+      - cargo-test-serde
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 

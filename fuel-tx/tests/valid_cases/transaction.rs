@@ -950,33 +950,28 @@ fn create() {
     assert_eq!(ValidationError::TransactionCreateStorageSlotMax, err);
 
     // Test storage slots must be sorted correctly
-    let mut storage_slots_reverse = storage_slots.clone();
+    let mut storage_slots_reverse = storage_slots;
 
     storage_slots_reverse.reverse();
 
-    let err = TransactionBuilder::create(
-        0,
-        rng.gen(),
-        static_contracts.clone(),
-        storage_slots_reverse,
-    )
-    .gas_limit(MAX_GAS_PER_TX)
-    .gas_price(rng.gen())
-    .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
-    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize()
-    .validate(block_height)
-    .err()
-    .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(0, rng.gen(), static_contracts, storage_slots_reverse)
+        .gas_limit(MAX_GAS_PER_TX)
+        .gas_price(rng.gen())
+        .maturity(maturity)
+        .add_unsigned_coin_input(
+            rng.gen(),
+            &secret,
+            rng.gen(),
+            AssetId::default(),
+            maturity,
+            vec![],
+            vec![],
+        )
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .validate(block_height)
+        .err()
+        .expect("Expected erroneous transaction");
 
     assert_eq!(ValidationError::TransactionCreateStorageSlotOrder, err);
 }

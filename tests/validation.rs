@@ -19,7 +19,7 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::InsufficientFeeAmount {
+            ValidationError::InsufficientFeeAmount {
                 provided: _,
                 expected: _
             }
@@ -46,7 +46,7 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_gas_costs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::InsufficientFeeAmount {
+            ValidationError::InsufficientFeeAmount {
                 provided: _,
                 expected: _
             }
@@ -76,9 +76,9 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::TransactionValidation(ValidationError::TransactionOutputChangeAssetIdNotFound(
+            ValidationError::TransactionOutputChangeAssetIdNotFound(
                 asset
-            ))
+            )
         )) if asset == missing_asset
     ));
 }
@@ -105,7 +105,7 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::TransactionValidation(ValidationError::TransactionOutputCoinAssetIdNotFound(asset))
+            ValidationError::TransactionOutputCoinAssetIdNotFound(asset)
         )) if asset == missing_asset
     ));
 }
@@ -131,7 +131,7 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
-            VmValidationError::TransactionValidation(ValidationError::TransactionOutputChangeAssetIdDuplicated)
+            ValidationError::TransactionOutputChangeAssetIdDuplicated
         ))
     ))
 }
@@ -154,7 +154,7 @@ fn bytes_fee_cant_overflow() {
     let result = interpreter.transact(transaction);
     assert!(matches!(
         result,
-        Err(InterpreterError::ValidationError(VmValidationError::ArithmeticOverflow))
+        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
     ));
 }
 
@@ -178,7 +178,7 @@ fn gas_fee_cant_overflow() {
     let result = interpreter.transact(transaction);
     assert!(matches!(
         result,
-        Err(InterpreterError::ValidationError(VmValidationError::ArithmeticOverflow))
+        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
     ));
 }
 
@@ -204,6 +204,6 @@ fn total_fee_cant_overflow() {
     let result = interpreter.transact(transaction);
     assert!(matches!(
         result,
-        Err(InterpreterError::ValidationError(VmValidationError::ArithmeticOverflow))
+        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
     ));
 }

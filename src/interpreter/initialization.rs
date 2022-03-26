@@ -1,11 +1,11 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
-use crate::error::{InterpreterError, VmValidationError};
+use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
 use fuel_tx::consts::MAX_INPUTS;
-use fuel_tx::{Input, Output, Transaction};
+use fuel_tx::{Input, Output, Transaction, ValidationError};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{AssetId, Word};
 use itertools::Itertools;
@@ -92,25 +92,25 @@ where
             // remove byte costs from base asset spendable balance
             let byte_balance = (tx.metered_bytes_size() as Word)
                 .checked_mul(tx.byte_price())
-                .ok_or(VmValidationError::ArithmeticOverflow)?;
+                .ok_or(ValidationError::ArithmeticOverflow)?;
 
             // remove gas costs from base asset spendable balance
             // gas = limit * price
             let gas_cost = tx
                 .gas_limit()
                 .checked_mul(tx.gas_price())
-                .ok_or(VmValidationError::ArithmeticOverflow)?;
+                .ok_or(ValidationError::ArithmeticOverflow)?;
 
             // add up total amount of required fees
             let total_fee = byte_balance
                 .checked_add(gas_cost)
-                .ok_or(VmValidationError::ArithmeticOverflow)?;
+                .ok_or(ValidationError::ArithmeticOverflow)?;
 
             // subtract total fee from base asset balance
             *base_asset_balance =
                 base_asset_balance
                     .checked_sub(total_fee)
-                    .ok_or(VmValidationError::InsufficientFeeAmount {
+                    .ok_or(ValidationError::InsufficientFeeAmount {
                         expected: total_fee,
                         provided: *base_asset_balance,
                     })?;
@@ -124,10 +124,10 @@ where
         }) {
             let balance = balances
                 .get_mut(asset_id)
-                .ok_or(VmValidationError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
+                .ok_or(ValidationError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
             *balance = balance
                 .checked_sub(*amount)
-                .ok_or(VmValidationError::InsufficientInputAmount {
+                .ok_or(ValidationError::InsufficientInputAmount {
                     asset: *asset_id,
                     expected: *amount,
                     provided: *balance,

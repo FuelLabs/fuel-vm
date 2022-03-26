@@ -1,5 +1,6 @@
 use core::fmt;
 
+use fuel_types::AssetId;
 #[cfg(feature = "std")]
 use std::{error, io};
 
@@ -9,17 +10,39 @@ use std::{error, io};
     derive(serde::Serialize, serde::Deserialize)
 )]
 pub enum ValidationError {
-    InputCoinPredicateLength { index: usize },
-    InputCoinPredicateDataLength { index: usize },
-    InputCoinWitnessIndexBounds { index: usize },
-    InputCoinInvalidSignature { index: usize },
-    InputContractAssociatedOutputContract { index: usize },
-    OutputContractInputIndex { index: usize },
-    TransactionCreateInputContract { index: usize },
-    TransactionCreateOutputContract { index: usize },
-    TransactionCreateOutputVariable { index: usize },
-    TransactionCreateOutputChangeNotBaseAsset { index: usize },
-    TransactionCreateOutputContractCreatedMultiple { index: usize },
+    InputCoinPredicateLength {
+        index: usize,
+    },
+    InputCoinPredicateDataLength {
+        index: usize,
+    },
+    InputCoinWitnessIndexBounds {
+        index: usize,
+    },
+    InputCoinInvalidSignature {
+        index: usize,
+    },
+    InputContractAssociatedOutputContract {
+        index: usize,
+    },
+    OutputContractInputIndex {
+        index: usize,
+    },
+    TransactionCreateInputContract {
+        index: usize,
+    },
+    TransactionCreateOutputContract {
+        index: usize,
+    },
+    TransactionCreateOutputVariable {
+        index: usize,
+    },
+    TransactionCreateOutputChangeNotBaseAsset {
+        index: usize,
+    },
+    TransactionCreateOutputContractCreatedMultiple {
+        index: usize,
+    },
     TransactionCreateBytecodeLen,
     TransactionCreateBytecodeWitnessIndex,
     TransactionCreateStaticContractsMax,
@@ -28,16 +51,40 @@ pub enum ValidationError {
     TransactionCreateStorageSlotOrder,
     TransactionScriptLength,
     TransactionScriptDataLength,
-    TransactionScriptOutputContractCreated { index: usize },
+    TransactionScriptOutputContractCreated {
+        index: usize,
+    },
     TransactionGasLimit,
     TransactionMaturity,
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
     TransactionOutputChangeAssetIdDuplicated,
-    TransactionOutputChangeAssetIdNotFound,
-    // TODO: remove in future breaking change to this library
-    TransactionOutputVariableAssetIdDuplicated,
+    TransactionOutputChangeAssetIdNotFound(AssetId),
+    /// This error happens when a transaction attempts to create a coin output for an asset type
+    /// that doesn't exist in the coin inputs.
+    TransactionOutputCoinAssetIdNotFound(AssetId),
+    /// The transaction doesn't provide enough input amount of the native chain asset to cover
+    /// all potential execution fees
+    InsufficientFeeAmount {
+        /// The expected amount of fees required to cover the transaction
+        expected: u64,
+        /// The fee amount actually provided for spending
+        provided: u64,
+    },
+    /// The transaction doesn't provide enough input amount of the given asset to cover the
+    /// amounts used in the outputs.
+    InsufficientInputAmount {
+        /// The asset id being spent
+        asset: AssetId,
+        /// The amount expected by a coin output
+        expected: u64,
+        /// The total amount provided by coin inputs
+        provided: u64,
+    },
+    /// The user provided amounts for coins or gas prices that caused an arithmetic
+    /// overflow.
+    ArithmeticOverflow,
 }
 
 impl fmt::Display for ValidationError {

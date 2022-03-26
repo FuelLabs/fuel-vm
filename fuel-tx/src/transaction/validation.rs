@@ -213,7 +213,20 @@ impl Transaction {
                         .input_asset_ids()
                         .any(|input_asset_id| input_asset_id == asset_id)
                     {
-                        return Err(ValidationError::TransactionOutputChangeAssetIdNotFound);
+                        return Err(ValidationError::TransactionOutputChangeAssetIdNotFound(
+                            *asset_id,
+                        ));
+                    }
+                }
+
+                if let Output::Coin { asset_id, .. } = output {
+                    if !self
+                        .input_asset_ids()
+                        .any(|input_asset_id| input_asset_id == asset_id)
+                    {
+                        return Err(ValidationError::TransactionOutputCoinAssetIdNotFound(
+                            *asset_id,
+                        ));
                     }
                 }
 

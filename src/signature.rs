@@ -1,7 +1,9 @@
+use crate::Error;
+
 use fuel_types::Bytes64;
 
-use core::fmt;
 use core::ops::Deref;
+use core::{fmt, str};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -102,6 +104,27 @@ impl fmt::Debug for Signature {
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl From<Bytes64> for Signature {
+    fn from(b: Bytes64) -> Self {
+        Self(b)
+    }
+}
+
+impl From<Signature> for Bytes64 {
+    fn from(s: Signature) -> Self {
+        s.0
+    }
+}
+
+impl str::FromStr for Signature {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Bytes64::from_str(s)
+            .map_err(|_| Error::InvalidSignature)
+            .map(|s| s.into())
     }
 }
 

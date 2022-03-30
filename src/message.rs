@@ -86,6 +86,20 @@ impl From<Message> for [u8; Message::LEN] {
     }
 }
 
+impl From<&Hasher> for Message {
+    fn from(hasher: &Hasher) -> Self {
+        // Safety: `Hasher` is a cryptographic hash
+        unsafe { Self::from_bytes_unchecked(*hasher.digest()) }
+    }
+}
+
+impl From<Hasher> for Message {
+    fn from(hasher: Hasher) -> Self {
+        // Safety: `Hasher` is a cryptographic hash
+        unsafe { Self::from_bytes_unchecked(*hasher.finalize()) }
+    }
+}
+
 impl fmt::LowerHex for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)

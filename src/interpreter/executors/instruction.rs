@@ -5,7 +5,7 @@ use crate::interpreter::Interpreter;
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
+use fuel_asm::{Instruction, Opcode, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
@@ -58,7 +58,7 @@ where
     }
 
     fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
-        let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
+        let (op, ra, rb, rc, rd, imm) = instruction.clone().into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
             self.registers[rb],
@@ -67,8 +67,12 @@ where
         );
 
         eprintln!(
-            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters:",
-            &op, a, b, c, d,
+            "Opcode: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters:",
+            Opcode::from(instruction),
+            a,
+            b,
+            c,
+            d,
         );
 
         eprintln!("REG_OF: {}", self.registers[REG_OF]);

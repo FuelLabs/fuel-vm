@@ -66,6 +66,11 @@ where
             self.registers[rd],
         );
 
+        eprintln!(
+            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters: {:?}",
+            &instruction, a, b, c, d self.registers
+        );
+
         match op {
             OpcodeRepr::ADD => {
                 self.gas_charge(GAS_ADD)?;

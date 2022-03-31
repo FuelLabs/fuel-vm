@@ -67,12 +67,13 @@ where
         );
 
         eprintln!(
-            "Opcode: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters:",
+            "Opcode: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nimm: {:?}\nRegisters:",
             Opcode::from(instruction),
             a,
             b,
             c,
             d,
+            imm,
         );
 
         eprintln!("REG_OF: {}", self.registers[REG_OF]);

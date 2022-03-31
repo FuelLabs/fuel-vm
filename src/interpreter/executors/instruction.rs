@@ -68,7 +68,7 @@ where
 
         eprintln!(
             "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters: {:?}",
-            &instruction, a, b, c, d, self.registers
+            &op, a, b, c, d, self.registers
         );
 
         match op {

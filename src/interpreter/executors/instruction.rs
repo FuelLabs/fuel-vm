@@ -87,7 +87,7 @@ where
         for i in REG_WRITABLE..VM_REGISTER_COUNT {
             eprintln!("REG_{:#X}: {}", i, self.registers[i]);
         }
-        eprintln!("\n\n");
+        eprintln!();
 
         match op {
             OpcodeRepr::ADD => {

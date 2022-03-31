@@ -67,9 +67,27 @@ where
         );
 
         eprintln!(
-            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters: {:?}\n\n",
-            &op, a, b, c, d, self.registers
+            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters:",
+            &op, a, b, c, d,
         );
+
+        eprintln!("REG_OF: {}", self.registers[REG_OF]);
+        eprintln!("REG_PC: {}", self.registers[REG_PC]);
+        eprintln!("REG_SSP: {}", self.registers[REG_SSP]);
+        eprintln!("REG_SP: {}", self.registers[REG_SP]);
+        eprintln!("REG_FP: {}", self.registers[REG_FP]);
+        eprintln!("REG_HP: {}", self.registers[REG_HP]);
+        eprintln!("REG_ERR: {}", self.registers[REG_ERR]);
+        eprintln!("REG_GGAS: {}", self.registers[REG_GGAS]);
+        eprintln!("REG_CGAS: {}", self.registers[REG_CGAS]);
+        eprintln!("REG_BAL: {}", self.registers[REG_BAL]);
+        eprintln!("REG_IS: {}", self.registers[REG_IS]);
+        eprintln!("REG_RET: {}", self.registers[REG_RET]);
+        eprintln!("REG_FLAG: {}", self.registers[REG_FLAG]);
+        eprintln!("REG_WRITABLE: {}", self.registers[REG_WRITABLE]);
+        for i in REG_WRITABLE + 1..VM_REGISTER_COUNT {
+            eprintln!("REG_{}: {}", i, self.registers[i]);
+        }
 
         match op {
             OpcodeRepr::ADD => {

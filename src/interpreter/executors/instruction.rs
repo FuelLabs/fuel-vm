@@ -67,7 +67,7 @@ where
         );
 
         eprintln!(
-            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters: {:?}\n\n",
+            "Instruction: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nRegisters:\n{:#?}\n\n",
             &op, a, b, c, d, self.registers
         );
 

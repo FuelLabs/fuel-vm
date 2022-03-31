@@ -8,8 +8,11 @@ use alloc::vec::Vec;
 mod receipt_std;
 
 mod receipt_repr;
+mod script_result;
 
 use receipt_repr::ReceiptRepr;
+
+pub use script_result::ScriptExecutionResult;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
@@ -48,7 +51,7 @@ pub enum Receipt {
 
     Panic {
         id: ContractId,
-        reason: Word,
+        reason: InstructionResult,
         pc: Word,
         is: Word,
     },
@@ -101,7 +104,7 @@ pub enum Receipt {
     },
 
     ScriptResult {
-        result: InstructionResult,
+        result: ScriptExecutionResult,
         gas_used: Word,
     },
 }
@@ -156,7 +159,7 @@ impl Receipt {
         }
     }
 
-    pub const fn panic(id: ContractId, reason: Word, pc: Word, is: Word) -> Self {
+    pub const fn panic(id: ContractId, reason: InstructionResult, pc: Word, is: Word) -> Self {
         Self::Panic { id, reason, pc, is }
     }
 
@@ -244,7 +247,7 @@ impl Receipt {
         }
     }
 
-    pub const fn script_result(result: InstructionResult, gas_used: Word) -> Self {
+    pub const fn script_result(result: ScriptExecutionResult, gas_used: Word) -> Self {
         Self::ScriptResult { result, gas_used }
     }
 
@@ -394,7 +397,7 @@ impl Receipt {
         }
     }
 
-    pub const fn reason(&self) -> Option<Word> {
+    pub const fn reason(&self) -> Option<InstructionResult> {
         match self {
             Self::Panic { reason, .. } => Some(*reason),
             _ => None,
@@ -432,7 +435,7 @@ impl Receipt {
         }
     }
 
-    pub const fn result(&self) -> Option<&InstructionResult> {
+    pub const fn result(&self) -> Option<&ScriptExecutionResult> {
         match self {
             Self::ScriptResult { result, .. } => Some(result),
             _ => None,

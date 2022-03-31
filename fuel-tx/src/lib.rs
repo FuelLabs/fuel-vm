@@ -28,7 +28,7 @@ mod transaction;
 pub use builder::TransactionBuilder;
 
 #[cfg(feature = "alloc")]
-pub use receipt::Receipt;
+pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{

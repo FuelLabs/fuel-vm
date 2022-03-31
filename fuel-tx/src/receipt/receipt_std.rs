@@ -4,6 +4,7 @@ use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
 use fuel_types::Word;
 
+use crate::receipt::script_result::ScriptExecutionResult;
 use std::io::{self, Write};
 
 impl io::Read for Receipt {
@@ -258,7 +259,7 @@ impl io::Write for Receipt {
 
                 let id = id.into();
 
-                *self = Self::panic(id, reason, pc, is);
+                *self = Self::panic(id, InstructionResult::from(reason), pc, is);
             }
 
             ReceiptRepr::Revert => {
@@ -344,7 +345,7 @@ impl io::Write for Receipt {
                 let (result, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (gas_used, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
-                let result = InstructionResult::from(result);
+                let result = ScriptExecutionResult::from(result);
 
                 *self = Self::script_result(result, gas_used);
             }

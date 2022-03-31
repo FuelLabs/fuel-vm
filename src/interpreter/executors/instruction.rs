@@ -84,8 +84,7 @@ where
         eprintln!("REG_IS: {}", self.registers[REG_IS]);
         eprintln!("REG_RET: {}", self.registers[REG_RET]);
         eprintln!("REG_FLAG: {}", self.registers[REG_FLAG]);
-        eprintln!("REG_WRITABLE: {}", self.registers[REG_WRITABLE]);
-        for i in REG_WRITABLE + 1..VM_REGISTER_COUNT {
+        for i in REG_WRITABLE..VM_REGISTER_COUNT {
             eprintln!("REG_{:#X}: {}", i, self.registers[i]);
         }
         eprintln!("\n\n");

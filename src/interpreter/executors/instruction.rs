@@ -66,6 +66,7 @@ where
             self.registers[rd],
         );
 
+        eprintln!("Contract: {:#X}", self.internal_contract_or_default());
         eprintln!(
             "Opcode: {:?}\na: {:?}\nb: {:?}\nc: {:?}\nd: {:?}\nimm: {:?}\nRegisters:",
             Opcode::from(instruction),

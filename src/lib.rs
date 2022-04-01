@@ -7,7 +7,15 @@
 #![allow(clippy::wrong_self_convention)]
 
 /// Required export to implement [`Keystore`].
+#[doc(no_inline)]
 pub use borrown;
+/// Required export to use various public interfaces in this crate
+#[doc(no_inline)]
+pub use fuel_types;
+#[cfg(feature = "random")]
+#[doc(no_inline)]
+/// Required export to use randomness features
+pub use rand;
 
 mod error;
 mod hasher;

@@ -27,7 +27,7 @@ default = ["fuel-types/default", "std"]
 random = ["fuel-types/random", "rand"]
 serde-types = ["fuel-types/serde-types", "secp256k1/serde", "serde-types-minimal", "serde/default", "std"]
 serde-types-minimal = ["fuel-types/serde-types-minimal", "serde"]
-std = ["fuel-types/default", "secp256k1"]
+std = ["fuel-types/std", "secp256k1"]
 
 [[test]]
 name = "test-signature"

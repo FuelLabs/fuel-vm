@@ -111,8 +111,21 @@ impl<S> Interpreter<S> {
                 ErrorKind::Other,
                 "AssetId doesn't exist in balances",
             )))?;
-        let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
+        // Safety: memory range is guaranteed to be the exact size for AssetId
+        let mem_asset_id =
+            AssetId::try_from(&self.memory[offset..offset + AssetId::LEN]).expect("Expected slice to be AssetId::LEN");
+        // Verify asset id is correct
+        if &mem_asset_id != asset_id {
+            return Err(RuntimeError::Halt(io::Error::new(
+                ErrorKind::Other,
+                "AssetId doesn't exist in balances",
+            )));
+        }
+        let balance_offset = offset + AssetId::LEN;
+
+        // Update balance
+        let balance_memory = &self.memory[balance_offset..balance_offset + WORD_SIZE];
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
         let balance = Word::from_be_bytes(balance);
 
@@ -133,8 +146,18 @@ impl<S> Interpreter<S> {
             .unused_balance_index
             .get(asset_id)
             .ok_or(PanicReason::AssetIdNotFound)?;
-
-        let balance_memory = &mut self.memory[offset..offset + WORD_SIZE];
+        // Safety: memory range is guaranteed to be the exact size for AssetId
+        let mem_asset_id =
+            AssetId::try_from(&self.memory[offset..offset + AssetId::LEN]).expect("Expected slice to be AssetId::LEN");
+        // Verify asset id is correct
+        if &mem_asset_id != asset_id {
+            return Err(RuntimeError::Halt(io::Error::new(
+                ErrorKind::Other,
+                "AssetId doesn't exist in balances",
+            )));
+        }
+        let balance_offset = offset + AssetId::LEN;
+        let balance_memory = &mut self.memory[balance_offset..balance_offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Sized chunk expected to fit!");
         let balance = Word::from_be_bytes(balance);

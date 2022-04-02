@@ -4,13 +4,13 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::consts::MAX_INPUTS;
-use fuel_tx::{Input, Output, Transaction, ValidationError};
-use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{AssetId, Word};
+use fuel_tx::{consts::MAX_INPUTS, Input, Output, Transaction, ValidationError};
+use fuel_types::{
+    bytes::{SerializableVec, SizedBytes},
+    AssetId, Word,
+};
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::io;
+use std::{collections::HashMap, io};
 
 impl<S> Interpreter<S>
 where
@@ -35,18 +35,21 @@ where
         // Set heap area
         self.registers[REG_HP] = VM_MAX_RAM - 1;
 
+        // Reset balance asset id mapping
+        self.unused_balance_index.clear();
+
         self.push_stack(tx.id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         // Set initial unused balances
         let free_balances = Self::initial_free_balances(&tx)?;
         for (asset_id, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
-            // push asset ID
-            self.push_stack(asset_id.as_ref())
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
             // stack position
             let asset_id_offset = self.registers[REG_SSP] as usize;
             self.unused_balance_index.insert(*asset_id, asset_id_offset);
+            // push asset ID
+            self.push_stack(asset_id.as_ref())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
             // push spendable amount
             self.push_stack(&amount.to_be_bytes())
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

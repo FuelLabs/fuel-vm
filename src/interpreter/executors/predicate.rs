@@ -8,8 +8,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, InterpreterError> {
-        // TODO initialize VM with tx prepared for sign
+    pub(crate) fn verify_predicate_inner(&mut self, predicate: &MemoryRange) -> Result<bool, InterpreterError> {
         // TODO execute should not overflow predicate boundaries. Need to check
         // internally if a Jump instruction decrements $pc, or if $pc overflows
         // `end`

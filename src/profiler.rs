@@ -88,6 +88,8 @@ impl<'a, T> Iterator for PerLocationValues<'a, T> {
 pub trait ProfileReceiver: DynClone {
     /// Called after a transaction has completed
     fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData);
+    /// Called after a transaction predicate has been evaluated
+    fn on_predicate(&mut self, result: &Result<bool, InterpreterError>, data: &ProfilingData);
 }
 
 dyn_clone::clone_trait_object!(ProfileReceiver);
@@ -99,6 +101,10 @@ pub struct StderrReceiver;
 impl ProfileReceiver for StderrReceiver {
     fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
         eprintln!("PROFILER: {:?} {:?}", state, data);
+    }
+
+    fn on_predicate(&mut self, result: &Result<bool, InterpreterError>, data: &ProfilingData) {
+        eprintln!("PROFILER: {:?} {:?}", result, data);
     }
 }
 
@@ -116,6 +122,13 @@ impl Profiler {
     pub fn on_transaction(&mut self, state_result: &Result<ProgramState, InterpreterError>) {
         if let Some(r) = &mut self.receiver {
             r.on_transaction(&state_result, &self.data);
+        }
+    }
+
+    /// Called by the VM after a transaction predicate was verified, send result to receiver
+    pub fn on_predicate(&mut self, predicate_result: &Result<bool, InterpreterError>) {
+        if let Some(r) = &mut self.receiver {
+            r.on_predicate(&predicate_result, &self.data);
         }
     }
 

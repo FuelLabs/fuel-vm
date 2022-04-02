@@ -16,12 +16,12 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), InterpreterError> {
+    pub(crate) fn init(&mut self, mut tx: Transaction, context: Context) -> Result<(), InterpreterError> {
         tx.validate_without_signature(self.block_height() as Word)?;
         tx.precompute_metadata();
 
         self.block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
-        self.context = Context::from(&tx);
+        self.context = context;
 
         self.frames.clear();
         self.receipts.clear();

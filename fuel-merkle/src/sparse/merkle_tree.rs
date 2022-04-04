@@ -1,6 +1,7 @@
-use crate::common::{AsPathIterator, Bytes32, Msb, Node as NodeTrait};
+use crate::common::{AsPathIterator, Bytes32};
 use fuel_storage::Storage;
 
+use crate::sparse::hash::sum;
 use crate::sparse::{zero_sum, Buffer, Node, StorageNode};
 
 pub struct MerkleTree<'storage, StorageError> {
@@ -35,8 +36,13 @@ where
             .insert(&leaf_node.hash(), leaf_node.as_buffer())?;
         self.storage
             .insert(&leaf_node.leaf_key(), leaf_node.as_buffer())?;
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone());
-        self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
+
+        if self.root_node().is_placeholder() {
+            self.set_root_node(leaf_node);
+        } else {
+            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone());
+            self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
+        }
 
         Ok(())
     }
@@ -62,12 +68,13 @@ where
 
     // PRIVATE
 
-    fn depth(&'a self) -> usize {
-        Node::key_size_in_bits()
-    }
-
     fn root_node(&'a self) -> &Node {
         &self.root_node
+    }
+
+    fn set_root_node(&'a mut self, node: Node) {
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+        self.root_node = node;
     }
 
     fn path_set(&'a self, leaf_node: Node) -> (Vec<Node>, Vec<Node>) {
@@ -91,67 +98,56 @@ where
         path_nodes: &[Node],
         side_nodes: &[Node],
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
+
+        // Build the tree upwards starting with the requested leaf node.
         let mut current_node = requested_leaf_node.clone();
 
-        let common_prefix_count = {
-            if actual_leaf_node.is_placeholder() {
-                self.depth()
-            } else {
-                let actual_leaf_key = actual_leaf_node.leaf_key();
-                let requested_leaf_key = requested_leaf_node.leaf_key();
-                actual_leaf_key.common_prefix_count(requested_leaf_key)
+        // If we are creating a new leaf node, the corresponding side node will be the first node in
+        // the path set. The side node will be the leaf node currently closest to the requested new
+        // leaf node. When creating a new leaf node, we must merge the leaf node with its
+        // corresponding side node to create a common ancestor. We then continue building the tree
+        // upwards from this ancestor node. This may require creating new placeholder side nodes, in
+        // addition to the existing side node set.
+        // If we are updating an existing leaf node, the leaf node we are updating is the first node
+        // in the path set. The side node set will already include all the side nodes needed to
+        // build up the tree from the requested leaf node, since these side nodes were already built
+        // during the creation of the leaf node.
+        // We can determine if we are updating an existing leaf node, or if we are creating a new
+        // leaf node, by comparing the paths of the requested leaf node and the leaf node at the
+        // start of the path set. When the paths are equal, it means the leaf nodes occupy the same
+        // location, and we are updating an existing leaf. Otherwise, it means we are adding a new
+        // leaf node.
+        if requested_leaf_node.leaf_key() != actual_leaf_node.leaf_key() {
+            // Merge leaves
+            if !actual_leaf_node.is_placeholder() {
+                current_node = Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                self.storage
+                    .insert(&current_node.hash(), current_node.as_buffer())?;
             }
-        };
 
-        if common_prefix_count != self.depth() {
-            let requested_leaf_key = requested_leaf_node.leaf_key();
-            if requested_leaf_key
-                .get_bit_at_index_from_msb(common_prefix_count)
-                .unwrap()
-                == 1
-            {
-                current_node = Node::create_node(&actual_leaf_node, &current_node);
-            } else {
-                current_node = Node::create_node(&current_node, &actual_leaf_node);
+            // Merge placeholders
+            let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
+            let stale_depth = std::cmp::max(side_nodes.len(), ancestor_depth);
+            let placeholders_count = stale_depth - side_nodes.len();
+            let placeholders =
+                std::iter::repeat(Node::create_placeholder()).take(placeholders_count);
+            for placeholder in placeholders {
+                current_node = Node::create_node_on_path(path, &current_node, &placeholder);
+                self.storage
+                    .insert(&current_node.hash(), current_node.as_buffer())?;
             }
-            let height = (self.depth() - common_prefix_count) as u32;
-            current_node.set_height(height);
+        }
+
+        // Merge side nodes
+        for side_node in side_nodes {
+            current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
                 .insert(&current_node.hash(), current_node.as_buffer())?;
         }
 
-        let offset_side_nodes = self.depth() - side_nodes.len();
-        for i in 0..self.depth() {
-            let side_node = {
-                if i < offset_side_nodes {
-                    if common_prefix_count != self.depth()
-                        && common_prefix_count > self.depth() - 1 - i
-                    {
-                        Node::create_placeholder()
-                    } else {
-                        continue;
-                    }
-                } else {
-                    side_nodes[i - offset_side_nodes].clone()
-                }
-            };
-
-            let requested_leaf_key = requested_leaf_node.leaf_key();
-            if requested_leaf_key
-                .get_bit_at_index_from_msb(self.depth() - 1 - i)
-                .unwrap()
-                == 1
-            {
-                current_node = Node::create_node(&side_node, &current_node);
-            } else {
-                current_node = Node::create_node(&current_node, &side_node);
-            }
-            self.storage
-                .insert(&current_node.hash(), current_node.as_buffer())?;
-        }
-
-        self.root_node = current_node;
+        self.set_root_node(current_node);
 
         Ok(())
     }
@@ -166,40 +162,50 @@ where
             self.storage.remove(&node.hash())?;
         }
 
-        let mut non_placeholder_reached = false;
+        let path = requested_leaf_node.leaf_key();
+        let mut side_nodes_iter = side_nodes.iter();
+
+        // The deleted leaf is replaced by a placeholder. Build the tree upwards starting with the
+        // placeholder.
         let mut current_node = Node::create_placeholder();
-        let n = side_nodes.len();
-        for i in 0..n {
-            let side_node = &side_nodes[i];
-            if current_node.is_placeholder() {
-                if side_node.is_leaf() {
-                    current_node = side_node.clone();
-                    continue;
-                } else {
-                    non_placeholder_reached = true;
-                }
-            }
 
-            if !non_placeholder_reached && side_node.is_placeholder() {
-                continue;
-            } else if !non_placeholder_reached {
-                non_placeholder_reached = true;
-            }
+        // If the first side node is a leaf, it means the ancestor node is now parent to a
+        // placeholder (the deleted leaf node) and a leaf node (the first side node). We can
+        // immediately discard the ancestor node from further calculation and attach the orphaned
+        // leaf node to its next ancestor. Any subsequent ancestor nodes composed of this leaf node
+        // and a placeholder must be similarly discarded from further calculation. We then create a
+        // valid ancestor node for the orphaned leaf node by joining it with the earliest
+        // non-placeholder side node.
+        let first_side_node = side_nodes.first();
+        if first_side_node.is_some() && first_side_node.unwrap().is_leaf() {
+            side_nodes_iter.next();
+            current_node = first_side_node.unwrap().clone();
 
-            let depth = side_nodes.len() - 1 - i;
-            let requested_leaf_key = requested_leaf_node.leaf_key();
-            if requested_leaf_key.get_bit_at_index_from_msb(depth).unwrap() == 1 {
-                current_node = Node::create_node(&side_node, &current_node);
-            } else {
-                current_node = Node::create_node(&current_node, &side_node);
+            // Advance the side node iterator to the next non-placeholder node. This may be either
+            // another leaf node or an internal node.
+            // If only placeholder nodes exist beyond the first leaf node, then that leaf node is,
+            // in fact, the new root node.
+            // Using `find(..)` advances the iterator beyond the next non-placeholder side node and
+            // returns it. Therefore, we must consume the side node at this point. If another
+            // non-placeholder node was found in the side node collection, merge it with the first
+            // side node. This guarantees that the current node will be an internal node, and
+            // not a leaf, by the time we start merging the remaining side nodes.
+            // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
+            if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
+                current_node = Node::create_node_on_path(path, &current_node, side_node);
+                self.storage
+                    .insert(&current_node.hash(), current_node.as_buffer())?;
             }
-            let height = (self.depth() - depth) as u32;
-            current_node.set_height(height);
+        }
+
+        // Merge side nodes
+        for side_node in side_nodes_iter {
+            current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
                 .insert(&current_node.hash(), current_node.as_buffer())?;
         }
 
-        self.root_node = current_node;
+        self.set_root_node(current_node);
 
         Ok(())
     }

@@ -4,9 +4,13 @@ use std::fmt;
 use std::mem::size_of;
 use std::ops::Range;
 
-use crate::common::{Bytes1, Bytes32, Bytes4, LEAF, NODE};
+use crate::common::Node as NodeTrait;
+use crate::common::{Bytes1, Bytes32, Bytes4, Msb, LEAF, NODE};
 use crate::sparse::hash::sum;
 use crate::sparse::zero_sum;
+
+const LEFT: u8 = 0;
+const RIGHT: u8 = 1;
 
 /// For a leaf:
 /// `00 - 04`: Height (4 bytes)
@@ -30,6 +34,10 @@ pub(crate) struct Node {
 }
 
 impl Node {
+    pub fn max_height() -> usize {
+        Node::key_size_in_bits()
+    }
+
     pub fn create_leaf(key: &Bytes32, data: &[u8]) -> Self {
         let buffer = Self::default_buffer();
         let mut node = Self { buffer };
@@ -40,15 +48,44 @@ impl Node {
         node
     }
 
-    pub fn create_node(left_child: &Node, right_child: &Node) -> Self {
+    pub fn create_node(left_child: &Node, right_child: &Node, height: u32) -> Self {
         let buffer = Self::default_buffer();
         let mut node = Self { buffer };
-        let height = std::cmp::max(left_child.height(), right_child.height()) + 1;
         node.set_height(height);
         node.set_prefix(NODE);
         node.set_bytes_lo(&left_child.hash());
         node.set_bytes_hi(&right_child.hash());
         node
+    }
+
+    pub fn create_node_on_path(path: &Bytes32, path_node: &Node, side_node: &Node) -> Self {
+        if path_node.is_leaf() && side_node.is_leaf() {
+            // When joining two leaves, the joined node is found where the paths of the two leaves
+            // diverge. The joined node may be a direct parent of the leaves or an ancestor multiple
+            // generations above the leaves.
+            // N.B.: A leaf can be a placeholder.
+            let parent_depth = path_node.common_path_length(side_node);
+            let parent_height = (Node::max_height() - parent_depth) as u32;
+            let parent_node = if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
+                Node::create_node(&path_node, &side_node, parent_height)
+            } else {
+                Node::create_node(&side_node, &path_node, parent_height)
+            };
+            parent_node
+        } else {
+            // When joining two nodes, or a node and a leaf, the joined node is the direct parent
+            // of the node with the greater height and an ancestor of the node with the lesser
+            // height.
+            // N.B.: A leaf can be a placeholder.
+            let parent_height = std::cmp::max(path_node.height(), side_node.height()) + 1;
+            let parent_depth = Node::max_height() - parent_height as usize;
+            let parent_node = if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
+                Node::create_node(&path_node, &side_node, parent_height)
+            } else {
+                Node::create_node(&side_node, &path_node, parent_height)
+            };
+            parent_node
+        }
     }
 
     pub fn create_placeholder() -> Self {
@@ -60,6 +97,20 @@ impl Node {
         let node = Self { buffer };
         assert!(node.is_leaf() || node.is_node());
         node
+    }
+
+    pub fn common_path_length(&self, other: &Node) -> usize {
+        debug_assert!(self.is_leaf());
+        debug_assert!(other.is_leaf());
+
+        // If either of the nodes are placeholders, the common path length is defined to be 0. This
+        // is needed to prevent a 0 bit in the placeholder's key from producing an erroneous match
+        // with a 0 bit in the leaf's key.
+        if self.is_placeholder() || other.is_placeholder() {
+            0
+        } else {
+            self.leaf_key().common_prefix_count(other.leaf_key())
+        }
     }
 
     pub fn height(&self) -> u32 {
@@ -455,7 +506,7 @@ mod test_node {
     fn test_create_node_returns_a_valid_node() {
         let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
         let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
-        let node = Node::create_node(&left_child, &right_child);
+        let node = Node::create_node(&left_child, &right_child, 1);
         assert_eq!(node.is_leaf(), false);
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 1);
@@ -549,7 +600,7 @@ mod test_node {
 
         let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
         let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
-        let node = Node::create_node(&left_child, &right_child);
+        let node = Node::create_node(&left_child, &right_child, 1);
         let buffer = node.buffer();
 
         assert_eq!(buffer, expected_buffer);
@@ -583,7 +634,7 @@ mod test_node {
 
         let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
         let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
-        let node = Node::create_node(&left_child, &right_child);
+        let node = Node::create_node(&left_child, &right_child, 1);
         let value = node.hash();
 
         assert_eq!(value, expected_value);
@@ -608,7 +659,7 @@ mod test_storage_node {
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf_1.hash(), leaf_1.as_buffer());
 
-        let node_0 = Node::create_node(&leaf_0, &leaf_1);
+        let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
@@ -627,7 +678,7 @@ mod test_storage_node {
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf_1.hash(), leaf_1.as_buffer());
 
-        let node_0 = Node::create_node(&leaf_0, &leaf_1);
+        let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
@@ -643,7 +694,7 @@ mod test_storage_node {
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), leaf.as_buffer());
 
-        let node_0 = Node::create_node(&Node::create_placeholder(), &leaf);
+        let node_0 = Node::create_node(&Node::create_placeholder(), &leaf, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
@@ -659,7 +710,7 @@ mod test_storage_node {
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), leaf.as_buffer());
 
-        let node_0 = Node::create_node(&leaf, &Node::create_placeholder());
+        let node_0 = Node::create_node(&leaf, &Node::create_placeholder(), 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);

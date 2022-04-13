@@ -132,10 +132,16 @@ impl str::FromStr for Signature {
 mod use_std {
     use crate::{Error, Message, PublicKey, SecretKey, Signature};
 
+    use lazy_static::lazy_static;
     use secp256k1::recovery::{RecoverableSignature as SecpRecoverableSignature, RecoveryId};
     use secp256k1::Secp256k1;
 
     use std::borrow::Borrow;
+
+    lazy_static! {
+        static ref SIGNING_SECP: Secp256k1<secp256k1::SignOnly> = Secp256k1::signing_only();
+        static ref RECOVER_SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
+    }
 
     impl Signature {
         // Internal API - this isn't meant to be made public because some assumptions and pre-checks
@@ -182,7 +188,7 @@ mod use_std {
             let secret = secret.borrow();
             let message = message.to_secp();
 
-            let signature = Secp256k1::signing_only().sign_recoverable(&message, secret);
+            let signature = SIGNING_SECP.sign_recoverable(&message, secret);
 
             Signature::from_secp(signature)
         }
@@ -197,7 +203,7 @@ mod use_std {
             let signature = self.to_secp();
             let message = message.to_secp();
 
-            let pk = Secp256k1::new()
+            let pk = RECOVER_SECP
                 .recover(&message, &signature)
                 .map(|pk| PublicKey::from_secp(&pk))?;
 

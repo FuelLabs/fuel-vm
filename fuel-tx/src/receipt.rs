@@ -26,8 +26,8 @@ pub enum Receipt {
         amount: Word,
         asset_id: AssetId,
         gas: Word,
-        a: Word,
-        b: Word,
+        param1: Word,
+        param2: Word,
         pc: Word,
         is: Word,
     },
@@ -116,8 +116,8 @@ impl Receipt {
         amount: Word,
         asset_id: AssetId,
         gas: Word,
-        a: Word,
-        b: Word,
+        param1: Word,
+        param2: Word,
         pc: Word,
         is: Word,
     ) -> Self {
@@ -127,8 +127,8 @@ impl Receipt {
             amount,
             asset_id,
             gas,
-            a,
-            b,
+            param1,
+            param2,
             pc,
             is,
         }
@@ -336,16 +336,16 @@ impl Receipt {
         }
     }
 
-    pub const fn a(&self) -> Option<Word> {
+    pub const fn param1(&self) -> Option<Word> {
         match self {
-            Self::Call { a, .. } => Some(*a),
+            Self::Call { param1, .. } => Some(*param1),
             _ => None,
         }
     }
 
-    pub const fn b(&self) -> Option<Word> {
+    pub const fn param2(&self) -> Option<Word> {
         match self {
-            Self::Call { b, .. } => Some(*b),
+            Self::Call { param2, .. } => Some(*param2),
             _ => None,
         }
     }
@@ -459,8 +459,8 @@ impl Receipt {
                 + WORD_SIZE // amount
                 + AssetId::LEN // asset_id
                 + WORD_SIZE // gas
-                + WORD_SIZE // a
-                + WORD_SIZE // b
+                + WORD_SIZE // param1
+                + WORD_SIZE // param2
             }
 
             ReceiptRepr::Return => WORD_SIZE, // val

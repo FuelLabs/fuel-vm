@@ -22,8 +22,8 @@ impl io::Read for Receipt {
                 amount,
                 asset_id,
                 gas,
-                a,
-                b,
+                param1,
+                param2,
                 pc,
                 is,
             } => {
@@ -34,8 +34,8 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *gas);
-                let buf = bytes::store_number_unchecked(buf, *a);
-                let buf = bytes::store_number_unchecked(buf, *b);
+                let buf = bytes::store_number_unchecked(buf, *param1);
+                let buf = bytes::store_number_unchecked(buf, *param2);
                 let buf = bytes::store_number_unchecked(buf, *pc);
                 bytes::store_number_unchecked(buf, *is);
             }
@@ -206,8 +206,8 @@ impl io::Write for Receipt {
                 let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (gas, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (param1, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (param2, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
                 let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
@@ -215,7 +215,7 @@ impl io::Write for Receipt {
                 let to = to.into();
                 let asset_id = asset_id.into();
 
-                *self = Self::call(id, to, amount, asset_id, gas, a, b, pc, is);
+                *self = Self::call(id, to, amount, asset_id, gas, param1, param2, pc, is);
             }
 
             ReceiptRepr::Return => {

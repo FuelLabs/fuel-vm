@@ -208,7 +208,7 @@ where
         let pc = self.registers[REG_PC];
         let is = self.registers[REG_IS];
 
-        let receipt = Receipt::panic(self.internal_contract_or_default(), Word::from(result), pc, is);
+        let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
         self.receipts.push(receipt);
     }

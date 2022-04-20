@@ -7,8 +7,8 @@ use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{InstructionResult, PanicReason};
-use fuel_tx::{Input, Output, Receipt, Transaction};
+use fuel_asm::PanicReason;
+use fuel_tx::{Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::{bytes::SerializableVec, Word};
 
 impl<S> Interpreter<S>
@@ -116,14 +116,22 @@ where
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {
-                    Ok(s) => (InstructionResult::success(), s),
+                    Ok(s) => {
+                        // either a revert or success
+                        let res = if let ProgramState::Revert(_) = &s {
+                            ScriptExecutionResult::Revert
+                        } else {
+                            ScriptExecutionResult::Success
+                        };
+                        (res, s)
+                    }
 
                     Err(e) => match e.instruction_result() {
                         Some(result) => {
                             self.append_panic_receipt(*result);
                             self.apply_revert();
 
-                            (*result, ProgramState::Revert(0))
+                            (ScriptExecutionResult::Panic, ProgramState::Revert(0))
                         }
 
                         // This isn't a specified case of an erroneous program and should be

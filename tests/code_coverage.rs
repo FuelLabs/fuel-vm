@@ -1,3 +1,4 @@
+use fuel_tx::ScriptExecutionResult;
 use std::sync::{Arc, Mutex};
 
 use fuel_vm::consts::*;
@@ -59,7 +60,7 @@ fn code_coverage() {
     let receipts = client.transact(tx_script);
 
     if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
-        assert!(result.is_success());
+        assert!(matches!(result, ScriptExecutionResult::Success));
     } else {
         panic!("Missing result receipt");
     }

@@ -1,3 +1,4 @@
+use fuel_tx::ScriptExecutionResult;
 use std::sync::{Arc, Mutex};
 
 use fuel_vm::consts::*;
@@ -62,14 +63,22 @@ fn profile_gas() {
 
         if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
             if count == case_out_of_gas {
-                assert!(!result.is_success(), "Expected out-of-gas error, got success");
                 assert!(
-                    matches!(result.reason(), PanicReason::OutOfGas),
+                    !matches!(result, &ScriptExecutionResult::Success),
+                    "Expected out-of-gas error, got success"
+                );
+                let panic_reason = receipts
+                    .iter()
+                    .find_map(Receipt::reason)
+                    .map(|r| *r.reason())
+                    .expect("Expected a panic reason.");
+                assert!(
+                    matches!(panic_reason, PanicReason::OutOfGas),
                     "Expected out-of-gas error, got {:?}",
-                    result.reason()
+                    panic_reason
                 );
             } else {
-                assert!(result.is_success());
+                matches!(result, &ScriptExecutionResult::Success);
             }
         } else {
             panic!("Missing result receipt");

@@ -71,9 +71,9 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
 
     let result = receipts
         .iter()
-        .find_map(Receipt::result)
+        .find_map(Receipt::reason)
         .map(|r| *r.reason())
-        .expect("Expected script result");
+        .expect("Expected panic reason");
 
     assert_eq!(PanicReason::ReservedRegisterNotWritable, result);
 }

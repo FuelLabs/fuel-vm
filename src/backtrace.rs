@@ -63,7 +63,7 @@ impl Backtrace {
         self.memory.as_slice()
     }
 
-    /// [`InstructionResult`] of the error that caused this backtrace.
+    /// [`ScriptExecutionResult`] of the error that caused this backtrace.
     pub const fn result(&self) -> &ScriptExecutionResult {
         &self.result
     }

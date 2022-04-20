@@ -20,4 +20,14 @@ sha2 = "0.9"
 thiserror = "1.0"
 
 [dev-dependencies]
+datatest-stable = "0.1"
 fuel-merkle-test-helpers = { path = "test-helpers" }
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+thiserror = "1.0"
+
+[[test]]
+name = "tests-data"
+path = "./tests-data/tests-data.rs"
+harness = false

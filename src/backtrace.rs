@@ -6,8 +6,7 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::interpreter::Interpreter;
 
-use fuel_asm::InstructionResult;
-use fuel_tx::Transaction;
+use fuel_tx::{ScriptExecutionResult, Transaction};
 use fuel_types::{ContractId, Word};
 
 #[derive(Debug)]
@@ -17,7 +16,7 @@ pub struct Backtrace {
     contract: ContractId,
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
-    result: InstructionResult,
+    result: ScriptExecutionResult,
     tx: Transaction,
 }
 
@@ -25,7 +24,7 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S>(vm: &Interpreter<S>, result: InstructionResult) -> Self {
+    pub fn from_vm_error<S>(vm: &Interpreter<S>, result: ScriptExecutionResult) -> Self {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract_or_default();
         let memory = vm.memory().to_owned();
@@ -65,7 +64,7 @@ impl Backtrace {
     }
 
     /// [`InstructionResult`] of the error that caused this backtrace.
-    pub const fn result(&self) -> &InstructionResult {
+    pub const fn result(&self) -> &ScriptExecutionResult {
         &self.result
     }
 
@@ -82,7 +81,7 @@ impl Backtrace {
         ContractId,
         [Word; VM_REGISTER_COUNT],
         Vec<u8>,
-        InstructionResult,
+        ScriptExecutionResult,
         Transaction,
     ) {
         let Self {

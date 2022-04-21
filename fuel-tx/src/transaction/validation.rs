@@ -199,6 +199,17 @@ impl Transaction {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
+                if self
+                    .inputs()
+                    .iter()
+                    .filter(|other_input| other_input.utxo_id() == input.utxo_id())
+                    .count()
+                    > 1
+                {
+                    return Err(ValidationError::DuplicateInputUtxoId {
+                        utxo_id: *input.utxo_id(),
+                    });
+                }
                 input.validate_without_signature(index, self.outputs(), self.witnesses())
             })?;
 

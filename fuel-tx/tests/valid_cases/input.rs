@@ -218,3 +218,52 @@ fn contract() {
         err
     );
 }
+
+#[test]
+fn transaction_with_duplicate_coin_inputs_is_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let input_utxo_id: UtxoId = rng.gen();
+    let input = Input::coin(
+        input_utxo_id,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        0,
+        vec![],
+        vec![],
+    );
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .add_input(input.clone())
+        .add_input(input)
+        .finalize();
+
+    let err = tx
+        .validate_without_signature(0)
+        .err()
+        .expect("Expected validation failure");
+    assert!(matches!(
+        err,
+        ValidationError::DuplicateInputUtxoId { utxo_id } if utxo_id == input_utxo_id
+    ))
+}
+
+#[test]
+fn transaction_with_duplicate_contract_inputs_is_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let input_utxo_id: UtxoId = rng.gen();
+    let input = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .add_input(input.clone())
+        .add_input(input)
+        .finalize();
+
+    let err = tx
+        .validate_without_signature(0)
+        .err()
+        .expect("Expected validation failure");
+    assert!(matches!(
+        err,
+        ValidationError::DuplicateInputUtxoId { utxo_id } if utxo_id == input_utxo_id
+    ))
+}

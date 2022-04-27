@@ -41,6 +41,7 @@ pub const GAS_CIMV: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CTMV: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_JI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_JNEI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_JNZI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RET: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RETD: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RVRT: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);

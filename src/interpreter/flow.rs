@@ -65,6 +65,14 @@ where
         }
     }
 
+    pub(crate) fn jump_not_zero_imm(&mut self, a: Word, imm: Word) -> Result<(), RuntimeError> {
+        if a != self.registers[REG_ZERO] {
+            self.jump(imm)
+        } else {
+            self.inc_pc()
+        }
+    }
+
     pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);

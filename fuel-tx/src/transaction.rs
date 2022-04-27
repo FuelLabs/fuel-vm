@@ -1,7 +1,6 @@
 use crate::consts::*;
 
 use fuel_asm::Opcode;
-use fuel_types::bytes::WORD_SIZE;
 use fuel_types::{AssetId, Bytes32, ContractId, Salt, Word};
 
 #[cfg(feature = "std")]
@@ -30,32 +29,6 @@ pub use metadata::Metadata;
 pub use repr::TransactionRepr;
 pub use types::{Input, Output, StorageSlot, UtxoId, Witness};
 pub use validation::ValidationError;
-
-const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + WORD_SIZE // Gas price
-    + WORD_SIZE // Gas limit
-    + WORD_SIZE // Byte price
-    + WORD_SIZE // Maturity
-    + WORD_SIZE // Script size
-    + WORD_SIZE // Script data size
-    + WORD_SIZE // Inputs size
-    + WORD_SIZE // Outputs size
-    + WORD_SIZE // Witnesses size
-    + Bytes32::LEN; // Receipts root
-
-const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + WORD_SIZE // Gas price
-    + WORD_SIZE // Gas limit
-    + WORD_SIZE // Byte price
-    + WORD_SIZE // Maturity
-    + WORD_SIZE // Bytecode size
-    + WORD_SIZE // Bytecode witness index
-    + WORD_SIZE // Static contracts size
-    + WORD_SIZE // Storage slots size
-    + WORD_SIZE // Inputs size
-    + WORD_SIZE // Outputs size
-    + WORD_SIZE // Witnesses size
-    + Salt::LEN; // Salt
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;

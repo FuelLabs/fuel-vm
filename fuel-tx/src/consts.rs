@@ -1,3 +1,6 @@
+use fuel_types::bytes::WORD_SIZE;
+use fuel_types::{Bytes32, Salt};
+
 /// Maximum contract size, in bytes.
 pub const CONTRACT_MAX_SIZE: u64 = 16 * 1024 * 1024;
 
@@ -34,3 +37,29 @@ pub const MAX_PREDICATE_LENGTH: u64 = 1024 * 1024;
 // TODO set max predicate data length value
 /// Maximum length of predicate data, in bytes.
 pub const MAX_PREDICATE_DATA_LENGTH: u64 = 1024 * 1024;
+
+pub const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + WORD_SIZE // Gas price
+    + WORD_SIZE // Gas limit
+    + WORD_SIZE // Byte price
+    + WORD_SIZE // Maturity
+    + WORD_SIZE // Script size
+    + WORD_SIZE // Script data size
+    + WORD_SIZE // Inputs size
+    + WORD_SIZE // Outputs size
+    + WORD_SIZE // Witnesses size
+    + Bytes32::LEN; // Receipts root
+
+pub const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + WORD_SIZE // Gas price
+    + WORD_SIZE // Gas limit
+    + WORD_SIZE // Byte price
+    + WORD_SIZE // Maturity
+    + WORD_SIZE // Bytecode size
+    + WORD_SIZE // Bytecode witness index
+    + WORD_SIZE // Static contracts size
+    + WORD_SIZE // Storage slots size
+    + WORD_SIZE // Inputs size
+    + WORD_SIZE // Outputs size
+    + WORD_SIZE // Witnesses size
+    + Salt::LEN; // Salt

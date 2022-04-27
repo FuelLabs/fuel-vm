@@ -254,6 +254,11 @@ where
                 self.jump_not_equal_imm(a, b, imm)?;
             }
 
+            OpcodeRepr::JNZI => {
+                self.gas_charge(GAS_JNZI)?;
+                self.jump_not_zero_imm(a, imm)?;
+            }
+
             OpcodeRepr::RET => {
                 self.gas_charge(GAS_RET)?;
                 self.ret(a)?;

@@ -23,7 +23,7 @@ impl<S> Interpreter<S> {
 
             DIV | MOD | DIVI | MODI => GasUnit::Arithmetic(1).join(GasUnit::Branching(1)),
 
-            NOOP | JI | JNEI => GasUnit::Atom(1),
+            NOOP | JI | JNEI | JNZI => GasUnit::Atom(1),
 
             ALOC | LB => GasUnit::Arithmetic(1)
                 .join(GasUnit::Branching(1))

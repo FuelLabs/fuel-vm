@@ -307,6 +307,84 @@ fn call_frame_code_offset() {
 }
 
 #[test]
+fn jump_if_not_zero_immediate_jump() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    #[rustfmt::skip]
+    let script_jnzi_does_jump = vec![
+        Opcode::JNZI(REG_ONE, 2),   // Jump to last instr if reg one is zero
+        Opcode::RVRT(REG_ONE),       // Revert
+        Opcode::RET(REG_ONE),        // Return successfully
+    ].iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script_jnzi_does_jump.clone(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Return { .. }));
+}
+
+#[test]
+fn jump_if_not_zero_immediate_no_jump() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    #[rustfmt::skip]
+    let script_jnzi_does_not_jump = vec![
+        Opcode::JNZI(REG_ZERO, 2),   // Jump to last instr if reg zero is zero
+        Opcode::RVRT(REG_ONE),       // Revert
+        Opcode::RET(REG_ONE),        // Return successfully
+    ].iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script_jnzi_does_not_jump.clone(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Revert { .. }));
+}
+
+#[test]
 fn revert() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

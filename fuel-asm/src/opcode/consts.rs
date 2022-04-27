@@ -239,8 +239,8 @@ pub enum OpcodeRepr {
     GM = 0x71,
     /// MOVI
     MOVI = 0x72,
-    /// RESERV73
-    RESERV73 = 0x73,
+    /// JNZI
+    JNZI = 0x73,
     /// RESERV74
     RESERV74 = 0x74,
     /// RESERV75

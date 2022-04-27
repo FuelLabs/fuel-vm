@@ -293,7 +293,7 @@ impl From<Instruction> for u32 {
 
             OpcodeRepr::JI | OpcodeRepr::CFEI | OpcodeRepr::CFSI => imm24,
 
-            OpcodeRepr::MCLI | OpcodeRepr::GM | OpcodeRepr::MOVI => a | imm18,
+            OpcodeRepr::MCLI | OpcodeRepr::GM | OpcodeRepr::JNZI | OpcodeRepr::MOVI => a | imm18,
 
             OpcodeRepr::MEQ
             | OpcodeRepr::CALL

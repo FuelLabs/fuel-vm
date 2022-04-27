@@ -145,6 +145,9 @@ pub enum Opcode {
     /// Conditional jump.
     JNEI(RegisterId, RegisterId, Immediate12),
 
+    /// Conditional jump against zero.
+    JNZI(RegisterId, Immediate18),
+
     /// Return from context.
     RET(RegisterId),
 
@@ -451,6 +454,7 @@ impl Opcode {
             Self::CTMV(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::JI(_) => [None; 4],
             Self::JNEI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
+            Self::JNZI(ra, _) => [Some(*ra), None, None, None],
             Self::RET(ra) => [Some(*ra), None, None, None],
             Self::RETD(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::CFEI(_) => [None; 4],
@@ -523,7 +527,9 @@ impl Opcode {
             | Self::SB(_, _, imm)
             | Self::SW(_, _, imm) => Some(*imm as Word),
 
-            Self::MCLI(_, imm) | Self::GM(_, imm) | Self::MOVI(_, imm) => Some(*imm as Word),
+            Self::MCLI(_, imm) | Self::GM(_, imm) | Self::JNZI(_, imm) | Self::MOVI(_, imm) => {
+                Some(*imm as Word)
+            }
 
             Self::JI(imm) | Self::CFEI(imm) | Self::CFSI(imm) => Some(*imm as Word),
 
@@ -849,6 +855,9 @@ impl From<Opcode> for u32 {
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | (imm12 as u32)
+            }
+            Opcode::JNZI(ra, imm18) => {
+                ((OpcodeRepr::JNZI as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32)
             }
             Opcode::RET(ra) => ((OpcodeRepr::RET as u32) << 24) | ((ra as u32) << 18),
             Opcode::RETD(ra, rb) => {

@@ -134,5 +134,5 @@ fn test_key_with_big_array() {
     let s: Bytes64 = rng.gen();
     let j = serde_json::to_string(&s).unwrap();
     let s_back = serde_json::from_str(&j).unwrap();
-    assert!(&s == &s_back);
+    assert!(s == s_back);
 }

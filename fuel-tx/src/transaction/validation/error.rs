@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::UtxoId;
-use fuel_types::AssetId;
+use fuel_types::{AssetId, ContractId};
 #[cfg(feature = "std")]
 use std::{error, io};
 
@@ -28,6 +28,9 @@ pub enum ValidationError {
     },
     DuplicateInputUtxoId {
         utxo_id: UtxoId,
+    },
+    DuplicateInputContractId {
+        contract_id: ContractId,
     },
     OutputContractInputIndex {
         index: usize,

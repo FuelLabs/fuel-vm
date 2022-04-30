@@ -251,8 +251,8 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let input_utxo_id: UtxoId = rng.gen();
-    let input = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
+    let input_contract_id: ContractId = rng.gen();
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), input_contract_id);
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(input.clone())
         .add_input(input)
@@ -264,6 +264,6 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .expect("Expected validation failure");
     assert!(matches!(
         err,
-        ValidationError::DuplicateInputUtxoId { utxo_id } if utxo_id == input_utxo_id
+        ValidationError::DuplicateInputContractId { contract_id } if contract_id == input_contract_id
     ))
 }

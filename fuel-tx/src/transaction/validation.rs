@@ -195,21 +195,51 @@ impl Transaction {
                 Ok(())
             })?;
 
+        // check for duplicate coin inputs
         self.inputs()
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                if self
-                    .inputs()
-                    .iter()
-                    .filter(|other_input| other_input.utxo_id() == input.utxo_id())
-                    .count()
-                    > 1
-                {
-                    return Err(ValidationError::DuplicateInputUtxoId {
-                        utxo_id: *input.utxo_id(),
-                    });
+                match input {
+                    Input::Coin { utxo_id, .. } => {
+                        if self
+                            .inputs()
+                            .iter()
+                            .filter(|input| input.is_coin())
+                            .filter(|other_input| other_input.utxo_id() == utxo_id)
+                            .count()
+                            > 1
+                        {
+                            return Err(ValidationError::DuplicateInputUtxoId {
+                                utxo_id: *input.utxo_id(),
+                            });
+                        }
+                    }
+                    Input::Contract { contract_id, .. } => {
+                        if self
+                            .inputs()
+                            .iter()
+                            .filter(|other_input| {
+                                if let Input::Contract {
+                                    contract_id: other_contract_id,
+                                    ..
+                                } = other_input
+                                {
+                                    other_contract_id == contract_id
+                                } else {
+                                    false
+                                }
+                            })
+                            .count()
+                            > 1
+                        {
+                            return Err(ValidationError::DuplicateInputContractId {
+                                contract_id: *contract_id,
+                            });
+                        }
+                    }
                 }
+
                 input.validate_without_signature(index, self.outputs(), self.witnesses())
             })?;
 

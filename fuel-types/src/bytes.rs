@@ -59,7 +59,7 @@ where
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_number_unchecked<T>(buf: &[u8]) -> (T, &[u8])
@@ -76,7 +76,7 @@ where
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_word_unchecked(buf: &[u8]) -> (Word, &[u8]) {
@@ -90,7 +90,7 @@ pub unsafe fn restore_word_unchecked(buf: &[u8]) -> (Word, &[u8]) {
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_u8_unchecked(buf: &[u8]) -> (u8, &[u8]) {
@@ -104,7 +104,7 @@ pub unsafe fn restore_u8_unchecked(buf: &[u8]) -> (u8, &[u8]) {
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_u16_unchecked(buf: &[u8]) -> (u16, &[u8]) {
@@ -118,7 +118,7 @@ pub unsafe fn restore_u16_unchecked(buf: &[u8]) -> (u16, &[u8]) {
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_u32_unchecked(buf: &[u8]) -> (u32, &[u8]) {
@@ -132,7 +132,7 @@ pub unsafe fn restore_u32_unchecked(buf: &[u8]) -> (u32, &[u8]) {
 ///
 /// Return the read word and the remainder of the buffer
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of the buffer is smaller than a word
 pub unsafe fn restore_usize_unchecked(buf: &[u8]) -> (usize, &[u8]) {
@@ -160,7 +160,7 @@ pub fn store_array_unchecked<'a, const N: usize>(
 ///
 /// Return the read array and the remainder bytes.
 ///
-/// # Panics
+/// # Safety
 ///
 /// This function will panic if the length of `buf` is smaller than `N`
 pub unsafe fn restore_array_unchecked<const N: usize>(buf: &[u8]) -> ([u8; N], &[u8]) {
@@ -169,7 +169,7 @@ pub unsafe fn restore_array_unchecked<const N: usize>(buf: &[u8]) -> ([u8; N], &
 
 /// Add a conversion from arbitrary slices into arrays
 ///
-/// # Warning
+/// # Safety
 ///
 /// This function will not panic if the length of the slice is smaller than `N`. Instead, it will
 /// cause undefined behavior and read random disowned bytes.

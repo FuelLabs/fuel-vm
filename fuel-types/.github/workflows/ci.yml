@@ -12,112 +12,105 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  cancel-previous-runs:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+  lint-toml-files:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Cargo.toml linter
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-toml-lint
+          version: "0.1"
+      - name: Run Cargo.toml linter
+        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
 
-    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
-    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
-    #
-    # Can be replaced by other targets that guarantee bare-minimum no-std
-    - name: Install toolchain no-std
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: thumbv6m-none-eabi
-        override: true
-
-    - name: Install Cargo.toml linter
-      uses: baptiste0928/cargo-install@v1
-      with:
-        crate: cargo-toml-lint
-        version: "0.1"
-
-    - name: Run Cargo.toml linter
-      run:  git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
-
-    - name: Install rustfmt
-      run: rustup component add rustfmt
-
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --verbose -- --check
-
-    - name: Build no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features
-
-    - name: Build no-std serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
-
-    - name: Build no-std alloc
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
-
-    - name: Run tests all features
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --all-features
-
-    - name: Run tests serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features serde-types
-
-    - name: Run tests no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features
-
-    - name: Run tests no-std alloc
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features --features alloc
-
-    - name: Run tests serde no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features --features serde-types-minimal
-
-    - name: Run tests serde no-std alloc
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features --features alloc-serde
-
-    - name: Run tests serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features serde-types
-
+  cargo-verifications:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - command: fmt
+            args: --all --verbose -- --check
+          - command: clippy
+            args: --all-targets --all-features
+          - command: check
+            args: --all-targets --all-features
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
+          - command: test
+            args: --all-targets --all-features
+          - command: test
+            args: --verbose --no-default-features
+          - command: test
+            args: --verbose --no-default-features --features alloc
+          - command: test
+            args: --verbose --no-default-features --features serde-types-minimal
+          - command: test
+            args: --verbose --no-default-features --features alloc-serde
+          - command: test
+            args: --verbose --features serde-types
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+          #
+          # Can be replaced by other targets that guarantee bare-minimum no-std
+          target: thumbv6m-none-eabi
+      - uses: Swatinem/rust-cache@v1
+      - name: ${{ matrix.command }} ${{ matrix.args }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: ${{ matrix.command }}
+          args: ${{ matrix.args }}
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          RUSTFLAGS: -D warnings
   publish:
     # Only do this job if publishing a release
-    needs: build
+    needs: cargo-verifications
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 

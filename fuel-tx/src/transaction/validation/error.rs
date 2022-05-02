@@ -17,9 +17,6 @@ pub enum ValidationError {
     InputCoinPredicateDataLength {
         index: usize,
     },
-    InputCoinPredicateOwner {
-        index: usize,
-    },
     InputCoinWitnessIndexBounds {
         index: usize,
     },

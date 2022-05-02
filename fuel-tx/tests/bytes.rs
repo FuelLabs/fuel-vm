@@ -1,8 +1,7 @@
 use fuel_asm::Opcode;
-use fuel_crypto::Hasher;
 use fuel_tx::consts::MAX_GAS_PER_TX;
 use fuel_tx::*;
-use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
+use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::{bytes, ContractId, Immediate24};
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
@@ -82,25 +81,49 @@ fn witness() {
 
 #[test]
 fn input() {
-    let rng = &mut StdRng::seed_from_u64(8586);
+    let mut rng_base = StdRng::seed_from_u64(8586);
+    let rng = &mut rng_base;
 
     assert_encoding_correct(&[
-        Input::coin_signed(
+        Input::coin(
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
-        ),
-        Input::coin_predicate(
-            rng.gen(),
-            rng.gen(),
-            rng.next_u64(),
-            rng.gen(),
-            rng.gen(),
-            generate_nonempty_bytes(rng),
             generate_bytes(rng),
+            generate_bytes(rng),
+        ),
+        Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            vec![],
+            generate_bytes(rng),
+        ),
+        Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            generate_bytes(rng),
+            vec![],
+        ),
+        Input::coin(
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            rng.gen(),
+            rng.gen(),
+            rng.next_u64(),
+            vec![],
+            vec![],
         ),
         Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
     ]);
@@ -671,17 +694,15 @@ fn create_input_coin_data_offset() {
         vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
     ];
 
-    let predicate = generate_nonempty_bytes(rng);
+    let predicate = generate_bytes(rng);
     let predicate_data = generate_bytes(rng);
-
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
-
-    let input_coin = Input::coin_predicate(
+    let input_coin = Input::coin(
         rng.gen(),
-        owner,
+        rng.gen(),
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
+        rng.next_u64(),
         predicate.clone(),
         predicate_data,
     );
@@ -773,17 +794,15 @@ fn script_input_coin_data_offset() {
         vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
     ];
 
-    let predicate = generate_nonempty_bytes(rng);
+    let predicate = generate_bytes(rng);
     let predicate_data = generate_bytes(rng);
-
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
-
-    let input_coin = Input::coin_predicate(
+    let input_coin = Input::coin(
         rng.gen(),
-        owner,
+        rng.gen(),
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
+        rng.next_u64(),
         predicate.clone(),
         predicate_data,
     );

@@ -41,7 +41,7 @@ impl Transaction {
     pub(crate) fn _input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
         self.input_offset(index)
             .map(|ofs| ofs + Input::coin_predicate_offset())
-            .filter(|_| self.inputs()[index].is_coin_predicate())
+            .filter(|_| self.inputs()[index].is_coin())
     }
 
     /// Return the serialized bytes offset of the input with the provided index

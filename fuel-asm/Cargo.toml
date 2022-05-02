@@ -24,3 +24,11 @@ serde-types-minimal = ["fuel-types/serde-types-minimal", "serde"]
 name = "test-encoding"
 path = "tests/encoding.rs"
 required-features = ["std"]
+
+# docs.rs-specific configuration
+# preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+# defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]

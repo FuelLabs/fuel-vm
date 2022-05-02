@@ -152,7 +152,9 @@ impl Transaction {
 
     pub fn input_asset_ids(&self) -> impl Iterator<Item = &AssetId> {
         self.inputs().iter().filter_map(|input| match input {
-            Input::Coin { asset_id, .. } => Some(asset_id),
+            Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => {
+                Some(asset_id)
+            }
             _ => None,
         })
     }
@@ -310,22 +312,11 @@ impl Transaction {
         amount: Word,
         asset_id: AssetId,
         maturity: Word,
-        predicate: Vec<u8>,
-        predicate_data: Vec<u8>,
     ) {
         let owner = Input::coin_owner(owner);
 
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::coin(
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            witness_index,
-            maturity,
-            predicate,
-            predicate_data,
-        );
+        let input = Input::coin_signed(utxo_id, owner, amount, asset_id, witness_index, maturity);
 
         self._add_witness(Witness::default());
         self._add_input(input);
@@ -358,7 +349,7 @@ impl Transaction {
         inputs
             .iter()
             .filter_map(|input| match input {
-                Input::Coin {
+                Input::CoinSigned {
                     owner,
                     witness_index,
                     ..

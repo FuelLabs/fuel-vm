@@ -10,3 +10,7 @@ fuel-crypto = { version = "0.4", default-features = false, features = ["random"]
 fuel-tx = { path = "../../fuel-tx", default-features = false, features = ["alloc","builder","internals","random"] }
 fuel-types = { version = "0.3", default-features = false, features = ["random"] }
 rand = { version = "0.8", default-features = false }
+
+[features]
+default = ["std"]
+std = ["fuel-tx/default", "fuel-types/default"]

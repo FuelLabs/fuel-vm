@@ -1,11 +1,12 @@
-use fuel_crypto::{Hasher, SecretKey};
+use fuel_crypto::SecretKey;
+use fuel_tx::consts::*;
 use fuel_tx::*;
-use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes, TransactionFactory};
+use fuel_tx_test_helpers::TransactionFactory;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 #[test]
-fn coin_signed() {
+fn coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut factory = TransactionFactory::from_seed(3493);
@@ -20,7 +21,7 @@ fn coin_signed() {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| match input {
-                Input::CoinSigned { .. } => input.validate(index, &txhash, outputs, witnesses),
+                Input::Coin { .. } => input.validate(index, &txhash, outputs, witnesses),
                 _ => Ok(()),
             })
     }
@@ -33,6 +34,8 @@ fn coin_signed() {
         amount: Word,
         asset_id: AssetId,
         maturity: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
     ) -> Result<(), ValidationError>
     where
         R: Rng,
@@ -43,7 +46,15 @@ fn coin_signed() {
         let secret = SecretKey::random(rng);
         let public = secret.public_key();
 
-        tx.add_unsigned_coin_input(utxo_id, &public, amount, asset_id, maturity);
+        tx.add_unsigned_coin_input(
+            utxo_id,
+            &public,
+            amount,
+            asset_id,
+            maturity,
+            predicate,
+            predicate_data,
+        );
 
         tx.sign_inputs(&secret);
         keys.iter().for_each(|sk| tx.sign_inputs(sk));
@@ -60,19 +71,90 @@ fn coin_signed() {
     let amount = rng.gen();
     let asset_id = rng.gen();
     let maturity = rng.gen();
-    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
-        .expect("Failed to validate transaction");
+    sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        asset_id,
+        maturity,
+        vec![0u8; MAX_PREDICATE_LENGTH as usize],
+        vec![],
+    )
+    .expect("Failed to validate transaction");
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
     let asset_id = rng.gen();
     let maturity = rng.gen();
-    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
-        .expect("Failed to validate transaction");
+    sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        asset_id,
+        maturity,
+        vec![],
+        vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize],
+    )
+    .expect("Failed to validate transaction");
+
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let asset_id = rng.gen();
+    let maturity = rng.gen();
+    let err = sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        asset_id,
+        maturity,
+        vec![0u8; MAX_PREDICATE_LENGTH as usize + 1],
+        vec![],
+    )
+    .err()
+    .expect("Expected failure");
+
+    assert!(matches!(
+        err,
+        ValidationError::InputCoinPredicateLength { .. }
+    ));
+
+    let utxo_id = rng.gen();
+    let amount = rng.gen();
+    let asset_id = rng.gen();
+    let maturity = rng.gen();
+    let err = sign_coin_and_validate(
+        rng,
+        txs.by_ref(),
+        utxo_id,
+        amount,
+        asset_id,
+        maturity,
+        vec![],
+        vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize + 1],
+    )
+    .err()
+    .expect("Expected failure");
+
+    assert!(matches!(
+        err,
+        ValidationError::InputCoinPredicateDataLength { .. }
+    ));
 
     let mut tx = Transaction::default();
 
-    let input = Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+    let input = Input::coin(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+        vec![],
+        vec![],
+    );
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -82,65 +164,6 @@ fn coin_signed() {
         err,
         ValidationError::InputCoinWitnessIndexBounds { .. }
     ));
-}
-
-#[test]
-fn coin_predicate() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let txhash: Bytes32 = rng.gen();
-
-    let predicate = generate_nonempty_bytes(rng);
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
-
-    Input::coin_predicate(
-        rng.gen(),
-        owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        predicate,
-        generate_bytes(rng),
-    )
-    .validate(1, &txhash, &[], &[])
-    .unwrap();
-
-    let predicate = vec![];
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
-
-    let err = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        predicate,
-        generate_bytes(rng),
-    )
-    .validate(1, &txhash, &[], &[])
-    .err()
-    .unwrap();
-
-    assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
-
-    let mut predicate = generate_nonempty_bytes(rng);
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
-    predicate[0] = predicate[0].wrapping_add(1);
-
-    let err = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        predicate,
-        generate_bytes(rng),
-    )
-    .validate(1, &txhash, &[], &[])
-    .err()
-    .unwrap();
-
-    assert_eq!(ValidationError::InputCoinPredicateOwner { index: 1 }, err);
 }
 
 #[test]
@@ -200,7 +223,16 @@ fn contract() {
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let input_utxo_id: UtxoId = rng.gen();
-    let input = Input::coin_signed(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), 0, 0);
+    let input = Input::coin(
+        input_utxo_id,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        0,
+        vec![],
+        vec![],
+    );
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(input.clone())
         .add_input(input)

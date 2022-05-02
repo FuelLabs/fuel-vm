@@ -107,7 +107,7 @@ mod tests {
     use crate::consts::MAX_GAS_PER_TX;
     use crate::*;
 
-    use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
+    use fuel_tx_test_helpers::generate_bytes;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use std::io::{Read, Write};
@@ -213,26 +213,14 @@ mod tests {
         assert_id_ne(tx, |t| t.set_maturity(t.maturity().not()));
 
         if !tx.inputs().is_empty() {
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, utxo_id, invert_utxo_id);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, witness_index, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, maturity, not);
-
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinPredicate,
-                utxo_id,
-                invert_utxo_id
-            );
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, maturity, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate, inv_v);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate_data, inv_v);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, utxo_id, invert_utxo_id);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, owner, invert);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, asset_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, witness_index, not);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, predicate, inv_v);
+            assert_io_ne!(tx, inputs_mut, Input::Coin, predicate_data, inv_v);
 
             assert_io_eq!(tx, inputs_mut, Input::Contract, utxo_id, invert_utxo_id);
             assert_io_eq!(tx, inputs_mut, Input::Contract, balance_root, invert);
@@ -284,21 +272,14 @@ mod tests {
         let inputs = vec![
             vec![],
             vec![
-                Input::coin_signed(
+                Input::coin(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
-                ),
-                Input::coin_predicate(
-                    rng.gen(),
-                    rng.gen(),
-                    rng.next_u64(),
-                    rng.gen(),
-                    rng.next_u64(),
-                    generate_nonempty_bytes(rng),
+                    generate_bytes(rng),
                     generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),

@@ -1,7 +1,6 @@
 use super::{Input, Output, Transaction, Witness};
 use crate::consts::*;
 
-use fuel_crypto::Hasher;
 use fuel_types::{AssetId, Word};
 
 #[cfg(feature = "std")]
@@ -36,7 +35,7 @@ impl Input {
         txhash: &Bytes32,
         witnesses: &[Witness],
     ) -> Result<(), ValidationError> {
-        if let Input::CoinSigned {
+        if let Input::Coin {
             witness_index,
             owner,
             ..
@@ -77,33 +76,21 @@ impl Input {
         witnesses: &[Witness],
     ) -> Result<(), ValidationError> {
         match self {
-            Self::CoinPredicate { predicate, .. }
-                if predicate.is_empty() || predicate.len() > MAX_PREDICATE_LENGTH as usize =>
-            {
+            Self::Coin { predicate, .. } if predicate.len() > MAX_PREDICATE_LENGTH as usize => {
                 Err(ValidationError::InputCoinPredicateLength { index })
             }
 
-            Self::CoinPredicate { predicate_data, .. }
+            Self::Coin { predicate_data, .. }
                 if predicate_data.len() > MAX_PREDICATE_DATA_LENGTH as usize =>
             {
                 Err(ValidationError::InputCoinPredicateDataLength { index })
             }
 
-            Self::CoinPredicate {
-                owner, predicate, ..
-            } if Hasher::hash(predicate.as_slice()).as_ref() != owner.as_ref() => {
-                Err(ValidationError::InputCoinPredicateOwner { index })
-            }
-
-            Self::CoinPredicate { .. } => Ok(()),
-
-            Self::CoinSigned { witness_index, .. }
-                if *witness_index as usize >= witnesses.len() =>
-            {
+            Self::Coin { witness_index, .. } if *witness_index as usize >= witnesses.len() => {
                 Err(ValidationError::InputCoinWitnessIndexBounds { index })
             }
 
-            Self::CoinSigned { .. } => Ok(()),
+            Self::Coin { .. } => Ok(()),
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex = inputContract.index
             Self::Contract { .. }

@@ -10,6 +10,7 @@ use std::{error, io};
     feature = "serde-types-minimal",
     derive(serde::Serialize, serde::Deserialize)
 )]
+#[non_exhaustive]
 pub enum ValidationError {
     InputCoinPredicateLength {
         index: usize,

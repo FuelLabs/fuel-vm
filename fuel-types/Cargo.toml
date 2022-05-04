@@ -22,10 +22,8 @@ rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 serde_json = "1.0"
 
 [features]
-default = ["std"]
-alloc = []
-alloc-serde = ["alloc", "serde/alloc", "serde-types-minimal"]
+default = ["std", "serde?/default"]
+alloc = ["serde?/alloc"]
 random = ["rand"]
-serde-types = ["serde-types-minimal", "serde/default", "std"]
-serde-types-minimal = ["serde", "serde-big-array"]
-std = ["alloc"]
+serde = ["serde-big-array"]
+std = ["alloc", "serde?/std"]

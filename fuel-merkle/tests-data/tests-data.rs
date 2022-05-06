@@ -12,30 +12,51 @@ use thiserror::Error;
 pub enum TestError {
     #[error("Test failed")]
     Failed,
-    #[error("Unsupported action `{0}")]
+    #[error("Unsupported action {0}")]
     UnsupportedAction(String),
-    #[error("Unsupported encoding `{0}")]
+    #[error("Unsupported encoding {0}")]
     UnsupportedEncoding(String),
 }
 
 const BUFFER_SIZE: usize = 69;
 pub type Buffer = [u8; BUFFER_SIZE];
 
-#[derive(Deserialize)]
+// Supported actions:
+const ACTION_UPDATE: &str = "update";
+const ACTION_DELETE: &str = "delete";
+
+// Supported value encodings:
+const ENCODING_HEX: &str = "hex";
+const ENCODING_UTF8: &str = "utf-8";
+
+#[derive(Deserialize, Clone)]
 struct EncodedValue {
     value: String,
     encoding: String,
 }
 
+enum Encoding {
+    Hex,
+    Utf8,
+}
+
 impl EncodedValue {
     fn to_bytes(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        match self.encoding_type()? {
+            Encoding::Hex => Ok(hex::decode(self.value).unwrap()),
+            Encoding::Utf8 => Ok(self.value.into_bytes()),
+        }
+    }
+
+    // Translate the encoding string found in the value definition to an Encoding enum variant.
+    fn encoding_type(&self) -> Result<Encoding, Box<dyn std::error::Error>> {
         match self.encoding.as_str() {
-            "hex" => Ok(hex::decode(self.value).unwrap()),
-            "utf-8" => Ok(self.value.into_bytes()),
+            ENCODING_HEX => Ok(Encoding::Hex),
+            ENCODING_UTF8 => Ok(Encoding::Utf8),
 
             // Unsupported encoding
             _ => Err(Box::<TestError>::new(TestError::UnsupportedEncoding(
-                self.encoding,
+                self.encoding.clone(),
             ))),
         }
     }
@@ -48,30 +69,50 @@ struct Step {
     data: Option<EncodedValue>,
 }
 
+enum Action {
+    Update(EncodedValue, EncodedValue),
+    Delete(EncodedValue),
+}
+
 impl Step {
     pub fn execute(
         self,
         tree: &mut MerkleTree<StorageError>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        match self.action.as_str() {
-            "update" => {
-                let key_bytes = self.key.unwrap().to_bytes()?;
+        match self.action_type()? {
+            Action::Update(encoded_key, encoded_data) => {
+                let key_bytes = encoded_key.to_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
-                let data_bytes = self.data.unwrap().to_bytes()?;
+                let data_bytes = encoded_data.to_bytes()?;
                 let data: &[u8] = &data_bytes;
                 tree.update(key, data).unwrap();
                 Ok(())
             }
-            "delete" => {
-                let key_bytes = self.key.unwrap().to_bytes()?;
+            Action::Delete(encoded_key) => {
+                let key_bytes = encoded_key.to_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
                 tree.delete(key).unwrap();
                 Ok(())
             }
+        }
+    }
+
+    // Translate the action string found in the step definition to an Action enum variant with the
+    // appropriate key and data bindings.
+    fn action_type(&self) -> Result<Action, Box<dyn std::error::Error>> {
+        match self.action.as_str() {
+            // An Update has a key and data
+            ACTION_UPDATE => Ok(Action::Update(
+                self.key.clone().unwrap(),
+                self.data.clone().unwrap(),
+            )),
+
+            // A Delete has a key
+            ACTION_DELETE => Ok(Action::Delete(self.key.clone().unwrap())),
 
             // Unsupported action
             _ => Err(Box::<TestError>::new(TestError::UnsupportedAction(
-                self.action,
+                self.action.clone(),
             ))),
         }
     }

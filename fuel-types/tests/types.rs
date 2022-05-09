@@ -128,11 +128,50 @@ fn hex_encoding() {
 }
 
 #[test]
-#[cfg(feature = "serde-types-minimal")]
-fn test_key_with_big_array() {
+#[cfg(feature = "serde")]
+fn test_key_serde() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let s: Bytes64 = rng.gen();
-    let j = serde_json::to_string(&s).unwrap();
-    let s_back = serde_json::from_str(&j).unwrap();
-    assert!(s == s_back);
+    let adr: Address = rng.gen();
+    let ast_id: AssetId = rng.gen();
+    let contract_id: ContractId = rng.gen();
+    let bytes4: Bytes4 = rng.gen();
+    let bytes8: Bytes8 = rng.gen();
+    let bytes32: Bytes32 = rng.gen();
+    let salt: Salt = rng.gen();
+    let bytes64: Bytes64 = rng.gen();
+
+    let adr_t = bincode::serialize(&adr).expect("Failed to serialize Address");
+    let adr_t: Address = bincode::deserialize(&adr_t).expect("Failed to deserialize Address");
+    assert_eq!(adr, adr_t);
+
+    let ast_id_t = bincode::serialize(&ast_id).expect("Failed to serialize AssetId");
+    let ast_id_t: AssetId = bincode::deserialize(&ast_id_t).expect("Failed to deserialize AssetId");
+    assert_eq!(ast_id, ast_id_t);
+
+    let contract_id_t = bincode::serialize(&contract_id).expect("Failed to serialize ContractId");
+    let contract_id_t: ContractId =
+        bincode::deserialize(&contract_id_t).expect("Failed to deserialize ContractId");
+    assert_eq!(contract_id, contract_id_t);
+
+    let bytes4_t = bincode::serialize(&bytes4).expect("Failed to serialize Bytes4");
+    let bytes4_t: Bytes4 = bincode::deserialize(&bytes4_t).expect("Failed to deserialize Bytes4");
+    assert_eq!(bytes4, bytes4_t);
+
+    let bytes8_t = bincode::serialize(&bytes8).expect("Failed to serialize Bytes8");
+    let bytes8_t: Bytes8 = bincode::deserialize(&bytes8_t).expect("Failed to deserialize Bytes8");
+    assert_eq!(bytes8, bytes8_t);
+
+    let bytes32_t = bincode::serialize(&bytes32).expect("Failed to serialize Bytes32");
+    let bytes32_t: Bytes32 =
+        bincode::deserialize(&bytes32_t).expect("Failed to deserialize Bytes32");
+    assert_eq!(bytes32, bytes32_t);
+
+    let salt_t = bincode::serialize(&salt).expect("Failed to serialize Salt");
+    let salt_t: Salt = bincode::deserialize(&salt_t).expect("Failed to deserialize Salt");
+    assert_eq!(salt, salt_t);
+
+    let bytes64_t = bincode::serialize(&bytes64).expect("Failed to serialize Bytes64");
+    let bytes64_t: Bytes64 =
+        bincode::deserialize(&bytes64_t).expect("Failed to deserialize Bytes64");
+    assert_eq!(bytes64, bytes64_t);
 }

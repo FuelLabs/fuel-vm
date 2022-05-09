@@ -2,6 +2,7 @@ use super::Interpreter;
 use crate::consts::*;
 use crate::error::RuntimeError;
 
+use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
@@ -13,11 +14,9 @@ impl<S> Interpreter<S> {
 
         let (result, overflow) = f(b, c);
 
-        // TODO If the F_UNSAFEMATH flag is unset, an operation that would have set $err
-        // to true is instead a panic.
-        //
-        // TODO If the F_WRAPPING flag is unset, an operation that would have set $of to
-        // a non-zero value is instead a panic.
+        if overflow && !self.is_wrapping() {
+            return Err(PanicReason::ArithmeticOverflow.into());
+        }
 
         self.registers[REG_OF] = overflow as Word;
         self.registers[REG_ERR] = 0;
@@ -32,6 +31,10 @@ impl<S> Interpreter<S> {
         F: FnOnce(B, C) -> Word,
     {
         Self::is_register_writable(ra)?;
+
+        if err && !self.is_unsafe_math() {
+            return Err(PanicReason::ErrorFlag.into());
+        }
 
         self.registers[REG_OF] = 0;
         self.registers[REG_ERR] = err as Word;

@@ -71,7 +71,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
         .expect("Failed to execute ALU script!")
         .to_owned();
 
-    // TODO reame reason method
+    // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
     let result = receipts
         .first()
@@ -145,7 +145,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .expect("Failed to execute ALU script!")
         .to_owned();
 
-    // TODO reame reason method
+    // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
     let result = receipts
         .first()

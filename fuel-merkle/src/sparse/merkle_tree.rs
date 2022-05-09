@@ -4,6 +4,12 @@ use fuel_storage::Storage;
 use crate::sparse::hash::sum;
 use crate::sparse::{zero_sum, Buffer, Node, StorageNode};
 
+#[derive(Debug, thiserror::Error)]
+pub enum MerkleTreeError {
+    #[error("cannot load node with key {0}; the key is not found in storage")]
+    LoadError(String),
+}
+
 pub struct MerkleTree<'storage, StorageError> {
     root_node: Node,
     storage: &'storage mut dyn Storage<Bytes32, Buffer, Error = StorageError>,
@@ -18,6 +24,21 @@ where
             root_node: Node::create_placeholder(),
             storage,
         }
+    }
+
+    pub fn load(
+        storage: &'storage mut dyn Storage<Bytes32, Buffer, Error = StorageError>,
+        root: &Bytes32,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let buffer = storage
+            .get(root)?
+            .ok_or(MerkleTreeError::LoadError(hex::encode(root)))?
+            .into_owned();
+        let tree = Self {
+            root_node: Node::from_buffer(buffer),
+            storage,
+        };
+        Ok(tree)
     }
 
     pub fn update(
@@ -526,5 +547,81 @@ mod test {
         let root = tree.root();
         let expected_root = "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
         assert_eq!(hex::encode(root), expected_root);
+    }
+
+    #[test]
+    fn test_load_returns_a_valid_tree() {
+        // Instantiate a new key-value storage backing and populate it using a sparse Merkle tree.
+        // The root of the Merkle tree is the key that maps to the buffer of the root node in the
+        // storage. When loading a Merkle tree from storage, we need a reference to the storage
+        // object, as well as the root that allows us to look up the buffer of the root node. We
+        // will later use this storage backing and root to load a Merkle tree.
+        let (mut storage_to_load, root_to_load) = {
+            let mut storage = StorageMap::<Bytes32, Buffer>::new();
+            let mut tree = MerkleTree::<StorageError>::new(&mut storage);
+            tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            let root = tree.root();
+            (storage, root)
+        };
+
+        // Generate an expected root for this test by using both the set of `update` data used when
+        // generating the loadable storage above and an additional set of `update` data.
+        let expected_root = {
+            let mut storage = StorageMap::<Bytes32, Buffer>::new();
+            let mut tree = MerkleTree::<StorageError>::new(&mut storage);
+            tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x05"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x07"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x09"), b"DATA").unwrap();
+            tree.root()
+        };
+
+        let root = {
+            // Create a Merkle tree by loading the generated storage and root.
+            let mut tree =
+                MerkleTree::<StorageError>::load(&mut storage_to_load, &root_to_load).unwrap();
+            // Build up the loaded tree using the additional set of `update` data so its root
+            // matches the expected root. This verifies that the loaded tree has successfully
+            // wrapped the given storage backing and assumed the correct state so that future
+            // updates can be made seamlessly.
+            tree.update(&sum(b"\x00\x00\x00\x05"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x07"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x09"), b"DATA").unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_load_returns_a_load_error_if_the_storage_is_not_valid_for_the_root() {
+        let mut storage = StorageMap::<Bytes32, Buffer>::new();
+
+        {
+            let mut tree = MerkleTree::<StorageError>::new(&mut storage);
+            tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        }
+
+        {
+            let root = &sum(b"\xff\xff\xff\xff");
+            let tree = MerkleTree::<StorageError>::load(&mut storage, root);
+            assert!(tree.is_err());
+        }
     }
 }

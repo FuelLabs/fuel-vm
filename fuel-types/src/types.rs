@@ -25,10 +25,7 @@ const fn hex_val(c: u8) -> Option<u8> {
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[cfg_attr(
-            feature = "serde-types-minimal",
-            derive(serde::Serialize, serde::Deserialize)
-        )]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         /// FuelVM atomic type.
         pub struct $i([u8; $s]);
 
@@ -45,23 +42,18 @@ macro_rules! key {
 
 macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
-        #[cfg(feature = "serde-types-minimal")]
+        #[cfg(feature = "serde")]
         use serde_big_array::big_array;
-        #[cfg(feature = "serde-types-minimal")]
+        #[cfg(feature = "serde")]
         big_array! {
             BigArray;
             $s,
         }
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[cfg_attr(
-            feature = "serde-types-minimal",
-            derive(serde::Serialize, serde::Deserialize)
-        )]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         /// FuelVM atomic type.
-        pub struct $i(
-            #[cfg_attr(feature = "serde-types-minimal", serde(with = "BigArray"))] [u8; $s],
-        );
+        pub struct $i(#[cfg_attr(feature = "serde", serde(with = "BigArray"))] [u8; $s]);
 
         key_methods!($i, $s);
 

@@ -209,7 +209,6 @@ where
         );
 
         self.receipts.push(receipt);
-        self.apply_revert();
     }
 
     pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
@@ -219,16 +218,5 @@ where
         let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
         self.receipts.push(receipt);
-    }
-
-    pub(crate) fn apply_revert(&mut self) {
-        // TODO
-        // All OutputContract outputs will have the same amount and stateRoot as
-        // on initialization.
-        //
-        // All OutputVariable outputs will have to and amount of zero.
-        //
-        // All OutputContractConditional outputs will have contractID, amount,
-        // and stateRoot of zero.
     }
 }

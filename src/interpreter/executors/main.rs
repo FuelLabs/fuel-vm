@@ -129,7 +129,6 @@ where
                     Err(e) => match e.instruction_result() {
                         Some(result) => {
                             self.append_panic_receipt(*result);
-                            self.apply_revert();
 
                             (ScriptExecutionResult::Panic, ProgramState::Revert(0))
                         }

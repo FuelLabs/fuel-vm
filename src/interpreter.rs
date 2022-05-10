@@ -80,14 +80,10 @@ impl<S> Interpreter<S> {
         &self.debugger
     }
 
-    // TODO use this in ALU
-    #[allow(dead_code)]
     pub(crate) const fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }
 
-    // TODO use this in ALU
-    #[allow(dead_code)]
     pub(crate) const fn is_wrapping(&self) -> bool {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }

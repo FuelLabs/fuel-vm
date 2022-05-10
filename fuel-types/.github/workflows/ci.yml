@@ -46,7 +46,7 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
   cargo-verifications:
     needs: cancel-previous-runs
@@ -104,7 +104,7 @@ jobs:
           footer: ''
           notify_when: 'failure'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.ACTION_MONITORING_SLACK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
           RUSTFLAGS: -D warnings
   publish:
     # Only do this job if publishing a release

@@ -6,6 +6,7 @@ use core::ops::Deref;
 use core::{fmt, str};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 /// Secp256k1 signature implementation
 pub struct Signature(Bytes64);

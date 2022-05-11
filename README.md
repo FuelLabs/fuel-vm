@@ -11,5 +11,4 @@ Fuel cryptographic primitives.
 
 - `std`: Unless set, the crate will link to the core-crate instead of the std-crate. More info [here](https://docs.rust-embedded.org/book/intro/no-std.html).
 - `random`: Implement `no-std` [rand](https://crates.io/crates/rand) features for the provided types.
-- `serde-types`: Add support for [serde](https://crates.io/crates/serde) for the provided types.
-- `serde-types-minimal`: Add support for `no-std` [serde](https://crates.io/crates/serde) for the provided types.
+- `serde`: Add support for [serde](https://crates.io/crates/serde) for the provided types.

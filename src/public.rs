@@ -7,8 +7,8 @@ use core::ops::Deref;
 
 /// Asymmetric public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
-// TODO serde implementation blocked by https://github.com/FuelLabs/fuel-types/issues/13
 pub struct PublicKey(Bytes64);
 
 impl PublicKey {

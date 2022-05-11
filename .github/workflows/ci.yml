@@ -65,7 +65,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
+        args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde
 
     - name: Build no-std random
       uses: actions-rs/cargo@v1
@@ -83,7 +83,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --features serde-types --release
+        args: --verbose --features serde --release
 
     - name: Run tests no-std
       uses: actions-rs/cargo@v1
@@ -95,7 +95,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --verbose --no-default-features --features serde-types-minimal
+        args: --verbose --no-default-features --features serde
 
   publish:
     # Only do this job if publishing a release

@@ -175,3 +175,48 @@ fn test_key_serde() {
         bincode::deserialize(&bytes64_t).expect("Failed to deserialize Bytes64");
     assert_eq!(bytes64, bytes64_t);
 }
+
+#[test]
+#[cfg(feature = "serde")]
+fn test_key_types_hex_serialization() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let adr: Address = rng.gen();
+    let adr_to_string =
+        serde_json::to_string(&adr).expect("serde_json::to_string failed on Address");
+    assert_eq!(format!("\"{}\"", adr), adr_to_string);
+
+    let ast_id: AssetId = rng.gen();
+    let ast_id_to_string =
+        serde_json::to_string(&ast_id).expect("serde_json::to_string failed on AssetId");
+    assert_eq!(format!("\"{}\"", ast_id), ast_id_to_string);
+
+    let contract_id: ContractId = rng.gen();
+    let contract_id_to_string =
+        serde_json::to_string(&contract_id).expect("serde_json::to_string failed on ContractId");
+    assert_eq!(format!("\"{}\"", contract_id), contract_id_to_string);
+
+    let bytes4: Bytes4 = rng.gen();
+    let bytes4_to_string =
+        serde_json::to_string(&bytes4).expect("serde_json::to_string failed on Bytes4");
+    assert_eq!(format!("\"{}\"", bytes4), bytes4_to_string);
+
+    let bytes8: Bytes8 = rng.gen();
+    let bytes8_to_string =
+        serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
+    assert_eq!(format!("\"{}\"", bytes8), bytes8_to_string);
+
+    let bytes32: Bytes32 = rng.gen();
+    let bytes32_to_string =
+        serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
+    assert_eq!(format!("\"{}\"", bytes32), bytes32_to_string);
+
+    let salt: Salt = rng.gen();
+    let salt_to_string =
+        serde_json::to_string(&salt).expect("serde_json::to_string failed on Salt");
+    assert_eq!(format!("\"{}\"", salt), salt_to_string);
+
+    let bytes64: Bytes64 = rng.gen();
+    let bytes64_to_string = serde_json::to_string(&bytes64).expect("Failed to serialize Bytes64");
+    assert_eq!(format!("\"{}\"", bytes64), bytes64_to_string);
+}

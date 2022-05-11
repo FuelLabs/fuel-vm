@@ -1,6 +1,9 @@
-use crate::common::{AsPathIterator, Bytes32};
+use std::marker::{Send, Sync};
+
+use anyhow::Result;
 use fuel_storage::Storage;
 
+use crate::common::{AsPathIterator, Bytes32};
 use crate::sparse::hash::sum;
 use crate::sparse::{zero_sum, Buffer, Node, StorageNode};
 
@@ -10,26 +13,25 @@ pub enum MerkleTreeError {
     LoadError(String),
 }
 
+type StorageType<StorageError> = dyn Storage<Bytes32, Buffer, Error = StorageError>;
+
 pub struct MerkleTree<'storage, StorageError> {
     root_node: Node,
-    storage: &'storage mut dyn Storage<Bytes32, Buffer, Error = StorageError>,
+    storage: &'storage mut StorageType<StorageError>,
 }
 
 impl<'a, 'storage, StorageError> MerkleTree<'storage, StorageError>
 where
-    StorageError: std::error::Error + Clone + 'static,
+    StorageError: std::error::Error + Send + Sync + Clone + 'static,
 {
-    pub fn new(storage: &'storage mut dyn Storage<Bytes32, Buffer, Error = StorageError>) -> Self {
+    pub fn new(storage: &'storage mut StorageType<StorageError>) -> Self {
         Self {
             root_node: Node::create_placeholder(),
             storage,
         }
     }
 
-    pub fn load(
-        storage: &'storage mut dyn Storage<Bytes32, Buffer, Error = StorageError>,
-        root: &Bytes32,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(storage: &'storage mut StorageType<StorageError>, root: &Bytes32) -> Result<Self> {
         let buffer = storage
             .get(root)?
             .ok_or(MerkleTreeError::LoadError(hex::encode(root)))?
@@ -41,11 +43,7 @@ where
         Ok(tree)
     }
 
-    pub fn update(
-        &'a mut self,
-        key: &Bytes32,
-        data: &[u8],
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn update(&'a mut self, key: &Bytes32, data: &[u8]) -> Result<()> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the given key.
             self.delete(key)?;
@@ -68,7 +66,7 @@ where
         Ok(())
     }
 
-    pub fn delete(&'a mut self, key: &Bytes32) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn delete(&'a mut self, key: &Bytes32) -> Result<()> {
         if self.root() == *zero_sum() {
             // The zero root signifies that all leaves are empty, including the given key.
             return Ok(());
@@ -118,7 +116,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<()> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
 
@@ -178,7 +176,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<()> {
         for node in path_nodes {
             self.storage.remove(&node.hash())?;
         }

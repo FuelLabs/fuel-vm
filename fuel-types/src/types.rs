@@ -25,7 +25,6 @@ const fn hex_val(c: u8) -> Option<u8> {
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         /// FuelVM atomic type.
         pub struct $i([u8; $s]);
 
@@ -42,18 +41,9 @@ macro_rules! key {
 
 macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
-        #[cfg(feature = "serde")]
-        use serde_big_array::big_array;
-        #[cfg(feature = "serde")]
-        big_array! {
-            BigArray;
-            $s,
-        }
-
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         /// FuelVM atomic type.
-        pub struct $i(#[cfg_attr(feature = "serde", serde(with = "BigArray"))] [u8; $s]);
+        pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
 
@@ -239,6 +229,29 @@ macro_rules! key_methods {
                 }
 
                 Ok(ret)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $i {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                use alloc::format;
+                serializer.serialize_str(&format!("{:x}", &self))
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de> serde::Deserialize<'de> for $i {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                use serde::de::Error;
+                let s: &str = serde::Deserialize::deserialize(deserializer)?;
+                s.parse().map_err(D::Error::custom)
             }
         }
     };

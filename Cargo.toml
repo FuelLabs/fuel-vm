@@ -12,7 +12,7 @@ description = "Fuel cryptographic primitives."
 
 [dependencies]
 borrown = "0.1"
-fuel-types = { version = "0.4", default-features = false }
+fuel-types = { version = "0.5", default-features = false }
 lazy_static = { version = "1.4", optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 # `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise

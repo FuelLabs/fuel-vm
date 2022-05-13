@@ -16,6 +16,7 @@ pub use fuel_types::{self, Immediate06, Immediate12, Immediate18, Immediate24, R
 pub use instruction::Instruction;
 pub use opcode::{Opcode, OpcodeRepr};
 pub use panic_reason::{InstructionResult, PanicReason};
-#[cfg(feature = "serde-types-minimal")]
+
+#[cfg(feature = "serde")]
 #[doc(no_inline)]
 pub use serde;

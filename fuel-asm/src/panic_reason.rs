@@ -5,10 +5,7 @@ use core::{convert, fmt, mem};
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "serde-types-minimal",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
 /// Panic reason representation for the interpreter.
 pub enum PanicReason {
@@ -546,10 +543,7 @@ impl From<convert::Infallible> for PanicReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "serde-types-minimal",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Describe a panic reason with the instruction that generated it
 pub struct InstructionResult {
     reason: PanicReason,

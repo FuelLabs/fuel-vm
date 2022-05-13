@@ -10,8 +10,7 @@ Instruction set for the [FuelVM](https://github.com/FuelLabs/fuel-specs).
 ## Compile features
 
 - `std`: Unless set, the crate will link to the core-crate instead of the std-crate. More info [here](https://docs.rust-embedded.org/book/intro/no-std.html).
-- `serde-types`: Add support for [serde](https://crates.io/crates/serde) for the types exposed by this crate.
-- `serde-types-minimal`: Add support for `no-std` [serde](https://crates.io/crates/serde) for the types exposed by this crate.
+- `serde`: Add support for [serde](https://crates.io/crates/serde) for the types exposed by this crate.
 
 ## Example
 

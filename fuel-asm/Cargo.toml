@@ -11,14 +11,16 @@ repository = "https://github.com/FuelLabs/fuel-asm"
 description = "Defines all opcodes available in the FuelVM."
 
 [dependencies]
-fuel-types = { version = "0.3", default-features = false }
+fuel-types = { version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+[dev-dependencies]
+bincode = { version = "1.3", default-features = false }
 
 [features]
 default = ["fuel-types/default", "std"]
-std = ["fuel-types/std"]
-serde-types = ["fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
-serde-types-minimal = ["fuel-types/serde-types-minimal", "serde"]
+std = ["fuel-types/std", "serde?/default"]
+serde = ["dep:serde", "fuel-types/serde"]
 
 [[test]]
 name = "test-encoding"

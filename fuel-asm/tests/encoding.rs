@@ -177,6 +177,14 @@ fn opcode() {
 
             assert!(Opcode::from_bytes(op_bytes.as_slice()).is_err());
         }
+
+        #[cfg(feature = "serde")]
+        {
+            let op_s = bincode::serialize(&op).expect("Failed to serialize opcode");
+            let op_s: Opcode = bincode::deserialize(&op_s).expect("Failed to deserialize opcode");
+
+            assert_eq!(op_s, op);
+        }
     }
 
     let mut op_p = Opcode::Undefined;
@@ -235,6 +243,15 @@ fn panic_reason_description() {
 
     assert_eq!(pd, pd_p);
 
+    #[cfg(feature = "serde")]
+    {
+        let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
+        let pd_s: InstructionResult =
+            bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+
+        assert_eq!(pd_s, pd);
+    }
+
     for r in reasons {
         let b = u8::from(r);
         let r_p = PanicReason::from(b);
@@ -252,5 +269,14 @@ fn panic_reason_description() {
         let pd_p = InstructionResult::from(w);
 
         assert_eq!(pd, pd_p);
+
+        #[cfg(feature = "serde")]
+        {
+            let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
+            let pd_s: InstructionResult =
+                bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+
+            assert_eq!(pd_s, pd);
+        }
     }
 }

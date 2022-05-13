@@ -7,10 +7,7 @@ use std::{io, iter};
 
 /// A version of Opcode that can used without unnecessary branching
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "serde-types-minimal",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Instruction {
     /// Opcode
     op: u8,

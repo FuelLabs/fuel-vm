@@ -6,10 +6,7 @@ use fuel_types::{AssetId, ContractId};
 use std::{error, io};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "serde-types-minimal",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum ValidationError {
     InputCoinPredicateLength {

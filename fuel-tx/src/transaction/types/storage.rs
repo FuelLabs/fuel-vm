@@ -14,10 +14,7 @@ use std::io;
 pub const SLOT_SIZE: usize = Bytes64::LEN;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "serde-types-minimal",
-    derive(serde::Serialize, serde::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StorageSlot {
     key: Bytes32,
     value: Bytes32,

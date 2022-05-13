@@ -11,18 +11,19 @@ repository = "https://github.com/FuelLabs/fuel-tx"
 description = "FuelVM transaction."
 
 [dependencies]
-fuel-asm = { version = "0.4", default-features = false }
-fuel-crypto = { version = "0.4", default-features = false }
-fuel-types = { version = "0.3", default-features = false }
+fuel-asm = { version = "0.5", default-features = false }
+fuel-crypto = { version = "0.5", default-features = false }
+fuel-types = { version = "0.5", default-features = false }
 itertools = { version = "0.10", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 
 [dev-dependencies]
-fuel-crypto = { version = "0.4", default-features = false, features = ["random"] }
+bincode = { version = "1.3", default-features = false }
+fuel-crypto = { version = "0.5", default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
-fuel-types = { version = "0.3", default-features = false, features = ["random"] }
+fuel-types = { version = "0.5", default-features = false, features = ["random"] }
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 
 [features]
@@ -31,14 +32,13 @@ alloc = ["fuel-types/alloc", "itertools/use_alloc", "serde/alloc"]
 builder = ["alloc"]
 internals = []
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
-std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-types/std", "itertools/default", "rand/default"]
-serde-types = ["fuel-asm/serde-types", "fuel-crypto/serde", "fuel-types/serde-types", "serde-types-minimal", "serde/default", "std"]
-serde-types-minimal = ["fuel-asm/serde-types-minimal", "fuel-crypto/serde-types-minimal", "fuel-types/serde-types-minimal", "serde"]
+std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-types/std", "itertools/default", "rand/default", "serde?/default"]
+serde = ["dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde"]
 
 [[test]]
 name = "test-bytes"
 path = "tests/bytes.rs"
-required-features = ["std"]
+required-features = ["serde", "std"]
 
 [[test]]
 name = "test-offsets"

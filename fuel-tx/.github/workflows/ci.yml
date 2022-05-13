@@ -37,17 +37,17 @@ jobs:
           - command: check
             args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
           - command: check
-            args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde-types-minimal
+            args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde
           - command: test
             args: --all-targets --all-features
           - command: test
             args: --all-targets --no-default-features
           - command: test
-            args: --all-targets --no-default-features --features serde-types-minimal
+            args: --all-targets --no-default-features --features serde
           - command: test
             args: --all-targets --no-default-features --features alloc
           - command: test
-            args: --all-targets --features serde-types
+            args: --all-targets --features serde
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

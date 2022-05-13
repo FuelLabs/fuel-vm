@@ -9,7 +9,7 @@ use rand::{Rng, RngCore, SeedableRng};
 use std::fmt;
 use std::io::{self, Read, Write};
 
-pub fn assert_encoding_correct<T>(data: &[T])
+pub fn assert_encoding_correct<'a, T>(data: &[T])
 where
     T: Read
         + Write
@@ -18,15 +18,25 @@ where
         + PartialEq
         + bytes::SizedBytes
         + bytes::SerializableVec
-        + bytes::Deserializable,
+        + bytes::Deserializable
+        + serde::Serialize
+        + serde::Deserialize<'a>,
 {
     let mut buffer;
 
     for data in data.iter() {
+        let d_s = bincode::serialize(&data).expect("Failed to serialize data");
+        // Safety: bincode/serde fails to understand the elision so this is a cheap way to convince it
+        let d_s: T = bincode::deserialize(unsafe { std::mem::transmute(d_s.as_slice()) })
+            .expect("Failed to deserialize data");
+
+        assert_eq!(&d_s, data);
+
         let mut d = data.clone();
 
         let d_bytes = data.clone().to_bytes();
         let d_p = T::from_bytes(d_bytes.as_slice()).expect("Failed to deserialize T");
+
         assert_eq!(d, d_p);
 
         let mut d_p = data.clone();
@@ -72,17 +82,15 @@ where
 
 #[test]
 fn witness() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
-
+    let rng = &mut StdRng::seed_from_u64(8586);
     let w = generate_bytes(rng).into();
+
     assert_encoding_correct(&[w, Witness::default()]);
 }
 
 #[test]
 fn input() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     assert_encoding_correct(&[
         Input::coin(
@@ -131,8 +139,7 @@ fn input() {
 
 #[test]
 fn output() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     assert_encoding_correct(&[
         Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
@@ -492,8 +499,7 @@ fn receipt() {
 
 #[test]
 fn transaction() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let o = Output::coin(rng.gen(), rng.next_u64(), rng.gen());
@@ -661,8 +667,7 @@ fn transaction() {
 
 #[test]
 fn create_input_coin_data_offset() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     let gas_price = 100;
     let gas_limit = 1000;
@@ -761,8 +766,7 @@ fn create_input_coin_data_offset() {
 
 #[test]
 fn script_input_coin_data_offset() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     let gas_price = 100;
     let gas_limit = 1000;

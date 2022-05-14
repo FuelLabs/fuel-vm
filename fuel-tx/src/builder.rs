@@ -17,17 +17,17 @@ pub struct TransactionBuilder<'a> {
 
 impl<'a> TransactionBuilder<'a> {
     pub fn create(
-        bytecode_witness_index: u8,
+        bytecode: Witness,
         salt: Salt,
         static_contracts: Vec<ContractId>,
         storage_slots: Vec<StorageSlot>,
     ) -> Self {
-        let tx = Transaction::create(
+        let mut tx = Transaction::create(
             Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),
-            bytecode_witness_index,
+            Default::default(),
             salt,
             static_contracts,
             storage_slots,
@@ -35,6 +35,9 @@ impl<'a> TransactionBuilder<'a> {
             Default::default(),
             Default::default(),
         );
+
+        tx._set_bytecode(bytecode);
+
         let sign_keys = Vec::new();
 
         Self { tx, sign_keys }

@@ -55,6 +55,7 @@ pub enum Transaction {
         gas_limit: Word,
         byte_price: Word,
         maturity: Word,
+        bytecode_length: Word,
         bytecode_witness_index: u8,
         salt: Salt,
         static_contracts: Vec<ContractId>,
@@ -118,7 +119,7 @@ impl Transaction {
         }
     }
 
-    pub const fn create(
+    pub fn create(
         gas_price: Word,
         gas_limit: Word,
         byte_price: Word,
@@ -131,11 +132,19 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Self {
+        // TODO consider split this function in two; one that will trust a provided bytecod len,
+        // and other that will return a resulting, failing if the witness index isn't present
+        let bytecode_length = witnesses
+            .get(bytecode_witness_index as usize)
+            .map(|witness| witness.as_ref().len() as Word / 4)
+            .unwrap_or(0);
+
         Self::Create {
             gas_price,
             gas_limit,
             byte_price,
             maturity,
+            bytecode_length,
             bytecode_witness_index,
             salt,
             static_contracts,
@@ -430,6 +439,7 @@ mod tests {
             gas_limit: 0,
             byte_price: 0,
             maturity: 0,
+            bytecode_length: 0,
             bytecode_witness_index: 0,
             salt: Default::default(),
             static_contracts: vec![],
@@ -444,6 +454,7 @@ mod tests {
             gas_limit: 0,
             byte_price: 0,
             maturity: 0,
+            bytecode_length: 0,
             bytecode_witness_index: 0,
             salt: Default::default(),
             static_contracts: vec![],

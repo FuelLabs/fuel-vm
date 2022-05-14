@@ -1,6 +1,7 @@
 use crate::{Input, Output, Transaction, Witness};
 
 use alloc::vec::Vec;
+use fuel_asm::Word;
 
 #[cfg(feature = "internals")]
 impl Transaction {
@@ -22,6 +23,11 @@ impl Transaction {
     /// Set the transaction script, if script variant. Return none otherwise.
     pub fn set_script(&mut self, script: Vec<u8>) -> Option<()> {
         self._set_script(script)
+    }
+
+    /// Set the transaction bytecode, if create variant. Return none otherwise.
+    pub fn set_bytecode(&mut self, bytecode: Witness) -> Option<()> {
+        self._set_bytecode(bytecode)
     }
 }
 
@@ -54,6 +60,25 @@ impl Transaction {
                 Some(())
             }
             Self::Create { .. } => None,
+        }
+    }
+
+    pub(crate) fn _set_bytecode(&mut self, bytecode: Witness) -> Option<()> {
+        match self {
+            Self::Script { .. } => None,
+            Self::Create {
+                bytecode_length,
+                bytecode_witness_index,
+                witnesses,
+                ..
+            } => {
+                *bytecode_length = (bytecode.as_ref().len() / 4) as Word;
+                *bytecode_witness_index = witnesses.len() as u8;
+
+                witnesses.push(bytecode);
+
+                Some(())
+            }
         }
     }
 }

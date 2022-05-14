@@ -4,6 +4,8 @@ use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
+
+use std::cmp;
 use std::io::Write;
 
 #[test]
@@ -194,14 +196,16 @@ fn max_iow() {
         .expect("Failed to validate transaction");
 
     // Add inputs up to maximum and validate
-    let mut builder = TransactionBuilder::create(MAX_WITNESSES - 1, rng.gen(), vec![], vec![]);
+    let mut builder =
+        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![]);
 
     builder
         .gas_price(rng.gen())
         .gas_limit(MAX_GAS_PER_TX)
         .maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..MAX_INPUTS as usize - builder.inputs().len())
+    let secrets = cmp::min(MAX_INPUTS, MAX_WITNESSES - 1) as usize;
+    let secrets: Vec<SecretKey> = (0..secrets - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
 
@@ -232,7 +236,8 @@ fn max_iow() {
         .expect("Failed to validate transaction");
 
     // Overflow maximum inputs and expect error
-    let mut builder = TransactionBuilder::create(MAX_WITNESSES - 1, rng.gen(), vec![], vec![]);
+    let mut builder =
+        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![]);
 
     builder
         .gas_price(rng.gen())
@@ -272,7 +277,8 @@ fn max_iow() {
     assert_eq!(ValidationError::TransactionInputsMax, err);
 
     // Overflow outputs maximum and expect error
-    let mut builder = TransactionBuilder::create(MAX_WITNESSES - 1, rng.gen(), vec![], vec![]);
+    let mut builder =
+        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![]);
 
     builder
         .gas_price(rng.gen())
@@ -312,7 +318,8 @@ fn max_iow() {
     assert_eq!(ValidationError::TransactionOutputsMax, err);
 
     // Overflow witnesses maximum and expect error
-    let mut builder = TransactionBuilder::create(MAX_WITNESSES - 1, rng.gen(), vec![], vec![]);
+    let mut builder =
+        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![]);
 
     builder
         .gas_price(rng.gen())
@@ -613,7 +620,7 @@ fn create() {
     let secret = SecretKey::random(rng);
     let secret_b = SecretKey::random(rng);
 
-    TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
@@ -630,24 +637,23 @@ fn create() {
         .validate(block_height)
         .expect("Failed to validate tx");
 
-    let err = TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()))
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
-        .add_witness(generate_bytes(rng).into())
         .finalize()
         .validate(block_height)
         .err()
         .expect("Expected erroneous transaction");
 
-    assert!(matches!(
+    assert_eq!(
         err,
         ValidationError::TransactionCreateInputContract { index: 0 }
-    ));
+    );
 
-    let err = TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
@@ -666,12 +672,12 @@ fn create() {
         .err()
         .expect("Expected erroneous transaction");
 
-    assert!(matches!(
+    assert_eq!(
         err,
         ValidationError::TransactionCreateOutputVariable { index: 0 }
-    ));
+    );
 
-    let err = TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
@@ -700,14 +706,14 @@ fn create() {
         .err()
         .expect("Expected erroneous transaction");
 
-    assert!(matches!(
+    assert_eq!(
         err,
         ValidationError::TransactionOutputChangeAssetIdDuplicated,
-    ));
+    );
 
     let asset_id: AssetId = rng.gen();
 
-    let err = TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
@@ -736,12 +742,12 @@ fn create() {
         .err()
         .expect("Expected erroneous transaction");
 
-    assert!(matches!(
+    assert_eq!(
         err,
         ValidationError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
-    ));
+    );
 
-    let err = TransactionBuilder::create(0, rng.gen(), vec![], vec![])
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![], vec![])
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
@@ -770,76 +776,78 @@ fn create() {
         .err()
         .expect("Expected erroneous transaction");
 
-    assert!(matches!(
+    assert_eq!(
         err,
         ValidationError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
-    ));
+    );
 
-    TransactionBuilder::create(0, rng.gen(), vec![], vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .add_witness(vec![0xfa; CONTRACT_MAX_SIZE as usize / 4].into())
-        .finalize()
-        .validate(block_height)
-        .expect("Failed to validate the transaction");
+    TransactionBuilder::create(
+        vec![0xfa; CONTRACT_MAX_SIZE as usize / 4].into(),
+        rng.gen(),
+        vec![],
+        vec![],
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .expect("Failed to validate the transaction");
 
-    let err = TransactionBuilder::create(1, rng.gen(), vec![], vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .add_witness(vec![0xfa; 1 + CONTRACT_MAX_SIZE as usize].into())
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(
+        vec![0xfa; 1 + CONTRACT_MAX_SIZE as usize].into(),
+        rng.gen(),
+        vec![],
+        vec![],
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
-    assert!(matches!(err, ValidationError::TransactionCreateBytecodeLen,));
+    assert_eq!(err, ValidationError::TransactionCreateBytecodeLen);
 
-    let err = TransactionBuilder::create(2, rng.gen(), vec![], vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .add_witness(vec![0xfa; CONTRACT_MAX_SIZE as usize / 4].into())
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = Transaction::create(
+        rng.gen(),
+        MAX_GAS_PER_TX,
+        rng.gen(),
+        maturity,
+        0,
+        rng.gen(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    )
+    .validate_without_signature(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
-    assert!(matches!(
-        err,
-        ValidationError::TransactionCreateBytecodeWitnessIndex,
-    ));
+    assert_eq!(err, ValidationError::TransactionCreateBytecodeWitnessIndex);
 
     let static_contracts = (0..MAX_STATIC_CONTRACTS as u64)
         .map(|i| {
@@ -851,23 +859,28 @@ fn create() {
         })
         .collect::<Vec<ContractId>>();
 
-    TransactionBuilder::create(0, rng.gen(), static_contracts.clone(), vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .validate(block_height)
-        .expect("Failed to validate the transaction");
+    TransactionBuilder::create(
+        generate_bytes(rng).into(),
+        rng.gen(),
+        static_contracts.clone(),
+        vec![],
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .expect("Failed to validate the transaction");
 
     let mut contracts_overflow = static_contracts.clone();
 
@@ -875,57 +888,61 @@ fn create() {
     let id = ContractId::from(id);
     contracts_overflow.push(id);
 
-    let err = TransactionBuilder::create(0, rng.gen(), contracts_overflow, vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(
+        generate_bytes(rng).into(),
+        rng.gen(),
+        contracts_overflow,
+        vec![],
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
-    assert!(matches!(
-        err,
-        ValidationError::TransactionCreateStaticContractsMax,
-    ));
+    assert_eq!(err, ValidationError::TransactionCreateStaticContractsMax,);
 
     let mut contracts_order = static_contracts.clone();
 
     contracts_order[0].as_mut()[0] = 0xff;
 
-    let err = TransactionBuilder::create(0, rng.gen(), contracts_order, vec![])
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(
+        generate_bytes(rng).into(),
+        rng.gen(),
+        contracts_order,
+        vec![],
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
-    assert!(matches!(
-        err,
-        ValidationError::TransactionCreateStaticContractsOrder,
-    ));
+    assert_eq!(err, ValidationError::TransactionCreateStaticContractsOrder,);
 
     let mut slot_data = [0u8; 64];
     let mut slot = StorageSlot::default();
@@ -940,7 +957,7 @@ fn create() {
 
     // Test max slots is valid
     TransactionBuilder::create(
-        0,
+        generate_bytes(rng).into(),
         rng.gen(),
         static_contracts.clone(),
         storage_slots.clone(),
@@ -968,24 +985,29 @@ fn create() {
     let s = StorageSlot::new([255u8; 32].into(), Default::default());
     storage_slots_max.push(s);
 
-    let err = TransactionBuilder::create(0, rng.gen(), static_contracts.clone(), storage_slots_max)
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(
+        generate_bytes(rng).into(),
+        rng.gen(),
+        static_contracts.clone(),
+        storage_slots_max,
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
     assert_eq!(ValidationError::TransactionCreateStorageSlotMax, err);
 
@@ -994,24 +1016,102 @@ fn create() {
 
     storage_slots_reverse.reverse();
 
-    let err = TransactionBuilder::create(0, rng.gen(), static_contracts, storage_slots_reverse)
-        .gas_limit(MAX_GAS_PER_TX)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .validate(block_height)
-        .err()
-        .expect("Expected erroneous transaction");
+    let err = TransactionBuilder::create(
+        generate_bytes(rng).into(),
+        rng.gen(),
+        static_contracts,
+        storage_slots_reverse,
+    )
+    .gas_limit(MAX_GAS_PER_TX)
+    .gas_price(rng.gen())
+    .maturity(maturity)
+    .add_unsigned_coin_input(
+        rng.gen(),
+        &secret,
+        rng.gen(),
+        AssetId::default(),
+        maturity,
+        vec![],
+        vec![],
+    )
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .validate(block_height)
+    .err()
+    .expect("Expected erroneous transaction");
 
     assert_eq!(ValidationError::TransactionCreateStorageSlotOrder, err);
+}
+
+#[test]
+fn tx_id_bytecode_len() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100;
+    let gas_price = rng.gen();
+    let byte_price = rng.gen();
+    let salt = rng.gen();
+
+    let w_a = vec![0xfau8; 4].into();
+    let w_b = vec![0xfau8; 8].into();
+    let w_c = vec![0xfbu8; 4].into();
+
+    let tx_a = Transaction::create(
+        gas_price,
+        MAX_GAS_PER_TX,
+        byte_price,
+        maturity,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![w_a],
+    );
+
+    let tx_b = Transaction::create(
+        gas_price,
+        MAX_GAS_PER_TX,
+        byte_price,
+        maturity,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![w_b],
+    );
+
+    let tx_c = Transaction::create(
+        gas_price,
+        MAX_GAS_PER_TX,
+        byte_price,
+        maturity,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![w_c],
+    );
+
+    let id_a = tx_a.id();
+    let id_b = tx_b.id();
+    let id_c = tx_c.id();
+
+    // bytecode with different length should produce different id
+    assert_ne!(id_a, id_b);
+
+    // bytecode with same length and different content should produce same id
+    //
+    // Note that this isn't related to the validation itself - this checks exclusively the id
+    // behavior. the witness payload for a bytecode cannot be tampered and the validation rules
+    // should not allow this case to pass.
+    //
+    // For further reference, check
+    // https://github.com/FuelLabs/fuel-specs/blob/1856de801fabc7e52f5c010c45c3fc6d5d4e2be3/specs/protocol/tx_format.md?plain=1#L160
+    assert_eq!(id_a, id_c);
 }

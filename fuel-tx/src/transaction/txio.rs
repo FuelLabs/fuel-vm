@@ -105,6 +105,7 @@ impl io::Read for Transaction {
                 gas_limit,
                 byte_price,
                 maturity,
+                bytecode_length,
                 bytecode_witness_index,
                 salt,
                 static_contracts,
@@ -114,17 +115,12 @@ impl io::Read for Transaction {
                 witnesses,
                 ..
             } => {
-                let bytecode_length = witnesses
-                    .get(*bytecode_witness_index as usize)
-                    .map(|witness| witness.as_ref().len() as Word / 4)
-                    .unwrap_or(0);
-
                 let buf = bytes::store_number_unchecked(buf, TransactionRepr::Create as Word);
                 let buf = bytes::store_number_unchecked(buf, *gas_price);
                 let buf = bytes::store_number_unchecked(buf, *gas_limit);
                 let buf = bytes::store_number_unchecked(buf, *byte_price);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
-                let buf = bytes::store_number_unchecked(buf, bytecode_length);
+                let buf = bytes::store_number_unchecked(buf, *bytecode_length);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_witness_index);
                 let buf = bytes::store_number_unchecked(buf, static_contracts.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, storage_slots.len() as Word);
@@ -251,7 +247,7 @@ impl io::Write for Transaction {
                 let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (byte_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (_bytecode_length, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
+                let (bytecode_length, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
                 let (static_contracts_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (storage_slots_len, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
@@ -306,6 +302,7 @@ impl io::Write for Transaction {
                     gas_limit,
                     byte_price,
                     maturity,
+                    bytecode_length,
                     bytecode_witness_index,
                     salt,
                     static_contracts,

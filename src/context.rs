@@ -3,7 +3,7 @@
 use fuel_tx::Transaction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime context description.
 pub enum Context {
     /// Current context is a predicate verification.

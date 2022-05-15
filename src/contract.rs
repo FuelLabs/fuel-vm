@@ -10,7 +10,7 @@ use fuel_types::{Bytes32, ContractId, Salt};
 use std::cmp;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Deployable representation of a contract code.
 pub struct Contract(Vec<u8>);
 

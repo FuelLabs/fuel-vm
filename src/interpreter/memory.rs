@@ -8,7 +8,7 @@ use fuel_types::{RegisterId, Word};
 use std::{ops, ptr};
 
 #[derive(Debug, Clone, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Memory range representation for the VM.
 ///
 /// `start` is inclusive, and `end` is exclusive.

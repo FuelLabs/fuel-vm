@@ -82,8 +82,9 @@ mod test {
 
     #[test]
     fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root() {
-        // Check the Merkle root of one tree against the computed Merkle root of another tree's
-        // proof set: because the two roots come from different trees, the comparison should fail.
+        // Check the Merkle root of one tree against the computed Merkle root of
+        // another tree's proof set: because the two roots come from different
+        // trees, the comparison should fail.
 
         // Generate the first Merkle tree and get its root
         let mut mt = MerkleTree::new();

@@ -2,15 +2,16 @@ use crate::common::{Bytes8, PositionPath};
 
 /// #Position
 ///
-/// A `Position` represents a node's position in a binary tree by encapsulating the node's index
-/// data. Indices are calculated through in-order traversal of the nodes, starting with the first
-/// leaf node. Indexing starts at 0.
+/// A `Position` represents a node's position in a binary tree by encapsulating
+/// the node's index data. Indices are calculated through in-order traversal of
+/// the nodes, starting with the first leaf node. Indexing starts at 0.
 ///
 /// ##Merkle Trees
 ///
-/// In the context of Merkle trees, trees are constructed "upwards" from leaf nodes. Therefore,
-/// traversal is done from the bottom up, starting with the leaves, rather than top down, starting
-/// with the root, and we can guarantee a deterministic construction of index data.
+/// In the context of Merkle trees, trees are constructed "upwards" from leaf
+/// nodes. Therefore, traversal is done from the bottom up, starting with the
+/// leaves, rather than top down, starting with the root, and we can guarantee a
+/// deterministic construction of index data.
 ///
 /// ```text
 ///               07
@@ -28,11 +29,13 @@ use crate::common::{Bytes8, PositionPath};
 /// 00  02  04  06  08  10  12  14
 /// ```
 ///
-/// In-order indices can be considered internal to the `Position` struct and are used to facilitate
-/// the calculation of positional attributes and the construction of other nodes. Leaf nodes have
-/// both an in-order index as part of the tree, and a leaf index determined by its position in the
-/// bottom row. Because of the in-order traversal used to calculate the in-order indices, leaf nodes
-/// have the property that their in-order index is always equal to their leaf index multiplied by 2.
+/// In-order indices can be considered internal to the `Position` struct and are
+/// used to facilitate the calculation of positional attributes and the
+/// construction of other nodes. Leaf nodes have both an in-order index as part
+/// of the tree, and a leaf index determined by its position in the bottom row.
+/// Because of the in-order traversal used to calculate the in-order indices,
+/// leaf nodes have the property that their in-order index is always equal to
+/// their leaf index multiplied by 2.
 ///
 /// ```text
 ///                    /  \    /  \    /  \    /  \
@@ -40,19 +43,21 @@ use crate::common::{Bytes8, PositionPath};
 /// In-order indices: 00  02  04  06  08  10  12  14
 /// ```
 ///
-/// This allows us to construct a `Position` (and its in-order index) by providing either an
-/// in-order index directly or, in the case of a leaf, a leaf index. This functionality is captured
-/// by `from_in_order_index()` and `from_leaf_index()` respectively.
+/// This allows us to construct a `Position` (and its in-order index) by
+/// providing either an in-order index directly or, in the case of a leaf, a
+/// leaf index. This functionality is captured by `from_in_order_index()` and
+/// `from_leaf_index()` respectively.
 ///
-/// Traversal of a Merkle Tree can be performed by the methods on a given `Position` to retrieve its
-/// sibling, parent, or uncle `Position`.
+/// Traversal of a Merkle Tree can be performed by the methods on a given
+/// `Position` to retrieve its sibling, parent, or uncle `Position`.
 ///
 /// ##Merkle Mountain Ranges
 ///
-/// Because the `Position` indices are calculated from in-order traversal starting with the leaves,
-/// the deterministic quality of the indices holds true for imbalanced binary trees, including
-/// Merle Mountain Ranges. Consider the following binary tree construction comprised of seven
-/// leaves (with leaf indices 0 through 6):
+/// Because the `Position` indices are calculated from in-order traversal
+/// starting with the leaves, the deterministic quality of the indices holds
+/// true for imbalanced binary trees, including Merle Mountain Ranges. Consider
+/// the following binary tree construction comprised of seven leaves (with leaf
+/// indices 0 through 6):
 ///
 /// ```text
 ///       03
@@ -63,14 +68,15 @@ use crate::common::{Bytes8, PositionPath};
 /// 00  02  04  06  08  10  12
 /// ```
 ///
-/// Note the absence of internal nodes that would be present in a fully balanced tree: inner nodes
-/// with indices 7 and 11 are absent. This is owing to the fact that node indices are calculated
-/// deterministically through in-order traversal, not calculated as a sequence.
+/// Note the absence of internal nodes that would be present in a fully balanced
+/// tree: inner nodes with indices 7 and 11 are absent. This is owing to the
+/// fact that node indices are calculated deterministically through in-order
+/// traversal, not calculated as a sequence.
 ///
-/// Traversal of a Merkle Mountain Range is still done in the same manner as a balanced Merkle tree,
-/// using methods to retrieve a `Position's` sibling, parent, or uncle `Position`. However, in such
-/// cases, the corresponding sibling or uncle nodes are not guaranteed to exist in the tree.
-///
+/// Traversal of a Merkle Mountain Range is still done in the same manner as a
+/// balanced Merkle tree, using methods to retrieve a `Position's` sibling,
+/// parent, or uncle `Position`. However, in such cases, the corresponding
+/// sibling or uncle nodes are not guaranteed to exist in the tree.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Position(u64);
 
@@ -92,8 +98,8 @@ impl Position {
         Position(index)
     }
 
-    /// Construct a position from a leaf index. The in-order index corresponding to the leaf index
-    /// will always equal the leaf index multiplied by 2.
+    /// Construct a position from a leaf index. The in-order index corresponding
+    /// to the leaf index will always equal the leaf index multiplied by 2.
     pub fn from_leaf_index(index: u64) -> Self {
         Position(index * 2)
     }
@@ -115,8 +121,8 @@ impl Position {
     }
 
     /// The uncle position.
-    /// The uncle position is the sibling of the parent and has a height less 1 relative to this
-    /// position.
+    /// The uncle position is the sibling of the parent and has a height less 1
+    /// relative to this position.
     pub fn uncle(self) -> Self {
         self.parent().sibling()
     }
@@ -137,9 +143,10 @@ impl Position {
     /// Leaf nodes represent height 0. A leaf's parent represents height 1.
     /// Height values monotonically increase as you ascend the tree.
     ///
-    /// Height is deterministically calculated as the number of trailing zeros of the complement of
-    /// the position's index. The following table demonstrates the relationship between a position's
-    /// height and the trailing zeros.
+    /// Height is deterministically calculated as the number of trailing zeros
+    /// of the complement of the position's index. The following table
+    /// demonstrates the relationship between a position's height and the
+    /// trailing zeros.
     ///
     /// | Index (Dec) | Index (Bin) | !Index (Bin) | Trailing 0s | Height |
     /// |-------------|-------------|--------------|-------------|--------|
@@ -151,7 +158,6 @@ impl Position {
     /// |           9 |        1001 |         0110 |           1 |      1 |
     /// |           3 |        0011 |         1100 |           2 |      2 |
     /// |          11 |        1011 |         0100 |           2 |      2 |
-    ///
     pub fn height(self) -> u32 {
         (!self.in_order_index()).trailing_zeros()
     }
@@ -160,8 +166,9 @@ impl Position {
     /// Returns `true` if the position is a leaf node.
     /// Returns `false` if the position is an internal node.
     ///
-    /// A position is a leaf node if and only if its in-order index is even. A position is an
-    /// internal node if and only if its in-order index is odd.
+    /// A position is a leaf node if and only if its in-order index is even. A
+    /// position is an internal node if and only if its in-order index is
+    /// odd.
     pub fn is_leaf(self) -> bool {
         self.in_order_index() % 2 == 0
     }
@@ -170,15 +177,16 @@ impl Position {
     /// Returns `false` if the position is a leaf node.
     /// Returns `true` if the position is an internal node.
     ///
-    /// When a position is an internal node, the position will have both a left and right child.
+    /// When a position is an internal node, the position will have both a left
+    /// and right child.
     pub fn is_node(self) -> bool {
         !self.is_leaf()
     }
 
-    /// Given a leaf position and the total count of leaves in a tree, get the path from this
-    /// position to the given leaf position. The shape of the tree is defined by the `leaves_count`
-    /// parameter and constrains the path.
-    /// See [PositionPath](crate::common::PositionPath).
+    /// Given a leaf position and the total count of leaves in a tree, get the
+    /// path from this position to the given leaf position. The shape of the
+    /// tree is defined by the `leaves_count` parameter and constrains the
+    /// path. See [PositionPath](crate::common::PositionPath).
     pub fn path(self, leaf: &Self, leaves_count: u64) -> PositionPath {
         PositionPath::new(self, *leaf, leaves_count)
     }
@@ -186,13 +194,15 @@ impl Position {
     // PRIVATE
 
     /// The child position of the current position given by the direction.
-    /// A direction of `-1` denotes the left child. A direction of `+1` denotes the right child. A
-    /// child position has a height less 1 than the current position.
+    /// A direction of `-1` denotes the left child. A direction of `+1` denotes
+    /// the right child. A child position has a height less 1 than the
+    /// current position.
     ///
-    /// A child position is calculated as a function of the current position's index and height, and
-    /// the supplied direction. The left child position has the in-order index arriving before the
-    /// current index; the right child position has the in-order index arriving after the current
-    /// index.
+    /// A child position is calculated as a function of the current position's
+    /// index and height, and the supplied direction. The left child
+    /// position has the in-order index arriving before the current index;
+    /// the right child position has the in-order index arriving after the
+    /// current index.
     fn child(self, direction: i64) -> Self {
         assert!(self.is_node());
         let shift = 1 << (self.height() - 1);
@@ -204,9 +214,10 @@ impl Position {
     /// Returns 0 if the index is left of its parent.
     /// Returns 1 if the index is right of its parent.
     ///
-    /// The orientation is determined by the reading the `n`th rightmost digit of the index's binary
-    /// value, where `n` = the height of the position + 1. The following table demonstrates the
-    /// relationships between a position's index, height, and orientation.
+    /// The orientation is determined by the reading the `n`th rightmost digit
+    /// of the index's binary value, where `n` = the height of the position
+    /// + 1. The following table demonstrates the relationships between a
+    /// position's index, height, and orientation.
     ///
     /// | Index (Dec) | Index (Bin) | Height | Orientation |
     /// |-------------|-------------|--------|-------------|
@@ -218,7 +229,6 @@ impl Position {
     /// |           5 |        0101 |      1 |           1 |
     /// |           9 |        1001 |      1 |           0 |
     /// |          13 |        1101 |      1 |           1 |
-    ///
     fn orientation(self) -> u8 {
         let shift = 1 << (self.height() + 1);
         (self.in_order_index() & shift != 0) as u8

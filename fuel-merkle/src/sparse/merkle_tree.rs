@@ -45,7 +45,8 @@ where
 
     pub fn update(&'a mut self, key: &Bytes32, data: &[u8]) -> Result<()> {
         if data.is_empty() {
-            // If the data is empty, this signifies a delete operation for the given key.
+            // If the data is empty, this signifies a delete operation for the
+            // given key.
             self.delete(key)?;
             return Ok(());
         }
@@ -68,7 +69,8 @@ where
 
     pub fn delete(&'a mut self, key: &Bytes32) -> Result<()> {
         if self.root() == *zero_sum() {
-            // The zero root signifies that all leaves are empty, including the given key.
+            // The zero root signifies that all leaves are empty, including the
+            // given key.
             return Ok(());
         }
 
@@ -123,21 +125,26 @@ where
         // Build the tree upwards starting with the requested leaf node.
         let mut current_node = requested_leaf_node.clone();
 
-        // If we are creating a new leaf node, the corresponding side node will be the first node in
-        // the path set. The side node will be the leaf node currently closest to the requested new
-        // leaf node. When creating a new leaf node, we must merge the leaf node with its
-        // corresponding side node to create a common ancestor. We then continue building the tree
-        // upwards from this ancestor node. This may require creating new placeholder side nodes, in
-        // addition to the existing side node set.
-        // If we are updating an existing leaf node, the leaf node we are updating is the first node
-        // in the path set. The side node set will already include all the side nodes needed to
-        // build up the tree from the requested leaf node, since these side nodes were already built
+        // If we are creating a new leaf node, the corresponding side node will
+        // be the first node in the path set. The side node will be the leaf
+        // node currently closest to the requested new leaf node. When creating
+        // a new leaf node, we must merge the leaf node with its corresponding
+        // side node to create a common ancestor. We then continue building the
+        // tree upwards from this ancestor node. This may require creating new
+        // placeholder side nodes, in addition to the existing side node set.
+        //
+        // If we are updating an existing leaf node, the leaf node we are
+        // updating is the first node in the path set. The side node set will
+        // already include all the side nodes needed to build up the tree from
+        // the requested leaf node, since these side nodes were already built
         // during the creation of the leaf node.
-        // We can determine if we are updating an existing leaf node, or if we are creating a new
-        // leaf node, by comparing the paths of the requested leaf node and the leaf node at the
-        // start of the path set. When the paths are equal, it means the leaf nodes occupy the same
-        // location, and we are updating an existing leaf. Otherwise, it means we are adding a new
-        // leaf node.
+        //
+        // We can determine if we are updating an existing leaf node, or if we
+        // are creating a new leaf node, by comparing the paths of the requested
+        // leaf node and the leaf node at the start of the path set. When the
+        // paths are equal, it means the leaf nodes occupy the same location,
+        // and we are updating an existing leaf. Otherwise, it means we are
+        // adding a new leaf node.
         if requested_leaf_node.leaf_key() != actual_leaf_node.leaf_key() {
             // Merge leaves
             if !actual_leaf_node.is_placeholder() {
@@ -184,31 +191,35 @@ where
         let path = requested_leaf_node.leaf_key();
         let mut side_nodes_iter = side_nodes.iter();
 
-        // The deleted leaf is replaced by a placeholder. Build the tree upwards starting with the
-        // placeholder.
+        // The deleted leaf is replaced by a placeholder. Build the tree upwards
+        // starting with the placeholder.
         let mut current_node = Node::create_placeholder();
 
-        // If the first side node is a leaf, it means the ancestor node is now parent to a
-        // placeholder (the deleted leaf node) and a leaf node (the first side node). We can
-        // immediately discard the ancestor node from further calculation and attach the orphaned
-        // leaf node to its next ancestor. Any subsequent ancestor nodes composed of this leaf node
-        // and a placeholder must be similarly discarded from further calculation. We then create a
-        // valid ancestor node for the orphaned leaf node by joining it with the earliest
-        // non-placeholder side node.
+        // If the first side node is a leaf, it means the ancestor node is now
+        // parent to a placeholder (the deleted leaf node) and a leaf node (the
+        // first side node). We can immediately discard the ancestor node from
+        // further calculation and attach the orphaned leaf node to its next
+        // ancestor. Any subsequent ancestor nodes composed of this leaf node
+        // and a placeholder must be similarly discarded from further
+        // calculation. We then create a valid ancestor node for the orphaned
+        // leaf node by joining it with the earliest non-placeholder side node.
         let first_side_node = side_nodes.first();
         if first_side_node.is_some() && first_side_node.unwrap().is_leaf() {
             side_nodes_iter.next();
             current_node = first_side_node.unwrap().clone();
 
-            // Advance the side node iterator to the next non-placeholder node. This may be either
-            // another leaf node or an internal node.
-            // If only placeholder nodes exist beyond the first leaf node, then that leaf node is,
-            // in fact, the new root node.
-            // Using `find(..)` advances the iterator beyond the next non-placeholder side node and
-            // returns it. Therefore, we must consume the side node at this point. If another
-            // non-placeholder node was found in the side node collection, merge it with the first
-            // side node. This guarantees that the current node will be an internal node, and
-            // not a leaf, by the time we start merging the remaining side nodes.
+            // Advance the side node iterator to the next non-placeholder node.
+            // This may be either another leaf node or an internal node. If only
+            // placeholder nodes exist beyond the first leaf node, then that
+            // leaf node is, in fact, the new root node.
+            //
+            // Using `find(..)` advances the iterator beyond the next
+            // non-placeholder side node and returns it. Therefore, we must
+            // consume the side node at this point. If another non-placeholder
+            // node was found in the side node collection, merge it with the
+            // first side node. This guarantees that the current node will be an
+            // internal node, and not a leaf, by the time we start merging the
+            // remaining side nodes.
             // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
             if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
                 current_node = Node::create_node_on_path(path, &current_node, side_node);
@@ -549,11 +560,12 @@ mod test {
 
     #[test]
     fn test_load_returns_a_valid_tree() {
-        // Instantiate a new key-value storage backing and populate it using a sparse Merkle tree.
-        // The root of the Merkle tree is the key that maps to the buffer of the root node in the
-        // storage. When loading a Merkle tree from storage, we need a reference to the storage
-        // object, as well as the root that allows us to look up the buffer of the root node. We
-        // will later use this storage backing and root to load a Merkle tree.
+        // Instantiate a new key-value storage backing and populate it using a sparse
+        // Merkle tree. The root of the Merkle tree is the key that maps to the buffer
+        // of the root node in the storage. When loading a Merkle tree from storage, we
+        // need a reference to the storage object, as well as the root that allows us to
+        // look up the buffer of the root node. We will later use this storage backing
+        // and root to load a Merkle tree.
         let (mut storage_to_load, root_to_load) = {
             let mut storage = StorageMap::<Bytes32, Buffer>::new();
             let mut tree = MerkleTree::<StorageError>::new(&mut storage);
@@ -566,8 +578,9 @@ mod test {
             (storage, root)
         };
 
-        // Generate an expected root for this test by using both the set of `update` data used when
-        // generating the loadable storage above and an additional set of `update` data.
+        // Generate an expected root for this test by using both the set of `update`
+        // data used when generating the loadable storage above and an additional set of
+        // `update` data.
         let expected_root = {
             let mut storage = StorageMap::<Bytes32, Buffer>::new();
             let mut tree = MerkleTree::<StorageError>::new(&mut storage);
@@ -588,10 +601,10 @@ mod test {
             // Create a Merkle tree by loading the generated storage and root.
             let mut tree =
                 MerkleTree::<StorageError>::load(&mut storage_to_load, &root_to_load).unwrap();
-            // Build up the loaded tree using the additional set of `update` data so its root
-            // matches the expected root. This verifies that the loaded tree has successfully
-            // wrapped the given storage backing and assumed the correct state so that future
-            // updates can be made seamlessly.
+            // Build up the loaded tree using the additional set of `update` data so its
+            // root matches the expected root. This verifies that the loaded tree has
+            // successfully wrapped the given storage backing and assumed the correct state
+            // so that future updates can be made seamlessly.
             tree.update(&sum(b"\x00\x00\x00\x05"), b"DATA").unwrap();
             tree.update(&sum(b"\x00\x00\x00\x06"), b"DATA").unwrap();
             tree.update(&sum(b"\x00\x00\x00\x07"), b"DATA").unwrap();

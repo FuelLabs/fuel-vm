@@ -3,29 +3,34 @@ use crate::common::Msb;
 
 /// #Path Iterator
 ///
-/// A naturally arising property of binary trees is that a leaf index encodes the unique path needed
-/// to traverse from the root of the tree to that leaf. The index's binary representation can be
-/// read left to right as a sequence of traversal instructions: a 0 bit means "descend left" and a 1
-/// bit means "descend right". By following the `x` bits composing the index, starting at the root,
-/// descending to the left child at each `0`, descending to the right child at each `1`, we arrive
-/// at the leaf position, having touched every node position along the path formed by this index.
-/// Note that this algorithm does not prescribe how to descend from one node to the next; it
-/// describes merely the direction in which to descend at each step.
+/// A naturally arising property of binary trees is that a leaf index encodes
+/// the unique path needed to traverse from the root of the tree to that leaf.
+/// The index's binary representation can be read left to right as a sequence of
+/// traversal instructions: a 0 bit means "descend left" and a 1 bit means "
+/// descend right". By following the `x` bits composing the index, starting at
+/// the root, descending to the left child at each `0`, descending to the right
+/// child at each `1`, we arrive at the leaf position, having touched every node
+/// position along the path formed by this index. Note that this algorithm does
+/// not prescribe how to descend from one node to the next; it describes merely
+/// the direction in which to descend at each step.
 ///
-/// Alternatively, this can be interpreted as reading the index's most significant bit (MSB) at an
-/// offset `n`: read the `n`th bit to the right of the MSB. Here, `n` is a given step in the tree
-/// traversal, starting at 0, and incrementing by 1 at each depth until the leaf is reached. The
-/// traversal path is then the list of nodes calculated by traversing the tree using the instruction
-/// (`0` or `1`) indicated at `x`<sub>`n`</sub>, where `x` is the index in binary representation,
-/// and `n` is the offset for each digit in `x` from the MSB.
+/// Alternatively, this can be interpreted as reading the index's most
+/// significant bit (MSB) at an offset `n`: read the `n`th bit to the right of
+/// the MSB. Here, `n` is a given step in the tree traversal, starting at 0, and
+/// incrementing by 1 at each depth until the leaf is reached. The
+/// traversal path is then the list of nodes calculated by traversing the tree
+/// using the instruction (`0` or `1`) indicated at `x`<sub>`n`</sub>, where `x`
+/// is the index in binary representation, and `n` is the offset for each digit
+/// in `x` from the MSB.
 ///
 /// Reversing this path gives us the path from the leaf to the root.
 ///
-/// Imagine a 3-bit integer type `u3` underpinning a tree's leaf indices. 3 bits give our tree a
-/// maximum height of 3, and a maximum number of leaf nodes 2<sup>3</sup> = 8. For demonstration,
-/// internal nodes are numbered using in-order indices (note that this would require an integer type
-/// with 4 bits or more in practice). In-order indexing provides a deterministic way to descend from
-/// one node to the next (see [Position](crate::common::Position)).
+/// Imagine a 3-bit integer type `u3` underpinning a tree's leaf indices. 3 bits
+/// give our tree a maximum height of 3, and a maximum number of leaf nodes
+/// 2<sup>3</sup> = 8. For demonstration, internal nodes are numbered using
+/// in-order indices (note that this would require an integer type with 4 bits
+/// or more in practice). In-order indexing provides a deterministic way to
+/// descend from one node to the next (see [Position](crate::common::Position)).
 ///
 /// ```text
 ///                             07
@@ -44,27 +49,28 @@ use crate::common::Msb;
 ///     Leaf idx:  0   1   2   3   4   5   6   7
 /// ```
 ///
-/// Let us now find the path to leaf with index `6`. In the above diagram, this is the seventh leaf
-/// in the leaf layer. A priori, we can see that the path from the root to this leaf is represented
-/// by the following list of in-order indices: `07, 11, 13, 12` (note that the leaf index that
-/// corresponds to the in-order index `12` is `6`).
+/// Let us now find the path to leaf with index `6`. In the above diagram, this
+/// is the seventh leaf in the leaf layer. A priori, we can see that the path
+/// from the root to this leaf is represented by the following list of in-order
+/// indices: `07, 11, 13, 12` (note that the leaf index that corresponds to the
+/// in-order index `12` is `6`).
 ///
 /// ```text
 /// 0d6: u3 = 0b110
 ///         = Right, Right, Left
 /// ```
 ///
-/// Starting at the tree's root at index `07`, we can follow the instructions encoded by the binary
-/// representation of leaf `6` (`0b110`). In combination with our in-order index rules for
-/// descending nodes, we evaluate the following:
-/// 1. The first bit is `1`; move right from `07` to `11`.
+/// Starting at the tree's root at index `07`, we can follow the instructions
+/// encoded by the binary representation of leaf `6` (`0b110`). In combination
+/// with our in-order index rules for descending nodes, we evaluate the
+/// following: 1. The first bit is `1`; move right from `07` to `11`.
 /// 2. The next bit is `1`; move right from `11` to `13`.
 /// 3. The next and final bit is `0`; move left from `13` to `12`.
 ///
-/// We have arrived at the desired leaf position with in-order index `12` and leaf index `6`.
-/// Indeed, following the instructions at each bit has produced the same list of positional indices
-/// that we observed earlier: `07, 11, 13, 12`.
-///
+/// We have arrived at the desired leaf position with in-order index `12` and
+/// leaf index `6`. Indeed, following the instructions at each bit has produced
+/// the same list of positional indices that we observed earlier: `07, 11, 13,
+/// 12`.
 pub struct PathIter<T> {
     leaf: T,
     current: Option<(T, T)>,
@@ -80,19 +86,21 @@ where
 
         // The initial offset from the MSB.
         //
-        // The offset from the MSB indicates which bit to read when deducing the path from the root
-        // to the leaf. As we descend down the tree, increasing the traversal depth, we increment
-        // this offset and read the corresponding bit to get the next traversal instruction.
+        // The offset from the MSB indicates which bit to read when deducing the
+        // path from the root to the leaf. As we descend down the tree,
+        // increasing the traversal depth, we increment this offset and read the
+        // corresponding bit to get the next traversal instruction.
         //
-        // In the general case, we start by reading the first bit of the path at offset 0. This
-        // happens when the path fills its allocated memory; e.g., a path of 256 instructions is
-        // encoded within a 256 bit allocation for the leaf key. This also means that the key size
-        // in bits is equal to the maximum height of the tree.
+        // In the general case, we start by reading the first bit of the path at
+        // offset 0. This happens when the path fills its allocated memory;
+        // e.g., a path of 256 instructions is encoded within a 256 bit
+        // allocation for the leaf key. This also means that the key size in
+        // bits is equal to the maximum height of the tree.
         //
-        // In the case that the length of the path is less than the number of bits in the key, the
-        // initial offset from the MSB must be augmented to accommodate the shortened path. This
-        // occurs when the key is allocated with a larger address space to reduce collisions of
-        // node addresses.
+        // In the case that the length of the path is less than the number of
+        // bits in the key, the initial offset from the MSB must be augmented to
+        // accommodate the shortened path. This occurs when the key is allocated
+        // with a larger address space to reduce collisions of node addresses.
         //
         // E.g,
         // With an 8-bit key and heights 1 through 7:

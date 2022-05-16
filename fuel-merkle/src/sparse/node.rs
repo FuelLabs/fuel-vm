@@ -23,7 +23,6 @@ const RIGHT: u8 = 1;
 /// `04 - 05`: Prefix (1 byte, 0x01),
 /// `05 - 37`: Left child key (32 bytes),
 /// `37 - 69`: Right child key (32 bytes)
-///
 const BUFFER_SIZE: usize =
     size_of::<Bytes4>() + size_of::<Bytes1>() + size_of::<Bytes32>() + size_of::<Bytes32>();
 pub type Buffer = [u8; BUFFER_SIZE];
@@ -60,9 +59,10 @@ impl Node {
 
     pub fn create_node_on_path(path: &Bytes32, path_node: &Node, side_node: &Node) -> Self {
         if path_node.is_leaf() && side_node.is_leaf() {
-            // When joining two leaves, the joined node is found where the paths of the two leaves
-            // diverge. The joined node may be a direct parent of the leaves or an ancestor multiple
-            // generations above the leaves.
+            // When joining two leaves, the joined node is found where the paths
+            // of the two leaves diverge. The joined node may be a direct parent
+            // of the leaves or an ancestor multiple generations above the
+            // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
             let parent_height = (Node::max_height() - parent_depth) as u32;
@@ -73,9 +73,9 @@ impl Node {
             };
             parent_node
         } else {
-            // When joining two nodes, or a node and a leaf, the joined node is the direct parent
-            // of the node with the greater height and an ancestor of the node with the lesser
-            // height.
+            // When joining two nodes, or a node and a leaf, the joined node is
+            // the direct parent of the node with the greater height and an
+            // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
             let parent_height = std::cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height as usize;
@@ -103,9 +103,10 @@ impl Node {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
-        // If either of the nodes are placeholders, the common path length is defined to be 0. This
-        // is needed to prevent a 0 bit in the placeholder's key from producing an erroneous match
-        // with a 0 bit in the leaf's key.
+        // If either of the nodes are placeholders, the common path length is
+        // defined to be 0. This is needed to prevent a 0 bit in the
+        // placeholder's key from producing an erroneous match with a 0 bit in
+        // the leaf's key.
         if self.is_placeholder() || other.is_placeholder() {
             0
         } else {

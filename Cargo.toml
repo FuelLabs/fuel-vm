@@ -65,6 +65,11 @@ path = "tests/code_coverage.rs"
 required-features = ["random", "profile-coverage"]
 
 [[test]]
+name = "test-serde-profile"
+path = "tests/serde_profile.rs"
+required-features = ["random", "profile-coverage", "profile-gas"]
+
+[[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
 required-features = ["random"]

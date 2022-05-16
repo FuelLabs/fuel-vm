@@ -11,12 +11,66 @@ use crate::prelude::*;
 
 /// Location of an instructing collected during runtime
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InstructionLocation {
     /// Context, i.e. current contract. None if running a script.
     context: Option<ContractId>,
     /// Offset from the IS register
     offset: u64,
+}
+
+#[cfg(feature = "serde-types")]
+impl serde::Serialize for InstructionLocation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if let Some(ctx) = self.context {
+            serializer.serialize_str(&format!("{}:{}", ctx, self.offset))
+        } else {
+            serializer.serialize_str(&format!("{}", self.offset))
+        }
+    }
+}
+
+#[cfg(feature = "serde-types")]
+struct InstructionLocationVisitor;
+
+#[cfg(feature = "serde-types")]
+impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
+    type Value = InstructionLocation;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("A valid instruction location")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        use std::str::FromStr;
+
+        Ok(if let Some((l, r)) = value.split_once(':') {
+            let context = Some(
+                ContractId::from_str(l)
+                    .map_err(|_| serde::de::Error::custom("Invalid ContractId in InstructionLocation"))?,
+            );
+            let offset = r.parse().unwrap();
+            InstructionLocation { context, offset }
+        } else {
+            let offset = value.parse().unwrap();
+            InstructionLocation { context: None, offset }
+        })
+    }
+}
+
+#[cfg(feature = "serde-types")]
+impl<'de> serde::Deserialize<'de> for InstructionLocation {
+    fn deserialize<D>(deserializer: D) -> Result<InstructionLocation, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(InstructionLocationVisitor)
+    }
 }
 
 impl InstructionLocation {

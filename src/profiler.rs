@@ -35,7 +35,7 @@ impl serde::Serialize for InstructionLocation {
 #[cfg(feature = "serde")]
 struct InstructionLocationVisitor;
 
-#[cfg(feature = "serde-types")]
+#[cfg(feature = "serde")]
 impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
     type Value = InstructionLocation;
 

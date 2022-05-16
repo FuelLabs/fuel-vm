@@ -29,6 +29,7 @@ rand = { version = "0.8", optional = true }
 [dev-dependencies]
 fuel-tx = { version = "0.10", features = ["random"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
+serde_json = "1.0"
 
 [features]
 debug = []
@@ -63,6 +64,11 @@ required-features = ["random", "profile-gas"]
 name = "test-code-coverage"
 path = "tests/code_coverage.rs"
 required-features = ["random", "profile-coverage"]
+
+[[test]]
+name = "test-serde-profile"
+path = "tests/serde_profile.rs"
+required-features = ["random", "profile-coverage", "profile-gas", "serde"]
 
 [[test]]
 name = "test-encoding"

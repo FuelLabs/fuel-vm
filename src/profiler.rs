@@ -18,7 +18,7 @@ pub struct InstructionLocation {
     offset: u64,
 }
 
-#[cfg(feature = "serde-types")]
+#[cfg(feature = "serde")]
 impl serde::Serialize for InstructionLocation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

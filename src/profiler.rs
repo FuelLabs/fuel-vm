@@ -63,7 +63,7 @@ impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
     }
 }
 
-#[cfg(feature = "serde-types")]
+#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for InstructionLocation {
     fn deserialize<D>(deserializer: D) -> Result<InstructionLocation, D::Error>
     where

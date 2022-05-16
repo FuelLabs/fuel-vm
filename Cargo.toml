@@ -12,12 +12,12 @@ description = "FuelVM interpreter."
 
 [dependencies]
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.4"
-fuel-crypto = "0.4"
+fuel-asm = "0.5"
+fuel-crypto = "0.5"
 fuel-merkle = "0.1"
 fuel-storage = "0.1"
-fuel-tx = "0.9"
-fuel-types = "0.3"
+fuel-tx = "0.10"
+fuel-types = "0.5"
 itertools = "0.10"
 secp256k1 = { version = "0.20", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -27,8 +27,8 @@ tracing = "0.1"
 rand = { version = "0.8", optional = true }
 
 [dev-dependencies]
-fuel-tx = { version = "0.9", features = ["random"] }
-fuel-vm = { path = ".", default-features = false, features = ["test-helpers"]}
+fuel-tx = { version = "0.10", features = ["random"] }
+fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 
 [features]
 debug = []
@@ -36,7 +36,7 @@ profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-types/random", "fuel-tx/random", "rand"]
-serde-types = ["fuel-asm/serde-types", "fuel-types/serde-types", "fuel-tx/serde-types", "serde"]
+serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
 test-helpers = ["random"]
 
 [[test]]

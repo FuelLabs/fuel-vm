@@ -100,7 +100,6 @@ impl From<RuntimeError> for InterpreterError {
 }
 
 #[derive(Debug, Error)]
-#[cfg_attr(feature = "serde-types-minimal", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {

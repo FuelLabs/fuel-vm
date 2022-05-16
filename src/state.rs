@@ -65,7 +65,7 @@ impl From<DebugEval> for ExecuteState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde-types", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Resulting state of a transaction/program execution.
 pub enum ProgramState {
     /// The transaction returned a [`Word`].

@@ -36,7 +36,7 @@ impl<S> Interpreter<S> {
 
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
-    pub fn with_profiling(mut self, receiver: Box<dyn ProfileReceiver>) -> Self {
+    pub fn with_profiling(mut self, receiver: Box<dyn ProfileReceiver + Send + Sync>) -> Self {
         self.profiler.set_receiver(receiver);
         self
     }

@@ -160,7 +160,7 @@ impl ProfileReceiver for StderrReceiver {
 #[derive(Default, Clone)]
 pub struct Profiler {
     /// Settings
-    receiver: Option<Box<dyn ProfileReceiver>>,
+    receiver: Option<Box<dyn ProfileReceiver + Send + Sync>>,
     /// Collected profiling data
     data: ProfilingData,
 }
@@ -174,7 +174,7 @@ impl Profiler {
     }
 
     /// Sets profiling data receiver
-    pub fn set_receiver(&mut self, receiver: Box<dyn ProfileReceiver>) {
+    pub fn set_receiver(&mut self, receiver: Box<dyn ProfileReceiver + Send + Sync>) {
         self.receiver = Some(receiver);
     }
 

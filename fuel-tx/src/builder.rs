@@ -1,10 +1,9 @@
-use crate::{Input, Output, StorageSlot, Transaction, UtxoId, Witness};
+use crate::{Input, Output, StorageSlot, Transaction, Witness};
 
 use fuel_crypto::SecretKey;
-use fuel_types::{AssetId, ContractId, Salt, Word};
+use fuel_types::{ContractId, Salt, Word};
 
 use alloc::vec::Vec;
-use core::mem;
 
 #[derive(Debug, Clone)]
 pub struct TransactionBuilder<'a> {
@@ -60,6 +59,10 @@ impl<'a> TransactionBuilder<'a> {
         Self { tx, sign_keys }
     }
 
+    pub fn sign_keys(&self) -> &[&SecretKey] {
+        self.sign_keys.as_slice()
+    }
+
     pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
         self.tx.set_gas_price(gas_price);
 
@@ -84,28 +87,20 @@ impl<'a> TransactionBuilder<'a> {
         self
     }
 
+    #[cfg(feature = "std")]
     pub fn add_unsigned_coin_input(
         &mut self,
-        utxo_id: UtxoId,
+        utxo_id: crate::UtxoId,
         secret: &'a SecretKey,
         amount: Word,
-        asset_id: AssetId,
+        asset_id: fuel_types::AssetId,
         maturity: Word,
-        predicate: Vec<u8>,
-        predicate_data: Vec<u8>,
     ) -> &mut Self {
         let pk = secret.public_key();
 
         self.sign_keys.push(secret);
-        self.tx.add_unsigned_coin_input(
-            utxo_id,
-            &pk,
-            amount,
-            asset_id,
-            maturity,
-            predicate,
-            predicate_data,
-        );
+        self.tx
+            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, maturity);
 
         self
     }
@@ -140,8 +135,9 @@ impl<'a> TransactionBuilder<'a> {
         self
     }
 
+    #[cfg(feature = "std")]
     pub fn finalize(&mut self) -> Transaction {
-        let mut tx = mem::take(&mut self.tx);
+        let mut tx = core::mem::take(&mut self.tx);
 
         self.sign_keys.iter().for_each(|k| tx.sign_inputs(k));
 

@@ -1,6 +1,8 @@
 use super::{Input, Output, Transaction, Witness};
 use crate::consts::*;
+use crate::transaction::internals;
 
+use fuel_crypto::Hasher;
 use fuel_types::{AssetId, Word};
 
 #[cfg(feature = "std")]
@@ -35,7 +37,7 @@ impl Input {
         txhash: &Bytes32,
         witnesses: &[Witness],
     ) -> Result<(), ValidationError> {
-        if let Input::Coin {
+        if let Input::CoinSigned {
             witness_index,
             owner,
             ..
@@ -76,21 +78,33 @@ impl Input {
         witnesses: &[Witness],
     ) -> Result<(), ValidationError> {
         match self {
-            Self::Coin { predicate, .. } if predicate.len() > MAX_PREDICATE_LENGTH as usize => {
+            Self::CoinPredicate { predicate, .. }
+                if predicate.is_empty() || predicate.len() > MAX_PREDICATE_LENGTH as usize =>
+            {
                 Err(ValidationError::InputCoinPredicateLength { index })
             }
 
-            Self::Coin { predicate_data, .. }
+            Self::CoinPredicate { predicate_data, .. }
                 if predicate_data.len() > MAX_PREDICATE_DATA_LENGTH as usize =>
             {
                 Err(ValidationError::InputCoinPredicateDataLength { index })
             }
 
-            Self::Coin { witness_index, .. } if *witness_index as usize >= witnesses.len() => {
+            Self::CoinPredicate {
+                owner, predicate, ..
+            } if Hasher::hash(predicate.as_slice()).as_ref() != owner.as_ref() => {
+                Err(ValidationError::InputCoinPredicateOwner { index })
+            }
+
+            Self::CoinPredicate { .. } => Ok(()),
+
+            Self::CoinSigned { witness_index, .. }
+                if *witness_index as usize >= witnesses.len() =>
+            {
                 Err(ValidationError::InputCoinWitnessIndexBounds { index })
             }
 
-            Self::Coin { .. } => Ok(()),
+            Self::CoinSigned { .. } => Ok(()),
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex = inputContract.index
             Self::Contract { .. }
@@ -195,51 +209,28 @@ impl Transaction {
                 Ok(())
             })?;
 
-        // check for duplicate coin inputs
+        // Check for duplicated input utxo id
+        let duplicated_utxo_id = self
+            .inputs()
+            .iter()
+            .filter_map(|i| i.is_coin().then(|| i.utxo_id()));
+
+        if let Some(utxo_id) = internals::next_duplicate(duplicated_utxo_id).copied() {
+            return Err(ValidationError::DuplicateInputUtxoId { utxo_id });
+        }
+
+        // Check for duplicated input contract id
+        let duplicated_contract_id = self.inputs().iter().filter_map(Input::contract_id);
+
+        if let Some(contract_id) = internals::next_duplicate(duplicated_contract_id).copied() {
+            return Err(ValidationError::DuplicateInputContractId { contract_id });
+        }
+
+        // Validate the inputs without checking signature
         self.inputs()
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                match input {
-                    Input::Coin { utxo_id, .. } => {
-                        if self
-                            .inputs()
-                            .iter()
-                            .filter(|input| input.is_coin())
-                            .filter(|other_input| other_input.utxo_id() == utxo_id)
-                            .count()
-                            > 1
-                        {
-                            return Err(ValidationError::DuplicateInputUtxoId {
-                                utxo_id: *input.utxo_id(),
-                            });
-                        }
-                    }
-                    Input::Contract { contract_id, .. } => {
-                        if self
-                            .inputs()
-                            .iter()
-                            .filter(|other_input| {
-                                if let Input::Contract {
-                                    contract_id: other_contract_id,
-                                    ..
-                                } = other_input
-                                {
-                                    other_contract_id == contract_id
-                                } else {
-                                    false
-                                }
-                            })
-                            .count()
-                            > 1
-                        {
-                            return Err(ValidationError::DuplicateInputContractId {
-                                contract_id: *contract_id,
-                            });
-                        }
-                    }
-                }
-
                 input.validate_without_signature(index, self.outputs(), self.witnesses())
             })?;
 

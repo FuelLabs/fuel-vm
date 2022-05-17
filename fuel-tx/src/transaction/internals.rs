@@ -1,7 +1,26 @@
 use crate::{Input, Output, Transaction, Witness};
 
-use alloc::vec::Vec;
 use fuel_asm::Word;
+use itertools::Itertools;
+
+use alloc::vec::Vec;
+use core::hash::Hash;
+
+pub(crate) fn next_duplicate<U>(iter: impl Iterator<Item = U>) -> Option<U>
+where
+    U: PartialEq + Ord + Copy + Hash,
+{
+    #[cfg(not(feature = "std"))]
+    return iter
+        .sorted()
+        .as_slice()
+        .windows(2)
+        .filter_map(|u| (u[0] == u[1]).then(|| u[0]))
+        .next();
+
+    #[cfg(feature = "std")]
+    return iter.duplicates().next();
+}
 
 #[cfg(feature = "internals")]
 impl Transaction {

@@ -66,7 +66,7 @@ impl Distribution<Witness> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Witness {
         let len = rng.gen_range(0..512);
 
-        let mut data = vec![0u8; len];
+        let mut data = alloc::vec![0u8; len];
         rng.fill_bytes(data.as_mut_slice());
 
         data.into()

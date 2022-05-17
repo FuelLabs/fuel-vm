@@ -1,12 +1,11 @@
-use fuel_crypto::SecretKey;
-use fuel_tx::consts::*;
+use fuel_crypto::{Hasher, SecretKey};
 use fuel_tx::*;
-use fuel_tx_test_helpers::TransactionFactory;
+use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes, TransactionFactory};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 #[test]
-fn coin() {
+fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut factory = TransactionFactory::from_seed(3493);
@@ -21,7 +20,7 @@ fn coin() {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| match input {
-                Input::Coin { .. } => input.validate(index, &txhash, outputs, witnesses),
+                Input::CoinSigned { .. } => input.validate(index, &txhash, outputs, witnesses),
                 _ => Ok(()),
             })
     }
@@ -34,8 +33,6 @@ fn coin() {
         amount: Word,
         asset_id: AssetId,
         maturity: Word,
-        predicate: Vec<u8>,
-        predicate_data: Vec<u8>,
     ) -> Result<(), ValidationError>
     where
         R: Rng,
@@ -46,15 +43,7 @@ fn coin() {
         let secret = SecretKey::random(rng);
         let public = secret.public_key();
 
-        tx.add_unsigned_coin_input(
-            utxo_id,
-            &public,
-            amount,
-            asset_id,
-            maturity,
-            predicate,
-            predicate_data,
-        );
+        tx.add_unsigned_coin_input(utxo_id, &public, amount, asset_id, maturity);
 
         tx.sign_inputs(&secret);
         keys.iter().for_each(|sk| tx.sign_inputs(sk));
@@ -71,90 +60,19 @@ fn coin() {
     let amount = rng.gen();
     let asset_id = rng.gen();
     let maturity = rng.gen();
-    sign_coin_and_validate(
-        rng,
-        txs.by_ref(),
-        utxo_id,
-        amount,
-        asset_id,
-        maturity,
-        vec![0u8; MAX_PREDICATE_LENGTH as usize],
-        vec![],
-    )
-    .expect("Failed to validate transaction");
+    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
+        .expect("Failed to validate transaction");
 
     let utxo_id = rng.gen();
     let amount = rng.gen();
     let asset_id = rng.gen();
     let maturity = rng.gen();
-    sign_coin_and_validate(
-        rng,
-        txs.by_ref(),
-        utxo_id,
-        amount,
-        asset_id,
-        maturity,
-        vec![],
-        vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize],
-    )
-    .expect("Failed to validate transaction");
-
-    let utxo_id = rng.gen();
-    let amount = rng.gen();
-    let asset_id = rng.gen();
-    let maturity = rng.gen();
-    let err = sign_coin_and_validate(
-        rng,
-        txs.by_ref(),
-        utxo_id,
-        amount,
-        asset_id,
-        maturity,
-        vec![0u8; MAX_PREDICATE_LENGTH as usize + 1],
-        vec![],
-    )
-    .err()
-    .expect("Expected failure");
-
-    assert!(matches!(
-        err,
-        ValidationError::InputCoinPredicateLength { .. }
-    ));
-
-    let utxo_id = rng.gen();
-    let amount = rng.gen();
-    let asset_id = rng.gen();
-    let maturity = rng.gen();
-    let err = sign_coin_and_validate(
-        rng,
-        txs.by_ref(),
-        utxo_id,
-        amount,
-        asset_id,
-        maturity,
-        vec![],
-        vec![0u8; MAX_PREDICATE_DATA_LENGTH as usize + 1],
-    )
-    .err()
-    .expect("Expected failure");
-
-    assert!(matches!(
-        err,
-        ValidationError::InputCoinPredicateDataLength { .. }
-    ));
+    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
+        .expect("Failed to validate transaction");
 
     let mut tx = Transaction::default();
 
-    let input = Input::coin(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-    );
+    let input = Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -164,6 +82,65 @@ fn coin() {
         err,
         ValidationError::InputCoinWitnessIndexBounds { .. }
     ));
+}
+
+#[test]
+fn coin_predicate() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.gen();
+
+    let predicate = generate_nonempty_bytes(rng);
+    let owner = (*Hasher::hash(predicate.as_slice())).into();
+
+    Input::coin_predicate(
+        rng.gen(),
+        owner,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[])
+    .unwrap();
+
+    let predicate = vec![];
+    let owner = (*Hasher::hash(predicate.as_slice())).into();
+
+    let err = Input::coin_predicate(
+        rng.gen(),
+        owner,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[])
+    .err()
+    .unwrap();
+
+    assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
+
+    let mut predicate = generate_nonempty_bytes(rng);
+    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    predicate[0] = predicate[0].wrapping_add(1);
+
+    let err = Input::coin_predicate(
+        rng.gen(),
+        owner,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[])
+    .err()
+    .unwrap();
+
+    assert_eq!(ValidationError::InputCoinPredicateOwner { index: 1 }, err);
 }
 
 #[test]
@@ -222,48 +199,67 @@ fn contract() {
 #[test]
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let input_utxo_id: UtxoId = rng.gen();
-    let input = Input::coin(
-        input_utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        0,
-        vec![],
-        vec![],
-    );
-    let tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(input.clone())
-        .add_input(input)
-        .finalize();
+    let utxo_id = rng.gen();
 
-    let err = tx
+    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+
+    let err = TransactionBuilder::script(vec![], vec![])
+        .add_input(a)
+        .add_input(b)
+        .add_witness(rng.gen())
+        .finalize()
         .validate_without_signature(0)
         .err()
         .expect("Expected validation failure");
-    assert!(matches!(
-        err,
-        ValidationError::DuplicateInputUtxoId { utxo_id } if utxo_id == input_utxo_id
-    ))
+
+    assert_eq!(err, ValidationError::DuplicateInputUtxoId { utxo_id });
 }
 
 #[test]
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let input_contract_id: ContractId = rng.gen();
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), input_contract_id);
-    let tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(input.clone())
-        .add_input(input)
-        .finalize();
+    let contract_id = rng.gen();
 
-    let err = tx
+    let a = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let b = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
+
+    let o = Output::contract(0, rng.gen(), rng.gen());
+    let p = Output::contract(1, rng.gen(), rng.gen());
+
+    let err = TransactionBuilder::script(vec![], vec![])
+        .add_input(a)
+        .add_input(b)
+        .add_output(o)
+        .add_output(p)
+        .finalize()
         .validate_without_signature(0)
         .err()
         .expect("Expected validation failure");
-    assert!(matches!(
+
+    assert_eq!(
         err,
-        ValidationError::DuplicateInputContractId { contract_id } if contract_id == input_contract_id
-    ))
+        ValidationError::DuplicateInputContractId { contract_id }
+    );
+}
+
+#[test]
+fn transaction_with_duplicate_contract_utxo_id_is_valid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let input_utxo_id: UtxoId = rng.gen();
+
+    let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
+    let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
+
+    let o = Output::contract(0, rng.gen(), rng.gen());
+    let p = Output::contract(1, rng.gen(), rng.gen());
+
+    TransactionBuilder::script(vec![], vec![])
+        .add_input(a)
+        .add_input(b)
+        .add_output(o)
+        .add_output(p)
+        .finalize()
+        .validate_without_signature(0)
+        .expect("Duplicated UTXO id is valid for contract input");
 }

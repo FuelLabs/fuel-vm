@@ -31,7 +31,7 @@ impl Transaction {
 
     /// For a transaction of type `Create`, return the offset of the data
     /// relative to the serialized transaction for a given index of inputs,
-    /// if this input is of type `Coin`.
+    /// if this input is of type `CoinPredicate`.
     pub fn input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
         self.metadata()
             .map(|m| m.input_coin_predicate_offset(index))
@@ -41,7 +41,7 @@ impl Transaction {
     pub(crate) fn _input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
         self.input_offset(index)
             .map(|ofs| ofs + Input::coin_predicate_offset())
-            .filter(|_| self.inputs()[index].is_coin())
+            .filter(|_| self.inputs()[index].is_coin_predicate())
     }
 
     /// Return the serialized bytes offset of the input with the provided index

@@ -172,15 +172,7 @@ fn max_iow() {
         .gas_price(rng.gen())
         .gas_limit(MAX_GAS_PER_TX)
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            asset_id,
-            maturity,
-            generate_bytes(rng),
-            generate_bytes(rng),
-        );
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), asset_id, maturity);
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
@@ -211,15 +203,7 @@ fn max_iow() {
 
     let asset_id: AssetId = rng.gen();
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            rng.gen(),
-            k,
-            rng.gen(),
-            asset_id,
-            maturity,
-            generate_bytes(rng),
-            generate_bytes(rng),
-        );
+        builder.add_unsigned_coin_input(rng.gen(), k, rng.gen(), asset_id, maturity);
     });
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
@@ -249,15 +233,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            rng.gen(),
-            k,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            generate_bytes(rng),
-            generate_bytes(rng),
-        );
+        builder.add_unsigned_coin_input(rng.gen(), k, rng.gen(), rng.gen(), maturity);
     });
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
@@ -290,15 +266,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            rng.gen(),
-            k,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            generate_bytes(rng),
-            generate_bytes(rng),
-        );
+        builder.add_unsigned_coin_input(rng.gen(), k, rng.gen(), rng.gen(), maturity);
     });
 
     while builder.outputs().len() < 1 + MAX_OUTPUTS as usize {
@@ -331,15 +299,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            rng.gen(),
-            k,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            generate_bytes(rng),
-            generate_bytes(rng),
-        );
+        builder.add_unsigned_coin_input(rng.gen(), k, rng.gen(), rng.gen(), maturity);
     });
 
     while builder.outputs().len() < MAX_OUTPUTS as usize {
@@ -376,24 +336,8 @@ fn output_change_asset_id() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            a,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            b,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), b))
         .finalize()
@@ -404,24 +348,8 @@ fn output_change_asset_id() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            a,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            b,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .finalize()
@@ -438,24 +366,8 @@ fn output_change_asset_id() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            a,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            b,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
         .finalize()
@@ -472,24 +384,8 @@ fn output_change_asset_id() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            a,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            b,
-            rng.gen(),
-            generate_bytes(rng),
-            generate_bytes(rng),
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), b, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
         .finalize()
@@ -520,15 +416,7 @@ fn script() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        asset_id,
-        rng.gen(),
-        generate_bytes(rng),
-        generate_bytes(rng),
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), asset_id, rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
     .finalize()
     .validate(block_height)
@@ -541,15 +429,7 @@ fn script() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        asset_id,
-        rng.gen(),
-        generate_bytes(rng),
-        generate_bytes(rng),
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .validate(block_height)
@@ -568,15 +448,7 @@ fn script() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        asset_id,
-        rng.gen(),
-        generate_bytes(rng),
-        generate_bytes(rng),
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .validate(block_height)
@@ -592,15 +464,7 @@ fn script() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        asset_id,
-        rng.gen(),
-        generate_bytes(rng),
-        generate_bytes(rng),
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .validate(block_height)
@@ -624,15 +488,7 @@ fn create() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            vec![],
-            vec![],
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), rng.gen(), maturity)
         .finalize()
         .validate(block_height)
         .expect("Failed to validate tx");
@@ -657,15 +513,7 @@ fn create() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            vec![],
-            vec![],
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), rng.gen(), maturity)
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
         .validate(block_height)
@@ -681,24 +529,8 @@ fn create() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret_b,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            vec![],
-            vec![],
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
+        .add_unsigned_coin_input(rng.gen(), &secret_b, rng.gen(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
@@ -717,24 +549,8 @@ fn create() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret_b,
-            rng.gen(),
-            asset_id,
-            maturity,
-            vec![],
-            vec![],
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
+        .add_unsigned_coin_input(rng.gen(), &secret_b, rng.gen(), asset_id, maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
@@ -751,24 +567,8 @@ fn create() {
         .gas_limit(MAX_GAS_PER_TX)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret,
-            rng.gen(),
-            AssetId::default(),
-            maturity,
-            vec![],
-            vec![],
-        )
-        .add_unsigned_coin_input(
-            rng.gen(),
-            &secret_b,
-            rng.gen(),
-            rng.gen(),
-            maturity,
-            vec![],
-            vec![],
-        )
+        .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
+        .add_unsigned_coin_input(rng.gen(), &secret_b, rng.gen(), rng.gen(), maturity)
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
@@ -790,15 +590,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -813,15 +605,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -868,15 +652,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -897,15 +673,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -927,15 +695,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -965,15 +725,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -994,15 +746,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)
@@ -1025,15 +769,7 @@ fn create() {
     .gas_limit(MAX_GAS_PER_TX)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        rng.gen(),
-        &secret,
-        rng.gen(),
-        AssetId::default(),
-        maturity,
-        vec![],
-        vec![],
-    )
+    .add_unsigned_coin_input(rng.gen(), &secret, rng.gen(), AssetId::default(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .validate(block_height)

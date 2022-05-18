@@ -71,8 +71,8 @@ pub enum PanicReason {
     ExpectedOutputVariable = 0x1d,
     /// The expected context of the stack parent is internal.
     ExpectedParentInternalContext = 0x1e,
-    /// RESERV1F
-    RESERV1F = 0x1f,
+    /// The jump instruction cannot move backwards in predicate verification.
+    IllegalJump = 0x1f,
     /// RESERV20
     RESERV20 = 0x20,
     /// RESERV21

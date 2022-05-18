@@ -234,6 +234,7 @@ fn panic_reason_description() {
         PanicReason::TransferAmountCannotBeZero,
         PanicReason::ExpectedOutputVariable,
         PanicReason::ExpectedParentInternalContext,
+        PanicReason::IllegalJump,
     ];
 
     let pd = InstructionResult::success();

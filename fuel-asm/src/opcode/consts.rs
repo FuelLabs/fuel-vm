@@ -2,6 +2,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum OpcodeRepr {
     /// RESERV00
     RESERV00 = 0x00,

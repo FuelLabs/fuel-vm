@@ -7,6 +7,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
+#[non_exhaustive]
 /// Panic reason representation for the interpreter.
 pub enum PanicReason {
     /// Representation reserved per protocol.

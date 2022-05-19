@@ -309,32 +309,78 @@ fn muli() {
 
 #[test]
 fn sll() {
-    todo!()
+    alu(&[(0x10, 128), (0x11, 2)], Opcode::SLL(0x12, 0x10, 0x11), 0x12, 512);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 2),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::SLL(0x10, 0x10, 0x11),
+        ],
+        0x10,
+        (Word::MAX as u128) << 2,
+    );
 }
 
 #[test]
 fn slli() {
-    todo!()
+    alu(&[(0x10, 128)], Opcode::SLLI(0x11, 0x10, 2), 0x11, 512);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::SLLI(0x10, 0x10, 2),
+        ],
+        0x10,
+        (Word::MAX as u128) << 2,
+    );
 }
 
 #[test]
 fn srl() {
-    todo!()
+    alu(&[(0x10, 128), (0x11, 2)], Opcode::SRL(0x12, 0x10, 0x11), 0x12, 32);
+    // TODO: unsure what the expected overflow behavior is for shift right, seems like it shouldn't
+    //       interact with REG_OF at all really
+    // alu_overflow(
+    //     &[
+    //         Opcode::MOVE(0x10, REG_ZERO),
+    //         Opcode::MOVI(0x11, 2),
+    //         Opcode::SRL(0x10, 0x10, 0x11),
+    //     ],
+    //     0x10,
+    //     (0 as u128).overflowing_shr(2).0,
+    // );
 }
 
 #[test]
 fn srli() {
-    todo!()
+    alu(&[(0x10, 128)], Opcode::SRLI(0x11, 0x10, 2), 0x11, 32);
+    // TODO: unsure what the expected overflow behavior is for shift right, seems like it shouldn't
+    //       interact with REG_OF at all really
 }
 
 #[test]
 fn sub() {
-    todo!()
+    alu(&[(0x10, 128), (0x11, 25)], Opcode::SUB(0x12, 0x10, 0x11), 0x12, 103);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 10),
+            Opcode::SUB(0x10, 0x10, 0x11),
+        ],
+        0x10,
+        (0 as u128).wrapping_sub(10),
+    );
 }
 
 #[test]
 fn subi() {
-    todo!()
+    alu(&[(0x10, 128)], Opcode::SUBI(0x11, 0x10, 25), 0x11, 103);
+    alu_overflow(
+        &[Opcode::MOVE(0x10, REG_ZERO), Opcode::SUBI(0x10, 0x10, 10)],
+        0x10,
+        (0 as u128).wrapping_sub(10),
+    );
 }
 
 #[test]

@@ -24,7 +24,7 @@ impl<S> Interpreter<S> {
         self.registers[REG_ERR] = 0;
 
         // set the return value to the low bits of the u128 result
-        self.registers[ra] = result as u64;
+        self.registers[ra] = (result & Word::MAX as u128) as u64;
 
         self.inc_pc()
     }

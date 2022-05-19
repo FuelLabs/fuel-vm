@@ -110,7 +110,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128) {
     let lo_value = receipts.first().expect("Receipt not found").ra().expect("$ra expected");
     let hi_value = receipts.first().expect("Receipt not found").rb().expect("$rb expected");
 
-    let overflow_value = lo_value as u128 + (hi_value as u128) << 64;
+    let overflow_value = lo_value as u128 + ((hi_value as u128) << 64);
 
     assert_eq!(overflow_value, expected);
 }
@@ -255,11 +255,12 @@ fn add() {
     alu_overflow(
         &[
             Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 10),
             Opcode::NOT(0x10, 0x10),
-            Opcode::ADD(0x10, 0x10, REG_ONE),
+            Opcode::ADD(0x10, 0x10, 0x11),
         ],
         0x10,
-        Word::MAX as u128 + 1,
+        Word::MAX as u128 + 10,
     );
 }
 
@@ -270,31 +271,40 @@ fn addi() {
         &[
             Opcode::MOVE(0x10, REG_ZERO),
             Opcode::NOT(0x10, 0x10),
-            Opcode::ADDI(0x10, 0x10, 1),
+            Opcode::ADDI(0x10, 0x10, 10),
         ],
         0x10,
-        Word::MAX as u128 + 1,
+        Word::MAX as u128 + 10,
     );
 }
 
 #[test]
 fn mul() {
-    todo!();
-    alu(&[(0x10, 128), (0x11, 25)], Opcode::ADD(0x12, 0x10, 0x11), 0x12, 153);
+    alu(&[(0x10, 128), (0x11, 25)], Opcode::MUL(0x12, 0x10, 0x11), 0x12, 3200);
     alu_overflow(
         &[
             Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 2),
             Opcode::NOT(0x10, 0x10),
-            Opcode::ADD(0x10, 0x10, REG_ONE),
+            Opcode::MUL(0x10, 0x10, 0x11),
         ],
         0x10,
-        Word::MAX as u128 + 1,
+        Word::MAX as u128 * 2,
     );
 }
 
 #[test]
 fn muli() {
-    todo!()
+    alu(&[(0x10, 128)], Opcode::MULI(0x11, 0x10, 25), 0x11, 3200);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::MULI(0x10, 0x10, 2),
+        ],
+        0x10,
+        Word::MAX as u128 * 2,
+    );
 }
 
 #[test]

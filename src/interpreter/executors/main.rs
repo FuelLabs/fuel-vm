@@ -70,7 +70,7 @@ where
                     .iter()
                     .enumerate()
                     .filter_map(|(i, input)| match input {
-                        Input::Coin { predicate, .. } if !predicate.is_empty() => self
+                        Input::CoinPredicate { predicate, .. } => self
                             .tx
                             .input_coin_predicate_offset(i)
                             .map(|ofs| (ofs as Word, predicate.len() as Word)),

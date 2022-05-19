@@ -149,15 +149,13 @@ pub mod test_helpers {
         }
 
         pub fn coin_input(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
-            self.inputs.push(Input::coin(
+            self.inputs.push(Input::coin_signed(
                 self.rng.gen(),
                 self.rng.gen(),
                 amount,
                 asset_id,
                 0,
                 0,
-                vec![],
-                vec![],
             ));
             self
         }

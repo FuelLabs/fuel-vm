@@ -22,7 +22,9 @@ where
         Self::is_register_writable(ra)?;
 
         match self.tx.inputs().get(b as usize) {
-            Some(Input::Coin { maturity, .. }) if maturity <= &c => {
+            Some(Input::CoinPredicate { maturity, .. }) | Some(Input::CoinSigned { maturity, .. })
+                if maturity <= &c =>
+            {
                 self.registers[ra] = 1;
 
                 self.inc_pc()

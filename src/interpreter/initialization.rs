@@ -80,7 +80,9 @@ where
 
         // Add up all the inputs for each asset ID
         for (asset_id, amount) in tx.inputs().iter().filter_map(|input| match input {
-            Input::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
+            Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
+                Some((asset_id, amount))
+            }
             _ => None,
         }) {
             *balances.entry(*asset_id).or_default() += amount;

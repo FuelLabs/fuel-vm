@@ -6,7 +6,8 @@ use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn alu_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
+    /// Stores the overflowed wrapped value into REG_OF
+    pub(crate) fn alu_capture_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
     where
         F: FnOnce(B, C) -> (Word, bool),
     {
@@ -18,6 +19,31 @@ impl<S> Interpreter<S> {
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 
+        // set the OF register to the wrapped value if an overflow occurred.
+        self.registers[REG_OF] = (overflow as Word) * result;
+        self.registers[REG_ERR] = 0;
+
+        // set the value as the result of the mul if no overflow occurred,
+        // otherwise set it to Word::max if the result is wrapped.
+        self.registers[ra] = (!overflow as Word) * result + (overflow as Word) * Word::MAX;
+
+        self.inc_pc()
+    }
+
+    /// Set REG_OF to true if overflow occurred.
+    pub(crate) fn alu_boolean_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
+    where
+        F: FnOnce(B, C) -> (Word, bool),
+    {
+        Self::is_register_writable(ra)?;
+
+        let (result, overflow) = f(b, c);
+
+        if overflow && !self.is_wrapping() {
+            return Err(PanicReason::ArithmeticOverflow.into());
+        }
+
+        // set the OF register to 1 if an overflow occurred
         self.registers[REG_OF] = overflow as Word;
         self.registers[REG_ERR] = 0;
 

@@ -39,7 +39,7 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
     );
 }
 
-fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
+fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bool) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -86,7 +86,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
     let script = [Opcode::MOVI(0x10, 0x02), Opcode::FLAG(0x10)]
         .into_iter()
         .chain(program.iter().copied())
-        .chain([Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
+        .chain([Opcode::LOG(reg, REG_OF, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(
@@ -107,10 +107,17 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
         .expect("Failed to execute ALU script!")
         .to_owned();
 
-    assert_eq!(
-        receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
-        expected
-    );
+    if !boolean {
+        let lo_value = receipts.first().expect("Receipt not found").ra().expect("$ra expected");
+        let hi_value = receipts.first().expect("Receipt not found").rb().expect("$rb expected");
+
+        let overflow_value = lo_value as u128 + ((hi_value as u128) << 64);
+
+        assert_eq!(overflow_value, expected);
+    } else {
+        let overflow = receipts.first().expect("Receipt not found").rb().expect("$ra expected");
+        assert_eq!(overflow, expected as u64);
+    }
 }
 
 fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {
@@ -253,11 +260,121 @@ fn add() {
     alu_overflow(
         &[
             Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 10),
             Opcode::NOT(0x10, 0x10),
-            Opcode::ADD(0x10, 0x10, REG_ONE),
+            Opcode::ADD(0x10, 0x10, 0x11),
         ],
         0x10,
-        0x00,
+        Word::MAX as u128 + 10,
+        false,
+    );
+}
+
+#[test]
+fn addi() {
+    alu(&[(0x10, 128)], Opcode::ADDI(0x11, 0x10, 25), 0x11, 153);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::ADDI(0x10, 0x10, 10),
+        ],
+        0x10,
+        Word::MAX as u128 + 10,
+        false,
+    );
+}
+
+#[test]
+fn mul() {
+    alu(&[(0x10, 128), (0x11, 25)], Opcode::MUL(0x12, 0x10, 0x11), 0x12, 3200);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 2),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::MUL(0x10, 0x10, 0x11),
+        ],
+        0x10,
+        Word::MAX as u128 * 2,
+        false,
+    );
+}
+
+#[test]
+fn muli() {
+    alu(&[(0x10, 128)], Opcode::MULI(0x11, 0x10, 25), 0x11, 3200);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::MULI(0x10, 0x10, 2),
+        ],
+        0x10,
+        Word::MAX as u128 * 2,
+        false,
+    );
+}
+
+#[test]
+fn sll() {
+    alu(&[(0x10, 128), (0x11, 2)], Opcode::SLL(0x12, 0x10, 0x11), 0x12, 512);
+    // test boundary 1<<63 == Word::MAX
+    alu(&[(0x10, 1), (0x11, 63)], Opcode::SLL(0x12, 0x10, 0x11), 0x12, 1 << 63);
+    // test overflow 1<<64 == 0
+    alu(&[(0x10, 1), (0x11, 64)], Opcode::SLL(0x12, 0x10, 0x11), 0x12, 0);
+}
+
+#[test]
+fn slli() {
+    alu(&[(0x10, 128)], Opcode::SLLI(0x11, 0x10, 2), 0x11, 512);
+    // test boundary 1<<63 == 1<<63
+    alu(&[(0x10, 1)], Opcode::SLLI(0x11, 0x10, 63), 0x11, 1 << 63);
+    // test overflow 1<<64 == 0
+    alu(&[(0x10, 1)], Opcode::SLLI(0x11, 0x10, 64), 0x11, 0);
+}
+
+#[test]
+fn srl() {
+    alu(&[(0x10, 128), (0x11, 2)], Opcode::SRL(0x12, 0x10, 0x11), 0x12, 32);
+    // test boundary 2>>1 == 1
+    alu(&[(0x10, 2), (0x11, 1)], Opcode::SRL(0x12, 0x10, 0x11), 0x12, 1);
+    // test overflow 1>>1 == 0
+    alu(&[(0x10, 1), (0x11, 1)], Opcode::SRL(0x12, 0x10, 0x11), 0x12, 0);
+}
+
+#[test]
+fn srli() {
+    alu(&[(0x10, 128)], Opcode::SRLI(0x11, 0x10, 2), 0x11, 32);
+    // test boundary 2>>1 == 1
+    alu(&[(0x10, 2)], Opcode::SRLI(0x11, 0x10, 1), 0x11, 1);
+    // test overflow 1>>1 == 0
+    alu(&[(0x10, 1)], Opcode::SRLI(0x11, 0x10, 1), 0x11, 0);
+}
+
+#[test]
+fn sub() {
+    alu(&[(0x10, 128), (0x11, 25)], Opcode::SUB(0x12, 0x10, 0x11), 0x12, 103);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::MOVI(0x11, 10),
+            Opcode::SUB(0x10, 0x10, 0x11),
+        ],
+        0x10,
+        (0 as u128).wrapping_sub(10),
+        false,
+    );
+}
+
+#[test]
+fn subi() {
+    alu(&[(0x10, 128)], Opcode::SUBI(0x11, 0x10, 25), 0x11, 103);
+    alu_overflow(
+        &[Opcode::MOVE(0x10, REG_ZERO), Opcode::SUBI(0x10, 0x10, 10)],
+        0x10,
+        (0 as u128).wrapping_sub(10),
+        false,
     );
 }
 
@@ -282,8 +399,26 @@ fn eq() {
 
 #[test]
 fn exp() {
+    // EXP
     alu(&[(0x10, 6), (0x11, 3)], Opcode::EXP(0x12, 0x10, 0x11), 0x12, 216);
+    alu_overflow(
+        &[
+            Opcode::MOVI(0x10, 2),
+            Opcode::MOVI(0x11, 64),
+            Opcode::EXP(0x10, 0x10, 0x11),
+        ],
+        0x10,
+        true as u128,
+        true,
+    );
+    // EXPI
     alu(&[(0x10, 6)], Opcode::EXPI(0x12, 0x10, 3), 0x12, 216);
+    alu_overflow(
+        &[Opcode::MOVI(0x10, 2), Opcode::EXPI(0x10, 0x10, 64)],
+        0x10,
+        true as u128,
+        true,
+    );
 }
 
 #[test]

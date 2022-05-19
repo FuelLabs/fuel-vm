@@ -279,6 +279,7 @@ fn addi() {
 
 #[test]
 fn mul() {
+    todo!();
     alu(&[(0x10, 128), (0x11, 25)], Opcode::ADD(0x12, 0x10, 0x11), 0x12, 153);
     alu_overflow(
         &[
@@ -292,25 +293,39 @@ fn mul() {
 }
 
 #[test]
-fn muli() {}
+fn muli() {
+    todo!()
+}
 
 #[test]
-fn sll() {}
+fn sll() {
+    todo!()
+}
 
 #[test]
-fn slli() {}
+fn slli() {
+    todo!()
+}
 
 #[test]
-fn srl() {}
+fn srl() {
+    todo!()
+}
 
 #[test]
-fn srli() {}
+fn srli() {
+    todo!()
+}
 
 #[test]
-fn sub() {}
+fn sub() {
+    todo!()
+}
 
 #[test]
-fn subi() {}
+fn subi() {
+    todo!()
+}
 
 #[test]
 fn and() {

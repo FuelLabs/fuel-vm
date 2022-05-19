@@ -69,12 +69,12 @@ where
         match op {
             OpcodeRepr::ADD => {
                 self.gas_charge(GAS_ADD)?;
-                self.alu_overflow(ra, Word::overflowing_add, b, c)?;
+                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), c.into())?;
             }
 
             OpcodeRepr::ADDI => {
                 self.gas_charge(GAS_ADDI)?;
-                self.alu_overflow(ra, Word::overflowing_add, b, imm)?;
+                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), imm.into())?;
             }
 
             OpcodeRepr::AND => {
@@ -104,12 +104,12 @@ where
 
             OpcodeRepr::EXP => {
                 self.gas_charge(GAS_EXP)?;
-                self.alu_overflow(ra, Word::overflowing_pow, b, c as u32)?;
+                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, c as u32)?;
             }
 
             OpcodeRepr::EXPI => {
                 self.gas_charge(GAS_EXPI)?;
-                self.alu_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
+                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
             }
 
             OpcodeRepr::GT => {
@@ -166,12 +166,12 @@ where
 
             OpcodeRepr::MUL => {
                 self.gas_charge(GAS_MUL)?;
-                self.alu_overflow(ra, Word::overflowing_mul, b, c)?;
+                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), c.into())?;
             }
 
             OpcodeRepr::MULI => {
                 self.gas_charge(GAS_MULI)?;
-                self.alu_overflow(ra, Word::overflowing_mul, b, imm)?;
+                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), imm.into())?;
             }
 
             OpcodeRepr::NOOP => {
@@ -196,32 +196,32 @@ where
 
             OpcodeRepr::SLL => {
                 self.gas_charge(GAS_SLL)?;
-                self.alu_overflow(ra, Word::overflowing_shl, b, c as u32)?;
+                self.alu_set(ra, b.checked_shl(c as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SLLI => {
                 self.gas_charge(GAS_SLLI)?;
-                self.alu_overflow(ra, Word::overflowing_shl, b, imm as u32)?;
+                self.alu_set(ra, b.checked_shl(imm as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SRL => {
                 self.gas_charge(GAS_SRL)?;
-                self.alu_overflow(ra, Word::overflowing_shr, b, c as u32)?;
+                self.alu_set(ra, b.checked_shr(c as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SRLI => {
                 self.gas_charge(GAS_SRLI)?;
-                self.alu_overflow(ra, Word::overflowing_shr, b, imm as u32)?;
+                self.alu_set(ra, b.checked_shr(imm as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SUB => {
                 self.gas_charge(GAS_SUB)?;
-                self.alu_overflow(ra, Word::overflowing_sub, b, c)?;
+                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), c.into())?;
             }
 
             OpcodeRepr::SUBI => {
                 self.gas_charge(GAS_SUBI)?;
-                self.alu_overflow(ra, Word::overflowing_sub, b, imm)?;
+                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), imm.into())?;
             }
 
             OpcodeRepr::XOR => {

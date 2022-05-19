@@ -32,6 +32,17 @@ jobs:
         crate: cargo-toml-lint
         version: "0.1"
 
+    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+    #
+    # Can be replaced by other targets that guarantee bare-minimum no-std
+    - name: Install toolchain no-std
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: thumbv6m-none-eabi
+        override: true
+
     - name: Run Cargo.toml linter
       run:  git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
@@ -49,6 +60,12 @@ jobs:
       with:
         command: build
         args: --verbose
+
+    - name: Build no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features
 
     - name: Test
       uses: actions-rs/cargo@v1

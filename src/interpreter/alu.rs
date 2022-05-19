@@ -9,23 +9,22 @@ impl<S> Interpreter<S> {
     /// Stores the overflowed wrapped value into REG_OF
     pub(crate) fn alu_capture_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
     where
-        F: FnOnce(B, C) -> (Word, bool),
+        F: FnOnce(B, C) -> (u128, bool),
     {
         Self::is_register_writable(ra)?;
 
-        let (result, overflow) = f(b, c);
+        let (result, _overflow) = f(b, c);
 
-        if overflow && !self.is_wrapping() {
+        if result > Word::MAX as u128 && !self.is_wrapping() {
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 
-        // set the OF register to the wrapped value if an overflow occurred.
-        self.registers[REG_OF] = (overflow as Word) * result;
+        // set the OF register to high bits of the u128 result
+        self.registers[REG_OF] = (result >> 64) as u64;
         self.registers[REG_ERR] = 0;
 
-        // set the value as the result of the mul if no overflow occurred,
-        // otherwise set it to Word::max if the result is wrapped.
-        self.registers[ra] = (!overflow as Word) * result + (overflow as Word) * Word::MAX;
+        // set the return value to the low bits of the u128 result
+        self.registers[ra] = result as u64;
 
         self.inc_pc()
     }

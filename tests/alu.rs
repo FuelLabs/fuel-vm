@@ -39,7 +39,7 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
     );
 }
 
-fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
+fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -86,7 +86,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
     let script = [Opcode::MOVI(0x10, 0x02), Opcode::FLAG(0x10)]
         .into_iter()
         .chain(program.iter().copied())
-        .chain([Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
+        .chain([Opcode::LOG(reg, REG_OF, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(
@@ -107,10 +107,12 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: Word) {
         .expect("Failed to execute ALU script!")
         .to_owned();
 
-    assert_eq!(
-        receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
-        expected
-    );
+    let lo_value = receipts.first().expect("Receipt not found").ra().expect("$ra expected");
+    let hi_value = receipts.first().expect("Receipt not found").rb().expect("$rb expected");
+
+    let overflow_value = lo_value as u128 + (hi_value as u128) << 64;
+
+    assert_eq!(overflow_value, expected);
 }
 
 fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {
@@ -257,9 +259,58 @@ fn add() {
             Opcode::ADD(0x10, 0x10, REG_ONE),
         ],
         0x10,
-        0x00,
+        Word::MAX as u128 + 1,
     );
 }
+
+#[test]
+fn addi() {
+    alu(&[(0x10, 128)], Opcode::ADDI(0x11, 0x10, 25), 0x11, 153);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::ADDI(0x10, 0x10, 1),
+        ],
+        0x10,
+        Word::MAX as u128 + 1,
+    );
+}
+
+#[test]
+fn mul() {
+    alu(&[(0x10, 128), (0x11, 25)], Opcode::ADD(0x12, 0x10, 0x11), 0x12, 153);
+    alu_overflow(
+        &[
+            Opcode::MOVE(0x10, REG_ZERO),
+            Opcode::NOT(0x10, 0x10),
+            Opcode::ADD(0x10, 0x10, REG_ONE),
+        ],
+        0x10,
+        Word::MAX as u128 + 1,
+    );
+}
+
+#[test]
+fn muli() {}
+
+#[test]
+fn sll() {}
+
+#[test]
+fn slli() {}
+
+#[test]
+fn srl() {}
+
+#[test]
+fn srli() {}
+
+#[test]
+fn sub() {}
+
+#[test]
+fn subi() {}
 
 #[test]
 fn and() {

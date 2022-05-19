@@ -9,7 +9,7 @@ use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate18, Word};
 
 use std::mem;
-use std::ops::{Div, Shl};
+use std::ops::Div;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -196,22 +196,22 @@ where
 
             OpcodeRepr::SLL => {
                 self.gas_charge(GAS_SLL)?;
-                self.alu_set(ra, b << c)?;
+                self.alu_set(ra, b.checked_shl(c as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SLLI => {
                 self.gas_charge(GAS_SLLI)?;
-                self.alu_set(ra, b << imm)?;
+                self.alu_set(ra, b.checked_shl(imm as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SRL => {
                 self.gas_charge(GAS_SRL)?;
-                self.alu_set(ra, b >> c)?;
+                self.alu_set(ra, b.checked_shr(c as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SRLI => {
                 self.gas_charge(GAS_SRLI)?;
-                self.alu_set(ra, b >> imm)?;
+                self.alu_set(ra, b.checked_shr(imm as u32).unwrap_or_default())?;
             }
 
             OpcodeRepr::SUB => {

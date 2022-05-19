@@ -228,9 +228,7 @@ mod tests {
 
         let inputs = balances
             .iter()
-            .map(|(asset_id, amount)| {
-                Input::coin(rng.gen(), rng.gen(), *amount, *asset_id, 0, maturity, vec![], vec![])
-            })
+            .map(|(asset_id, amount)| Input::coin_signed(rng.gen(), rng.gen(), *amount, *asset_id, 0, maturity))
             .collect();
 
         let tx = Transaction::script(

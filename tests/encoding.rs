@@ -95,44 +95,54 @@ fn witness() {
 #[test]
 fn input() {
     assert_encoding_correct(&[
-        Input::coin(
+        Input::coin_signed(
             UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
             0xff,
+            Word::MAX >> 1,
+        ),
+        Input::coin_signed(
+            UtxoId::new([0xaa; 32].into(), 0),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
+            0xff,
+            Word::MAX >> 1,
+        ),
+        Input::coin_signed(
+            UtxoId::new([0xaa; 32].into(), 0),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
+            0xff,
+            Word::MAX >> 1,
+        ),
+        Input::coin_signed(
+            UtxoId::new([0xaa; 32].into(), 0),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
+            0xff,
+            Word::MAX >> 1,
+        ),
+        Input::coin_predicate(
+            UtxoId::new([0xaa; 32].into(), 0),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
             Word::MAX >> 1,
             vec![0xdd; 50].into(),
             vec![0xee; 23].into(),
         ),
-        Input::coin(
+        Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
-            0xff,
-            Word::MAX >> 1,
-            vec![],
-            vec![0xee; 23],
-        ),
-        Input::coin(
-            UtxoId::new([0xaa; 32].into(), 0),
-            [0xbb; 32].into(),
-            Word::MAX,
-            [0xcc; 32].into(),
-            0xff,
             Word::MAX >> 1,
             vec![0xdd; 50],
-            vec![],
-        ),
-        Input::coin(
-            UtxoId::new([0xaa; 32].into(), 0),
-            [0xbb; 32].into(),
-            Word::MAX,
-            [0xcc; 32].into(),
-            0xff,
-            Word::MAX >> 1,
-            vec![],
             vec![],
         ),
         Input::contract(

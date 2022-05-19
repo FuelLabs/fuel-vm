@@ -1,3 +1,4 @@
+use fuel_crypto::Hasher;
 use fuel_types::bytes;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
@@ -30,7 +31,7 @@ fn predicate() {
     predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
     predicate.push(Opcode::RET(0x10));
 
-    let predicate = predicate
+    let predicate: Vec<u8> = predicate
         .into_iter()
         .map(|op| u32::from(op).to_be_bytes())
         .flatten()
@@ -40,17 +41,17 @@ fn predicate() {
     let salt: Salt = rng.gen();
     let witness = vec![];
 
+    let owner = *Hasher::hash(predicate.as_slice());
     let contract = Contract::from(witness.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let input = Input::coin(
+    let input = Input::coin_predicate(
         rng.gen(),
-        rng.gen(),
+        owner.into(),
         0,
         rng.gen(),
-        0,
         maturity,
         predicate,
         predicate_data,
@@ -125,16 +126,7 @@ fn predicate_false() {
     let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let input = Input::coin(
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-        0,
-        maturity,
-        predicate,
-        predicate_data,
-    );
+    let input = Input::coin_predicate(rng.gen(), rng.gen(), 0, rng.gen(), maturity, predicate, predicate_data);
     let output = Output::contract_created(contract, state_root);
 
     let gas_price = 0;

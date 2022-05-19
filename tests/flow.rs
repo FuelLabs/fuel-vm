@@ -228,7 +228,7 @@ fn call_frame_code_offset() {
     let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root, &state_root);
 
-    let input = Input::coin(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity, vec![], vec![]);
+    let input = Input::coin_signed(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity);
     let output = Output::contract_created(id, state_root);
 
     let deploy = Transaction::create(

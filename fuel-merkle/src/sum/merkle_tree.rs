@@ -1,11 +1,14 @@
-use fuel_storage::Storage;
-
 use crate::common::{Bytes32, Subtree};
 use crate::sum::{empty_sum, Node};
 
-#[derive(Debug, thiserror::Error)]
+use fuel_storage::Storage;
+
+use alloc::boxed::Box;
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum MerkleTreeError {
-    #[error("proof index {0} is not valid")]
+    #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
     InvalidProofIndex(u64),
 }
 
@@ -16,7 +19,7 @@ pub struct MerkleTree<'storage, StorageError> {
 
 impl<'storage, StorageError> MerkleTree<'storage, StorageError>
 where
-    StorageError: 'static + std::error::Error + Clone,
+    StorageError: 'static + Clone,
 {
     pub fn new(storage: &'storage mut dyn Storage<Bytes32, Node, Error = StorageError>) -> Self {
         Self {
@@ -25,7 +28,7 @@ where
         }
     }
 
-    pub fn root(&mut self) -> Result<(u64, Bytes32), Box<dyn std::error::Error>> {
+    pub fn root(&mut self) -> Result<(u64, Bytes32), StorageError> {
         let root_node = self.root_node()?;
         let root_pair = match root_node {
             None => (0, *empty_sum()),
@@ -35,7 +38,7 @@ where
         Ok(root_pair)
     }
 
-    pub fn push(&mut self, fee: u64, data: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn push(&mut self, fee: u64, data: &[u8]) -> Result<(), StorageError> {
         let node = Node::create_leaf(fee, data);
         self.storage.insert(node.hash(), &node)?;
 
@@ -51,7 +54,7 @@ where
     // PRIVATE
     //
 
-    fn root_node(&mut self) -> Result<Option<Node>, Box<dyn std::error::Error>> {
+    fn root_node(&mut self) -> Result<Option<Node>, StorageError> {
         let root_node = match self.head {
             None => None,
             Some(ref initial) => {
@@ -68,7 +71,7 @@ where
         Ok(root_node)
     }
 
-    fn join_all_subtrees(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
         loop {
             let current = self.head.as_ref().unwrap();
             if !(current.next().is_some()
@@ -93,7 +96,7 @@ where
         &mut self,
         lhs: &mut Subtree<Node>,
         rhs: &mut Subtree<Node>,
-    ) -> Result<Box<Subtree<Node>>, Box<dyn std::error::Error>> {
+    ) -> Result<Box<Subtree<Node>>, StorageError> {
         let height = lhs.node().height() + 1;
         let joined_node = Node::create_node(
             height,
@@ -110,6 +113,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use fuel_merkle_test_helpers::TEST_DATA;

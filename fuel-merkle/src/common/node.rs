@@ -1,10 +1,10 @@
-use std::mem::size_of;
+use core::mem;
 
 pub trait Node {
     type Key;
 
     fn key_size_in_bits() -> usize {
-        size_of::<Self::Key>() * 8
+        mem::size_of::<Self::Key>() * 8
     }
 
     fn height(&self) -> u32;

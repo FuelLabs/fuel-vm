@@ -1,16 +1,15 @@
-use fuel_storage::Storage;
-use std::convert::TryInto;
-use std::fmt;
-use std::mem::size_of;
-use std::ops::Range;
-
 use crate::common::Node as NodeTrait;
 use crate::common::{Bytes1, Bytes32, Bytes4, Msb, LEAF, NODE};
 use crate::sparse::hash::sum;
 use crate::sparse::zero_sum;
 
+use fuel_storage::Storage;
+
+use core::mem::size_of;
+use core::ops::Range;
+use core::{cmp, fmt};
+
 const LEFT: u8 = 0;
-const RIGHT: u8 = 1;
 
 /// For a leaf:
 /// `00 - 04`: Height (4 bytes)
@@ -77,7 +76,7 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = std::cmp::max(path_node.height(), side_node.height()) + 1;
+            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height as usize;
             let parent_node = if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
                 Node::create_node(&path_node, &side_node, parent_height)
@@ -366,7 +365,7 @@ pub(crate) struct StorageNode<'storage, StorageError> {
 
 impl<'a, 'storage, StorageError> StorageNode<'storage, StorageError>
 where
-    StorageError: std::error::Error + Clone,
+    StorageError: fmt::Debug + Clone,
 {
     pub fn new(storage: &'storage NodeStorage<'storage, StorageError>, node: Node) -> Self {
         Self { node, storage }
@@ -425,7 +424,7 @@ where
 
 impl<'storage, StorageError> crate::common::Node for StorageNode<'storage, StorageError>
 where
-    StorageError: std::error::Error + Clone,
+    StorageError: fmt::Debug + Clone,
 {
     type Key = Bytes32;
 
@@ -444,7 +443,7 @@ where
 
 impl<'storage, StorageError> crate::common::ParentNode for StorageNode<'storage, StorageError>
 where
-    StorageError: std::error::Error + Clone,
+    StorageError: fmt::Debug + Clone,
 {
     fn left_child(&self) -> Self {
         StorageNode::left_child(self).unwrap()
@@ -457,7 +456,7 @@ where
 
 impl<'storage, StorageError> fmt::Debug for StorageNode<'storage, StorageError>
 where
-    StorageError: std::error::Error + Clone,
+    StorageError: fmt::Debug + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {

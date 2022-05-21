@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 #[derive(Debug, Clone)]
 pub struct Subtree<T> {
     node: T,

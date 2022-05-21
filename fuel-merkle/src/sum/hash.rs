@@ -1,18 +1,12 @@
+use crate::common::{self, Bytes32, LEAF, NODE};
+
 use digest::Digest;
-use lazy_static::lazy_static;
 use sha2::Sha256;
-use std::convert::TryInto;
-
-use crate::common::{Bytes32, LEAF, NODE};
-
-lazy_static! {
-    static ref EMPTY_SUM: Bytes32 = Sha256::new().finalize().try_into().unwrap();
-}
 
 // Merkle Tree hash of an empty list
 // MTH({}) = Hash()
-pub fn empty_sum() -> &'static Bytes32 {
-    &*EMPTY_SUM
+pub const fn empty_sum() -> &'static Bytes32 {
+    common::empty_sum_sha256()
 }
 
 // Merkle tree hash of an n-element list D[n]

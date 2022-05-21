@@ -1,15 +1,19 @@
-use std::marker::{Send, Sync};
-
-use anyhow::Result;
-use fuel_storage::Storage;
-
 use crate::common::{AsPathIterator, Bytes32};
-use crate::sparse::hash::sum;
 use crate::sparse::{zero_sum, Buffer, Node, StorageNode};
 
-#[derive(Debug, thiserror::Error)]
+use fuel_storage::Storage;
+
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::{cmp, fmt, iter};
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum MerkleTreeError {
-    #[error("cannot load node with key {0}; the key is not found in storage")]
+    #[cfg_attr(
+        feature = "std",
+        error("cannot load node with key {0}; the key is not found in storage")
+    )]
     LoadError(String),
 }
 
@@ -22,7 +26,7 @@ pub struct MerkleTree<'storage, StorageError> {
 
 impl<'a, 'storage, StorageError> MerkleTree<'storage, StorageError>
 where
-    StorageError: std::error::Error + Send + Sync + Clone + 'static,
+    StorageError: From<MerkleTreeError> + fmt::Debug + Send + Sync + Clone + 'static,
 {
     pub fn new(storage: &'storage mut StorageType<StorageError>) -> Self {
         Self {
@@ -31,7 +35,10 @@ where
         }
     }
 
-    pub fn load(storage: &'storage mut StorageType<StorageError>, root: &Bytes32) -> Result<Self> {
+    pub fn load(
+        storage: &'storage mut StorageType<StorageError>,
+        root: &Bytes32,
+    ) -> Result<Self, StorageError> {
         let buffer = storage
             .get(root)?
             .ok_or(MerkleTreeError::LoadError(hex::encode(root)))?
@@ -43,7 +50,7 @@ where
         Ok(tree)
     }
 
-    pub fn update(&'a mut self, key: &Bytes32, data: &[u8]) -> Result<()> {
+    pub fn update(&'a mut self, key: &Bytes32, data: &[u8]) -> Result<(), StorageError> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -67,7 +74,7 @@ where
         Ok(())
     }
 
-    pub fn delete(&'a mut self, key: &Bytes32) -> Result<()> {
+    pub fn delete(&'a mut self, key: &Bytes32) -> Result<(), StorageError> {
         if self.root() == *zero_sum() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
@@ -118,7 +125,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<()> {
+    ) -> Result<(), StorageError> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
 
@@ -155,10 +162,9 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
-            let stale_depth = std::cmp::max(side_nodes.len(), ancestor_depth);
+            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
             let placeholders_count = stale_depth - side_nodes.len();
-            let placeholders =
-                std::iter::repeat(Node::create_placeholder()).take(placeholders_count);
+            let placeholders = iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
@@ -183,7 +189,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<()> {
+    ) -> Result<(), StorageError> {
         for node in path_nodes {
             self.storage.remove(&node.hash())?;
         }
@@ -241,6 +247,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use crate::common::{Bytes32, StorageError, StorageMap};

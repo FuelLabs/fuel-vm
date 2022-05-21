@@ -1,11 +1,22 @@
+use crate::{binary, sparse, sum};
+
 use fuel_storage::Storage;
+use thiserror::Error;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use thiserror::Error;
 
-#[derive(Clone, Debug, Error)]
-pub enum StorageError {}
+#[derive(Debug, Clone, Error)]
+pub enum StorageError {
+    #[error("A binary merkle tree error was thrown: {0}")]
+    BinaryMerkleTree(#[from] binary::MerkleTreeError),
+
+    #[error("A sparse merkle tree error was thrown: {0}")]
+    SparseMerkleTree(#[from] sparse::MerkleTreeError),
+
+    #[error("A sum merkle tree error was thrown: {0}")]
+    SumMerkleTree(#[from] sum::MerkleTreeError),
+}
 
 #[derive(Debug)]
 pub struct StorageMap<Key, Value> {

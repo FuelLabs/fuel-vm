@@ -1,7 +1,7 @@
 use crate::binary::{leaf_sum, node_sum};
-use std::fmt::Debug;
-
 use crate::common::{Bytes32, Position};
+
+use core::fmt::Debug;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Node {

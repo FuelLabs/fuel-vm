@@ -1,17 +1,21 @@
-use std::marker::{Send, Sync};
-
-use anyhow::{anyhow, Result};
-use fuel_storage::Storage;
-
-use crate::binary::{empty_sum, Node};
+use crate::binary::{self, Node};
 use crate::common::{Bytes32, Position, Subtree};
 
-#[derive(Debug, thiserror::Error)]
+use fuel_storage::Storage;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum MerkleTreeError {
-    #[error("proof index {0} is not valid")]
+    #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
     InvalidProofIndex(u64),
 
-    #[error("cannot load node with key {0}; the key is not found in storage")]
+    #[cfg_attr(
+        feature = "std",
+        error("cannot load node with key {0}; the key is not found in storage")
+    )]
     LoadError(u64),
 }
 
@@ -26,7 +30,7 @@ pub struct MerkleTree<'storage, StorageError> {
 
 impl<'storage, StorageError> MerkleTree<'storage, StorageError>
 where
-    StorageError: std::error::Error + Send + Sync + 'static,
+    StorageError: From<MerkleTreeError> + Send + Sync + 'static,
 {
     pub fn new(storage: &'storage mut StorageType<StorageError>) -> Self {
         Self {
@@ -39,7 +43,7 @@ where
     pub fn load(
         storage: &'storage mut StorageType<StorageError>,
         leaves_count: u64,
-    ) -> Result<Self> {
+    ) -> Result<Self, StorageError> {
         let mut tree = Self {
             storage,
             head: None,
@@ -51,19 +55,19 @@ where
         Ok(tree)
     }
 
-    pub fn root(&mut self) -> Result<Bytes32> {
+    pub fn root(&mut self) -> Result<Bytes32, StorageError> {
         let root_node = self.root_node()?;
         let root = match root_node {
-            None => *empty_sum(),
+            None => *binary::empty_sum(),
             Some(ref node) => *node.hash(),
         };
 
         Ok(root)
     }
 
-    pub fn prove(&mut self, proof_index: u64) -> Result<(Bytes32, ProofSet)> {
+    pub fn prove(&mut self, proof_index: u64) -> Result<(Bytes32, ProofSet), StorageError> {
         if proof_index + 1 > self.leaves_count {
-            return Err(anyhow!(MerkleTreeError::InvalidProofIndex(proof_index)));
+            return Err(MerkleTreeError::InvalidProofIndex(proof_index).into());
         }
 
         let mut proof_set = ProofSet::new();
@@ -91,7 +95,7 @@ where
         Ok((root, proof_set))
     }
 
-    pub fn push(&mut self, data: &[u8]) -> Result<()> {
+    pub fn push(&mut self, data: &[u8]) -> Result<(), StorageError> {
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node)?;
         let next = self.head.take();
@@ -108,7 +112,7 @@ where
     // PRIVATE
     //
 
-    fn build(&mut self) -> Result<()> {
+    fn build(&mut self) -> Result<(), StorageError> {
         let keys = (0..self.leaves_count).map(|i| Position::from_leaf_index(i).in_order_index());
         for key in keys {
             let node = self
@@ -125,7 +129,7 @@ where
         Ok(())
     }
 
-    fn root_node(&mut self) -> Result<Option<Node>> {
+    fn root_node(&mut self) -> Result<Option<Node>, StorageError> {
         let root_node = match self.head {
             None => None,
             Some(ref initial) => {
@@ -142,7 +146,7 @@ where
         Ok(root_node)
     }
 
-    fn join_all_subtrees(&mut self) -> Result<()> {
+    fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
         loop {
             let current = self.head.as_ref().unwrap();
             if !(current.next().is_some()
@@ -168,7 +172,7 @@ where
         &mut self,
         lhs: &mut Subtree<Node>,
         rhs: &mut Subtree<Node>,
-    ) -> Result<Box<Subtree<Node>>> {
+    ) -> Result<Box<Subtree<Node>>, StorageError> {
         let joined_node = Node::create_node(lhs.node(), rhs.node());
         self.storage.insert(&joined_node.key(), &joined_node)?;
         let joined_head = Subtree::new(joined_node, lhs.take_next());
@@ -176,6 +180,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use super::{MerkleTree, Storage};

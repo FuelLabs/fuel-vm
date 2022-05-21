@@ -1,7 +1,6 @@
 use crate::common::Bytes32;
 use crate::sum::{leaf_sum, node_sum};
 use core::fmt;
-use fuel_storage::Storage;
 
 #[derive(Clone)]
 pub struct Node {

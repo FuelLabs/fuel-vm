@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::gas::consts::*;
 use crate::interpreter::Interpreter;
-use crate::state::ExecuteState;
+use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
@@ -361,7 +361,11 @@ where
 
             OpcodeRepr::CALL => {
                 self.gas_charge(GAS_CALL)?;
-                self.call(a, b, c, d)?;
+                let state = self.call(a, b, c, d)?;
+                // raise revert state to halt execution for the callee
+                if let ProgramState::Revert(ra) = state {
+                    return Ok(ExecuteState::Revert(ra));
+                }
             }
 
             OpcodeRepr::CB => {

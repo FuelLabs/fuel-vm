@@ -316,7 +316,7 @@ fn revert_from_call_immediately_ends_execution() {
         .setup_contract(vec![Opcode::RVRT(REG_ONE)], None, None)
         .contract_id;
 
-    let (script_ops, offset) = script_with_data_offset!(
+    let (script_ops, _) = script_with_data_offset!(
         data_offset,
         vec![
             // load call data to 0x10

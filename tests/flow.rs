@@ -306,16 +306,16 @@ fn call_frame_code_offset() {
 
 #[test]
 fn revert_from_call_immediately_ends_execution() {
-    // call a contract that reverts
-    // and then verify the revert is only logged once
-
+    // call a contract that reverts and then verify the revert is only logged once
     let gas_limit = 1_000_000;
 
     let mut test_context = TestBuilder::new(2322u64);
+    // setup a contract which immediately reverts
     let contract_id = test_context
         .setup_contract(vec![Opcode::RVRT(REG_ONE)], None, None)
         .contract_id;
 
+    // setup a script to call the contract
     let (script_ops, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -331,11 +331,9 @@ fn revert_from_call_immediately_ends_execution() {
         .copied()
         .collect();
 
-    // initiate the transfer between contracts
+    // initiate the call to the contract which reverts
     let result = test_context
         .gas_limit(gas_limit)
-        .gas_price(0)
-        .byte_price(0)
         .contract_input(contract_id)
         .contract_output(&contract_id)
         .script(script_ops)

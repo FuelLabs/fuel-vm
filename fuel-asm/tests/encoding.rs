@@ -44,6 +44,7 @@ fn opcode() {
         Opcode::CTMV(r, r),
         Opcode::JI(imm24),
         Opcode::JNEI(r, r, imm12),
+        Opcode::JNZI(r, imm18),
         Opcode::RET(r),
         Opcode::RETD(r, r),
         Opcode::CFEI(imm24),

@@ -343,6 +343,7 @@ impl Opcode {
             OpcodeRepr::CTMV => Opcode::CTMV(ra, rb),
             OpcodeRepr::JI => Opcode::JI(imm24),
             OpcodeRepr::JNEI => Opcode::JNEI(ra, rb, imm12),
+            OpcodeRepr::JNZI => Opcode::JNZI(ra, imm18),
             OpcodeRepr::RET => Opcode::RET(ra),
             OpcodeRepr::RETD => Opcode::RETD(ra, rb),
             OpcodeRepr::CFEI => Opcode::CFEI(imm24),

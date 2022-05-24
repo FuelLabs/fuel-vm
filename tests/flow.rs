@@ -1,13 +1,8 @@
 use fuel_crypto::Hasher;
 use fuel_types::bytes;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
-use fuel_vm::script_with_data_offset;
-use fuel_vm::util::test_helpers::TestBuilder;
+use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
 use itertools::Itertools;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();

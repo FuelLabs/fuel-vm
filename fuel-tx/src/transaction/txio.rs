@@ -1,5 +1,5 @@
 use super::{TransactionRepr, TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
-use crate::transaction::types::{StorageSlot, SLOT_SIZE};
+use crate::transaction::types::StorageSlot;
 use crate::{Input, Output, Transaction, Witness};
 
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
@@ -53,7 +53,7 @@ impl bytes::SizedBytes for Transaction {
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
                     + static_contracts.len() * ContractId::LEN
-                    + storage_slots.len() * SLOT_SIZE
+                    + storage_slots.len() * StorageSlot::SLOT_SIZE
             }
         };
 
@@ -270,10 +270,10 @@ impl io::Write for Transaction {
                 }
 
                 let mut storage_slots = vec![StorageSlot::default(); storage_slots_len as usize];
-                n += SLOT_SIZE * storage_slots_len as usize;
+                n += StorageSlot::SLOT_SIZE * storage_slots_len as usize;
                 for storage_slot in storage_slots.iter_mut() {
                     let _ = storage_slot.write(buf)?;
-                    buf = &buf[SLOT_SIZE..];
+                    buf = &buf[StorageSlot::SLOT_SIZE..];
                 }
 
                 let mut inputs = vec![Input::default(); inputs_len];

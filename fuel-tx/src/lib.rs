@@ -19,6 +19,9 @@ pub use fuel_types::{Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, Contrac
 mod builder;
 
 #[cfg(feature = "alloc")]
+mod contract;
+
+#[cfg(feature = "alloc")]
 mod receipt;
 
 #[cfg(feature = "alloc")]

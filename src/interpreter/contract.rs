@@ -1,11 +1,10 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::contract::Contract;
 use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
-use fuel_tx::Receipt;
+use fuel_tx::{Contract, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;

@@ -4,24 +4,25 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::consts::MAX_INPUTS;
-use fuel_tx::{Input, Output, Transaction, ValidationError};
+use fuel_tx::default_parameters::*;
+use fuel_tx::{ConsensusParameters, Input, Output, Transaction, ValidationError};
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{AssetId, Word};
 use itertools::Itertools;
+
 use std::collections::HashMap;
 use std::io;
 
-impl<S> Interpreter<S>
-where
-    S: InterpreterStorage,
-{
-    pub(crate) fn init(&mut self, mut tx: Transaction) -> Result<(), InterpreterError> {
-        tx.validate_without_signature(self.block_height() as Word)?;
+impl<S> Interpreter<S> {
+    /// Initialize the VM with a given transaction
+    pub fn init(&mut self, predicate: bool, block_height: u32, mut tx: Transaction) -> Result<(), InterpreterError> {
+        let params = ConsensusParameters::default();
+
+        tx.validate_without_signature(self.block_height() as Word, &params)?;
         tx.precompute_metadata();
 
-        self.block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
-        self.context = Context::from(&tx);
+        self.block_height = block_height;
+        self.context = if predicate { Context::Predicate } else { Context::Script };
 
         self.frames.clear();
         self.receipts.clear();
@@ -38,26 +39,39 @@ where
         self.push_stack(tx.id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        // Set initial unused balances
-        let free_balances = Self::initial_free_balances(&tx)?;
-        for (asset_id, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
-            // push asset ID
-            self.push_stack(asset_id.as_ref())
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-            // stack position
-            let asset_id_offset = self.registers[REG_SSP] as usize;
-            self.unused_balance_index.insert(*asset_id, asset_id_offset);
-            // push spendable amount
-            self.push_stack(&amount.to_be_bytes())
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        }
+        let free_balances = if predicate {
+            // predicate verification should zero asset ids
+            0
+        } else {
+            // Set initial unused balances
+            let free_balances = Self::initial_free_balances(&tx)?;
+
+            for (asset_id, amount) in free_balances.iter().sorted_by_key(|i| i.0) {
+                // push asset ID
+                self.push_stack(asset_id.as_ref())
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+                // stack position
+                let asset_id_offset = self.registers[REG_SSP] as usize;
+                self.unused_balance_index.insert(*asset_id, asset_id_offset);
+
+                // push spendable amount
+                self.push_stack(&amount.to_be_bytes())
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            }
+
+            free_balances.len() as Word
+        };
+
         // zero out remaining unused balance types
-        for _i in free_balances.len()..(MAX_INPUTS as usize) {
-            self.push_stack(&[0; AssetId::LEN + WORD_SIZE])
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        }
+        let unused_balances = MAX_INPUTS as Word - free_balances;
+        let unused_balances = unused_balances * (AssetId::LEN + WORD_SIZE) as Word;
+
+        // Its safe to just reserve since the memory was properly zeroed before in this routine
+        self.reserve_stack(unused_balances)?;
 
         let tx_size = tx.serialized_size() as Word;
+
         self.registers[REG_GGAS] = tx.gas_limit();
         self.registers[REG_CGAS] = tx.gas_limit();
 
@@ -137,5 +151,21 @@ where
         }
 
         Ok(balances)
+    }
+}
+
+impl<S> Interpreter<S>
+where
+    S: InterpreterStorage,
+{
+    /// Initialize the VM with a given transaction, backed by a storage provider that allows
+    /// execution of contract opcodes.
+    ///
+    /// For predicate verification, check [`Self::init`]
+    pub fn init_with_storage(&mut self, tx: Transaction) -> Result<(), InterpreterError> {
+        let predicate = false;
+        let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
+
+        self.init(predicate, block_height, tx)
     }
 }

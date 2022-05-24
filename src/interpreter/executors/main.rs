@@ -1,5 +1,4 @@
 use crate::consts::*;
-use crate::contract::Contract;
 use crate::crypto;
 use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
@@ -8,8 +7,79 @@ use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::{Input, Output, Receipt, ScriptExecutionResult, Transaction};
+use fuel_tx::{Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::{bytes::SerializableVec, Word};
+
+impl<S> Interpreter<S>
+where
+    S: Default + Clone,
+{
+    /// Initialize the VM with the provided transaction and check all predicates defined in the
+    /// inputs.
+    ///
+    /// The storage provider is not used since contract opcodes are not allowed for predicates.
+    /// This way, its possible, for the sake of simplicity, it is possible to use
+    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
+    ///
+    /// # Debug
+    ///
+    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
+    /// VM state required to trace the execution steps.
+    pub fn check_predicates(tx: Transaction) -> bool {
+        let mut vm = Interpreter::with_storage(S::default());
+
+        if !tx.check_predicate_owners() {
+            return false;
+        }
+
+        let predicates: Vec<MemoryRange> = tx
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, _)| Self::input_to_predicate(&tx, idx))
+            .collect();
+
+        predicates
+            .into_iter()
+            .fold(vm.init_predicate(tx), |result, predicate| -> bool {
+                // VM is cloned because the state should be reset for every predicate verification
+                result && vm.clone()._check_predicate(predicate)
+            })
+    }
+
+    /// Initialize the VM with the provided transaction and check the input predicate indexed by
+    /// `idx`. If the input isn't of type [`Input::CoinPredicate`], the function will return
+    /// `false`.
+    ///
+    /// For additional information, check [`Self::check_predicates`]
+    pub fn check_predicate(&mut self, tx: Transaction, idx: usize) -> bool {
+        tx.check_predicate_owner(idx)
+            .then(|| Self::input_to_predicate(&tx, idx))
+            .flatten()
+            .map(|predicate| self.init_predicate(tx) && self._check_predicate(predicate))
+            .unwrap_or(false)
+    }
+
+    fn init_predicate(&mut self, tx: Transaction) -> bool {
+        let block_height = 0;
+
+        self.init(true, block_height, tx).is_ok()
+    }
+
+    fn input_to_predicate(tx: &Transaction, idx: usize) -> Option<MemoryRange> {
+        tx.input_coin_predicate_offset(idx)
+            .map(|(ofs, len)| (ofs as Word + VM_TX_MEMORY as Word, len as Word))
+            .map(|(ofs, len)| MemoryRange::new(ofs, len))
+    }
+
+    /// Validate the predicate, assuming the interpreter is initialized
+    fn _check_predicate(&mut self, predicate: MemoryRange) -> bool {
+        match self.verify_predicate(&predicate) {
+            Ok(ProgramState::Return(0x01)) => true,
+            _ => false,
+        }
+    }
+}
 
 impl<S> Interpreter<S>
 where
@@ -17,9 +87,7 @@ where
 {
     // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
-        let mut state: ProgramState;
-
-        match &self.tx {
+        let state = match &self.tx {
             Transaction::Create {
                 salt,
                 static_contracts,
@@ -35,7 +103,7 @@ where
 
                 let contract = Contract::try_from(&self.tx)?;
                 let root = contract.root();
-                let storage_root = Contract::initial_state_root(storage_slots);
+                let storage_root = Contract::initial_state_root(storage_slots.iter());
                 let id = contract.id(salt, &root, &storage_root);
 
                 if !&self
@@ -63,34 +131,12 @@ where
 
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
-                // TODO this should be abstracted with the client
-                let predicates: Vec<MemoryRange> = self
-                    .tx
-                    .inputs()
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, input)| match input {
-                        Input::CoinPredicate { predicate, .. } => self
-                            .tx
-                            .input_coin_predicate_offset(i)
-                            .map(|ofs| (ofs as Word, predicate.len() as Word)),
-                        _ => None,
-                    })
-                    .map(|(ofs, len)| (ofs + VM_TX_MEMORY as Word, len))
-                    .map(|(ofs, len)| MemoryRange::new(ofs, len))
-                    .collect();
-
-                state = ProgramState::Return(1);
-                for predicate in predicates {
-                    state = self.verify_predicate(&predicate)?;
-
-                    #[cfg(feature = "debug")]
-                    if state.is_debug() {
-                        // TODO should restore the constructed predicates and continue from current
-                        // predicate
-                        return Ok(state);
-                    }
+                // TODO implement debug support
+                if !Interpreter::<()>::check_predicates(self.tx.clone()) {
+                    return Err(InterpreterError::PredicateFailure);
                 }
+
+                ProgramState::Return(1)
             }
 
             Transaction::Script { inputs, .. } => {
@@ -145,9 +191,9 @@ where
 
                 self.receipts.push(receipt);
 
-                state = program;
+                program
             }
-        }
+        };
 
         #[cfg(feature = "debug")]
         if state.is_debug() {
@@ -182,7 +228,7 @@ where
             }
 
             let state = self
-                .execute()
+                .execute(Self::instruction_script)
                 .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
 
             match state {
@@ -214,7 +260,7 @@ where
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
-            match self.execute()? {
+            match self.execute(Self::instruction_script)? {
                 ExecuteState::Return(r) => {
                     return Ok(ProgramState::Return(r));
                 }
@@ -251,7 +297,7 @@ where
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        let state_result = self.init(tx).and_then(|_| self.run());
+        let state_result = self.init_with_storage(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);

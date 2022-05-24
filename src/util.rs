@@ -56,11 +56,14 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
-    use crate::consts::{REG_ONE, REG_ZERO, VM_TX_MEMORY};
-    use crate::prelude::{InterpreterStorage, MemoryClient, MemoryStorage, Transactor};
+    use crate::consts::*;
+    use crate::memory_client::{MemoryClient, MemoryStorage};
     use crate::state::StateTransition;
+    use crate::storage::InterpreterStorage;
+    use crate::transactor::Transactor;
+
     use fuel_asm::Opcode;
-    use fuel_tx::{Input, Output, StorageSlot, Transaction, Witness};
+    use fuel_tx::{Contract, Input, Output, StorageSlot, Transaction, Witness};
     use fuel_types::bytes::{Deserializable, SizedBytes};
     use fuel_types::{AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
@@ -244,10 +247,11 @@ pub mod test_helpers {
             } else {
                 Default::default()
             };
+
             let salt: Salt = self.rng.gen();
             let program: Witness = contract.iter().copied().collect::<Vec<u8>>().into();
-            let storage_root = crate::contract::Contract::initial_state_root(&storage_slots);
-            let contract = crate::contract::Contract::from(program.as_ref());
+            let storage_root = Contract::initial_state_root(storage_slots.iter());
+            let contract = Contract::from(program.as_ref());
             let contract_root = contract.root();
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 

@@ -6,20 +6,27 @@ use crate::error::RuntimeError;
 use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::{Output, Transaction};
 use fuel_types::{Address, AssetId, ContractId, RegisterId, Word};
+
+use core::mem;
 use std::io::{self, ErrorKind, Read};
 
 impl<S> Interpreter<S> {
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
-        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(data.len() as Word);
+    pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
+        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(len);
 
         if overflow || !self.is_external_context() && ssp > self.registers[REG_SP] {
             Err(PanicReason::MemoryOverflow.into())
         } else {
-            self.memory[self.registers[REG_SSP] as usize..ssp as usize].copy_from_slice(data);
-            self.registers[REG_SSP] = ssp;
-
-            Ok(())
+            Ok(mem::replace(&mut self.registers[REG_SSP], ssp))
         }
+    }
+
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
+        let ssp = self.reserve_stack(data.len() as Word)?;
+
+        self.memory[ssp as usize..self.registers[REG_SSP] as usize].copy_from_slice(data);
+
+        Ok(())
     }
 
     pub(crate) const fn block_height(&self) -> u32 {
@@ -243,7 +250,7 @@ mod tests {
             vec![vec![].into()],
         );
 
-        vm.init(tx).expect("Failed to init VM!");
+        vm.init_with_storage(tx).expect("Failed to init VM!");
 
         for (asset_id, amount) in balances {
             assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
@@ -286,7 +293,7 @@ mod tests {
             vec![Witness::default()],
         );
 
-        vm.init(tx).expect("Failed to init VM!");
+        vm.init_with_storage(tx).expect("Failed to init VM!");
 
         // increase variable output
         vm.set_variable_output(0, asset_id_to_update, amount_to_set, owner)

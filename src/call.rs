@@ -1,9 +1,9 @@
 //! Inter-contract call supporting structures
 
 use crate::consts::*;
-use crate::contract::Contract;
 
 use fuel_asm::PanicReason;
+use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 

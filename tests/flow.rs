@@ -1,10 +1,8 @@
 use fuel_crypto::Hasher;
 use fuel_types::bytes;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
+use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
+use itertools::Itertools;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -304,6 +302,52 @@ fn call_frame_code_offset() {
     assert_eq!(ssp, sp + stack);
     assert_eq!(ssp, fp + stack);
     assert_eq!(ssp, sp_p);
+}
+
+#[test]
+fn revert_from_call_immediately_ends_execution() {
+    // call a contract that reverts and then verify the revert is only logged once
+    let gas_limit = 1_000_000;
+
+    let mut test_context = TestBuilder::new(2322u64);
+    // setup a contract which immediately reverts
+    let contract_id = test_context
+        .setup_contract(vec![Opcode::RVRT(REG_ONE)], None, None)
+        .contract_id;
+
+    // setup a script to call the contract
+    let (script_ops, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load call data to 0x10
+            Opcode::MOVI(0x10, data_offset),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            Opcode::RET(REG_ONE),
+        ]
+    );
+    let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+
+    // initiate the call to the contract which reverts
+    let result = test_context
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .contract_output(&contract_id)
+        .script(script_ops)
+        .script_data(script_data)
+        .execute();
+
+    // verify there is only 1 revert receipt
+    let revert_receipts = result
+        .receipts()
+        .iter()
+        .filter(|r| matches!(r, Receipt::Revert { .. }))
+        .collect_vec();
+
+    assert_eq!(revert_receipts.len(), 1);
 }
 
 #[test]

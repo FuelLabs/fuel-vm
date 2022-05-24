@@ -11,8 +11,6 @@ use core::cmp::Ordering;
 #[cfg(feature = "std")]
 use std::io;
 
-pub const SLOT_SIZE: usize = Bytes64::LEN;
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StorageSlot {
@@ -21,16 +19,38 @@ pub struct StorageSlot {
 }
 
 impl StorageSlot {
-    pub fn new(key: Bytes32, value: Bytes32) -> Self {
+    pub const SLOT_SIZE: usize = Bytes64::LEN;
+
+    pub const fn new(key: Bytes32, value: Bytes32) -> Self {
         StorageSlot { key, value }
     }
 
-    pub fn key(&self) -> &Bytes32 {
+    pub const fn key(&self) -> &Bytes32 {
         &self.key
     }
 
-    pub fn value(&self) -> &Bytes32 {
+    pub const fn value(&self) -> &Bytes32 {
         &self.value
+    }
+}
+
+impl From<&StorageSlot> for Bytes64 {
+    fn from(s: &StorageSlot) -> Self {
+        let mut buf = [0u8; StorageSlot::SLOT_SIZE];
+
+        buf[..Bytes32::LEN].copy_from_slice(s.key.as_ref());
+        buf[Bytes32::LEN..].copy_from_slice(s.value.as_ref());
+
+        buf.into()
+    }
+}
+
+impl From<&Bytes64> for StorageSlot {
+    fn from(b: &Bytes64) -> Self {
+        let key = unsafe { Bytes32::from_slice_unchecked(&b[..Bytes32::LEN]) };
+        let value = unsafe { Bytes32::from_slice_unchecked(&b[Bytes32::LEN..]) };
+
+        Self::new(key, value)
     }
 }
 
@@ -47,19 +67,21 @@ impl Distribution<StorageSlot> for Standard {
 #[cfg(feature = "std")]
 impl io::Read for StorageSlot {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        if buf.len() < SLOT_SIZE {
+        if buf.len() < Self::SLOT_SIZE {
             return Err(bytes::eof());
         }
+
         buf = bytes::store_array_unchecked(buf, &self.key);
         bytes::store_array_unchecked(buf, &self.value);
-        Ok(SLOT_SIZE)
+
+        Ok(Self::SLOT_SIZE)
     }
 }
 
 #[cfg(feature = "std")]
 impl io::Write for StorageSlot {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < SLOT_SIZE {
+        if buf.len() < Self::SLOT_SIZE {
             return Err(bytes::eof());
         }
 
@@ -69,7 +91,8 @@ impl io::Write for StorageSlot {
 
         self.key = key.into();
         self.value = value.into();
-        Ok(SLOT_SIZE)
+
+        Ok(Self::SLOT_SIZE)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -79,7 +102,7 @@ impl io::Write for StorageSlot {
 
 impl bytes::SizedBytes for StorageSlot {
     fn serialized_size(&self) -> usize {
-        SLOT_SIZE
+        Self::SLOT_SIZE
     }
 }
 

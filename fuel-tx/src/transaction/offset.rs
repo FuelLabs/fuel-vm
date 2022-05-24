@@ -1,7 +1,6 @@
 use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
-use crate::{Input, Metadata, Transaction};
+use crate::{Input, Metadata, StorageSlot, Transaction};
 
-use crate::transaction::types::SLOT_SIZE;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::ContractId;
 
@@ -72,7 +71,7 @@ impl Transaction {
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
                     + ContractId::LEN * static_contracts.len()
-                    + SLOT_SIZE * storage_slots.len()
+                    + StorageSlot::SLOT_SIZE * storage_slots.len()
             }
         }
     }
@@ -120,7 +119,7 @@ impl Transaction {
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
                     + ContractId::LEN * static_contracts.len()
-                    + SLOT_SIZE * storage_slots.len()
+                    + StorageSlot::SLOT_SIZE * storage_slots.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
             }
         }
@@ -173,7 +172,7 @@ impl Transaction {
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
                     + ContractId::LEN * static_contracts.len()
-                    + SLOT_SIZE * storage_slots.len()
+                    + StorageSlot::SLOT_SIZE * storage_slots.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
                     + outputs.iter().map(|o| o.serialized_size()).sum::<usize>()
             }

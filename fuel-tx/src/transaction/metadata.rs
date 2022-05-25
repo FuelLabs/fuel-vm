@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 pub struct Metadata {
     id: Bytes32,
     script_data_offset: Option<usize>,
-    input_coin_predicate_offset: Vec<Option<usize>>,
+    input_coin_predicate_offset: Vec<Option<(usize, usize)>>,
     inputs_offset: Vec<usize>,
     outputs_offset: Vec<usize>,
     witnesses_offset: Vec<usize>,
@@ -23,7 +23,7 @@ impl Metadata {
     pub const fn new(
         id: Bytes32,
         script_data_offset: Option<usize>,
-        input_coin_predicate_offset: Vec<Option<usize>>,
+        input_coin_predicate_offset: Vec<Option<(usize, usize)>>,
         inputs_offset: Vec<usize>,
         outputs_offset: Vec<usize>,
         witnesses_offset: Vec<usize>,
@@ -46,7 +46,7 @@ impl Metadata {
         self.script_data_offset
     }
 
-    pub fn input_coin_predicate_offset(&self, index: usize) -> Option<usize> {
+    pub fn input_coin_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
         self.input_coin_predicate_offset
             .get(index)
             .copied()

@@ -7,7 +7,7 @@ use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::{Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
+use fuel_tx::{ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::{bytes::SerializableVec, Word};
 
 impl<S> Interpreter<S>
@@ -25,8 +25,8 @@ where
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates(tx: Transaction) -> bool {
-        let mut vm = Interpreter::with_storage(S::default());
+    pub fn check_predicates(tx: Transaction, params: ConsensusParameters) -> bool {
+        let mut vm = Interpreter::with_storage(S::default(), params);
 
         if !tx.check_predicate_owners() {
             return false;
@@ -63,7 +63,7 @@ where
     fn init_predicate(&mut self, tx: Transaction) -> bool {
         let block_height = 0;
 
-        self.init(true, block_height, tx).is_ok()
+        self.init(true, block_height, tx, self.consensus_parameters).is_ok()
     }
 
     fn input_to_predicate(tx: &Transaction, idx: usize) -> Option<MemoryRange> {
@@ -132,7 +132,7 @@ where
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
                 // TODO implement debug support
-                if !Interpreter::<()>::check_predicates(self.tx.clone()) {
+                if !Interpreter::<()>::check_predicates(self.tx.clone(), self.consensus_parameters) {
                     return Err(InterpreterError::PredicateFailure);
                 }
 
@@ -286,8 +286,12 @@ where
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the
     /// result of th execution in form of [`StateTransition`]
-    pub fn transact_owned(storage: S, tx: Transaction) -> Result<StateTransition, InterpreterError> {
-        Interpreter::with_storage(storage)
+    pub fn transact_owned(
+        storage: S,
+        tx: Transaction,
+        params: ConsensusParameters,
+    ) -> Result<StateTransition, InterpreterError> {
+        Interpreter::with_storage(storage, params)
             .transact(tx)
             .map(|st| st.into_owned())
     }
@@ -297,7 +301,9 @@ where
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        let state_result = self.init_with_storage(tx).and_then(|_| self.run());
+        let state_result = self
+            .init_with_storage(tx, self.consensus_parameters)
+            .and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);

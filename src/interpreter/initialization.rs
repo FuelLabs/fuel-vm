@@ -15,9 +15,13 @@ use std::io;
 
 impl<S> Interpreter<S> {
     /// Initialize the VM with a given transaction
-    pub fn init(&mut self, predicate: bool, block_height: u32, mut tx: Transaction) -> Result<(), InterpreterError> {
-        let params = ConsensusParameters::default();
-
+    pub fn init(
+        &mut self,
+        predicate: bool,
+        block_height: u32,
+        mut tx: Transaction,
+        params: ConsensusParameters,
+    ) -> Result<(), InterpreterError> {
         tx.validate_without_signature(self.block_height() as Word, &params)?;
         tx.precompute_metadata();
 
@@ -162,10 +166,10 @@ where
     /// execution of contract opcodes.
     ///
     /// For predicate verification, check [`Self::init`]
-    pub fn init_with_storage(&mut self, tx: Transaction) -> Result<(), InterpreterError> {
+    pub fn init_with_storage(&mut self, tx: Transaction, params: ConsensusParameters) -> Result<(), InterpreterError> {
         let predicate = false;
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 
-        self.init(predicate, block_height, tx)
+        self.init(predicate, block_height, tx, params)
     }
 }

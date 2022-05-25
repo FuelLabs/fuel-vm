@@ -1,6 +1,6 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use fuel_tx::Transaction;
+use fuel_tx::{ConsensusParameters, Transaction};
 
 use super::Interpreter;
 use crate::consts::*;
@@ -17,7 +17,7 @@ impl<S> Interpreter<S> {
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(storage: S) -> Self {
+    pub fn with_storage(storage: S, params: ConsensusParameters) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; VM_MAX_RAM as usize],
@@ -31,6 +31,7 @@ impl<S> Interpreter<S> {
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             unused_balance_index: Default::default(),
+            consensus_parameters: params,
         }
     }
 
@@ -47,7 +48,7 @@ where
     S: Default,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default())
+        Self::with_storage(Default::default(), Default::default())
     }
 }
 

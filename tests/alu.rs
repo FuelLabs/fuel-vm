@@ -27,7 +27,7 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -65,7 +65,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         vec![],
     );
 
-    let receipts = Transactor::new(storage.clone())
+    let receipts = Transactor::new(storage.clone(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -101,7 +101,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -146,7 +146,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         vec![],
     );
 
-    let receipts = Transactor::new(storage.clone())
+    let receipts = Transactor::new(storage.clone(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -182,7 +182,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -219,7 +219,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
         vec![],
         vec![],
     );
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")

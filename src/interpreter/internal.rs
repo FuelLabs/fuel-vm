@@ -250,7 +250,8 @@ mod tests {
             vec![vec![].into()],
         );
 
-        vm.init_with_storage(tx).expect("Failed to init VM!");
+        vm.init_with_storage(tx, Default::default())
+            .expect("Failed to init VM!");
 
         for (asset_id, amount) in balances {
             assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
@@ -293,7 +294,8 @@ mod tests {
             vec![Witness::default()],
         );
 
-        vm.init_with_storage(tx).expect("Failed to init VM!");
+        vm.init_with_storage(tx, Default::default())
+            .expect("Failed to init VM!");
 
         // increase variable output
         vm.set_variable_output(0, asset_id_to_update, amount_to_set, owner)

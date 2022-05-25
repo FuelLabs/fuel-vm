@@ -530,3 +530,71 @@ pub enum OpcodeRepr {
     /// RESERVFF
     RESERVFF = 0xff,
 }
+
+impl OpcodeRepr {
+    /// Check if the opcode representation is allowed for predicates
+    ///
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#predicate-verification>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#contract-opcodes>
+    pub const fn is_predicate_allowed(&self) -> bool {
+        // TODO Update `OpcodeRepr` to separate contract opcodes
+        // https://github.com/FuelLabs/fuel-asm/issues/68
+
+        use OpcodeRepr::*;
+
+        match self {
+            ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR
+            | SLL | SRL | SUB | XOR | CIMV | CTMV | RET | ALOC | MCL | MCP | MEQ | ECR | K256
+            | S256 | XIL | XIS | XOL | XOS | XWL | XWS | NOOP | FLAG | ADDI | ANDI | DIVI
+            | EXPI | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
+            | MCPI | MCLI | GM | MOVI | JNZI | JI | CFEI | CFSI => true,
+
+            _ => false,
+        }
+    }
+}
+
+#[test]
+fn check_predicate_allowed() {
+    use OpcodeRepr::*;
+
+    // This exhaustive test will shield against changes in the opcodes structure
+    for byte in 0..u8::MAX {
+        let repr = OpcodeRepr::from_u8(byte);
+
+        let should_allow = match repr {
+            BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG | LOGD | MINT
+            | RETD | RVRT | SLDC | SRW | SRWQ | SWW | SWWQ | TR | TRO => false,
+
+            RESERV00 | RESERV01 | RESERV02 | RESERV03 | RESERV04 | RESERV05 | RESERV06
+            | RESERV07 | RESERV08 | RESERV09 | RESERV0A | RESERV0B | RESERV0C | RESERV0D
+            | RESERV0E | RESERV0F | RESERV4A | RESERV4B | RESERV4C | RESERV4D | RESERV4E
+            | RESERV4F | RESERV61 | RESERV62 | RESERV63 | RESERV64 | RESERV65 | RESERV66
+            | RESERV67 | RESERV68 | RESERV69 | RESERV6A | RESERV6B | RESERV6C | RESERV6D
+            | RESERV6E | RESERV6F | RESERV74 | RESERV75 | RESERV76 | RESERV77 | RESERV78
+            | RESERV79 | RESERV7A | RESERV7B | RESERV7C | RESERV7D | RESERV7E | RESERV7F
+            | RESERV80 | RESERV81 | RESERV82 | RESERV83 | RESERV84 | RESERV85 | RESERV86
+            | RESERV87 | RESERV88 | RESERV89 | RESERV8A | RESERV8B | RESERV8C | RESERV8D
+            | RESERV8E | RESERV8F | RESERV93 | RESERV94 | RESERV95 | RESERV96 | RESERV97
+            | RESERV98 | RESERV99 | RESERV9A | RESERV9B | RESERV9C | RESERV9D | RESERV9E
+            | RESERV9F | RESERVA0 | RESERVA1 | RESERVA2 | RESERVA3 | RESERVA4 | RESERVA5
+            | RESERVA6 | RESERVA7 | RESERVA8 | RESERVA9 | RESERVAA | RESERVAB | RESERVAC
+            | RESERVAD | RESERVAE | RESERVAF | RESERVB0 | RESERVB1 | RESERVB2 | RESERVB3
+            | RESERVB4 | RESERVB5 | RESERVB6 | RESERVB7 | RESERVB8 | RESERVB9 | RESERVBA
+            | RESERVBB | RESERVBC | RESERVBD | RESERVBE | RESERVBF | RESERVC0 | RESERVC1
+            | RESERVC2 | RESERVC3 | RESERVC4 | RESERVC5 | RESERVC6 | RESERVC7 | RESERVC8
+            | RESERVC9 | RESERVCA | RESERVCB | RESERVCC | RESERVCD | RESERVCE | RESERVCF
+            | RESERVD0 | RESERVD1 | RESERVD2 | RESERVD3 | RESERVD4 | RESERVD5 | RESERVD6
+            | RESERVD7 | RESERVD8 | RESERVD9 | RESERVDA | RESERVDB | RESERVDC | RESERVDD
+            | RESERVDE | RESERVDF | RESERVE0 | RESERVE1 | RESERVE2 | RESERVE3 | RESERVE4
+            | RESERVE5 | RESERVE6 | RESERVE7 | RESERVE8 | RESERVE9 | RESERVEA | RESERVEB
+            | RESERVEC | RESERVED | RESERVEE | RESERVEF | RESERVF0 | RESERVF1 | RESERVF2
+            | RESERVF3 | RESERVF4 | RESERVF5 | RESERVF6 | RESERVF7 | RESERVF8 | RESERVF9
+            | RESERVFA | RESERVFB | RESERVFC | RESERVFD | RESERVFE | RESERVFF => false,
+
+            _ => true,
+        };
+
+        assert_eq!(should_allow, repr.is_predicate_allowed());
+    }
+}

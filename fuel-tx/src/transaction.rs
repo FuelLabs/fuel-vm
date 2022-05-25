@@ -25,6 +25,8 @@ mod id;
 #[cfg(feature = "std")]
 mod txio;
 
+pub mod consensus_parameters;
+
 pub use metadata::Metadata;
 pub use repr::TransactionRepr;
 pub use types::{Input, Output, StorageSlot, UtxoId, Witness};
@@ -76,17 +78,7 @@ impl Default for Transaction {
         // The Return op is mandatory for the execution of any context
         let script = Opcode::RET(0x10).to_bytes().to_vec();
 
-        Transaction::script(
-            0,
-            MAX_GAS_PER_TX,
-            0,
-            0,
-            script,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
+        Transaction::script(0, 1, 0, 0, script, vec![], vec![], vec![], vec![])
     }
 }
 

@@ -20,7 +20,9 @@ fn coin_signed() {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| match input {
-                Input::CoinSigned { .. } => input.validate(index, &txhash, outputs, witnesses),
+                Input::CoinSigned { .. } => {
+                    input.validate(index, &txhash, outputs, witnesses, &Default::default())
+                }
                 _ => Ok(()),
             })
     }
@@ -76,7 +78,10 @@ fn coin_signed() {
     tx.add_input(input);
 
     let block_height = rng.gen();
-    let err = tx.validate(block_height).err().expect("Expected failure");
+    let err = tx
+        .validate(block_height, &Default::default())
+        .err()
+        .expect("Expected failure");
 
     assert!(matches!(
         err,
@@ -102,7 +107,7 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .validate(1, &txhash, &[], &[])
+    .validate(1, &txhash, &[], &[], &Default::default())
     .unwrap();
 
     let predicate = vec![];
@@ -117,7 +122,7 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .validate(1, &txhash, &[], &[])
+    .validate(1, &txhash, &[], &[], &Default::default())
     .err()
     .unwrap();
 
@@ -136,7 +141,7 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .validate(1, &txhash, &[], &[])
+    .validate(1, &txhash, &[], &[], &Default::default())
     .err()
     .unwrap();
 
@@ -155,11 +160,12 @@ fn contract() {
             &txhash,
             &[Output::contract(1, rng.gen(), rng.gen())],
             &[],
+            &Default::default(),
         )
         .unwrap();
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .validate(1, &txhash, &[], &[])
+        .validate(1, &txhash, &[], &[], &Default::default())
         .err()
         .unwrap();
     assert_eq!(
@@ -173,6 +179,7 @@ fn contract() {
             &txhash,
             &[Output::coin(rng.gen(), rng.gen(), rng.gen())],
             &[],
+            &Default::default(),
         )
         .err()
         .unwrap();
@@ -187,6 +194,7 @@ fn contract() {
             &txhash,
             &[Output::contract(2, rng.gen(), rng.gen())],
             &[],
+            &Default::default(),
         )
         .err()
         .unwrap();
@@ -209,7 +217,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .add_input(b)
         .add_witness(rng.gen())
         .finalize()
-        .validate_without_signature(0)
+        .validate_without_signature(0, &Default::default())
         .err()
         .expect("Expected validation failure");
 
@@ -233,7 +241,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_output(o)
         .add_output(p)
         .finalize()
-        .validate_without_signature(0)
+        .validate_without_signature(0, &Default::default())
         .err()
         .expect("Expected validation failure");
 
@@ -260,6 +268,6 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_output(o)
         .add_output(p)
         .finalize()
-        .validate_without_signature(0)
+        .validate_without_signature(0, &Default::default())
         .expect("Duplicated UTXO id is valid for contract input");
 }

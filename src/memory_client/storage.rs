@@ -1,10 +1,10 @@
-use crate::contract::Contract;
 use crate::crypto;
 use crate::error::Infallible;
 use crate::storage::InterpreterStorage;
 
 use fuel_crypto::Hasher;
 use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
+use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
 

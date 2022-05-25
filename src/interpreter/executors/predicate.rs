@@ -2,25 +2,24 @@ use crate::consts::*;
 use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState};
-use crate::storage::InterpreterStorage;
 
-impl<S> Interpreter<S>
-where
-    S: InterpreterStorage,
-{
+use fuel_asm::PanicReason;
+
+impl<S> Interpreter<S> {
     pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, InterpreterError> {
-        // TODO initialize VM with tx prepared for sign
-        // TODO execute should not overflow predicate boundaries. Need to check
-        // internally if a Jump instruction decrements $pc, or if $pc overflows
-        // `end`
-        let (start, _end) = predicate.boundaries(self);
+        debug_assert!(self.is_predicate());
+
+        let (start, end) = predicate.boundaries(self);
 
         self.registers[REG_PC] = start;
         self.registers[REG_IS] = start;
 
-        // TODO optimize
         loop {
-            match self.execute()? {
+            if end <= self.registers[REG_PC] {
+                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
+            }
+
+            match self.execute(Self::instruction_predicate)? {
                 ExecuteState::Return(r) => {
                     if r == 1 {
                         return Ok(ProgramState::Return(r));

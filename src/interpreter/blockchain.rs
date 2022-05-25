@@ -4,7 +4,8 @@ use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::{consts::CONTRACT_MAX_SIZE, Input};
+use fuel_tx::default_parameters::*;
+use fuel_tx::Input;
 use fuel_types::{bytes, Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use std::mem;

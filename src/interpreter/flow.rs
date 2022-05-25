@@ -13,10 +13,7 @@ use fuel_types::{AssetId, Bytes32, RegisterId, Word};
 
 use std::cmp;
 
-impl<S> Interpreter<S>
-where
-    S: InterpreterStorage,
-{
+impl<S> Interpreter<S> {
     // TODO add CIMV tests
     pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
@@ -52,6 +49,8 @@ where
 
         if j > VM_MAX_RAM - 1 {
             Err(PanicReason::MemoryOverflow.into())
+        } else if self.is_predicate() && j <= self.registers[REG_PC] {
+            Err(PanicReason::IllegalJump.into())
         } else {
             self.registers[REG_PC] = j;
 
@@ -73,71 +72,6 @@ where
         } else {
             self.inc_pc()
         }
-    }
-
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(32);
-        let (cx, of) = c.overflowing_add(32);
-        let overflow = overflow || of;
-
-        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let call = Call::try_from(&self.memory[a as usize..])?;
-        let asset_id =
-            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
-
-        if self.is_external_context() {
-            self.external_asset_id_balance_sub(&asset_id, b)?;
-        } else {
-            let source_contract = *self.internal_contract()?;
-            self.balance_decrease(&source_contract, &asset_id, b)?;
-        }
-
-        if !self.tx.input_contracts().any(|contract| call.to() == contract) {
-            return Err(PanicReason::ContractNotInInputs.into());
-        }
-
-        // credit contract asset_id balance
-        self.balance_increase(call.to(), &asset_id, b)?;
-
-        let mut frame = self.call_frame(call, asset_id)?;
-
-        let stack = frame.to_bytes();
-        let len = stack.len() as Word;
-
-        if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        self.registers[REG_FP] = self.registers[REG_SP];
-        self.registers[REG_SP] += len;
-        self.registers[REG_SSP] = self.registers[REG_SP];
-
-        self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
-
-        self.registers[REG_BAL] = b;
-        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
-        self.registers[REG_IS] = self.registers[REG_PC];
-        self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
-
-        let receipt = Receipt::call(
-            self.internal_contract_or_default(),
-            *frame.to(),
-            b,
-            *frame.asset_id(),
-            d,
-            frame.a(),
-            frame.b(),
-            self.registers[REG_PC],
-            self.registers[REG_IS],
-        );
-
-        self.receipts.push(receipt);
-        self.frames.push(frame);
-
-        self.run_call()
     }
 
     pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
@@ -220,5 +154,75 @@ where
         let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
         self.receipts.push(receipt);
+    }
+}
+
+impl<S> Interpreter<S>
+where
+    S: InterpreterStorage,
+{
+    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+        let (ax, overflow) = a.overflowing_add(32);
+        let (cx, of) = c.overflowing_add(32);
+        let overflow = overflow || of;
+
+        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let call = Call::try_from(&self.memory[a as usize..])?;
+        let asset_id =
+            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+
+        if self.is_external_context() {
+            self.external_asset_id_balance_sub(&asset_id, b)?;
+        } else {
+            let source_contract = *self.internal_contract()?;
+            self.balance_decrease(&source_contract, &asset_id, b)?;
+        }
+
+        if !self.tx.input_contracts().any(|contract| call.to() == contract) {
+            return Err(PanicReason::ContractNotInInputs.into());
+        }
+
+        // credit contract asset_id balance
+        self.balance_increase(call.to(), &asset_id, b)?;
+
+        let mut frame = self.call_frame(call, asset_id)?;
+
+        let stack = frame.to_bytes();
+        let len = stack.len() as Word;
+
+        if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        self.registers[REG_FP] = self.registers[REG_SP];
+        self.registers[REG_SP] += len;
+        self.registers[REG_SSP] = self.registers[REG_SP];
+
+        self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
+
+        self.registers[REG_BAL] = b;
+        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
+        self.registers[REG_IS] = self.registers[REG_PC];
+        self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
+
+        let receipt = Receipt::call(
+            self.internal_contract_or_default(),
+            *frame.to(),
+            b,
+            *frame.asset_id(),
+            d,
+            frame.a(),
+            frame.b(),
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.receipts.push(receipt);
+        self.frames.push(frame);
+
+        self.run_call()
     }
 }

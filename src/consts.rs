@@ -1,6 +1,6 @@
 //! VM parameters
 
-use fuel_tx::consts::*;
+use fuel_tx::default_parameters::*;
 use fuel_types::{AssetId, Bytes32, Word};
 
 use std::mem;

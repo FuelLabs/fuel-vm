@@ -1,35 +1,17 @@
-use fuel_crypto::Hasher;
 use fuel_types::bytes;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-#[test]
-fn predicate() {
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
+
+use core::iter;
+
+fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>) -> bool
+where
+    P: IntoIterator<Item = Opcode>,
+{
     let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let mut vm = Interpreter::with_memory_storage();
-
-    let predicate_data = 0x23 as Word;
-    let predicate_data = predicate_data.to_be_bytes().to_vec();
-    let predicate_data_len = bytes::padded_len(predicate_data.as_slice()) as Immediate12;
-
-    let mut predicate = vec![];
-
-    predicate.push(Opcode::MOVI(0x10, 0x11));
-    predicate.push(Opcode::ADDI(0x11, 0x10, 0x12));
-    predicate.push(Opcode::MOVI(0x12, 0x08));
-    predicate.push(Opcode::ALOC(0x12));
-    predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
-    predicate.push(Opcode::SW(0x12, 0x11, 0));
-    predicate.push(Opcode::MOVI(0x10, 0x08));
-    predicate.push(Opcode::XIL(0x20, 0));
-    predicate.push(Opcode::XIS(0x11, 0));
-    predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
-    predicate.push(Opcode::SUBI(0x11, 0x11, predicate_data_len));
-    predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
-    predicate.push(Opcode::RET(0x10));
 
     let predicate: Vec<u8> = predicate
         .into_iter()
@@ -37,64 +19,53 @@ fn predicate() {
         .flatten()
         .collect();
 
+    let utxo_id = rng.gen();
+    let amount = 0;
+    let asset_id = rng.gen();
     let maturity = 0;
-    let salt: Salt = rng.gen();
-    let witness = vec![];
 
-    let owner = *Hasher::hash(predicate.as_slice());
-    let contract = Contract::from(witness.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
-
-    let input = Input::coin_predicate(
-        rng.gen(),
-        owner.into(),
-        0,
-        rng.gen(),
-        maturity,
-        predicate,
-        predicate_data,
-    );
-    let output = Output::contract_created(contract, state_root);
+    let owner = Input::predicate_owner(&predicate);
+    let input = Input::coin_predicate(utxo_id, owner, amount, asset_id, maturity, predicate, predicate_data);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let byte_price = 0;
-    let bytecode_witness_index = 0;
-    let static_contracts = vec![];
-    let storage_slots = vec![];
-    let inputs = vec![input];
-    let outputs = vec![output];
-    let witnesses = vec![witness.into()];
+    let script = vec![];
+    let script_data = vec![];
 
-    let tx = Transaction::create(
+    let tx = Transaction::script(
         gas_price,
         gas_limit,
         byte_price,
         maturity,
-        bytecode_witness_index,
-        salt,
-        static_contracts,
-        storage_slots,
-        inputs,
-        outputs,
-        witnesses,
+        script,
+        script_data,
+        vec![input],
+        vec![],
+        vec![],
     );
 
-    vm.transact(tx).expect("Failed to transact!");
+    Interpreter::<()>::check_predicates(tx)
 }
 
 #[test]
-fn predicate_false() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
+fn predicate_minimal() {
+    let predicate = iter::once(Opcode::RET(0x01));
+    let data = vec![];
 
-    let mut vm = Interpreter::with_memory_storage();
+    assert!(execute_predicate(predicate, data));
+}
 
-    let predicate_data = 0x24 as Word;
-    let predicate_data = predicate_data.to_be_bytes().to_vec();
-    let predicate_data_len = bytes::padded_len(predicate_data.as_slice()) as Immediate12;
+#[test]
+fn predicate() {
+    let expected_data = 0x23 as Word;
+    let expected_data = expected_data.to_be_bytes().to_vec();
+    let expected_data_len = bytes::padded_len(expected_data.as_slice()) as Immediate12;
 
+    let wrong_data = 0x24 as Word;
+    let wrong_data = wrong_data.to_be_bytes().to_vec();
+
+    // A script that will succeed only if the argument is 0x23
     let mut predicate = vec![];
 
     predicate.push(Opcode::MOVI(0x10, 0x11));
@@ -107,51 +78,10 @@ fn predicate_false() {
     predicate.push(Opcode::XIL(0x20, 0));
     predicate.push(Opcode::XIS(0x11, 0));
     predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
-    predicate.push(Opcode::SUBI(0x11, 0x11, predicate_data_len));
+    predicate.push(Opcode::SUBI(0x11, 0x11, expected_data_len));
     predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
     predicate.push(Opcode::RET(0x10));
 
-    let predicate = predicate
-        .into_iter()
-        .map(|op| u32::from(op).to_be_bytes())
-        .flatten()
-        .collect();
-
-    let maturity = 0;
-    let salt: Salt = rng.gen();
-    let witness = vec![];
-
-    let contract = Contract::from(witness.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
-
-    let input = Input::coin_predicate(rng.gen(), rng.gen(), 0, rng.gen(), maturity, predicate, predicate_data);
-    let output = Output::contract_created(contract, state_root);
-
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let byte_price = 0;
-    let bytecode_witness_index = 0;
-    let static_contracts = vec![];
-    let storage_slots = vec![];
-    let inputs = vec![input];
-    let outputs = vec![output];
-    let witnesses = vec![witness.into()];
-
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        bytecode_witness_index,
-        salt,
-        static_contracts,
-        storage_slots,
-        inputs,
-        outputs,
-        witnesses,
-    );
-
-    assert!(vm.transact(tx).is_err());
+    assert!(execute_predicate(predicate.iter().copied(), expected_data));
+    assert!(!execute_predicate(predicate.iter().copied(), wrong_data));
 }

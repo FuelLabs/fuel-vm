@@ -1,8 +1,7 @@
 //! Trait definitions for storage backend
 
-use crate::contract::Contract;
-
 use fuel_storage::{MerkleStorage, Storage};
+use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
 use std::borrow::Cow;

@@ -149,7 +149,9 @@ fn call() {
         vec![program.clone()],
     );
 
-    assert!(Transactor::new(&mut storage).transact(tx).is_success());
+    assert!(Transactor::new(&mut storage, Default::default())
+        .transact(tx)
+        .is_success());
 
     let mut script_ops = vec![
         Opcode::MOVI(0x10, 0x00),
@@ -185,7 +187,7 @@ fn call() {
         _ => unreachable!(),
     }
 
-    let receipts = Transactor::new(&mut storage)
+    let receipts = Transactor::new(&mut storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute script")
@@ -243,7 +245,9 @@ fn call_frame_code_offset() {
         vec![program.clone().into()],
     );
 
-    assert!(Transactor::new(&mut storage).transact(deploy).is_success());
+    assert!(Transactor::new(&mut storage, Default::default())
+        .transact(deploy)
+        .is_success());
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -282,7 +286,7 @@ fn call_frame_code_offset() {
         vec![],
     );
 
-    let mut vm = Interpreter::with_storage(storage);
+    let mut vm = Interpreter::with_storage(storage, Default::default());
 
     vm.transact(script).expect("Failed to call deployed contract");
 

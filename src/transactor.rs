@@ -6,7 +6,7 @@ use crate::interpreter::Interpreter;
 use crate::state::StateTransitionRef;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{Receipt, Transaction};
+use fuel_tx::{ConsensusParameters, Receipt, Transaction};
 
 use std::{mem, slice};
 
@@ -26,8 +26,8 @@ pub struct Transactor<'a, S> {
 
 impl<'a, S> Transactor<'a, S> {
     /// Transactor constructor
-    pub fn new(storage: S) -> Self {
-        Interpreter::with_storage(storage).into()
+    pub fn new(storage: S, params: ConsensusParameters) -> Self {
+        Interpreter::with_storage(storage, params).into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -185,6 +185,6 @@ where
     S: Default,
 {
     fn default() -> Self {
-        Self::new(Default::default())
+        Self::new(Default::default(), Default::default())
     }
 }

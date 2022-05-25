@@ -88,7 +88,7 @@ fn ecrecover() {
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute script!")
@@ -171,7 +171,7 @@ fn sha256() {
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute script!")
@@ -259,7 +259,7 @@ fn keccak256() {
         vec![],
     );
 
-    let receipts = Transactor::new(storage)
+    let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute script!")

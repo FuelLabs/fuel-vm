@@ -287,7 +287,7 @@ pub mod test_helpers {
         }
 
         fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
-            let mut client = MemoryClient::new(self.storage.clone());
+            let mut client = MemoryClient::new(self.storage.clone(), Default::default());
             client.transact(tx);
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();

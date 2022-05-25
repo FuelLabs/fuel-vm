@@ -54,7 +54,9 @@ fn metadata() {
     );
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage).transact(tx).is_success());
+    assert!(Transactor::new(&mut storage, Default::default())
+        .transact(tx)
+        .is_success());
 
     let mut routine_call_metadata_contract: Vec<Opcode> = vec![
         Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
@@ -98,7 +100,9 @@ fn metadata() {
     );
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage).transact(tx).is_success());
+    assert!(Transactor::new(&mut storage, Default::default())
+        .transact(tx)
+        .is_success());
 
     let mut inputs = vec![];
     let mut outputs = vec![];
@@ -137,7 +141,7 @@ fn metadata() {
         vec![],
     );
 
-    let receipts = Transactor::new(&mut storage)
+    let receipts = Transactor::new(&mut storage, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to transact")

@@ -6,7 +6,7 @@ use crate::context::Context;
 use crate::state::Debugger;
 use std::collections::HashMap;
 
-use fuel_tx::{Receipt, Transaction};
+use fuel_tx::{ConsensusParameters, Receipt, Transaction};
 use fuel_types::{AssetId, Word};
 
 mod alu;
@@ -58,6 +58,7 @@ pub struct Interpreter<S> {
     profiler: Profiler,
     // track the offset for each unused balance in memory
     unused_balance_index: HashMap<AssetId, usize>,
+    consensus_parameters: ConsensusParameters,
 }
 
 impl<S> Interpreter<S> {

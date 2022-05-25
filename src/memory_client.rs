@@ -3,7 +3,7 @@
 use crate::backtrace::Backtrace;
 use crate::transactor::Transactor;
 
-use fuel_tx::{Receipt, Transaction};
+use fuel_tx::{ConsensusParameters, Receipt, Transaction};
 
 mod storage;
 
@@ -29,9 +29,9 @@ impl<'a> AsMut<MemoryStorage> for MemoryClient<'a> {
 
 impl<'a> MemoryClient<'a> {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn new(storage: MemoryStorage) -> Self {
+    pub fn new(storage: MemoryStorage, params: ConsensusParameters) -> Self {
         Self {
-            transactor: Transactor::new(storage),
+            transactor: Transactor::new(storage, params),
         }
     }
 
@@ -87,7 +87,7 @@ impl<'a> MemoryClient<'a> {
 
 impl<'a> From<MemoryStorage> for MemoryClient<'a> {
     fn from(s: MemoryStorage) -> Self {
-        Self::new(s)
+        Self::new(s, Default::default())
     }
 }
 

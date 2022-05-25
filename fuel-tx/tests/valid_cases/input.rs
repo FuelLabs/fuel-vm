@@ -1,4 +1,4 @@
-use fuel_crypto::{Hasher, SecretKey};
+use fuel_crypto::SecretKey;
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes, TransactionFactory};
 use rand::rngs::StdRng;
@@ -96,7 +96,7 @@ fn coin_predicate() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_bytes(rng);
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    let owner = (*Contract::root_from_code(&predicate)).into();
 
     Input::coin_predicate(
         rng.gen(),
@@ -111,7 +111,7 @@ fn coin_predicate() {
     .unwrap();
 
     let predicate = vec![];
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    let owner = (*Contract::root_from_code(&predicate)).into();
 
     let err = Input::coin_predicate(
         rng.gen(),
@@ -129,7 +129,7 @@ fn coin_predicate() {
     assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
 
     let mut predicate = generate_nonempty_bytes(rng);
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    let owner = (*Contract::root_from_code(&predicate)).into();
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::coin_predicate(

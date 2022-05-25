@@ -679,7 +679,7 @@ fn create_input_coin_data_offset() {
     let predicate = generate_nonempty_bytes(rng);
     let predicate_data = generate_bytes(rng);
 
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
         rng.gen(),
@@ -723,19 +723,16 @@ fn create_input_coin_data_offset() {
                             .read(buffer.as_mut_slice())
                             .expect("Failed to serialize input");
 
-                        let offset = tx
+                        let (offset, len) = tx
                             .input_coin_predicate_offset(last_input)
                             .expect("Failed to fetch offset");
 
-                        let offset_p = tx_p
+                        let (offset_p, _) = tx_p
                             .input_coin_predicate_offset(last_input)
                             .expect("Failed to fetch offset from tx with precomputed metadata!");
 
                         assert_eq!(offset, offset_p);
-                        assert_eq!(
-                            predicate.as_slice(),
-                            &buffer[offset..offset + predicate.len()]
-                        );
+                        assert_eq!(predicate.as_slice(), &buffer[offset..offset + len]);
                     }
                 }
             }
@@ -777,10 +774,16 @@ fn script_input_coin_data_offset() {
         vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
     ];
 
-    let predicate = generate_nonempty_bytes(rng);
+    let mut predicate = generate_nonempty_bytes(rng);
+
+    // force word-unaligned predicate
+    if predicate.len() % 2 == 0 {
+        predicate.push(0xff);
+    }
+
     let predicate_data = generate_bytes(rng);
 
-    let owner = (*Hasher::hash(predicate.as_slice())).into();
+    let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
         rng.gen(),
@@ -843,9 +846,13 @@ fn script_input_coin_data_offset() {
                             &buffer[script_data_offset..script_data_offset + script_data.len()]
                         );
 
-                        let offset = tx
+                        let (offset, len) = tx
                             .input_coin_predicate_offset(offset)
                             .expect("Failed to fetch offset");
+
+                        assert_ne!(predicate.len(), len);
+                        assert_eq!(bytes::padded_len(&predicate), len);
+
                         assert_eq!(
                             predicate.as_slice(),
                             &buffer[offset..offset + predicate.len()]

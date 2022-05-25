@@ -1,0 +1,6 @@
+---
+source: src/contract.rs
+assertion_line: 223
+expression: default_root
+---
+0x0000000000000000000000000000000000000000000000000000000000000000

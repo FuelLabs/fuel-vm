@@ -38,3 +38,6 @@ pub use transaction::{
     consensus_parameters::*, Input, Metadata, Output, StorageSlot, Transaction, TransactionRepr,
     TxId, UtxoId, ValidationError, Witness,
 };
+
+#[cfg(feature = "alloc")]
+pub use contract::Contract;

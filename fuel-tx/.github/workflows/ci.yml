@@ -60,6 +60,10 @@ jobs:
           # Can be replaced by other targets that guarantee bare-minimum no-std
           target: thumbv6m-none-eabi
       - uses: Swatinem/rust-cache@v1
+        with:
+          # This action doesn't customize the cache key for each matrix run by default
+          # leading to conflicts and overrides between different feature sets
+          key: "${{ matrix.job.command }} ${{ matrix.job.args }}"
       - name: ${{ matrix.command }} ${{ matrix.args }}
         uses: actions-rs/cargo@v1
         with:

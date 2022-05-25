@@ -14,7 +14,7 @@ pub const MAX_OUTPUTS: u8 = 255;
 pub const MAX_WITNESSES: u8 = 255;
 
 /// Maximum gas per transaction.
-pub const MAX_GAS_PER_TX: u64 = 1000000;
+pub const MAX_GAS_PER_TX: u64 = 100_000_000;
 
 // TODO set max script length const
 /// Maximum length of script, in instructions.

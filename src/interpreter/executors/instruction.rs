@@ -63,7 +63,8 @@ impl<S> Interpreter<S> {
         instruction_executor(self, instruction).map_err(|e| InterpreterError::from_runtime(e, instruction))
     }
 
-    pub(crate) fn instruction_predicate(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
+    /// executes valid predicate instructions
+    pub fn instruction_predicate(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
@@ -402,7 +403,8 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn instruction_script(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
+    /// executes stateful script instructions
+    pub fn instruction_script(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],

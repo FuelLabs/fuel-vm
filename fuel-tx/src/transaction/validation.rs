@@ -1,5 +1,4 @@
 use super::{Input, Output, Transaction, Witness};
-use crate::consts::*;
 use crate::transaction::internals;
 
 use fuel_crypto::Hasher;
@@ -13,6 +12,7 @@ use fuel_crypto::{Message, Signature};
 
 mod error;
 
+use crate::transaction::consensus_parameters::ConsensusParameters;
 pub use error::ValidationError;
 
 impl Input {
@@ -23,8 +23,9 @@ impl Input {
         txhash: &Bytes32,
         outputs: &[Output],
         witnesses: &[Witness],
+        parameters: &ConsensusParameters,
     ) -> Result<(), ValidationError> {
-        self.validate_without_signature(index, outputs, witnesses)?;
+        self.validate_without_signature(index, outputs, witnesses, parameters)?;
         self.validate_signature(index, txhash, witnesses)?;
 
         Ok(())
@@ -76,16 +77,18 @@ impl Input {
         index: usize,
         outputs: &[Output],
         witnesses: &[Witness],
+        parameters: &ConsensusParameters,
     ) -> Result<(), ValidationError> {
         match self {
             Self::CoinPredicate { predicate, .. }
-                if predicate.is_empty() || predicate.len() > MAX_PREDICATE_LENGTH as usize =>
+                if predicate.is_empty()
+                    || predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(ValidationError::InputCoinPredicateLength { index })
             }
 
             Self::CoinPredicate { predicate_data, .. }
-                if predicate_data.len() > MAX_PREDICATE_DATA_LENGTH as usize =>
+                if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(ValidationError::InputCoinPredicateDataLength { index })
             }
@@ -143,8 +146,12 @@ impl Output {
 
 impl Transaction {
     #[cfg(feature = "std")]
-    pub fn validate(&self, block_height: Word) -> Result<(), ValidationError> {
-        self.validate_without_signature(block_height)?;
+    pub fn validate(
+        &self,
+        block_height: Word,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), ValidationError> {
+        self.validate_without_signature(block_height, parameters)?;
         self.validate_input_signature()?;
 
         Ok(())
@@ -164,8 +171,12 @@ impl Transaction {
         Ok(())
     }
 
-    pub fn validate_without_signature(&self, block_height: Word) -> Result<(), ValidationError> {
-        if self.gas_limit() > MAX_GAS_PER_TX {
+    pub fn validate_without_signature(
+        &self,
+        block_height: Word,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), ValidationError> {
+        if self.gas_limit() > parameters.max_gas_per_tx {
             Err(ValidationError::TransactionGasLimit)?
         }
 
@@ -173,15 +184,15 @@ impl Transaction {
             Err(ValidationError::TransactionMaturity)?;
         }
 
-        if self.inputs().len() > MAX_INPUTS as usize {
+        if self.inputs().len() > parameters.max_inputs as usize {
             Err(ValidationError::TransactionInputsMax)?
         }
 
-        if self.outputs().len() > MAX_OUTPUTS as usize {
+        if self.outputs().len() > parameters.max_outputs as usize {
             Err(ValidationError::TransactionOutputsMax)?
         }
 
-        if self.witnesses().len() > MAX_WITNESSES as usize {
+        if self.witnesses().len() > parameters.max_witnesses as usize {
             Err(ValidationError::TransactionWitnessesMax)?
         }
 
@@ -231,7 +242,12 @@ impl Transaction {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                input.validate_without_signature(index, self.outputs(), self.witnesses())
+                input.validate_without_signature(
+                    index,
+                    self.outputs(),
+                    self.witnesses(),
+                    parameters,
+                )
             })?;
 
         self.outputs()
@@ -272,11 +288,11 @@ impl Transaction {
                 script_data,
                 ..
             } => {
-                if script.len() > MAX_SCRIPT_LENGTH as usize {
+                if script.len() > parameters.max_script_length as usize {
                     Err(ValidationError::TransactionScriptLength)?;
                 }
 
-                if script_data.len() > MAX_SCRIPT_DATA_LENGTH as usize {
+                if script_data.len() > parameters.max_script_data_length as usize {
                     Err(ValidationError::TransactionScriptDataLength)?;
                 }
 
@@ -308,13 +324,13 @@ impl Transaction {
                     .map(|w| w.as_ref().len() as Word)
                     .ok_or(ValidationError::TransactionCreateBytecodeWitnessIndex)?;
 
-                if bytecode_witness_len > CONTRACT_MAX_SIZE
+                if bytecode_witness_len > parameters.contract_max_size
                     || bytecode_witness_len / 4 != *bytecode_length
                 {
                     return Err(ValidationError::TransactionCreateBytecodeLen);
                 }
 
-                if static_contracts.len() > MAX_STATIC_CONTRACTS as usize {
+                if static_contracts.len() > parameters.max_static_contracts as usize {
                     Err(ValidationError::TransactionCreateStaticContractsMax)?;
                 }
 
@@ -324,7 +340,7 @@ impl Transaction {
 
                 // Restrict to subset of u16::MAX, allowing this to be increased in the future
                 // in a non-breaking way.
-                if storage_slots.len() > MAX_STORAGE_SLOTS as usize {
+                if storage_slots.len() > parameters.max_storage_slots as usize {
                     return Err(ValidationError::TransactionCreateStorageSlotMax);
                 }
 

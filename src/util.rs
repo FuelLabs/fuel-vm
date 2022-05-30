@@ -41,12 +41,21 @@
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr) => {{
-        use $crate::consts::VM_TX_MEMORY;
-        use $crate::prelude::{fuel_types::bytes::padded_len, Immediate18, Transaction};
-        let $offset = 0 as Immediate18;
-        let script_bytes: ::std::vec::Vec<u8> = ::std::iter::IntoIterator::into_iter({ $script }).collect();
-        let data_offset = VM_TX_MEMORY + Transaction::script_offset() + padded_len(script_bytes.as_slice());
-        let $offset = data_offset as Immediate18;
+        let data_offset = {
+            let $offset = {
+                use $crate::prelude::Immediate18;
+                0 as Immediate18
+            };
+            let script_bytes: ::std::vec::Vec<u8> = ::std::iter::IntoIterator::into_iter({ $script }).collect();
+            {
+                use $crate::consts::VM_TX_MEMORY;
+                use $crate::fuel_types::bytes::padded_len;
+                use $crate::prelude::{Immediate18, Transaction};
+                (VM_TX_MEMORY + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
+            }
+        };
+
+        let $offset = data_offset;
         ($script, $offset)
     }};
 }

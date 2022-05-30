@@ -41,7 +41,7 @@
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr) => {{
-        let data_offset = {
+        let $offset = {
             let $offset = {
                 use $crate::prelude::Immediate18;
                 0 as Immediate18
@@ -54,8 +54,6 @@ macro_rules! script_with_data_offset {
                 (VM_TX_MEMORY + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
             }
         };
-
-        let $offset = data_offset;
         ($script, $offset)
     }};
 }

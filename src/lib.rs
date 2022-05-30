@@ -19,18 +19,30 @@ pub mod util;
 #[cfg(feature = "profile-any")]
 pub mod profiler;
 
+// Fully re-export fuel dependencies
+#[doc(no_inline)]
+pub use fuel_asm;
+#[doc(no_inline)]
+pub use fuel_crypto;
+#[doc(no_inline)]
+pub use fuel_merkle;
+#[doc(no_inline)]
+pub use fuel_storage;
+#[doc(no_inline)]
+pub use fuel_tx;
+#[doc(no_inline)]
+pub use fuel_types;
+
 pub mod prelude {
     //! Required implementations for full functionality
-
     #[doc(no_inline)]
-    pub use fuel_asm::{self, Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
+    pub use fuel_asm::{Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
     #[doc(no_inline)]
-    pub use fuel_storage::{self, MerkleRoot, MerkleStorage, Storage};
+    pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
-    pub use fuel_tx::{self, Contract, Input, Output, Receipt, Transaction, UtxoId, ValidationError, Witness};
+    pub use fuel_tx::{Contract, Input, Output, Receipt, Transaction, UtxoId, ValidationError, Witness};
     #[doc(no_inline)]
     pub use fuel_types::{
-        self,
         bytes::{Deserializable, SerializableVec, SizedBytes},
         Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, Immediate06, Immediate12, Immediate18,
         Immediate24, RegisterId, Salt, Word,

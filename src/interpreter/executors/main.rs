@@ -4,16 +4,13 @@ use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
-use crate::storage::InterpreterStorage;
+use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
 use fuel_tx::{ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::{bytes::SerializableVec, Word};
 
-impl<S> Interpreter<S>
-where
-    S: Default + Clone,
-{
+impl Interpreter<PredicateStorage> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs.
     ///
@@ -26,7 +23,7 @@ where
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
     pub fn check_predicates(tx: Transaction, params: ConsensusParameters) -> bool {
-        let mut vm = Interpreter::with_storage(S::default(), params);
+        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params);
 
         if !tx.check_predicate_owners() {
             return false;
@@ -132,7 +129,7 @@ where
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
                 // TODO implement debug support
-                if !Interpreter::<()>::check_predicates(self.tx.clone(), self.consensus_parameters) {
+                if !Interpreter::<PredicateStorage>::check_predicates(self.tx.clone(), self.consensus_parameters) {
                     return Err(InterpreterError::PredicateFailure);
                 }
 
@@ -228,7 +225,7 @@ where
             }
 
             let state = self
-                .execute(Self::instruction_script)
+                .execute()
                 .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
 
             match state {
@@ -260,7 +257,7 @@ where
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
-            match self.execute(Self::instruction_script)? {
+            match self.execute()? {
                 ExecuteState::Return(r) => {
                     return Ok(ProgramState::Return(r));
                 }

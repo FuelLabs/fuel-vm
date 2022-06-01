@@ -57,9 +57,9 @@ macro_rules! script_with_data_offset {
 /// Testing utilities
 pub mod test_helpers {
     use crate::consts::*;
-    use crate::memory_client::{MemoryClient, MemoryStorage};
+    use crate::memory_client::MemoryClient;
     use crate::state::StateTransition;
-    use crate::storage::InterpreterStorage;
+    use crate::storage::{InterpreterStorage, MemoryStorage};
     use crate::transactor::Transactor;
 
     use fuel_asm::Opcode;

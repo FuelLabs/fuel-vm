@@ -45,7 +45,7 @@ where
         vec![],
     );
 
-    Interpreter::<()>::check_predicates(tx, Default::default())
+    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
 }
 
 #[test]

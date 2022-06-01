@@ -36,9 +36,9 @@ pub mod prelude {
     pub use crate::context::Context;
     pub use crate::error::{Infallible, InterpreterError, RuntimeError};
     pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
-    pub use crate::memory_client::{MemoryClient, MemoryStorage};
+    pub use crate::memory_client::MemoryClient;
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
-    pub use crate::storage::InterpreterStorage;
+    pub use crate::storage::{InterpreterStorage, MemoryStorage, PredicateStorage};
     pub use crate::transactor::Transactor;
 
     #[cfg(feature = "debug")]

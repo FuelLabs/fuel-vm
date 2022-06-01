@@ -2,10 +2,11 @@ use crate::consts::*;
 use crate::error::InterpreterError;
 use crate::interpreter::{Interpreter, MemoryRange};
 use crate::state::{ExecuteState, ProgramState};
+use crate::storage::PredicateStorage;
 
 use fuel_asm::PanicReason;
 
-impl<S> Interpreter<S> {
+impl Interpreter<PredicateStorage> {
     pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, InterpreterError> {
         debug_assert!(self.is_predicate());
 
@@ -19,7 +20,7 @@ impl<S> Interpreter<S> {
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
-            match self.execute(Self::instruction_predicate)? {
+            match self.execute()? {
                 ExecuteState::Return(r) => {
                     if r == 1 {
                         return Ok(ProgramState::Return(r));

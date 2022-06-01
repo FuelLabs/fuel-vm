@@ -354,20 +354,30 @@ impl fmt::Debug for Node {
     }
 }
 
-type NodeStorage<'storage, StorageError> =
-    dyn 'storage + Storage<Bytes32, Buffer, Error = StorageError>;
-
-#[derive(Clone)]
-pub(crate) struct StorageNode<'storage, StorageError> {
-    storage: &'storage NodeStorage<'storage, StorageError>,
+pub(crate) struct StorageNode<'storage, StorageType> {
+    storage: &'storage StorageType,
     node: Node,
 }
 
-impl<'a, 'storage, StorageError> StorageNode<'storage, StorageError>
+impl<'storage, StorageType, StorageError> Clone for StorageNode<'storage, StorageType>
 where
+    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
     StorageError: fmt::Debug + Clone,
 {
-    pub fn new(storage: &'storage NodeStorage<'storage, StorageError>, node: Node) -> Self {
+    fn clone(&self) -> Self {
+        Self {
+            storage: self.storage,
+            node: self.node.clone(),
+        }
+    }
+}
+
+impl<'storage, StorageType, StorageError> StorageNode<'storage, StorageType>
+where
+    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
+    StorageError: fmt::Debug + Clone,
+{
+    pub fn new(storage: &'storage StorageType, node: Node) -> Self {
         Self { node, storage }
     }
 
@@ -422,8 +432,9 @@ where
     }
 }
 
-impl<'storage, StorageError> crate::common::Node for StorageNode<'storage, StorageError>
+impl<'storage, StorageType, StorageError> crate::common::Node for StorageNode<'storage, StorageType>
 where
+    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
     StorageError: fmt::Debug + Clone,
 {
     type Key = Bytes32;
@@ -441,8 +452,10 @@ where
     }
 }
 
-impl<'storage, StorageError> crate::common::ParentNode for StorageNode<'storage, StorageError>
+impl<'storage, StorageType, StorageError> crate::common::ParentNode
+    for StorageNode<'storage, StorageType>
 where
+    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
     StorageError: fmt::Debug + Clone,
 {
     fn left_child(&self) -> Self {
@@ -454,8 +467,9 @@ where
     }
 }
 
-impl<'storage, StorageError> fmt::Debug for StorageNode<'storage, StorageError>
+impl<'storage, StorageType, StorageError> fmt::Debug for StorageNode<'storage, StorageType>
 where
+    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
     StorageError: fmt::Debug + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -641,9 +655,10 @@ mod test_node {
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test_storage_node {
-    use crate::common::{Bytes32, StorageError, StorageMap};
+    use crate::common::{Bytes32, StorageMap};
     use crate::sparse::hash::sum;
     use crate::sparse::node::Buffer;
     use crate::sparse::{Node, StorageNode};
@@ -662,7 +677,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&mut s, node_0);
         let child = storage_node.left_child().unwrap();
 
         assert_eq!(child.hash(), leaf_0.hash());
@@ -681,7 +696,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&mut s, node_0);
         let child = storage_node.right_child().unwrap();
 
         assert_eq!(child.hash(), leaf_1.hash());
@@ -697,7 +712,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&Node::create_placeholder(), &leaf, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&mut s, node_0);
         let child = storage_node.left_child().unwrap();
 
         assert!(child.node.is_placeholder());
@@ -713,7 +728,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf, &Node::create_placeholder(), 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::<StorageError>::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&mut s, node_0);
         let child = storage_node.right_child().unwrap();
 
         assert!(child.node.is_placeholder());

@@ -105,6 +105,7 @@ impl Iterator for PositionPathIter {
 #[cfg(test)]
 mod test {
     use crate::common::Position;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_path_set_returns_path_and_side_nodes_for_4_leaves() {

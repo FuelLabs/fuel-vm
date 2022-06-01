@@ -1,5 +1,3 @@
-use crate::{binary, sparse, sum};
-
 use fuel_storage::Storage;
 use thiserror::Error;
 
@@ -7,15 +5,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Error)]
-pub enum StorageError {
-    #[error("A binary merkle tree error was thrown: {0}")]
-    BinaryMerkleTree(#[from] binary::MerkleTreeError),
-
-    #[error("A sparse merkle tree error was thrown: {0}")]
-    SparseMerkleTree(#[from] sparse::MerkleTreeError),
-
-    #[error("A sum merkle tree error was thrown: {0}")]
-    SumMerkleTree(#[from] sum::MerkleTreeError),
+pub enum StorageMapError {
+    // Empty - StorageMap does not produce any errors
 }
 
 #[derive(Debug)]
@@ -36,7 +27,7 @@ where
     Key: Eq + std::hash::Hash + Clone,
     Value: Clone,
 {
-    type Error = StorageError;
+    type Error = StorageMapError;
 
     fn insert(&mut self, key: &Key, value: &Value) -> Result<Option<Value>, Self::Error> {
         self.map.insert(key.clone(), value.clone());

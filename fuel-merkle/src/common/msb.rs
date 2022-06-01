@@ -47,7 +47,7 @@ impl<const N: usize> Msb for [u8; N] {
 #[cfg(test)]
 mod test {
     use crate::common::{Bytes1, Bytes2, Bytes4, Bytes8, Msb};
-    use std::mem::size_of;
+    use core::mem::size_of;
 
     #[test]
     fn test_msb_for_bytes_1() {

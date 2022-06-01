@@ -186,6 +186,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::common::{AsPathIterator, Bytes8, Node, ParentNode};
+    use alloc::vec::Vec;
 
     #[derive(Debug, Clone, PartialEq)]
     struct TestNode {

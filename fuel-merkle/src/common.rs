@@ -15,7 +15,7 @@ pub use position::Position;
 pub use subtree::Subtree;
 
 #[cfg(feature = "std")]
-pub use storage_map::{StorageError, StorageMap};
+pub use storage_map::{StorageMap, StorageMapError};
 
 pub(crate) use position_path::PositionPath;
 

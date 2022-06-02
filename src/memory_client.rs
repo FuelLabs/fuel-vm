@@ -1,13 +1,10 @@
 //! In-memory client implementation
 
 use crate::backtrace::Backtrace;
+use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 
 use fuel_tx::{ConsensusParameters, Receipt, Transaction};
-
-mod storage;
-
-pub use storage::MemoryStorage;
 
 #[derive(Debug, Default)]
 /// Client implementation with in-memory storage backend.

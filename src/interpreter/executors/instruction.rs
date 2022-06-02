@@ -13,12 +13,12 @@ use std::ops::Div;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
-impl<S> Interpreter<S> {
+impl<S> Interpreter<S>
+where
+    S: InterpreterStorage,
+{
     /// Execute the current instruction pair located in `$m[$pc]`.
-    pub fn execute<F>(&mut self, instruction_executor: F) -> Result<ExecuteState, InterpreterError>
-    where
-        F: Fn(&mut Self, Instruction) -> Result<ExecuteState, RuntimeError>,
-    {
+    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
         let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]
             .chunks_exact(WORD_SIZE)
@@ -30,28 +30,21 @@ impl<S> Interpreter<S> {
 
         // Store the expected `$pc` after executing `hi`
         let pc = self.registers[REG_PC] + Instruction::LEN as Word;
-        let state = self.instruction(&instruction_executor, hi)?;
+        let state = self.instruction(hi)?;
 
         // TODO optimize
         // Should execute `lo` only if there is no rupture in the flow - that means
         // either a breakpoint or some instruction that would skip `lo` such as
         // `RET`, `JI` or `CALL`
         if self.registers[REG_PC] == pc && state.should_continue() {
-            self.instruction(&instruction_executor, lo)
+            self.instruction(lo)
         } else {
             Ok(state)
         }
     }
 
     /// Execute a provided instruction
-    pub fn instruction<F>(
-        &mut self,
-        instruction_executor: F,
-        instruction: Instruction,
-    ) -> Result<ExecuteState, InterpreterError>
-    where
-        F: FnOnce(&mut Self, Instruction) -> Result<ExecuteState, RuntimeError>,
-    {
+    pub fn instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
             let debug = self.eval_debugger_state();
@@ -60,11 +53,11 @@ impl<S> Interpreter<S> {
             }
         }
 
-        instruction_executor(self, instruction).map_err(|e| InterpreterError::from_runtime(e, instruction))
+        self._instruction(instruction)
+            .map_err(|e| InterpreterError::from_runtime(e, instruction))
     }
 
-    /// executes valid predicate instructions
-    pub fn instruction_predicate(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
+    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
             self.registers[ra],
@@ -73,345 +66,11 @@ impl<S> Interpreter<S> {
             self.registers[rd],
         );
 
-        match op {
-            OpcodeRepr::ADD => {
-                self.gas_charge(GAS_ADD)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), c.into())?;
-            }
-
-            OpcodeRepr::ADDI => {
-                self.gas_charge(GAS_ADDI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), imm.into())?;
-            }
-
-            OpcodeRepr::AND => {
-                self.gas_charge(GAS_AND)?;
-                self.alu_set(ra, b & c)?;
-            }
-
-            OpcodeRepr::ANDI => {
-                self.gas_charge(GAS_ANDI)?;
-                self.alu_set(ra, b & imm)?;
-            }
-
-            OpcodeRepr::DIV => {
-                self.gas_charge(GAS_DIV)?;
-                self.alu_error(ra, Word::div, b, c, c == 0)?;
-            }
-
-            OpcodeRepr::DIVI => {
-                self.gas_charge(GAS_DIVI)?;
-                self.alu_error(ra, Word::div, b, imm, imm == 0)?;
-            }
-
-            OpcodeRepr::EQ => {
-                self.gas_charge(GAS_EQ)?;
-                self.alu_set(ra, (b == c) as Word)?;
-            }
-
-            OpcodeRepr::EXP => {
-                self.gas_charge(GAS_EXP)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, c as u32)?;
-            }
-
-            OpcodeRepr::EXPI => {
-                self.gas_charge(GAS_EXPI)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
-            }
-
-            OpcodeRepr::GT => {
-                self.gas_charge(GAS_GT)?;
-                self.alu_set(ra, (b > c) as Word)?;
-            }
-
-            OpcodeRepr::LT => {
-                self.gas_charge(GAS_LT)?;
-                self.alu_set(ra, (b < c) as Word)?;
-            }
-
-            OpcodeRepr::MLOG => {
-                self.gas_charge(GAS_MLOG)?;
-                self.alu_error(
-                    ra,
-                    |b, c| (b as f64).log(c as f64).trunc() as Word,
-                    b,
-                    c,
-                    b == 0 || c <= 1,
-                )?;
-            }
-
-            OpcodeRepr::MOD => {
-                self.gas_charge(GAS_MOD)?;
-                self.alu_error(ra, Word::wrapping_rem, b, c, c == 0)?;
-            }
-
-            OpcodeRepr::MODI => {
-                self.gas_charge(GAS_MODI)?;
-                self.alu_error(ra, Word::wrapping_rem, b, imm, imm == 0)?;
-            }
-
-            OpcodeRepr::MOVE => {
-                self.gas_charge(GAS_MOVE)?;
-                self.alu_set(ra, b)?;
-            }
-
-            OpcodeRepr::MOVI => {
-                self.gas_charge(GAS_MOVI)?;
-                self.alu_set(ra, imm)?;
-            }
-
-            OpcodeRepr::MROO => {
-                self.gas_charge(GAS_MROO)?;
-                self.alu_error(
-                    ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
-                    b,
-                    c,
-                    c == 0,
-                )?;
-            }
-
-            OpcodeRepr::MUL => {
-                self.gas_charge(GAS_MUL)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), c.into())?;
-            }
-
-            OpcodeRepr::MULI => {
-                self.gas_charge(GAS_MULI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), imm.into())?;
-            }
-
-            OpcodeRepr::NOOP => {
-                self.gas_charge(GAS_NOOP)?;
-                self.alu_clear()?;
-            }
-
-            OpcodeRepr::NOT => {
-                self.gas_charge(GAS_NOT)?;
-                self.alu_set(ra, !b)?;
-            }
-
-            OpcodeRepr::OR => {
-                self.gas_charge(GAS_OR)?;
-                self.alu_set(ra, b | c)?;
-            }
-
-            OpcodeRepr::ORI => {
-                self.gas_charge(GAS_ORI)?;
-                self.alu_set(ra, b | imm)?;
-            }
-
-            OpcodeRepr::SLL => {
-                self.gas_charge(GAS_SLL)?;
-                self.alu_set(ra, b.checked_shl(c as u32).unwrap_or_default())?;
-            }
-
-            OpcodeRepr::SLLI => {
-                self.gas_charge(GAS_SLLI)?;
-                self.alu_set(ra, b.checked_shl(imm as u32).unwrap_or_default())?;
-            }
-
-            OpcodeRepr::SRL => {
-                self.gas_charge(GAS_SRL)?;
-                self.alu_set(ra, b.checked_shr(c as u32).unwrap_or_default())?;
-            }
-
-            OpcodeRepr::SRLI => {
-                self.gas_charge(GAS_SRLI)?;
-                self.alu_set(ra, b.checked_shr(imm as u32).unwrap_or_default())?;
-            }
-
-            OpcodeRepr::SUB => {
-                self.gas_charge(GAS_SUB)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), c.into())?;
-            }
-
-            OpcodeRepr::SUBI => {
-                self.gas_charge(GAS_SUBI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), imm.into())?;
-            }
-
-            OpcodeRepr::XOR => {
-                self.gas_charge(GAS_XOR)?;
-                self.alu_set(ra, b ^ c)?;
-            }
-
-            OpcodeRepr::XORI => {
-                self.gas_charge(GAS_XORI)?;
-                self.alu_set(ra, b ^ imm)?;
-            }
-
-            OpcodeRepr::CIMV => {
-                self.gas_charge(GAS_CIMV)?;
-                self.check_input_maturity(ra, b, c)?;
-            }
-
-            OpcodeRepr::CTMV => {
-                self.gas_charge(GAS_CTMV)?;
-                self.check_tx_maturity(ra, b)?;
-            }
-
-            OpcodeRepr::JI => {
-                self.gas_charge(GAS_JI)?;
-                self.jump(imm)?;
-            }
-
-            OpcodeRepr::JNEI => {
-                self.gas_charge(GAS_JNEI)?;
-                self.jump_not_equal_imm(a, b, imm)?;
-            }
-
-            OpcodeRepr::JNZI => {
-                self.gas_charge(GAS_JNZI)?;
-                self.jump_not_zero_imm(a, imm)?;
-            }
-
-            OpcodeRepr::RET => {
-                self.gas_charge(GAS_RET)?;
-                self.ret(a)?;
-
-                return Ok(ExecuteState::Return(a));
-            }
-
-            OpcodeRepr::ALOC => {
-                self.gas_charge(GAS_ALOC)?;
-                self.malloc(a)?;
-            }
-
-            OpcodeRepr::CFEI => {
-                self.gas_charge(GAS_CFEI)?;
-                self.stack_pointer_overflow(Word::overflowing_add, imm)?;
-            }
-
-            OpcodeRepr::CFSI => {
-                self.gas_charge(GAS_CFSI)?;
-                self.stack_pointer_overflow(Word::overflowing_sub, imm)?;
-            }
-
-            OpcodeRepr::LB => {
-                self.gas_charge(GAS_LB)?;
-                self.load_byte(ra, rb, imm)?;
-            }
-
-            OpcodeRepr::LW => {
-                self.gas_charge(GAS_LW)?;
-                self.load_word(ra, b, imm)?;
-            }
-
-            OpcodeRepr::MCL => {
-                self.gas_charge_monad(GAS_MCL, b)?;
-                self.memclear(a, b)?;
-            }
-
-            OpcodeRepr::MCLI => {
-                self.gas_charge_monad(GAS_MCLI, b)?;
-                self.memclear(a, imm)?;
-            }
-
-            OpcodeRepr::MCP => {
-                self.gas_charge_monad(GAS_MCP, c)?;
-                self.memcopy(a, b, c)?;
-            }
-
-            OpcodeRepr::MCPI => {
-                self.gas_charge_monad(GAS_MCPI, imm)?;
-                self.memcopy(a, b, imm)?;
-            }
-
-            OpcodeRepr::MEQ => {
-                self.gas_charge(GAS_MEQ)?;
-                self.memeq(ra, b, c, d)?;
-            }
-
-            OpcodeRepr::SB => {
-                self.gas_charge(GAS_SB)?;
-                self.store_byte(a, b, imm)?;
-            }
-
-            OpcodeRepr::SW => {
-                self.gas_charge(GAS_SW)?;
-                self.store_word(a, b, imm)?;
-            }
-
-            OpcodeRepr::ECR => {
-                self.gas_charge(GAS_ECR)?;
-                self.ecrecover(a, b, c)?;
-            }
-
-            OpcodeRepr::K256 => {
-                self.gas_charge(GAS_K256)?;
-                self.keccak256(a, b, c)?;
-            }
-
-            OpcodeRepr::S256 => {
-                self.gas_charge(GAS_S256)?;
-                self.sha256(a, b, c)?;
-            }
-
-            OpcodeRepr::XIL => {
-                self.gas_charge(GAS_XIL)?;
-                self.transaction_input_length(ra, b)?;
-            }
-
-            OpcodeRepr::XIS => {
-                self.gas_charge(GAS_XIS)?;
-                self.transaction_input_start(ra, b)?;
-            }
-
-            OpcodeRepr::XOL => {
-                self.gas_charge(GAS_XOL)?;
-                self.transaction_output_length(ra, b)?;
-            }
-
-            OpcodeRepr::XOS => {
-                self.gas_charge(GAS_XOS)?;
-                self.transaction_output_start(ra, b)?;
-            }
-
-            OpcodeRepr::XWL => {
-                self.gas_charge(GAS_XWL)?;
-                self.transaction_witness_length(ra, b)?;
-            }
-
-            OpcodeRepr::XWS => {
-                self.gas_charge(GAS_XWS)?;
-                self.transaction_witness_start(ra, b)?;
-            }
-
-            OpcodeRepr::FLAG => {
-                self.gas_charge(GAS_FLAG)?;
-                self.set_flag(a)?;
-            }
-
-            OpcodeRepr::GM => {
-                self.gas_charge(GAS_GM)?;
-                self.metadata(ra, imm as Immediate18)?;
-            }
-
-            _ => {
-                // TODO use dedicated panic reason variant
-                // https://github.com/FuelLabs/fuel-asm/issues/69
-                return Err(PanicReason::TransactionValidity.into());
-            }
+        // TODO additional branch that might be optimized after
+        // https://github.com/FuelLabs/fuel-asm/issues/68
+        if self.is_predicate() && !op.is_predicate_allowed() {
+            return Err(PanicReason::TransactionValidity.into());
         }
-
-        Ok(ExecuteState::Proceed)
-    }
-}
-
-impl<S> Interpreter<S>
-where
-    S: InterpreterStorage,
-{
-    /// executes stateful script instructions
-    pub fn instruction_script(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
-        let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
-        let (a, b, c, d) = (
-            self.registers[ra],
-            self.registers[rb],
-            self.registers[rc],
-            self.registers[rd],
-        );
 
         match op {
             OpcodeRepr::ADD => {

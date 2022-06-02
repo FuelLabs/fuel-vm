@@ -99,6 +99,12 @@ impl From<RuntimeError> for InterpreterError {
     }
 }
 
+impl From<InterpreterError> for io::Error {
+    fn from(e: InterpreterError) -> Self {
+        io::Error::new(io::ErrorKind::Other, e)
+    }
+}
+
 #[derive(Debug, Error)]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.

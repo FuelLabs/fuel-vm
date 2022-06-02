@@ -1,10 +1,10 @@
 use fuel_storage::Storage;
-use thiserror::Error;
 
-use std::borrow::Cow;
-use std::collections::HashMap;
+use alloc::borrow::Cow;
+use hashbrown::HashMap;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum StorageMapError {
     // Empty - StorageMap does not produce any errors
 }
@@ -24,7 +24,7 @@ impl<Key, Value> StorageMap<Key, Value> {
 
 impl<Key, Value> Storage<Key, Value> for StorageMap<Key, Value>
 where
-    Key: Eq + std::hash::Hash + Clone,
+    Key: Eq + core::hash::Hash + Clone,
     Value: Clone,
 {
     type Error = StorageMapError;
@@ -55,16 +55,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fmt::Formatter;
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     struct TestKey(u32);
-
-    impl std::fmt::Display for TestKey {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.0)
-        }
-    }
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     struct TestValue(u32);

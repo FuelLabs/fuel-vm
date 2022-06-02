@@ -113,7 +113,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use fuel_merkle_test_helpers::TEST_DATA;

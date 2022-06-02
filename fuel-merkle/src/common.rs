@@ -3,19 +3,15 @@ mod node;
 mod path_iterator;
 mod position;
 mod position_path;
-mod subtree;
-
-#[cfg(feature = "std")]
 mod storage_map;
+mod subtree;
 
 pub use msb::Msb;
 pub use node::{Node, ParentNode};
 pub use path_iterator::AsPathIterator;
 pub use position::Position;
-pub use subtree::Subtree;
-
-#[cfg(feature = "std")]
 pub use storage_map::{StorageMap, StorageMapError};
+pub use subtree::Subtree;
 
 pub(crate) use position_path::PositionPath;
 

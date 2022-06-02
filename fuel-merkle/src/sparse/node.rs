@@ -655,7 +655,6 @@ mod test_node {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod test_storage_node {
     use crate::common::{Bytes32, StorageMap};

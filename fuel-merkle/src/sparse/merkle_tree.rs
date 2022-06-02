@@ -259,7 +259,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use crate::common::{Bytes32, StorageMap};

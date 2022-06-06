@@ -8,7 +8,8 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
 use fuel_tx::{ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
-use fuel_types::{bytes::SerializableVec, Word};
+use fuel_types::bytes::SerializableVec;
+use fuel_types::Word;
 
 impl Interpreter<PredicateStorage> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
@@ -186,7 +187,7 @@ where
 
                 let receipt = Receipt::script_result(status, gas_used);
 
-                self.receipts.push(receipt);
+                self.append_receipt(receipt);
 
                 program
             }

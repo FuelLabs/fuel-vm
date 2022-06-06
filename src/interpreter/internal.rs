@@ -1,11 +1,13 @@
 use super::Interpreter;
 use crate::consts::*;
 use crate::context::Context;
+use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
-use fuel_tx::{Output, Transaction};
-use fuel_types::{Address, AssetId, ContractId, RegisterId, Word};
+use fuel_tx::{Output, Receipt, Transaction};
+use fuel_types::bytes::SerializableVec;
+use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use core::mem;
 use std::io::{self, ErrorKind, Read};
@@ -208,6 +210,30 @@ impl<S> Interpreter<S> {
         outputs[out_idx] = output;
 
         Ok(())
+    }
+
+    pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
+        self.receipts.push(receipt);
+
+        self.tx
+            .receipts_root_offset()
+            .map(|offset| offset + VM_TX_MEMORY)
+            .map(|offset| {
+                // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
+                // linear monadic model and should be discussed. Maybe the receipts tree should have
+                // constant capacity so the gas cost is also constant to the maximum depth?
+                let root = if self.receipts().is_empty() {
+                    EMPTY_RECEIPTS_MERKLE_ROOT.into()
+                } else {
+                    crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
+                };
+
+                self.tx.set_receipts_root(root);
+
+                // Transaction memory space length is already checked on initialization so its
+                // guaranteed to fit
+                (&mut self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
+            });
     }
 }
 

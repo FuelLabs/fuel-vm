@@ -3,12 +3,6 @@ use fuel_storage::Storage;
 use alloc::borrow::Cow;
 use hashbrown::HashMap;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum StorageMapError {
-    // Empty - StorageMap does not produce any errors
-}
-
 #[derive(Debug)]
 pub struct StorageMap<Key, Value> {
     map: HashMap<Key, Value>,
@@ -27,7 +21,7 @@ where
     Key: Eq + core::hash::Hash + Clone,
     Value: Clone,
 {
-    type Error = StorageMapError;
+    type Error = core::convert::Infallible;
 
     fn insert(&mut self, key: &Key, value: &Value) -> Result<Option<Value>, Self::Error> {
         self.map.insert(key.clone(), value.clone());

@@ -117,10 +117,11 @@ where
 mod test {
     use fuel_merkle_test_helpers::TEST_DATA;
 
-    use crate::common::{Bytes32, StorageMap, StorageMapError};
+    use crate::common::{Bytes32, StorageMap};
     use crate::sum::{empty_sum, leaf_sum, node_sum, MerkleTree, Node};
 
-    type MT<'storage> = MerkleTree<'storage, StorageMapError>;
+    type StorageError = core::convert::Infallible;
+    type MT<'storage> = MerkleTree<'storage, StorageError>;
     const FEE: u64 = 100;
 
     #[test]

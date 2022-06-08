@@ -1,5 +1,4 @@
 use fuel_asm::Opcode;
-use fuel_crypto::Hasher;
 use fuel_tx::{default_parameters::*, *};
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
 use fuel_types::{bytes, ContractId, Immediate24};

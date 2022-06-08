@@ -2,7 +2,7 @@ use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::{Input, Metadata, StorageSlot, Transaction};
 
 use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::ContractId;
+use fuel_types::{Bytes32, ContractId};
 
 impl Transaction {
     /// For a serialized transaction of type `Script`, return the bytes offset
@@ -194,5 +194,14 @@ impl Transaction {
                 .sum::<usize>()
                 + offset
         })
+    }
+
+    /// For a serialized transaction of type `Script`, return the bytes offset
+    /// of the receipts root
+    pub const fn receipts_root_offset(&self) -> Option<usize> {
+        match self {
+            Self::Script { .. } => Some(TRANSACTION_SCRIPT_FIXED_SIZE - Bytes32::LEN),
+            Self::Create { .. } => None,
+        }
     }
 }

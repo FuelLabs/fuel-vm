@@ -1,9 +1,12 @@
 use fuel_tx::*;
 use fuel_tx_test_helpers::TransactionFactory;
 use fuel_types::bytes::{Deserializable, SerializableVec};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 #[test]
 fn iow_offset() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
     TransactionFactory::from_seed(3493)
         .take(100)
         .for_each(|(mut tx, _)| {
@@ -43,6 +46,17 @@ fn iow_offset() {
 
                 assert_eq!(w, &witness);
                 assert_eq!(offset, offset_p);
+            });
+
+            tx.receipts_root_offset().map(|offset| {
+                let receipts_root = rng.gen();
+
+                tx.set_receipts_root(receipts_root);
+
+                let bytes = tx.to_bytes();
+                let receipts_root_p = &bytes[offset..offset + Bytes32::LEN];
+
+                assert_eq!(&receipts_root[..], receipts_root_p);
             });
         });
 }

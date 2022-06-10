@@ -1,5 +1,5 @@
 use fuel_asm::Opcode;
-use fuel_tx::{default_parameters::*, *};
+use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
 use fuel_types::{bytes, ContractId, Immediate24};
 use rand::rngs::StdRng;
@@ -562,7 +562,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -575,7 +575,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -588,7 +588,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -601,7 +601,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -614,7 +614,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),
@@ -627,7 +627,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             rng.next_u64(),
             rng.next_u64(),
             rng.gen(),

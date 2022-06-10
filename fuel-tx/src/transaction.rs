@@ -1,4 +1,5 @@
 use crate::consts::*;
+use crate::ConsensusParameters;
 
 use fuel_asm::Opcode;
 use fuel_types::{AssetId, Bytes32, ContractId, Salt, Word};
@@ -80,8 +81,7 @@ impl Default for Transaction {
 
         Transaction::script(
             0,
-            // use default max gas per tx
-            consensus_parameters::default_parameters::MAX_GAS_PER_TX,
+            ConsensusParameters::DEFAULT.max_gas_per_tx,
             0,
             0,
             script,

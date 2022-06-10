@@ -90,7 +90,7 @@ impl<S> Interpreter<S> {
                 });
         }
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }
@@ -144,7 +144,7 @@ impl<S> Interpreter<S> {
             self.registers[REG_IS],
         );
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
     }
 
     pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
@@ -153,7 +153,7 @@ impl<S> Interpreter<S> {
 
         let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
     }
 }
 
@@ -220,7 +220,8 @@ where
             self.registers[REG_IS],
         );
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
+
         self.frames.push(frame);
 
         self.run_call()

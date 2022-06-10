@@ -86,14 +86,16 @@ where
         // credit destination contract
         self.balance_increase(&destination, &asset_id, amount)?;
 
-        self.receipts.push(Receipt::transfer(
+        let receipt = Receipt::transfer(
             internal_context.unwrap_or_default(),
             destination,
             amount,
             asset_id,
             self.registers[REG_PC],
             self.registers[REG_IS],
-        ));
+        );
+
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }

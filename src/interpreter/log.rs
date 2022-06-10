@@ -19,7 +19,7 @@ impl<S> Interpreter<S> {
             self.registers[REG_IS],
         );
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }
@@ -44,7 +44,7 @@ impl<S> Interpreter<S> {
             self.registers[REG_IS],
         );
 
-        self.receipts.push(receipt);
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }

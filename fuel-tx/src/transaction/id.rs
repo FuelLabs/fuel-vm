@@ -104,7 +104,6 @@ impl Transaction {
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
-    use crate::default_parameters::MAX_GAS_PER_TX;
     use crate::*;
 
     use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
@@ -362,7 +361,7 @@ mod tests {
                         for storage_slots in storage_slots.iter() {
                             let tx = Transaction::create(
                                 rng.next_u64(),
-                                MAX_GAS_PER_TX,
+                                ConsensusParameters::DEFAULT.max_gas_per_tx,
                                 rng.next_u64(),
                                 rng.next_u64(),
                                 rng.next_u32().to_be_bytes()[0],

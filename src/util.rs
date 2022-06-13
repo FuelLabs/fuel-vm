@@ -41,13 +41,23 @@
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr) => {{
-        use fuel_types::{bytes, Immediate18};
-        use $crate::consts::VM_TX_MEMORY;
-        use $crate::prelude::Transaction;
-        let $offset = 0 as Immediate18;
-        let script_bytes: Vec<u8> = { $script }.into_iter().collect();
-        let data_offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script_bytes.as_slice());
-        let $offset = data_offset as Immediate18;
+        let $offset = {
+            // first set offset to 0 before evaluating script expression
+            let $offset = {
+                use $crate::prelude::Immediate18;
+                0 as Immediate18
+            };
+            // evaluate script expression with zeroed data offset to get the script length
+            let script_bytes: ::std::vec::Vec<u8> = ::std::iter::IntoIterator::into_iter({ $script }).collect();
+            // compute the script data offset within the VM memory given the script length
+            {
+                use $crate::consts::VM_TX_MEMORY;
+                use $crate::fuel_types::bytes::padded_len;
+                use $crate::prelude::{Immediate18, Transaction};
+                (VM_TX_MEMORY + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
+            }
+        };
+        // re-evaluate and return the finalized script with the correct data offset length set.
         ($script, $offset)
     }};
 }

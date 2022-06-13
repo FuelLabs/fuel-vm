@@ -13,7 +13,7 @@
 /// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
-/// 
+///
 /// // Example of making a contract call script using script_data for the call info and asset id.
 /// let contract_id = ContractId::from([0x11; 32]);
 /// let call = Call::new(contract_id, 0, 0).to_bytes();
@@ -25,7 +25,7 @@
 ///     .flatten()
 ///     .copied()
 ///     .collect_vec();
-/// 
+///
 /// // Use the macro since we don't know the exact offset for script_data.
 /// let (script, data_offset) = script_with_data_offset!(
 ///     data_offset,

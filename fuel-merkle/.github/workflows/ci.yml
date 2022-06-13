@@ -52,12 +52,6 @@ jobs:
         command: build
         args: --verbose
 
-    - name: Build no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features
-
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:
@@ -69,6 +63,18 @@ jobs:
       with:
         command: test
         args: --verbose --package fuel-merkle-test-helpers
+
+    - name: Build no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target thumbv6m-none-eabi --no-default-features
+
+    - name: Run tests no-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --no-default-features
 
   publish:
     # Only do this job if publishing a release

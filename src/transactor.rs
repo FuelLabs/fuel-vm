@@ -113,6 +113,16 @@ impl<'a, S> Transactor<'a, S> {
     pub fn interpreter(self) -> Interpreter<S> {
         self.into()
     }
+
+    /// Consensus parameters
+    pub const fn params(&self) -> &ConsensusParameters {
+        self.interpreter.params()
+    }
+
+    /// Tx memory offset
+    pub const fn tx_offset(&self) -> usize {
+        self.interpreter.tx_offset()
+    }
 }
 
 impl<S> Transactor<'_, S>

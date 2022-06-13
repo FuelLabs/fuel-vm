@@ -1,7 +1,6 @@
 //! VM parameters
 
-use fuel_tx::default_parameters::*;
-use fuel_types::{AssetId, Bytes32, Word};
+use fuel_types::Word;
 
 use std::mem;
 
@@ -82,13 +81,6 @@ pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
 /// Encoded len of a register id in an instruction (unused)
 pub const VM_REGISTER_WIDTH: u8 = 6;
-
-/// Transaction offset in the VM memory
-pub const VM_TX_MEMORY: usize = Bytes32::LEN // Tx ID
-            + WORD_SIZE // Tx size
-            + MAX_INPUTS as usize * (
-                AssetId::LEN + WORD_SIZE
-                ); // Asset ID/Balance coin input pairs
 
 /// Empty merkle root for receipts tree
 pub const EMPTY_RECEIPTS_MERKLE_ROOT: [u8; 32] = [

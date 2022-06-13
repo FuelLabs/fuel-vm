@@ -34,7 +34,7 @@ impl Interpreter<PredicateStorage> {
             .inputs()
             .iter()
             .enumerate()
-            .filter_map(|(idx, _)| Self::input_to_predicate(&tx, idx))
+            .filter_map(|(idx, _)| vm.input_to_predicate(&tx, idx))
             .collect();
 
         predicates
@@ -52,7 +52,7 @@ impl Interpreter<PredicateStorage> {
     /// For additional information, check [`Self::check_predicates`]
     pub fn check_predicate(&mut self, tx: Transaction, idx: usize) -> bool {
         tx.check_predicate_owner(idx)
-            .then(|| Self::input_to_predicate(&tx, idx))
+            .then(|| self.input_to_predicate(&tx, idx))
             .flatten()
             .map(|predicate| self.init_predicate(tx) && self._check_predicate(predicate))
             .unwrap_or(false)
@@ -61,12 +61,12 @@ impl Interpreter<PredicateStorage> {
     fn init_predicate(&mut self, tx: Transaction) -> bool {
         let block_height = 0;
 
-        self.init(true, block_height, tx, self.consensus_parameters).is_ok()
+        self.init(true, block_height, tx).is_ok()
     }
 
-    fn input_to_predicate(tx: &Transaction, idx: usize) -> Option<MemoryRange> {
+    fn input_to_predicate(&self, tx: &Transaction, idx: usize) -> Option<MemoryRange> {
         tx.input_coin_predicate_offset(idx)
-            .map(|(ofs, len)| (ofs as Word + VM_TX_MEMORY as Word, len as Word))
+            .map(|(ofs, len)| (ofs as Word + self.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
     }
 
@@ -130,7 +130,7 @@ where
                 // Verify predicates
                 // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
                 // TODO implement debug support
-                if !Interpreter::<PredicateStorage>::check_predicates(self.tx.clone(), self.consensus_parameters) {
+                if !Interpreter::<PredicateStorage>::check_predicates(self.tx.clone(), self.params) {
                     return Err(InterpreterError::PredicateFailure);
                 }
 
@@ -148,7 +148,7 @@ where
                     return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
                 }
 
-                let offset = (VM_TX_MEMORY + Transaction::script_offset()) as Word;
+                let offset = (self.tx_offset() + Transaction::script_offset()) as Word;
 
                 self.registers[REG_PC] = offset;
                 self.registers[REG_IS] = offset;
@@ -211,9 +211,13 @@ where
             self.tx.set_receipts_root(receipts_root);
         }
 
-        // refund remaining global gas
-        let gas_refund = self.registers[REG_GGAS] * self.tx.gas_price();
+        // used bytes are non-refundable
+        let factor = self.params.gas_price_factor as f64;
+        let gas_refund = self.tx.gas_price().saturating_mul(self.registers[REG_GGAS]) as f64;
+        let gas_refund = (gas_refund / factor).floor() as Word;
+
         let revert = matches!(state, ProgramState::Revert(_));
+
         self.finalize_outputs(gas_refund, revert)?;
 
         Ok(state)
@@ -299,9 +303,7 @@ where
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        let state_result = self
-            .init_with_storage(tx, self.consensus_parameters)
-            .and_then(|_| self.run());
+        let state_result = self.init_with_storage(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);

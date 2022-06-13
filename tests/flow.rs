@@ -88,7 +88,7 @@ fn code_copy() {
         vec![],
     );
 
-    let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
+    let script_data_mem = client.tx_offset() + tx.script_data_offset().unwrap();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
@@ -178,7 +178,9 @@ fn call() {
         vec![],
     );
 
-    let script_data_mem = VM_TX_MEMORY + tx.script_data_offset().unwrap();
+    let params = ConsensusParameters::default();
+
+    let script_data_mem = params.tx_offset() + tx.script_data_offset().unwrap();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
@@ -187,7 +189,7 @@ fn call() {
         _ => unreachable!(),
     }
 
-    let receipts = Transactor::new(&mut storage, Default::default())
+    let receipts = Transactor::new(&mut storage, params)
         .transact(tx)
         .receipts()
         .expect("Failed to execute script")
@@ -254,8 +256,10 @@ fn call_frame_code_offset() {
 
     let script_len = 16;
 
+    let params = ConsensusParameters::default();
+
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
+    let script_data_offset = params.tx_offset() + Transaction::script_offset() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -286,7 +290,7 @@ fn call_frame_code_offset() {
         vec![],
     );
 
-    let mut vm = Interpreter::with_storage(storage, Default::default());
+    let mut vm = Interpreter::with_storage(storage, params);
 
     vm.transact(script).expect("Failed to call deployed contract");
 
@@ -314,6 +318,7 @@ fn revert_from_call_immediately_ends_execution() {
     let gas_limit = 1_000_000;
 
     let mut test_context = TestBuilder::new(2322u64);
+
     // setup a contract which immediately reverts
     let contract_id = test_context
         .setup_contract(vec![Opcode::RVRT(REG_ONE)], None, None)
@@ -327,7 +332,8 @@ fn revert_from_call_immediately_ends_execution() {
             Opcode::MOVI(0x10, data_offset),
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
     let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
         .into_iter()
@@ -507,7 +513,7 @@ fn revert() {
     let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
+    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -520,7 +526,7 @@ fn revert() {
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctnly
-    let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];

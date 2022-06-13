@@ -141,7 +141,7 @@ fn state_read_write() {
     let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = VM_TX_MEMORY + Transaction::script_offset() + script_len;
+    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -154,7 +154,7 @@ fn state_read_write() {
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctnly
-    let offset = VM_TX_MEMORY + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
@@ -438,7 +438,8 @@ fn can_read_state_from_initial_storage_slots() {
             Opcode::MOVI(0x10, data_offset + 32),
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        builder.tx_offset()
     );
 
     let script_data: Vec<u8> = [

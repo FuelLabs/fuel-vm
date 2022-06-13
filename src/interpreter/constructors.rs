@@ -31,7 +31,7 @@ impl<S> Interpreter<S> {
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             unused_balance_index: Default::default(),
-            consensus_parameters: params,
+            params: params,
         }
     }
 

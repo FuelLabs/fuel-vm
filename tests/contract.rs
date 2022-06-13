@@ -82,7 +82,7 @@ fn mint_burn() {
         vec![],
     );
 
-    let script_data_offset = VM_TX_MEMORY + tx.script_data_offset().unwrap();
+    let script_data_offset = client.tx_offset() + tx.script_data_offset().unwrap();
     script_ops[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let script: Vec<u8> = script_ops.iter().copied().collect();
@@ -126,7 +126,7 @@ fn mint_burn() {
         vec![],
     );
 
-    let script_data_offset = VM_TX_MEMORY + tx_check_balance.script_data_offset().unwrap();
+    let script_data_offset = client.tx_offset() + tx_check_balance.script_data_offset().unwrap();
     script_check_balance[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let tx_check_balance = Transaction::script(
@@ -254,7 +254,8 @@ fn call_increases_contract_asset_balance_and_balance_register() {
             // call the transfer contract
             Opcode::CALL(0x10, 0x11, 0x12, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -338,7 +339,8 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
             // call the transfer contract
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -424,7 +426,8 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
             // call the transfer contract
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -505,7 +508,8 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
             // call the transfer contract
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),

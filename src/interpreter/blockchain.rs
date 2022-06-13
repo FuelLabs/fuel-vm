@@ -4,7 +4,6 @@ use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::default_parameters::*;
 use fuel_tx::Input;
 use fuel_types::{bytes, Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
@@ -40,7 +39,7 @@ where
         // Validate arguments
         if ssp + length_to_copy_unpadded > hp
             || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
-            || length_to_copy_unpadded > CONTRACT_MAX_SIZE.min(MEM_MAX_ACCESS_SIZE)
+            || length_to_copy_unpadded > self.params.contract_max_size.min(MEM_MAX_ACCESS_SIZE)
         {
             return Err(PanicReason::MemoryOverflow.into());
         }

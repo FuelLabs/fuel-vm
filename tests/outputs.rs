@@ -39,6 +39,8 @@ fn byte_fees_are_deducted_from_base_asset_change() {
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
 
+    println!("{} {}", change, input_amount);
+
     assert!(change < input_amount);
 }
 
@@ -146,7 +148,8 @@ fn change_is_reduced_by_external_transfer() {
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -201,7 +204,8 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             Opcode::TR(0x10, 0x11, 0x12),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -240,6 +244,8 @@ fn variable_output_set_by_external_transfer_out() {
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
+    let params = ConsensusParameters::default();
+
     let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -255,7 +261,8 @@ fn variable_output_set_by_external_transfer_out() {
             // call contract without any tokens to transfer in
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        params.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -270,6 +277,7 @@ fn variable_output_set_by_external_transfer_out() {
 
     // create and run the tx
     let outputs = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -309,6 +317,8 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
+    let params = ConsensusParameters::default();
+
     let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -324,7 +334,8 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             // call contract without any tokens to transfer in
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        params.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -339,6 +350,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     // create and run the tx
     let outputs = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -405,7 +417,8 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -483,7 +496,8 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             // call contract without any tokens to transfer in
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
-        ]
+        ],
+        test_context.tx_offset()
     );
 
     let script_data: Vec<u8> = [

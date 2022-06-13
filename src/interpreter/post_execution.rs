@@ -12,7 +12,7 @@ where
     /// Revert variable output amounts as needed
     /// TODO: do we want to set contract outputs in memory?
     pub(crate) fn finalize_outputs(&mut self, unused_gas_cost: Word, revert: bool) -> Result<(), InterpreterError> {
-        let init_balances = Self::initial_free_balances(&self.tx)?;
+        let init_balances = self.initial_free_balances()?;
 
         let mut update_outputs = match &self.tx {
             Transaction::Script { outputs, .. } => outputs.clone(),
@@ -28,17 +28,14 @@ where
                     0
                 };
 
-                // Safety: initialization verifies that every output has a compatible input asset
-                // by returning a TransactionOutputChangeAssetIdNotFound or
-                // TransactionOutputCoinAssetIdNotFound error for missing inputs.
-                let final_amount = if revert {
-                    init_balances[asset_id] + refund
+                let balance = if revert {
+                    init_balances[asset_id]
                 } else {
-                    let balance = self.external_asset_id_balance(asset_id)?;
-                    balance + refund
+                    self.external_asset_id_balance(asset_id)?
                 };
 
-                *amount = final_amount;
+                *amount = balance + refund;
+
                 self.set_output(idx, *output)?;
             }
             if let Output::Variable { amount, .. } = output {

@@ -2,10 +2,13 @@ use fuel_vm::{prelude::*, util::test_helpers::TestBuilder};
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
-    let input_amount = 1000;
+    let input_amount = 100;
     let gas_price = 0;
+
+    let mut interpreter = Interpreter::with_memory_storage();
+
     // make byte price too high for the input amount
-    let byte_price = 1000;
+    let byte_price = interpreter.params().gas_price_factor;
 
     let transaction = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -14,8 +17,8 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
     let result = interpreter.transact(transaction);
+
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
@@ -29,9 +32,12 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_gas_costs() {
-    let input_amount = 1000;
+    let input_amount = 10;
+
+    let mut interpreter = Interpreter::with_memory_storage();
+
     // make gas price too high for the input amount
-    let gas_price = 1000;
+    let gas_price = interpreter.params().gas_price_factor;
     let byte_price = 0;
 
     let transaction = TestBuilder::new(2322u64)
@@ -41,8 +47,8 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_gas_costs() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
     let result = interpreter.transact(transaction);
+
     assert!(matches!(
         result,
         Err(InterpreterError::ValidationError(
@@ -138,7 +144,7 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
 
 #[test]
 fn bytes_fee_cant_overflow() {
-    let input_amount = 1000;
+    let input_amount = Word::MAX;
     let gas_price = 0;
     // make byte price too high for the input amount
     let byte_price = Word::MAX;
@@ -150,17 +156,14 @@ fn bytes_fee_cant_overflow() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    Interpreter::with_memory_storage()
+        .transact(transaction)
+        .expect("gas factor won't allow overflow");
 }
 
 #[test]
 fn gas_fee_cant_overflow() {
-    let input_amount = 1000;
+    let input_amount = Word::MAX;
     let gas_price = Word::MAX;
     let gas_limit = 2;
     // make byte price too high for the input amount
@@ -174,19 +177,16 @@ fn gas_fee_cant_overflow() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    Interpreter::with_memory_storage()
+        .transact(transaction)
+        .expect("gas factor won't allow overflow");
 }
 
 #[test]
 fn total_fee_cant_overflow() {
     // ensure that total fee can't overflow as a result of adding the gas fee and byte fee
 
-    let input_amount = 1000;
+    let input_amount = Word::MAX;
     let gas_price = Word::MAX;
     let gas_limit = 1;
     // make byte price too high for the input amount
@@ -200,10 +200,7 @@ fn total_fee_cant_overflow() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    Interpreter::with_memory_storage()
+        .transact(transaction)
+        .expect("gas factor won't allow overflow");
 }

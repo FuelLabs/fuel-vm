@@ -110,10 +110,16 @@ impl<S> Interpreter<S> {
             let bytes = self
                 .tx
                 .byte_price()
-                .saturating_mul(self.tx.metered_bytes_size() as Word);
+                .checked_mul(self.tx.metered_bytes_size() as Word)
+                .ok_or(ValidationError::ArithmeticOverflow)?;
+
             let bytes = (bytes as f64 / factor).ceil() as Word;
 
-            let gas = self.tx.gas_price().saturating_mul(self.tx.gas_limit()) as f64;
+            let gas = self
+                .tx
+                .gas_price()
+                .checked_mul(self.tx.gas_limit())
+                .ok_or(ValidationError::ArithmeticOverflow)? as f64;
             let gas = (gas / factor).ceil() as Word;
 
             let fee = bytes.checked_add(gas).ok_or(ValidationError::ArithmeticOverflow)?;

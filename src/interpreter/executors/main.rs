@@ -213,7 +213,11 @@ where
 
         // used bytes are non-refundable
         let factor = self.params.gas_price_factor as f64;
-        let gas_refund = self.tx.gas_price().saturating_mul(self.registers[REG_GGAS]) as f64;
+        let gas_refund = self
+            .tx
+            .gas_price()
+            .checked_mul(self.registers[REG_GGAS])
+            .ok_or(ValidationError::ArithmeticOverflow)? as f64;
         let gas_refund = (gas_refund / factor).floor() as Word;
 
         let revert = matches!(state, ProgramState::Revert(_));

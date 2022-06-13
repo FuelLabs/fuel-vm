@@ -1,3 +1,6 @@
+use fuel_types::bytes::WORD_SIZE;
+use fuel_types::{AssetId, Bytes32};
+
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -44,6 +47,14 @@ impl ConsensusParameters {
         max_predicate_data_length: 1024 * 1024,
         gas_price_factor: 1_000_000_000,
     };
+
+    /// Transaction memory offset in VM runtime
+    pub const fn tx_offset(&self) -> usize {
+        Bytes32::LEN // Tx ID
+            + WORD_SIZE // Tx size
+              // Asset ID/Balance coin input pairs
+            + self.max_inputs as usize * (AssetId::LEN + WORD_SIZE)
+    }
 
     /// Replace the max contract size with the given argument
     pub const fn with_contract_max_size(self, contract_max_size: u64) -> Self {

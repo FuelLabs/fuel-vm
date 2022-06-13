@@ -1,5 +1,4 @@
 use crate::consts::*;
-use crate::ConsensusParameters;
 
 use fuel_asm::Opcode;
 use fuel_types::{AssetId, Bytes32, ContractId, Salt, Word};
@@ -28,6 +27,7 @@ mod txio;
 
 pub mod consensus_parameters;
 
+pub use consensus_parameters::ConsensusParameters;
 pub use metadata::Metadata;
 pub use repr::TransactionRepr;
 pub use types::{Input, Output, StorageSlot, UtxoId, Witness};

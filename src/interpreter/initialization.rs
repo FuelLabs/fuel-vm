@@ -104,7 +104,7 @@ impl<S> Interpreter<S> {
         // Reduce by unavailable balances
         let base_asset = AssetId::default();
         if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
-            // calculate the fee with used witness bytes + gas limit
+            // calculate the fee with used metered bytes + gas limit
             let factor = self.params.gas_price_factor as f64;
 
             let bytes = self

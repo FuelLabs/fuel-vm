@@ -35,9 +35,13 @@ pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    consensus_parameters::*, Input, Metadata, Output, StorageSlot, Transaction, TransactionRepr,
-    TxId, UtxoId, ValidationError, Witness,
+    ConsensusParameters, Input, Metadata, Output, StorageSlot, Transaction, TransactionRepr, TxId,
+    UtxoId, ValidationError, Witness,
 };
+
+#[cfg(feature = "alloc")]
+#[allow(deprecated)]
+pub use transaction::consensus_parameters::default_parameters;
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

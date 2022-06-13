@@ -116,7 +116,7 @@ impl<S> Interpreter<S> {
             let gas = self.tx.gas_price().saturating_mul(self.tx.gas_limit()) as f64;
             let gas = (gas / factor).ceil() as Word;
 
-            let fee = bytes.saturating_add(gas);
+            let fee = bytes.checked_add(gas).ok_or(ValidationError::ArithmeticOverflow)?;
 
             // subtract total fee from base asset balance
             *base_asset_balance =

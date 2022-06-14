@@ -211,7 +211,7 @@ where
             self.tx.set_receipts_root(receipts_root);
         }
 
-        // used bytes are non-refundable
+        // the consumed balance for the bytes cost is non-refundable so we just check the ggas
         let factor = self.params.gas_price_factor as f64;
         let gas_refund = self
             .tx

@@ -53,7 +53,8 @@ fn code_coverage() {
 
     let mut client = MemoryClient::from_txtor(
         Interpreter::with_memory_storage()
-            .with_profiling(Box::new(output.clone()))
+            .with_profiler(output.clone())
+            .build()
             .into(),
     );
 

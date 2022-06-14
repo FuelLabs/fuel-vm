@@ -105,6 +105,24 @@ impl From<InterpreterError> for io::Error {
     }
 }
 
+impl PartialEq for InterpreterError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
+            (Self::Panic(s), Self::Panic(o)) => s == o,
+            (Self::ValidationError(s), Self::ValidationError(o)) => s == o,
+            (Self::PredicateFailure, Self::PredicateFailure) => true,
+            (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
+            (Self::Io(s), Self::Io(o)) => s.kind() == o.kind(),
+
+            #[cfg(feature = "debug")]
+            (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
+
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
@@ -134,6 +152,17 @@ impl RuntimeError {
         E: Into<io::Error>,
     {
         Self::Halt(e.into())
+    }
+}
+
+impl PartialEq for RuntimeError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (RuntimeError::Recoverable(s), RuntimeError::Recoverable(o)) => s == o,
+            (RuntimeError::Halt(s), RuntimeError::Halt(o)) => s.kind() == o.kind(),
+
+            _ => false,
+        }
     }
 }
 

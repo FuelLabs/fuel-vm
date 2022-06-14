@@ -41,7 +41,8 @@ pub mod prelude {
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
     pub use fuel_tx::{
-        ConsensusParameters, Contract, Input, Output, Receipt, Transaction, UtxoId, ValidationError, Witness,
+        ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction, UtxoId,
+        ValidationError, Witness,
     };
     #[doc(no_inline)]
     pub use fuel_types::{
@@ -62,4 +63,16 @@ pub mod prelude {
 
     #[cfg(feature = "debug")]
     pub use crate::state::{Breakpoint, DebugEval};
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub use crate::util::test_helpers::TestBuilder;
+
+    #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+    pub use crate::util::gas_profiling::GasProfiler;
+
+    #[cfg(feature = "profile-any")]
+    pub use crate::profiler::{
+        CoverageProfilingData, GasProfilingData, InstructionLocation, PerLocationIter, PerLocationKeys,
+        PerLocationValues, ProfileReceiver, Profiler, ProfilingData, StderrReceiver,
+    };
 }

@@ -56,6 +56,11 @@ path = "tests/contract.rs"
 required-features = ["random"]
 
 [[test]]
+name = "test-gas-factor"
+path = "tests/gas_factor.rs"
+required-features = ["profile-gas"]
+
+[[test]]
 name = "test-profile-gas"
 path = "tests/profile_gas.rs"
 required-features = ["random", "profile-gas"]

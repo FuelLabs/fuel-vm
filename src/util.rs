@@ -373,3 +373,44 @@ pub mod test_helpers {
         }
     }
 }
+
+#[allow(missing_docs)]
+#[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+/// Gas testing utilities
+pub mod gas_profiling {
+    use crate::prelude::*;
+
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    pub struct GasProfiler {
+        data: Arc<Mutex<Option<ProfilingData>>>,
+    }
+
+    impl Default for GasProfiler {
+        fn default() -> Self {
+            Self {
+                data: Arc::new(Mutex::new(None)),
+            }
+        }
+    }
+
+    impl ProfileReceiver for GasProfiler {
+        fn on_transaction(&mut self, _state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
+            let mut guard = self.data.lock().unwrap();
+            *guard = Some(data.clone());
+        }
+    }
+
+    impl GasProfiler {
+        pub fn data(&self) -> Option<ProfilingData> {
+            self.data.lock().ok().and_then(|g| g.as_ref().cloned())
+        }
+
+        pub fn total_gas(&self) -> Word {
+            self.data()
+                .map(|d| d.gas().iter().map(|(_, gas)| gas).sum())
+                .unwrap_or_default()
+        }
+    }
+}

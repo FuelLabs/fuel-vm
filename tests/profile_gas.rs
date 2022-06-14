@@ -1,9 +1,5 @@
-use fuel_tx::ScriptExecutionResult;
-use std::sync::{Arc, Mutex};
-
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
-use fuel_vm::profiler::{ProfileReceiver, ProfilingData};
 
 #[test]
 fn profile_gas() {
@@ -37,25 +33,12 @@ fn profile_gas() {
             vec![],
         );
 
-        #[derive(Clone)]
-        struct ProfilingOutput {
-            data: Arc<Mutex<Option<ProfilingData>>>,
-        }
-
-        impl ProfileReceiver for ProfilingOutput {
-            fn on_transaction(&mut self, _state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
-                let mut guard = self.data.lock().unwrap();
-                *guard = Some(data.clone());
-            }
-        }
-
-        let output = ProfilingOutput {
-            data: Arc::new(Mutex::new(None)),
-        };
+        let output = GasProfiler::default();
 
         let mut client = MemoryClient::from_txtor(
             Interpreter::with_memory_storage()
-                .with_profiling(Box::new(output.clone()))
+                .with_profiler(output.clone())
+                .build()
                 .into(),
         );
 
@@ -84,8 +67,7 @@ fn profile_gas() {
             panic!("Missing result receipt");
         }
 
-        let guard = output.data.lock().unwrap();
-        guard.as_ref().unwrap().clone()
+        output.data().expect("failed to fetch profiling data")
     });
 
     let round0 = rounds.next().unwrap();

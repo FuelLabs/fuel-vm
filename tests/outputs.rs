@@ -39,8 +39,6 @@ fn byte_fees_are_deducted_from_base_asset_change() {
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
 
-    println!("{} {}", change, input_amount);
-
     assert!(change < input_amount);
 }
 

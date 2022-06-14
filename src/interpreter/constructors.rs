@@ -31,15 +31,34 @@ impl<S> Interpreter<S> {
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             unused_balance_index: Default::default(),
-            consensus_parameters: params,
+            params,
         }
+    }
+
+    /// Set the consensus parameters for the interpreter
+    pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
+        self.params = params;
+        self
     }
 
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
-    pub fn with_profiling(mut self, receiver: Box<dyn ProfileReceiver + Send + Sync>) -> Self {
-        self.profiler.set_receiver(receiver);
+    pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
+    where
+        P: ProfileReceiver + Send + Sync + 'static,
+    {
+        self.profiler.set_receiver(Box::new(receiver));
         self
+    }
+}
+
+impl<S> Interpreter<S>
+where
+    S: Clone,
+{
+    /// Build the interpreter
+    pub fn build(&mut self) -> Self {
+        self.clone()
     }
 }
 

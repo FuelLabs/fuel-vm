@@ -1,57 +1,69 @@
-use fuel_vm::{prelude::*, util::test_helpers::TestBuilder};
+use fuel_vm::prelude::*;
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
-    let input_amount = 1000;
+    let input_amount = 100;
     let gas_price = 0;
+    let factor = 1;
+
+    let params = ConsensusParameters::default().with_gas_price_factor(factor);
+
     // make byte price too high for the input amount
-    let byte_price = 1000;
+    let byte_price = factor;
 
     let transaction = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(
-            ValidationError::InsufficientFeeAmount {
-                provided: _,
-                expected: _
-            }
-        ))
-    ));
+    let err = Interpreter::with_memory_storage()
+        .with_params(params)
+        .transact(transaction)
+        .err()
+        .expect("insufficient fee amount expected");
+
+    let provided = match err {
+        InterpreterError::ValidationError(ValidationError::InsufficientFeeAmount { provided, .. }) => provided,
+        _ => panic!("expected insufficient fee amount; found {:?}", err),
+    };
+
+    assert_eq!(provided, input_amount);
 }
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_gas_costs() {
-    let input_amount = 1000;
+    let input_amount = 10;
+    let factor = 1;
+
+    let params = ConsensusParameters::default().with_gas_price_factor(factor);
+
     // make gas price too high for the input amount
-    let gas_price = 1000;
+    let gas_price = factor;
     let byte_price = 0;
 
     let transaction = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(
-            ValidationError::InsufficientFeeAmount {
-                provided: _,
-                expected: _
-            }
-        ))
-    ));
+    let err = Interpreter::with_memory_storage()
+        .with_params(params)
+        .transact(transaction)
+        .err()
+        .expect("insufficient fee amount expected");
+
+    let provided = match err {
+        InterpreterError::ValidationError(ValidationError::InsufficientFeeAmount { provided, .. }) => provided,
+        _ => panic!("expected insufficient fee amount; found {:?}", err),
+    };
+
+    assert_eq!(provided, input_amount);
 }
 
 #[test]
@@ -71,16 +83,15 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
         .change_output(missing_asset)
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(
-            ValidationError::TransactionOutputChangeAssetIdNotFound(
-                asset
-            )
-        )) if asset == missing_asset
-    ));
+    let err = Interpreter::with_memory_storage()
+        .transact(transaction)
+        .err()
+        .expect("asset not found expected");
+
+    assert_eq!(
+        err,
+        ValidationError::TransactionOutputChangeAssetIdNotFound(missing_asset).into()
+    );
 }
 
 #[test]
@@ -100,14 +111,15 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
         .coin_output(missing_asset, 0)
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(
-            ValidationError::TransactionOutputCoinAssetIdNotFound(asset)
-        )) if asset == missing_asset
-    ));
+    let err = Interpreter::with_memory_storage()
+        .transact(transaction)
+        .err()
+        .expect("asset not found expected");
+
+    assert_eq!(
+        err,
+        ValidationError::TransactionOutputCoinAssetIdNotFound(missing_asset).into()
+    );
 }
 
 #[test]
@@ -126,14 +138,12 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
         .change_output(asset_id)
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(
-            ValidationError::TransactionOutputChangeAssetIdDuplicated
-        ))
-    ))
+    let err = Interpreter::with_memory_storage()
+        .transact(transaction)
+        .err()
+        .expect("asset duplicated expected");
+
+    assert_eq!(err, ValidationError::TransactionOutputChangeAssetIdDuplicated.into());
 }
 
 #[test]
@@ -143,19 +153,23 @@ fn bytes_fee_cant_overflow() {
     // make byte price too high for the input amount
     let byte_price = Word::MAX;
 
+    let params = ConsensusParameters::default().with_gas_price_factor(1);
+
     let transaction = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    let err = Interpreter::with_memory_storage()
+        .with_params(params)
+        .transact(transaction)
+        .err()
+        .expect("overflow expected");
+
+    assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }
 
 #[test]
@@ -166,7 +180,10 @@ fn gas_fee_cant_overflow() {
     // make byte price too high for the input amount
     let byte_price = 0;
 
+    let params = ConsensusParameters::default().with_gas_price_factor(1);
+
     let transaction = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -174,25 +191,30 @@ fn gas_fee_cant_overflow() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    let err = Interpreter::with_memory_storage()
+        .with_params(params)
+        .transact(transaction)
+        .err()
+        .expect("overflow expected");
+
+    assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }
 
 #[test]
 fn total_fee_cant_overflow() {
     // ensure that total fee can't overflow as a result of adding the gas fee and byte fee
-
     let input_amount = 1000;
+
     let gas_price = Word::MAX;
     let gas_limit = 1;
+
     // make byte price too high for the input amount
-    let byte_price = 1;
+    let byte_price = Word::MAX;
+
+    let params = ConsensusParameters::default().with_gas_price_factor(1);
 
     let transaction = TestBuilder::new(2322u64)
+        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .byte_price(byte_price)
@@ -200,10 +222,11 @@ fn total_fee_cant_overflow() {
         .change_output(AssetId::default())
         .build();
 
-    let mut interpreter = Interpreter::with_memory_storage();
-    let result = interpreter.transact(transaction);
-    assert!(matches!(
-        result,
-        Err(InterpreterError::ValidationError(ValidationError::ArithmeticOverflow))
-    ));
+    let err = Interpreter::with_memory_storage()
+        .with_params(params)
+        .transact(transaction)
+        .err()
+        .expect("overflow expected");
+
+    assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }

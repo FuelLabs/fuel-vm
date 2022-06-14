@@ -53,7 +53,8 @@ fn code_coverage() {
 
     let mut client = MemoryClient::from_txtor(
         Interpreter::with_memory_storage()
-            .with_profiling(Box::new(output.clone()))
+            .with_profiler(output.clone())
+            .build()
             .into(),
     );
 
@@ -74,8 +75,6 @@ fn code_coverage() {
     let expect = vec![0, 2, 3, 4];
 
     assert_eq!(items.len(), expect.len());
-
-    println!("{:?}", items);
 
     for (item, expect) in items.into_iter().zip(expect.into_iter()) {
         assert_eq!(*item, InstructionLocation::new(None, expect * HALF_WORD_SIZE));

@@ -80,6 +80,16 @@ impl<'a> MemoryClient<'a> {
     pub fn persist(&mut self) {
         self.as_mut().persist();
     }
+
+    /// Consensus parameters
+    pub const fn params(&self) -> &ConsensusParameters {
+        &self.transactor.params()
+    }
+
+    /// Tx memory offset
+    pub const fn tx_offset(&self) -> usize {
+        self.transactor.tx_offset()
+    }
 }
 
 impl<'a> From<MemoryStorage> for MemoryClient<'a> {

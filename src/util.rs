@@ -8,11 +8,11 @@
 /// # Example
 ///
 /// ```
-/// use itertools::Itertools;
-/// use fuel_types::{Word, Immediate18};
+/// use fuel_types::{Immediate18, Word};
 /// use fuel_vm::consts::{REG_ONE, REG_ZERO};
-/// use fuel_vm::prelude::{Opcode, Call, SerializableVec, ContractId};
+/// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
+/// use itertools::Itertools;
 ///
 /// // Example of making a contract call script using script_data for the call info and asset id.
 /// let contract_id = ContractId::from([0x11; 32]);
@@ -21,26 +21,30 @@
 /// let transfer_amount: Word = 100;
 /// let gas_to_forward = 1_000_000;
 /// let script_data = [call.as_ref(), asset_id.as_ref()]
-///                     .into_iter()
-///                     .flatten()
-///                     .copied()
-///                     .collect_vec();
+///     .into_iter()
+///     .flatten()
+///     .copied()
+///     .collect_vec();
 ///
 /// // Use the macro since we don't know the exact offset for script_data.
-/// let (script, data_offset) = script_with_data_offset!(data_offset, vec![
-///     // use data_offset to reference the location of the call bytes inside script_data
-///     Opcode::MOVI(0x10, data_offset),
-///     Opcode::MOVI(0x11, transfer_amount as Immediate18),
-///     // use data_offset again to reference the location of the asset id inside of script data
-///     Opcode::MOVI(0x12, data_offset + call.len() as Immediate18),
-///     Opcode::MOVI(0x13,  gas_to_forward as Immediate18),
-///     Opcode::CALL(0x10, 0x11, 0x12, 0x13),
-///     Opcode::RET(REG_ONE),
-/// ]);
+/// let (script, data_offset) = script_with_data_offset!(
+///     data_offset,
+///     vec![
+///         // use data_offset to reference the location of the call bytes inside script_data
+///         Opcode::MOVI(0x10, data_offset),
+///         Opcode::MOVI(0x11, transfer_amount as Immediate18),
+///         // use data_offset again to reference the location of the asset id inside of script data
+///         Opcode::MOVI(0x12, data_offset + call.len() as Immediate18),
+///         Opcode::MOVI(0x13, gas_to_forward as Immediate18),
+///         Opcode::CALL(0x10, 0x11, 0x12, 0x13),
+///         Opcode::RET(REG_ONE),
+///     ],
+///     ConsensusParameters::DEFAULT.tx_offset()
+/// );
 /// ```
 #[macro_export]
 macro_rules! script_with_data_offset {
-    ($offset:ident, $script:expr) => {{
+    ($offset:ident, $script:expr, $tx_offset:expr) => {{
         let $offset = {
             // first set offset to 0 before evaluating script expression
             let $offset = {
@@ -51,10 +55,9 @@ macro_rules! script_with_data_offset {
             let script_bytes: ::std::vec::Vec<u8> = ::std::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {
-                use $crate::consts::VM_TX_MEMORY;
                 use $crate::fuel_types::bytes::padded_len;
                 use $crate::prelude::{Immediate18, Transaction};
-                (VM_TX_MEMORY + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
+                ($tx_offset + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
             }
         };
         // re-evaluate and return the finalized script with the correct data offset length set.
@@ -73,7 +76,7 @@ pub mod test_helpers {
     use crate::transactor::Transactor;
 
     use fuel_asm::Opcode;
-    use fuel_tx::{Contract, Input, Output, StorageSlot, Transaction, Witness};
+    use fuel_tx::{ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, Witness};
     use fuel_types::bytes::{Deserializable, SizedBytes};
     use fuel_types::{AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
@@ -97,6 +100,7 @@ pub mod test_helpers {
         script_data: Vec<u8>,
         witness: Vec<Witness>,
         storage: MemoryStorage,
+        params: ConsensusParameters,
     }
 
     impl TestBuilder {
@@ -112,6 +116,7 @@ pub mod test_helpers {
                 script_data: vec![],
                 witness: vec![Witness::default()],
                 storage: MemoryStorage::default(),
+                params: ConsensusParameters::default(),
             }
         }
 
@@ -203,6 +208,15 @@ pub mod test_helpers {
             self
         }
 
+        pub fn params(&mut self, params: ConsensusParameters) -> &mut TestBuilder {
+            self.params = params;
+            self
+        }
+
+        pub const fn tx_offset(&self) -> usize {
+            self.params.tx_offset()
+        }
+
         pub fn build(&mut self) -> Transaction {
             Transaction::script(
                 self.gas_price,
@@ -217,7 +231,11 @@ pub mod test_helpers {
             )
         }
 
-        pub fn build_get_balance_tx(contract_id: &ContractId, asset_id: &AssetId) -> Transaction {
+        pub fn build_get_balance_tx(
+            params: &ConsensusParameters,
+            contract_id: &ContractId,
+            asset_id: &AssetId,
+        ) -> Transaction {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
@@ -226,7 +244,8 @@ pub mod test_helpers {
                     Opcode::BAL(0x10, 0x11, 0x12),
                     Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
                     Opcode::RET(REG_ONE)
-                ]
+                ],
+                params.tx_offset()
             );
 
             let script_data: Vec<u8> = [asset_id.as_ref(), contract_id.as_ref()]
@@ -297,25 +316,32 @@ pub mod test_helpers {
         }
 
         fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
-            let mut client = MemoryClient::new(self.storage.clone(), Default::default());
+            let mut client = MemoryClient::new(self.storage.clone(), self.params);
+
             client.transact(tx);
+
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
             let state = txtor.state_transition().unwrap().into_owned();
             let interpreter = txtor.interpreter();
+
             // verify serialized tx == referenced tx
-            let tx_mem =
-                &interpreter.memory()[VM_TX_MEMORY..(VM_TX_MEMORY + interpreter.transaction().serialized_size())];
+            let tx_offset = self.params.tx_offset();
+            let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + interpreter.transaction().serialized_size())];
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+
             assert_eq!(deser_tx.outputs(), interpreter.transaction().outputs());
+
             // save storage between client instances
             self.storage = storage;
+
             state
         }
 
         /// Build test tx and execute it
         pub fn execute(&mut self) -> StateTransition {
             let tx = self.build();
+
             self.execute_tx(tx)
         }
 
@@ -340,10 +366,51 @@ pub mod test_helpers {
         }
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {
-            let tx = TestBuilder::build_get_balance_tx(contract_id, asset_id);
+            let tx = TestBuilder::build_get_balance_tx(&self.params, contract_id, asset_id);
             let state = self.execute_tx(tx);
             let receipts = state.receipts();
             receipts[0].ra().expect("Balance expected")
+        }
+    }
+}
+
+#[allow(missing_docs)]
+#[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+/// Gas testing utilities
+pub mod gas_profiling {
+    use crate::prelude::*;
+
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    pub struct GasProfiler {
+        data: Arc<Mutex<Option<ProfilingData>>>,
+    }
+
+    impl Default for GasProfiler {
+        fn default() -> Self {
+            Self {
+                data: Arc::new(Mutex::new(None)),
+            }
+        }
+    }
+
+    impl ProfileReceiver for GasProfiler {
+        fn on_transaction(&mut self, _state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
+            let mut guard = self.data.lock().unwrap();
+            *guard = Some(data.clone());
+        }
+    }
+
+    impl GasProfiler {
+        pub fn data(&self) -> Option<ProfilingData> {
+            self.data.lock().ok().and_then(|g| g.as_ref().cloned())
+        }
+
+        pub fn total_gas(&self) -> Word {
+            self.data()
+                .map(|d| d.gas().iter().map(|(_, gas)| gas).sum())
+                .unwrap_or_default()
         }
     }
 }

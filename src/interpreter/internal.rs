@@ -198,7 +198,7 @@ impl<S> Interpreter<S> {
         }
 
         // update serialized memory state
-        let offset = VM_TX_MEMORY + self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
+        let offset = self.tx_offset() + self.tx.output_offset(out_idx).ok_or(PanicReason::OutputNotFound)?;
         let bytes = &mut self.memory[offset..];
         let _ = output.read(bytes)?;
 
@@ -217,7 +217,7 @@ impl<S> Interpreter<S> {
 
         self.tx
             .receipts_root_offset()
-            .map(|offset| offset + VM_TX_MEMORY)
+            .map(|offset| offset + self.tx_offset())
             .map(|offset| {
                 // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
                 // linear monadic model and should be discussed. Maybe the receipts tree should have
@@ -235,11 +235,14 @@ impl<S> Interpreter<S> {
                 (&mut self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
             });
     }
+
+    pub(crate) const fn tx_offset(&self) -> usize {
+        self.params.tx_offset()
+    }
 }
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
-    use crate::consts::VM_TX_MEMORY;
     use crate::prelude::*;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -276,8 +279,7 @@ mod tests {
             vec![vec![].into()],
         );
 
-        vm.init_with_storage(tx, Default::default())
-            .expect("Failed to init VM!");
+        vm.init_with_storage(tx).expect("Failed to init VM!");
 
         for (asset_id, amount) in balances {
             assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
@@ -320,8 +322,7 @@ mod tests {
             vec![Witness::default()],
         );
 
-        vm.init_with_storage(tx, Default::default())
-            .expect("Failed to init VM!");
+        vm.init_with_storage(tx).expect("Failed to init VM!");
 
         // increase variable output
         vm.set_variable_output(0, asset_id_to_update, amount_to_set, owner)
@@ -336,7 +337,7 @@ mod tests {
         ));
 
         // verify the vm memory is updated properly
-        let position = VM_TX_MEMORY + vm.tx.output_offset(0).unwrap();
+        let position = vm.params.tx_offset() + vm.tx.output_offset(0).unwrap();
         let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
         let _ = mem_output.write(&vm.memory()[position..]).unwrap();
         assert_eq!(vm.tx.outputs()[0], mem_output);

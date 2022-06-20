@@ -1,6 +1,7 @@
+use core::fmt;
+
 use crate::binary::{self, Node};
 use crate::common::{Bytes32, Position, Subtree};
-
 use fuel_storage::Storage;
 
 use alloc::boxed::Box;
@@ -30,18 +31,18 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 type ProofSet = Vec<Bytes32>;
 
-pub struct MerkleTree<'storage, StorageType> {
-    storage: &'storage mut StorageType,
+pub struct MerkleTree<StorageType> {
+    storage: StorageType,
     head: Option<Box<Subtree<Node>>>,
     leaves_count: u64,
 }
 
-impl<'storage, StorageType, StorageError> MerkleTree<'storage, StorageType>
+impl<StorageType, StorageError> MerkleTree<StorageType>
 where
     StorageType: Storage<u64, Node, Error = StorageError>,
-    StorageError: 'static,
+    StorageError: fmt::Debug + Clone + 'static,
 {
-    pub fn new(storage: &'storage mut StorageType) -> Self {
+    pub fn new(storage: StorageType) -> Self {
         Self {
             storage,
             head: None,
@@ -50,7 +51,7 @@ where
     }
 
     pub fn load(
-        storage: &'storage mut StorageType,
+        storage: StorageType,
         leaves_count: u64,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
         let mut tree = Self {

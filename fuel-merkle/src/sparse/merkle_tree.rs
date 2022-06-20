@@ -1,6 +1,5 @@
 use crate::common::{AsPathIterator, Bytes32};
 use crate::sparse::{zero_sum, Buffer, Node, StorageNode};
-
 use fuel_storage::Storage;
 
 use alloc::string::String;
@@ -26,17 +25,17 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
     }
 }
 
-pub struct MerkleTree<'storage, StorageType> {
+pub struct MerkleTree<StorageType> {
     root_node: Node,
-    storage: &'storage mut StorageType,
+    storage: StorageType,
 }
 
-impl<'a, 'storage, StorageType, StorageError> MerkleTree<'storage, StorageType>
+impl<StorageType, StorageError> MerkleTree<StorageType>
 where
     StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
     StorageError: fmt::Debug + Clone + 'static,
 {
-    pub fn new(storage: &'storage mut StorageType) -> Self {
+    pub fn new(storage: StorageType) -> Self {
         Self {
             root_node: Node::create_placeholder(),
             storage,
@@ -44,7 +43,7 @@ where
     }
 
     pub fn load(
-        storage: &'storage mut StorageType,
+        storage: StorageType,
         root: &Bytes32,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
         let buffer = storage
@@ -59,7 +58,7 @@ where
     }
 
     pub fn update(
-        &'a mut self,
+        &mut self,
         key: &Bytes32,
         data: &[u8],
     ) -> Result<(), MerkleTreeError<StorageError>> {
@@ -86,7 +85,7 @@ where
         Ok(())
     }
 
-    pub fn delete(&'a mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
         if self.root() == *zero_sum() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
@@ -102,25 +101,25 @@ where
         Ok(())
     }
 
-    pub fn root(&'a self) -> Bytes32 {
+    pub fn root(&self) -> Bytes32 {
         self.root_node().hash()
     }
 
     // PRIVATE
 
-    fn root_node(&'a self) -> &Node {
+    fn root_node(&self) -> &Node {
         &self.root_node
     }
 
-    fn set_root_node(&'a mut self, node: Node) {
+    fn set_root_node(&mut self, node: Node) {
         debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
         self.root_node = node;
     }
 
-    fn path_set(&'a self, leaf_node: Node) -> (Vec<Node>, Vec<Node>) {
+    fn path_set(&self, leaf_node: Node) -> (Vec<Node>, Vec<Node>) {
         let root_node = self.root_node().clone();
-        let root_storage_node = StorageNode::new(self.storage, root_node);
-        let leaf_storage_node = StorageNode::new(self.storage, leaf_node);
+        let root_storage_node = StorageNode::new(&self.storage, root_node);
+        let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
             .as_path_iter(&leaf_storage_node)
             .map(|(node, side_node)| (node.into_node(), side_node.into_node()))
@@ -133,7 +132,7 @@ where
     }
 
     fn update_with_path_set(
-        &'a mut self,
+        &mut self,
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
@@ -197,7 +196,7 @@ where
     }
 
     fn delete_with_path_set(
-        &'a mut self,
+        &mut self,
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],

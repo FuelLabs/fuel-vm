@@ -4,6 +4,7 @@ use crate::sum::{empty_sum, Node};
 use fuel_storage::Storage;
 
 use alloc::boxed::Box;
+use core::fmt;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -12,16 +13,17 @@ pub enum MerkleTreeError {
     InvalidProofIndex(u64),
 }
 
-pub struct MerkleTree<'storage, StorageError> {
-    storage: &'storage mut dyn Storage<Bytes32, Node, Error = StorageError>,
+pub struct MerkleTree<StorageType> {
+    storage: StorageType,
     head: Option<Box<Subtree<Node>>>,
 }
 
-impl<'storage, StorageError> MerkleTree<'storage, StorageError>
+impl<StorageType, StorageError> MerkleTree<StorageType>
 where
-    StorageError: 'static + Clone,
+    StorageType: Storage<Bytes32, Node, Error = StorageError>,
+    StorageError: fmt::Debug + Clone + 'static,
 {
-    pub fn new(storage: &'storage mut dyn Storage<Bytes32, Node, Error = StorageError>) -> Self {
+    pub fn new(storage: StorageType) -> Self {
         Self {
             storage,
             head: None,
@@ -120,8 +122,7 @@ mod test {
     use crate::common::{Bytes32, StorageMap};
     use crate::sum::{empty_sum, leaf_sum, node_sum, MerkleTree, Node};
 
-    type StorageError = core::convert::Infallible;
-    type MT<'storage> = MerkleTree<'storage, StorageError>;
+    type MT<'storage> = MerkleTree<&'storage mut StorageMap<Bytes32, Node>>;
     const FEE: u64 = 100;
 
     #[test]

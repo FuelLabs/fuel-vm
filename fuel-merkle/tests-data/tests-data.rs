@@ -1,11 +1,9 @@
-use std::{fs::File, path::Path};
-
-use fuel_merkle::common::{Bytes32, StorageMap};
-use fuel_merkle::sparse::MerkleTree as SparseMerkleTree;
+use fuel_merkle::common::Bytes32;
+use fuel_merkle::sparse::in_memory;
 use serde::Deserialize;
 use std::convert::TryInto;
 use std::fmt::{Display, Formatter};
-
+use std::{fs::File, path::Path};
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
@@ -17,11 +15,6 @@ pub enum TestError {
     #[error("Unsupported encoding {0}")]
     UnsupportedEncoding(String),
 }
-
-const BUFFER_SIZE: usize = 69;
-type Buffer = [u8; BUFFER_SIZE];
-type Storage = StorageMap<Bytes32, Buffer>;
-type MerkleTree<'a> = SparseMerkleTree<'a, Storage>;
 
 // Supported actions:
 const ACTION_UPDATE: &str = "update";
@@ -64,6 +57,12 @@ impl EncodedValue {
     }
 }
 
+trait MerkleTreeTestAdaptor {
+    fn update(&mut self, key: &Bytes32, data: &[u8]);
+    fn delete(&mut self, key: &Bytes32);
+    fn root(&self) -> Bytes32;
+}
+
 #[derive(Deserialize)]
 struct Step {
     action: String,
@@ -77,20 +76,23 @@ enum Action {
 }
 
 impl Step {
-    pub fn execute(self, tree: &mut MerkleTree) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn execute(
+        self,
+        tree: &mut dyn MerkleTreeTestAdaptor,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         match self.action_type()? {
             Action::Update(encoded_key, encoded_data) => {
                 let key_bytes = encoded_key.to_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
                 let data_bytes = encoded_data.to_bytes()?;
                 let data: &[u8] = &data_bytes;
-                tree.update(key, data).unwrap();
+                tree.update(key, data);
                 Ok(())
             }
             Action::Delete(encoded_key) => {
                 let key_bytes = encoded_key.to_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
-                tree.delete(key).unwrap();
+                tree.delete(key);
                 Ok(())
             }
         }
@@ -117,6 +119,24 @@ impl Step {
     }
 }
 
+struct InMemoryMerkleTreeTestAdaptor {
+    tree: Box<in_memory::MerkleTree>,
+}
+
+impl<'a> MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
+    fn update(&mut self, key: &Bytes32, data: &[u8]) {
+        self.tree.as_mut().update(key, data)
+    }
+
+    fn delete(&mut self, key: &Bytes32) {
+        self.tree.as_mut().delete(key)
+    }
+
+    fn root(&self) -> Bytes32 {
+        self.tree.as_ref().root()
+    }
+}
+
 #[derive(Deserialize)]
 struct Test {
     name: String,
@@ -126,8 +146,8 @@ struct Test {
 
 impl Test {
     pub fn execute(self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut storage = StorageMap::<Bytes32, Buffer>::new();
-        let mut tree = MerkleTree::new(&mut storage);
+        let tree = Box::new(in_memory::MerkleTree::new());
+        let mut tree = InMemoryMerkleTreeTestAdaptor { tree };
 
         for step in self.steps {
             step.execute(&mut tree)?

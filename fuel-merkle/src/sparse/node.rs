@@ -65,12 +65,11 @@ impl Node {
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
             let parent_height = (Node::max_height() - parent_depth) as u32;
-            let parent_node = if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
-                Node::create_node(&path_node, &side_node, parent_height)
+            if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
+                Node::create_node(path_node, side_node, parent_height)
             } else {
-                Node::create_node(&side_node, &path_node, parent_height)
-            };
-            parent_node
+                Node::create_node(side_node, path_node, parent_height)
+            }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
             // the direct parent of the node with the greater height and an
@@ -78,12 +77,11 @@ impl Node {
             // N.B.: A leaf can be a placeholder.
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height as usize;
-            let parent_node = if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
-                Node::create_node(&path_node, &side_node, parent_height)
+            if path.get_bit_at_index_from_msb(parent_depth).unwrap() == LEFT {
+                Node::create_node(path_node, side_node, parent_height)
             } else {
-                Node::create_node(&side_node, &path_node, parent_height)
-            };
-            parent_node
+                Node::create_node(side_node, path_node, parent_height)
+            }
         }
     }
 
@@ -676,7 +674,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
 
         assert_eq!(child.hash(), leaf_0.hash());
@@ -695,7 +693,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
 
         assert_eq!(child.hash(), leaf_1.hash());
@@ -711,7 +709,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&Node::create_placeholder(), &leaf, 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
 
         assert!(child.node.is_placeholder());
@@ -727,7 +725,7 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf, &Node::create_placeholder(), 1);
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
-        let storage_node = StorageNode::new(&mut s, node_0);
+        let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
 
         assert!(child.node.is_placeholder());

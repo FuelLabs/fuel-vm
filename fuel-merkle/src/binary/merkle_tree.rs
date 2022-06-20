@@ -80,7 +80,7 @@ where
         proof_index: u64,
     ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
         if proof_index + 1 > self.leaves_count {
-            return Err(MerkleTreeError::InvalidProofIndex(proof_index).into());
+            return Err(MerkleTreeError::InvalidProofIndex(proof_index));
         }
 
         let mut proof_set = ProofSet::new();
@@ -225,13 +225,13 @@ mod test {
         // 00  02  04  06  08  10     12
         // 00  01  02  03  04  05     06
 
-        let leaf_0 = leaf_sum(&data[0]);
-        let leaf_1 = leaf_sum(&data[1]);
-        let leaf_2 = leaf_sum(&data[2]);
-        let leaf_3 = leaf_sum(&data[3]);
-        let leaf_4 = leaf_sum(&data[4]);
-        let leaf_5 = leaf_sum(&data[5]);
-        let leaf_6 = leaf_sum(&data[6]);
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
+        let leaf_4 = leaf_sum(data[4]);
+        let leaf_5 = leaf_sum(data[5]);
+        let leaf_6 = leaf_sum(data[6]);
         let node_1 = node_sum(&leaf_0, &leaf_1);
         let node_5 = node_sum(&leaf_2, &leaf_3);
         let node_3 = node_sum(&node_1, &node_5);
@@ -322,7 +322,7 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let leaf_0 = leaf_sum(&data[0]);
+        let leaf_0 = leaf_sum(data[0]);
 
         let root = tree.root().unwrap();
         assert_eq!(root, leaf_0);
@@ -353,13 +353,13 @@ mod test {
         // 00  02  04  06  08  10     12
         // 00  01  02  03  04  05     06
 
-        let leaf_0 = leaf_sum(&data[0]);
-        let leaf_1 = leaf_sum(&data[1]);
-        let leaf_2 = leaf_sum(&data[2]);
-        let leaf_3 = leaf_sum(&data[3]);
-        let leaf_4 = leaf_sum(&data[4]);
-        let leaf_5 = leaf_sum(&data[5]);
-        let leaf_6 = leaf_sum(&data[6]);
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
+        let leaf_4 = leaf_sum(data[4]);
+        let leaf_5 = leaf_sum(data[5]);
+        let leaf_6 = leaf_sum(data[6]);
 
         let node_1 = node_sum(&leaf_0, &leaf_1);
         let node_5 = node_sum(&leaf_2, &leaf_3);
@@ -405,7 +405,7 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let leaf_0 = leaf_sum(&data[0]);
+        let leaf_0 = leaf_sum(data[0]);
 
         {
             let proof = tree.prove(0).unwrap();
@@ -435,10 +435,10 @@ mod test {
         // 00  02  04  06
         // 00  01  02  03
 
-        let leaf_0 = leaf_sum(&data[0]);
-        let leaf_1 = leaf_sum(&data[1]);
-        let leaf_2 = leaf_sum(&data[2]);
-        let leaf_3 = leaf_sum(&data[3]);
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
 
         let node_1 = node_sum(&leaf_0, &leaf_1);
         let node_5 = node_sum(&leaf_2, &leaf_3);
@@ -507,11 +507,11 @@ mod test {
         // 00  02  04  06  08
         // 00  01  02  03  04
 
-        let leaf_0 = leaf_sum(&data[0]);
-        let leaf_1 = leaf_sum(&data[1]);
-        let leaf_2 = leaf_sum(&data[2]);
-        let leaf_3 = leaf_sum(&data[3]);
-        let leaf_4 = leaf_sum(&data[4]);
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
+        let leaf_4 = leaf_sum(data[4]);
 
         let node_1 = node_sum(&leaf_0, &leaf_1);
         let node_5 = node_sum(&leaf_2, &leaf_3);
@@ -598,13 +598,13 @@ mod test {
         // 00  02  04  06  08  10     12
         // 00  01  02  03  04  05     06
 
-        let leaf_0 = leaf_sum(&data[0]);
-        let leaf_1 = leaf_sum(&data[1]);
-        let leaf_2 = leaf_sum(&data[2]);
-        let leaf_3 = leaf_sum(&data[3]);
-        let leaf_4 = leaf_sum(&data[4]);
-        let leaf_5 = leaf_sum(&data[5]);
-        let leaf_6 = leaf_sum(&data[6]);
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
+        let leaf_4 = leaf_sum(data[4]);
+        let leaf_5 = leaf_sum(data[5]);
+        let leaf_6 = leaf_sum(data[6]);
 
         let node_1 = node_sum(&leaf_0, &leaf_1);
         let node_5 = node_sum(&leaf_2, &leaf_3);

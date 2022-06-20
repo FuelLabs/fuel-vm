@@ -36,7 +36,7 @@ enum Encoding {
 }
 
 impl EncodedValue {
-    fn to_bytes(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    fn into_bytes(self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         match self.encoding_type()? {
             Encoding::Hex => Ok(hex::decode(self.value).unwrap()),
             Encoding::Utf8 => Ok(self.value.into_bytes()),
@@ -82,15 +82,15 @@ impl Step {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self.action_type()? {
             Action::Update(encoded_key, encoded_data) => {
-                let key_bytes = encoded_key.to_bytes()?;
+                let key_bytes = encoded_key.into_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
-                let data_bytes = encoded_data.to_bytes()?;
+                let data_bytes = encoded_data.into_bytes()?;
                 let data: &[u8] = &data_bytes;
                 tree.update(key, data);
                 Ok(())
             }
             Action::Delete(encoded_key) => {
-                let key_bytes = encoded_key.to_bytes()?;
+                let key_bytes = encoded_key.into_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
                 tree.delete(key);
                 Ok(())
@@ -154,7 +154,7 @@ impl Test {
         }
 
         let root = tree.root();
-        let expected_root: Bytes32 = self.expected_root.to_bytes()?.try_into().unwrap();
+        let expected_root: Bytes32 = self.expected_root.into_bytes()?.try_into().unwrap();
 
         assert_eq!(root, expected_root);
 

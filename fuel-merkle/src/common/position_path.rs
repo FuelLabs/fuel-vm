@@ -56,7 +56,7 @@ impl Iterator for PositionPathIter {
     type Item = (Position, Position);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((path, mut side)) = self.path_iter.next() {
+        for (path, mut side) in self.path_iter.by_ref() {
             // To determine if the position is in the tree, we observe that the
             // highest in-order index belongs to the tree's rightmost leaf
             // position (as defined by the `leaves_count` parameter) and that

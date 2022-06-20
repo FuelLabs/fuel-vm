@@ -48,7 +48,7 @@ where
     ) -> Result<Self, MerkleTreeError<StorageError>> {
         let buffer = storage
             .get(root)?
-            .ok_or(MerkleTreeError::LoadError(hex::encode(root)))?
+            .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
             .into_owned();
         let tree = Self {
             root_node: Node::from_buffer(buffer),
@@ -73,7 +73,7 @@ where
         self.storage
             .insert(&leaf_node.hash(), leaf_node.as_buffer())?;
         self.storage
-            .insert(&leaf_node.leaf_key(), leaf_node.as_buffer())?;
+            .insert(leaf_node.leaf_key(), leaf_node.as_buffer())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -221,27 +221,31 @@ where
         // calculation. We then create a valid ancestor node for the orphaned
         // leaf node by joining it with the earliest non-placeholder side node.
         let first_side_node = side_nodes.first();
-        if first_side_node.is_some() && first_side_node.unwrap().is_leaf() {
-            side_nodes_iter.next();
-            current_node = first_side_node.unwrap().clone();
+        if let Some(first_side_node) = first_side_node {
+            if first_side_node.is_leaf() {
+                side_nodes_iter.next();
+                current_node = first_side_node.clone();
 
-            // Advance the side node iterator to the next non-placeholder node.
-            // This may be either another leaf node or an internal node. If only
-            // placeholder nodes exist beyond the first leaf node, then that
-            // leaf node is, in fact, the new root node.
-            //
-            // Using `find(..)` advances the iterator beyond the next
-            // non-placeholder side node and returns it. Therefore, we must
-            // consume the side node at this point. If another non-placeholder
-            // node was found in the side node collection, merge it with the
-            // first side node. This guarantees that the current node will be an
-            // internal node, and not a leaf, by the time we start merging the
-            // remaining side nodes.
-            // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
-            if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
-                current_node = Node::create_node_on_path(path, &current_node, side_node);
-                self.storage
-                    .insert(&current_node.hash(), current_node.as_buffer())?;
+                // Advance the side node iterator to the next non-placeholder node.
+                // This may be either another leaf node or an internal node. If only
+                // placeholder nodes exist beyond the first leaf node, then that
+                // leaf node is, in fact, the new root node.
+                //
+                // Using `find(..)` advances the iterator beyond the next
+                // non-placeholder side node and returns it. Therefore, we must
+                // consume the side node at this point. If another non-placeholder
+                // node was found in the side node collection, merge it with the
+                // first side node. This guarantees that the current node will be an
+                // internal node, and not a leaf, by the time we start merging the
+                // remaining side nodes.
+                // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
+                if let Some(side_node) =
+                    side_nodes_iter.find(|side_node| !side_node.is_placeholder())
+                {
+                    current_node = Node::create_node_on_path(path, &current_node, side_node);
+                    self.storage
+                        .insert(&current_node.hash(), current_node.as_buffer())?;
+                }
             }
         }
 

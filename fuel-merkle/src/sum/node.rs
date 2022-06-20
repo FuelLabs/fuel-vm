@@ -33,8 +33,8 @@ impl Node {
             height,
             hash: node_sum(lhs_fee, lhs_key, rhs_fee, rhs_key),
             fee: lhs_fee + rhs_fee,
-            left_child_key: Some(lhs_key.clone()),
-            right_child_key: Some(rhs_key.clone()),
+            left_child_key: Some(*lhs_key),
+            right_child_key: Some(*rhs_key),
         }
     }
 
@@ -51,11 +51,11 @@ impl Node {
     }
 
     pub fn left_child_key(&self) -> Option<Bytes32> {
-        self.left_child_key.clone()
+        self.left_child_key
     }
 
     pub fn right_child_key(&self) -> Option<Bytes32> {
-        self.right_child_key.clone()
+        self.right_child_key
     }
 
     pub fn is_leaf(&self) -> bool {

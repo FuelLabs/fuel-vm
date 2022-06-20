@@ -8,6 +8,12 @@ pub struct StorageMap<Key, Value> {
     map: HashMap<Key, Value>,
 }
 
+impl<Key, Value> Default for StorageMap<Key, Value> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<Key, Value> StorageMap<Key, Value> {
     pub fn new() -> Self {
         Self {

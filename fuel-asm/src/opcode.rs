@@ -145,6 +145,12 @@ pub enum Opcode {
     /// Conditional jump against zero.
     JNZI(RegisterId, Immediate18),
 
+    /// Dynamic jump.
+    JMP(RegisterId),
+
+    /// Conditional dynamic jump.
+    JNE(RegisterId, RegisterId, RegisterId),
+
     /// Return from context.
     RET(RegisterId),
 
@@ -344,6 +350,8 @@ impl Opcode {
             OpcodeRepr::JI => Opcode::JI(imm24),
             OpcodeRepr::JNEI => Opcode::JNEI(ra, rb, imm12),
             OpcodeRepr::JNZI => Opcode::JNZI(ra, imm18),
+            OpcodeRepr::JMP => Opcode::JMP(ra),
+            OpcodeRepr::JNE => Opcode::JNE(ra, rb, rc),
             OpcodeRepr::RET => Opcode::RET(ra),
             OpcodeRepr::RETD => Opcode::RETD(ra, rb),
             OpcodeRepr::CFEI => Opcode::CFEI(imm24),
@@ -453,6 +461,8 @@ impl Opcode {
             Self::JI(_) => [None; 4],
             Self::JNEI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::JNZI(ra, _) => [Some(*ra), None, None, None],
+            Self::JMP(ra) => [Some(*ra), None, None, None],
+            Self::JNE(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::RET(ra) => [Some(*ra), None, None, None],
             Self::RETD(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::CFEI(_) => [None; 4],
@@ -571,6 +581,8 @@ impl Opcode {
             | Self::LOGD(_, _, _, _)
             | Self::MINT(_)
             | Self::RVRT(_)
+            | Self::JMP(_)
+            | Self::JNE(_, _, _)
             | Self::SLDC(_, _, _)
             | Self::SRW(_, _)
             | Self::SRWQ(_, _)
@@ -856,6 +868,13 @@ impl From<Opcode> for u32 {
             }
             Opcode::JNZI(ra, imm18) => {
                 ((OpcodeRepr::JNZI as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32)
+            }
+            Opcode::JMP(ra) => ((OpcodeRepr::JMP as u32) << 24) | ((ra as u32) << 18),
+            Opcode::JNE(ra, rb, rc) => {
+                ((OpcodeRepr::JNE as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
             }
             Opcode::RET(ra) => ((OpcodeRepr::RET as u32) << 24) | ((ra as u32) << 18),
             Opcode::RETD(ra, rb) => {

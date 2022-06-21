@@ -120,6 +120,66 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
     }
 }
 
+fn alu_wrapping(
+    registers_init: &[(RegisterId, Immediate18)],
+    op: Opcode,
+    reg: RegisterId,
+    expected: Word,
+    expected_of: bool,
+) {
+    let storage = MemoryStorage::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    let set_regs = registers_init.iter().map(|(r, v)| Opcode::MOVI(*r, *v));
+
+    let script = [
+        // TODO avoid magic constants
+        // https://github.com/FuelLabs/fuel-asm/issues/60
+        Opcode::MOVI(REG_WRITABLE, 0x2),
+        Opcode::FLAG(REG_WRITABLE),
+    ]
+    .iter()
+    .copied()
+    .chain(set_regs)
+    .chain(
+        [op, Opcode::LOG(reg, REG_OF, 0, 0), Opcode::RET(REG_ONE)]
+            .iter()
+            .copied(),
+    )
+    .collect();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    let receipts = Transactor::new(storage, Default::default())
+        .transact(tx)
+        .receipts()
+        .expect("Failed to execute ALU script!")
+        .to_owned();
+
+    let log_receipt = receipts.first().expect("Receipt not found");
+
+    assert_eq!(log_receipt.ra().expect("$ra expected"), expected);
+
+    assert_eq!(
+        log_receipt.rb().expect("$rb (value of REG_OF) expected"),
+        expected_of.try_into().unwrap()
+    );
+}
+
 fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();
 
@@ -411,6 +471,15 @@ fn exp() {
         true as u128,
         true,
     );
+    alu_wrapping(
+        &[(0x10, 2), (0x11, 32)],
+        Opcode::EXP(0x10, 0x10, 0x11),
+        0x10,
+        2u64.pow(32),
+        false,
+    );
+    alu_wrapping(&[(0x10, 2), (0x11, 64)], Opcode::EXP(0x10, 0x10, 0x11), 0x10, 0, true);
+
     // EXPI
     alu(&[(0x10, 6)], Opcode::EXPI(0x12, 0x10, 3), 0x12, 216);
     alu_overflow(
@@ -419,6 +488,8 @@ fn exp() {
         true as u128,
         true,
     );
+    alu_wrapping(&[(0x10, 2)], Opcode::EXPI(0x10, 0x10, 32), 0x10, 2u64.pow(32), false);
+    alu_wrapping(&[(0x10, 2)], Opcode::EXPI(0x10, 0x10, 64), 0x10, 0, true);
 }
 
 #[test]

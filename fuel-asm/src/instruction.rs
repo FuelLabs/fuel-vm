@@ -366,10 +366,7 @@ impl iter::FromIterator<Instruction> for Vec<u8> {
     where
         T: IntoIterator<Item = Instruction>,
     {
-        iter.into_iter()
-            .map(Instruction::to_bytes)
-            .flatten()
-            .collect()
+        iter.into_iter().flat_map(Instruction::to_bytes).collect()
     }
 }
 

@@ -111,17 +111,11 @@ where
             OpcodeRepr::EXP => {
                 self.gas_charge(GAS_EXP)?;
                 self.alu_boolean_overflow(ra, Word::overflowing_pow, b, c as u32)?;
-                if self.registers[REG_OF] != 0 {
-                    self.registers[ra] = 0;
-                }
             }
 
             OpcodeRepr::EXPI => {
                 self.gas_charge(GAS_EXPI)?;
                 self.alu_boolean_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
-                if self.registers[REG_OF] != 0 {
-                    self.registers[ra] = 0;
-                }
             }
 
             OpcodeRepr::GT => {

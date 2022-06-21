@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use alloc::borrow::Cow;
-use core::ops::{Deref, DerefMut};
+use auto_impl::auto_impl;
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -14,6 +14,7 @@ pub type MerkleRoot = [u8; 32];
 ///
 /// - K: Key that maps to a value
 /// - V: Stored value
+#[auto_impl(&mut)]
 pub trait Storage<K, V>
 where
     V: Clone,
@@ -40,30 +41,6 @@ where
     fn contains_key(&self, key: &K) -> Result<bool, Self::Error>;
 }
 
-impl<K, V, S> Storage<K, V> for &mut S
-where
-    V: Clone,
-    S: Storage<K, V>,
-{
-    type Error = S::Error;
-
-    fn insert(&mut self, key: &K, value: &V) -> Result<Option<V>, S::Error> {
-        <S as Storage<K, V>>::insert(self.deref_mut(), key, value)
-    }
-
-    fn remove(&mut self, key: &K) -> Result<Option<V>, S::Error> {
-        <S as Storage<K, V>>::remove(self.deref_mut(), key)
-    }
-
-    fn get(&self, key: &K) -> Result<Option<Cow<'_, V>>, S::Error> {
-        <S as Storage<K, V>>::get(self.deref(), key)
-    }
-
-    fn contains_key(&self, key: &K) -> Result<bool, S::Error> {
-        <S as Storage<K, V>>::contains_key(self.deref(), key)
-    }
-}
-
 /// Base trait for Fuel Merkle storage
 ///
 /// Generics:
@@ -71,6 +48,7 @@ where
 /// - P: Domain of the merkle tree
 /// - K: Key that maps to a value
 /// - V: Stored value
+#[auto_impl(&mut)]
 pub trait MerkleStorage<P, K, V>
 where
     V: Clone,
@@ -101,32 +79,4 @@ where
     /// The cryptographic primitive is an arbitrary choice of the implementor and this trait won't
     /// impose any restrictions to that.
     fn root(&mut self, parent: &P) -> Result<MerkleRoot, Self::Error>;
-}
-
-impl<P, K, V, S> MerkleStorage<P, K, V> for &mut S
-where
-    V: Clone,
-    S: MerkleStorage<P, K, V>,
-{
-    type Error = S::Error;
-
-    fn insert(&mut self, parent: &P, key: &K, value: &V) -> Result<Option<V>, S::Error> {
-        <S as MerkleStorage<P, K, V>>::insert(self.deref_mut(), parent, key, value)
-    }
-
-    fn remove(&mut self, parent: &P, key: &K) -> Result<Option<V>, S::Error> {
-        <S as MerkleStorage<P, K, V>>::remove(self.deref_mut(), parent, key)
-    }
-
-    fn get(&self, parent: &P, key: &K) -> Result<Option<Cow<'_, V>>, S::Error> {
-        <S as MerkleStorage<P, K, V>>::get(self.deref(), parent, key)
-    }
-
-    fn contains_key(&self, parent: &P, key: &K) -> Result<bool, S::Error> {
-        <S as MerkleStorage<P, K, V>>::contains_key(self.deref(), parent, key)
-    }
-
-    fn root(&mut self, parent: &P) -> Result<MerkleRoot, S::Error> {
-        <S as MerkleStorage<P, K, V>>::root(self.deref_mut(), parent)
-    }
 }

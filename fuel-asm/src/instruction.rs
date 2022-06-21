@@ -240,6 +240,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::SLDC
             | OpcodeRepr::TR
             | OpcodeRepr::ECR
+            | OpcodeRepr::JNE
             | OpcodeRepr::K256
             | OpcodeRepr::S256 => a | b | c,
 
@@ -285,6 +286,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::BURN
             | OpcodeRepr::CB
             | OpcodeRepr::MINT
+            | OpcodeRepr::JMP
             | OpcodeRepr::RVRT
             | OpcodeRepr::FLAG => a,
 

@@ -238,9 +238,6 @@ pub enum Opcode {
     /// Send a message to recipient address with call abi, coins, and output.
     SMO(RegisterId, RegisterId, RegisterId, RegisterId),
 
-    /// Load a static contract's code as executable.
-    SLDC(RegisterId, RegisterId, RegisterId),
-
     /// Load a word from contract storage.
     SRW(RegisterId, RegisterId),
 
@@ -384,7 +381,6 @@ impl Opcode {
             OpcodeRepr::MINT => Opcode::MINT(ra),
             OpcodeRepr::RVRT => Opcode::RVRT(ra),
             OpcodeRepr::SMO => Opcode::SMO(ra, rb, rc, rd),
-            OpcodeRepr::SLDC => Opcode::SLDC(ra, rb, rc),
             OpcodeRepr::SRW => Opcode::SRW(ra, rb),
             OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb),
             OpcodeRepr::SWW => Opcode::SWW(ra, rb),
@@ -496,7 +492,6 @@ impl Opcode {
             Self::MINT(ra) => [Some(*ra), None, None, None],
             Self::RVRT(ra) => [Some(*ra), None, None, None],
             Self::SMO(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
-            Self::SLDC(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::SRW(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::SRWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::SWW(ra, rb) => [Some(*ra), Some(*rb), None, None],
@@ -589,7 +584,6 @@ impl Opcode {
             | Self::SMO(_, _, _, _)
             | Self::JMP(_)
             | Self::JNE(_, _, _)
-            | Self::SLDC(_, _, _)
             | Self::SRW(_, _)
             | Self::SRWQ(_, _)
             | Self::SWW(_, _)
@@ -998,12 +992,6 @@ impl From<Opcode> for u32 {
                     | ((rb as u32) << 12)
                     | ((rc as u32) << 6)
                     | (rd as u32)
-            }
-            Opcode::SLDC(ra, rb, rc) => {
-                ((OpcodeRepr::SLDC as u32) << 24)
-                    | ((ra as u32) << 18)
-                    | ((rb as u32) << 12)
-                    | ((rc as u32) << 6)
             }
             Opcode::SRW(ra, rb) => {
                 ((OpcodeRepr::SRW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)

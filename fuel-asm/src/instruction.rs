@@ -237,7 +237,6 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::CIMV
             | OpcodeRepr::MCP
             | OpcodeRepr::LDC
-            | OpcodeRepr::SLDC
             | OpcodeRepr::TR
             | OpcodeRepr::ECR
             | OpcodeRepr::JNE

@@ -77,6 +77,11 @@ impl MemoryStorage {
         self.memory = self.transacted.clone();
         self.persisted = self.transacted.clone();
     }
+
+    /// Set the block height of the chain
+    pub fn set_block_height(&mut self, block_height: u32) {
+        self.block_height = block_height;
+    }
 }
 
 impl Default for MemoryStorage {

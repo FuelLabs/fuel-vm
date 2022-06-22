@@ -101,6 +101,7 @@ pub mod test_helpers {
         witness: Vec<Witness>,
         storage: MemoryStorage,
         params: ConsensusParameters,
+        block_height: u32,
     }
 
     impl TestBuilder {
@@ -117,6 +118,7 @@ pub mod test_helpers {
                 witness: vec![Witness::default()],
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
+                block_height: 0,
             }
         }
 
@@ -210,6 +212,11 @@ pub mod test_helpers {
 
         pub fn params(&mut self, params: ConsensusParameters) -> &mut TestBuilder {
             self.params = params;
+            self
+        }
+
+        pub fn block_height(&mut self, block_height: u32) -> &mut TestBuilder {
+            self.block_height = block_height;
             self
         }
 
@@ -315,7 +322,8 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
+        pub fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
+            self.storage.set_block_height(self.block_height);
             let mut client = MemoryClient::new(self.storage.clone(), self.params);
 
             client.transact(tx);

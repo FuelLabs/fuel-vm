@@ -1,4 +1,7 @@
+use fuel_tx::TransactionBuilder;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
@@ -229,4 +232,16 @@ fn total_fee_cant_overflow() {
         .expect("overflow expected");
 
     assert_eq!(err, ValidationError::ArithmeticOverflow.into());
+}
+
+#[test]
+fn transaction_cannot_be_executed_before_maturity() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
+        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 1)
+        .gas_limit(100)
+        .finalize();
+
+    let result = TestBuilder::new(2322u64).block_height(1).execute_tx(tx);
+    assert!(!result.should_revert());
 }

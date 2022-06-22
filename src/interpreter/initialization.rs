@@ -17,8 +17,7 @@ impl<S> Interpreter<S> {
     pub fn init(&mut self, predicate: bool, block_height: u32, tx: Transaction) -> Result<(), InterpreterError> {
         self.tx = tx;
 
-        self.tx
-            .validate_without_signature(self.block_height() as Word, &self.params)?;
+        self.tx.validate_without_signature(block_height as Word, &self.params)?;
         self.tx.precompute_metadata();
 
         self.block_height = block_height;

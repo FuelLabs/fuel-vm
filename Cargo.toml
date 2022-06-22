@@ -27,7 +27,8 @@ tracing = "0.1"
 rand = { version = "0.8", optional = true }
 
 [dev-dependencies]
-fuel-tx = { version = "0.13", features = ["random"] }
+fuel-crypto = { version = "0.5", features = ["random"] }
+fuel-tx = { version = "0.13", features = ["random", "internals", "builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 serde_json = "1.0"
 

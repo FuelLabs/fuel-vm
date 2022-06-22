@@ -500,7 +500,7 @@ where
             }
 
             // list of currently unimplemented opcodes
-            OpcodeRepr::SLDC | _ => {
+            _ => {
                 return Err(PanicReason::ErrorFlag.into());
             }
         }

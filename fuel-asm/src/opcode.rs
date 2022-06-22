@@ -235,6 +235,9 @@ pub enum Opcode {
     /// Halt execution, reverting state changes and returning a value.
     RVRT(RegisterId),
 
+    /// Send a message to recipient address with call abi, coins, and output.
+    SMO(RegisterId, RegisterId, RegisterId, RegisterId),
+
     /// Load a static contract's code as executable.
     SLDC(RegisterId, RegisterId, RegisterId),
 
@@ -380,6 +383,7 @@ impl Opcode {
             OpcodeRepr::LOGD => Opcode::LOGD(ra, rb, rc, rd),
             OpcodeRepr::MINT => Opcode::MINT(ra),
             OpcodeRepr::RVRT => Opcode::RVRT(ra),
+            OpcodeRepr::SMO => Opcode::SMO(ra, rb, rc, rd),
             OpcodeRepr::SLDC => Opcode::SLDC(ra, rb, rc),
             OpcodeRepr::SRW => Opcode::SRW(ra, rb),
             OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb),
@@ -491,6 +495,7 @@ impl Opcode {
             Self::LOGD(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::MINT(ra) => [Some(*ra), None, None, None],
             Self::RVRT(ra) => [Some(*ra), None, None, None],
+            Self::SMO(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::SLDC(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::SRW(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::SRWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
@@ -581,6 +586,7 @@ impl Opcode {
             | Self::LOGD(_, _, _, _)
             | Self::MINT(_)
             | Self::RVRT(_)
+            | Self::SMO(_, _, _, _)
             | Self::JMP(_)
             | Self::JNE(_, _, _)
             | Self::SLDC(_, _, _)
@@ -986,6 +992,13 @@ impl From<Opcode> for u32 {
             }
             Opcode::MINT(ra) => ((OpcodeRepr::MINT as u32) << 24) | ((ra as u32) << 18),
             Opcode::RVRT(ra) => ((OpcodeRepr::RVRT as u32) << 24) | ((ra as u32) << 18),
+            Opcode::SMO(ra, rb, rc, rd) => {
+                ((OpcodeRepr::SMO as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
+            }
             Opcode::SLDC(ra, rb, rc) => {
                 ((OpcodeRepr::SLDC as u32) << 24)
                     | ((ra as u32) << 18)

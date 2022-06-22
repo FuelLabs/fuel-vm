@@ -75,6 +75,7 @@ fn opcode() {
         Opcode::LOGD(r, r, r, r),
         Opcode::MINT(r),
         Opcode::RVRT(r),
+        Opcode::SMO(r, r, r, r),
         Opcode::SLDC(r, r, r),
         Opcode::SRW(r, r),
         Opcode::SRWQ(r, r),

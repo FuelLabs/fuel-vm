@@ -29,7 +29,7 @@ impl<S> Interpreter<S> {
         self.inc_pc()
     }
 
-    /// Set REG_OF to true if overflow occurred.
+    /// Set REG_OF to true and zero the result register if overflow occurred.
     pub(crate) fn alu_boolean_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
     where
         F: FnOnce(B, C) -> (Word, bool),
@@ -46,7 +46,7 @@ impl<S> Interpreter<S> {
         self.registers[REG_OF] = overflow as Word;
         self.registers[REG_ERR] = 0;
 
-        self.registers[ra] = result;
+        self.registers[ra] = if overflow { 0 } else { result };
 
         self.inc_pc()
     }

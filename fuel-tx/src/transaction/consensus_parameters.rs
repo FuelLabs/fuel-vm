@@ -4,6 +4,7 @@ use fuel_types::{AssetId, Bytes32};
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct ConsensusParameters {
     /// Maximum contract size, in bytes.
     pub contract_max_size: u64,

@@ -299,6 +299,7 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::CCP
             | OpcodeRepr::LOG
             | OpcodeRepr::LOGD
+            | OpcodeRepr::SMO
             | OpcodeRepr::TRO => a | b | c | d,
 
             _ => 0,

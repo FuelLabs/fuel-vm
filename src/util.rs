@@ -277,7 +277,7 @@ pub mod test_helpers {
             contract: Vec<Opcode>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
-        ) -> CreatedContract {
+        ) -> anyhow::Result<CreatedContract> {
             let storage_slots = if let Some(slots) = initial_state {
                 slots
             } else {
@@ -306,7 +306,7 @@ pub mod test_helpers {
             );
 
             // setup a contract in current test state
-            let state = self.execute_tx(tx);
+            let state = self.execute_tx(tx)?;
 
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
@@ -315,18 +315,18 @@ pub mod test_helpers {
                     .unwrap();
             }
 
-            CreatedContract {
+            Ok(CreatedContract {
                 tx: state.tx().clone(),
                 contract_id,
                 salt,
-            }
+            })
         }
 
-        pub fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
+        pub fn execute_tx(&mut self, tx: Transaction) -> anyhow::Result<StateTransition> {
             self.storage.set_block_height(self.block_height);
             let mut client = MemoryClient::new(self.storage.clone(), self.params);
 
-            client.transact(tx);
+            client.transact(tx)?;
 
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
@@ -343,18 +343,22 @@ pub mod test_helpers {
             // save storage between client instances
             self.storage = storage;
 
-            state
+            Ok(state)
         }
 
         /// Build test tx and execute it
-        pub fn execute(&mut self) -> StateTransition {
+        pub fn execute(&mut self) -> anyhow::Result<StateTransition> {
             let tx = self.build();
 
             self.execute_tx(tx)
         }
 
         pub fn execute_get_outputs(&mut self) -> Vec<Output> {
-            self.execute().tx().outputs().to_vec()
+            self.execute()
+                .expect("expected successful vm execution")
+                .tx()
+                .outputs()
+                .to_vec()
         }
 
         pub fn execute_get_change(&mut self, find_asset_id: AssetId) -> Word {
@@ -375,7 +379,9 @@ pub mod test_helpers {
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {
             let tx = TestBuilder::build_get_balance_tx(&self.params, contract_id, asset_id);
-            let state = self.execute_tx(tx);
+            let state = self
+                .execute_tx(tx)
+                .expect("expected successful vm execution in this context");
             let receipts = state.receipts();
             receipts[0].ra().expect("Balance expected")
         }

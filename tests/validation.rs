@@ -236,12 +236,32 @@ fn total_fee_cant_overflow() {
 
 #[test]
 fn transaction_cannot_be_executed_before_maturity() {
+    const MATURITY: u64 = 1;
+    const BLOCK_HEIGHT: u32 = 0;
+
     let mut rng = StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
-        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 1)
+        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
         .gas_limit(100)
+        .maturity(MATURITY)
         .finalize();
 
-    let result = TestBuilder::new(2322u64).block_height(1).execute_tx(tx);
-    assert!(!result.should_revert());
+    let result = TestBuilder::new(2322u64).block_height(BLOCK_HEIGHT).execute_tx(tx);
+    assert!(result.err().unwrap().to_string().contains("TransactionMaturity"));
+}
+
+#[test]
+fn transaction_can_be_executed_after_maturity() {
+    const MATURITY: u64 = 1;
+    const BLOCK_HEIGHT: u32 = 2;
+
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
+        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
+        .gas_limit(100)
+        .maturity(MATURITY)
+        .finalize();
+
+    let result = TestBuilder::new(2322u64).block_height(BLOCK_HEIGHT).execute_tx(tx);
+    assert!(!result.is_ok());
 }

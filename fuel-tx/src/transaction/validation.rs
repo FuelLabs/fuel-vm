@@ -317,7 +317,6 @@ impl Transaction {
                 witnesses,
                 bytecode_length,
                 bytecode_witness_index,
-                static_contracts,
                 storage_slots,
                 ..
             } => {
@@ -332,14 +331,6 @@ impl Transaction {
                     return Err(ValidationError::TransactionCreateBytecodeLen);
                 }
 
-                if static_contracts.len() > parameters.max_static_contracts as usize {
-                    Err(ValidationError::TransactionCreateStaticContractsMax)?;
-                }
-
-                if !static_contracts.as_slice().windows(2).all(|w| w[0] <= w[1]) {
-                    Err(ValidationError::TransactionCreateStaticContractsOrder)?;
-                }
-
                 // Restrict to subset of u16::MAX, allowing this to be increased in the future
                 // in a non-breaking way.
                 if storage_slots.len() > parameters.max_storage_slots as usize {
@@ -350,7 +341,6 @@ impl Transaction {
                     return Err(ValidationError::TransactionCreateStorageSlotOrder);
                 }
 
-                // TODO Any contract with ADDRESS in staticContracts is not in the state
                 // TODO The computed contract ADDRESS (see below) is not equal to the
                 // contractADDRESS of the one OutputType.ContractCreated output
 

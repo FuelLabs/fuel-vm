@@ -20,8 +20,6 @@ pub struct ConsensusParameters {
     pub max_script_length: u64,
     /// Maximum length of script data, in bytes.
     pub max_script_data_length: u64,
-    /// Maximum number of static contracts.
-    pub max_static_contracts: u64,
     /// Maximum number of initial storage slots.
     pub max_storage_slots: u64,
     /// Maximum length of predicate, in instructions.
@@ -42,7 +40,6 @@ impl ConsensusParameters {
         max_gas_per_tx: 100_000_000,
         max_script_length: 1024 * 1024,
         max_script_data_length: 1024 * 1024,
-        max_static_contracts: 255,
         max_storage_slots: 255,
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
@@ -66,7 +63,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -82,7 +78,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -99,7 +94,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -115,7 +109,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -132,7 +125,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -148,7 +140,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -165,7 +156,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -181,7 +171,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -198,7 +187,6 @@ impl ConsensusParameters {
             max_witnesses,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -214,7 +202,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -231,7 +218,6 @@ impl ConsensusParameters {
             max_witnesses,
             max_gas_per_tx,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -247,7 +233,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -264,7 +249,6 @@ impl ConsensusParameters {
             max_witnesses,
             max_gas_per_tx,
             max_script_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -280,40 +264,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-        }
-    }
-
-    /// Replace the max static contracts with the given argument
-    pub const fn with_max_static_contracts(self, max_static_contracts: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -331,7 +281,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
@@ -346,7 +295,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -364,7 +312,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_data_length,
             gas_price_factor,
@@ -379,7 +326,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -397,7 +343,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             gas_price_factor,
@@ -412,7 +357,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -430,7 +374,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -445,7 +388,6 @@ impl ConsensusParameters {
             max_gas_per_tx,
             max_script_length,
             max_script_data_length,
-            max_static_contracts,
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
@@ -473,7 +415,6 @@ pub mod default_parameters {
     pub const MAX_GAS_PER_TX: u64 = ConsensusParameters::DEFAULT.max_gas_per_tx;
     pub const MAX_SCRIPT_LENGTH: u64 = ConsensusParameters::DEFAULT.max_script_length;
     pub const MAX_SCRIPT_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_script_data_length;
-    pub const MAX_STATIC_CONTRACTS: u64 = ConsensusParameters::DEFAULT.max_static_contracts;
     pub const MAX_STORAGE_SLOTS: u64 = ConsensusParameters::DEFAULT.max_storage_slots;
     pub const MAX_PREDICATE_LENGTH: u64 = ConsensusParameters::DEFAULT.max_predicate_length;
     pub const MAX_PREDICATE_DATA_LENGTH: u64 =

@@ -1,7 +1,7 @@
 use fuel_asm::Opcode;
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes};
-use fuel_types::{bytes, ContractId, Immediate24};
+use fuel_types::{bytes, Immediate24};
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 
@@ -433,15 +433,6 @@ fn receipt() {
         Receipt::panic(
             rng.gen(),
             InstructionResult::error(
-                PanicReason::MaxStaticContractsReached,
-                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
                 PanicReason::TransferAmountCannotBeZero,
                 Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -567,7 +558,6 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
-            vec![rng.gen()],
             vec![s.clone()],
             vec![i.clone()],
             vec![o],
@@ -580,7 +570,6 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
-            vec![],
             vec![s],
             vec![i.clone()],
             vec![o],
@@ -593,7 +582,6 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
-            vec![],
             vec![],
             vec![i],
             vec![o],
@@ -608,7 +596,6 @@ fn transaction() {
             rng.gen(),
             vec![],
             vec![],
-            vec![],
             vec![o],
             vec![w.clone()],
         ),
@@ -622,7 +609,6 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![],
             vec![w],
         ),
         Transaction::create(
@@ -632,7 +618,6 @@ fn transaction() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
-            vec![],
             vec![],
             vec![],
             vec![],
@@ -652,8 +637,6 @@ fn create_input_coin_data_offset() {
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
 
-    let static_contracts: Vec<Vec<ContractId>> =
-        vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
     let storage_slots: Vec<Vec<StorageSlot>> =
         vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
     let inputs: Vec<Vec<Input>> = vec![
@@ -691,48 +674,52 @@ fn create_input_coin_data_offset() {
     );
 
     let mut buffer = vec![0u8; 4096];
-    for static_contracts in static_contracts.iter() {
-        for storage_slot in storage_slots.iter() {
-            for inputs in inputs.iter() {
-                for outputs in outputs.iter() {
-                    for witnesses in witnesses.iter() {
-                        let mut inputs = inputs.clone();
-                        let last_input = inputs.len();
-                        inputs.push(input_coin.clone());
+    for storage_slot in storage_slots.iter() {
+        for inputs in inputs.iter() {
+            for outputs in outputs.iter() {
+                for witnesses in witnesses.iter() {
+                    let mut inputs = inputs.clone();
+                    let last_input = inputs.len();
+                    inputs.push(input_coin.clone());
 
-                        let mut tx = Transaction::create(
-                            gas_price,
-                            gas_limit,
-                            byte_price,
-                            maturity,
-                            bytecode_witness_index,
-                            salt,
-                            static_contracts.clone(),
-                            storage_slot.clone(),
-                            inputs,
-                            outputs.clone(),
-                            witnesses.clone(),
-                        );
+                    dbg!(&inputs);
 
-                        let mut tx_p = tx.clone();
-                        tx_p.precompute_metadata();
+                    let mut tx = Transaction::create(
+                        gas_price,
+                        gas_limit,
+                        byte_price,
+                        maturity,
+                        bytecode_witness_index,
+                        salt,
+                        storage_slot.clone(),
+                        inputs,
+                        outputs.clone(),
+                        witnesses.clone(),
+                    );
 
-                        buffer.iter_mut().for_each(|b| *b = 0x00);
-                        let _ = tx
-                            .read(buffer.as_mut_slice())
-                            .expect("Failed to serialize input");
+                    let mut tx_p = tx.clone();
+                    tx_p.precompute_metadata();
 
-                        let (offset, len) = tx
-                            .input_coin_predicate_offset(last_input)
-                            .expect("Failed to fetch offset");
+                    dbg!(&tx_p.metadata());
 
-                        let (offset_p, _) = tx_p
-                            .input_coin_predicate_offset(last_input)
-                            .expect("Failed to fetch offset from tx with precomputed metadata!");
+                    buffer.iter_mut().for_each(|b| *b = 0x00);
+                    let _ = tx
+                        .read(buffer.as_mut_slice())
+                        .expect("Failed to serialize input");
 
-                        assert_eq!(offset, offset_p);
-                        assert_eq!(predicate.as_slice(), &buffer[offset..offset + len]);
-                    }
+                    let (offset, len) = tx
+                        .input_coin_predicate_offset(last_input)
+                        .expect("Failed to fetch offset");
+
+                    let (offset_p, _) = tx_p
+                        .input_coin_predicate_offset(last_input)
+                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+
+                    assert_eq!(offset, offset_p);
+                    assert_eq!(
+                        predicate.as_slice(),
+                        &buffer[offset..offset + len][..predicate.len()]
+                    );
                 }
             }
         }

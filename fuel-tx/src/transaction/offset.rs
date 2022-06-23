@@ -2,7 +2,7 @@ use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
 use crate::{Input, Metadata, StorageSlot, Transaction};
 
 use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::{Bytes32, ContractId};
+use fuel_types::Bytes32;
 
 impl Transaction {
     /// For a serialized transaction of type `Script`, return the bytes offset
@@ -69,14 +69,8 @@ impl Transaction {
                     + bytes::padded_len(script_data.as_slice())
             }
 
-            Transaction::Create {
-                static_contracts,
-                storage_slots,
-                ..
-            } => {
-                TRANSACTION_CREATE_FIXED_SIZE
-                    + ContractId::LEN * static_contracts.len()
-                    + StorageSlot::SLOT_SIZE * storage_slots.len()
+            Transaction::Create { storage_slots, .. } => {
+                TRANSACTION_CREATE_FIXED_SIZE + StorageSlot::SLOT_SIZE * storage_slots.len()
             }
         }
     }
@@ -117,13 +111,11 @@ impl Transaction {
             }
 
             Transaction::Create {
-                static_contracts,
                 storage_slots,
                 inputs,
                 ..
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
-                    + ContractId::LEN * static_contracts.len()
                     + StorageSlot::SLOT_SIZE * storage_slots.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
             }
@@ -169,14 +161,12 @@ impl Transaction {
             }
 
             Transaction::Create {
-                static_contracts,
                 storage_slots,
                 inputs,
                 outputs,
                 ..
             } => {
                 TRANSACTION_CREATE_FIXED_SIZE
-                    + ContractId::LEN * static_contracts.len()
                     + StorageSlot::SLOT_SIZE * storage_slots.len()
                     + inputs.iter().map(|i| i.serialized_size()).sum::<usize>()
                     + outputs.iter().map(|o| o.serialized_size()).sum::<usize>()

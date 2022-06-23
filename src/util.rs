@@ -74,6 +74,7 @@ pub mod test_helpers {
     use crate::state::StateTransition;
     use crate::storage::{InterpreterStorage, MemoryStorage};
     use crate::transactor::Transactor;
+    use anyhow::anyhow;
 
     use fuel_asm::Opcode;
     use fuel_tx::{ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, Witness};
@@ -277,7 +278,7 @@ pub mod test_helpers {
             contract: Vec<Opcode>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
-        ) -> anyhow::Result<CreatedContract> {
+        ) -> CreatedContract {
             let storage_slots = if let Some(slots) = initial_state {
                 slots
             } else {
@@ -306,7 +307,7 @@ pub mod test_helpers {
             );
 
             // setup a contract in current test state
-            let state = self.execute_tx(tx)?;
+            let state = self.execute_tx(tx).expect("Expected vm execution to be successful");
 
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
@@ -315,21 +316,26 @@ pub mod test_helpers {
                     .unwrap();
             }
 
-            Ok(CreatedContract {
+            CreatedContract {
                 tx: state.tx().clone(),
                 contract_id,
                 salt,
-            })
+            }
         }
 
         pub fn execute_tx(&mut self, tx: Transaction) -> anyhow::Result<StateTransition> {
             self.storage.set_block_height(self.block_height);
             let mut client = MemoryClient::new(self.storage.clone(), self.params);
 
-            client.transact(tx)?;
+            client.transact(tx);
 
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
+
+            if let Some(e) = txtor.error() {
+                return Err(anyhow!("{:?}", e));
+            }
+
             let state = txtor.state_transition().unwrap().into_owned();
             let interpreter = txtor.interpreter();
 
@@ -347,18 +353,14 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it
-        pub fn execute(&mut self) -> anyhow::Result<StateTransition> {
+        pub fn execute(&mut self) -> StateTransition {
             let tx = self.build();
 
-            self.execute_tx(tx)
+            self.execute_tx(tx).expect("expected successful vm execution")
         }
 
         pub fn execute_get_outputs(&mut self) -> Vec<Output> {
-            self.execute()
-                .expect("expected successful vm execution")
-                .tx()
-                .outputs()
-                .to_vec()
+            self.execute().tx().outputs().to_vec()
         }
 
         pub fn execute_get_change(&mut self, find_asset_id: AssetId) -> Word {

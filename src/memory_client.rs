@@ -3,7 +3,6 @@
 use crate::backtrace::Backtrace;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
-use anyhow::{anyhow, Context};
 
 use fuel_tx::{ConsensusParameters, Receipt, Transaction};
 
@@ -54,24 +53,25 @@ impl<'a> MemoryClient<'a> {
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact(&mut self, tx: Transaction) -> anyhow::Result<&[Receipt]> {
+    pub fn transact(&mut self, tx: Transaction) -> &[Receipt] {
         self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time
         // constraints can be applied.
         //
         // In this case, we should expect `Infallible` error.
-        let state = self.transactor.result().map_err(|e| anyhow!("{:?}", e))?;
-
-        if state.should_revert() {
-            self.transactor.as_mut().revert();
+        if let Ok(state) = self.transactor.result() {
+            if state.should_revert() {
+                self.transactor.as_mut().revert();
+            } else {
+                self.transactor.as_mut().commit();
+            }
         } else {
-            self.transactor.as_mut().commit();
+            // if vm failed to execute, revert storage just in case
+            self.transactor.as_mut().revert();
         }
 
-        self.transactor
-            .receipts()
-            .context("Expected transactor to create receipts from execution.")
+        self.transactor.receipts().unwrap_or_default()
     }
 
     /// Persist the changes caused by [`Self::transact`].

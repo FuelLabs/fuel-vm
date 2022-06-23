@@ -1,7 +1,7 @@
 use crate::{Input, Output, StorageSlot, Transaction, Witness};
 
 use fuel_crypto::SecretKey;
-use fuel_types::{ContractId, Salt, Word};
+use fuel_types::{Salt, Word};
 
 use alloc::vec::Vec;
 
@@ -15,12 +15,7 @@ pub struct TransactionBuilder<'a> {
 }
 
 impl<'a> TransactionBuilder<'a> {
-    pub fn create(
-        bytecode: Witness,
-        salt: Salt,
-        static_contracts: Vec<ContractId>,
-        storage_slots: Vec<StorageSlot>,
-    ) -> Self {
+    pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
         let mut tx = Transaction::create(
             Default::default(),
             Default::default(),
@@ -28,7 +23,6 @@ impl<'a> TransactionBuilder<'a> {
             Default::default(),
             Default::default(),
             salt,
-            static_contracts,
             storage_slots,
             Default::default(),
             Default::default(),

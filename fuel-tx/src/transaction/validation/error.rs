@@ -53,8 +53,6 @@ pub enum ValidationError {
     },
     TransactionCreateBytecodeLen,
     TransactionCreateBytecodeWitnessIndex,
-    TransactionCreateStaticContractsMax,
-    TransactionCreateStaticContractsOrder,
     TransactionCreateStorageSlotMax,
     TransactionCreateStorageSlotOrder,
     TransactionScriptLength,

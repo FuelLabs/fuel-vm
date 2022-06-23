@@ -323,7 +323,6 @@ mod tests {
 
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
-        let static_contracts = vec![vec![], vec![rng.gen(), rng.gen()]];
         let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
 
         for inputs in inputs.iter() {
@@ -357,60 +356,48 @@ mod tests {
                         }
                     }
 
-                    for static_contracts in static_contracts.iter() {
-                        for storage_slots in storage_slots.iter() {
-                            let tx = Transaction::create(
-                                rng.next_u64(),
-                                ConsensusParameters::DEFAULT.max_gas_per_tx,
-                                rng.next_u64(),
-                                rng.next_u64(),
-                                rng.next_u32().to_be_bytes()[0],
-                                rng.gen(),
-                                static_contracts.clone(),
-                                storage_slots.clone(),
-                                inputs.clone(),
-                                outputs.clone(),
-                                witnesses.clone(),
-                            );
+                    for storage_slots in storage_slots.iter() {
+                        let tx = Transaction::create(
+                            rng.next_u64(),
+                            ConsensusParameters::DEFAULT.max_gas_per_tx,
+                            rng.next_u64(),
+                            rng.next_u64(),
+                            rng.next_u32().to_be_bytes()[0],
+                            rng.gen(),
+                            storage_slots.clone(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
 
+                        assert_id_ne(&tx, |t| match t {
+                            Transaction::Create {
+                                bytecode_witness_index,
+                                ..
+                            } => not(bytecode_witness_index),
+                            _ => unreachable!(),
+                        });
+
+                        assert_id_ne(&tx, |t| match t {
+                            Transaction::Create { salt, .. } => invert(salt),
+                            _ => unreachable!(),
+                        });
+
+                        assert_id_ne(&tx, |t| match t {
+                            Transaction::Create { salt, .. } => invert(salt),
+                            _ => unreachable!(),
+                        });
+
+                        if !storage_slots.is_empty() {
                             assert_id_ne(&tx, |t| match t {
-                                Transaction::Create {
-                                    bytecode_witness_index,
-                                    ..
-                                } => not(bytecode_witness_index),
+                                Transaction::Create { storage_slots, .. } => {
+                                    invert_storage_slot(storage_slots.first_mut().unwrap())
+                                }
                                 _ => unreachable!(),
                             });
-
-                            assert_id_ne(&tx, |t| match t {
-                                Transaction::Create { salt, .. } => invert(salt),
-                                _ => unreachable!(),
-                            });
-
-                            if !static_contracts.is_empty() {
-                                assert_id_ne(&tx, |t| match t {
-                                    Transaction::Create {
-                                        static_contracts, ..
-                                    } => invert(static_contracts.first_mut().unwrap()),
-                                    _ => unreachable!(),
-                                });
-                            }
-
-                            assert_id_ne(&tx, |t| match t {
-                                Transaction::Create { salt, .. } => invert(salt),
-                                _ => unreachable!(),
-                            });
-
-                            if !storage_slots.is_empty() {
-                                assert_id_ne(&tx, |t| match t {
-                                    Transaction::Create { storage_slots, .. } => {
-                                        invert_storage_slot(storage_slots.first_mut().unwrap())
-                                    }
-                                    _ => unreachable!(),
-                                });
-                            }
-
-                            assert_id_common_attrs(&tx);
                         }
+
+                        assert_id_common_attrs(&tx);
                     }
                 }
             }

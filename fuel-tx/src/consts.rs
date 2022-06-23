@@ -20,7 +20,6 @@ pub const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Maturity
     + WORD_SIZE // Bytecode size
     + WORD_SIZE // Bytecode witness index
-    + WORD_SIZE // Static contracts size
     + WORD_SIZE // Storage slots size
     + WORD_SIZE // Inputs size
     + WORD_SIZE // Outputs size

@@ -123,7 +123,6 @@ mod use_std {
         pub fn transaction_with_keys(&mut self) -> (Transaction, Vec<SecretKey>) {
             let variant = self.tx_sampler.sample(&mut self.rng);
 
-            let contracts = self.rng.gen_range(0..10);
             let slots = self.rng.gen_range(0..10);
             let mut builder = match variant {
                 0 => TransactionBuilder::script(
@@ -133,7 +132,6 @@ mod use_std {
                 1 => TransactionBuilder::create(
                     self.rng.gen(),
                     self.rng.gen(),
-                    (0..contracts).map(|_| self.rng.gen()).collect(),
                     (0..slots).map(|_| self.rng.gen()).collect(),
                 ),
                 _ => unreachable!(),

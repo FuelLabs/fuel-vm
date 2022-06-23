@@ -3,7 +3,7 @@ use crate::transaction::types::StorageSlot;
 use crate::{Input, Output, Transaction, Witness};
 
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
-use fuel_types::{ContractId, Word};
+use fuel_types::Word;
 
 use std::io::{self, Write};
 
@@ -46,14 +46,8 @@ impl bytes::SizedBytes for Transaction {
                     + bytes::padded_len(script_data.as_slice())
             }
 
-            Self::Create {
-                static_contracts,
-                storage_slots,
-                ..
-            } => {
-                TRANSACTION_CREATE_FIXED_SIZE
-                    + static_contracts.len() * ContractId::LEN
-                    + storage_slots.len() * StorageSlot::SLOT_SIZE
+            Self::Create { storage_slots, .. } => {
+                TRANSACTION_CREATE_FIXED_SIZE + storage_slots.len() * StorageSlot::SLOT_SIZE
             }
         };
 
@@ -108,7 +102,6 @@ impl io::Read for Transaction {
                 bytecode_length,
                 bytecode_witness_index,
                 salt,
-                static_contracts,
                 storage_slots,
                 inputs,
                 outputs,
@@ -122,16 +115,11 @@ impl io::Read for Transaction {
                 let buf = bytes::store_number_unchecked(buf, *maturity);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_length);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_witness_index);
-                let buf = bytes::store_number_unchecked(buf, static_contracts.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, storage_slots.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, inputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, witnesses.len() as Word);
                 let mut buf = bytes::store_array_unchecked(buf, salt);
-
-                for static_contract in static_contracts.iter() {
-                    buf = bytes::store_array_unchecked(buf, static_contract);
-                }
 
                 for storage_slot in storage_slots.iter_mut() {
                     let storage_len = storage_slot.read(buf)?;
@@ -249,7 +237,6 @@ impl io::Write for Transaction {
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (bytecode_length, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
-                let (static_contracts_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (storage_slots_len, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
                 let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
@@ -257,17 +244,6 @@ impl io::Write for Transaction {
                 let (salt, mut buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let salt = salt.into();
-
-                if buf.len() < static_contracts_len * ContractId::LEN {
-                    return Err(bytes::eof());
-                }
-
-                let mut static_contracts = vec![ContractId::default(); static_contracts_len];
-                n += ContractId::LEN * static_contracts_len;
-                for static_contract in static_contracts.iter_mut() {
-                    static_contract.copy_from_slice(&buf[..ContractId::LEN]);
-                    buf = &buf[ContractId::LEN..];
-                }
 
                 let mut storage_slots = vec![StorageSlot::default(); storage_slots_len as usize];
                 n += StorageSlot::SLOT_SIZE * storage_slots_len as usize;
@@ -305,7 +281,6 @@ impl io::Write for Transaction {
                     bytecode_length,
                     bytecode_witness_index,
                     salt,
-                    static_contracts,
                     storage_slots,
                     inputs,
                     outputs,

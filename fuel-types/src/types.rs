@@ -263,6 +263,7 @@ key!(ContractId, 32);
 key!(Bytes4, 4);
 key!(Bytes8, 8);
 key!(Bytes32, 32);
+key!(MessageId, 32);
 key!(Salt, 32);
 
 key_with_big_array!(Bytes64, 64);

@@ -55,6 +55,7 @@ fn from_slice_unchecked_safety() {
         check_consistency!(Bytes8, rng, bytes);
         check_consistency!(Bytes32, rng, bytes);
         check_consistency!(Bytes64, rng, bytes);
+        check_consistency!(MessageId, rng, bytes);
         check_consistency!(Salt, rng, bytes);
     }
 }
@@ -124,6 +125,7 @@ fn hex_encoding() {
     encode_decode::<Bytes8>(rng.gen());
     encode_decode::<Bytes32>(rng.gen());
     encode_decode::<Bytes64>(rng.gen());
+    encode_decode::<MessageId>(rng.gen());
     encode_decode::<Salt>(rng.gen());
 }
 
@@ -137,6 +139,7 @@ fn test_key_serde() {
     let bytes4: Bytes4 = rng.gen();
     let bytes8: Bytes8 = rng.gen();
     let bytes32: Bytes32 = rng.gen();
+    let message_id: MessageId = rng.gen();
     let salt: Salt = rng.gen();
     let bytes64: Bytes64 = rng.gen();
 
@@ -165,6 +168,11 @@ fn test_key_serde() {
     let bytes32_t: Bytes32 =
         bincode::deserialize(&bytes32_t).expect("Failed to deserialize Bytes32");
     assert_eq!(bytes32, bytes32_t);
+
+    let message_id_t = bincode::serialize(&message_id).expect("Failed to serialize MessageId");
+    let message_id_t: MessageId =
+        bincode::deserialize(&message_id_t).expect("Failed to deserialize MessageId");
+    assert_eq!(message_id, message_id_t);
 
     let salt_t = bincode::serialize(&salt).expect("Failed to serialize Salt");
     let salt_t: Salt = bincode::deserialize(&salt_t).expect("Failed to deserialize Salt");
@@ -210,6 +218,11 @@ fn test_key_types_hex_serialization() {
     let bytes32_to_string =
         serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
     assert_eq!(format!("\"{}\"", bytes32), bytes32_to_string);
+
+    let message_id: MessageId = rng.gen();
+    let message_id_to_string =
+        serde_json::to_string(&message_id).expect("serde_json::to_string failed on MessageId");
+    assert_eq!(format!("\"{}\"", message_id), message_id_to_string);
 
     let salt: Salt = rng.gen();
     let salt_to_string =

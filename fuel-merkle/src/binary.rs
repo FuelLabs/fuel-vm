@@ -8,3 +8,4 @@ pub(crate) use node::Node;
 pub use hash::empty_sum;
 pub use merkle_tree::MerkleTree;
 pub use merkle_tree::MerkleTreeError;
+pub mod in_memory;

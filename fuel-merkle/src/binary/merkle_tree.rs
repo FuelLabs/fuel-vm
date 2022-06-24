@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::binary::{self, Node};
-use crate::common::{Bytes32, Position, Subtree};
+use crate::common::{Bytes32, Position, ProofSet, Subtree};
 use fuel_storage::Storage;
 
 use alloc::boxed::Box;
@@ -28,8 +28,6 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
         MerkleTreeError::StorageError(err)
     }
 }
-
-type ProofSet = Vec<Bytes32>;
 
 pub struct MerkleTree<StorageType> {
     storage: StorageType,

@@ -29,6 +29,12 @@ impl MerkleTree {
     }
 }
 
+impl Default for MerkleTree {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -285,6 +285,11 @@ where
                 return Ok(ExecuteState::Revert(a));
             }
 
+            OpcodeRepr::SMO => {
+                self.gas_charge(GAS_SMO)?;
+                todo!();
+            }
+
             OpcodeRepr::ALOC => {
                 self.gas_charge(GAS_ALOC)?;
                 self.malloc(a)?;
@@ -487,6 +492,11 @@ where
             OpcodeRepr::GM => {
                 self.gas_charge(GAS_GM)?;
                 self.metadata(ra, imm as Immediate18)?;
+            }
+
+            OpcodeRepr::GTF => {
+                self.gas_charge(GAS_GTF)?;
+                todo!();
             }
 
             OpcodeRepr::TR => {

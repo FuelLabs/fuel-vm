@@ -13,11 +13,11 @@ description = "FuelVM interpreter."
 [dependencies]
 anyhow = { version = "1.0", optional = true }
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.5"
+fuel-asm = "0.6"
 fuel-crypto = "0.5"
 fuel-merkle = "0.1"
 fuel-storage = "0.1"
-fuel-tx = "0.13"
+fuel-tx = "0.14"
 fuel-types = "0.5"
 itertools = "0.10"
 secp256k1 = { version = "0.20", features = ["recovery"] }
@@ -29,7 +29,7 @@ rand = { version = "0.8", optional = true }
 
 [dev-dependencies]
 fuel-crypto = { version = "0.5", features = ["random"] }
-fuel-tx = { version = "0.13", features = ["random", "internals", "builder"] }
+fuel-tx = { version = "0.14", features = ["random", "internals", "builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 serde_json = "1.0"
 

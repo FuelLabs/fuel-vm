@@ -36,7 +36,7 @@ pub use fuel_types;
 pub mod prelude {
     //! Required implementations for full functionality
     #[doc(no_inline)]
-    pub use fuel_asm::{Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
+    pub use fuel_asm::{GMArgs, GTFArgs, Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
     #[doc(no_inline)]
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
@@ -55,7 +55,7 @@ pub mod prelude {
     pub use crate::call::{Call, CallFrame};
     pub use crate::context::Context;
     pub use crate::error::{Infallible, InterpreterError, RuntimeError};
-    pub use crate::interpreter::{Interpreter, InterpreterMetadata, MemoryRange};
+    pub use crate::interpreter::{Interpreter, MemoryRange};
     pub use crate::memory_client::MemoryClient;
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
     pub use crate::storage::{InterpreterStorage, MemoryStorage, PredicateStorage};

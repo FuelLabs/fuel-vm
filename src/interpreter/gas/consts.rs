@@ -45,6 +45,7 @@ pub const GAS_JNZI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RET: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RETD: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_RVRT: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_SMO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_ALOC: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CFEI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_CFSI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
@@ -81,6 +82,7 @@ pub const GAS_XWL: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_XWS: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_FLAG: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_GM: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_GTF: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_TR: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_TRO: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 

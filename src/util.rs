@@ -79,7 +79,7 @@ pub mod test_helpers {
     use fuel_asm::Opcode;
     use fuel_tx::{ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, Witness};
     use fuel_types::bytes::{Deserializable, SizedBytes};
-    use fuel_types::{AssetId, ContractId, Immediate12, Salt, Word};
+    use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
@@ -148,8 +148,8 @@ pub mod test_helpers {
             self
         }
 
-        pub fn withdrawal_output(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
-            self.outputs.push(Output::withdrawal(self.rng.gen(), amount, asset_id));
+        pub fn message_output(&mut self) -> &mut TestBuilder {
+            self.outputs.push(Output::message(Address::zeroed(), 0));
             self
         }
 
@@ -299,7 +299,6 @@ pub mod test_helpers {
                 0,
                 0,
                 salt,
-                vec![],
                 storage_slots,
                 vec![],
                 vec![Output::contract_created(contract_id, storage_root)],

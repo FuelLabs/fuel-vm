@@ -87,18 +87,8 @@ where
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let state = match &self.tx {
             Transaction::Create {
-                salt,
-                static_contracts,
-                storage_slots,
-                ..
+                salt, storage_slots, ..
             } => {
-                if static_contracts
-                    .iter()
-                    .any(|id| !self.check_contract_exists(id).unwrap_or(false))
-                {
-                    return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
-                }
-
                 let contract = Contract::try_from(&self.tx)?;
                 let root = contract.root();
                 let storage_root = Contract::initial_state_root(storage_slots.iter());

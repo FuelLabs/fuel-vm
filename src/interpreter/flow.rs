@@ -118,7 +118,7 @@ impl<S> Interpreter<S> {
         let ab = (a + b) as usize;
         let digest = Hasher::hash(&self.memory[a as usize..ab]);
 
-        let receipt = Receipt::return_data(
+        let receipt = Receipt::return_data_with_len(
             self.internal_contract_or_default(),
             a,
             b,

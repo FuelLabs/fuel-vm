@@ -12,73 +12,119 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  check-formatting:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
-    # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
-    # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
-    #
-    # Can be replaced by other targets that guarantee bare-minimum no-std
-    - name: Install toolchain no-std
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: thumbv6m-none-eabi
-        override: true
+      - name: Install rustfmt
+        run: rustup component add rustfmt
 
-    - name: Install rustfmt
-      run: rustup component add rustfmt
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all --verbose -- --check
 
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --verbose -- --check
+  check-clippy:
+    runs-on: ubuntu-latest
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
-    - name: Run helper tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --package fuel-merkle-test-helpers
+      - name: Check Clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --all-features --verbose -- -D warnings
 
-    - name: Build no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose --target thumbv6m-none-eabi --no-default-features
+  build-and-test:
+    runs-on: ubuntu-latest
 
-    - name: Run tests no-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --no-default-features
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
+
+      - name: Run helper tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --package fuel-merkle-test-helpers
+
+  build-and-test-no-std:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+        # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+        # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+        #
+        # Can be replaced by other targets that guarantee bare-minimum no-std
+      - name: Install toolchain no-std
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: thumbv6m-none-eabi
+          override: true
+
+      - name: Build no-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --target thumbv6m-none-eabi --no-default-features
+
+      - name: Run tests no-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features
 
   publish:
+    needs: [
+      check-formatting,
+      check-clippy,
+      build-and-test,
+      build-and-test-no-std
+    ]
     # Only do this job if publishing a release
-    needs: build
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 

@@ -74,6 +74,7 @@ pub mod test_helpers {
     use crate::state::StateTransition;
     use crate::storage::{InterpreterStorage, MemoryStorage};
     use crate::transactor::Transactor;
+    use anyhow::anyhow;
 
     use fuel_asm::Opcode;
     use fuel_tx::{ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, Witness};
@@ -101,6 +102,7 @@ pub mod test_helpers {
         witness: Vec<Witness>,
         storage: MemoryStorage,
         params: ConsensusParameters,
+        block_height: u32,
     }
 
     impl TestBuilder {
@@ -117,6 +119,7 @@ pub mod test_helpers {
                 witness: vec![Witness::default()],
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
+                block_height: 0,
             }
         }
 
@@ -213,6 +216,11 @@ pub mod test_helpers {
             self
         }
 
+        pub fn block_height(&mut self, block_height: u32) -> &mut TestBuilder {
+            self.block_height = block_height;
+            self
+        }
+
         pub const fn tx_offset(&self) -> usize {
             self.params.tx_offset()
         }
@@ -299,7 +307,7 @@ pub mod test_helpers {
             );
 
             // setup a contract in current test state
-            let state = self.execute_tx(tx);
+            let state = self.execute_tx(tx).expect("Expected vm execution to be successful");
 
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
@@ -315,13 +323,19 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx(&mut self, tx: Transaction) -> StateTransition {
+        pub fn execute_tx(&mut self, tx: Transaction) -> anyhow::Result<StateTransition> {
+            self.storage.set_block_height(self.block_height);
             let mut client = MemoryClient::new(self.storage.clone(), self.params);
 
             client.transact(tx);
 
             let storage = client.as_ref().clone();
             let txtor: Transactor<_> = client.into();
+
+            if let Some(e) = txtor.error() {
+                return Err(anyhow!("{:?}", e));
+            }
+
             let state = txtor.state_transition().unwrap().into_owned();
             let interpreter = txtor.interpreter();
 
@@ -335,14 +349,14 @@ pub mod test_helpers {
             // save storage between client instances
             self.storage = storage;
 
-            state
+            Ok(state)
         }
 
         /// Build test tx and execute it
         pub fn execute(&mut self) -> StateTransition {
             let tx = self.build();
 
-            self.execute_tx(tx)
+            self.execute_tx(tx).expect("expected successful vm execution")
         }
 
         pub fn execute_get_outputs(&mut self) -> Vec<Output> {
@@ -367,7 +381,9 @@ pub mod test_helpers {
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {
             let tx = TestBuilder::build_get_balance_tx(&self.params, contract_id, asset_id);
-            let state = self.execute_tx(tx);
+            let state = self
+                .execute_tx(tx)
+                .expect("expected successful vm execution in this context");
             let receipts = state.receipts();
             receipts[0].ra().expect("Balance expected")
         }

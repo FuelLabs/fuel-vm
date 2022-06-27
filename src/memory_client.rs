@@ -60,20 +60,18 @@ impl<'a> MemoryClient<'a> {
         // constraints can be applied.
         //
         // In this case, we should expect `Infallible` error.
-        let state = self
-            .transactor
-            .result()
-            .expect("MemoryStorage implements `Infallible` as storage error. This means panic should be unreachable.");
-
-        if state.should_revert() {
-            self.transactor.as_mut().revert();
+        if let Ok(state) = self.transactor.result() {
+            if state.should_revert() {
+                self.transactor.as_mut().revert();
+            } else {
+                self.transactor.as_mut().commit();
+            }
         } else {
-            self.transactor.as_mut().commit();
+            // if vm failed to execute, revert storage just in case
+            self.transactor.as_mut().revert();
         }
 
-        self.transactor
-            .receipts()
-            .expect("The transaction was provided to the transactor.")
+        self.transactor.receipts().unwrap_or_default()
     }
 
     /// Persist the changes caused by [`Self::transact`].

@@ -1,4 +1,7 @@
+use fuel_tx::TransactionBuilder;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 #[test]
 fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
@@ -229,4 +232,36 @@ fn total_fee_cant_overflow() {
         .expect("overflow expected");
 
     assert_eq!(err, ValidationError::ArithmeticOverflow.into());
+}
+
+#[test]
+fn transaction_cannot_be_executed_before_maturity() {
+    const MATURITY: u64 = 1;
+    const BLOCK_HEIGHT: u32 = 0;
+
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
+        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
+        .gas_limit(100)
+        .maturity(MATURITY)
+        .finalize();
+
+    let result = TestBuilder::new(2322u64).block_height(BLOCK_HEIGHT).execute_tx(tx);
+    assert!(result.err().unwrap().to_string().contains("TransactionMaturity"));
+}
+
+#[test]
+fn transaction_can_be_executed_after_maturity() {
+    const MATURITY: u64 = 1;
+    const BLOCK_HEIGHT: u32 = 2;
+
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
+        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
+        .gas_limit(100)
+        .maturity(MATURITY)
+        .finalize();
+
+    let result = TestBuilder::new(2322u64).block_height(BLOCK_HEIGHT).execute_tx(tx);
+    assert!(result.is_ok());
 }

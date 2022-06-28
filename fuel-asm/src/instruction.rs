@@ -258,7 +258,8 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::LB
             | OpcodeRepr::LW
             | OpcodeRepr::SB
-            | OpcodeRepr::SW => a | b | imm12,
+            | OpcodeRepr::SW
+            | OpcodeRepr::GTF => a | b | imm12,
 
             OpcodeRepr::MOVE
             | OpcodeRepr::NOT

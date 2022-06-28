@@ -40,8 +40,6 @@ fn opcode() {
         Opcode::SUBI(r, r, imm12),
         Opcode::XOR(r, r, r),
         Opcode::XORI(r, r, imm12),
-        Opcode::CIMV(r, r, r),
-        Opcode::CTMV(r, r),
         Opcode::JI(imm24),
         Opcode::JNEI(r, r, imm12),
         Opcode::JNZI(r, imm18),

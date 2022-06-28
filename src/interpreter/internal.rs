@@ -155,6 +155,20 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
+    /// Reduces the unspent balance of the asset defined in $fp
+    pub(crate) fn external_asset_balance_sub(&mut self, value: Word) -> Result<(), RuntimeError> {
+        let fp = self.registers[REG_FP] as usize;
+        let asset_id = &self.memory[fp..fp + AssetId::LEN];
+        let asset_id = unsafe { AssetId::from_slice_unchecked(asset_id) };
+
+        self.external_asset_id_balance_sub(&asset_id, value)
+    }
+
+    /// Reduces the unspent balance of the base asset
+    pub(crate) fn base_asset_balance_sub(&mut self, value: Word) -> Result<(), RuntimeError> {
+        self.external_asset_id_balance_sub(&AssetId::default(), value)
+    }
+
     /// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
     /// serialized tx in vm memory.
     pub(crate) fn set_variable_output(
@@ -238,6 +252,11 @@ impl<S> Interpreter<S> {
 
     pub(crate) const fn tx_offset(&self) -> usize {
         self.params.tx_offset()
+    }
+
+    pub(crate) fn tx_id(&self) -> &Bytes32 {
+        // Safety: vm parameters guarantees enough space for txid
+        unsafe { Bytes32::as_ref_unchecked(&self.memory[..Bytes32::LEN]) }
     }
 }
 

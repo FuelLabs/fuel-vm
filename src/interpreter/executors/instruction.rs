@@ -36,11 +36,13 @@ where
         // Should execute `lo` only if there is no rupture in the flow - that means
         // either a breakpoint or some instruction that would skip `lo` such as
         // `RET`, `JI` or `CALL`
-        if self.registers[REG_PC] == pc && state.should_continue() {
+        let result = if self.registers[REG_PC] == pc && state.should_continue() {
             self.instruction(lo)
         } else {
             Ok(state)
-        }
+        };
+
+        result
     }
 
     /// Execute a provided instruction
@@ -277,7 +279,7 @@ where
 
             OpcodeRepr::SMO => {
                 self.gas_charge(GAS_SMO)?;
-                todo!();
+                self.message_output(a, b, c, d)?;
             }
 
             OpcodeRepr::ALOC => {

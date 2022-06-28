@@ -132,12 +132,6 @@ pub enum Opcode {
     /// Bitwise XORs a register and an immediate value.
     XORI(RegisterId, RegisterId, Immediate12),
 
-    /// Check relative timelock.
-    CIMV(RegisterId, RegisterId, RegisterId),
-
-    /// Check absolute timelock.
-    CTMV(RegisterId, RegisterId),
-
     /// Jump.
     JI(Immediate24),
 
@@ -350,8 +344,6 @@ impl Opcode {
             OpcodeRepr::SUBI => Opcode::SUBI(ra, rb, imm12),
             OpcodeRepr::XOR => Opcode::XOR(ra, rb, rc),
             OpcodeRepr::XORI => Opcode::XORI(ra, rb, imm12),
-            OpcodeRepr::CIMV => Opcode::CIMV(ra, rb, rc),
-            OpcodeRepr::CTMV => Opcode::CTMV(ra, rb),
             OpcodeRepr::JI => Opcode::JI(imm24),
             OpcodeRepr::JNEI => Opcode::JNEI(ra, rb, imm12),
             OpcodeRepr::JNZI => Opcode::JNZI(ra, imm18),
@@ -462,8 +454,6 @@ impl Opcode {
             Self::SUBI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::XOR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::XORI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
-            Self::CIMV(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
-            Self::CTMV(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::JI(_) => [None; 4],
             Self::JNEI(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::JNZI(ra, _) => [Some(*ra), None, None, None],
@@ -567,8 +557,6 @@ impl Opcode {
             | Self::SRL(_, _, _)
             | Self::SUB(_, _, _)
             | Self::XOR(_, _, _)
-            | Self::CIMV(_, _, _)
-            | Self::CTMV(_, _)
             | Self::RET(_)
             | Self::RETD(_, _)
             | Self::ALOC(_)
@@ -867,15 +855,6 @@ impl From<Opcode> for u32 {
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | (imm12 as u32)
-            }
-            Opcode::CIMV(ra, rb, rc) => {
-                ((OpcodeRepr::CIMV as u32) << 24)
-                    | ((ra as u32) << 18)
-                    | ((rb as u32) << 12)
-                    | ((rc as u32) << 6)
-            }
-            Opcode::CTMV(ra, rb) => {
-                ((OpcodeRepr::CTMV as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
             }
             Opcode::JI(imm24) => ((OpcodeRepr::JI as u32) << 24) | (imm24 as u32),
             Opcode::JNEI(ra, rb, imm12) => {

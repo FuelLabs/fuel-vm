@@ -234,7 +234,6 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::SRL
             | OpcodeRepr::SUB
             | OpcodeRepr::XOR
-            | OpcodeRepr::CIMV
             | OpcodeRepr::MCP
             | OpcodeRepr::LDC
             | OpcodeRepr::TR
@@ -263,7 +262,6 @@ impl From<Instruction> for u32 {
 
             OpcodeRepr::MOVE
             | OpcodeRepr::NOT
-            | OpcodeRepr::CTMV
             | OpcodeRepr::RETD
             | OpcodeRepr::MCL
             | OpcodeRepr::BHSH

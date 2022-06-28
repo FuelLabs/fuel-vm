@@ -5,8 +5,10 @@ use std::{io, iter};
 
 use crate::Instruction;
 
+mod args;
 mod consts;
 
+pub use args::{GMArgs, GTFArgs};
 pub use consts::OpcodeRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -293,6 +295,9 @@ pub enum Opcode {
     /// Get metadata from memory.
     GM(RegisterId, Immediate18),
 
+    /// Get transaction fields.
+    GTF(RegisterId, RegisterId, Immediate12),
+
     /// Undefined opcode, potentially from inconsistent serialization.
     Undefined,
 }
@@ -399,6 +404,7 @@ impl Opcode {
             OpcodeRepr::NOOP => Opcode::NOOP,
             OpcodeRepr::FLAG => Opcode::FLAG(ra),
             OpcodeRepr::GM => Opcode::GM(ra, imm18),
+            OpcodeRepr::GTF => Opcode::GTF(ra, rb, imm12),
             _ => Opcode::Undefined,
         }
     }
@@ -510,6 +516,7 @@ impl Opcode {
             Self::NOOP => [None; 4],
             Self::FLAG(ra) => [Some(*ra), None, None, None],
             Self::GM(ra, _) => [Some(*ra), None, None, None],
+            Self::GTF(ra, rb, _) => [Some(*ra), Some(*rb), None, None],
             Self::Undefined => [None; 4],
         }
     }
@@ -533,7 +540,8 @@ impl Opcode {
             | Self::LB(_, _, imm)
             | Self::LW(_, _, imm)
             | Self::SB(_, _, imm)
-            | Self::SW(_, _, imm) => Some(*imm as Word),
+            | Self::SW(_, _, imm)
+            | Self::GTF(_, _, imm) => Some(*imm as Word),
 
             Self::MCLI(_, imm) | Self::GM(_, imm) | Self::JNZI(_, imm) | Self::MOVI(_, imm) => {
                 Some(*imm as Word)
@@ -603,6 +611,16 @@ impl Opcode {
             | Self::FLAG(_)
             | Self::Undefined => None,
         }
+    }
+
+    /// Create a new [`Opcode::GM`] instruction from its args
+    pub const fn gm(ra: RegisterId, args: GMArgs) -> Self {
+        Self::GM(ra, args as Immediate18)
+    }
+
+    /// Create a new [`Opcode::GTF`] instruction from its args
+    pub const fn gtf(ra: RegisterId, rb: RegisterId, args: GTFArgs) -> Self {
+        Self::GTF(ra, rb, args as Immediate12)
     }
 }
 
@@ -1059,6 +1077,12 @@ impl From<Opcode> for u32 {
             Opcode::GM(ra, imm18) => {
                 ((OpcodeRepr::GM as u32) << 24) | ((ra as u32) << 18) | (imm18 as u32)
             }
+            Opcode::GTF(ra, rb, imm12) => {
+                ((OpcodeRepr::GTF as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | (imm12 as u32)
+            }
             Opcode::Undefined => (0x00 << 24),
         }
     }
@@ -1107,7 +1131,7 @@ impl iter::FromIterator<Opcode> for Vec<u8> {
     where
         T: IntoIterator<Item = Opcode>,
     {
-        iter.into_iter().map(Opcode::to_bytes).flatten().collect()
+        iter.into_iter().flat_map(Opcode::to_bytes).collect()
     }
 }
 

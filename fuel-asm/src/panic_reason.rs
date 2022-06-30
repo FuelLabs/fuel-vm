@@ -10,8 +10,8 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 #[non_exhaustive]
 /// Panic reason representation for the interpreter.
 pub enum PanicReason {
-    /// Representation reserved per protocol.
-    RESERV00 = 0x00,
+    /// 0 is reserved for success, while any non-zero value indicates a failure.
+    Success = 0x00,
     /// Found `RVRT` instruction.
     Revert = 0x01,
     /// Execution ran out of gas.

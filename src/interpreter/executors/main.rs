@@ -127,13 +127,6 @@ where
                         .map_err(InterpreterError::from_io)?;
                 }
 
-                // Verify predicates
-                // https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_validity.md#predicate-verification
-                // TODO implement debug support
-                if !Interpreter::<PredicateStorage>::check_predicates(self.tx.clone(), self.params) {
-                    return Err(InterpreterError::PredicateFailure);
-                }
-
                 ProgramState::Return(1)
             }
 

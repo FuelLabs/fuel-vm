@@ -1,7 +1,6 @@
 //! Crypto implementations for the instructions
 
-use fuel_merkle::binary::MerkleTree;
-use fuel_merkle::common::StorageMap;
+use fuel_merkle::binary::in_memory::MerkleTree;
 use fuel_types::{Bytes32, Bytes64};
 use secp256k1::recovery::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
@@ -48,20 +47,14 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
 }
 
 /// Calculate a binary merkle root with in-memory storage
-pub fn ephemeral_merkle_root<L, I>(mut leaves: I) -> Bytes32
+pub fn ephemeral_merkle_root<L, I>(leaves: I) -> Bytes32
 where
     L: AsRef<[u8]>,
     I: Iterator<Item = L> + ExactSizeIterator,
 {
-    let mut storage = StorageMap::new();
-    let mut tree = MerkleTree::new(&mut storage);
-
-    // TODO fuel-merkle should have infallible in-memory struct
-    leaves
-        .try_for_each(|l| tree.push(l.as_ref()))
-        .and_then(|_| tree.root())
-        .expect("In-memory impl should be infallible")
-        .into()
+    let mut tree = MerkleTree::new();
+    leaves.for_each(|l| tree.push(l.as_ref()));
+    tree.root().into()
 }
 
 #[cfg(all(test, feature = "random"))]

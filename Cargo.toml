@@ -15,7 +15,7 @@ anyhow = { version = "1.0", optional = true }
 dyn-clone = { version = "1.0", optional = true }
 fuel-asm = "0.5"
 fuel-crypto = "0.5"
-fuel-merkle = "0.1"
+fuel-merkle = "0.3"
 fuel-storage = "0.1"
 fuel-tx = "0.13"
 fuel-types = "0.5"

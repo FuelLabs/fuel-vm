@@ -38,6 +38,8 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use fuel_asm::{GMArgs, GTFArgs, Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
     #[doc(no_inline)]
+    pub use fuel_crypto::{Hasher, Message, PublicKey, SecretKey, Signature};
+    #[doc(no_inline)]
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
     pub use fuel_tx::{

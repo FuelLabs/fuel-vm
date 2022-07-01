@@ -28,7 +28,6 @@ tracing = "0.1"
 rand = { version = "0.8", optional = true }
 
 [dev-dependencies]
-fuel-crypto = { version = "0.5", features = ["random"] }
 fuel-tx = { version = "0.14", features = ["random", "internals", "builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 serde_json = "1.0"
@@ -38,7 +37,7 @@ debug = []
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
-random = ["fuel-types/random", "fuel-tx/random", "rand"]
+random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
 test-helpers = ["random", "dep:anyhow"]
 

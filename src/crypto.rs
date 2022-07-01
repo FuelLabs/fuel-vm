@@ -66,13 +66,15 @@ where
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
-    use super::*;
+    use crate::crypto::{
+        ephemeral_merkle_root, secp256k1_sign_compact_recover, secp256k1_sign_compact_recoverable, Secp256k1,
+    };
     use crate::prelude::*;
 
     use fuel_crypto::Hasher;
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
-    use secp256k1::PublicKey;
+    use secp256k1::{PublicKey, SecretKey};
 
     #[test]
     fn ecrecover() {

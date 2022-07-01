@@ -36,7 +36,6 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use memory::MemoryRange;
-pub use metadata::InterpreterMetadata;
 
 #[derive(Debug, Clone)]
 /// VM interpreter.

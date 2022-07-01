@@ -53,7 +53,6 @@ fn mint_burn() {
         salt,
         vec![],
         vec![],
-        vec![],
         vec![output],
         vec![program],
     );

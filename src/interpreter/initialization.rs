@@ -136,7 +136,7 @@ impl<S> Interpreter<S> {
         // reduce free balances by coin and withdrawal outputs
         for (asset_id, amount) in self.tx.outputs().iter().filter_map(|output| match output {
             Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
-            Output::Withdrawal { asset_id, amount, .. } => Some((asset_id, amount)),
+            Output::Message { .. } => todo!(),
             _ => None,
         }) {
             let balance = balances

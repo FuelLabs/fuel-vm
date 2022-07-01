@@ -240,16 +240,6 @@ where
                 self.alu_set(ra, b ^ imm)?;
             }
 
-            OpcodeRepr::CIMV => {
-                self.gas_charge(GAS_CIMV)?;
-                self.check_input_maturity(ra, b, c)?;
-            }
-
-            OpcodeRepr::CTMV => {
-                self.gas_charge(GAS_CTMV)?;
-                self.check_tx_maturity(ra, b)?;
-            }
-
             OpcodeRepr::JI => {
                 self.gas_charge(GAS_JI)?;
                 self.jump(imm)?;
@@ -283,6 +273,11 @@ where
                 self.revert(a);
 
                 return Ok(ExecuteState::Revert(a));
+            }
+
+            OpcodeRepr::SMO => {
+                self.gas_charge(GAS_SMO)?;
+                todo!();
             }
 
             OpcodeRepr::ALOC => {
@@ -487,6 +482,11 @@ where
             OpcodeRepr::GM => {
                 self.gas_charge(GAS_GM)?;
                 self.metadata(ra, imm as Immediate18)?;
+            }
+
+            OpcodeRepr::GTF => {
+                self.gas_charge(GAS_GTF)?;
+                todo!();
             }
 
             OpcodeRepr::TR => {

@@ -7,43 +7,13 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, InstructionResult};
 use fuel_crypto::Hasher;
-use fuel_tx::{Input, PanicReason, Receipt};
+use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
-use fuel_types::{AssetId, Bytes32, RegisterId, Word};
+use fuel_types::{AssetId, Bytes32, Word};
 
 use std::cmp;
 
 impl<S> Interpreter<S> {
-    // TODO add CIMV tests
-    pub(crate) fn check_input_maturity(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        Self::is_register_writable(ra)?;
-
-        match self.tx.inputs().get(b as usize) {
-            Some(Input::CoinPredicate { maturity, .. }) | Some(Input::CoinSigned { maturity, .. })
-                if maturity <= &c =>
-            {
-                self.registers[ra] = 1;
-
-                self.inc_pc()
-            }
-
-            _ => Err(PanicReason::InputNotFound.into()),
-        }
-    }
-
-    // TODO add CTMV tests
-    pub(crate) fn check_tx_maturity(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        Self::is_register_writable(ra)?;
-
-        if b <= self.tx.maturity() {
-            self.registers[ra] = 1;
-
-            self.inc_pc()
-        } else {
-            Err(PanicReason::TransactionMaturity.into())
-        }
-    }
-
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
         let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
@@ -118,7 +88,7 @@ impl<S> Interpreter<S> {
         let ab = (a + b) as usize;
         let digest = Hasher::hash(&self.memory[a as usize..ab]);
 
-        let receipt = Receipt::return_data(
+        let receipt = Receipt::return_data_with_len(
             self.internal_contract_or_default(),
             a,
             b,

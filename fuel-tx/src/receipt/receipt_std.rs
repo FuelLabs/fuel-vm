@@ -37,6 +37,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *param1);
                 let buf = bytes::store_number_unchecked(buf, *param2);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -46,6 +47,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_number_unchecked(buf, *val);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -66,6 +68,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, digest);
                 let (_, buf) = bytes::store_bytes(buf, data)?;
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -75,6 +78,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_number_unchecked(buf, *reason);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -84,6 +88,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, id);
                 let buf = bytes::store_number_unchecked(buf, *ra);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -104,6 +109,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *rc);
                 let buf = bytes::store_number_unchecked(buf, *rd);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -128,6 +134,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_array_unchecked(buf, digest);
                 let (_, buf) = bytes::store_bytes(buf, data)?;
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -146,6 +153,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -164,6 +172,7 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, asset_id);
                 let buf = bytes::store_number_unchecked(buf, *pc);
+
                 bytes::store_number_unchecked(buf, *is);
             }
 
@@ -174,6 +183,29 @@ impl io::Read for Receipt {
                 let buf = bytes::store_number_unchecked(buf, result);
 
                 bytes::store_number_unchecked(buf, *gas_used);
+            }
+
+            Self::MessageOut {
+                message_id,
+                sender,
+                recipient,
+                amount,
+                nonce,
+                len,
+                digest,
+                data,
+            } => {
+                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::MessageOut as Word);
+
+                let buf = bytes::store_array_unchecked(buf, message_id);
+                let buf = bytes::store_array_unchecked(buf, sender);
+                let buf = bytes::store_array_unchecked(buf, recipient);
+                let buf = bytes::store_number_unchecked(buf, *amount);
+                let buf = bytes::store_array_unchecked(buf, nonce);
+                let buf = bytes::store_number_unchecked(buf, *len);
+                let buf = bytes::store_array_unchecked(buf, digest);
+
+                bytes::store_bytes(buf, data)?;
             }
         }
 
@@ -236,7 +268,7 @@ impl io::Write for Receipt {
                 let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let (count, data, buf) = bytes::restore_bytes(buf)?;
-                // Safety: enforce data buffer length check after fetching data
+
                 used_len += count;
                 if orig_buf_len < used_len {
                     return Err(bytes::eof());
@@ -248,7 +280,7 @@ impl io::Write for Receipt {
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::return_data(id, ptr, len, digest, data, pc, is);
+                *self = Self::return_data_with_len(id, ptr, len, digest, data, pc, is);
             }
 
             ReceiptRepr::Panic => {
@@ -296,7 +328,7 @@ impl io::Write for Receipt {
                 let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let (count, data, buf) = bytes::restore_bytes(buf)?;
-                // Safety: enforce data buffer length check after fetching data
+
                 used_len += count;
                 if orig_buf_len < used_len {
                     return Err(bytes::eof());
@@ -308,7 +340,7 @@ impl io::Write for Receipt {
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::log_data(id, ra, rb, ptr, len, digest, data, pc, is);
+                *self = Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is);
             }
 
             ReceiptRepr::Transfer => {
@@ -349,6 +381,32 @@ impl io::Write for Receipt {
 
                 *self = Self::script_result(result, gas_used);
             }
+
+            ReceiptRepr::MessageOut => {
+                let (message_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (sender, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (nonce, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
+                let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (count, data, _) = bytes::restore_bytes(buf)?;
+
+                used_len += count;
+                if orig_buf_len < used_len {
+                    return Err(bytes::eof());
+                }
+
+                let message_id = message_id.into();
+                let sender = sender.into();
+                let recipient = recipient.into();
+                let nonce = nonce.into();
+                let digest = digest.into();
+
+                *self = Self::message_out_with_len(
+                    message_id, sender, recipient, amount, nonce, len, digest, data,
+                );
+            }
         }
 
         Ok(used_len + WORD_SIZE)
@@ -386,6 +444,7 @@ impl TryFrom<Word> for ReceiptRepr {
             0x07 => Ok(Self::Transfer),
             0x08 => Ok(Self::TransferOut),
             0x09 => Ok(Self::ScriptResult),
+            0x0A => Ok(Self::MessageOut),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "The provided identifier is invalid!",

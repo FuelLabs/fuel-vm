@@ -11,7 +11,7 @@ repository = "https://github.com/FuelLabs/fuel-tx"
 description = "FuelVM transaction."
 
 [dependencies]
-fuel-asm = { version = "0.5", default-features = false }
+fuel-asm = { version = "0.6", default-features = false }
 fuel-crypto = { version = "0.5", default-features = false }
 fuel-merkle = { version = "0.2", default-features = false, optional = true }
 fuel-types = { version = "0.5", default-features = false }
@@ -33,7 +33,7 @@ rstest = "0.13"
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle?/default", "fuel-types/default", "std"]
 alloc = ["fuel-merkle", "fuel-types/alloc", "itertools/use_alloc", "serde/alloc"]
-builder = ["alloc"]
+builder = ["alloc", "internals"]
 internals = []
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle?/std", "fuel-types/std", "itertools/default", "rand/default", "serde?/default"]
@@ -47,6 +47,11 @@ required-features = ["serde", "std"]
 [[test]]
 name = "test-offsets"
 path = "tests/offset.rs"
+required-features = ["std"]
+
+[[test]]
+name = "test-prepared-init"
+path = "tests/prepared_init.rs"
 required-features = ["std"]
 
 [[test]]

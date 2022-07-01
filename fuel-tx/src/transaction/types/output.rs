@@ -1,5 +1,6 @@
+use fuel_crypto::Hasher;
 use fuel_types::bytes::{self, WORD_SIZE};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SizedBytes;
@@ -11,6 +12,10 @@ const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
     + Address::LEN // To
     + WORD_SIZE // Amount
     + AssetId::LEN; // AssetId
+
+const OUTPUT_MESSAGE_SIZE: usize = WORD_SIZE // Identifier
+    + Address::LEN // Recipient
+    + WORD_SIZE; // Amount
 
 const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Input index
@@ -25,7 +30,7 @@ const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
 enum OutputRepr {
     Coin = 0x00,
     Contract = 0x01,
-    Withdrawal = 0x02,
+    Message = 0x02,
     Change = 0x03,
     Variable = 0x04,
     ContractCreated = 0x05,
@@ -39,7 +44,7 @@ impl TryFrom<Word> for OutputRepr {
         match b {
             0x00 => Ok(Self::Coin),
             0x01 => Ok(Self::Contract),
-            0x02 => Ok(Self::Withdrawal),
+            0x02 => Ok(Self::Message),
             0x03 => Ok(Self::Change),
             0x04 => Ok(Self::Variable),
             0x05 => Ok(Self::ContractCreated),
@@ -56,7 +61,7 @@ impl From<&mut Output> for OutputRepr {
         match o {
             Output::Coin { .. } => Self::Coin,
             Output::Contract { .. } => Self::Contract,
-            Output::Withdrawal { .. } => Self::Withdrawal,
+            Output::Message { .. } => Self::Message,
             Output::Change { .. } => Self::Change,
             Output::Variable { .. } => Self::Variable,
             Output::ContractCreated { .. } => Self::ContractCreated,
@@ -79,10 +84,9 @@ pub enum Output {
         state_root: Bytes32,
     },
 
-    Withdrawal {
-        to: Address,
+    Message {
+        recipient: Address,
         amount: Word,
-        asset_id: AssetId,
     },
 
     Change {
@@ -115,10 +119,9 @@ impl Default for Output {
 impl bytes::SizedBytes for Output {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::Coin { .. }
-            | Self::Withdrawal { .. }
-            | Self::Change { .. }
-            | Self::Variable { .. } => OUTPUT_COIN_SIZE,
+            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => OUTPUT_COIN_SIZE,
+
+            Self::Message { .. } => OUTPUT_MESSAGE_SIZE,
 
             Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
 
@@ -144,12 +147,8 @@ impl Output {
         }
     }
 
-    pub const fn withdrawal(to: Address, amount: Word, asset_id: AssetId) -> Self {
-        Self::Withdrawal {
-            to,
-            amount,
-            asset_id,
-        }
+    pub const fn message(recipient: Address, amount: Word) -> Self {
+        Self::Message { recipient, amount }
     }
 
     pub const fn change(to: Address, amount: Word, asset_id: AssetId) -> Self {
@@ -178,10 +177,47 @@ impl Output {
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
             Self::Coin { asset_id, .. } => Some(asset_id),
-            Self::Withdrawal { asset_id, .. } => Some(asset_id),
             Self::Change { asset_id, .. } => Some(asset_id),
             Self::Variable { asset_id, .. } => Some(asset_id),
             _ => None,
+        }
+    }
+
+    pub fn message_id(
+        sender: &Address,
+        recipient: &Address,
+        nonce: &Bytes32,
+        amount: Word,
+        data: &[u8],
+    ) -> MessageId {
+        let message_id = *Hasher::default()
+            .chain(sender)
+            .chain(recipient)
+            .chain(nonce)
+            .chain(amount.to_be_bytes())
+            .chain(data)
+            .finalize();
+
+        message_id.into()
+    }
+
+    pub fn message_nonce(txid: &Bytes32, idx: Word) -> Bytes32 {
+        Hasher::default().chain(txid).chain([idx as u8]).finalize()
+    }
+
+    pub fn message_digest(data: &[u8]) -> Bytes32 {
+        Hasher::hash(data)
+    }
+
+    /// Prepare the output for VM initialization
+    pub fn prepare_init(&mut self) {
+        const ZERO_MESSAGE: Output = Output::message(Address::zeroed(), 0);
+        const ZERO_VARIABLE: Output = Output::variable(Address::zeroed(), 0, AssetId::zeroed());
+
+        match self {
+            Output::Message { .. } => *self = ZERO_MESSAGE,
+            Output::Variable { .. } => *self = ZERO_VARIABLE,
+            _ => (),
         }
     }
 }
@@ -203,11 +239,6 @@ impl io::Read for Output {
                 amount,
                 asset_id,
             }
-            | Self::Withdrawal {
-                to,
-                amount,
-                asset_id,
-            }
             | Self::Change {
                 to,
                 amount,
@@ -220,7 +251,14 @@ impl io::Read for Output {
             } => {
                 buf = bytes::store_array_unchecked(buf, to);
                 buf = bytes::store_number_unchecked(buf, *amount);
+
                 bytes::store_array_unchecked(buf, asset_id);
+            }
+
+            Self::Message { recipient, amount } => {
+                buf = bytes::store_array_unchecked(buf, recipient);
+
+                bytes::store_number_unchecked(buf, *amount);
             }
 
             Self::Contract {
@@ -230,6 +268,7 @@ impl io::Read for Output {
             } => {
                 buf = bytes::store_number_unchecked(buf, *input_index);
                 buf = bytes::store_array_unchecked(buf, balance_root);
+
                 bytes::store_array_unchecked(buf, state_root);
             }
 
@@ -238,6 +277,7 @@ impl io::Read for Output {
                 state_root,
             } => {
                 buf = bytes::store_array_unchecked(buf, contract_id);
+
                 bytes::store_array_unchecked(buf, state_root);
             }
         }
@@ -258,14 +298,13 @@ impl io::Write for Output {
         let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
-            OutputRepr::Coin
-            | OutputRepr::Withdrawal
-            | OutputRepr::Change
-            | OutputRepr::Variable
+            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable
                 if buf.len() < OUTPUT_COIN_SIZE - WORD_SIZE =>
             {
                 Err(bytes::eof())
             }
+
+            OutputRepr::Message if buf.len() < OUTPUT_MESSAGE_SIZE - WORD_SIZE => Err(bytes::eof()),
 
             OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => {
                 Err(bytes::eof())
@@ -275,10 +314,7 @@ impl io::Write for Output {
                 Err(bytes::eof())
             }
 
-            OutputRepr::Coin
-            | OutputRepr::Withdrawal
-            | OutputRepr::Change
-            | OutputRepr::Variable => {
+            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
                 // Safety: buf len is checked
                 let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
@@ -290,13 +326,6 @@ impl io::Write for Output {
                 match identifier {
                     OutputRepr::Coin => {
                         *self = Self::Coin {
-                            to,
-                            amount,
-                            asset_id,
-                        }
-                    }
-                    OutputRepr::Withdrawal => {
-                        *self = Self::Withdrawal {
                             to,
                             amount,
                             asset_id,
@@ -321,6 +350,18 @@ impl io::Write for Output {
                 }
 
                 Ok(OUTPUT_COIN_SIZE)
+            }
+
+            OutputRepr::Message => {
+                // Safety: buf len is checked
+                let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let (amount, _) = unsafe { bytes::restore_number_unchecked(buf) };
+
+                let recipient = recipient.into();
+
+                *self = Self::Message { recipient, amount };
+
+                Ok(OUTPUT_MESSAGE_SIZE)
             }
 
             OutputRepr::Contract => {

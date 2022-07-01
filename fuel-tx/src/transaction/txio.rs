@@ -130,17 +130,17 @@ impl io::Read for Transaction {
             }
         };
 
-        for input in self.inputs_mut() {
+        for input in self._inputs_mut() {
             let input_len = input.read(buf)?;
             buf = &mut buf[input_len..];
         }
 
-        for output in self.outputs_mut() {
+        for output in self._outputs_mut() {
             let output_len = output.read(buf)?;
             buf = &mut buf[output_len..];
         }
 
-        for witness in self.witnesses_mut() {
+        for witness in self._witnesses_mut() {
             let witness_len = witness.read(buf)?;
             buf = &mut buf[witness_len..];
         }
@@ -294,13 +294,13 @@ impl io::Write for Transaction {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inputs_mut()
+        self._inputs_mut()
             .iter_mut()
             .try_for_each(|input| input.flush())?;
-        self.outputs_mut()
+        self._outputs_mut()
             .iter_mut()
             .try_for_each(|output| output.flush())?;
-        self.witnesses_mut()
+        self._witnesses_mut()
             .iter_mut()
             .try_for_each(|witness| witness.flush())?;
 

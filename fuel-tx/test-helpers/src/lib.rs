@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+use fuel_types::bytes;
 use rand::Rng;
 
 #[cfg(feature = "std")]
@@ -9,11 +10,12 @@ pub use use_std::*;
 
 use alloc::vec::Vec;
 
-pub fn generate_nonempty_bytes<R>(rng: &mut R) -> Vec<u8>
+pub fn generate_nonempty_padded_bytes<R>(rng: &mut R) -> Vec<u8>
 where
     R: Rng,
 {
     let len = rng.gen_range(1..512);
+    let len = bytes::padded_len_usize(len);
 
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());
@@ -36,13 +38,13 @@ where
 #[cfg(feature = "std")]
 mod use_std {
     use fuel_crypto::SecretKey;
-    use fuel_tx::{Input, Output, Transaction, TransactionBuilder};
+    use fuel_tx::{Contract, Input, Output, Transaction, TransactionBuilder};
     use fuel_types::bytes::Deserializable;
     use rand::distributions::{Distribution, Uniform};
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
 
-    use crate::{generate_bytes, generate_nonempty_bytes};
+    use crate::{generate_bytes, generate_nonempty_padded_bytes};
 
     pub struct TransactionFactory<R>
     where
@@ -60,7 +62,7 @@ mod use_std {
     {
         fn from(rng: R) -> Self {
             let tx_sampler = Uniform::from(0..2);
-            let input_sampler = Uniform::from(0..3);
+            let input_sampler = Uniform::from(0..5);
             let output_sampler = Uniform::from(0..6);
 
             // Trick to enforce coverage of all variants in compile-time
@@ -73,6 +75,8 @@ mod use_std {
                         Input::CoinSigned { .. } => (),
                         Input::CoinPredicate { .. } => (),
                         Input::Contract { .. } => (),
+                        Input::MessageSigned { .. } => (),
+                        Input::MessagePredicate { .. } => (),
                     })
                     .unwrap_or(());
 
@@ -80,7 +84,7 @@ mod use_std {
                     .map(|o| match o {
                         Output::Coin { .. } => (),
                         Output::Contract { .. } => (),
-                        Output::Withdrawal { .. } => (),
+                        Output::Message { .. } => (),
                         Output::Change { .. } => (),
                         Output::Variable { .. } => (),
                         Output::ContractCreated { .. } => (),
@@ -138,7 +142,8 @@ mod use_std {
             };
 
             let inputs = self.rng.gen_range(0..10);
-            let mut input_keys = Vec::with_capacity(10);
+            let mut input_coin_keys = Vec::with_capacity(10);
+            let mut input_message_keys = Vec::with_capacity(10);
 
             for _ in 0..inputs {
                 let variant = self.input_sampler.sample(&mut self.rng);
@@ -147,17 +152,20 @@ mod use_std {
                     0 => {
                         let secret = SecretKey::random(&mut self.rng);
 
-                        input_keys.push(secret);
+                        input_coin_keys.push(secret);
                     }
 
                     1 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let owner = (*Contract::root_from_code(&predicate)).into();
+
                         let input = Input::coin_predicate(
                             self.rng.gen(),
+                            owner,
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
-                            self.rng.gen(),
-                            generate_nonempty_bytes(&mut self.rng),
+                            predicate,
                             generate_bytes(&mut self.rng),
                         );
 
@@ -175,19 +183,55 @@ mod use_std {
                         builder.add_input(input);
                     }
 
+                    3 => {
+                        let secret = SecretKey::random(&mut self.rng);
+
+                        input_message_keys.push(secret);
+                    }
+
+                    4 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let owner = (*Contract::root_from_code(&predicate)).into();
+
+                        let input = Input::message_predicate(
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            owner,
+                            generate_bytes(&mut self.rng),
+                            predicate,
+                            generate_bytes(&mut self.rng),
+                        );
+
+                        builder.add_input(input);
+                    }
+
                     _ => unreachable!(),
                 }
             }
 
-            for i in 0..input_keys.len() {
+            input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
+                    k,
                     self.rng.gen(),
-                    &input_keys[i],
                     self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
                 );
-            }
+            });
+
+            input_message_keys.iter().for_each(|k| {
+                builder.add_unsigned_message_input(
+                    k,
+                    self.rng.gen(),
+                    self.rng.gen(),
+                    self.rng.gen(),
+                    self.rng.gen(),
+                    generate_bytes(&mut self.rng),
+                );
+            });
 
             let outputs = self.rng.gen_range(0..10);
             for _ in 0..outputs {
@@ -196,7 +240,7 @@ mod use_std {
                 let output = match variant {
                     0 => Output::coin(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     1 => Output::contract(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    2 => Output::withdrawal(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    2 => Output::message(self.rng.gen(), self.rng.gen()),
                     3 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     4 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     5 => Output::contract_created(self.rng.gen(), self.rng.gen()),
@@ -215,6 +259,9 @@ mod use_std {
             }
 
             let tx = builder.finalize();
+            let mut input_keys = input_coin_keys;
+
+            input_keys.append(&mut input_message_keys);
 
             (tx, input_keys)
         }

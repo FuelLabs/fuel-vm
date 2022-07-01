@@ -84,8 +84,8 @@ impl<'a> TransactionBuilder<'a> {
     #[cfg(feature = "std")]
     pub fn add_unsigned_coin_input(
         &mut self,
-        utxo_id: crate::UtxoId,
         secret: &'a SecretKey,
+        utxo_id: crate::UtxoId,
         amount: Word,
         asset_id: fuel_types::AssetId,
         maturity: Word,
@@ -95,6 +95,25 @@ impl<'a> TransactionBuilder<'a> {
         self.sign_keys.push(secret);
         self.tx
             .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, maturity);
+
+        self
+    }
+
+    #[cfg(feature = "std")]
+    pub fn add_unsigned_message_input(
+        &mut self,
+        secret: &'a SecretKey,
+        sender: fuel_types::Address,
+        recipient: fuel_types::Address,
+        nonce: Word,
+        amount: Word,
+        data: Vec<u8>,
+    ) -> &mut Self {
+        let pk = secret.public_key();
+
+        self.sign_keys.push(secret);
+        self.tx
+            .add_unsigned_message_input(sender, recipient, nonce, &pk, amount, data);
 
         self
     }

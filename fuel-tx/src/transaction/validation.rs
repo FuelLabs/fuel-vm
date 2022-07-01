@@ -42,14 +42,19 @@ impl Input {
                 witness_index,
                 owner,
                 ..
+            }
+            | Self::MessageSigned {
+                witness_index,
+                owner,
+                ..
             } => {
                 let witness = witnesses
                     .get(*witness_index as usize)
-                    .ok_or(ValidationError::InputCoinWitnessIndexBounds { index })?
+                    .ok_or(ValidationError::InputWitnessIndexBounds { index })?
                     .as_ref();
 
                 if witness.len() != Signature::LEN {
-                    return Err(ValidationError::InputCoinInvalidSignature { index });
+                    return Err(ValidationError::InputInvalidSignature { index });
                 }
 
                 // Safety: checked length
@@ -60,11 +65,11 @@ impl Input {
 
                 let pk = signature
                     .recover(message)
-                    .map_err(|_| ValidationError::InputCoinInvalidSignature { index })
-                    .map(|pk| Input::coin_owner(&pk))?;
+                    .map_err(|_| ValidationError::InputInvalidSignature { index })
+                    .map(|pk| Input::owner(&pk))?;
 
                 if owner != &pk {
-                    return Err(ValidationError::InputCoinInvalidSignature { index });
+                    return Err(ValidationError::InputInvalidSignature { index });
                 }
 
                 Ok(())
@@ -72,8 +77,11 @@ impl Input {
 
             Self::CoinPredicate {
                 owner, predicate, ..
+            }
+            | Self::MessagePredicate {
+                owner, predicate, ..
             } if !Input::is_predicate_owner_valid(owner, predicate) => {
-                Err(ValidationError::InputCoinPredicateOwner { index })
+                Err(ValidationError::InputPredicateOwner { index })
             }
 
             _ => Ok(()),
@@ -88,28 +96,30 @@ impl Input {
         parameters: &ConsensusParameters,
     ) -> Result<(), ValidationError> {
         match self {
-            Self::CoinPredicate { predicate, .. }
-                if predicate.is_empty()
-                    || predicate.len() > parameters.max_predicate_length as usize =>
+            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+                if predicate.is_empty() =>
             {
-                Err(ValidationError::InputCoinPredicateLength { index })
+                Err(ValidationError::InputPredicateEmpty { index })
+            }
+
+            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+                if predicate.len() > parameters.max_predicate_length as usize =>
+            {
+                Err(ValidationError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate { predicate_data, .. }
+            | Self::MessagePredicate { predicate_data, .. }
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
-                Err(ValidationError::InputCoinPredicateDataLength { index })
+                Err(ValidationError::InputPredicateDataLength { index })
             }
 
-            Self::CoinPredicate { .. } => Ok(()),
-
-            Self::CoinSigned { witness_index, .. }
+            Self::CoinSigned { witness_index, .. } | Self::MessageSigned { witness_index, .. }
                 if *witness_index as usize >= witnesses.len() =>
             {
-                Err(ValidationError::InputCoinWitnessIndexBounds { index })
+                Err(ValidationError::InputWitnessIndexBounds { index })
             }
-
-            Self::CoinSigned { .. } => Ok(()),
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex = inputContract.index
             Self::Contract { .. }
@@ -126,6 +136,12 @@ impl Input {
                 Err(ValidationError::InputContractAssociatedOutputContract { index })
             }
 
+            Self::MessageSigned { data, .. } | Self::MessagePredicate { data, .. }
+                if data.len() > parameters.max_message_data_length as usize =>
+            {
+                Err(ValidationError::InputMessageDataLength { index })
+            }
+
             // TODO If h is the block height the UTXO being spent was created, transaction is
             // invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
@@ -134,6 +150,11 @@ impl Input {
 }
 
 impl Output {
+    /// Validate the output of the transaction.
+    ///
+    /// This function is stateful - meaning it might validate a transaction during VM
+    /// initialization, but this transaction will no longer be valid in post-execution because the
+    /// VM might mutate the message outputs, producing invalid transactions.
     pub fn validate(&self, index: usize, inputs: &[Input]) -> Result<(), ValidationError> {
         match self {
             Self::Contract { input_index, .. } => match inputs.get(*input_index as usize) {
@@ -147,6 +168,9 @@ impl Output {
 }
 
 impl Transaction {
+    /// Validate the transaction.
+    ///
+    /// This function will reflect the stateful property of [`Output::validate`]
     #[cfg(feature = "std")]
     pub fn validate(
         &self,
@@ -173,6 +197,9 @@ impl Transaction {
         Ok(())
     }
 
+    /// Validate the transaction.
+    ///
+    /// This function will reflect the stateful property of [`Output::validate`]
     pub fn validate_without_signature(
         &self,
         block_height: Word,
@@ -226,7 +253,7 @@ impl Transaction {
         let duplicated_utxo_id = self
             .inputs()
             .iter()
-            .filter_map(|i| i.is_coin().then(|| i.utxo_id()));
+            .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
 
         if let Some(utxo_id) = internals::next_duplicate(duplicated_utxo_id).copied() {
             return Err(ValidationError::DuplicateInputUtxoId { utxo_id });
@@ -237,6 +264,12 @@ impl Transaction {
 
         if let Some(contract_id) = internals::next_duplicate(duplicated_contract_id).copied() {
             return Err(ValidationError::DuplicateInputContractId { contract_id });
+        }
+
+        // Check for duplicated input message id
+        let duplicated_message_id = self.inputs().iter().filter_map(Input::message_id);
+        if let Some(message_id) = internals::next_duplicate(duplicated_message_id).copied() {
+            return Err(ValidationError::DuplicateMessageInputId { message_id });
         }
 
         // Validate the inputs without checking signature

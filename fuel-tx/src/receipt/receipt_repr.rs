@@ -12,6 +12,7 @@ pub enum ReceiptRepr {
     Transfer = 0x07,
     TransferOut = 0x08,
     ScriptResult = 0x09,
+    MessageOut = 0x0A,
 }
 
 impl From<&Receipt> for ReceiptRepr {
@@ -27,6 +28,7 @@ impl From<&Receipt> for ReceiptRepr {
             Receipt::Transfer { .. } => Self::Transfer,
             Receipt::TransferOut { .. } => Self::TransferOut,
             Receipt::ScriptResult { .. } => Self::ScriptResult,
+            Receipt::MessageOut { .. } => Self::MessageOut,
         }
     }
 }

@@ -6,6 +6,7 @@ use itertools::Itertools;
 use alloc::vec::Vec;
 use core::hash::Hash;
 
+// TODO https://github.com/FuelLabs/fuel-tx/issues/148
 pub(crate) fn next_duplicate<U>(iter: impl Iterator<Item = U>) -> Option<U>
 where
     U: PartialEq + Ord + Copy + Hash,
@@ -47,6 +48,18 @@ impl Transaction {
     /// Set the transaction bytecode, if create variant. Return none otherwise.
     pub fn set_bytecode(&mut self, bytecode: Witness) -> Option<()> {
         self._set_bytecode(bytecode)
+    }
+
+    pub fn inputs_mut(&mut self) -> &mut [Input] {
+        self._inputs_mut()
+    }
+
+    pub fn outputs_mut(&mut self) -> &mut [Output] {
+        self._outputs_mut()
+    }
+
+    pub fn witnesses_mut(&mut self) -> &mut [Witness] {
+        self._witnesses_mut()
     }
 }
 

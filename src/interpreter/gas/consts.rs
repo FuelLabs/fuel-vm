@@ -37,8 +37,6 @@ pub const GAS_XOR: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::XOR);
 pub const GAS_XORI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::XORI);
 
 // TODO define gas cost
-pub const GAS_CIMV: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
-pub const GAS_CTMV: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_JI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_JNEI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_JNZI: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);

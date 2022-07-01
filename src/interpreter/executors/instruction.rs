@@ -240,16 +240,6 @@ where
                 self.alu_set(ra, b ^ imm)?;
             }
 
-            OpcodeRepr::CIMV => {
-                self.gas_charge(GAS_CIMV)?;
-                self.check_input_maturity(ra, b, c)?;
-            }
-
-            OpcodeRepr::CTMV => {
-                self.gas_charge(GAS_CTMV)?;
-                self.check_tx_maturity(ra, b)?;
-            }
-
             OpcodeRepr::JI => {
                 self.gas_charge(GAS_JI)?;
                 self.jump(imm)?;

@@ -370,14 +370,12 @@ impl Input {
         message_id.into()
     }
 
-    #[cfg(feature = "std")]
     pub fn predicate_owner<P>(predicate: P) -> Address
     where
         P: AsRef<[u8]>,
     {
         use crate::Contract;
 
-        // TODO use as no-std as soon as a no-std merkle backend is available
         let root = Contract::root_from_code(predicate);
 
         (*root).into()

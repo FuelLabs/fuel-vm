@@ -1,20 +1,11 @@
-use crate::{Transaction, ValidationError};
-
-#[cfg(feature = "std")]
-use crate::StorageSlot;
+use crate::{StorageSlot, Transaction, ValidationError};
 
 use fuel_crypto::Hasher;
-use fuel_types::{Bytes32, ContractId, Salt};
-
-#[cfg(feature = "std")]
-use fuel_merkle::{binary, common::StorageMap, sparse};
-
-#[cfg(feature = "std")]
-use fuel_types::Bytes8;
+use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
+use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
+use fuel_types::{Bytes32, Bytes8, ContractId, Salt};
 
 use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
 use core::iter;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -23,13 +14,11 @@ use core::iter;
 pub struct Contract(Vec<u8>);
 
 impl Contract {
-    #[cfg(feature = "std")]
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
     pub fn root(&self) -> Bytes32 {
         Self::root_from_code(self)
     }
 
-    #[cfg(feature = "std")]
     /// Calculate the code root from a contract.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
@@ -37,8 +26,7 @@ impl Contract {
     where
         B: AsRef<[u8]>,
     {
-        let mut storage = StorageMap::new();
-        let mut tree = binary::MerkleTree::new(&mut storage);
+        let mut tree = BinaryMerkleTree::new();
 
         bytes
             .as_ref()
@@ -58,29 +46,23 @@ impl Contract {
                     b.into()
                 }
             })
-            .try_for_each(|l| tree.push(l.as_ref()))
-            .and_then(|_| tree.root())
-            .expect("In-memory impl should be infallible")
-            .into()
-    }
-
-    #[cfg(feature = "std")]
-    /// Calculate the root of the initial storage slots for this contract
-    pub fn initial_state_root<'a, I>(mut storage_slots: I) -> Bytes32
-    where
-        I: Iterator<Item = &'a StorageSlot>,
-    {
-        let mut storage = StorageMap::new();
-        let mut tree = sparse::MerkleTree::new(&mut storage);
-
-        storage_slots
-            .try_for_each(|s| tree.update(s.key(), s.value().as_ref()))
-            .expect("In-memory impl should be infallible");
+            .for_each(|l| tree.push(l.as_ref()));
 
         tree.root().into()
     }
 
-    #[cfg(feature = "std")]
+    /// Calculate the root of the initial storage slots for this contract
+    pub fn initial_state_root<'a, I>(storage_slots: I) -> Bytes32
+    where
+        I: Iterator<Item = &'a StorageSlot>,
+    {
+        let mut tree = SparseMerkleTree::new();
+
+        storage_slots.for_each(|s| tree.update(s.key(), s.value().as_ref()));
+
+        tree.root().into()
+    }
+
     /// The default state root value without any entries
     pub fn default_state_root() -> Bytes32 {
         Self::initial_state_root(iter::empty())

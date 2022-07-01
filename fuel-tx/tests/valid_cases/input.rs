@@ -1,17 +1,19 @@
-use fuel_crypto::SecretKey;
+use super::PARAMS;
+
+use fuel_crypto::{PublicKey, SecretKey};
 use fuel_tx::*;
-use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_bytes, TransactionFactory};
+use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes, TransactionFactory};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 #[test]
-fn coin_signed() {
+fn input_coin_message_signature() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut factory = TransactionFactory::from_seed(3493);
     let txs = factory.by_ref();
 
-    fn validate_coin_inputs(tx: Transaction) -> Result<(), ValidationError> {
+    fn validate_inputs(tx: Transaction) -> Result<(), ValidationError> {
         let txhash = tx.id();
         let outputs = tx.outputs();
         let witnesses = tx.witnesses();
@@ -20,7 +22,7 @@ fn coin_signed() {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| match input {
-                Input::CoinSigned { .. } => {
+                Input::CoinSigned { .. } | Input::MessageSigned { .. } => {
                     input.validate(index, &txhash, outputs, witnesses, &Default::default())
                 }
                 _ => Ok(()),
@@ -28,49 +30,59 @@ fn coin_signed() {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn sign_coin_and_validate<R, I>(
-        rng: &mut R,
-        mut iter: I,
-        utxo_id: UtxoId,
-        amount: Word,
-        asset_id: AssetId,
-        maturity: Word,
-    ) -> Result<(), ValidationError>
+    fn sign_and_validate<R, I, F>(rng: &mut R, mut iter: I, f: F) -> Result<(), ValidationError>
     where
         R: Rng,
         I: Iterator<Item = (Transaction, Vec<SecretKey>)>,
+        F: Fn(&mut Transaction, &PublicKey),
     {
         let (mut tx, keys) = iter.next().expect("Failed to generate a transaction");
 
         let secret = SecretKey::random(rng);
         let public = secret.public_key();
 
-        tx.add_unsigned_coin_input(utxo_id, &public, amount, asset_id, maturity);
+        f(&mut tx, &public);
 
         tx.sign_inputs(&secret);
         keys.iter().for_each(|sk| tx.sign_inputs(sk));
 
-        validate_coin_inputs(tx)
+        validate_inputs(tx)
     }
 
     txs.take(10)
         .map(|(tx, _)| tx)
-        .try_for_each(validate_coin_inputs)
+        .try_for_each(validate_inputs)
         .expect("Failed to validate transactions");
 
-    let utxo_id = rng.gen();
-    let amount = rng.gen();
-    let asset_id = rng.gen();
-    let maturity = rng.gen();
-    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
-        .expect("Failed to validate transaction");
+    for _ in 0..3 {
+        let utxo_id = rng.gen();
+        let amount = rng.gen();
+        let asset_id = rng.gen();
+        let maturity = rng.gen();
 
-    let utxo_id = rng.gen();
-    let amount = rng.gen();
-    let asset_id = rng.gen();
-    let maturity = rng.gen();
-    sign_coin_and_validate(rng, txs.by_ref(), utxo_id, amount, asset_id, maturity)
+        sign_and_validate(rng, txs.by_ref(), |tx, public| {
+            tx.add_unsigned_coin_input(utxo_id, public, amount, asset_id, maturity)
+        })
         .expect("Failed to validate transaction");
+    }
+
+    for _ in 0..3 {
+        let sender = rng.gen();
+        let recipient = rng.gen();
+        let nonce = rng.gen();
+        let amount = rng.gen();
+        let data = generate_bytes(rng);
+
+        sign_and_validate(rng, txs.by_ref(), |tx, public| {
+            tx.add_unsigned_message_input(sender, recipient, nonce, public, amount, data.clone())
+        })
+        .expect("Failed to validate transaction");
+    }
+}
+
+#[test]
+fn coin_signed() {
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut tx = Transaction::default();
 
@@ -83,10 +95,7 @@ fn coin_signed() {
         .err()
         .expect("Expected failure");
 
-    assert!(matches!(
-        err,
-        ValidationError::InputCoinWitnessIndexBounds { .. }
-    ));
+    assert_eq!(ValidationError::InputWitnessIndexBounds { index: 0 }, err);
 }
 
 #[test]
@@ -95,7 +104,7 @@ fn coin_predicate() {
 
     let txhash: Bytes32 = rng.gen();
 
-    let predicate = generate_nonempty_bytes(rng);
+    let predicate = generate_nonempty_padded_bytes(rng);
     let owner = (*Contract::root_from_code(&predicate)).into();
 
     Input::coin_predicate(
@@ -126,9 +135,9 @@ fn coin_predicate() {
     .err()
     .unwrap();
 
-    assert_eq!(ValidationError::InputCoinPredicateLength { index: 1 }, err);
+    assert_eq!(ValidationError::InputPredicateEmpty { index: 1 }, err);
 
-    let mut predicate = generate_nonempty_bytes(rng);
+    let mut predicate = generate_nonempty_padded_bytes(rng);
     let owner = (*Contract::root_from_code(&predicate)).into();
     predicate[0] = predicate[0].wrapping_add(1);
 
@@ -145,7 +154,7 @@ fn coin_predicate() {
     .err()
     .unwrap();
 
-    assert_eq!(ValidationError::InputCoinPredicateOwner { index: 1 }, err);
+    assert_eq!(ValidationError::InputPredicateOwner { index: 1 }, err);
 }
 
 #[test]
@@ -168,6 +177,7 @@ fn contract() {
         .validate(1, &txhash, &[], &[], &Default::default())
         .err()
         .unwrap();
+
     assert_eq!(
         ValidationError::InputContractAssociatedOutputContract { index: 1 },
         err
@@ -183,6 +193,7 @@ fn contract() {
         )
         .err()
         .unwrap();
+
     assert_eq!(
         ValidationError::InputContractAssociatedOutputContract { index: 1 },
         err
@@ -198,10 +209,152 @@ fn contract() {
         )
         .err()
         .unwrap();
+
     assert_eq!(
         ValidationError::InputContractAssociatedOutputContract { index: 1 },
         err
     );
+}
+
+#[test]
+fn message() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.gen();
+
+    let predicate = generate_nonempty_padded_bytes(rng);
+    let owner = (*Contract::root_from_code(&predicate)).into();
+
+    Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        owner,
+        generate_bytes(rng),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[], &Default::default())
+    .expect("failed to validate empty message input");
+
+    let mut tx = Transaction::default();
+
+    let input = Input::message_signed(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        generate_bytes(rng),
+    );
+
+    tx.add_input(input);
+
+    let block_height = rng.gen();
+    let err = tx
+        .validate(block_height, &Default::default())
+        .err()
+        .expect("Expected failure");
+
+    assert_eq!(ValidationError::InputWitnessIndexBounds { index: 0 }, err,);
+
+    let mut predicate = generate_nonempty_padded_bytes(rng);
+    let owner = (*Contract::root_from_code(&predicate)).into();
+    predicate[0] = predicate[0].wrapping_add(1);
+
+    let err = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        owner,
+        generate_bytes(rng),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[], &Default::default())
+    .err()
+    .expect("Expected failure");
+
+    assert_eq!(ValidationError::InputPredicateOwner { index: 1 }, err);
+
+    let data = vec![0xff; PARAMS.max_message_data_length as usize + 1];
+
+    let err = Input::message_signed(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        data.clone(),
+    )
+    .validate(1, &txhash, &[], &[vec![].into()], &Default::default())
+    .err()
+    .expect("expected max data length error");
+
+    assert_eq!(ValidationError::InputMessageDataLength { index: 1 }, err,);
+
+    let err = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        data.clone(),
+        generate_nonempty_padded_bytes(rng),
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[], &Default::default())
+    .err()
+    .expect("expected max data length error");
+
+    assert_eq!(ValidationError::InputMessageDataLength { index: 1 }, err,);
+
+    let predicate = vec![0xff; PARAMS.max_predicate_length as usize + 1];
+
+    let err = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        generate_bytes(rng),
+        predicate,
+        generate_bytes(rng),
+    )
+    .validate(1, &txhash, &[], &[], &Default::default())
+    .err()
+    .expect("expected max predicate length error");
+
+    assert_eq!(ValidationError::InputPredicateLength { index: 1 }, err,);
+
+    let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
+
+    let err = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        generate_bytes(rng),
+        generate_bytes(rng),
+        predicate_data,
+    )
+    .validate(1, &txhash, &[], &[], &Default::default())
+    .err()
+    .expect("expected max predicate data length error");
+
+    assert_eq!(ValidationError::InputPredicateDataLength { index: 1 }, err,);
 }
 
 #[test]
@@ -222,6 +375,35 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .expect("Expected validation failure");
 
     assert_eq!(err, ValidationError::DuplicateInputUtxoId { utxo_id });
+}
+
+#[test]
+fn transaction_with_duplicate_message_inputs_is_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let message_id = rng.gen();
+
+    let message_input = Input::message_signed(
+        message_id,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+        0,
+        generate_bytes(rng),
+    );
+
+    let err = TransactionBuilder::script(vec![], vec![])
+        .add_input(message_input.clone())
+        // duplicate input
+        .add_input(message_input)
+        .add_witness(rng.gen())
+        .finalize()
+        .validate_without_signature(0, &Default::default())
+        .err()
+        .expect("Expected validation failure");
+
+    assert_eq!(err, ValidationError::DuplicateMessageInputId { message_id });
 }
 
 #[test]

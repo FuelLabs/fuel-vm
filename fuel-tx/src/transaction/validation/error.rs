@@ -1,7 +1,7 @@
 use core::fmt;
 
 use crate::UtxoId;
-use fuel_types::{AssetId, ContractId};
+use fuel_types::{AssetId, ContractId, MessageId};
 #[cfg(feature = "std")]
 use std::{error, io};
 
@@ -9,26 +9,35 @@ use std::{error, io};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum ValidationError {
-    InputCoinPredicateLength {
+    InputWitnessIndexBounds {
         index: usize,
     },
-    InputCoinPredicateDataLength {
+    InputPredicateEmpty {
         index: usize,
     },
-    InputCoinPredicateOwner {
+    InputPredicateLength {
         index: usize,
     },
-    InputCoinWitnessIndexBounds {
+    InputPredicateDataLength {
         index: usize,
     },
-    InputCoinInvalidSignature {
+    InputPredicateOwner {
+        index: usize,
+    },
+    InputInvalidSignature {
         index: usize,
     },
     InputContractAssociatedOutputContract {
         index: usize,
     },
+    InputMessageDataLength {
+        index: usize,
+    },
     DuplicateInputUtxoId {
         utxo_id: UtxoId,
+    },
+    DuplicateMessageInputId {
+        message_id: MessageId,
     },
     DuplicateInputContractId {
         contract_id: ContractId,

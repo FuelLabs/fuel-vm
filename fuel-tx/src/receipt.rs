@@ -1,6 +1,6 @@
 use fuel_asm::InstructionResult;
-use fuel_types::bytes::{padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
+use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 use alloc::vec::Vec;
 
@@ -13,6 +13,8 @@ mod script_result;
 use receipt_repr::ReceiptRepr;
 
 pub use script_result::ScriptExecutionResult;
+
+use crate::Output;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -104,6 +106,17 @@ pub enum Receipt {
         result: ScriptExecutionResult,
         gas_used: Word,
     },
+
+    MessageOut {
+        message_id: MessageId,
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Bytes32,
+        len: Word,
+        digest: Bytes32,
+        data: Vec<u8>,
+    },
 }
 
 impl Receipt {
@@ -136,7 +149,20 @@ impl Receipt {
         Self::Return { id, val, pc, is }
     }
 
-    pub const fn return_data(
+    pub fn return_data(
+        id: ContractId,
+        ptr: Word,
+        digest: Bytes32,
+        data: Vec<u8>,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        let len = bytes::padded_len(&data) as Word;
+
+        Self::return_data_with_len(id, ptr, len, digest, data, pc, is)
+    }
+
+    pub const fn return_data_with_len(
         id: ContractId,
         ptr: Word,
         len: Word,
@@ -184,7 +210,22 @@ impl Receipt {
         }
     }
 
-    pub const fn log_data(
+    pub fn log_data(
+        id: ContractId,
+        ra: Word,
+        rb: Word,
+        ptr: Word,
+        digest: Bytes32,
+        data: Vec<u8>,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        let len = bytes::padded_len(&data) as Word;
+
+        Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is)
+    }
+
+    pub const fn log_data_with_len(
         id: ContractId,
         ra: Word,
         rb: Word,
@@ -248,6 +289,59 @@ impl Receipt {
         Self::ScriptResult { result, gas_used }
     }
 
+    pub fn message_out_from_tx_output(
+        txid: &Bytes32,
+        idx: Word,
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        data: Vec<u8>,
+    ) -> Self {
+        let nonce = Output::message_nonce(txid, idx);
+        let message_id = Output::message_id(&sender, &recipient, &nonce, amount, &data);
+        let digest = Output::message_digest(&data);
+
+        Self::message_out(message_id, sender, recipient, amount, nonce, digest, data)
+    }
+
+    pub fn message_out(
+        message_id: MessageId,
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Bytes32,
+        digest: Bytes32,
+        data: Vec<u8>,
+    ) -> Self {
+        let len = bytes::padded_len(&data) as Word;
+
+        Self::message_out_with_len(
+            message_id, sender, recipient, amount, nonce, len, digest, data,
+        )
+    }
+
+    pub const fn message_out_with_len(
+        message_id: MessageId,
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Bytes32,
+        len: Word,
+        digest: Bytes32,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::MessageOut {
+            message_id,
+            sender,
+            recipient,
+            amount,
+            nonce,
+            len,
+            digest,
+            data,
+        }
+    }
+
     pub const fn id(&self) -> Option<&ContractId> {
         match self {
             Self::Call { id, .. } => Some(id),
@@ -260,6 +354,7 @@ impl Receipt {
             Self::Transfer { id, .. } => Some(id),
             Self::TransferOut { id, .. } => Some(id),
             Self::ScriptResult { .. } => None,
+            Self::MessageOut { .. } => None,
         }
     }
 
@@ -275,6 +370,7 @@ impl Receipt {
             Self::Transfer { pc, .. } => Some(*pc),
             Self::TransferOut { pc, .. } => Some(*pc),
             Self::ScriptResult { .. } => None,
+            Self::MessageOut { .. } => None,
         }
     }
 
@@ -290,6 +386,7 @@ impl Receipt {
             Self::Transfer { is, .. } => Some(*is),
             Self::TransferOut { is, .. } => Some(*is),
             Self::ScriptResult { .. } => None,
+            Self::MessageOut { .. } => None,
         }
     }
 
@@ -313,6 +410,7 @@ impl Receipt {
             Self::Call { amount, .. } => Some(*amount),
             Self::Transfer { amount, .. } => Some(*amount),
             Self::TransferOut { amount, .. } => Some(*amount),
+            Self::MessageOut { amount, .. } => Some(*amount),
             _ => None,
         }
     }
@@ -366,6 +464,7 @@ impl Receipt {
         match self {
             Self::ReturnData { len, .. } => Some(*len),
             Self::LogData { len, .. } => Some(*len),
+            Self::MessageOut { len, .. } => Some(*len),
             _ => None,
         }
     }
@@ -382,6 +481,7 @@ impl Receipt {
         match self {
             Self::ReturnData { digest, .. } => Some(digest),
             Self::LogData { digest, .. } => Some(digest),
+            Self::MessageOut { digest, .. } => Some(digest),
             _ => None,
         }
     }
@@ -390,6 +490,7 @@ impl Receipt {
         match self {
             Self::ReturnData { data, .. } => Some(data),
             Self::LogData { data, .. } => Some(data),
+            Self::MessageOut { data, .. } => Some(data),
             _ => None,
         }
     }
@@ -442,6 +543,34 @@ impl Receipt {
     pub const fn gas_used(&self) -> Option<Word> {
         match self {
             Self::ScriptResult { gas_used, .. } => Some(*gas_used),
+            _ => None,
+        }
+    }
+
+    pub const fn message_id(&self) -> Option<&MessageId> {
+        match self {
+            Self::MessageOut { message_id, .. } => Some(message_id),
+            _ => None,
+        }
+    }
+
+    pub const fn sender(&self) -> Option<&Address> {
+        match self {
+            Self::MessageOut { sender, .. } => Some(sender),
+            _ => None,
+        }
+    }
+
+    pub const fn recipient(&self) -> Option<&Address> {
+        match self {
+            Self::MessageOut { recipient, .. } => Some(recipient),
+            _ => None,
+        }
+    }
+
+    pub const fn nonce(&self) -> Option<&Bytes32> {
+        match self {
+            Self::MessageOut { nonce, .. } => Some(nonce),
             _ => None,
         }
     }
@@ -501,6 +630,16 @@ impl Receipt {
             ReceiptRepr::ScriptResult => {
                 WORD_SIZE // status
                 + WORD_SIZE // gas_used
+            }
+
+            ReceiptRepr::MessageOut => {
+                MessageId::LEN // message_id
+                + Address::LEN // sender
+                + Address::LEN // recipient
+                + WORD_SIZE // amount
+                + Bytes32::LEN // nonce
+                + WORD_SIZE // len
+                + Bytes32::LEN // digest
             }
         }
     }

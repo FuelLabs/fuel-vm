@@ -51,6 +51,7 @@ fn contract() {
         )
         .err()
         .unwrap();
+
     assert_eq!(ValidationError::OutputContractInputIndex { index: 2 }, err);
 
     let err = Output::contract(2, rng.gen(), rng.gen())
@@ -70,17 +71,8 @@ fn contract() {
         )
         .err()
         .unwrap();
+
     assert_eq!(ValidationError::OutputContractInputIndex { index: 2 }, err);
-}
-
-#[test]
-fn withdrawal() {
-    let mut rng_base = StdRng::seed_from_u64(8586);
-    let rng = &mut rng_base;
-
-    Output::withdrawal(rng.gen(), rng.next_u64(), rng.gen())
-        .validate(1, &[])
-        .unwrap();
 }
 
 #[test]

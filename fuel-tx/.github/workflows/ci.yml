@@ -31,6 +31,8 @@ jobs:
           - command: clippy
             args: --all-targets --all-features
           - command: check
+            args: --all-targets
+          - command: check
             args: --all-targets --all-features
           - command: check
             args: --verbose --target thumbv6m-none-eabi --no-default-features

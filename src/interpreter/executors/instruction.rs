@@ -262,7 +262,6 @@ where
 
             OpcodeRepr::JNE => {
                 self.gas_charge(GAS_JNE)?;
-                dbg!("JNE", a, b, c);
                 self.jump_not_equal(a, b, c)?;
             }
 

@@ -17,8 +17,8 @@ fn metadata() {
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external: Vec<Opcode> = vec![
-        Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
-        Opcode::GM(0x11, InterpreterMetadata::GetCaller.into()),
+        Opcode::gm(0x10, GMArgs::IsCallerExternal),
+        Opcode::gm(0x11, GMArgs::GetCaller),
         Opcode::LOG(0x10, 0x00, 0x00, 0x00),
         Opcode::MOVI(0x20,  ContractId::LEN as Immediate18),
         Opcode::LOGD(0x00, 0x00, 0x11, 0x20),
@@ -48,7 +48,6 @@ fn metadata() {
         salt,
         vec![],
         vec![],
-        vec![],
         vec![output],
         vec![program],
     );
@@ -59,7 +58,7 @@ fn metadata() {
         .is_success());
 
     let mut routine_call_metadata_contract: Vec<Opcode> = vec![
-        Opcode::GM(0x10, InterpreterMetadata::IsCallerExternal.into()),
+        Opcode::gm(0x10, GMArgs::IsCallerExternal),
         Opcode::LOG(0x10, 0x00, 0x00, 0x00),
         Opcode::MOVI(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         Opcode::ALOC(0x10),
@@ -92,7 +91,6 @@ fn metadata() {
         maturity,
         bytecode_witness,
         salt,
-        vec![],
         vec![],
         vec![],
         vec![output],

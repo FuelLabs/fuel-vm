@@ -124,7 +124,6 @@ fn state_read_write() {
         salt,
         vec![],
         vec![],
-        vec![],
         vec![output],
         vec![program],
     );
@@ -312,7 +311,6 @@ fn load_external_contract_code() {
         maturity,
         0,
         salt,
-        vec![],
         vec![],
         vec![],
         vec![output0],

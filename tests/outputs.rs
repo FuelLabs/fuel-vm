@@ -100,25 +100,6 @@ fn correct_change_is_provided_for_coin_outputs() {
 }
 
 #[test]
-fn correct_change_is_provided_for_withdrawal_outputs() {
-    let input_amount = 1000;
-    let gas_price = 0;
-    let byte_price = 0;
-    let spend_amount = 650;
-    let asset_id = AssetId::default();
-
-    let change = TestBuilder::new(2322u64)
-        .gas_price(gas_price)
-        .byte_price(byte_price)
-        .coin_input(asset_id, input_amount)
-        .change_output(asset_id)
-        .withdrawal_output(asset_id, spend_amount)
-        .execute_get_change(asset_id);
-
-    assert_eq!(change, input_amount - spend_amount);
-}
-
-#[test]
 fn change_is_reduced_by_external_transfer() {
     let input_amount = 1000;
     let transfer_amount: Word = 400;

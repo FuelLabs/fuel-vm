@@ -239,9 +239,9 @@ fn transaction_cannot_be_executed_before_maturity() {
     const MATURITY: u64 = 1;
     const BLOCK_HEIGHT: u32 = 0;
 
-    let mut rng = StdRng::seed_from_u64(2322u64);
+    let rng = &mut StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
-        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
+        .add_unsigned_coin_input(&rng.gen(), rng.gen(), 1, Default::default(), 0)
         .gas_limit(100)
         .maturity(MATURITY)
         .finalize();
@@ -255,9 +255,9 @@ fn transaction_can_be_executed_after_maturity() {
     const MATURITY: u64 = 1;
     const BLOCK_HEIGHT: u32 = 2;
 
-    let mut rng = StdRng::seed_from_u64(2322u64);
+    let rng = &mut StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
-        .add_unsigned_coin_input(Default::default(), &rng.gen(), 1, Default::default(), 0)
+        .add_unsigned_coin_input(&rng.gen(), rng.gen(), 1, Default::default(), 0)
         .gas_limit(100)
         .maturity(MATURITY)
         .finalize();

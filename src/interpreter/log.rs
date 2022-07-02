@@ -32,7 +32,7 @@ impl<S> Interpreter<S> {
         let cd = (c + d) as usize;
         let digest = Hasher::hash(&self.memory[c as usize..cd]);
 
-        let receipt = Receipt::log_data(
+        let receipt = Receipt::log_data_with_len(
             self.internal_contract_or_default(),
             a,
             b,

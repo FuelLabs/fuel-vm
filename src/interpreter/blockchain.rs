@@ -313,7 +313,7 @@ where
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         if b > self.params.max_message_data_length
             || b > MEM_MAX_ACCESS_SIZE
-            || a > VM_MAX_RAM - b - Bytes32::LEN as Word
+            || a > VM_MAX_RAM - b - Address::LEN as Word
         {
             return Err(PanicReason::MemoryOverflow.into());
         }

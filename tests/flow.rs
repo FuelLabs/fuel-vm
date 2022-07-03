@@ -436,6 +436,126 @@ fn jump_if_not_zero_immediate_no_jump() {
 }
 
 #[test]
+fn jump_dynamic() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::MOVI(REG_WRITABLE, 3),  // Jump target: last instr
+        Opcode::JMP(REG_WRITABLE),      // Jump
+        Opcode::RVRT(REG_ONE),          // Revert
+        Opcode::RET(REG_ONE),           // Return successfully
+    ].iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script.clone(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Return { .. }));
+}
+
+#[test]
+fn jump_dynamic_condition_true() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::MOVI(REG_WRITABLE, 3),                  // Jump target: last instr
+        Opcode::JNE(REG_ZERO, REG_ONE, REG_WRITABLE),   // Conditional jump (yes, because 0 != 1)
+        Opcode::RVRT(REG_ONE),                          // Revert
+        Opcode::RET(REG_ONE),                           // Return successfully
+    ].iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script.clone(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Return { .. }));
+}
+
+#[test]
+fn jump_dynamic_condition_false() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let byte_price = 0;
+    let maturity = 0;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::MOVI(REG_WRITABLE, 3),                  // Jump target: last instr
+        Opcode::JNE(REG_ZERO, REG_ZERO, REG_WRITABLE),  // Conditional jump (no, because 0 != 0)
+        Opcode::RVRT(REG_ONE),                          // Revert
+        Opcode::RET(REG_ONE),                           // Return successfully
+    ].iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        byte_price,
+        maturity,
+        script.clone(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Revert { .. }));
+}
+
+#[test]
 fn revert() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

@@ -155,15 +155,6 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    /// Reduces the unspent balance of the asset defined in $fp
-    pub(crate) fn external_asset_balance_sub(&mut self, value: Word) -> Result<(), RuntimeError> {
-        let fp = self.registers[REG_FP] as usize;
-        let asset_id = &self.memory[fp..fp + AssetId::LEN];
-        let asset_id = unsafe { AssetId::from_slice_unchecked(asset_id) };
-
-        self.external_asset_id_balance_sub(&asset_id, value)
-    }
-
     /// Reduces the unspent balance of the base asset
     pub(crate) fn base_asset_balance_sub(&mut self, value: Word) -> Result<(), RuntimeError> {
         self.external_asset_id_balance_sub(&AssetId::default(), value)

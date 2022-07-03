@@ -343,14 +343,7 @@ where
 
         // validations passed, perform the mutations
 
-        // subtract the balance only if there is an amount set
-        if amount > 0 {
-            if self.is_external_context() {
-                self.base_asset_balance_sub(amount)?;
-            } else {
-                self.external_asset_balance_sub(amount)?;
-            }
-        }
+        self.base_asset_balance_sub(amount)?;
 
         let fp = self.registers[REG_FP] as usize;
         let txid = self.tx_id();

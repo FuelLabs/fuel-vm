@@ -17,7 +17,7 @@ impl Transaction {
     }
 }
 
-impl bytes::SizedBytes for Transaction {
+impl SizedBytes for Transaction {
     fn serialized_size(&self) -> usize {
         let inputs = self
             .inputs()
@@ -66,7 +66,6 @@ impl io::Read for Transaction {
             Self::Script {
                 gas_price,
                 gas_limit,
-                byte_price,
                 maturity,
                 receipts_root,
                 script,
@@ -79,7 +78,6 @@ impl io::Read for Transaction {
                 let buf = bytes::store_number_unchecked(buf, TransactionRepr::Script as Word);
                 let buf = bytes::store_number_unchecked(buf, *gas_price);
                 let buf = bytes::store_number_unchecked(buf, *gas_limit);
-                let buf = bytes::store_number_unchecked(buf, *byte_price);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
                 let buf = bytes::store_number_unchecked(buf, script.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, script_data.len() as Word);
@@ -97,7 +95,6 @@ impl io::Read for Transaction {
             Self::Create {
                 gas_price,
                 gas_limit,
-                byte_price,
                 maturity,
                 bytecode_length,
                 bytecode_witness_index,
@@ -111,7 +108,6 @@ impl io::Read for Transaction {
                 let buf = bytes::store_number_unchecked(buf, TransactionRepr::Create as Word);
                 let buf = bytes::store_number_unchecked(buf, *gas_price);
                 let buf = bytes::store_number_unchecked(buf, *gas_limit);
-                let buf = bytes::store_number_unchecked(buf, *byte_price);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_length);
                 let buf = bytes::store_number_unchecked(buf, *bytecode_witness_index);
@@ -149,7 +145,7 @@ impl io::Read for Transaction {
     }
 }
 
-impl io::Write for Transaction {
+impl Write for Transaction {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() < WORD_SIZE {
             return Err(bytes::eof());
@@ -169,7 +165,6 @@ impl io::Write for Transaction {
                 // Safety: buffer size is checked
                 let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (byte_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (script_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
                 let (script_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
@@ -210,7 +205,6 @@ impl io::Write for Transaction {
                 *self = Transaction::Script {
                     gas_price,
                     gas_limit,
-                    byte_price,
                     maturity,
                     receipts_root,
                     script,
@@ -233,7 +227,6 @@ impl io::Write for Transaction {
                 // Safety: buffer size is checked
                 let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (byte_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (bytecode_length, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
@@ -276,7 +269,6 @@ impl io::Write for Transaction {
                 *self = Self::Create {
                     gas_price,
                     gas_limit,
-                    byte_price,
                     maturity,
                     bytecode_length,
                     bytecode_witness_index,

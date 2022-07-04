@@ -4,7 +4,6 @@ use fuel_types::{Bytes32, Salt};
 pub const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
     + WORD_SIZE // Gas limit
-    + WORD_SIZE // Byte price
     + WORD_SIZE // Maturity
     + WORD_SIZE // Script size
     + WORD_SIZE // Script data size
@@ -16,7 +15,6 @@ pub const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
 pub const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price
     + WORD_SIZE // Gas limit
-    + WORD_SIZE // Byte price
     + WORD_SIZE // Maturity
     + WORD_SIZE // Bytecode size
     + WORD_SIZE // Bytecode witness index

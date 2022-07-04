@@ -1,13 +1,14 @@
-use fuel_crypto::Hasher;
+use fuel_crypto::{Hasher, SecretKey};
+use fuel_tx::{StorageSlot, TransactionBuilder};
 use fuel_types::bytes;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
+use fuel_vm::script_with_data_offset;
+use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use fuel_tx::StorageSlot;
-use fuel_vm::script_with_data_offset;
-use fuel_vm::util::test_helpers::TestBuilder;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
+
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -464,4 +465,90 @@ fn can_read_state_from_initial_storage_slots() {
             assert_eq!(data.as_slice(), value.as_slice())
         }
     }
+}
+
+#[test]
+fn smo_instruction_works() {
+    fn execute_test<R>(rng: &mut R, balance: Word, amount: Word, data: Vec<u8>)
+    where
+        R: Rng,
+    {
+        let mut client = MemoryClient::default();
+
+        let gas_price = 1;
+        let gas_limit = 1_000_000;
+        let byte_price = 1;
+        let maturity = 0;
+
+        let secret = SecretKey::random(rng);
+        let sender = rng.gen();
+        let recipient = rng.gen();
+        let nonce = rng.gen();
+
+        let message = Output::message(Address::zeroed(), 0);
+
+        #[rustfmt::skip]
+        let script = vec![
+            Opcode::MOVI(0x10, 0),                          // set the txid as recipient
+            Opcode::MOVI(0x11, data.len() as Immediate24),  // send the whole data buffer
+            Opcode::MOVI(0x12, 0),                          // tx output idx
+            Opcode::MOVI(0x13, amount as Immediate24),      // expected output amount
+            Opcode::SMO(0x10,0x11,0x12,0x13),
+            Opcode::RET(REG_ONE)
+        ];
+
+        let script = script.into_iter().collect();
+        let script_data = vec![];
+
+        let tx = TransactionBuilder::script(script, script_data)
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .byte_price(byte_price)
+            .maturity(maturity)
+            .add_unsigned_message_input(&secret, sender, recipient, nonce, balance, data)
+            .add_output(message)
+            .finalize();
+
+        let params = client.params();
+        let block_height = 0;
+
+        tx.validate(block_height, params)
+            .expect("tx expected to be properly signed");
+
+        let txid = tx.id();
+        let receipts = client.transact(tx);
+
+        let success = receipts.iter().any(|r| match r {
+            Receipt::ScriptResult {
+                result: ScriptExecutionResult::Success,
+                ..
+            } => true,
+            _ => false,
+        });
+
+        assert!(success);
+
+        let (recipient, transferred) = client
+            .state_transition()
+            .expect("tx was executed")
+            .tx()
+            .outputs()
+            .iter()
+            .find_map(|o| match o {
+                Output::Message { recipient, amount } => Some((recipient, *amount)),
+                _ => None,
+            })
+            .expect("failed to find message output");
+
+        assert_eq!(txid.as_ref(), recipient.as_ref());
+        assert_eq!(amount, transferred);
+    }
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // check arbitrary amount
+    execute_test(rng, 1_000, 10, vec![0xfa; 15]);
+
+    // check message with zero amount
+    execute_test(rng, 1_000, 0, vec![0xfa; 15]);
 }

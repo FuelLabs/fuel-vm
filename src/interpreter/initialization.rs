@@ -88,20 +88,25 @@ impl<S> Interpreter<S> {
 
     // compute the initial free balances for each asset type
     pub(crate) fn initial_free_balances(&self) -> Result<HashMap<AssetId, Word>, InterpreterError> {
+        let base_asset = AssetId::default();
         let mut balances = HashMap::<AssetId, Word>::new();
 
         // Add up all the inputs for each asset ID
-        for (asset_id, amount) in self.tx.inputs().iter().filter_map(|input| match input {
-            Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
-                Some((asset_id, amount))
-            }
-            _ => None,
-        }) {
-            *balances.entry(*asset_id).or_default() += amount;
-        }
+        self.tx
+            .inputs()
+            .iter()
+            .filter_map(|i| match i {
+                Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
+                    Some((*asset_id, *amount))
+                }
+                Input::MessageSigned { amount, .. } | Input::MessagePredicate { amount, .. } => {
+                    Some((base_asset, *amount))
+                }
+                _ => None,
+            })
+            .for_each(|(asset_id, amount)| *balances.entry(asset_id).or_default() += amount);
 
         // Reduce by unavailable balances
-        let base_asset = AssetId::default();
         if let Some(base_asset_balance) = balances.get_mut(&base_asset) {
             // calculate the fee with used metered bytes + gas limit
             let factor = self.params.gas_price_factor as f64;
@@ -124,19 +129,20 @@ impl<S> Interpreter<S> {
             let fee = bytes.checked_add(gas).ok_or(ValidationError::ArithmeticOverflow)?;
 
             // subtract total fee from base asset balance
-            *base_asset_balance =
+            let deducted_balance =
                 base_asset_balance
                     .checked_sub(fee)
                     .ok_or(ValidationError::InsufficientFeeAmount {
                         expected: fee,
                         provided: *base_asset_balance,
                     })?;
+
+            *base_asset_balance = deducted_balance;
         }
 
-        // reduce free balances by coin and withdrawal outputs
+        // reduce free balances by coin
         for (asset_id, amount) in self.tx.outputs().iter().filter_map(|output| match output {
             Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
-            Output::Message { .. } => todo!(),
             _ => None,
         }) {
             let balance = balances

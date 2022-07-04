@@ -1,6 +1,7 @@
 //! In-memory client implementation
 
 use crate::backtrace::Backtrace;
+use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 
@@ -47,6 +48,11 @@ impl<'a> MemoryClient<'a> {
     /// receipts; return `None` otherwise.
     pub fn receipts(&self) -> Option<&[Receipt]> {
         self.transactor.receipts()
+    }
+
+    /// State transition representation after the execution of a transaction.
+    pub const fn state_transition(&self) -> Option<&StateTransitionRef<'_>> {
+        self.transactor.state_transition()
     }
 
     /// Execute a transaction.

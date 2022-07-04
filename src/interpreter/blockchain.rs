@@ -4,8 +4,9 @@ use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::Input;
-use fuel_types::{bytes, Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
+use fuel_tx::{Input, Output, Receipt};
+use fuel_types::bytes::{self, Deserializable};
+use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use std::mem;
 
@@ -305,6 +306,59 @@ where
         self.storage
             .merkle_contract_state_insert(contract, key, value)
             .map_err(RuntimeError::from_io)?;
+
+        self.inc_pc()
+    }
+
+    pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+        if b > self.params.max_message_data_length
+            || b > MEM_MAX_ACCESS_SIZE
+            || a > VM_MAX_RAM - b - Address::LEN as Word
+        {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let idx = c;
+        let amount = d;
+
+        // Safety: checked len
+        let recipient = unsafe { Address::from_slice_unchecked(&self.memory[a as usize..a as usize + Address::LEN]) };
+        if recipient == Address::zeroed() {
+            return Err(PanicReason::ZeroedMessageOutputRecipient.into());
+        }
+
+        let offset = self
+            .tx
+            .output_offset(c as usize)
+            .map(|ofs| ofs + self.tx_offset())
+            .ok_or(PanicReason::OutputNotFound)?;
+
+        // halt with I/O error because tx should be serialized correctly into vm memory
+        let output = Output::from_bytes(&self.memory[offset..])?;
+
+        // amount isn't checked because we are allowed to send zero balances with a message
+        if !matches!(output, Output::Message { recipient, .. } if recipient == Address::zeroed()) {
+            return Err(PanicReason::NonZeroMessageOutputRecipient.into());
+        }
+
+        // validations passed, perform the mutations
+
+        self.base_asset_balance_sub(amount)?;
+
+        let fp = self.registers[REG_FP] as usize;
+        let txid = self.tx_id();
+        let data = a as usize + Address::LEN;
+        let data = &self.memory[data..data + b as usize];
+        let data = data.to_vec();
+
+        // Safety: $fp is guaranteed to contain enough bytes
+        let sender = unsafe { Address::from_slice_unchecked(&self.memory[fp..fp + Address::LEN]) };
+
+        let message = Output::message(recipient, amount);
+        let receipt = Receipt::message_out_from_tx_output(txid, idx, sender, recipient, amount, data);
+
+        self.set_output(idx as usize, message)?;
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }

@@ -52,7 +52,7 @@ impl<S> Interpreter<S> {
             .tx
             .witnesses()
             .get(b as usize)
-            .ok_or(PanicReason::OutputNotFound)
+            .ok_or(PanicReason::WitnessNotFound)
             .map(|witness| witness.serialized_size() as Word)?;
 
         self.inc_pc()

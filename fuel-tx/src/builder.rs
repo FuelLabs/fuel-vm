@@ -21,7 +21,6 @@ impl<'a> TransactionBuilder<'a> {
             Default::default(),
             Default::default(),
             Default::default(),
-            Default::default(),
             salt,
             storage_slots,
             Default::default(),
@@ -38,7 +37,6 @@ impl<'a> TransactionBuilder<'a> {
 
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = Transaction::script(
-            Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),
@@ -65,12 +63,6 @@ impl<'a> TransactionBuilder<'a> {
 
     pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self {
         self.tx.set_gas_limit(gas_limit);
-
-        self
-    }
-
-    pub fn byte_price(&mut self, byte_price: Word) -> &mut Self {
-        self.tx.set_byte_price(byte_price);
 
         self
     }

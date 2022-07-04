@@ -28,6 +28,8 @@ pub struct ConsensusParameters {
     pub max_predicate_data_length: u64,
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
+    /// A fixed ratio linking metered bytes to gas price
+    pub gas_per_byte: u64,
     /// Maximum length of message data, in bytes.
     pub max_message_data_length: u64,
 }
@@ -46,6 +48,7 @@ impl ConsensusParameters {
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
         gas_price_factor: 1_000_000_000,
+        gas_per_byte: 4,
         max_message_data_length: 1024 * 1024,
     };
 
@@ -70,6 +73,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -86,6 +90,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -103,6 +108,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -119,6 +125,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -136,6 +143,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -152,6 +160,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -169,6 +178,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -185,6 +195,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -202,6 +213,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -218,6 +230,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -235,6 +248,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -251,6 +265,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -268,6 +283,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -284,6 +300,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -301,6 +318,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -317,6 +335,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -334,6 +353,7 @@ impl ConsensusParameters {
             max_storage_slots,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -350,6 +370,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -367,6 +388,7 @@ impl ConsensusParameters {
             max_storage_slots,
             max_predicate_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -383,6 +405,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -400,6 +423,7 @@ impl ConsensusParameters {
             max_storage_slots,
             max_predicate_length,
             max_predicate_data_length,
+            gas_per_byte,
             max_message_data_length,
             ..
         } = self;
@@ -416,6 +440,41 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
+            max_message_data_length,
+        }
+    }
+
+    pub const fn with_gas_per_byte(self, gas_per_byte: u64) -> Self {
+        let Self {
+            contract_max_size,
+            max_inputs,
+            max_outputs,
+            max_witnesses,
+            max_gas_per_tx,
+            max_script_length,
+            max_script_data_length,
+            max_storage_slots,
+            max_predicate_length,
+            max_predicate_data_length,
+            gas_price_factor,
+            max_message_data_length,
+            ..
+        } = self;
+
+        Self {
+            contract_max_size,
+            max_inputs,
+            max_outputs,
+            max_witnesses,
+            max_gas_per_tx,
+            max_script_length,
+            max_script_data_length,
+            max_storage_slots,
+            max_predicate_length,
+            max_predicate_data_length,
+            gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -434,6 +493,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             ..
         } = self;
 
@@ -449,6 +509,7 @@ impl ConsensusParameters {
             max_predicate_length,
             max_predicate_data_length,
             gas_price_factor,
+            gas_per_byte,
             max_message_data_length,
         }
     }
@@ -478,5 +539,6 @@ pub mod default_parameters {
     pub const MAX_PREDICATE_DATA_LENGTH: u64 =
         ConsensusParameters::DEFAULT.max_predicate_data_length;
     pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
+    pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
     pub const MAX_MESSAGE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_message_data_length;
 }

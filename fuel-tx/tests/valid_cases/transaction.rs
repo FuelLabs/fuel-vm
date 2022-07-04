@@ -18,7 +18,6 @@ fn gas_limit() {
     Transaction::script(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         maturity,
         generate_bytes(rng),
         generate_bytes(rng),
@@ -32,7 +31,6 @@ fn gas_limit() {
     Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         maturity,
         0,
         rng.gen(),
@@ -47,7 +45,6 @@ fn gas_limit() {
     let err = Transaction::script(
         rng.gen(),
         PARAMS.max_gas_per_tx + 1,
-        rng.gen(),
         maturity,
         generate_bytes(rng),
         generate_bytes(rng),
@@ -64,7 +61,6 @@ fn gas_limit() {
     let err = Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx + 1,
-        rng.gen(),
         maturity,
         0,
         rng.gen(),
@@ -89,7 +85,6 @@ fn maturity() {
     Transaction::script(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         block_height,
         vec![],
         vec![],
@@ -103,7 +98,6 @@ fn maturity() {
     Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         1000,
         0,
         rng.gen(),
@@ -118,7 +112,6 @@ fn maturity() {
     let err = Transaction::script(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         1001,
         vec![],
         vec![],
@@ -135,7 +128,6 @@ fn maturity() {
     let err = Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         1001,
         0,
         rng.gen(),
@@ -607,7 +599,6 @@ fn create() {
     let err = Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        rng.gen(),
         maturity,
         0,
         rng.gen(),
@@ -699,7 +690,6 @@ fn tx_id_bytecode_len() {
 
     let maturity = 100;
     let gas_price = rng.gen();
-    let byte_price = rng.gen();
     let salt = rng.gen();
 
     let w_a = vec![0xfau8; 4].into();
@@ -709,7 +699,6 @@ fn tx_id_bytecode_len() {
     let tx_a = Transaction::create(
         gas_price,
         PARAMS.max_gas_per_tx,
-        byte_price,
         maturity,
         0,
         salt,
@@ -722,7 +711,6 @@ fn tx_id_bytecode_len() {
     let tx_b = Transaction::create(
         gas_price,
         PARAMS.max_gas_per_tx,
-        byte_price,
         maturity,
         0,
         salt,
@@ -735,7 +723,6 @@ fn tx_id_bytecode_len() {
     let tx_c = Transaction::create(
         gas_price,
         PARAMS.max_gas_per_tx,
-        byte_price,
         maturity,
         0,
         salt,

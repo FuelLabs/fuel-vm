@@ -194,7 +194,6 @@ mod tests {
     fn assert_id_common_attrs(tx: &Transaction) {
         assert_id_ne(tx, |t| t.set_gas_price(t.gas_price().not()));
         assert_id_ne(tx, |t| t.set_gas_limit(t.gas_limit().not()));
-        assert_id_ne(tx, |t| t.set_byte_price(t.byte_price().not()));
         assert_id_ne(tx, |t| t.set_maturity(t.maturity().not()));
 
         if !tx.inputs().is_empty() {
@@ -319,7 +318,6 @@ mod tests {
                                 rng.next_u64(),
                                 rng.next_u64(),
                                 rng.next_u64(),
-                                rng.next_u64(),
                                 script.clone(),
                                 script_data.clone(),
                                 inputs.clone(),
@@ -345,7 +343,6 @@ mod tests {
                         let tx = Transaction::create(
                             rng.next_u64(),
                             ConsensusParameters::DEFAULT.max_gas_per_tx,
-                            rng.next_u64(),
                             rng.next_u64(),
                             rng.next_u32().to_be_bytes()[0],
                             rng.gen(),

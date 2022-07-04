@@ -43,7 +43,6 @@ pub enum Transaction {
     Script {
         gas_price: Word,
         gas_limit: Word,
-        byte_price: Word,
         maturity: Word,
         receipts_root: Bytes32,
         script: Vec<u8>,
@@ -57,7 +56,6 @@ pub enum Transaction {
     Create {
         gas_price: Word,
         gas_limit: Word,
-        byte_price: Word,
         maturity: Word,
         bytecode_length: Word,
         bytecode_witness_index: u8,
@@ -83,7 +81,6 @@ impl Default for Transaction {
             0,
             ConsensusParameters::DEFAULT.max_gas_per_tx,
             0,
-            0,
             script,
             vec![],
             vec![],
@@ -97,7 +94,6 @@ impl Transaction {
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,
-        byte_price: Word,
         maturity: Word,
         script: Vec<u8>,
         script_data: Vec<u8>,
@@ -110,7 +106,6 @@ impl Transaction {
         Self::Script {
             gas_price,
             gas_limit,
-            byte_price,
             maturity,
             receipts_root,
             script,
@@ -125,7 +120,6 @@ impl Transaction {
     pub fn create(
         gas_price: Word,
         gas_limit: Word,
-        byte_price: Word,
         maturity: Word,
         bytecode_witness_index: u8,
         salt: Salt,
@@ -144,7 +138,6 @@ impl Transaction {
         Self::Create {
             gas_price,
             gas_limit,
-            byte_price,
             maturity,
             bytecode_length,
             bytecode_witness_index,
@@ -242,20 +235,6 @@ impl Transaction {
         match self {
             Self::Script { gas_limit, .. } => *gas_limit = limit,
             Self::Create { gas_limit, .. } => *gas_limit = limit,
-        }
-    }
-
-    pub const fn byte_price(&self) -> Word {
-        match self {
-            Self::Script { byte_price, .. } => *byte_price,
-            Self::Create { byte_price, .. } => *byte_price,
-        }
-    }
-
-    pub fn set_byte_price(&mut self, price: Word) {
-        match self {
-            Self::Script { byte_price, .. } => *byte_price = price,
-            Self::Create { byte_price, .. } => *byte_price = price,
         }
     }
 
@@ -495,7 +474,6 @@ mod tests {
         let script_with_no_witnesses = Transaction::Script {
             gas_price: 0,
             gas_limit: 0,
-            byte_price: 0,
             maturity: 0,
             receipts_root: Default::default(),
             script: vec![],
@@ -508,7 +486,6 @@ mod tests {
         let script_with_witnesses = Transaction::Script {
             gas_price: 0,
             gas_limit: 0,
-            byte_price: 0,
             maturity: 0,
             receipts_root: Default::default(),
             script: vec![],
@@ -527,7 +504,6 @@ mod tests {
         let create_with_no_witnesses = Transaction::Create {
             gas_price: 0,
             gas_limit: 0,
-            byte_price: 0,
             maturity: 0,
             bytecode_length: 0,
             bytecode_witness_index: 0,
@@ -541,7 +517,6 @@ mod tests {
         let create_with_witnesses = Transaction::Create {
             gas_price: 0,
             gas_limit: 0,
-            byte_price: 0,
             maturity: 0,
             bytecode_length: 0,
             bytecode_witness_index: 0,

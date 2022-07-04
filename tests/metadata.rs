@@ -1,3 +1,5 @@
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
+
 use fuel_crypto::Hasher;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;

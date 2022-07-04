@@ -1,3 +1,5 @@
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
+
 use fuel_crypto::{Hasher, SecretKey};
 use fuel_tx::{StorageSlot, TransactionBuilder};
 use fuel_types::bytes;

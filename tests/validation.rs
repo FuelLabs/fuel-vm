@@ -25,8 +25,7 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_byte_costs() {
     let err = Interpreter::with_memory_storage()
         .with_params(params)
         .transact(transaction)
-        .err()
-        .expect("insufficient fee amount expected");
+        .expect_err("insufficient fee amount expected");
 
     let provided = match err {
         InterpreterError::ValidationError(ValidationError::InsufficientFeeAmount { provided, .. }) => provided,
@@ -58,8 +57,7 @@ fn transaction_validation_fails_when_provided_fees_dont_cover_gas_costs() {
     let err = Interpreter::with_memory_storage()
         .with_params(params)
         .transact(transaction)
-        .err()
-        .expect("insufficient fee amount expected");
+        .expect_err("insufficient fee amount expected");
 
     let provided = match err {
         InterpreterError::ValidationError(ValidationError::InsufficientFeeAmount { provided, .. }) => provided,
@@ -88,8 +86,7 @@ fn transaction_validation_fails_when_change_asset_id_not_in_inputs() {
 
     let err = Interpreter::with_memory_storage()
         .transact(transaction)
-        .err()
-        .expect("asset not found expected");
+        .expect_err("asset not found expected");
 
     assert_eq!(
         err,
@@ -116,8 +113,7 @@ fn transaction_validation_fails_when_coin_output_asset_id_not_in_inputs() {
 
     let err = Interpreter::with_memory_storage()
         .transact(transaction)
-        .err()
-        .expect("asset not found expected");
+        .expect_err("asset not found expected");
 
     assert_eq!(
         err,
@@ -143,8 +139,7 @@ fn change_is_not_duplicated_for_each_base_asset_change_output() {
 
     let err = Interpreter::with_memory_storage()
         .transact(transaction)
-        .err()
-        .expect("asset duplicated expected");
+        .expect_err("asset duplicated expected");
 
     assert_eq!(err, ValidationError::TransactionOutputChangeAssetIdDuplicated.into());
 }
@@ -169,8 +164,7 @@ fn bytes_fee_cant_overflow() {
     let err = Interpreter::with_memory_storage()
         .with_params(params)
         .transact(transaction)
-        .err()
-        .expect("overflow expected");
+        .expect_err("overflow expected");
 
     assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }
@@ -197,8 +191,7 @@ fn gas_fee_cant_overflow() {
     let err = Interpreter::with_memory_storage()
         .with_params(params)
         .transact(transaction)
-        .err()
-        .expect("overflow expected");
+        .expect_err("overflow expected");
 
     assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }
@@ -228,8 +221,7 @@ fn total_fee_cant_overflow() {
     let err = Interpreter::with_memory_storage()
         .with_params(params)
         .transact(transaction)
-        .err()
-        .expect("overflow expected");
+        .expect_err("overflow expected");
 
     assert_eq!(err, ValidationError::ArithmeticOverflow.into());
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
+
 use fuel_crypto::Hasher;
 use fuel_types::bytes;
 use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
@@ -144,7 +146,7 @@ fn call() {
         vec![],
         vec![],
         vec![output],
-        vec![program.clone()],
+        vec![program],
     );
 
     assert!(Transactor::new(&mut storage, Default::default())
@@ -380,7 +382,7 @@ fn jump_if_not_zero_immediate_jump() {
         gas_limit,
         byte_price,
         maturity,
-        script_jnzi_does_jump.clone(),
+        script_jnzi_does_jump,
         vec![],
         vec![],
         vec![],
@@ -419,7 +421,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         gas_limit,
         byte_price,
         maturity,
-        script_jnzi_does_not_jump.clone(),
+        script_jnzi_does_not_jump,
         vec![],
         vec![],
         vec![],
@@ -459,7 +461,7 @@ fn jump_dynamic() {
         gas_limit,
         byte_price,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -499,7 +501,7 @@ fn jump_dynamic_condition_true() {
         gas_limit,
         byte_price,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -539,7 +541,7 @@ fn jump_dynamic_condition_false() {
         gas_limit,
         byte_price,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -670,7 +672,7 @@ fn revert() {
         gas_limit,
         byte_price,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
@@ -720,9 +722,9 @@ fn revert() {
         gas_limit,
         byte_price,
         maturity,
-        script.clone(),
+        script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     );

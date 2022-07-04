@@ -81,7 +81,6 @@ fn predicate() {
         Opcode::RET(0x10),
     ];
 
-
     assert!(execute_predicate(predicate.iter().copied(), expected_data));
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data));
 }

@@ -422,7 +422,7 @@ fn sub() {
             Opcode::SUB(0x10, 0x10, 0x11),
         ],
         0x10,
-        (0 as u128).wrapping_sub(10),
+        (0_u128).wrapping_sub(10),
         false,
     );
 }
@@ -433,7 +433,7 @@ fn subi() {
     alu_overflow(
         &[Opcode::MOVE(0x10, REG_ZERO), Opcode::SUBI(0x10, 0x10, 10)],
         0x10,
-        (0 as u128).wrapping_sub(10),
+        (0_u128).wrapping_sub(10),
         false,
     );
 }

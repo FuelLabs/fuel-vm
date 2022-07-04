@@ -1,3 +1,5 @@
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
+
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use fuel_vm::script_with_data_offset;
@@ -121,7 +123,7 @@ fn mint_burn() {
         script_check_balance.iter().copied().collect(),
         vec![],
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     );
 
@@ -136,7 +138,7 @@ fn mint_burn() {
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     );
 
@@ -215,16 +217,14 @@ fn mint_burn() {
         maturity,
         script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     );
 
     client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
+    let storage_balance = client.transact(tx_check_balance)[0].ra().expect("Balance expected");
     assert_eq!(0, storage_balance);
 }
 

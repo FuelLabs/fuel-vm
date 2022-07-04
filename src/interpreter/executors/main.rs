@@ -30,6 +30,7 @@ impl Interpreter<PredicateStorage> {
             return false;
         }
 
+        #[allow(clippy::needless_collect)] // TODO: the collect could probably be removed
         let predicates: Vec<MemoryRange> = tx
             .inputs()
             .iter()
@@ -72,10 +73,7 @@ impl Interpreter<PredicateStorage> {
 
     /// Validate the predicate, assuming the interpreter is initialized
     fn _check_predicate(&mut self, predicate: MemoryRange) -> bool {
-        match self.verify_predicate(&predicate) {
-            Ok(ProgramState::Return(0x01)) => true,
-            _ => false,
-        }
+        matches!(self.verify_predicate(&predicate), Ok(ProgramState::Return(0x01)))
     }
 }
 
@@ -178,7 +176,7 @@ where
 
         #[cfg(feature = "debug")]
         if state.is_debug() {
-            self.debugger_set_last_state(state.clone());
+            self.debugger_set_last_state(state);
         }
 
         // TODO optimize

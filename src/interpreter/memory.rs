@@ -9,6 +9,7 @@ use std::{ops, ptr};
 
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(clippy::derive_hash_xor_eq)] // Manual impl doesn't violate Hash guarantees
 /// Memory range representation for the VM.
 ///
 /// `start` is inclusive, and `end` is exclusive.
@@ -200,7 +201,7 @@ impl<S> Interpreter<S> {
                     ptr::copy_nonoverlapping(src, dst, data.len());
                 }
             })
-            .ok_or(PanicReason::MemoryOwnership.into())
+            .ok_or_else(|| PanicReason::MemoryOwnership.into())
     }
 
     pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
@@ -214,7 +215,7 @@ impl<S> Interpreter<S> {
             .then(|| {
                 (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
             })
-            .ok_or(PanicReason::MemoryOwnership.into())
+            .ok_or_else(|| PanicReason::MemoryOwnership.into())
     }
 
     /// Grant ownership of the range `[a..ab[`

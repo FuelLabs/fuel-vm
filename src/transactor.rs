@@ -74,8 +74,7 @@ impl<'a, S> Transactor<'a, S> {
     /// found.
     pub fn backtrace(&self) -> Option<Backtrace> {
         self.receipts()
-            .map(|r| r.iter().find_map(Receipt::result))
-            .flatten()
+            .and_then(|r| r.iter().find_map(Receipt::result))
             .copied()
             .map(|result| Backtrace::from_vm_error(&self.interpreter, result))
     }

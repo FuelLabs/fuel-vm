@@ -27,8 +27,8 @@ where
         buffer = vec![0u8; read_size];
 
         // Minimum size buffer assertion
-        d.read(buffer.as_mut_slice()).expect("Failed to read");
-        d_p.write(buffer.as_slice()).expect("Failed to write");
+        let _ = d.read(buffer.as_mut_slice()).expect("Failed to read");
+        let _ = d_p.write(buffer.as_slice()).expect("Failed to write");
         assert_eq!(d, d_p);
 
         // No panic assertion
@@ -133,8 +133,8 @@ fn input() {
             Word::MAX,
             [0xcc; 32].into(),
             Word::MAX >> 1,
-            vec![0xdd; 50].into(),
-            vec![0xee; 23].into(),
+            vec![0xdd; 50],
+            vec![0xee; 23],
         ),
         Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
@@ -186,7 +186,7 @@ fn transaction() {
             vec![0xfa],
             vec![0xfb, 0xfc],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -197,7 +197,7 @@ fn transaction() {
             vec![],
             vec![0xfb, 0xfc],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -208,7 +208,7 @@ fn transaction() {
             vec![0xfa],
             vec![],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -219,7 +219,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![i.clone()],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -230,7 +230,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -263,8 +263,8 @@ fn transaction() {
             0xba,
             [0xdd; 32].into(),
             vec![],
-            vec![i.clone()],
-            vec![o.clone()],
+            vec![i],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -276,7 +276,7 @@ fn transaction() {
             [0xdd; 32].into(),
             vec![],
             vec![],
-            vec![o.clone()],
+            vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -289,7 +289,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![w.clone()],
+            vec![w],
         ),
         Transaction::create(
             Word::MAX >> 1,

@@ -76,7 +76,7 @@ where
         // Safety: Pushing to stack doesn't modify the contract
         unsafe {
             let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
-            self.push_stack(&code)?;
+            self.push_stack(code)?;
         }
         self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
         self.registers[REG_SP] = ssp + (padded_len as u64);

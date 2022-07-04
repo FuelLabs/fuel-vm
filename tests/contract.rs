@@ -322,7 +322,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load contract id
-        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        Opcode::ADDI(0x12, 0x11, 32),
         Opcode::CALL(0x12, 0x10, 0x11, REG_CGAS),
         Opcode::RET(REG_BAL),
     ];
@@ -409,7 +409,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load contract id
-        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        Opcode::ADDI(0x12, 0x11, 32),
         Opcode::TR(0x12, 0x10, 0x11),
         Opcode::RET(REG_ONE),
     ];
@@ -490,7 +490,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
         Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         Opcode::LW(0x11, 0x11, 0),
         // load contract id
-        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        Opcode::ADDI(0x12, 0x11, 32),
         Opcode::TR(0x12, 0x10, 0x11),
         Opcode::RET(REG_ONE),
     ];

@@ -209,8 +209,8 @@ impl From<Infallible> for PanicReason {
     }
 }
 
-impl Into<io::Error> for Infallible {
-    fn into(self) -> io::Error {
+impl From<Infallible> for io::Error {
+    fn from(_e: Infallible) -> io::Error {
         unreachable!()
     }
 }

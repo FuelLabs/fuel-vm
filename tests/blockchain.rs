@@ -251,9 +251,9 @@ fn state_read_write() {
     assert_eq!(receipts[2].rd().expect("Register value expected"), d);
 
     let m = a ^ 0x96;
-    let n = a ^ 0x00;
-    let o = a ^ 0x00;
-    let p = a ^ 0x00;
+    let n = a;
+    let o = a;
+    let p = a;
 
     // Expect the value to be unpacked correctly into 4x16 limbs + XOR state
     assert_eq!(receipts[3].ra().expect("Register value expected"), m);
@@ -415,11 +415,11 @@ fn can_read_state_from_initial_storage_slots() {
         Opcode::LW(0x10, 0x10, 0),
         // alloc 32 bytes stack space
         Opcode::ADDI(0x11, REG_SP, 0),
-        Opcode::CFEI(32 as Immediate24),
+        Opcode::CFEI(32),
         // load state value to stack
         Opcode::SRWQ(0x11, 0x10),
         // log value
-        Opcode::MOVI(0x12, 32 as Immediate18),
+        Opcode::MOVI(0x12, 32),
         Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
         Opcode::RET(REG_ONE),
     ];

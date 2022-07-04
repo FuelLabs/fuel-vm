@@ -17,7 +17,7 @@ where
         self.storage
             .storage_contract(contract)
             .map_err(RuntimeError::from_io)?
-            .ok_or(PanicReason::ContractNotFound.into())
+            .ok_or_else(|| PanicReason::ContractNotFound.into())
     }
 
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -159,10 +159,10 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(&contract, &asset_id)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
         self.storage
-            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }
@@ -174,10 +174,10 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(&contract, &asset_id)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
         self.storage
-            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }

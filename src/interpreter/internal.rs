@@ -52,7 +52,7 @@ impl<S> Interpreter<S> {
     pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
         self.registers[REG_PC]
             .checked_add(Instruction::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow.into())
+            .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
@@ -108,7 +108,7 @@ impl<S> Interpreter<S> {
 
                 (c, cx)
             })
-            .ok_or(PanicReason::ExpectedInternalContext.into())
+            .ok_or_else(|| PanicReason::ExpectedInternalContext.into())
     }
 
     /// Retrieve the unspent balance for a given asset ID
@@ -116,10 +116,7 @@ impl<S> Interpreter<S> {
         let offset = *self
             .unused_balance_index
             .get(asset_id)
-            .ok_or(RuntimeError::Halt(io::Error::new(
-                ErrorKind::Other,
-                "AssetId doesn't exist in balances",
-            )))?;
+            .ok_or_else(|| RuntimeError::Halt(io::Error::new(ErrorKind::Other, "AssetId doesn't exist in balances")))?;
         let balance_memory = &self.memory[offset..offset + WORD_SIZE];
 
         let balance = <[u8; WORD_SIZE]>::try_from(&*balance_memory).expect("Expected slice to be word length!");
@@ -191,10 +188,11 @@ impl<S> Interpreter<S> {
     pub(crate) fn set_output(&mut self, out_idx: usize, mut output: Output) -> Result<(), RuntimeError> {
         // verify output type matches out_idx type
         // Use halt errors as these should already have been validated
-        let tx_out = self.tx.outputs().get(out_idx).ok_or(RuntimeError::Halt(io::Error::new(
-            ErrorKind::Other,
-            "Invalid output index",
-        )))?;
+        let tx_out = self
+            .tx
+            .outputs()
+            .get(out_idx)
+            .ok_or_else(|| RuntimeError::Halt(io::Error::new(ErrorKind::Other, "Invalid output index")))?;
         if core::mem::discriminant(tx_out) != core::mem::discriminant(&output) {
             return Err(RuntimeError::Halt(io::Error::new(
                 ErrorKind::Other,
@@ -217,6 +215,7 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
+    #[allow(clippy::option_map_unit_fn)] // Waiting for https://github.com/rust-lang/rust/issues/91345
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
         self.receipts.push(receipt);
 

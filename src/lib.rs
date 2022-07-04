@@ -1,6 +1,7 @@
 //! FuelVM implementation
 
 #![warn(missing_docs)]
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
 
 pub mod backtrace;
 pub mod call;

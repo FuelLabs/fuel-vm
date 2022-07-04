@@ -249,12 +249,22 @@ where
 
             OpcodeRepr::JNEI => {
                 self.gas_charge(GAS_JNEI)?;
-                self.jump_not_equal_imm(a, b, imm)?;
+                self.jump_not_equal(a, b, imm)?;
             }
 
             OpcodeRepr::JNZI => {
                 self.gas_charge(GAS_JNZI)?;
-                self.jump_not_zero_imm(a, imm)?;
+                self.jump_not_zero(a, imm)?;
+            }
+
+            OpcodeRepr::JMP => {
+                self.gas_charge(GAS_JMP)?;
+                self.jump(a)?;
+            }
+
+            OpcodeRepr::JNE => {
+                self.gas_charge(GAS_JNE)?;
+                self.jump_not_equal(a, b, c)?;
             }
 
             OpcodeRepr::RET => {

@@ -28,17 +28,17 @@ impl<S> Interpreter<S> {
         }
     }
 
-    pub(crate) fn jump_not_equal_imm(&mut self, a: Word, b: Word, imm: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn jump_not_equal(&mut self, a: Word, b: Word, to: Word) -> Result<(), RuntimeError> {
         if a != b {
-            self.jump(imm)
+            self.jump(to)
         } else {
             self.inc_pc()
         }
     }
 
-    pub(crate) fn jump_not_zero_imm(&mut self, a: Word, imm: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
         if a != self.registers[REG_ZERO] {
-            self.jump(imm)
+            self.jump(to)
         } else {
             self.inc_pc()
         }

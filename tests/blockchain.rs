@@ -520,12 +520,14 @@ fn smo_instruction_works() {
         let txid = tx.id();
         let receipts = client.transact(tx);
 
-        let success = receipts.iter().any(|r| match r {
-            Receipt::ScriptResult {
-                result: ScriptExecutionResult::Success,
-                ..
-            } => true,
-            _ => false,
+        let success = receipts.iter().any(|r| {
+            matches!(
+                r,
+                Receipt::ScriptResult {
+                    result: ScriptExecutionResult::Success,
+                    ..
+                }
+            )
         });
 
         assert!(success);

@@ -18,6 +18,7 @@ where
     S: InterpreterStorage,
 {
     /// Execute the current instruction pair located in `$m[$pc]`.
+    #[allow(clippy::let_and_return)]
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
         let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]

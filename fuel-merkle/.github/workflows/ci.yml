@@ -69,11 +69,13 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Build
+      - name: Check
         uses: actions-rs/cargo@v1
         with:
-          command: build
+          command: check
           args: --verbose
+        env:
+          RUSTFLAGS: '-D warnings'
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -105,11 +107,13 @@ jobs:
           target: thumbv6m-none-eabi
           override: true
 
-      - name: Build no-std
+      - name: Check no-std
         uses: actions-rs/cargo@v1
         with:
-          command: build
+          command: check
           args: --verbose --target thumbv6m-none-eabi --no-default-features
+        env:
+          RUSTFLAGS: '-D warnings'
 
       - name: Run tests no-std
         uses: actions-rs/cargo@v1

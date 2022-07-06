@@ -55,7 +55,7 @@ mod test {
 
         let data = &TEST_DATA[0..1]; // 1 leaf
         for datum in data.iter() {
-            let _ = tree.push(datum);
+            tree.push(datum);
         }
 
         let leaf_0 = leaf_sum(data[0]);
@@ -70,7 +70,7 @@ mod test {
 
         let data = &TEST_DATA[0..7]; // 7 leaves
         for datum in data.iter() {
-            let _ = tree.push(datum);
+            tree.push(datum);
         }
 
         //               07
@@ -121,7 +121,7 @@ mod test {
 
         let data = &TEST_DATA[0..5]; // 5 leaves
         for datum in data.iter() {
-            let _ = tree.push(datum);
+            tree.push(datum);
         }
 
         let proof = tree.prove(10);
@@ -134,7 +134,7 @@ mod test {
 
         let data = &TEST_DATA[0..1]; // 1 leaf
         for datum in data.iter() {
-            let _ = tree.push(datum);
+            tree.push(datum);
         }
 
         let leaf_0 = leaf_sum(data[0]);
@@ -155,7 +155,7 @@ mod test {
 
         let data = &TEST_DATA[0..7]; // 7 leaves
         for datum in data.iter() {
-            let _ = tree.push(datum);
+            tree.push(datum);
         }
 
         //               07

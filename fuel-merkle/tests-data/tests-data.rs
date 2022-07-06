@@ -123,7 +123,7 @@ struct InMemoryMerkleTreeTestAdaptor {
     tree: Box<in_memory::MerkleTree>,
 }
 
-impl<'a> MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
+impl MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
     fn update(&mut self, key: &Bytes32, data: &[u8]) {
         self.tree.as_mut().update(key, data)
     }

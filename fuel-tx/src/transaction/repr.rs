@@ -1,3 +1,5 @@
+use crate::Transaction;
+
 #[cfg(feature = "std")]
 use fuel_types::Word;
 
@@ -5,6 +7,15 @@ use fuel_types::Word;
 pub enum TransactionRepr {
     Script = 0x00,
     Create = 0x01,
+}
+
+impl From<&Transaction> for TransactionRepr {
+    fn from(tx: &Transaction) -> Self {
+        match tx {
+            Transaction::Script { .. } => Self::Script,
+            Transaction::Create { .. } => Self::Create,
+        }
+    }
 }
 
 #[cfg(feature = "std")]

@@ -143,7 +143,7 @@ mod tests {
     use super::*;
     use fuel_types::{bytes::WORD_SIZE, Bytes64};
     use itertools::Itertools;
-    use proptest::{prop_assert_eq, proptest};
+    use quickcheck_macros::quickcheck;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
     use rstest::rstest;
 
@@ -173,19 +173,17 @@ mod tests {
     }
 
     // validate code_root is always equivalent to contract.root
-    proptest! {
-        #[test]
-        fn contract_root_matches_code_root(instructions in 0usize..100) {
-            let mut rng = StdRng::seed_from_u64(100);
-            let code_len = instructions * WORD_SIZE / 2;
-            let mut code = alloc::vec![0u8; code_len];
-            rng.fill_bytes(code.as_mut_slice());
-            let contract = Contract::from(code.clone());
-            // compute root
-            let code_root = Contract::root_from_code(code);
-            let contract_root = contract.root();
-            prop_assert_eq!(code_root, contract_root);
-        }
+    #[quickcheck]
+    fn contract_root_matches_code_root(instructions: u8) -> bool {
+        let mut rng = StdRng::seed_from_u64(100);
+        let code_len = instructions as usize * WORD_SIZE / 2;
+        let mut code = alloc::vec![0u8; code_len];
+        rng.fill_bytes(code.as_mut_slice());
+        let contract = Contract::from(code.clone());
+        // compute root
+        let code_root = Contract::root_from_code(code);
+        let contract_root = contract.root();
+        code_root == contract_root
     }
 
     #[rstest]

@@ -27,6 +27,9 @@ mod receipt;
 #[cfg(feature = "alloc")]
 mod transaction;
 
+#[cfg(feature = "std")]
+mod checked_transaction;
+
 #[cfg(feature = "builder")]
 pub use builder::TransactionBuilder;
 
@@ -42,6 +45,9 @@ pub use transaction::{
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]
 pub use transaction::consensus_parameters::default_parameters;
+
+#[cfg(feature = "std")]
+pub use checked_transaction::CheckedTransaction;
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

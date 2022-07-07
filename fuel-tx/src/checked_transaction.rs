@@ -4,13 +4,12 @@
 //! This allows the VM to accept transactions that have been already verified upstream,
 //! and consolidates logic around fee calculations and free balances.
 
-use crate::{
-    ConsensusParameters, Input, Output, Transaction, ValidationError,
-    ValidationError::InsufficientFeeAmount,
-};
+use crate::{ConsensusParameters, Input, Output, Transaction, TransactionFee, ValidationError};
+
 use alloc::collections::BTreeMap;
 use fuel_types::{AssetId, Word};
-use num_integer::div_ceil;
+
+use core::borrow::Borrow;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 // Avoid serde serialization of this type. Since checked tx would need to be re-validated on
@@ -117,46 +116,22 @@ impl CheckedTransaction {
             *balances.entry(asset_id).or_default() += amount;
         }
 
-        // Reduce by unavailable balances
+        // Deduct fee from base asset
 
-        // calculate base asset unavailableBalance with metered bytes + gas limit
-
-        let bytes = (transaction.metered_bytes_size() as u128)
-            .checked_mul(transaction.gas_price() as u128)
-            .ok_or(ValidationError::ArithmeticOverflow)?
-            .checked_mul(params.gas_per_byte as u128)
+        let fee = TransactionFee::checked_from_tx(params, transaction)
             .ok_or(ValidationError::ArithmeticOverflow)?;
-
-        // TODO: use native div_ceil once stabilized out from nightly
-        let safe_factored_bytes: u64 = div_ceil(bytes, params.gas_price_factor as u128)
-            .try_into()
-            .map_err(|_| ValidationError::ArithmeticOverflow)?;
-
-        let gas = (transaction.gas_price() as u128)
-            .checked_mul(transaction.gas_limit() as u128)
-            .ok_or(ValidationError::ArithmeticOverflow)?;
-
-        let fee = bytes
-            .checked_add(gas)
-            .ok_or(ValidationError::ArithmeticOverflow)?;
-
-        let safe_factored_fee: u64 = div_ceil(fee, params.gas_price_factor as u128)
-            .try_into()
-            .map_err(|_| ValidationError::ArithmeticOverflow)?;
 
         let base_asset = AssetId::default();
-        let base_asset_balance = balances.get_mut(&base_asset).ok_or(InsufficientFeeAmount {
-            expected: safe_factored_fee,
-            provided: 0,
-        })?;
-        // subtract total fee from base asset balance
-        *base_asset_balance =
-            base_asset_balance
-                .checked_sub(safe_factored_fee)
-                .ok_or(InsufficientFeeAmount {
-                    expected: safe_factored_fee,
-                    provided: *base_asset_balance,
-                })?;
+        let base_asset_balance = balances.entry(base_asset).or_default();
+
+        *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
+            ValidationError::InsufficientFeeAmount {
+                expected: fee.total(),
+                provided: *base_asset_balance,
+            },
+        )?;
+
+        let (min_fee, max_fee) = fee.into_inner();
 
         // reduce free balances by coin outputs
         for (asset_id, amount) in transaction
@@ -184,8 +159,8 @@ impl CheckedTransaction {
 
         Ok(AvailableBalances {
             initial_free_balances: balances,
-            max_fee: safe_factored_fee,
-            min_fee: safe_factored_bytes,
+            max_fee,
+            min_fee,
         })
     }
 }
@@ -202,11 +177,16 @@ impl AsRef<Transaction> for CheckedTransaction {
     }
 }
 
+impl Borrow<Transaction> for CheckedTransaction {
+    fn borrow(&self) -> &Transaction {
+        &self.transaction
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::TransactionBuilder;
-    use crate::ValidationError::InsufficientInputAmount;
+    use crate::{TransactionBuilder, ValidationError};
     use fuel_crypto::SecretKey;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
@@ -416,7 +396,7 @@ mod tests {
 
         // assert that tx without base input assets fails
         assert_eq!(
-            InsufficientFeeAmount {
+            ValidationError::InsufficientFeeAmount {
                 expected: 1,
                 provided: 0
             },
@@ -441,7 +421,7 @@ mod tests {
             .expect("insufficient fee amount expected");
 
         let provided = match err {
-            InsufficientFeeAmount { provided, .. } => provided,
+            ValidationError::InsufficientFeeAmount { provided, .. } => provided,
             _ => panic!("expected insufficient fee amount; found {:?}", err),
         };
 
@@ -466,7 +446,7 @@ mod tests {
             .expect("insufficient fee amount expected");
 
         let provided = match err {
-            InsufficientFeeAmount { provided, .. } => provided,
+            ValidationError::InsufficientFeeAmount { provided, .. } => provided,
             _ => panic!("expected insufficient fee amount; found {:?}", err),
         };
 
@@ -530,7 +510,7 @@ mod tests {
             .expect("Expected valid transaction");
 
         assert_eq!(
-            InsufficientInputAmount {
+            ValidationError::InsufficientInputAmount {
                 asset: any_asset,
                 expected: input_amount + 1,
                 provided: input_amount

@@ -38,8 +38,8 @@ pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    ConsensusParameters, Input, Metadata, Output, StorageSlot, Transaction, TransactionRepr, TxId,
-    UtxoId, ValidationError, Witness,
+    ConsensusParameters, Input, Metadata, Output, StorageSlot, Transaction, TransactionFee,
+    TransactionRepr, TxId, UtxoId, ValidationError, Witness,
 };
 
 #[cfg(feature = "alloc")]

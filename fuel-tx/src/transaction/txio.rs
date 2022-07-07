@@ -17,44 +17,6 @@ impl Transaction {
     }
 }
 
-impl SizedBytes for Transaction {
-    fn serialized_size(&self) -> usize {
-        let inputs = self
-            .inputs()
-            .iter()
-            .map(|i| i.serialized_size())
-            .sum::<usize>();
-        let outputs = self
-            .outputs()
-            .iter()
-            .map(|o| o.serialized_size())
-            .sum::<usize>();
-        let witnesses = self
-            .witnesses()
-            .iter()
-            .map(|w| w.serialized_size())
-            .sum::<usize>();
-
-        let n = match self {
-            Self::Script {
-                script,
-                script_data,
-                ..
-            } => {
-                TRANSACTION_SCRIPT_FIXED_SIZE
-                    + bytes::padded_len(script.as_slice())
-                    + bytes::padded_len(script_data.as_slice())
-            }
-
-            Self::Create { storage_slots, .. } => {
-                TRANSACTION_CREATE_FIXED_SIZE + storage_slots.len() * StorageSlot::SLOT_SIZE
-            }
-        };
-
-        n + inputs + outputs + witnesses
-    }
-}
-
 impl io::Read for Transaction {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();

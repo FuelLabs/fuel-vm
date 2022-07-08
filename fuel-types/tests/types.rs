@@ -53,6 +53,7 @@ fn from_slice_unchecked_safety() {
         check_consistency!(ContractId, rng, bytes);
         check_consistency!(Bytes4, rng, bytes);
         check_consistency!(Bytes8, rng, bytes);
+        check_consistency!(Bytes20, rng, bytes);
         check_consistency!(Bytes32, rng, bytes);
         check_consistency!(Bytes64, rng, bytes);
         check_consistency!(MessageId, rng, bytes);
@@ -123,6 +124,7 @@ fn hex_encoding() {
     encode_decode::<ContractId>(rng.gen());
     encode_decode::<Bytes4>(rng.gen());
     encode_decode::<Bytes8>(rng.gen());
+    encode_decode::<Bytes20>(rng.gen());
     encode_decode::<Bytes32>(rng.gen());
     encode_decode::<Bytes64>(rng.gen());
     encode_decode::<MessageId>(rng.gen());
@@ -138,6 +140,7 @@ fn test_key_serde() {
     let contract_id: ContractId = rng.gen();
     let bytes4: Bytes4 = rng.gen();
     let bytes8: Bytes8 = rng.gen();
+    let bytes20: Bytes20 = rng.gen();
     let bytes32: Bytes32 = rng.gen();
     let message_id: MessageId = rng.gen();
     let salt: Salt = rng.gen();
@@ -163,6 +166,11 @@ fn test_key_serde() {
     let bytes8_t = bincode::serialize(&bytes8).expect("Failed to serialize Bytes8");
     let bytes8_t: Bytes8 = bincode::deserialize(&bytes8_t).expect("Failed to deserialize Bytes8");
     assert_eq!(bytes8, bytes8_t);
+
+    let bytes20_t = bincode::serialize(&bytes20).expect("Failed to serialize Bytes20");
+    let bytes20_t: Bytes20 =
+        bincode::deserialize(&bytes20_t).expect("Failed to deserialize Bytes20");
+    assert_eq!(bytes20, bytes20_t);
 
     let bytes32_t = bincode::serialize(&bytes32).expect("Failed to serialize Bytes32");
     let bytes32_t: Bytes32 =
@@ -213,6 +221,11 @@ fn test_key_types_hex_serialization() {
     let bytes8_to_string =
         serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
     assert_eq!(format!("\"{}\"", bytes8), bytes8_to_string);
+
+    let bytes20: Bytes20 = rng.gen();
+    let bytes20_to_string =
+        serde_json::to_string(&bytes20).expect("serde_json::to_string failed on Bytes20");
+    assert_eq!(format!("\"{}\"", bytes20), bytes20_to_string);
 
     let bytes32: Bytes32 = rng.gen();
     let bytes32_to_string =

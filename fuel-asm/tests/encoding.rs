@@ -1,3 +1,5 @@
+#![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
+
 use fuel_asm::*;
 use std::io::{Read, Write};
 
@@ -204,7 +206,8 @@ fn opcode() {
     let mut buffer = [0u8; Opcode::LEN];
 
     for mut op in data.clone() {
-        op.read(&mut buffer)
+        let _ = op
+            .read(&mut buffer)
             .expect("Failed to write opcode to buffer");
         bytes.extend(&buffer);
 
@@ -271,7 +274,8 @@ fn opcode() {
         .chunks(Opcode::LEN)
         .zip(data.iter())
         .for_each(|(chunk, op)| {
-            op_p.write(chunk)
+            let _ = op_p
+                .write(chunk)
                 .expect("Failed to parse opcode from chunk");
 
             assert_eq!(op, &op_p);

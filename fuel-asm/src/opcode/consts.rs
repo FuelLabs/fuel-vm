@@ -557,6 +557,7 @@ impl OpcodeRepr {
 }
 
 #[test]
+#[allow(clippy::match_like_matches_macro)]
 fn check_predicate_allowed() {
     use OpcodeRepr::*;
 

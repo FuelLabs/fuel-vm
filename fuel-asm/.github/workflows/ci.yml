@@ -58,6 +58,15 @@ jobs:
         command: fmt
         args: --all --verbose -- --check
 
+    - name: Install clippy
+      run: rustup component add clippy
+
+    - name: Clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-features --all-targets -- -D warnings -D clippy::dbg_macro
+
     - name: Build
       uses: actions-rs/cargo@v1
       with:

@@ -75,13 +75,19 @@ impl<S> Interpreter<S> {
         }
 
         if gas > self.registers[REG_CGAS] {
-            self.registers[REG_GGAS] -= self.registers[REG_CGAS];
+            self.registers[REG_GGAS] = self.registers[REG_GGAS]
+                .checked_sub(self.registers[REG_CGAS])
+                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
             self.registers[REG_CGAS] = 0;
 
             Err(PanicReason::OutOfGas.into())
         } else {
-            self.registers[REG_CGAS] -= gas;
-            self.registers[REG_GGAS] -= gas;
+            self.registers[REG_CGAS] = self.registers[REG_CGAS]
+                .checked_sub(gas)
+                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+            self.registers[REG_GGAS] = self.registers[REG_GGAS]
+                .checked_sub(gas)
+                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
 
             Ok(())
         }

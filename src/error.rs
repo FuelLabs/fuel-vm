@@ -132,7 +132,7 @@ pub enum RuntimeError {
     Recoverable(#[from] PanicReason),
     /// Unspecified error that should halt the execution.
     #[error(transparent)]
-    Halt(#[from] io::Error),
+    Halt(#[from] io::Error), // TODO: a more generic error type
 }
 
 impl RuntimeError {
@@ -152,6 +152,14 @@ impl RuntimeError {
         E: Into<io::Error>,
     {
         Self::Halt(e.into())
+    }
+
+    /// Halting execution since some invariant has been violated
+    pub fn halt_on_bug(description: &'static str) -> Self {
+        Self::Halt(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("BUG: {description}"),
+        ))
     }
 }
 

@@ -46,7 +46,9 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
         if let Some(frame) = self.frames.pop() {
-            self.registers[REG_CGAS] += frame.context_gas();
+            self.registers[REG_CGAS] = self.registers[REG_CGAS]
+                .checked_add(frame.context_gas())
+                .ok_or(RuntimeError::halt_on_bug("CGAS would overflow"))?;
 
             frame
                 .registers()
@@ -158,6 +160,13 @@ where
         // credit contract asset_id balance
         self.balance_increase(call.to(), &asset_id, b)?;
 
+        let forward_gas_amount = cmp::min(self.registers[REG_GGAS], d);
+
+        // subtract gas
+        self.registers[REG_CGAS] = self.registers[REG_CGAS]
+            .checked_sub(forward_gas_amount)
+            .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+
         let mut frame = self.call_frame(call, asset_id)?;
 
         let stack = frame.to_bytes();
@@ -176,7 +185,7 @@ where
         self.registers[REG_BAL] = b;
         self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
         self.registers[REG_IS] = self.registers[REG_PC];
-        self.registers[REG_CGAS] = cmp::min(self.registers[REG_GGAS], d);
+        self.registers[REG_CGAS] = forward_gas_amount;
 
         let receipt = Receipt::call(
             self.internal_contract_or_default(),

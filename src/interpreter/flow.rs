@@ -165,7 +165,7 @@ where
         // subtract gas
         self.registers[REG_CGAS] = self.registers[REG_CGAS]
             .checked_sub(forward_gas_amount)
-            .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+            .ok_or(PanicReason::OutOfGas)?;
 
         let mut frame = self.call_frame(call, asset_id)?;
 

@@ -48,7 +48,7 @@ fn iow_offset() {
                 assert_eq!(offset, offset_p);
             });
 
-            tx.receipts_root_offset().map(|offset| {
+            if let Some(offset) = tx.receipts_root_offset() {
                 let receipts_root = rng.gen();
 
                 tx.set_receipts_root(receipts_root);
@@ -57,6 +57,6 @@ fn iow_offset() {
                 let receipts_root_p = &bytes[offset..offset + Bytes32::LEN];
 
                 assert_eq!(&receipts_root[..], receipts_root_p);
-            });
+            }
         });
 }

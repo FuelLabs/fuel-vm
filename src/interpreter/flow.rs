@@ -160,7 +160,7 @@ where
         // credit contract asset_id balance
         self.balance_increase(call.to(), &asset_id, b)?;
 
-        let forward_gas_amount = cmp::min(self.registers[REG_GGAS], d);
+        let forward_gas_amount = cmp::min(self.registers[REG_CGAS], d);
 
         // subtract gas
         self.registers[REG_CGAS] = self.registers[REG_CGAS]

@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings -D clippy::dbg_macro
 
 jobs:
   build:
@@ -39,7 +40,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-features --all-targets -- -D warnings -D clippy::dbg_macro
+        args: --all-features --all-targets
 
     - name: Build
       uses: actions-rs/cargo@v1

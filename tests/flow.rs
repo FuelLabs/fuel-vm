@@ -193,6 +193,11 @@ fn call() {
         .expect("Failed to execute script")
         .to_owned();
 
+    assert_eq!(
+        receipts[0].id().expect("Receipt value failed").to_owned(),
+        ContractId::default()
+    );
+    assert_eq!(receipts[0].to().expect("Receipt value failed").to_owned(), contract);
     assert_eq!(receipts[1].ra().expect("Receipt value failed"), 0x11);
     assert_eq!(receipts[1].rb().expect("Receipt value failed"), 0x2a);
     assert_eq!(receipts[1].rc().expect("Receipt value failed"), 0x3b);

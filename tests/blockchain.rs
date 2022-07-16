@@ -21,8 +21,9 @@ fn state_read_write() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let salt: Salt = rng.gen();
 
@@ -119,7 +120,6 @@ fn state_read_write() {
     let tx_deploy = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -127,7 +127,9 @@ fn state_read_write() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -180,14 +182,15 @@ fn state_read_write() {
     let tx_add_word = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
@@ -229,14 +232,15 @@ fn state_read_write() {
     let tx_unpack_xor = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     // Mutate the state
     client.transact(tx_unpack_xor);
@@ -284,8 +288,9 @@ fn load_external_contract_code() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
     let contract_code: Vec<Opcode> = vec![
@@ -308,7 +313,6 @@ fn load_external_contract_code() {
     let tx_create_target = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         0,
         salt,
@@ -316,7 +320,9 @@ fn load_external_contract_code() {
         vec![],
         vec![output0],
         vec![program.clone()],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     client.transact(tx_create_target);
 
@@ -360,30 +366,32 @@ fn load_external_contract_code() {
     let tx_deploy_loader = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         load_contract.clone().into_iter().collect(),
         vec![],
         vec![input0.clone()],
         vec![output1],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     // Patch the code with correct jump address
-    let transaction_end_addr = tx_deploy_loader.serialized_size() - Transaction::script_offset();
+    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
     *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
 
     let tx_deploy_loader = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         load_contract.into_iter().collect(),
         vec![],
         vec![input0],
         vec![output1],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
 
@@ -451,13 +459,11 @@ fn can_read_state_from_initial_storage_slots() {
     .collect();
 
     let log_tx = builder
+        .start_script(script, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(contract)
         .contract_output(&contract)
-        .script(script)
-        .script_data(script_data)
         .execute();
 
     for receipt in log_tx.receipts() {
@@ -477,8 +483,10 @@ fn smo_instruction_works() {
 
         let gas_price = 1;
         let gas_limit = 1_000_000;
-        let byte_price = 1;
         let maturity = 0;
+        let block_height = 0;
+
+        let params = client.params();
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
@@ -503,19 +511,12 @@ fn smo_instruction_works() {
         let tx = TransactionBuilder::script(script, script_data)
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .byte_price(byte_price)
             .maturity(maturity)
-            .add_unsigned_message_input(&secret, sender, recipient, nonce, balance, data)
+            .add_unsigned_message_input(secret, sender, recipient, nonce, balance, data)
             .add_output(message)
-            .finalize();
+            .finalize_checked(block_height, params);
 
-        let params = client.params();
-        let block_height = 0;
-
-        tx.validate(block_height, params)
-            .expect("tx expected to be properly signed");
-
-        let txid = tx.id();
+        let txid = tx.transaction().id();
         let receipts = client.transact(tx);
 
         let success = receipts.iter().any(|r| match r {

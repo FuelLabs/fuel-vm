@@ -6,7 +6,7 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::interpreter::Interpreter;
 
-use fuel_tx::{ScriptExecutionResult, Transaction};
+use fuel_tx::{CheckedTransaction, ScriptExecutionResult};
 use fuel_types::{ContractId, Word};
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Backtrace {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
     result: ScriptExecutionResult,
-    tx: Transaction,
+    tx: CheckedTransaction,
 }
 
 impl Backtrace {
@@ -28,7 +28,7 @@ impl Backtrace {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract_or_default();
         let memory = vm.memory().to_owned();
-        let tx = vm.transaction().clone();
+        let tx = vm.checked_transaction().clone();
         let mut registers = [0; VM_REGISTER_COUNT];
 
         registers.copy_from_slice(vm.registers());
@@ -69,7 +69,7 @@ impl Backtrace {
     }
 
     /// [`Transaction`] state when the error occurred.
-    pub const fn tx(&self) -> &Transaction {
+    pub const fn tx(&self) -> &CheckedTransaction {
         &self.tx
     }
 
@@ -82,7 +82,7 @@ impl Backtrace {
         [Word; VM_REGISTER_COUNT],
         Vec<u8>,
         ScriptExecutionResult,
-        Transaction,
+        CheckedTransaction,
     ) {
         let Self {
             call_stack,

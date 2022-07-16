@@ -10,7 +10,6 @@ fn gas_factor_rounds_correctly() {
     // arbitrary non-negligible primes
     let factor = 5479f64;
     let gas_price = 6197;
-    let byte_price = 7451;
 
     let params = ConsensusParameters::default().with_gas_price_factor(factor as Word);
 
@@ -21,20 +20,15 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
+        .start_script(script, vec![])
         .params(params)
         .gas_price(gas_price)
-        .byte_price(byte_price)
         .gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
-        .script(script)
         .build();
 
-    let bytes_cost = byte_price * transaction.metered_bytes_size() as Word;
-    let bytes_cost = (bytes_cost as f64 / factor).ceil() as Word;
-
-    let gas_limit_cost = gas_price * gas_limit;
-    let gas_limit_cost = (gas_limit_cost as f64 / factor).ceil() as Word;
+    let fee = TransactionFee::checked_from_tx(&params, transaction.transaction()).expect("failed to calculate fee");
 
     let profiler = GasProfiler::default();
 
@@ -52,13 +46,13 @@ fn gas_factor_rounds_correctly() {
         })
         .expect("failed to fetch change");
 
-    let initial_balance = input - gas_limit_cost - bytes_cost;
+    let initial_balance = input - fee.total();
 
     let gas_used = profiler.total_gas();
 
     let gas_remainder = gas_limit - gas_used;
-    let gas_remainder = gas_price * gas_remainder;
-    let gas_remainder = (gas_remainder as f64 / factor).floor() as Word;
+    let refund =
+        TransactionFee::gas_refund_value(&params, gas_remainder, gas_price).expect("failed to calculate refund");
 
-    assert_eq!(change, initial_balance + gas_remainder);
+    assert_eq!(change, initial_balance + refund);
 }

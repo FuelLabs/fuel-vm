@@ -4,7 +4,7 @@ use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
-use fuel_tx::{Contract, Receipt};
+use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
@@ -33,7 +33,7 @@ where
         let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..c + ContractId::LEN]) };
 
-        if !self.tx.input_contracts().any(|input| contract == input) {
+        if !self.transaction().input_contracts().any(|input| contract == input) {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -59,7 +59,11 @@ where
         let asset_id =
             AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
-        if !self.tx.input_contracts().any(|contract| &destination == contract) {
+        if !self
+            .transaction()
+            .input_contracts()
+            .any(|contract| &destination == contract)
+        {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -133,7 +137,9 @@ where
         }
 
         // credit variable output
-        self.set_variable_output(out_idx, asset_id, amount, to)?;
+        let variable = Output::variable(to, amount, asset_id);
+
+        self.set_variable_output(out_idx, variable)?;
 
         self.inc_pc()
     }

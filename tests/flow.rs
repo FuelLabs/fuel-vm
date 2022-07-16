@@ -15,8 +15,9 @@ fn code_copy() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
 
@@ -44,7 +45,6 @@ fn code_copy() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         0,
         salt,
@@ -52,7 +52,9 @@ fn code_copy() {
         vec![],
         vec![output],
         vec![program.clone()],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -78,20 +80,21 @@ fn code_copy() {
     let mut tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
-    let script_data_mem = client.tx_offset() + tx.script_data_offset().unwrap();
+    let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
-    match &mut tx {
+    match tx.as_mut() {
         Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
         _ => unreachable!(),
     }
@@ -110,9 +113,10 @@ fn call() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
     let salt: Salt = rng.gen();
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     let program: Vec<u8> = vec![
         Opcode::MOVI(0x10, 0x11),
@@ -137,7 +141,6 @@ fn call() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         0,
         salt,
@@ -145,7 +148,9 @@ fn call() {
         vec![],
         vec![output],
         vec![program.clone()],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default())
         .transact(tx)
@@ -167,22 +172,23 @@ fn call() {
     let mut tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     let params = ConsensusParameters::default();
 
-    let script_data_mem = params.tx_offset() + tx.script_data_offset().unwrap();
+    let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset().unwrap();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
-    match &mut tx {
+    match tx.as_mut() {
         Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
         _ => unreachable!(),
     }
@@ -211,8 +217,9 @@ fn call_frame_code_offset() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
     let bytecode_witness_index = 0;
@@ -239,7 +246,6 @@ fn call_frame_code_offset() {
     let deploy = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness_index,
         salt,
@@ -247,7 +253,9 @@ fn call_frame_code_offset() {
         vec![input],
         vec![output],
         vec![program.clone().into()],
-    );
+    )
+    .check_without_signature(height, &params)
+    .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default())
         .transact(deploy)
@@ -283,14 +291,15 @@ fn call_frame_code_offset() {
     let script = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     let mut vm = Interpreter::with_storage(storage, params);
 
@@ -345,11 +354,10 @@ fn revert_from_call_immediately_ends_execution() {
 
     // initiate the call to the contract which reverts
     let result = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .contract_output(&contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // verify there is only 1 revert receipt
@@ -368,8 +376,9 @@ fn jump_if_not_zero_immediate_jump() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
     let script_jnzi_does_jump = vec![
@@ -383,14 +392,15 @@ fn jump_if_not_zero_immediate_jump() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script_jnzi_does_jump.clone(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -407,8 +417,9 @@ fn jump_if_not_zero_immediate_no_jump() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
     let script_jnzi_does_not_jump = vec![
@@ -422,14 +433,15 @@ fn jump_if_not_zero_immediate_no_jump() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script_jnzi_does_not_jump.clone(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -446,8 +458,9 @@ fn jump_dynamic() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
     let script = vec![
@@ -462,14 +475,15 @@ fn jump_dynamic() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -486,8 +500,9 @@ fn jump_dynamic_condition_true() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
     let script = vec![
@@ -502,14 +517,15 @@ fn jump_dynamic_condition_true() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -526,8 +542,9 @@ fn jump_dynamic_condition_false() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
     let script = vec![
@@ -542,14 +559,15 @@ fn jump_dynamic_condition_false() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -568,8 +586,9 @@ fn revert() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
 
@@ -609,7 +628,6 @@ fn revert() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -617,7 +635,9 @@ fn revert() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     // Deploy the contract into the blockchain
     client.transact(tx);
@@ -673,14 +693,15 @@ fn revert() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
@@ -723,14 +744,15 @@ fn revert() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.clone(),
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate a checked tx");
 
     // Assert the state of `key` is reverted to `val`
     let state = client.as_ref().contract_state(&contract, &key);

@@ -6,8 +6,9 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let script = registers_init
         .iter()
@@ -15,17 +16,9 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -44,8 +37,9 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let script = program
         .iter()
@@ -53,17 +47,9 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .chain([Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage.clone(), Default::default())
         .transact(tx)
@@ -89,17 +75,9 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .chain([Opcode::LOG(reg, REG_OF, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -131,8 +109,9 @@ fn alu_wrapping(
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let set_regs = registers_init.iter().map(|(r, v)| Opcode::MOVI(*r, *v));
 
@@ -152,17 +131,9 @@ fn alu_wrapping(
     )
     .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -185,8 +156,9 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let script = registers_init
         .iter()
@@ -194,17 +166,9 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage.clone(), Default::default())
         .transact(tx)
@@ -230,17 +194,9 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -259,8 +215,9 @@ fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let script = registers_init
         .iter()
@@ -268,17 +225,10 @@ fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
+
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
         .receipts()

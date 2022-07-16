@@ -17,7 +17,7 @@ fuel-asm = "0.6"
 fuel-crypto = "0.5"
 fuel-merkle = "0.3"
 fuel-storage = "0.1"
-fuel-tx = "0.14"
+fuel-tx = "0.16"
 fuel-types = "0.5"
 itertools = "0.10"
 secp256k1 = { version = "0.20", features = ["recovery"] }
@@ -28,7 +28,7 @@ tracing = "0.1"
 rand = { version = "0.8", optional = true }
 
 [dev-dependencies]
-fuel-tx = { version = "0.14", features = ["builder"] }
+fuel-tx = { version = "0.16", features = ["builder", "internals"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 serde_json = "1.0"
 
@@ -39,7 +39,7 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["random", "dep:anyhow"]
+test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
 
 [[test]]
 name = "test-backtrace"

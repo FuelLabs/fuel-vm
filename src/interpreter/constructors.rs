@@ -1,15 +1,15 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use fuel_tx::{ConsensusParameters, Transaction};
-
-use super::Interpreter;
+use super::{Interpreter, RuntimeBalances};
 use crate::consts::*;
 use crate::context::Context;
-use crate::prelude::*;
 use crate::state::Debugger;
+use crate::storage::MemoryStorage;
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::{ProfileReceiver, Profiler};
+
+use fuel_tx::{CheckedTransaction, ConsensusParameters};
 
 impl<S> Interpreter<S> {
     /// Create a new interpreter instance out of a storage implementation.
@@ -23,14 +23,14 @@ impl<S> Interpreter<S> {
             memory: vec![0; VM_MAX_RAM as usize],
             frames: vec![],
             receipts: vec![],
-            tx: Transaction::default(),
+            tx: CheckedTransaction::default(),
             storage,
             debugger: Debugger::default(),
             context: Context::default(),
             block_height: 0,
+            balances: RuntimeBalances::default(),
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
-            unused_balance_index: Default::default(),
             params,
         }
     }

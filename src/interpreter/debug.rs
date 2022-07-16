@@ -1,7 +1,6 @@
 use super::Interpreter;
-use crate::call::CallFrame;
 use crate::consts::*;
-use crate::state::{Breakpoint, DebugEval, ProgramState};
+use crate::prelude::*;
 
 impl<S> Interpreter<S> {
     /// Get single-stepping mode
@@ -45,14 +44,14 @@ impl<S> Interpreter<S> {
 #[test]
 fn breakpoint_script() {
     use crate::consts::*;
-    use crate::prelude::*;
 
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let script = vec![
         Opcode::ADDI(0x10, REG_ZERO, 8),
@@ -66,17 +65,9 @@ fn breakpoint_script() {
     .copied()
     .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to generate checked tx");
 
     let suite = vec![
         (
@@ -119,15 +110,13 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
-    use crate::consts::*;
-    use crate::prelude::*;
-
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_price = 0;
     let gas_limit = 1_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
     let script = vec![
@@ -140,17 +129,9 @@ fn single_stepping() {
     .copied()
     .collect();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .check(height, &params)
+        .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);
 

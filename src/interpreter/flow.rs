@@ -153,7 +153,11 @@ where
             self.balance_decrease(&source_contract, &asset_id, b)?;
         }
 
-        if !self.tx.input_contracts().any(|contract| call.to() == contract) {
+        if !self
+            .transaction()
+            .input_contracts()
+            .any(|contract| call.to() == contract)
+        {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 

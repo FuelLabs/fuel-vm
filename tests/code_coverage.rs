@@ -1,18 +1,23 @@
-use fuel_tx::ScriptExecutionResult;
-use std::sync::{Arc, Mutex};
+use fuel_tx::{ScriptExecutionResult, TransactionBuilder};
 
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
-use fuel_vm::profiler::{InstructionLocation, ProfileReceiver, ProfilingData};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+
+use std::sync::{Arc, Mutex};
 
 const HALF_WORD_SIZE: u64 = 4;
 
 #[test]
 fn code_coverage() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
     let gas_price = 1;
     let gas_limit = 1_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     // Deploy contract with loops
     let reg_a = 0x20;
@@ -25,17 +30,12 @@ fn code_coverage() {
         Opcode::RET(REG_ONE),
     ];
 
-    let tx_script = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script_code.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), 0)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .finalize_checked(height, &params);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {

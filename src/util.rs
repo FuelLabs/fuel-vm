@@ -77,7 +77,10 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use fuel_asm::Opcode;
-    use fuel_tx::{ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, Witness};
+    use fuel_tx::{
+        CheckedTransaction, ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, TransactionBuilder,
+        Witness,
+    };
     use fuel_types::bytes::{Deserializable, SizedBytes};
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
@@ -94,12 +97,7 @@ pub mod test_helpers {
         rng: StdRng,
         gas_price: Word,
         gas_limit: Word,
-        byte_price: Word,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        script: Vec<Opcode>,
-        script_data: Vec<u8>,
-        witness: Vec<Witness>,
+        builder: TransactionBuilder,
         storage: MemoryStorage,
         params: ConsensusParameters,
         block_height: u32,
@@ -111,78 +109,75 @@ pub mod test_helpers {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
                 gas_limit: 100,
-                byte_price: 0,
-                inputs: Default::default(),
-                outputs: Default::default(),
-                script: vec![Opcode::RET(REG_ONE)],
-                script_data: vec![],
-                witness: vec![Witness::default()],
+                builder: TransactionBuilder::script(vec![Opcode::RET(REG_ONE)].into_iter().collect(), vec![]),
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
                 block_height: 0,
             }
         }
 
+        pub fn start_script(&mut self, script: Vec<Opcode>, script_data: Vec<u8>) -> &mut Self {
+            self.builder = TransactionBuilder::script(script.into_iter().collect(), script_data);
+            self.builder.gas_price(self.gas_price);
+            self.builder.gas_limit(self.gas_limit);
+            self
+        }
+
         pub fn gas_price(&mut self, price: Word) -> &mut TestBuilder {
+            self.builder.gas_price(price);
             self.gas_price = price;
             self
         }
 
         pub fn gas_limit(&mut self, limit: Word) -> &mut TestBuilder {
+            self.builder.gas_limit(limit);
             self.gas_limit = limit;
             self
         }
 
-        pub fn byte_price(&mut self, price: Word) -> &mut TestBuilder {
-            self.byte_price = price;
-            self
-        }
-
         pub fn change_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
-            self.outputs.push(Output::change(self.rng.gen(), 0, asset_id));
+            self.builder.add_output(Output::change(self.rng.gen(), 0, asset_id));
             self
         }
 
         pub fn coin_output(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
-            self.outputs.push(Output::coin(self.rng.gen(), amount, asset_id));
+            self.builder.add_output(Output::coin(self.rng.gen(), amount, asset_id));
             self
         }
 
         pub fn message_output(&mut self) -> &mut TestBuilder {
-            self.outputs.push(Output::message(Address::zeroed(), 0));
+            self.builder.add_output(Output::message(Address::zeroed(), 0));
             self
         }
 
         pub fn variable_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
-            self.outputs.push(Output::variable(self.rng.gen(), 0, asset_id));
+            self.builder
+                .add_output(Output::variable(Address::zeroed(), 0, asset_id));
             self
         }
 
         pub fn contract_output(&mut self, id: &ContractId) -> &mut TestBuilder {
             let input_idx = self
-                .inputs
+                .builder
+                .inputs()
                 .iter()
                 .find_position(|input| matches!(input, Input::Contract {contract_id, ..} if contract_id == id))
                 .expect("expected contract input with matching contract id");
-            self.outputs
-                .push(Output::contract(input_idx.0 as u8, self.rng.gen(), self.rng.gen()));
+
+            self.builder
+                .add_output(Output::contract(input_idx.0 as u8, self.rng.gen(), self.rng.gen()));
+
             self
         }
 
         pub fn coin_input(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
-            self.inputs.push(Input::coin_signed(
-                self.rng.gen(),
-                self.rng.gen(),
-                amount,
-                asset_id,
-                0,
-                0,
-            ));
+            self.builder
+                .add_unsigned_coin_input(self.rng.gen(), self.rng.gen(), amount, asset_id, 0);
             self
         }
 
         pub fn contract_input(&mut self, contract_id: ContractId) -> &mut TestBuilder {
-            self.inputs.push(Input::contract(
+            self.builder.add_input(Input::contract(
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
@@ -191,18 +186,8 @@ pub mod test_helpers {
             self
         }
 
-        pub fn script(&mut self, script: Vec<Opcode>) -> &mut TestBuilder {
-            self.script = script;
-            self
-        }
-
-        pub fn script_data(&mut self, script_data: Vec<u8>) -> &mut TestBuilder {
-            self.script_data = script_data;
-            self
-        }
-
-        pub fn witness(&mut self, witness: Vec<Witness>) -> &mut TestBuilder {
-            self.witness = witness;
+        pub fn witness(&mut self, witness: Witness) -> &mut TestBuilder {
+            self.builder.add_witness(witness);
             self
         }
 
@@ -225,25 +210,20 @@ pub mod test_helpers {
             self.params.tx_offset()
         }
 
-        pub fn build(&mut self) -> Transaction {
-            Transaction::script(
-                self.gas_price,
-                self.gas_limit,
-                self.byte_price,
-                0,
-                self.script.iter().copied().collect(),
-                self.script_data.clone(),
-                self.inputs.clone(),
-                self.outputs.clone(),
-                self.witness.clone(),
-            )
+        pub fn build(&mut self) -> CheckedTransaction {
+            self.builder.finalize_checked(self.block_height as Word, &self.params)
+        }
+
+        pub fn build_without_signature(&mut self) -> CheckedTransaction {
+            self.builder
+                .finalize_checked_without_signature(self.block_height as Word, &self.params)
         }
 
         pub fn build_get_balance_tx(
             params: &ConsensusParameters,
             contract_id: &ContractId,
             asset_id: &AssetId,
-        ) -> Transaction {
+        ) -> CheckedTransaction {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
@@ -263,11 +243,9 @@ pub mod test_helpers {
                 .collect();
 
             TestBuilder::new(2322u64)
+                .start_script(script, script_data)
                 .gas_price(0)
-                .byte_price(0)
                 .gas_limit(1_000_000)
-                .script(script)
-                .script_data(script_data)
                 .contract_input(*contract_id)
                 .contract_output(contract_id)
                 .build()
@@ -295,7 +273,6 @@ pub mod test_helpers {
             let tx = Transaction::create(
                 self.gas_price,
                 self.gas_limit,
-                self.byte_price,
                 0,
                 0,
                 salt,
@@ -303,7 +280,9 @@ pub mod test_helpers {
                 vec![],
                 vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
-            );
+            )
+            .check(self.block_height as Word, &self.params)
+            .expect("failed to check tx");
 
             // setup a contract in current test state
             let state = self.execute_tx(tx).expect("Expected vm execution to be successful");
@@ -322,7 +301,7 @@ pub mod test_helpers {
             }
         }
 
-        pub fn execute_tx(&mut self, tx: Transaction) -> anyhow::Result<StateTransition> {
+        pub fn execute_tx(&mut self, tx: CheckedTransaction) -> anyhow::Result<StateTransition> {
             self.storage.set_block_height(self.block_height);
             let mut client = MemoryClient::new(self.storage.clone(), self.params);
 
@@ -336,6 +315,7 @@ pub mod test_helpers {
             }
 
             let state = txtor.state_transition().unwrap().into_owned();
+
             let interpreter = txtor.interpreter();
 
             // verify serialized tx == referenced tx
@@ -353,7 +333,7 @@ pub mod test_helpers {
 
         /// Build test tx and execute it
         pub fn execute(&mut self) -> StateTransition {
-            let tx = self.build();
+            let tx = self.build_without_signature();
 
             self.execute_tx(tx).expect("expected successful vm execution")
         }

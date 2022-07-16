@@ -6,7 +6,7 @@ use crate::interpreter::Interpreter;
 use crate::state::StateTransitionRef;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{ConsensusParameters, Receipt, Transaction};
+use fuel_tx::{CheckedTransaction, ConsensusParameters, Receipt};
 
 use std::{mem, slice};
 
@@ -130,7 +130,7 @@ where
     S: InterpreterStorage,
 {
     /// Execute a transaction, and return the new state of the transactor
-    pub fn transact(&mut self, tx: Transaction) -> &mut Self {
+    pub fn transact(&mut self, tx: CheckedTransaction) -> &mut Self {
         match self.interpreter.transact(tx) {
             Ok(s) => {
                 // Safety: cast `StateTransitionRef<'_>` to `StateTransitionRef<'a>` since it

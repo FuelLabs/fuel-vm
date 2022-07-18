@@ -4,14 +4,22 @@
 //! This allows the VM to accept transactions that have been already verified upstream,
 //! and consolidates logic around fee calculations and free balances.
 
-use crate::{ConsensusParameters, Input, Output, Transaction, TransactionFee, ValidationError};
+use crate::{
+    ConsensusParameters, Input, Metadata, Output, Transaction, TransactionFee, ValidationError,
+};
+use fuel_asm::PanicReason;
+use fuel_types::bytes::SerializableVec;
+use fuel_types::{Address, AssetId, Bytes32, Word};
 
 use alloc::collections::BTreeMap;
-use fuel_types::{AssetId, Word};
+use core::{borrow::Borrow, ops::Index};
 
-use core::borrow::Borrow;
+use core::mem;
+use std::io::{self, Read};
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+const BASE_ASSET: AssetId = AssetId::zeroed();
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 // Avoid serde serialization of this type. Since checked tx would need to be re-validated on
 // deserialization anyways, it's cleaner to redo the tx check.
 pub struct CheckedTransaction {
@@ -29,6 +37,13 @@ pub struct CheckedTransaction {
     checked_signatures: bool,
 }
 
+impl Default for CheckedTransaction {
+    fn default() -> Self {
+        Self::check(Default::default(), Default::default(), &Default::default())
+            .expect("default tx should produce a valid checked transaction")
+    }
+}
+
 impl CheckedTransaction {
     /// Fully verify transaction, including signatures.
     pub fn check(
@@ -44,12 +59,14 @@ impl CheckedTransaction {
 
     /// Verify transaction, without signature checks.
     pub fn check_unsigned(
-        transaction: Transaction,
+        mut transaction: Transaction,
         block_height: Word,
         params: &ConsensusParameters,
     ) -> Result<Self, ValidationError> {
         // fully validate transaction (with signature)
         transaction.validate_without_signature(block_height, params)?;
+        transaction.precompute_metadata();
+
         // validate fees and compute free balances
         let AvailableBalances {
             initial_free_balances,
@@ -92,6 +109,145 @@ impl CheckedTransaction {
         self.checked_signatures
     }
 
+    pub const fn metadata(&self) -> Option<&Metadata> {
+        self.transaction.metadata()
+    }
+
+    pub fn tx_bytes(&mut self) -> Vec<u8> {
+        self.transaction.to_bytes()
+    }
+
+    pub fn tx_output_to_mem(&mut self, idx: usize, buf: &mut [u8]) -> io::Result<usize> {
+        self.transaction
+            ._outputs_mut()
+            .get_mut(idx)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Invalid output idx"))
+            .and_then(|o| o.read(buf))
+    }
+
+    pub fn tx_set_receipts_root(&mut self, root: Bytes32) -> Option<Bytes32> {
+        self.transaction.set_receipts_root(root)
+    }
+
+    pub fn tx_replace_message_output(
+        &mut self,
+        idx: usize,
+        output: Output,
+    ) -> Result<(), PanicReason> {
+        // TODO increase the error granularity for this case - create a new variant of panic reason
+        if !matches!(&output, Output::Message {
+                recipient,
+                ..
+            } if recipient != &Address::zeroed())
+        {
+            return Err(PanicReason::OutputNotFound);
+        }
+
+        self.transaction
+            ._outputs_mut()
+            .get_mut(idx)
+            .and_then(|o| match o {
+                Output::Message { recipient, .. } if recipient == &Address::zeroed() => Some(o),
+                _ => None,
+            })
+            .map(|o| mem::replace(o, output))
+            .map(|_| ())
+            .ok_or(PanicReason::NonZeroMessageOutputRecipient)
+    }
+
+    pub fn tx_replace_variable_output(
+        &mut self,
+        idx: usize,
+        output: Output,
+    ) -> Result<(), PanicReason> {
+        if !output.is_variable() {
+            return Err(PanicReason::ExpectedOutputVariable);
+        }
+
+        // TODO increase the error granularity for this case - create a new variant of panic reason
+        self.transaction
+            ._outputs_mut()
+            .get_mut(idx)
+            .and_then(|o| match o {
+                Output::Variable { amount, .. } if amount == &0 => Some(o),
+                _ => None,
+            })
+            .map(|o| mem::replace(o, output))
+            .map(|_| ())
+            .ok_or(PanicReason::OutputNotFound)
+    }
+
+    /// Update change and variable outputs.
+    ///
+    /// `revert` will signal if the execution was reverted. It will refund the unused gas cost to
+    /// the base asset and reset output changes to their initial balances.
+    ///
+    /// `remaining_gas` expects the raw content of `$ggas`
+    ///
+    /// `balances` will contain the current state of the free balances
+    pub fn update_outputs<I>(
+        &mut self,
+        params: &ConsensusParameters,
+        revert: bool,
+        remaining_gas: Word,
+        balances: &I,
+    ) -> Result<(), ValidationError>
+    where
+        I: for<'a> Index<&'a AssetId, Output = Word>,
+    {
+        let gas_refund =
+            TransactionFee::gas_refund_value(params, remaining_gas, self.transaction.gas_price())
+                .ok_or(ValidationError::ArithmeticOverflow)?;
+
+        self.transaction
+            ._outputs_mut()
+            .iter_mut()
+            .try_for_each(|o| match o {
+                // If revert, set base asset to initial balance and refund unused gas
+                //
+                // Note: the initial balance deducts the gas limit from base asset
+                Output::Change {
+                    asset_id, amount, ..
+                } if revert && asset_id == &BASE_ASSET => self.initial_free_balances[&BASE_ASSET]
+                    .checked_add(gas_refund)
+                    .map(|v| *amount = v)
+                    .ok_or(ValidationError::ArithmeticOverflow),
+
+                // If revert, reset any non-base asset to its initial balance
+                Output::Change {
+                    asset_id, amount, ..
+                } if revert => {
+                    *amount = self.initial_free_balances[asset_id];
+                    Ok(())
+                }
+
+                // The change for the base asset will be the available balance + unused gas
+                Output::Change {
+                    asset_id, amount, ..
+                } if asset_id == &BASE_ASSET => balances[asset_id]
+                    .checked_add(gas_refund)
+                    .map(|v| *amount = v)
+                    .ok_or(ValidationError::ArithmeticOverflow),
+
+                // Set changes to the remainder provided balances
+                Output::Change {
+                    asset_id, amount, ..
+                } => {
+                    *amount = balances[asset_id];
+                    Ok(())
+                }
+
+                // If revert, zeroes all variable output values
+                Output::Variable { amount, .. } if revert => {
+                    *amount = 0;
+                    Ok(())
+                }
+
+                // Other outputs are unaffected
+                _ => Ok(()),
+            })
+    }
+
     fn _initial_free_balances(
         transaction: &Transaction,
         params: &ConsensusParameters,
@@ -109,7 +265,7 @@ impl CheckedTransaction {
             } => Some((*asset_id, amount)),
             // Sum message inputs
             Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => {
-                Some((AssetId::default(), amount))
+                Some((BASE_ASSET, amount))
             }
             _ => None,
         }) {
@@ -121,8 +277,7 @@ impl CheckedTransaction {
         let fee = TransactionFee::checked_from_tx(params, transaction)
             .ok_or(ValidationError::ArithmeticOverflow)?;
 
-        let base_asset = AssetId::default();
-        let base_asset_balance = balances.entry(base_asset).or_default();
+        let base_asset_balance = balances.entry(BASE_ASSET).or_default();
 
         *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
             ValidationError::InsufficientFeeAmount {
@@ -177,9 +332,46 @@ impl AsRef<Transaction> for CheckedTransaction {
     }
 }
 
+#[cfg(feature = "internals")]
+impl AsMut<Transaction> for CheckedTransaction {
+    fn as_mut(&mut self) -> &mut Transaction {
+        &mut self.transaction
+    }
+}
+
 impl Borrow<Transaction> for CheckedTransaction {
     fn borrow(&self) -> &Transaction {
         &self.transaction
+    }
+}
+
+impl From<CheckedTransaction> for Transaction {
+    fn from(tx: CheckedTransaction) -> Self {
+        tx.transaction
+    }
+}
+
+impl Transaction {
+    /// Fully verify transaction, including signatures.
+    ///
+    /// For more info, check [`CheckedTransaction::check`].
+    pub fn check(
+        self,
+        block_height: Word,
+        params: &ConsensusParameters,
+    ) -> Result<CheckedTransaction, ValidationError> {
+        CheckedTransaction::check(self, block_height, params)
+    }
+
+    /// Verify transaction, without signature checks.
+    ///
+    /// For more info, check [`CheckedTransaction::check_unsigned`].
+    pub fn check_without_signature(
+        self,
+        block_height: Word,
+        params: &ConsensusParameters,
+    ) -> Result<CheckedTransaction, ValidationError> {
+        CheckedTransaction::check_unsigned(self, block_height, params)
     }
 }
 
@@ -192,6 +384,16 @@ mod tests {
     use quickcheck_macros::quickcheck;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
+
+    #[test]
+    fn checked_tx_has_default() {
+        let height = 1;
+
+        CheckedTransaction::default()
+            .transaction()
+            .validate(height, &Default::default())
+            .expect("default checked tx should be valid");
+    }
 
     #[test]
     fn checked_tx_accepts_valid_tx() {
@@ -492,10 +694,10 @@ mod tests {
             .gas_price(1)
             .gas_limit(100)
             // base asset
-            .add_unsigned_coin_input(&secret, rng.gen(), input_amount, AssetId::default(), 0)
+            .add_unsigned_coin_input(secret, rng.gen(), input_amount, AssetId::default(), 0)
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             // arbitrary spending asset
-            .add_unsigned_coin_input(&secret, rng.gen(), input_amount, any_asset, 0)
+            .add_unsigned_coin_input(secret, rng.gen(), input_amount, any_asset, 0)
             .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
             .add_output(Output::change(rng.gen(), 0, any_asset))
             .finalize();
@@ -560,7 +762,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(&rng.gen(), rng.gen(), input_amount, asset, 0)
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, 0)
             .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), output_amount, asset))
@@ -604,7 +806,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(
-                &rng.gen(),
+                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
@@ -649,7 +851,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(&rng.gen(), rng.gen(), input_amount, AssetId::default(), 0)
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, AssetId::default(), 0)
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
     }

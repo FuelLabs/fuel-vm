@@ -41,7 +41,7 @@ impl Contract {
                     let mut b = [0u8; 8];
 
                     let l = c.len();
-                    (&mut b[..l]).copy_from_slice(c);
+                    b[..l].copy_from_slice(c);
 
                     b.into()
                 }

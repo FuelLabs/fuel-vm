@@ -75,6 +75,20 @@ impl TransactionFee {
             .map(|(bytes, total)| Self::new(bytes, total))
     }
 
+    /// Attempt to calculate a gas as asset value, using the price factor defined in the consensus
+    /// parameters.
+    ///
+    /// Will return `None` if overflow occurs
+    pub fn gas_refund_value(params: &ConsensusParameters, gas: Word, price: Word) -> Option<Word> {
+        let gas = gas as u128;
+        let price = price as u128;
+        let factor = params.gas_price_factor as u128;
+
+        gas.checked_mul(price)
+            .map(|g| num_integer::div_floor(g, factor))
+            .and_then(|g| g.try_into().ok())
+    }
+
     /// Attempt to create a transaction fee from parameters and transaction internals
     ///
     /// Will return `None` if arithmetic overflow occurs.

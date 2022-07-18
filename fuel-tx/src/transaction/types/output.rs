@@ -183,6 +183,14 @@ impl Output {
         }
     }
 
+    pub const fn is_message(&self) -> bool {
+        matches!(self, Self::Message { .. })
+    }
+
+    pub const fn is_variable(&self) -> bool {
+        matches!(self, Self::Variable { .. })
+    }
+
     pub fn message_id(
         sender: &Address,
         recipient: &Address,

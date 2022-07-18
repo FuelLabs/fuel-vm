@@ -263,6 +263,13 @@ impl Transaction {
         }
     }
 
+    pub const fn salt(&self) -> Option<&Salt> {
+        match self {
+            Transaction::Create { salt, .. } => Some(salt),
+            Transaction::Script { .. } => None,
+        }
+    }
+
     pub fn inputs(&self) -> &[Input] {
         match self {
             Self::Script { inputs, .. } => inputs.as_slice(),

@@ -76,15 +76,13 @@ fn cgas_overflow_bug() {
 
     // initiate the call between contracts
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx processed correctly
@@ -184,15 +182,13 @@ fn cgas_uses_min_available_gas() {
 
     // initiate the call between contracts
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx processed correctly

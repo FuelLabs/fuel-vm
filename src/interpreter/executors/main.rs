@@ -216,9 +216,11 @@ where
                 return Err(PanicReason::MemoryOverflow.into());
             }
 
-            let state = self
-                .execute()
-                .map_err(|e| e.panic_reason().expect("Call routine should return only VM panic"))?;
+            let state = self.execute().map_err(|e| {
+                e.panic_reason()
+                    .map(RuntimeError::Recoverable)
+                    .unwrap_or(RuntimeError::Halt(e.into()))
+            })?;
 
             match state {
                 ExecuteState::Return(r) => {

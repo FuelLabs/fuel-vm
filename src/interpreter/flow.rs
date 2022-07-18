@@ -176,6 +176,8 @@ where
             return Err(PanicReason::MemoryOverflow.into());
         }
 
+        let id = self.internal_contract_or_default();
+
         self.registers[REG_FP] = self.registers[REG_SP];
         self.registers[REG_SP] += len;
         self.registers[REG_SSP] = self.registers[REG_SP];
@@ -188,7 +190,7 @@ where
         self.registers[REG_CGAS] = forward_gas_amount;
 
         let receipt = Receipt::call(
-            self.internal_contract_or_default(),
+            id,
             *frame.to(),
             b,
             *frame.asset_id(),

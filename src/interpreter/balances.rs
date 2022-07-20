@@ -6,7 +6,8 @@ use fuel_tx::{CheckedTransaction, ValidationError};
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
+use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Balance {
@@ -100,10 +101,14 @@ impl RuntimeBalances {
 
     /// Attempt to add the balance of an asset, updating the VM memory in the appropriate
     /// offset
+    ///
+    /// Note: This will not append a new asset into the set since all the assets must be created
+    /// during VM initialization and any additional asset would imply reordering the memory
+    /// representation of the balances since they must always be ordered, as in the protocol.
     pub fn checked_balance_add(&mut self, memory: &mut [u8], asset: &AssetId, value: Word) -> Option<Word> {
         self.state
             .get_mut(asset)
-            .and_then(|b| b.checked_sub(value))
+            .and_then(|b| b.checked_add(value))
             .map(|balance| Self::_set_memory_balance(balance, memory))
             .or((value == 0).then(|| 0))
     }
@@ -147,7 +152,7 @@ impl Index<&AssetId> for RuntimeBalances {
 }
 
 #[test]
-fn runtime_balances_writes_to_memory_correctly() {
+fn writes_to_memory_correctly() {
     use crate::prelude::*;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -188,4 +193,131 @@ fn runtime_balances_writes_to_memory_correctly() {
 
             ofs + AssetId::LEN + WORD_SIZE
         });
+}
+
+#[test]
+fn try_from_iter_wont_overflow() {
+    use crate::prelude::*;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let a: AssetId = rng.gen();
+    let b: AssetId = rng.gen();
+    let c: AssetId = rng.gen();
+
+    // Sanity check
+    let balances = vec![(a, u64::MAX), (b, 15), (c, 0)];
+    let runtime_balances = RuntimeBalances::try_from_iter(balances.clone()).expect("failed to create balance set");
+
+    balances.iter().for_each(|(asset, val)| {
+        let bal = runtime_balances.balance(asset).expect("failed to fetch balance");
+
+        assert_eq!(val, &bal);
+    });
+
+    // Aggregated sum check
+    let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (b, 1)];
+    let balances_aggregated = vec![(a, u64::MAX), (b, 16), (c, 0)];
+    let runtime_balances = RuntimeBalances::try_from_iter(balances.clone()).expect("failed to create balance set");
+
+    balances_aggregated.iter().for_each(|(asset, val)| {
+        let bal = runtime_balances.balance(asset).expect("failed to fetch balance");
+
+        assert_eq!(val, &bal);
+    });
+
+    // Overflow won't panic
+    let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (a, 1)];
+    let err = RuntimeBalances::try_from_iter(balances.clone()).expect_err("overflow set should fail");
+
+    assert_eq!(ValidationError::ArithmeticOverflow, err);
+}
+
+#[test]
+fn checked_add_and_sub_works() {
+    use crate::prelude::*;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut memory = Interpreter::without_storage().memory;
+
+    let asset: AssetId = rng.gen();
+
+    let balances = vec![(asset, 0)];
+    let mut balances = RuntimeBalances::try_from_iter(balances).expect("failed to create set");
+
+    // Sanity check
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+    assert_eq!(bal, 0);
+
+    // Add zero balance not in the set should result in zero and not mutate the set
+    let asset_b: AssetId = rng.gen();
+    assert_ne!(asset, asset_b);
+
+    let val = balances
+        .checked_balance_add(&mut memory, &asset_b, 0)
+        .expect("failed to add balance");
+
+    assert_eq!(val, 0);
+    assert!(balances.balance(&asset_b).is_none());
+
+    // Normal add balance works
+    let val = balances
+        .checked_balance_add(&mut memory, &asset, 150)
+        .expect("failed to add balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, 150);
+    assert_eq!(bal, 150);
+
+    let val = balances
+        .checked_balance_add(&mut memory, &asset, 75)
+        .expect("failed to add balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, 225);
+    assert_eq!(bal, 225);
+
+    // Normal sub balance works
+    let val = balances
+        .checked_balance_sub(&mut memory, &asset, 30)
+        .expect("failed to sub balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, 195);
+    assert_eq!(bal, 195);
+
+    let val = balances
+        .checked_balance_sub(&mut memory, &asset, 120)
+        .expect("failed to sub balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, 75);
+    assert_eq!(bal, 75);
+
+    let val = balances
+        .checked_balance_sub(&mut memory, &asset, 70)
+        .expect("failed to sub balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, 5);
+    assert_eq!(bal, 5);
+
+    // Balance won't panic underflow
+    assert!(balances.checked_balance_sub(&mut memory, &asset, 10).is_none());
+
+    // Balance won't panic overflow
+    let val = balances
+        .checked_balance_add(&mut memory, &asset, u64::MAX - 5)
+        .expect("failed to add balance");
+    let bal = balances.balance(&asset).expect("failed to fetch balance");
+
+    assert_eq!(val, u64::MAX);
+    assert_eq!(bal, u64::MAX);
+
+    assert!(balances.checked_balance_add(&mut memory, &asset, 1).is_none());
 }

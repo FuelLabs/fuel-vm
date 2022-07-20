@@ -88,7 +88,6 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         let tx = self.tx.transaction();
         let storage = &mut self.storage;

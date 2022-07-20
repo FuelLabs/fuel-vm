@@ -420,7 +420,6 @@ mod tests {
     use crate::prelude::*;
 
     #[test]
-    #[ignore]
     fn memcopy() {
         let mut vm = Interpreter::with_memory_storage();
 
@@ -474,7 +473,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn memrange() {
         let m = MemoryRange::from(..1024);
         let m_p = MemoryRange::new(0, 1024);
@@ -506,7 +504,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn stack_alloc_ownership() {
         let mut vm = Interpreter::with_memory_storage();
 

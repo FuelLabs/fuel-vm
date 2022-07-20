@@ -199,12 +199,12 @@ impl<S> Interpreter<S> {
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
+    use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
     use std::io::Write;
 
     #[test]
-    #[ignore]
     fn external_balance() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 
@@ -218,23 +218,18 @@ mod tests {
         let script = vec![Opcode::RET(0x01)].iter().copied().collect();
         let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
-        let inputs = balances
-            .iter()
-            .map(|(asset_id, amount)| Input::coin_signed(rng.gen(), rng.gen(), *amount, *asset_id, 0, maturity))
-            .collect();
+        let mut tx = TransactionBuilder::script(script, Default::default());
 
-        let tx = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            script,
-            vec![],
-            inputs,
-            vec![],
-            vec![vec![].into()],
-        )
-        .check(height, vm.params())
-        .expect("failed to check tx");
+        balances.iter().copied().for_each(|(asset, amount)| {
+            tx.add_unsigned_coin_input(rng.gen(), rng.gen(), amount, asset, maturity);
+        });
+
+        let tx = tx
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .gas_limit(100)
+            .maturity(maturity)
+            .finalize_checked(height as Word, &Default::default());
 
         vm.init_with_storage(tx).expect("Failed to init VM!");
 
@@ -248,7 +243,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn variable_output_updates_in_memory() {
         let mut rng = StdRng::seed_from_u64(2322u64);
 

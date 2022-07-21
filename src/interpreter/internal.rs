@@ -55,11 +55,11 @@ impl<S> Interpreter<S> {
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
-    pub(crate) const fn context(&self) -> Context {
+    pub(crate) const fn context(&self) -> &Context {
         if self.registers[REG_FP] == 0 {
-            self.context
+            &self.context
         } else {
-            Context::Call
+            &Context::Call
         }
     }
 
@@ -72,7 +72,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {
-        matches!(self.context, Context::Predicate)
+        matches!(self.context, Context::Predicate { .. })
     }
 
     pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {

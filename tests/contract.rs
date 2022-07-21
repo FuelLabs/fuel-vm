@@ -15,8 +15,9 @@ fn mint_burn() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
     let program: Witness = [
@@ -47,7 +48,6 @@ fn mint_burn() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -55,7 +55,9 @@ fn mint_burn() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx);
 
@@ -72,16 +74,17 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         vec![],
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
-    let script_data_offset = client.tx_offset() + tx.script_data_offset().unwrap();
+    let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
     script_ops[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let script: Vec<u8> = script_ops.iter().copied().collect();
@@ -89,14 +92,15 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     let script_data_check_balance: Vec<u8> = asset_id
         .as_ref()
@@ -116,29 +120,31 @@ fn mint_burn() {
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script_check_balance.iter().copied().collect(),
         vec![],
         vec![input.clone()],
         vec![output.clone()],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
-    let script_data_offset = client.tx_offset() + tx_check_balance.script_data_offset().unwrap();
+    let script_data_offset = client.tx_offset() + tx_check_balance.transaction().script_data_offset().unwrap();
     script_check_balance[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
     let tx_check_balance = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
         vec![input.clone()],
         vec![output.clone()],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
@@ -158,14 +164,15 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
         .ra()
@@ -188,14 +195,15 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx);
     balance -= burn;
@@ -211,14 +219,15 @@ fn mint_burn() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input.clone()],
         vec![output],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx);
 
@@ -271,15 +280,13 @@ fn call_increases_contract_asset_balance_and_balance_register() {
 
     // call contract with some amount of coins to forward
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .coin_input(asset_id, call_amount)
         .contract_input(contract_id)
         .contract_output(&contract_id)
         .change_output(asset_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx processed correctly
@@ -361,15 +368,13 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
 
     // initiate the call between contracts
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx processed correctly
@@ -448,15 +453,13 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
 
     // initiate the transfer between contracts
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx processed correctly
@@ -529,15 +532,13 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     assert_eq!(source_balance, initial_internal_balance);
 
     let transfer_tx = test_context
+        .start_script(script_ops, script_data)
         .gas_limit(gas_limit)
         .gas_price(0)
-        .byte_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
-        .script(script_ops)
-        .script_data(script_data)
         .execute();
 
     // Ensure transfer tx reverts since transfer amount is too large

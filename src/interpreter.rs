@@ -4,12 +4,12 @@ use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
 use crate::state::Debugger;
-use std::collections::HashMap;
 
-use fuel_tx::{ConsensusParameters, Receipt, Transaction};
-use fuel_types::{AssetId, Word};
+use fuel_tx::{CheckedTransaction, ConsensusParameters, Receipt, Transaction};
+use fuel_types::Word;
 
 mod alu;
+mod balances;
 mod blockchain;
 mod constructors;
 mod contract;
@@ -35,6 +35,7 @@ use crate::profiler::Profiler;
 #[cfg(feature = "profile-gas")]
 use crate::profiler::InstructionLocation;
 
+pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 #[derive(Debug, Clone)]
@@ -51,15 +52,14 @@ pub struct Interpreter<S> {
     memory: Vec<u8>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
-    tx: Transaction,
+    tx: CheckedTransaction,
     storage: S,
     debugger: Debugger,
     context: Context,
     block_height: u32,
+    balances: RuntimeBalances,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
-    // track the offset for each unused balance in memory
-    unused_balance_index: HashMap<AssetId, usize>,
     params: ConsensusParameters,
 }
 
@@ -92,7 +92,12 @@ impl<S> Interpreter<S> {
     }
 
     /// The current transaction
-    pub const fn transaction(&self) -> &Transaction {
+    pub fn transaction(&self) -> &Transaction {
+        self.tx.as_ref()
+    }
+
+    /// The current transaction with checked metadata
+    pub fn checked_transaction(&self) -> &CheckedTransaction {
         &self.tx
     }
 
@@ -122,9 +127,15 @@ impl<S> Interpreter<S> {
     }
 }
 
-impl<S> From<Interpreter<S>> for Transaction {
+impl<S> From<Interpreter<S>> for CheckedTransaction {
     fn from(vm: Interpreter<S>) -> Self {
         vm.tx
+    }
+}
+
+impl<S> From<Interpreter<S>> for Transaction {
+    fn from(vm: Interpreter<S>) -> Self {
+        vm.tx.transaction().clone()
     }
 }
 

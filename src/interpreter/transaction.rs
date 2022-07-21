@@ -9,7 +9,7 @@ impl<S> Interpreter<S> {
     pub(crate) fn transaction_input_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
-            .tx
+            .transaction()
             .inputs()
             .get(b as usize)
             .ok_or(PanicReason::InputNotFound)
@@ -20,8 +20,11 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn transaction_input_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
-        self.registers[ra] =
-            (self.tx_offset() + self.tx.input_offset(b as usize).ok_or(PanicReason::InputNotFound)?) as Word;
+        self.registers[ra] = (self.tx_offset()
+            + self
+                .transaction()
+                .input_offset(b as usize)
+                .ok_or(PanicReason::InputNotFound)?) as Word;
 
         self.inc_pc()
     }
@@ -29,7 +32,7 @@ impl<S> Interpreter<S> {
     pub(crate) fn transaction_output_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
-            .tx
+            .transaction()
             .outputs()
             .get(b as usize)
             .ok_or(PanicReason::OutputNotFound)
@@ -40,8 +43,11 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn transaction_output_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
-        self.registers[ra] =
-            (self.tx_offset() + self.tx.output_offset(b as usize).ok_or(PanicReason::OutputNotFound)?) as Word;
+        self.registers[ra] = (self.tx_offset()
+            + self
+                .transaction()
+                .output_offset(b as usize)
+                .ok_or(PanicReason::OutputNotFound)?) as Word;
 
         self.inc_pc()
     }
@@ -49,7 +55,7 @@ impl<S> Interpreter<S> {
     pub(crate) fn transaction_witness_length(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
         self.registers[ra] = self
-            .tx
+            .transaction()
             .witnesses()
             .get(b as usize)
             .ok_or(PanicReason::WitnessNotFound)
@@ -60,8 +66,11 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn transaction_witness_start(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
-        self.registers[ra] =
-            (self.tx_offset() + self.tx.witness_offset(b as usize).ok_or(PanicReason::WitnessNotFound)?) as Word;
+        self.registers[ra] = (self.tx_offset()
+            + self
+                .transaction()
+                .witness_offset(b as usize)
+                .ok_or(PanicReason::WitnessNotFound)?) as Word;
 
         self.inc_pc()
     }

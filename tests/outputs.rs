@@ -14,11 +14,9 @@ use rand::{Rng, SeedableRng};
 fn full_change_with_no_fees() {
     let input_amount = 1000;
     let gas_price = 0;
-    let byte_price = 0;
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
@@ -27,30 +25,12 @@ fn full_change_with_no_fees() {
 }
 
 #[test]
-fn byte_fees_are_deducted_from_base_asset_change() {
-    let input_amount = 1000;
-    let gas_price = 0;
-    let byte_price = 1;
-
-    let change = TestBuilder::new(2322u64)
-        .gas_price(gas_price)
-        .byte_price(byte_price)
-        .coin_input(AssetId::default(), input_amount)
-        .change_output(AssetId::default())
-        .execute_get_change(AssetId::default());
-
-    assert!(change < input_amount);
-}
-
-#[test]
 fn used_gas_is_deducted_from_base_asset_change() {
     let input_amount = 1000;
     let gas_price = 1;
-    let byte_price = 0;
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
@@ -62,17 +42,20 @@ fn used_gas_is_deducted_from_base_asset_change() {
 fn used_gas_is_deducted_from_base_asset_change_on_revert() {
     let input_amount = 1000;
     let gas_price = 1;
-    let byte_price = 0;
 
     let change = TestBuilder::new(2322u64)
-        .script(vec![
-            // Log some dummy data to burn extra gas
-            Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
-            // Revert transaction
-            Opcode::RVRT(REG_ONE),
-        ])
+        .start_script(
+            vec![
+                // Log some dummy data to burn extra gas
+                Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
+                // Revert transaction
+                Opcode::RVRT(REG_ONE),
+            ]
+            .into_iter()
+            .collect(),
+            vec![],
+        )
         .gas_price(gas_price)
-        .byte_price(byte_price)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
@@ -84,13 +67,11 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
 fn correct_change_is_provided_for_coin_outputs() {
     let input_amount = 1000;
     let gas_price = 0;
-    let byte_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .byte_price(byte_price)
         .coin_input(asset_id, input_amount)
         .change_output(asset_id)
         .coin_output(asset_id, spend_amount)
@@ -105,7 +86,6 @@ fn change_is_reduced_by_external_transfer() {
     let transfer_amount: Word = 400;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
 
     // simple dummy contract for transferring value to
@@ -139,15 +119,13 @@ fn change_is_reduced_by_external_transfer() {
 
     // execute and get change
     let change = test_context
+        .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .coin_input(asset_id, input_amount)
         .contract_input(contract_id)
         .change_output(asset_id)
         .contract_output(&contract_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount - transfer_amount);
@@ -160,7 +138,6 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let transfer_amount: Word = input_amount + 100;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
 
     // setup state for test
@@ -195,15 +172,13 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
 
     // execute and get change
     let change = test_context
+        .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .coin_input(asset_id, input_amount)
         .contract_input(contract_id)
         .change_output(asset_id)
         .contract_output(&contract_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_change(asset_id);
 
     assert_eq!(change, input_amount);
@@ -219,7 +194,6 @@ fn variable_output_set_by_external_transfer_out() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
@@ -256,15 +230,13 @@ fn variable_output_set_by_external_transfer_out() {
 
     // create and run the tx
     let outputs = TestBuilder::new(2322u64)
+        .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_outputs();
 
     assert!(matches!(
@@ -292,7 +264,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
@@ -329,15 +300,13 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     // create and run the tx
     let outputs = TestBuilder::new(2322u64)
+        .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_outputs();
 
     assert!(matches!(
@@ -362,7 +331,6 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
@@ -414,22 +382,17 @@ fn variable_output_set_by_internal_contract_transfer_out() {
 
     // create and run the tx
     let outputs = test_context
+        .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_outputs();
 
-    assert!(matches!(
-        outputs[0], Output::Variable { amount, to, asset_id }
-            if amount == transfer_amount
-            && to == owner
-            && asset_id == asset_id
-    ));
+    let output = Output::variable(owner, transfer_amount, asset_id);
+
+    assert_eq!(output, outputs[0]);
 }
 
 #[test]
@@ -442,7 +405,6 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
@@ -493,14 +455,12 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
 
     // create and run the tx
     let outputs = test_context
+        .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .byte_price(byte_price)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .script(script)
-        .script_data(script_data)
         .execute_get_outputs();
 
     assert!(matches!(

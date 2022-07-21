@@ -58,7 +58,7 @@ where
         };
 
         // Check that the contract exists
-        if !self.tx.input_contracts().any(|id| id == contract_id) {
+        if !self.transaction().input_contracts().any(|id| id == contract_id) {
             return Err(PanicReason::ContractNotInInputs.into());
         };
 
@@ -146,7 +146,7 @@ where
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
         if !self
-            .tx
+            .transaction()
             .inputs()
             .iter()
             .any(|input| matches!(input, Input::Contract { contract_id, .. } if contract_id == contract))
@@ -328,7 +328,7 @@ where
         }
 
         let offset = self
-            .tx
+            .transaction()
             .output_offset(c as usize)
             .map(|ofs| ofs + self.tx_offset())
             .ok_or(PanicReason::OutputNotFound)?;
@@ -357,7 +357,7 @@ where
         let message = Output::message(recipient, amount);
         let receipt = Receipt::message_out_from_tx_output(txid, idx, sender, recipient, amount, data);
 
-        self.set_output(idx as usize, message)?;
+        self.set_message_output(idx as usize, message)?;
         self.append_receipt(receipt);
 
         self.inc_pc()

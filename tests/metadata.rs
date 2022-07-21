@@ -12,8 +12,9 @@ fn metadata() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external: Vec<Opcode> = vec![
@@ -42,7 +43,6 @@ fn metadata() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -50,7 +50,9 @@ fn metadata() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
     assert!(Transactor::new(&mut storage, Default::default())
@@ -87,7 +89,6 @@ fn metadata() {
     let tx = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -95,7 +96,9 @@ fn metadata() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
     assert!(Transactor::new(&mut storage, Default::default())
@@ -127,17 +130,9 @@ fn metadata() {
 
     let script = script.iter().copied().collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        byte_price,
-        maturity,
-        script,
-        vec![],
-        inputs,
-        outputs,
-        vec![],
-    );
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
+        .check(height, &params)
+        .expect("failed to check tx");
 
     let receipts = Transactor::new(&mut storage, Default::default())
         .transact(tx)

@@ -15,8 +15,9 @@ fn backtrace() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     #[rustfmt::skip]
     let function_undefined: Vec<Opcode> = vec![
@@ -37,7 +38,6 @@ fn backtrace() {
     let tx_deploy = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -45,7 +45,9 @@ fn backtrace() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx_deploy);
 
@@ -78,7 +80,6 @@ fn backtrace() {
     let tx_deploy = Transaction::create(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         bytecode_witness,
         salt,
@@ -86,7 +87,9 @@ fn backtrace() {
         vec![],
         vec![output],
         vec![program],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx_deploy);
 
@@ -114,14 +117,15 @@ fn backtrace() {
     let tx_script = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
         vec![input_undefined, input_call],
         vec![output_undefined, output_call],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
 
     client.transact(tx_script);
 

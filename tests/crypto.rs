@@ -13,8 +13,9 @@ fn ecrecover() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let secp = Secp256k1::new();
     let secret = SecretKey::from_str("3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c").unwrap();
@@ -79,14 +80,15 @@ fn ecrecover() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -104,8 +106,9 @@ fn sha256() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let length = message.len() as Immediate12;
@@ -162,14 +165,15 @@ fn sha256() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)
@@ -189,8 +193,9 @@ fn keccak256() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
     let length = message.len() as Immediate12;
@@ -250,14 +255,15 @@ fn keccak256() {
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script.into_iter().collect(),
         vec![],
         vec![],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
         .transact(tx)

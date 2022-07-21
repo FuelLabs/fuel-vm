@@ -7,10 +7,12 @@ use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
+use fuel_tx::CheckedTransaction;
 use fuel_tx::{ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
+// FIXME replace for a type-safe transaction
 impl Interpreter<PredicateStorage> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs.
@@ -23,14 +25,15 @@ impl Interpreter<PredicateStorage> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates(tx: Transaction, params: ConsensusParameters) -> bool {
+    pub fn check_predicates(tx: CheckedTransaction, params: ConsensusParameters) -> bool {
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params);
 
-        if !tx.check_predicate_owners() {
+        if !tx.as_ref().check_predicate_owners() {
             return false;
         }
 
         let predicates: Vec<MemoryRange> = tx
+            .as_ref()
             .inputs()
             .iter()
             .enumerate()
@@ -50,22 +53,24 @@ impl Interpreter<PredicateStorage> {
     /// `false`.
     ///
     /// For additional information, check [`Self::check_predicates`]
-    pub fn check_predicate(&mut self, tx: Transaction, idx: usize) -> bool {
-        tx.check_predicate_owner(idx)
+    pub fn check_predicate(&mut self, tx: CheckedTransaction, idx: usize) -> bool {
+        tx.as_ref()
+            .check_predicate_owner(idx)
             .then(|| self.input_to_predicate(&tx, idx))
             .flatten()
             .map(|predicate| self.init_predicate(tx) && self._check_predicate(predicate))
             .unwrap_or(false)
     }
 
-    fn init_predicate(&mut self, tx: Transaction) -> bool {
+    fn init_predicate(&mut self, tx: CheckedTransaction) -> bool {
         let block_height = 0;
 
         self.init(true, block_height, tx).is_ok()
     }
 
-    fn input_to_predicate(&self, tx: &Transaction, idx: usize) -> Option<MemoryRange> {
-        tx.input_coin_predicate_offset(idx)
+    fn input_to_predicate(&self, tx: &CheckedTransaction, idx: usize) -> Option<MemoryRange> {
+        tx.as_ref()
+            .input_coin_predicate_offset(idx)
             .map(|(ofs, len)| (ofs as Word + self.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
     }
@@ -83,19 +88,20 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    // TODO maybe infallible?
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
-        let state = match &self.tx {
+        let tx = self.tx.transaction();
+        let storage = &mut self.storage;
+
+        let state = match tx {
             Transaction::Create {
                 salt, storage_slots, ..
             } => {
-                let contract = Contract::try_from(&self.tx)?;
+                let contract = Contract::try_from(tx)?;
                 let root = contract.root();
                 let storage_root = Contract::initial_state_root(storage_slots.iter());
                 let id = contract.id(salt, &root, &storage_root);
 
-                if !&self
-                    .tx
+                if !tx
                     .outputs()
                     .iter()
                     .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
@@ -103,16 +109,16 @@ where
                     return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
                 }
 
-                self.storage
+                storage
                     .storage_contract_insert(&id, &contract)
                     .map_err(InterpreterError::from_io)?;
 
-                self.storage
+                storage
                     .storage_contract_root_insert(&id, salt, &root)
                     .map_err(InterpreterError::from_io)?;
 
                 for storage_slot in storage_slots {
-                    self.storage
+                    storage
                         .merkle_contract_state_insert(&id, storage_slot.key(), storage_slot.value())
                         .map_err(InterpreterError::from_io)?;
                 }
@@ -139,7 +145,7 @@ where
                 // TODO set tree balance
 
                 let program = self.run_program();
-                let gas_used = self.tx.gas_limit() - self.registers[REG_GGAS];
+                let gas_used = self.transaction().gas_limit() - self.registers[REG_GGAS];
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {
@@ -182,7 +188,7 @@ where
         }
 
         // TODO optimize
-        if self.tx.receipts_root().is_some() {
+        if self.transaction().receipts_root().is_some() {
             let receipts_root = if self.receipts().is_empty() {
                 EMPTY_RECEIPTS_MERKLE_ROOT.into()
             } else {
@@ -191,21 +197,12 @@ where
 
             // TODO: also set this on the serialized tx in memory to keep serialized form consistent
             // https://github.com/FuelLabs/fuel-vm/issues/97
-            self.tx.set_receipts_root(receipts_root);
+            self.tx.tx_set_receipts_root(receipts_root);
         }
-
-        // the consumed balance for the bytes cost is non-refundable so we just check the ggas
-        let factor = self.params.gas_price_factor as f64;
-        let gas_refund = self
-            .tx
-            .gas_price()
-            .checked_mul(self.registers[REG_GGAS])
-            .ok_or(ValidationError::ArithmeticOverflow)? as f64;
-        let gas_refund = (gas_refund / factor).floor() as Word;
 
         let revert = matches!(state, ProgramState::Revert(_));
 
-        self.finalize_outputs(gas_refund, revert)?;
+        self.finalize_outputs(revert)?;
 
         Ok(state)
     }
@@ -279,7 +276,7 @@ where
     /// result of th execution in form of [`StateTransition`]
     pub fn transact_owned(
         storage: S,
-        tx: Transaction,
+        tx: CheckedTransaction,
         params: ConsensusParameters,
     ) -> Result<StateTransition, InterpreterError> {
         Interpreter::with_storage(storage, params)
@@ -291,7 +288,7 @@ where
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
-    pub fn transact(&mut self, tx: Transaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
+    pub fn transact(&mut self, tx: CheckedTransaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         let state_result = self.init_with_storage(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]

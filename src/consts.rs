@@ -1,6 +1,6 @@
 //! VM parameters
 
-use fuel_types::Word;
+use fuel_types::{Bytes32, Word};
 
 use std::mem;
 
@@ -78,6 +78,9 @@ pub const VM_MAX_RAM: u64 = 16 * 1024 * FUEL_MAX_MEMORY_SIZE * WORD_SIZE as u64;
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
 // no limits to heap for now.
+
+/// Offset for the assets balances in VM memory
+pub const VM_MEMORY_BALANCES_OFFSET: usize = Bytes32::LEN;
 
 /// Encoded len of a register id in an instruction (unused)
 pub const VM_REGISTER_WIDTH: u8 = 6;

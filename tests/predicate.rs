@@ -23,27 +23,29 @@ where
     let amount = 0;
     let asset_id = rng.gen();
     let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
 
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(utxo_id, owner, amount, asset_id, maturity, predicate, predicate_data);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let byte_price = 0;
     let script = vec![];
     let script_data = vec![];
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
-        byte_price,
         maturity,
         script,
         script_data,
         vec![input],
         vec![],
         vec![],
-    );
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
 }

@@ -52,11 +52,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) const fn context(&self) -> &Context {
-        if self.registers[REG_FP] == 0 {
-            &self.context
-        } else {
-            &Context::Call
-        }
+        &self.context
     }
 
     pub(crate) const fn is_external_context(&self) -> bool {
@@ -189,6 +185,12 @@ impl<S> Interpreter<S> {
     pub(crate) fn tx_id(&self) -> &Bytes32 {
         // Safety: vm parameters guarantees enough space for txid
         unsafe { Bytes32::as_ref_unchecked(&self.memory[..Bytes32::LEN]) }
+    }
+
+    pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
+        self.context.update_from_frame_pointer(fp);
+
+        self.registers[REG_FP] = fp;
     }
 }
 

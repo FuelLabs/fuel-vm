@@ -70,7 +70,9 @@ where
     ///
     /// For predicate verification, check [`Self::init`]
     pub fn init_with_storage(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
-        self.context = Context::Script;
+        let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
+
+        self.context = Context::Script { block_height };
 
         self.init(tx)
     }

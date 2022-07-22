@@ -173,6 +173,18 @@ where
         self.inc_pc()
     }
 
+    pub(crate) fn set_block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
+        self.context
+            .block_height()
+            .map(|h| h as Word)
+            .map(|h| self.registers[ra] = h)
+            .ok_or(PanicReason::TransactionValidity)?;
+
+        self.inc_pc()
+    }
+
     pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.coinbase()
             .and_then(|data| self.try_mem_write(a as usize, data.as_ref()))?;

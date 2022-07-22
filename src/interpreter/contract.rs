@@ -20,6 +20,14 @@ where
             .ok_or(PanicReason::ContractNotFound.into())
     }
 
+    pub(crate) fn set_block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
+        self.registers[ra] = self.storage.block_height().map_err(|e| e.into())? as Word;
+
+        self.inc_pc()
+    }
+
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         if b > VM_MAX_RAM - AssetId::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
             return Err(PanicReason::MemoryOverflow.into());

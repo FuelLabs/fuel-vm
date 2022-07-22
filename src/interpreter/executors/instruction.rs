@@ -359,7 +359,7 @@ where
 
             OpcodeRepr::BHEI => {
                 self.gas_charge(GAS_BHEI)?;
-                self.alu_set(ra, self.block_height() as Word)?;
+                self.set_block_height(ra)?;
             }
 
             OpcodeRepr::BHSH => {

@@ -30,10 +30,6 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    pub(crate) const fn block_height(&self) -> u32 {
-        self.block_height
-    }
-
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.registers[REG_FLAG] = a;
 

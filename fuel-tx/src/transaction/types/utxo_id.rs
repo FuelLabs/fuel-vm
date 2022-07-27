@@ -1,8 +1,15 @@
 use crate::TxId;
 
+use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::Bytes32;
 
 use core::str::FromStr;
+
+#[cfg(feature = "std")]
+use fuel_types::bytes;
+
+#[cfg(feature = "std")]
+use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -21,18 +28,20 @@ pub struct UtxoId {
 }
 
 impl UtxoId {
-    pub fn new(tx_id: TxId, output_index: u8) -> Self {
+    pub const LEN: usize = TxId::LEN + WORD_SIZE;
+
+    pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {
             tx_id,
             output_index,
         }
     }
 
-    pub fn tx_id(&self) -> &TxId {
+    pub const fn tx_id(&self) -> &TxId {
         &self.tx_id
     }
 
-    pub fn output_index(&self) -> u8 {
+    pub const fn output_index(&self) -> u8 {
         self.output_index
     }
 }
@@ -83,6 +92,48 @@ impl FromStr for UtxoId {
             UtxoId::new(TxId::default(), u8::from_str_radix(s, 16).map_err(|_| ERR)?)
         };
         Ok(utxo_id)
+    }
+}
+
+impl SizedBytes for UtxoId {
+    fn serialized_size(&self) -> usize {
+        Self::LEN
+    }
+}
+
+#[cfg(feature = "std")]
+impl io::Write for UtxoId {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() < Self::LEN {
+            return Err(bytes::eof());
+        }
+
+        // Safety: buf len is checked
+        let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let (output_index, _) = unsafe { bytes::restore_word_unchecked(buf) };
+
+        self.tx_id = tx_id.into();
+        self.output_index = output_index as u8;
+
+        Ok(Self::LEN)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[cfg(feature = "std")]
+impl io::Read for UtxoId {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if buf.len() < Self::LEN {
+            return Err(bytes::eof());
+        }
+
+        let buf = bytes::store_array_unchecked(buf, &self.tx_id);
+        bytes::store_number_unchecked(buf, self.output_index);
+
+        Ok(Self::LEN)
     }
 }
 

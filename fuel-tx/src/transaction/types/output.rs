@@ -1,73 +1,19 @@
 use fuel_crypto::Hasher;
-use fuel_types::bytes::{self, WORD_SIZE};
+use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::SizedBytes;
+use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 
 #[cfg(feature = "std")]
 use std::io;
 
-const OUTPUT_COIN_SIZE: usize = WORD_SIZE // Identifier
-    + Address::LEN // To
-    + WORD_SIZE // Amount
-    + AssetId::LEN; // AssetId
+mod consts;
+mod repr;
 
-const OUTPUT_MESSAGE_SIZE: usize = WORD_SIZE // Identifier
-    + Address::LEN // Recipient
-    + WORD_SIZE; // Amount
+use consts::*;
 
-const OUTPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + WORD_SIZE // Input index
-    + Bytes32::LEN // Balance root
-    + Bytes32::LEN; // State root
-
-const OUTPUT_CONTRACT_CREATED_SIZE: usize = WORD_SIZE // Identifier
-    + ContractId::LEN // Contract Id
-    + Bytes32::LEN;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum OutputRepr {
-    Coin = 0x00,
-    Contract = 0x01,
-    Message = 0x02,
-    Change = 0x03,
-    Variable = 0x04,
-    ContractCreated = 0x05,
-}
-
-#[cfg(feature = "std")]
-impl TryFrom<Word> for OutputRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Coin),
-            0x01 => Ok(Self::Contract),
-            0x02 => Ok(Self::Message),
-            0x03 => Ok(Self::Change),
-            0x04 => Ok(Self::Variable),
-            0x05 => Ok(Self::ContractCreated),
-            i => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("The provided output identifier ({}) is invalid!", i),
-            )),
-        }
-    }
-}
-
-impl From<&mut Output> for OutputRepr {
-    fn from(o: &mut Output) -> Self {
-        match o {
-            Output::Coin { .. } => Self::Coin,
-            Output::Contract { .. } => Self::Contract,
-            Output::Message { .. } => Self::Message,
-            Output::Change { .. } => Self::Change,
-            Output::Variable { .. } => Self::Variable,
-            Output::ContractCreated { .. } => Self::ContractCreated,
-        }
-    }
-}
+pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -119,7 +65,7 @@ impl Default for Output {
 impl bytes::SizedBytes for Output {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => OUTPUT_COIN_SIZE,
+            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => OUTPUT_CCV_SIZE,
 
             Self::Message { .. } => OUTPUT_MESSAGE_SIZE,
 
@@ -131,6 +77,10 @@ impl bytes::SizedBytes for Output {
 }
 
 impl Output {
+    pub const fn repr(&self) -> OutputRepr {
+        OutputRepr::from_output(self)
+    }
+
     pub const fn coin(to: Address, amount: Word, asset_id: AssetId) -> Self {
         Self::Coin {
             to,
@@ -176,11 +126,71 @@ impl Output {
 
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Self::Coin { asset_id, .. } => Some(asset_id),
-            Self::Change { asset_id, .. } => Some(asset_id),
-            Self::Variable { asset_id, .. } => Some(asset_id),
+            Output::Coin { asset_id, .. }
+            | Output::Change { asset_id, .. }
+            | Output::Variable { asset_id, .. } => Some(asset_id),
             _ => None,
         }
+    }
+
+    pub const fn to(&self) -> Option<&Address> {
+        match self {
+            Output::Coin { to, .. } | Output::Change { to, .. } | Output::Variable { to, .. } => {
+                Some(to)
+            }
+            _ => None,
+        }
+    }
+
+    pub const fn amount(&self) -> Option<Word> {
+        match self {
+            Output::Coin { amount, .. }
+            | Output::Message { amount, .. }
+            | Output::Change { amount, .. }
+            | Output::Variable { amount, .. } => Some(*amount),
+            _ => None,
+        }
+    }
+
+    pub const fn input_index(&self) -> Option<u8> {
+        match self {
+            Output::Contract { input_index, .. } => Some(*input_index),
+            _ => None,
+        }
+    }
+
+    pub const fn balance_root(&self) -> Option<&Bytes32> {
+        match self {
+            Output::Contract { balance_root, .. } => Some(balance_root),
+            _ => None,
+        }
+    }
+
+    pub const fn state_root(&self) -> Option<&Bytes32> {
+        match self {
+            Output::Contract { state_root, .. } | Output::ContractCreated { state_root, .. } => {
+                Some(state_root)
+            }
+            _ => None,
+        }
+    }
+
+    pub const fn contract_id(&self) -> Option<&ContractId> {
+        match self {
+            Output::ContractCreated { contract_id, .. } => Some(contract_id),
+            _ => None,
+        }
+    }
+
+    pub const fn recipient(&self) -> Option<&Address> {
+        match self {
+            Output::Message { recipient, .. } => Some(recipient),
+            _ => None,
+        }
+    }
+
+    pub const fn is_coin(&self) -> bool {
+        matches!(self, Self::Coin { .. })
     }
 
     pub const fn is_message(&self) -> bool {
@@ -189,6 +199,14 @@ impl Output {
 
     pub const fn is_variable(&self) -> bool {
         matches!(self, Self::Variable { .. })
+    }
+
+    pub const fn is_contract(&self) -> bool {
+        matches!(self, Self::Contract { .. })
+    }
+
+    pub const fn is_contract_created(&self) -> bool {
+        matches!(self, Self::ContractCreated { .. })
     }
 
     pub fn message_id(
@@ -307,7 +325,7 @@ impl io::Write for Output {
 
         match identifier {
             OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable
-                if buf.len() < OUTPUT_COIN_SIZE - WORD_SIZE =>
+                if buf.len() < OUTPUT_CCV_SIZE - WORD_SIZE =>
             {
                 Err(bytes::eof())
             }
@@ -357,7 +375,7 @@ impl io::Write for Output {
                     _ => unreachable!(),
                 }
 
-                Ok(OUTPUT_COIN_SIZE)
+                Ok(OUTPUT_CCV_SIZE)
             }
 
             OutputRepr::Message => {

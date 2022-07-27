@@ -13,7 +13,9 @@ extern crate alloc;
 pub mod consts;
 
 pub use fuel_asm::{InstructionResult, PanicReason};
-pub use fuel_types::{Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, Salt, Word};
+pub use fuel_types::{
+    Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, MessageId, Salt, Word,
+};
 
 #[cfg(feature = "builder")]
 mod builder;
@@ -38,8 +40,8 @@ pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    ConsensusParameters, Input, Metadata, Output, StorageSlot, Transaction, TransactionFee,
-    TransactionRepr, TxId, UtxoId, ValidationError, Witness,
+    ConsensusParameters, Input, InputRepr, Metadata, Output, OutputRepr, StorageSlot, Transaction,
+    TransactionFee, TransactionRepr, TxId, UtxoId, ValidationError, Witness,
 };
 
 #[cfg(feature = "alloc")]

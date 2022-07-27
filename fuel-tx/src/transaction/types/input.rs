@@ -1,71 +1,23 @@
 use crate::UtxoId;
 
 use fuel_crypto::{Hasher, PublicKey};
-use fuel_types::bytes::{self, WORD_SIZE};
+use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::SizedBytes;
+use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
 
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 use std::io;
 
-const INPUT_COIN_FIXED_SIZE: usize = WORD_SIZE // Identifier  
-    + Bytes32::LEN // UtxoId tx_id
-    + WORD_SIZE // UtxoId output_index
-    + Address::LEN // Owner
-    + WORD_SIZE // Amount
-    + AssetId::LEN // AssetId
-    + WORD_SIZE // Witness index
-    + WORD_SIZE // Maturity
-    + WORD_SIZE // Predicate size
-    + WORD_SIZE; // Predicate data size
+mod consts;
+mod repr;
 
-const INPUT_CONTRACT_SIZE: usize = WORD_SIZE // Identifier
-    + Bytes32::LEN // UtxoId tx_id
-    + WORD_SIZE // UtxoId output_index
-    + Bytes32::LEN // Balance root
-    + Bytes32::LEN // State root
-    + ContractId::LEN; // Contract address
+use consts::*;
 
-const INPUT_MESSAGE_FIXED_SIZE: usize = WORD_SIZE // Identifier
-    + MessageId::LEN // message_id
-    + Address::LEN // sender
-    + Address::LEN // recipient
-    + WORD_SIZE //amount
-    + WORD_SIZE // nonce
-    + Address::LEN // owner
-    + WORD_SIZE // witness_index
-    + WORD_SIZE // Data size
-    + WORD_SIZE // Predicate size
-    + WORD_SIZE; // Predicate data size
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg(feature = "std")]
-enum InputRepr {
-    Coin = 0x00,
-    Contract = 0x01,
-    Message = 0x02,
-}
-
-#[cfg(feature = "std")]
-impl TryFrom<Word> for InputRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Coin),
-            0x01 => Ok(Self::Contract),
-            0x02 => Ok(Self::Message),
-            id => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("The provided input identifier ({}) is invalid!", id),
-            )),
-        }
-    }
-}
+pub use repr::InputRepr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -168,6 +120,10 @@ impl bytes::SizedBytes for Input {
 }
 
 impl Input {
+    pub const fn repr(&self) -> InputRepr {
+        InputRepr::from_input(self)
+    }
+
     pub fn owner(pk: &PublicKey) -> Address {
         let owner: [u8; Address::LEN] = pk.hash().into();
 
@@ -274,11 +230,32 @@ impl Input {
 
     pub const fn utxo_id(&self) -> Option<&UtxoId> {
         match self {
-            Self::CoinSigned { utxo_id, .. } => Some(utxo_id),
-            Self::CoinPredicate { utxo_id, .. } => Some(utxo_id),
-            Self::Contract { utxo_id, .. } => Some(utxo_id),
+            Self::CoinSigned { utxo_id, .. }
+            | Self::CoinPredicate { utxo_id, .. }
+            | Self::Contract { utxo_id, .. } => Some(utxo_id),
             Self::MessageSigned { .. } => None,
             Self::MessagePredicate { .. } => None,
+        }
+    }
+
+    pub const fn input_owner(&self) -> Option<&Address> {
+        match self {
+            Self::CoinSigned { owner, .. }
+            | Self::CoinPredicate { owner, .. }
+            | Self::MessageSigned { owner, .. }
+            | Self::MessagePredicate { owner, .. } => Some(owner),
+            Self::Contract { .. } => None,
+        }
+    }
+
+    pub const fn asset_id(&self) -> Option<&AssetId> {
+        match self {
+            Input::CoinSigned { asset_id, .. } | Input::CoinPredicate { asset_id, .. } => {
+                Some(asset_id)
+            }
+            Input::Contract { .. }
+            | Input::MessageSigned { .. }
+            | Input::MessagePredicate { .. } => None,
         }
     }
 
@@ -289,11 +266,107 @@ impl Input {
         }
     }
 
+    pub const fn amount(&self) -> Option<Word> {
+        match self {
+            Input::CoinSigned { amount, .. }
+            | Input::CoinPredicate { amount, .. }
+            | Input::MessageSigned { amount, .. }
+            | Input::MessagePredicate { amount, .. } => Some(*amount),
+            Input::Contract { .. } => None,
+        }
+    }
+
+    pub const fn witness_index(&self) -> Option<u8> {
+        match self {
+            Input::CoinSigned { witness_index, .. }
+            | Input::MessageSigned { witness_index, .. } => Some(*witness_index),
+            Input::CoinPredicate { .. }
+            | Input::Contract { .. }
+            | Input::MessagePredicate { .. } => None,
+        }
+    }
+
+    pub const fn maturity(&self) -> Option<Word> {
+        match self {
+            Input::CoinSigned { maturity, .. } | Input::CoinPredicate { maturity, .. } => {
+                Some(*maturity)
+            }
+            Input::Contract { .. }
+            | Input::MessageSigned { .. }
+            | Input::MessagePredicate { .. } => None,
+        }
+    }
+
+    pub fn predicate_offset(&self) -> Option<usize> {
+        match self {
+            Input::CoinPredicate { .. } => InputRepr::Coin.coin_predicate_offset(),
+            Input::MessagePredicate { data, .. } => InputRepr::Message
+                .data_offset()
+                .map(|o| o + bytes::padded_len(data)),
+            Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
+        }
+    }
+
+    pub fn predicate_data_offset(&self) -> Option<usize> {
+        match self {
+            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
+                self.predicate_offset()
+                    .map(|o| o + bytes::padded_len(predicate))
+            }
+            Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
+        }
+    }
+
+    pub fn predicate_len(&self) -> Option<usize> {
+        match self {
+            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
+                Some(predicate.len())
+            }
+            Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
+            Input::Contract { .. } => None,
+        }
+    }
+
+    pub fn predicate_data_len(&self) -> Option<usize> {
+        match self {
+            Input::CoinPredicate { predicate_data, .. }
+            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data.len()),
+            Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
+            Input::Contract { .. } => None,
+        }
+    }
+
     pub const fn message_id(&self) -> Option<&MessageId> {
         match self {
             Self::MessagePredicate { message_id, .. } | Self::MessageSigned { message_id, .. } => {
                 Some(message_id)
             }
+            _ => None,
+        }
+    }
+
+    pub fn input_data(&self) -> Option<&[u8]> {
+        match self {
+            Input::MessageSigned { data, .. } | Input::MessagePredicate { data, .. } => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn input_predicate(&self) -> Option<&[u8]> {
+        match self {
+            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
+                Some(predicate)
+            }
+
+            _ => None,
+        }
+    }
+
+    pub fn input_predicate_data(&self) -> Option<&[u8]> {
+        match self {
+            Input::CoinPredicate { predicate_data, .. }
+            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data),
+
             _ => None,
         }
     }
@@ -324,6 +397,22 @@ impl Input {
         matches!(self, Input::CoinPredicate { .. })
     }
 
+    pub const fn is_message(&self) -> bool {
+        self.is_message_signed() | self.is_message_predicate()
+    }
+
+    pub const fn is_message_signed(&self) -> bool {
+        matches!(self, Input::MessageSigned { .. })
+    }
+
+    pub const fn is_message_predicate(&self) -> bool {
+        matches!(self, Input::MessagePredicate { .. })
+    }
+
+    pub const fn is_contract(&self) -> bool {
+        matches!(self, Input::Contract { .. })
+    }
+
     pub const fn coin_predicate_offset() -> usize {
         INPUT_COIN_FIXED_SIZE
     }
@@ -346,6 +435,47 @@ impl Input {
                 Some(Self::coin_predicate_offset() + bytes::padded_len(predicate.as_slice()))
             }
 
+            _ => None,
+        }
+    }
+
+    pub const fn balance_root(&self) -> Option<&Bytes32> {
+        match self {
+            Input::Contract { balance_root, .. } => Some(balance_root),
+            _ => None,
+        }
+    }
+
+    pub const fn state_root(&self) -> Option<&Bytes32> {
+        match self {
+            Input::Contract { state_root, .. } => Some(state_root),
+            _ => None,
+        }
+    }
+
+    pub const fn sender(&self) -> Option<&Address> {
+        match self {
+            Input::MessageSigned { sender, .. } | Input::MessagePredicate { sender, .. } => {
+                Some(sender)
+            }
+            _ => None,
+        }
+    }
+
+    pub const fn recipient(&self) -> Option<&Address> {
+        match self {
+            Input::MessageSigned { recipient, .. } | Input::MessagePredicate { recipient, .. } => {
+                Some(recipient)
+            }
+            _ => None,
+        }
+    }
+
+    pub const fn nonce(&self) -> Option<Word> {
+        match self {
+            Input::MessageSigned { nonce, .. } | Input::MessagePredicate { nonce, .. } => {
+                Some(*nonce)
+            }
             _ => None,
         }
     }
@@ -546,9 +676,10 @@ impl io::Write for Input {
             InputRepr::Coin => {
                 let mut n = INPUT_COIN_FIXED_SIZE;
 
+                let utxo_id = UtxoId::from_bytes(buf)?;
+                let buf = &buf[utxo_id.serialized_size()..];
+
                 // Safety: buf len is checked
-                let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (output_index, buf) = unsafe { bytes::restore_number_unchecked::<Word>(buf) };
                 let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
@@ -564,7 +695,6 @@ impl io::Write for Input {
                 let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
                 n += size;
 
-                let utxo_id = UtxoId::new(tx_id.into(), output_index as u8);
                 let owner = owner.into();
                 let asset_id = asset_id.into();
 
@@ -595,14 +725,14 @@ impl io::Write for Input {
             InputRepr::Contract if buf.len() < INPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
 
             InputRepr::Contract => {
+                let utxo_id = UtxoId::from_bytes(buf)?;
+                let buf = &buf[utxo_id.serialized_size()..];
+
                 // Safety: checked buffer len
-                let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (output_index, buf) = unsafe { bytes::restore_number_unchecked::<Word>(buf) };
                 let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (state_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
-                let utxo_id = UtxoId::new(tx_id.into(), output_index as u8);
                 let balance_root = balance_root.into();
                 let state_root = state_root.into();
                 let contract_id = contract_id.into();

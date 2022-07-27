@@ -1,3 +1,4 @@
+use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -7,7 +8,7 @@ use fuel_vm::prelude::*;
 
 use core::iter;
 
-fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>) -> bool
+fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
     P: IntoIterator<Item = Opcode>,
 {
@@ -34,18 +35,17 @@ where
     let script = vec![];
     let script_data = vec![];
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![],
-        vec![],
-    )
-    .check(height, &params)
-    .expect("failed to check tx");
+    let mut builder = TransactionBuilder::script(script, script_data);
+
+    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
+
+    (0..dummy_inputs).for_each(|_| {
+        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity);
+    });
+
+    builder.add_input(input);
+
+    let tx = builder.finalize_checked_without_signature(height, &params);
 
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
 }
@@ -55,7 +55,7 @@ fn predicate_minimal() {
     let predicate = iter::once(Opcode::RET(0x01));
     let data = vec![];
 
-    assert!(execute_predicate(predicate, data));
+    assert!(execute_predicate(predicate, data, 7));
 }
 
 #[test]
@@ -84,6 +84,23 @@ fn predicate() {
     predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
     predicate.push(Opcode::RET(0x10));
 
-    assert!(execute_predicate(predicate.iter().copied(), expected_data));
-    assert!(!execute_predicate(predicate.iter().copied(), wrong_data));
+    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
+    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));
+}
+
+#[test]
+fn get_verifying_predicate() {
+    let indices = vec![0, 4, 5, 7, 11];
+
+    for idx in indices {
+        #[rustfmt::skip]
+        let predicate = vec![
+            Opcode::gm(0x10, GMArgs::GetVerifyingPredicate),
+            Opcode::MOVI(0x11, idx),
+            Opcode::EQ(0x10, 0x10, 0x11),
+            Opcode::RET(0x10),
+        ];
+
+        assert!(execute_predicate(predicate, vec![], idx as usize));
+    }
 }

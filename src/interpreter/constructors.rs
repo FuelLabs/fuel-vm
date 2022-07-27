@@ -27,7 +27,6 @@ impl<S> Interpreter<S> {
             storage,
             debugger: Debugger::default(),
             context: Context::default(),
-            block_height: 0,
             balances: RuntimeBalances::default(),
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),

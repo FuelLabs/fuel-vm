@@ -1,7 +1,8 @@
 use crate::consts::*;
 use crate::crypto;
 use crate::error::InterpreterError;
-use crate::interpreter::{Interpreter, MemoryRange};
+use crate::interpreter::Interpreter;
+use crate::predicate::RuntimePredicate;
 use crate::prelude::*;
 use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
@@ -32,12 +33,12 @@ impl Interpreter<PredicateStorage> {
             return false;
         }
 
-        let predicates: Vec<MemoryRange> = tx
+        let predicates: Vec<RuntimePredicate> = tx
             .as_ref()
             .inputs()
             .iter()
             .enumerate()
-            .filter_map(|(idx, _)| vm.input_to_predicate(&tx, idx))
+            .filter_map(|(idx, _)| RuntimePredicate::from_tx(&params, tx.as_ref(), idx))
             .collect();
 
         predicates
@@ -56,28 +57,17 @@ impl Interpreter<PredicateStorage> {
     pub fn check_predicate(&mut self, tx: CheckedTransaction, idx: usize) -> bool {
         tx.as_ref()
             .check_predicate_owner(idx)
-            .then(|| self.input_to_predicate(&tx, idx))
+            .then(|| RuntimePredicate::from_tx(self.params(), tx.as_ref(), idx))
             .flatten()
             .map(|predicate| self.init_predicate(tx) && self._check_predicate(predicate))
             .unwrap_or(false)
     }
 
-    fn init_predicate(&mut self, tx: CheckedTransaction) -> bool {
-        let block_height = 0;
-
-        self.init(true, block_height, tx).is_ok()
-    }
-
-    fn input_to_predicate(&self, tx: &CheckedTransaction, idx: usize) -> Option<MemoryRange> {
-        tx.as_ref()
-            .input_coin_predicate_offset(idx)
-            .map(|(ofs, len)| (ofs as Word + self.tx_offset() as Word, len as Word))
-            .map(|(ofs, len)| MemoryRange::new(ofs, len))
-    }
-
     /// Validate the predicate, assuming the interpreter is initialized
-    fn _check_predicate(&mut self, predicate: MemoryRange) -> bool {
-        match self.verify_predicate(&predicate) {
+    fn _check_predicate(&mut self, predicate: RuntimePredicate) -> bool {
+        self.context = Context::Predicate { program: predicate };
+
+        match self.verify_predicate() {
             Ok(ProgramState::Return(0x01)) => true,
             _ => false,
         }

@@ -56,7 +56,6 @@ pub struct Interpreter<S> {
     storage: S,
     debugger: Debugger,
     context: Context,
-    block_height: u32,
     balances: RuntimeBalances,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,

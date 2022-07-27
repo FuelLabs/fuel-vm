@@ -50,16 +50,19 @@ impl<S> Interpreter<S> {
                 .checked_add(frame.context_gas())
                 .ok_or(RuntimeError::halt_on_bug("CGAS would overflow"))?;
 
-            frame
-                .registers()
-                .iter()
-                .enumerate()
-                .zip(self.registers.iter_mut())
-                .for_each(|((i, frame), current)| {
-                    if i != REG_CGAS && i != REG_GGAS && i != REG_RET && i != REG_RETL {
-                        *current = *frame;
-                    }
-                });
+            let cgas = self.registers[REG_CGAS];
+            let ggas = self.registers[REG_GGAS];
+            let ret = self.registers[REG_RET];
+            let retl = self.registers[REG_RETL];
+
+            self.registers.copy_from_slice(&frame.registers());
+
+            self.registers[REG_CGAS] = cgas;
+            self.registers[REG_GGAS] = ggas;
+            self.registers[REG_RET] = ret;
+            self.registers[REG_RETL] = retl;
+
+            self.set_frame_pointer(self.registers[REG_FP]);
         }
 
         self.append_receipt(receipt);
@@ -182,7 +185,8 @@ where
 
         let id = self.internal_contract_or_default();
 
-        self.registers[REG_FP] = self.registers[REG_SP];
+        self.set_frame_pointer(self.registers[REG_SP]);
+
         self.registers[REG_SP] += len;
         self.registers[REG_SSP] = self.registers[REG_SP];
 

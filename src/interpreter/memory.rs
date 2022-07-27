@@ -18,6 +18,16 @@ pub struct MemoryRange {
     len: Word,
 }
 
+impl Default for MemoryRange {
+    fn default() -> Self {
+        Self {
+            start: ops::Bound::Included(0),
+            end: ops::Bound::Excluded(0),
+            len: 0,
+        }
+    }
+}
+
 impl MemoryRange {
     /// Create a new memory range represented as `[address, address + size[`.
     pub const fn new(address: Word, size: Word) -> Self {

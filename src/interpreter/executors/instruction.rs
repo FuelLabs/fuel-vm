@@ -6,7 +6,7 @@ use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
-use fuel_types::{bytes, Immediate18, Word};
+use fuel_types::{bytes, Immediate12, Immediate18, Word};
 
 use std::mem;
 use std::ops::Div;
@@ -359,7 +359,7 @@ where
 
             OpcodeRepr::BHEI => {
                 self.gas_charge(GAS_BHEI)?;
-                self.alu_set(ra, self.block_height() as Word)?;
+                self.set_block_height(ra)?;
             }
 
             OpcodeRepr::BHSH => {
@@ -498,7 +498,7 @@ where
 
             OpcodeRepr::GTF => {
                 self.gas_charge(GAS_GTF)?;
-                todo!();
+                self.get_transaction_field(ra, b, imm as Immediate12)?;
             }
 
             OpcodeRepr::TR => {

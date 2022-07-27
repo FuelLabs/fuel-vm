@@ -1,16 +1,18 @@
 use crate::consts::*;
 use crate::error::InterpreterError;
-use crate::interpreter::{Interpreter, MemoryRange};
+use crate::interpreter::Interpreter;
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::PredicateStorage;
 
 use fuel_asm::PanicReason;
 
 impl Interpreter<PredicateStorage> {
-    pub(crate) fn verify_predicate(&mut self, predicate: &MemoryRange) -> Result<ProgramState, InterpreterError> {
-        debug_assert!(self.is_predicate());
-
-        let (start, end) = predicate.boundaries(self);
+    pub(crate) fn verify_predicate(&mut self) -> Result<ProgramState, InterpreterError> {
+        let (start, end) = self
+            .context
+            .predicate()
+            .map(|p| p.program().boundaries(self))
+            .ok_or(InterpreterError::PredicateFailure)?;
 
         self.registers[REG_PC] = start;
         self.registers[REG_IS] = start;

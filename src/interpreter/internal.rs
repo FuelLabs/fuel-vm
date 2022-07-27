@@ -30,10 +30,6 @@ impl<S> Interpreter<S> {
         Ok(())
     }
 
-    pub(crate) const fn block_height(&self) -> u32 {
-        self.block_height
-    }
-
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
         self.registers[REG_FLAG] = a;
 
@@ -55,12 +51,8 @@ impl<S> Interpreter<S> {
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
-    pub(crate) const fn context(&self) -> Context {
-        if self.registers[REG_FP] == 0 {
-            self.context
-        } else {
-            Context::Call
-        }
+    pub(crate) const fn context(&self) -> &Context {
+        &self.context
     }
 
     pub(crate) const fn is_external_context(&self) -> bool {
@@ -72,7 +64,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {
-        matches!(self.context, Context::Predicate)
+        matches!(self.context, Context::Predicate { .. })
     }
 
     pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
@@ -193,6 +185,12 @@ impl<S> Interpreter<S> {
     pub(crate) fn tx_id(&self) -> &Bytes32 {
         // Safety: vm parameters guarantees enough space for txid
         unsafe { Bytes32::as_ref_unchecked(&self.memory[..Bytes32::LEN]) }
+    }
+
+    pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
+        self.context.update_from_frame_pointer(fp);
+
+        self.registers[REG_FP] = fp;
     }
 }
 

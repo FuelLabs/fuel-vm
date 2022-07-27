@@ -13,11 +13,8 @@ use std::io;
 
 impl<S> Interpreter<S> {
     /// Initialize the VM with a given transaction
-    pub fn init(&mut self, predicate: bool, block_height: u32, tx: CheckedTransaction) -> Result<(), InterpreterError> {
+    pub fn init(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
         self.tx = tx;
-
-        self.block_height = block_height;
-        self.context = if predicate { Context::Predicate } else { Context::Script };
 
         self.frames.clear();
         self.receipts.clear();
@@ -53,6 +50,15 @@ impl<S> Interpreter<S> {
 
         Ok(())
     }
+
+    /// Initialize the VM for a predicate context
+    pub fn init_predicate(&mut self, tx: CheckedTransaction) -> bool {
+        self.context = Context::Predicate {
+            program: Default::default(),
+        };
+
+        self.init(tx).is_ok()
+    }
 }
 
 impl<S> Interpreter<S>
@@ -64,9 +70,10 @@ where
     ///
     /// For predicate verification, check [`Self::init`]
     pub fn init_with_storage(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
-        let predicate = false;
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 
-        self.init(predicate, block_height, tx)
+        self.context = Context::Script { block_height };
+
+        self.init(tx)
     }
 }

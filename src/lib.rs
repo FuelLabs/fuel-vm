@@ -11,6 +11,7 @@ pub mod error;
 pub mod gas;
 pub mod interpreter;
 pub mod memory_client;
+pub mod predicate;
 pub mod state;
 pub mod storage;
 pub mod transactor;
@@ -43,8 +44,8 @@ pub mod prelude {
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
     pub use fuel_tx::{
-        CheckedTransaction, ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction,
-        TransactionFee, UtxoId, ValidationError, Witness,
+        CheckedTransaction, ConsensusParameters, Contract, Input, InputRepr, Output, OutputRepr, Receipt,
+        ScriptExecutionResult, Transaction, TransactionFee, TransactionRepr, UtxoId, ValidationError, Witness,
     };
     #[doc(no_inline)]
     pub use fuel_types::{
@@ -59,6 +60,7 @@ pub mod prelude {
     pub use crate::error::{Infallible, InterpreterError, RuntimeError};
     pub use crate::interpreter::{Interpreter, MemoryRange};
     pub use crate::memory_client::MemoryClient;
+    pub use crate::predicate::RuntimePredicate;
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
     pub use crate::storage::{InterpreterStorage, MemoryStorage, PredicateStorage};
     pub use crate::transactor::Transactor;

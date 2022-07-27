@@ -31,7 +31,7 @@ pub use consensus_parameters::ConsensusParameters;
 pub use fee::TransactionFee;
 pub use metadata::Metadata;
 pub use repr::TransactionRepr;
-pub use types::{Input, Output, StorageSlot, UtxoId, Witness};
+pub use types::{Input, InputRepr, Output, OutputRepr, StorageSlot, UtxoId, Witness};
 pub use validation::ValidationError;
 
 /// Identification of transaction (also called transaction hash)
@@ -467,6 +467,70 @@ impl Transaction {
             .iter_mut()
             .for_each(|o| o.prepare_init());
         self
+    }
+
+    pub fn script_len(&self) -> Option<usize> {
+        match self {
+            Transaction::Script { script, .. } => Some(script.len()),
+            Transaction::Create { .. } => None,
+        }
+    }
+
+    pub fn script_data_len(&self) -> Option<usize> {
+        match self {
+            Transaction::Script { script_data, .. } => Some(script_data.len()),
+            Transaction::Create { .. } => None,
+        }
+    }
+
+    pub const fn bytecode_length(&self) -> Option<Word> {
+        match self {
+            Transaction::Create {
+                bytecode_length, ..
+            } => Some(*bytecode_length),
+            Transaction::Script { .. } => None,
+        }
+    }
+
+    pub const fn bytecode_witness_index(&self) -> Option<u8> {
+        match self {
+            Transaction::Create {
+                bytecode_witness_index,
+                ..
+            } => Some(*bytecode_witness_index),
+            Transaction::Script { .. } => None,
+        }
+    }
+
+    pub fn storage_slots(&self) -> Option<&[StorageSlot]> {
+        match self {
+            Transaction::Create { storage_slots, .. } => Some(storage_slots),
+            Transaction::Script { .. } => None,
+        }
+    }
+
+    pub const fn salt_offset(&self) -> Option<usize> {
+        match self {
+            Transaction::Create { .. } => Some(TRANSACTION_CREATE_SALT_OFFSET),
+            Transaction::Script { .. } => None,
+        }
+    }
+
+    pub fn storage_slot_offset(&self, idx: usize) -> Option<usize> {
+        match self {
+            Transaction::Create { storage_slots, .. } if idx < storage_slots.len() => {
+                Some(TRANSACTION_CREATE_FIXED_SIZE + idx * StorageSlot::SLOT_SIZE)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn find_output_contract(&self, input: usize) -> Option<(usize, &Output)> {
+        self.outputs().iter().enumerate().find(|(_idx, o)| {
+            matches!(o, Output::Contract {
+                input_index, ..
+            } if *input_index as usize == input)
+        })
     }
 }
 

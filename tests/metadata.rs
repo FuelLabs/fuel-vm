@@ -1,8 +1,10 @@
 use fuel_crypto::Hasher;
+use fuel_tx::TransactionBuilder;
 use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+
+use fuel_vm::prelude::*;
 
 #[test]
 fn metadata() {
@@ -153,4 +155,85 @@ fn metadata() {
     let contract_call = Hasher::hash(contract_call.as_ref());
     let digest = receipts[4].digest().expect("GetCaller should return contract Id");
     assert_eq!(&contract_call, digest);
+}
+
+#[test]
+fn get_transaction_fields() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 1;
+    let gas_limit = 1_000_000;
+    let maturity = 50;
+    let height = 122;
+    let input = 10_000_000;
+
+    let params = ConsensusParameters::default();
+
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .maturity(maturity)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), maturity)
+        .finalize_checked(height, &params);
+
+    let inputs = tx.as_ref().inputs();
+    let outputs = tx.as_ref().outputs();
+    let _witnesses = tx.as_ref().witnesses();
+
+    let inputs_bytes: Vec<Vec<u8>> = inputs.iter().map(|i| i.clone().to_bytes()).collect();
+    let _outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
+
+    #[rustfmt::skip]
+    let cases = vec![
+        inputs_bytes[0].clone(),
+    ];
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::MOVI(0x20, 0x01),
+        Opcode::gtf(0x30, 0x00, GTFArgs::ScriptData),
+
+        Opcode::MOVI(0x11, TransactionRepr::Script as Immediate18),
+        Opcode::gtf(0x10, 0x00, GTFArgs::Type),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, gas_price as Immediate18),
+        Opcode::gtf(0x10, 0x00, GTFArgs::ScriptGasPrice),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        // TODO add tests to cover all GTF variants
+
+        Opcode::LOG(0x20, 0x00, 0x00, 0x00),
+        Opcode::RET(0x00)
+    ].into_iter().collect();
+
+    let script_data = cases.iter().map(|c| c.iter()).flatten().copied().collect();
+    let mut builder = TransactionBuilder::script(script, script_data);
+
+    tx.as_ref().inputs().iter().for_each(|i| {
+        builder.add_input(i.clone());
+    });
+
+    tx.as_ref().outputs().iter().for_each(|o| {
+        builder.add_output(o.clone());
+    });
+
+    tx.as_ref().witnesses().iter().for_each(|w| {
+        builder.add_witness(w.clone());
+    });
+
+    let tx = builder
+        .maturity(maturity)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .finalize_checked_without_signature(height, &params);
+
+    let receipts = client.transact(tx);
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+
+    assert!(success);
 }

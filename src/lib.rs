@@ -44,8 +44,8 @@ pub mod prelude {
     pub use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
     #[doc(no_inline)]
     pub use fuel_tx::{
-        CheckedTransaction, ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction,
-        TransactionFee, UtxoId, ValidationError, Witness,
+        CheckedTransaction, ConsensusParameters, Contract, Input, InputRepr, Output, OutputRepr, Receipt,
+        ScriptExecutionResult, Transaction, TransactionFee, TransactionRepr, UtxoId, ValidationError, Witness,
     };
     #[doc(no_inline)]
     pub use fuel_types::{

@@ -1,5 +1,6 @@
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
+use fuel_types::bytes;
 use fuel_vm::consts::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -171,47 +172,537 @@ fn get_transaction_fields() {
 
     let params = ConsensusParameters::default();
 
+    let contract: Witness = vec![Opcode::RET(0x01)].into_iter().collect::<Vec<u8>>().into();
+    let salt = rng.gen();
+    let code_root = Contract::root_from_code(contract.as_ref());
+    let storage_slots = vec![];
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+
+    let tx = TransactionBuilder::create(contract, salt, storage_slots)
+        .add_output(Output::contract_created(contract_id, state_root))
+        .finalize_checked(height, &params);
+
+    client.transact(tx);
+
+    let mut predicate = vec![0u8; 128];
+    let mut predicate_data = vec![0u8; 512];
+
+    rng.fill(predicate.as_mut_slice());
+    rng.fill(predicate_data.as_mut_slice());
+
+    let owner = (*Contract::root_from_code(&predicate)).into();
+    let input_coin_predicate = Input::coin_predicate(
+        rng.gen(),
+        owner,
+        1_500,
+        rng.gen(),
+        100,
+        predicate.clone(),
+        predicate_data.clone(),
+    );
+
+    let contract_input_index = 2;
+
+    let message_amount = 5_500;
+    let message_nonce = 0xbeef;
+    let mut message_data = vec![0u8; 256];
+    rng.fill(message_data.as_mut_slice());
+
+    let mut m_data = vec![0u8; 64];
+    let mut m_predicate = vec![0u8; 128];
+    let mut m_predicate_data = vec![0u8; 512];
+
+    rng.fill(m_data.as_mut_slice());
+    rng.fill(m_predicate.as_mut_slice());
+    rng.fill(m_predicate_data.as_mut_slice());
+
+    let owner = Input::predicate_owner(&m_predicate);
+    let message_predicate = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        7_500,
+        0xdead,
+        owner,
+        m_data.clone(),
+        m_predicate.clone(),
+        m_predicate_data.clone(),
+    );
+
+    let asset = rng.gen();
+    let asset_amt = 27;
+
+    let output_message_amt = 3948;
+
     let tx = TransactionBuilder::script(vec![], vec![])
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), maturity)
+        .add_input(input_coin_predicate)
+        .add_input(Input::contract(rng.gen(), rng.gen(), state_root, contract_id))
+        .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
+        .add_output(Output::contract(contract_input_index, rng.gen(), state_root))
+        .add_witness(Witness::from(b"some-data".to_vec()))
+        .add_unsigned_message_input(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            message_nonce,
+            message_amount,
+            message_data.clone(),
+        )
+        .add_input(message_predicate)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, maturity)
+        .add_output(Output::coin(rng.gen(), asset_amt, asset))
+        .add_output(Output::message(rng.gen(), output_message_amt))
         .finalize_checked(height, &params);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
-    let _witnesses = tx.as_ref().witnesses();
+    let witnesses = tx.as_ref().witnesses();
 
     let inputs_bytes: Vec<Vec<u8>> = inputs.iter().map(|i| i.clone().to_bytes()).collect();
-    let _outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let witnesses_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.clone().to_bytes()).collect();
+
+    let receipts_root = tx.as_ref().receipts_root().expect("failed to fetch receipts root");
 
     #[rustfmt::skip]
     let cases = vec![
-        inputs_bytes[0].clone(),
+        inputs_bytes[0].clone(), // 0 - ScriptInputAtIndex
+        outputs_bytes[0].clone(), // 1 - ScriptOutputAtIndex
+        witnesses_bytes[1].clone(), // 2 - ScriptWitnessAtIndex
+        receipts_root.to_vec(), // 3 - ScriptReceiptsRoot
+        inputs[0].utxo_id().unwrap().clone().to_bytes(), // 4- InputCoinTxId
+        inputs[0].input_owner().unwrap().to_vec(), // 5 - InputCoinOwner
+        inputs[0].asset_id().unwrap().to_vec(), // 6 - InputCoinAssetId
+        predicate.clone(), // 7 - InputCoinPredicate
+        predicate_data.clone(), // 8 - InputCoinPredicateData
+        inputs[2].utxo_id().unwrap().clone().to_bytes(), // 9 - InputContractTxId
+        inputs[2].balance_root().unwrap().to_vec(), // 10 - InputContractBalanceRoot
+        inputs[2].state_root().unwrap().to_vec(), // 11 - InputContractStateRoot
+        inputs[2].contract_id().unwrap().to_vec(), // 12 - InputContractId
+        inputs[3].message_id().unwrap().to_vec(), // 13 - InputMessageId
+        inputs[3].sender().unwrap().to_vec(), // 14 - InputMessageSender
+        inputs[3].recipient().unwrap().to_vec(), // 15 - InputMessageRecipient
+        inputs[3].input_owner().unwrap().to_vec(), // 16 - InputMessageOwner
+        m_data.clone(), // 17 - InputMessageData
+        m_predicate.clone(), // 18 - InputMessagePredicate
+        m_predicate_data.clone(), // 19 - InputMessagePredicateData
+        outputs[2].to().unwrap().to_vec(), // 20 - OutputCoinTo
+        outputs[2].asset_id().unwrap().to_vec(), // 21 - OutputCoinAssetId
+        outputs[1].balance_root().unwrap().to_vec(), // 22 - OutputContractBalanceRoot
+        outputs[1].state_root().unwrap().to_vec(), // 23 - OutputContractStateRoot
+        outputs[3].recipient().unwrap().to_vec(), // 24 - OutputMessageRecipient
+        witnesses[1].as_ref().to_vec(), // 25 - WitnessData
     ];
 
-    #[rustfmt::skip]
-    let script = vec![
-        Opcode::MOVI(0x20, 0x01),
-        Opcode::gtf(0x30, 0x00, GTFArgs::ScriptData),
+    // hardcoded metadata of script len so it can be checked at runtime
+    let script_len = 1284;
+    let script_offset = params.tx_offset() + Transaction::script_offset();
+    let script_data_offset = script_offset + bytes::padded_len_usize(script_len);
+    let script_data: Vec<u8> = cases.iter().map(|c| c.iter()).flatten().copied().collect();
 
+    // Maybe use predicates to check create context?
+    // TODO GTFArgs::CreateBytecodeLength
+    // TODO GTFArgs::CreateBytecodeWitnessIndex
+    // TODO GTFArgs::CreateStorageSlotsCount
+    // TODO GTFArgs::CreateSalt
+    // TODO GTFArgs::CreateStorageSlotAtIndex
+    // TODO GTFArgs::OutputContractCreatedContractId
+    // TODO GTFArgs::OutputContractCreatedStateRoot
+
+    // blocked by https://github.com/FuelLabs/fuel-vm/issues/59
+    // TODO GTFArgs::InputCoinTxPointer
+    // TODO GTFArgs::InputContractTxPointer
+
+    #[rustfmt::skip]
+    let script: Vec<u8> = vec![
+        Opcode::MOVI(0x20, 0x01),
+        Opcode::gtf(0x30, 0x19, GTFArgs::ScriptData),
+
+        Opcode::MOVI(0x19, 0x00),
         Opcode::MOVI(0x11, TransactionRepr::Script as Immediate18),
-        Opcode::gtf(0x10, 0x00, GTFArgs::Type),
+        Opcode::gtf(0x10, 0x19, GTFArgs::Type),
         Opcode::EQ(0x10, 0x10, 0x11),
         Opcode::AND(0x20, 0x20, 0x10),
 
         Opcode::MOVI(0x11, gas_price as Immediate18),
-        Opcode::gtf(0x10, 0x00, GTFArgs::ScriptGasPrice),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptGasPrice),
         Opcode::EQ(0x10, 0x10, 0x11),
         Opcode::AND(0x20, 0x20, 0x10),
 
-        // TODO add tests to cover all GTF variants
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::MOVI(0x11, (gas_limit & 0x3ffff) as Immediate18),
+        Opcode::MOVI(0x12, (gas_limit >> 18) as Immediate18),
+        Opcode::SLLI(0x12, 0x12, 18),
+        Opcode::OR(0x11, 0x11, 0x12),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptGasLimit),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::MOVI(0x11, maturity as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptMaturity),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::MOVI(0x11, inputs.len() as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptInputsCount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::MOVI(0x11, outputs.len() as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptOutputsCount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::MOVI(0x11, witnesses.len() as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptWitnessesCound),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptInputAtIndex),
+        Opcode::MOVI(0x11, cases[0].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptOutputAtIndex),
+        Opcode::MOVI(0x11, cases[1].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptWitnessAtIndex),
+        Opcode::MOVI(0x11, cases[2].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, script_len as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, script_data.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptDataLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptReceiptsRoot),
+        Opcode::MOVI(0x11, cases[3].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, script_offset as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::Script),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, script_data_offset as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::ScriptData),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, InputRepr::Coin as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputType),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinTxId),
+        Opcode::MOVI(0x11, cases[4].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, inputs[0].utxo_id().unwrap().output_index() as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinOutputIndex),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinOwner),
+        Opcode::MOVI(0x11, cases[5].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, (inputs[0].amount().unwrap() & 0x3ffff) as Immediate18),
+        Opcode::MOVI(0x12, (inputs[0].amount().unwrap() >> 18) as Immediate18),
+        Opcode::SLLI(0x12, 0x12, 18),
+        Opcode::OR(0x11, 0x11, 0x12),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinAmount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinAssetId),
+        Opcode::MOVI(0x11, cases[6].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, inputs[0].witness_index().unwrap() as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinWitnessIndex),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, inputs[0].maturity().unwrap() as Immediate18),
+        Opcode::MOVI(0x19, 0x00),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinMaturity),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, predicate.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinPredicateLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, predicate_data.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinPredicateDataLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinPredicate),
+        Opcode::MOVI(0x11, cases[7].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinPredicateData),
+        Opcode::MOVI(0x11, cases[8].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractTxId),
+        Opcode::MOVI(0x11, cases[9].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, 0x01),
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractOutputIndex),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractBalanceRoot),
+        Opcode::MOVI(0x11, cases[10].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractStateRoot),
+        Opcode::MOVI(0x11, cases[11].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractId),
+        Opcode::MOVI(0x11, cases[12].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageId),
+        Opcode::MOVI(0x11, cases[13].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageSender),
+        Opcode::MOVI(0x11, cases[14].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageRecipient),
+        Opcode::MOVI(0x11, cases[15].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, message_amount as Immediate18),
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageAmount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, message_nonce as Immediate18),
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageNonce),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageOwner),
+        Opcode::MOVI(0x11, cases[16].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, 0x02),
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageWitnessIndex),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, message_data.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageDataLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, m_predicate.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x04),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessagePredicateLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, m_predicate_data.len() as Immediate18),
+        Opcode::MOVI(0x19, 0x04),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessagePredicateDataLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x04),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessageData),
+        Opcode::MOVI(0x11, cases[17].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x04),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessagePredicate),
+        Opcode::MOVI(0x11, cases[18].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x04),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputMessagePredicateData),
+        Opcode::MOVI(0x11, cases[19].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, OutputRepr::Contract as Immediate18),
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputType),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x02),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputCoinTo),
+        Opcode::MOVI(0x11, cases[20].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, asset_amt as Immediate18),
+        Opcode::MOVI(0x19, 0x02),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputCoinAmount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x02),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputCoinAssetId),
+        Opcode::MOVI(0x11, cases[21].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, asset_amt as Immediate18),
+        Opcode::MOVI(0x19, 0x02),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputCoinAmount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, contract_input_index as Immediate18),
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputContractInputIndex),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputContractBalanceRoot),
+        Opcode::MOVI(0x11, cases[22].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputContractStateRoot),
+        Opcode::MOVI(0x11, cases[23].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputMessageRecipient),
+        Opcode::MOVI(0x11, cases[24].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, output_message_amt as Immediate18),
+        Opcode::MOVI(0x19, 0x03),
+        Opcode::gtf(0x10, 0x19, GTFArgs::OutputMessageAmount),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x11, witnesses[1].as_ref().len() as Immediate18),
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::WitnessDataLength),
+        Opcode::EQ(0x10, 0x10, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, 0x01),
+        Opcode::gtf(0x10, 0x19, GTFArgs::WitnessData),
+        Opcode::MOVI(0x11, cases[25].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
 
         Opcode::LOG(0x20, 0x00, 0x00, 0x00),
         Opcode::RET(0x00)
     ].into_iter().collect();
 
-    let script_data = cases.iter().map(|c| c.iter()).flatten().copied().collect();
+    assert_eq!(script.len(), script_len);
+
     let mut builder = TransactionBuilder::script(script, script_data);
 
     tx.as_ref().inputs().iter().for_each(|i| {

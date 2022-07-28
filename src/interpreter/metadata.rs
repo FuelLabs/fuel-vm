@@ -179,18 +179,24 @@ impl<S> Interpreter<S> {
                 .filter(|i| i.is_coin())
                 .and_then(Input::predicate_data_len)
                 .ok_or(PanicReason::InputNotFound)? as Word,
-            GTFArgs::InputCoinPredicate => tx
-                .inputs()
-                .get(b)
-                .filter(|i| i.is_coin())
-                .and_then(Input::predicate_offset)
-                .ok_or(PanicReason::InputNotFound)? as Word,
-            GTFArgs::InputCoinPredicateData => tx
-                .inputs()
-                .get(b)
-                .filter(|i| i.is_coin())
-                .and_then(Input::predicate_data_offset)
-                .ok_or(PanicReason::InputNotFound)? as Word,
+            GTFArgs::InputCoinPredicate => {
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_coin())
+                    .and_then(Input::predicate_offset)
+                    .and_then(|ofs| tx.input_offset(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
+            }
+            GTFArgs::InputCoinPredicateData => {
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_coin())
+                    .and_then(Input::predicate_data_offset)
+                    .and_then(|ofs| tx.input_offset(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
+            }
             GTFArgs::InputContractTxId => {
                 (ofs + tx
                     .inputs()
@@ -416,9 +422,9 @@ impl<S> Interpreter<S> {
             GTFArgs::OutputMessageAmount => tx
                 .outputs()
                 .get(b)
-                .filter(|o| o.is_contract())
+                .filter(|o| o.is_message())
                 .and_then(Output::amount)
-                .ok_or(PanicReason::InputNotFound)?,
+                .ok_or(PanicReason::OutputNotFound)?,
             GTFArgs::OutputContractCreatedContractId => {
                 (ofs + tx
                     .outputs()
@@ -446,7 +452,10 @@ impl<S> Interpreter<S> {
                 .get(b)
                 .map(|w| w.as_ref().len())
                 .ok_or(PanicReason::WitnessNotFound)? as Word,
-            GTFArgs::WitnessData => tx.witness_offset(b).ok_or(PanicReason::WitnessNotFound)? as Word,
+            GTFArgs::WitnessData => tx
+                .witness_offset(b)
+                .map(|w| ofs + w + WORD_SIZE)
+                .ok_or(PanicReason::WitnessNotFound)? as Word,
 
             _ => return Err(PanicReason::InvalidMetadataIdentifier.into()),
         };

@@ -262,24 +262,6 @@ pub enum Opcode {
     /// The SHA-2-256 hash of a slice.
     S256(RegisterId, RegisterId, RegisterId),
 
-    /// Get the length in bytes of an input.
-    XIL(RegisterId, RegisterId),
-
-    /// Get the memory addess of the start of an input.
-    XIS(RegisterId, RegisterId),
-
-    /// Get the length in bytes of an output.
-    XOL(RegisterId, RegisterId),
-
-    /// Get the memory addess of the start of an output.
-    XOS(RegisterId, RegisterId),
-
-    /// Get the length in bytes of a witness.
-    XWL(RegisterId, RegisterId),
-
-    /// Get the memory addess of the start of a witness.
-    XWS(RegisterId, RegisterId),
-
     /// Performs no operation.
     NOOP,
 
@@ -387,12 +369,6 @@ impl Opcode {
             OpcodeRepr::ECR => Opcode::ECR(ra, rb, rc),
             OpcodeRepr::K256 => Opcode::K256(ra, rb, rc),
             OpcodeRepr::S256 => Opcode::S256(ra, rb, rc),
-            OpcodeRepr::XIL => Opcode::XIL(ra, rb),
-            OpcodeRepr::XIS => Opcode::XIS(ra, rb),
-            OpcodeRepr::XOL => Opcode::XOL(ra, rb),
-            OpcodeRepr::XOS => Opcode::XOS(ra, rb),
-            OpcodeRepr::XWL => Opcode::XWL(ra, rb),
-            OpcodeRepr::XWS => Opcode::XWS(ra, rb),
             OpcodeRepr::NOOP => Opcode::NOOP,
             OpcodeRepr::FLAG => Opcode::FLAG(ra),
             OpcodeRepr::GM => Opcode::GM(ra, imm18),
@@ -497,12 +473,6 @@ impl Opcode {
             Self::ECR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::K256(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::S256(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
-            Self::XIL(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::XIS(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::XOL(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::XOS(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::XWL(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::XWS(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::NOOP => [None; 4],
             Self::FLAG(ra) => [Some(*ra), None, None, None],
             Self::GM(ra, _) => [Some(*ra), None, None, None],
@@ -589,12 +559,6 @@ impl Opcode {
             | Self::ECR(_, _, _)
             | Self::K256(_, _, _)
             | Self::S256(_, _, _)
-            | Self::XIL(_, _)
-            | Self::XIS(_, _)
-            | Self::XOL(_, _)
-            | Self::XOS(_, _)
-            | Self::XWL(_, _)
-            | Self::XWS(_, _)
             | Self::NOOP
             | Self::FLAG(_)
             | Self::Undefined => None,
@@ -1032,24 +996,6 @@ impl From<Opcode> for u32 {
                     | ((ra as u32) << 18)
                     | ((rb as u32) << 12)
                     | ((rc as u32) << 6)
-            }
-            Opcode::XIL(ra, rb) => {
-                ((OpcodeRepr::XIL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
-            }
-            Opcode::XIS(ra, rb) => {
-                ((OpcodeRepr::XIS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
-            }
-            Opcode::XOL(ra, rb) => {
-                ((OpcodeRepr::XOL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
-            }
-            Opcode::XOS(ra, rb) => {
-                ((OpcodeRepr::XOS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
-            }
-            Opcode::XWL(ra, rb) => {
-                ((OpcodeRepr::XWL as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
-            }
-            Opcode::XWS(ra, rb) => {
-                ((OpcodeRepr::XWS as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
             }
             Opcode::NOOP => (OpcodeRepr::NOOP as u32) << 24,
             Opcode::FLAG(ra) => ((OpcodeRepr::FLAG as u32) << 24) | ((ra as u32) << 18),

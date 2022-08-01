@@ -96,6 +96,7 @@ fn input() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             rng.next_u64(),
         ),
         Input::coin_predicate(
@@ -104,10 +105,11 @@ fn input() {
             rng.next_u64(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
-        Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_signed(
             rng.gen(),
             rng.gen(),
@@ -494,7 +496,7 @@ fn receipt() {
 fn transaction() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen());
+    let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let o = Output::coin(rng.gen(), rng.next_u64(), rng.gen());
     let w = rng.gen::<Witness>();
     let s = rng.gen::<StorageSlot>();
@@ -653,8 +655,14 @@ fn create_input_coin_data_offset() {
         vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()); 2],
+        vec![Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        )],
+        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()); 2],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
@@ -679,6 +687,7 @@ fn create_input_coin_data_offset() {
         rng.gen(),
         owner,
         rng.next_u64(),
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         predicate.clone(),
@@ -750,10 +759,16 @@ fn script_input_coin_data_offset() {
 
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())],
+        vec![Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        )],
         vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
@@ -785,6 +800,7 @@ fn script_input_coin_data_offset() {
         rng.gen(),
         owner,
         rng.next_u64(),
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         predicate.clone(),

@@ -58,10 +58,11 @@ fn input_coin_message_signature() {
         let utxo_id = rng.gen();
         let amount = rng.gen();
         let asset_id = rng.gen();
+        let tx_pointer = rng.gen();
         let maturity = rng.gen();
 
         sign_and_validate(rng, txs.by_ref(), |tx, public| {
-            tx.add_unsigned_coin_input(utxo_id, public, amount, asset_id, maturity)
+            tx.add_unsigned_coin_input(utxo_id, public, amount, asset_id, tx_pointer, maturity)
         })
         .expect("Failed to validate transaction");
     }
@@ -86,7 +87,15 @@ fn coin_signed() {
 
     let mut tx = Transaction::default();
 
-    let input = Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+    let input = Input::coin_signed(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+    );
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -112,6 +121,7 @@ fn coin_predicate() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -124,6 +134,7 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -146,6 +157,7 @@ fn coin_predicate() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -162,7 +174,7 @@ fn contract() {
 
     let txhash: Bytes32 = rng.gen();
 
-    Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .validate(
             1,
             &txhash,
@@ -172,7 +184,7 @@ fn contract() {
         )
         .unwrap();
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .validate(1, &txhash, &[], &[], &Default::default())
         .err()
         .unwrap();
@@ -182,7 +194,7 @@ fn contract() {
         err
     );
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .validate(
             1,
             &txhash,
@@ -198,7 +210,7 @@ fn contract() {
         err
     );
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .validate(
             1,
             &txhash,
@@ -355,8 +367,24 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let utxo_id = rng.gen();
 
-    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
-    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+    let a = Input::coin_signed(
+        utxo_id,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+    );
+    let b = Input::coin_signed(
+        utxo_id,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        rng.gen(),
+    );
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
@@ -402,8 +430,8 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let contract_id = rng.gen();
 
-    let a = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let b = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let a = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let b = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());
@@ -428,8 +456,8 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let input_utxo_id: UtxoId = rng.gen();
 
-    let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
-    let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen());
+    let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
+    let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());

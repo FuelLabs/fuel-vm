@@ -35,9 +35,13 @@ fn tx_offset() {
     let mut tested_output_contract_created_id = false;
     let mut tested_output_recipient = false;
 
-    let cases = 3;
+    let cases = 2;
 
-    TransactionFactory::from_seed(1296)
+    // The seed will define how the transaction factory will generate a new transaction. Different
+    // seeds might implicate on how many of the cases we cover - since we assert coverage for all
+    // scenarios with the boolean variables above, we need to pick a seed that, with low number of
+    // cases, will cover everything.
+    TransactionFactory::from_seed(1295)
         .take(cases)
         .for_each(|(mut tx, _)| {
             let bytes = tx.to_bytes();

@@ -26,10 +26,11 @@ fn contract() {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
                 ),
-                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
         )
         .unwrap();
@@ -43,10 +44,11 @@ fn contract() {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
                 ),
-                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
         )
         .err()
@@ -63,10 +65,11 @@ fn contract() {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
                 ),
-                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
         )
         .err()

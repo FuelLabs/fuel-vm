@@ -93,6 +93,14 @@ impl InputRepr {
         }
     }
 
+    pub const fn tx_pointer_offset(&self) -> Option<usize> {
+        match self {
+            Self::Coin => Some(INPUT_COIN_TX_POINTER_OFFSET),
+            Self::Contract => Some(INPUT_CONTRACT_TX_POINTER_OFFSET),
+            Self::Message => None,
+        }
+    }
+
     pub const fn from_input(input: &Input) -> Self {
         match input {
             Input::CoinSigned { .. } | Input::CoinPredicate { .. } => InputRepr::Coin,

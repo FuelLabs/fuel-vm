@@ -3,7 +3,7 @@ use crate::TxId;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::Bytes32;
 
-use core::str::FromStr;
+use core::{fmt, str};
 
 #[cfg(feature = "std")]
 use fuel_types::bytes;
@@ -44,6 +44,10 @@ impl UtxoId {
     pub const fn output_index(&self) -> u8 {
         self.output_index
     }
+
+    pub fn replace_tx_id(&mut self, tx_id: TxId) {
+        self.tx_id = tx_id;
+    }
 }
 
 #[cfg(feature = "random")]
@@ -55,7 +59,7 @@ impl Distribution<UtxoId> for Standard {
     }
 }
 
-impl core::fmt::LowerHex for UtxoId {
+impl fmt::LowerHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
@@ -65,7 +69,7 @@ impl core::fmt::LowerHex for UtxoId {
     }
 }
 
-impl core::fmt::UpperHex for UtxoId {
+impl fmt::UpperHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             write!(f, "{:#X}{:02X}", self.tx_id, self.output_index)
@@ -75,7 +79,7 @@ impl core::fmt::UpperHex for UtxoId {
     }
 }
 
-impl FromStr for UtxoId {
+impl str::FromStr for UtxoId {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -140,6 +144,7 @@ impl io::Read for UtxoId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::str::FromStr;
     use fuel_types::Bytes32;
 
     #[test]

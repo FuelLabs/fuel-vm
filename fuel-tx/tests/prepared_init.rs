@@ -15,7 +15,7 @@ fn output_message_prepare_init_zeroes_recipient_and_amount() {
 
     let output = tx
         .clone()
-        .prepare_init()
+        .prepare_init_predicate()
         .outputs()
         .first()
         .cloned()
@@ -45,7 +45,7 @@ fn output_variable_prepare_init_zeroes_recipient_and_amount() {
 
     let output = tx
         .clone()
-        .prepare_init()
+        .prepare_init_predicate()
         .outputs()
         .first()
         .cloned()

@@ -8,6 +8,9 @@ use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
 #[cfg(feature = "std")]
 use fuel_crypto::{Message, SecretKey, Signature};
 
+#[cfg(feature = "std")]
+use std::io;
+
 use alloc::vec::Vec;
 use core::mem;
 
@@ -31,7 +34,7 @@ pub use consensus_parameters::ConsensusParameters;
 pub use fee::TransactionFee;
 pub use metadata::Metadata;
 pub use repr::TransactionRepr;
-pub use types::{Input, InputRepr, Output, OutputRepr, StorageSlot, UtxoId, Witness};
+pub use types::{Input, InputRepr, Output, OutputRepr, StorageSlot, TxPointer, UtxoId, Witness};
 pub use validation::ValidationError;
 
 /// Identification of transaction (also called transaction hash)
@@ -327,12 +330,21 @@ impl Transaction {
         owner: &PublicKey,
         amount: Word,
         asset_id: AssetId,
+        tx_pointer: TxPointer,
         maturity: Word,
     ) {
         let owner = Input::owner(owner);
 
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::coin_signed(utxo_id, owner, amount, asset_id, witness_index, maturity);
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+        );
 
         self._add_witness(Witness::default());
         self._add_input(input);
@@ -457,15 +469,44 @@ impl Transaction {
         }
     }
 
-    /// Prepare the transaction for VM initialization
+    /// Prepare the transaction for VM initialization for script execution
     ///
-    /// # Steps
-    ///
-    /// 1) Zero all recipient and amount from message outputs
-    pub fn prepare_init(&mut self) -> &mut Self {
+    /// The callback argument is to expect a contract id and return its balance root and state root
+    #[cfg(feature = "std")]
+    pub fn prepare_init_script<F>(&mut self, mut f: F) -> io::Result<&mut Self>
+    where
+        F: FnMut(&fuel_types::ContractId) -> io::Result<(Bytes32, Bytes32)>,
+    {
+        let id = self.id();
+
+        let (inputs, outputs) = match self {
+            Transaction::Script {
+                inputs, outputs, ..
+            }
+            | Transaction::Create {
+                inputs, outputs, ..
+            } => (inputs, outputs),
+        };
+
+        inputs.iter_mut().for_each(|i| i.prepare_init_script(id));
+
+        outputs
+            .iter_mut()
+            .try_for_each(|o| o.prepare_init_script(inputs, &mut f))?;
+
+        Ok(self)
+    }
+
+    /// Prepare the transaction for VM initialization for predicate verification
+    pub fn prepare_init_predicate(&mut self) -> &mut Self {
+        self._inputs_mut()
+            .iter_mut()
+            .for_each(|i| i.prepare_init_predicate());
+
         self._outputs_mut()
             .iter_mut()
-            .for_each(|o| o.prepare_init());
+            .for_each(|o| o.prepare_init_predicate());
+
         self
     }
 

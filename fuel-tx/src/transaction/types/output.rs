@@ -2,6 +2,11 @@ use fuel_crypto::Hasher;
 use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
+use core::mem;
+
+#[cfg(feature = "std")]
+use crate::Input;
+
 #[cfg(feature = "std")]
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 
@@ -235,14 +240,86 @@ impl Output {
         Hasher::hash(data)
     }
 
-    /// Prepare the output for VM initialization
-    pub fn prepare_init(&mut self) {
-        const ZERO_MESSAGE: Output = Output::message(Address::zeroed(), 0);
-        const ZERO_VARIABLE: Output = Output::variable(Address::zeroed(), 0, AssetId::zeroed());
+    /// Prepare the output for VM initialization for script execution
+    #[cfg(feature = "std")]
+    pub fn prepare_init_script<F>(&mut self, inputs: &[Input], f: F) -> io::Result<()>
+    where
+        F: FnMut(&fuel_types::ContractId) -> io::Result<(Bytes32, Bytes32)>,
+    {
+        use fuel_asm::PanicReason;
 
         match self {
-            Output::Message { .. } => *self = ZERO_MESSAGE,
-            Output::Variable { .. } => *self = ZERO_VARIABLE,
+            Output::Contract {
+                balance_root,
+                state_root,
+                input_index,
+            } => {
+                let (initial_balance_root, initial_state_root) = inputs
+                    .get(*input_index as usize)
+                    .and_then(Input::contract_id)
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::Other, PanicReason::InputNotFound))
+                    .and_then(f)?;
+
+                *balance_root = initial_balance_root;
+                *state_root = initial_state_root;
+            }
+
+            Output::Message { recipient, amount } => {
+                mem::take(recipient);
+                mem::take(amount);
+            }
+
+            Output::Change { amount, .. } => {
+                mem::take(amount);
+            }
+
+            Output::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
+                mem::take(to);
+                mem::take(amount);
+                mem::take(asset_id);
+            }
+
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    /// Prepare the output for VM initialization for predicate verification
+    pub fn prepare_init_predicate(&mut self) {
+        match self {
+            Output::Contract {
+                balance_root,
+                state_root,
+                ..
+            } => {
+                mem::take(balance_root);
+                mem::take(state_root);
+            }
+
+            Output::Message { recipient, amount } => {
+                mem::take(recipient);
+                mem::take(amount);
+            }
+
+            Output::Change { amount, .. } => {
+                mem::take(amount);
+            }
+
+            Output::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
+                mem::take(to);
+                mem::take(amount);
+                mem::take(asset_id);
+            }
+
             _ => (),
         }
     }

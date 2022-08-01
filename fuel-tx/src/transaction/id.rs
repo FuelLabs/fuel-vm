@@ -1,74 +1,76 @@
-use crate::{Input, Metadata, Output, Transaction, UtxoId};
+use crate::{Input, Metadata, Output, Transaction};
 
 use fuel_crypto::Hasher;
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Bytes32;
 
+use core::mem;
+
 impl Transaction {
     pub(crate) fn prepare_sign(&mut self) -> &mut Self {
         self.set_receipts_root(Default::default());
 
-        let (inputs, outputs, witnesses) = match self {
-            Self::Create {
-                inputs,
-                outputs,
-                witnesses,
-                ..
-            } => (inputs, outputs, witnesses),
-            Self::Script {
-                inputs,
-                outputs,
-                witnesses,
-                ..
-            } => (inputs, outputs, witnesses),
-        };
+        self._inputs_mut().iter_mut().for_each(|input| match input {
+            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
+                mem::take(tx_pointer);
+            }
 
-        inputs.iter_mut().for_each(|input| {
-            if let Input::Contract {
+            Input::Contract {
                 utxo_id,
                 balance_root,
                 state_root,
-                ..
-            } = input
-            {
-                *utxo_id = UtxoId::default();
-                balance_root.iter_mut().for_each(|b| *b = 0);
-                state_root.iter_mut().for_each(|b| *b = 0);
-            }
-        });
-
-        outputs.iter_mut().for_each(|output| match output {
-            Output::Contract {
-                balance_root,
-                state_root,
+                tx_pointer,
                 ..
             } => {
-                balance_root.iter_mut().for_each(|b| *b = 0);
-                state_root.iter_mut().for_each(|b| *b = 0);
-            }
-
-            Output::Change { amount, .. } => *amount = 0,
-
-            Output::Message { recipient, amount } => {
-                recipient.iter_mut().for_each(|b| *b = 0);
-                *amount = 0;
-            }
-
-            Output::Variable {
-                to,
-                amount,
-                asset_id,
-                ..
-            } => {
-                to.iter_mut().for_each(|b| *b = 0);
-                *amount = 0;
-                asset_id.iter_mut().for_each(|b| *b = 0);
+                mem::take(utxo_id);
+                mem::take(balance_root);
+                mem::take(state_root);
+                mem::take(tx_pointer);
             }
 
             _ => (),
         });
 
-        witnesses.clear();
+        self._outputs_mut()
+            .iter_mut()
+            .for_each(|output| match output {
+                Output::Contract {
+                    balance_root,
+                    state_root,
+                    ..
+                } => {
+                    mem::take(balance_root);
+                    mem::take(state_root);
+                }
+
+                Output::Change { amount, .. } => {
+                    mem::take(amount);
+                }
+
+                Output::Message { recipient, amount } => {
+                    mem::take(recipient);
+                    mem::take(amount);
+                }
+
+                Output::Variable {
+                    to,
+                    amount,
+                    asset_id,
+                    ..
+                } => {
+                    mem::take(to);
+                    mem::take(amount);
+                    mem::take(asset_id);
+                }
+
+                _ => (),
+            });
+
+        match self {
+            Transaction::Script { witnesses, .. } | Transaction::Create { witnesses, .. } => {
+                witnesses.clear()
+            }
+        }
 
         self
     }
@@ -272,6 +274,7 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     rng.next_u64(),
                 ),
@@ -280,11 +283,12 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     rng.next_u64(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
-                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             ],
         ];
 

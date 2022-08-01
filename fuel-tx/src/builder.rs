@@ -1,5 +1,6 @@
 use crate::{
-    CheckedTransaction, ConsensusParameters, Input, Output, StorageSlot, Transaction, Witness,
+    CheckedTransaction, ConsensusParameters, Input, Output, StorageSlot, Transaction, TxPointer,
+    Witness,
 };
 
 use fuel_crypto::SecretKey;
@@ -82,13 +83,14 @@ impl TransactionBuilder {
         utxo_id: crate::UtxoId,
         amount: Word,
         asset_id: fuel_types::AssetId,
+        tx_pointer: TxPointer,
         maturity: Word,
     ) -> &mut Self {
         let pk = secret.public_key();
 
         self.sign_keys.push(secret);
         self.tx
-            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, maturity);
+            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, tx_pointer, maturity);
 
         self
     }

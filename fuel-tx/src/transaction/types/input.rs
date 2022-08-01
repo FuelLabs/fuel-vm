@@ -1,8 +1,10 @@
-use crate::UtxoId;
+use crate::{TxId, TxPointer, UtxoId};
 
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+
+use core::mem;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
@@ -27,6 +29,7 @@ pub enum Input {
         owner: Address,
         amount: Word,
         asset_id: AssetId,
+        tx_pointer: TxPointer,
         witness_index: u8,
         maturity: Word,
     },
@@ -36,6 +39,7 @@ pub enum Input {
         owner: Address,
         amount: Word,
         asset_id: AssetId,
+        tx_pointer: TxPointer,
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -45,6 +49,7 @@ pub enum Input {
         utxo_id: UtxoId,
         balance_root: Bytes32,
         state_root: Bytes32,
+        tx_pointer: TxPointer,
         contract_id: ContractId,
     },
 
@@ -78,6 +83,7 @@ impl Default for Input {
             utxo_id: Default::default(),
             balance_root: Default::default(),
             state_root: Default::default(),
+            tx_pointer: Default::default(),
             contract_id: Default::default(),
         }
     }
@@ -135,6 +141,7 @@ impl Input {
         owner: Address,
         amount: Word,
         asset_id: AssetId,
+        tx_pointer: TxPointer,
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -144,6 +151,7 @@ impl Input {
             owner,
             amount,
             asset_id,
+            tx_pointer,
             maturity,
             predicate,
             predicate_data,
@@ -155,6 +163,7 @@ impl Input {
         owner: Address,
         amount: Word,
         asset_id: AssetId,
+        tx_pointer: TxPointer,
         witness_index: u8,
         maturity: Word,
     ) -> Self {
@@ -163,6 +172,7 @@ impl Input {
             owner,
             amount,
             asset_id,
+            tx_pointer,
             witness_index,
             maturity,
         }
@@ -172,12 +182,14 @@ impl Input {
         utxo_id: UtxoId,
         balance_root: Bytes32,
         state_root: Bytes32,
+        tx_pointer: TxPointer,
         contract_id: ContractId,
     ) -> Self {
         Self::Contract {
             utxo_id,
             balance_root,
             state_root,
+            tx_pointer,
             contract_id,
         }
     }
@@ -341,6 +353,15 @@ impl Input {
             Self::MessagePredicate { message_id, .. } | Self::MessageSigned { message_id, .. } => {
                 Some(message_id)
             }
+            _ => None,
+        }
+    }
+
+    pub const fn tx_pointer(&self) -> Option<&TxPointer> {
+        match self {
+            Input::CoinSigned { tx_pointer, .. }
+            | Input::CoinPredicate { tx_pointer, .. }
+            | Input::Contract { tx_pointer, .. } => Some(tx_pointer),
             _ => None,
         }
     }
@@ -518,6 +539,55 @@ impl Input {
     {
         owner == &Self::predicate_owner(predicate)
     }
+
+    /// Prepare the output for VM initialization
+    pub fn prepare_init_script(&mut self, tx_id: Bytes32) {
+        match self {
+            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
+                mem::take(tx_pointer);
+            }
+
+            Input::Contract {
+                utxo_id,
+                balance_root,
+                state_root,
+                tx_pointer,
+                ..
+            } => {
+                mem::take(tx_pointer);
+                utxo_id.replace_tx_id(tx_id);
+
+                *balance_root = (*tx_id).into();
+                *state_root = (*tx_id).into();
+            }
+
+            _ => (),
+        }
+    }
+
+    /// Prepare the output for VM predicate execution
+    pub fn prepare_init_predicate(&mut self) {
+        match self {
+            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
+                mem::take(tx_pointer);
+            }
+
+            Input::Contract {
+                utxo_id,
+                balance_root,
+                state_root,
+                tx_pointer,
+                ..
+            } => {
+                mem::take(tx_pointer);
+                mem::take(balance_root);
+                mem::take(state_root);
+                utxo_id.replace_tx_id(TxId::zeroed());
+            }
+
+            _ => (),
+        }
+    }
 }
 
 #[cfg(feature = "std")]
@@ -534,15 +604,22 @@ impl io::Read for Input {
                 owner,
                 amount,
                 asset_id,
+                tx_pointer,
                 witness_index,
                 maturity,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
-                let buf = bytes::store_array_unchecked(buf, utxo_id.tx_id());
-                let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
+
+                let n = utxo_id.read(buf)?;
+                let buf = &mut buf[n..];
+
                 let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, asset_id);
+
+                let n = tx_pointer.read(buf)?;
+                let buf = &mut buf[n..];
+
                 let buf = bytes::store_number_unchecked(buf, *witness_index);
                 let buf = bytes::store_number_unchecked(buf, *maturity);
 
@@ -558,16 +635,22 @@ impl io::Read for Input {
                 owner,
                 amount,
                 asset_id,
+                tx_pointer,
                 maturity,
                 predicate,
                 predicate_data,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
-                let buf = bytes::store_array_unchecked(buf, utxo_id.tx_id());
-                let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
+
+                let n = utxo_id.read(buf)?;
+                let buf = &mut buf[n..];
+
                 let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_array_unchecked(buf, asset_id);
+
+                let n = tx_pointer.read(buf)?;
+                let buf = &mut buf[n..];
 
                 // Witness index zeroed for coin predicate
                 let buf = bytes::store_number_unchecked(buf, 0u64);
@@ -585,6 +668,7 @@ impl io::Read for Input {
                 utxo_id,
                 balance_root,
                 state_root,
+                tx_pointer,
                 contract_id,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
@@ -592,6 +676,9 @@ impl io::Read for Input {
                 let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
                 let buf = bytes::store_array_unchecked(buf, balance_root);
                 let buf = bytes::store_array_unchecked(buf, state_root);
+
+                let n = tx_pointer.read(buf)?;
+                let buf = &mut buf[n..];
 
                 bytes::store_array_unchecked(buf, contract_id);
             }
@@ -683,6 +770,10 @@ impl io::Write for Input {
                 let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+
+                let tx_pointer = TxPointer::from_bytes(buf)?;
+                let buf = &buf[tx_pointer.serialized_size()..];
+
                 let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
                 let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
 
@@ -704,6 +795,7 @@ impl io::Write for Input {
                         owner,
                         amount,
                         asset_id,
+                        tx_pointer,
                         witness_index,
                         maturity,
                     }
@@ -713,6 +805,7 @@ impl io::Write for Input {
                         owner,
                         amount,
                         asset_id,
+                        tx_pointer,
                         maturity,
                         predicate,
                         predicate_data,
@@ -731,6 +824,10 @@ impl io::Write for Input {
                 // Safety: checked buffer len
                 let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (state_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+
+                let tx_pointer = TxPointer::from_bytes(buf)?;
+                let buf = &buf[tx_pointer.serialized_size()..];
+
                 let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
 
                 let balance_root = balance_root.into();
@@ -741,6 +838,7 @@ impl io::Write for Input {
                     utxo_id,
                     balance_root,
                     state_root,
+                    tx_pointer,
                     contract_id,
                 };
 

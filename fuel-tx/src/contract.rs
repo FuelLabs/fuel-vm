@@ -147,14 +147,6 @@ mod tests {
     use rand::{rngs::StdRng, RngCore, SeedableRng};
     use rstest::rstest;
 
-    macro_rules! set_snapshot_suffix {
-        ($($expr:expr),*) => {{
-            let mut settings = insta::Settings::clone_current();
-            settings.set_snapshot_suffix(format!($($expr,)*));
-            settings.bind_to_thread();
-        }}
-    }
-
     // safe-guard against breaking changes to the code root calculation for valid
     // sizes of bytecode (multiples of instruction size in bytes (half-word))
     #[rstest]
@@ -168,8 +160,12 @@ mod tests {
         let root = Contract::root_from_code(code);
 
         // take root snapshot
-        set_snapshot_suffix!("instructions-{}", instructions);
-        insta::assert_debug_snapshot!(root);
+        insta::with_settings!(
+            {snapshot_suffix => format!("instructions-{}", instructions)},
+            {
+                insta::assert_debug_snapshot!(root);
+            }
+        );
     }
 
     // validate code_root is always equivalent to contract.root
@@ -193,8 +189,12 @@ mod tests {
         let slots: Vec<StorageSlot> = state_slot_bytes.iter().map(Into::into).collect_vec();
         let state_root = Contract::initial_state_root(&mut slots.iter());
         // take root snapshot
-        set_snapshot_suffix!("state-root-{}", slots.len());
-        insta::assert_debug_snapshot!(state_root);
+        insta::with_settings!(
+            {snapshot_suffix => format!("state-root-{}", slots.len())},
+            {
+                insta::assert_debug_snapshot!(state_root);
+            }
+        );
     }
 
     #[test]

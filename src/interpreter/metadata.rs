@@ -153,7 +153,7 @@ impl<S> Interpreter<S> {
             }
             GTFArgs::InputCoinTxPointer => {
                 // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/59
-                return Err(PanicReason::RESERV00.into());
+                return Err(PanicReason::RESERVFF.into());
             }
             GTFArgs::InputCoinWitnessIndex => tx
                 .inputs()
@@ -233,7 +233,7 @@ impl<S> Interpreter<S> {
             }
             GTFArgs::InputContractTxPointer => {
                 // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/59
-                return Err(PanicReason::RESERV00.into());
+                return Err(PanicReason::RESERVFF.into());
             }
             GTFArgs::InputContractId => {
                 (ofs + tx

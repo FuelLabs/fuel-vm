@@ -1,3 +1,4 @@
+use fuel_asm::GTFArgs;
 use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
 use rand::rngs::StdRng;
@@ -68,21 +69,21 @@ fn predicate() {
     let wrong_data = wrong_data.to_be_bytes().to_vec();
 
     // A script that will succeed only if the argument is 0x23
-    let mut predicate = vec![];
-
-    predicate.push(Opcode::MOVI(0x10, 0x11));
-    predicate.push(Opcode::ADDI(0x11, 0x10, 0x12));
-    predicate.push(Opcode::MOVI(0x12, 0x08));
-    predicate.push(Opcode::ALOC(0x12));
-    predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
-    predicate.push(Opcode::SW(0x12, 0x11, 0));
-    predicate.push(Opcode::MOVI(0x10, 0x08));
-    predicate.push(Opcode::XIL(0x20, 0));
-    predicate.push(Opcode::XIS(0x11, 0));
-    predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
-    predicate.push(Opcode::SUBI(0x11, 0x11, expected_data_len));
-    predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
-    predicate.push(Opcode::RET(0x10));
+    let predicate = vec![
+        Opcode::MOVI(0x11, 0x23),
+        Opcode::MOVI(0x12, 0x08),
+        Opcode::ALOC(0x12),
+        Opcode::ADDI(0x12, REG_HP, 0x01),
+        Opcode::SW(0x12, 0x11, 0),
+        Opcode::MOVI(0x10, 0x08),
+        Opcode::MOVI(0x20, expected_data_len.into()),
+        Opcode::gtf(0x11, REG_ZERO, GTFArgs::InputCoinPredicateData),
+        Opcode::ADD(0x11, 0x11, 0x20),
+        Opcode::SUBI(0x11, 0x11, expected_data_len),
+        Opcode::MOVI(0x10, 8),
+        Opcode::MEQ(0x10, 0x11, 0x12, 0x10),
+        Opcode::RET(0x10),
+    ];
 
     assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));

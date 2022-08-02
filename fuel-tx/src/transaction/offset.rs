@@ -1,5 +1,5 @@
 use super::{TRANSACTION_CREATE_FIXED_SIZE, TRANSACTION_SCRIPT_FIXED_SIZE};
-use crate::{Input, Metadata, StorageSlot, Transaction};
+use crate::{Metadata, StorageSlot, Transaction};
 
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::Bytes32;
@@ -31,21 +31,18 @@ impl Transaction {
     /// Return the offset/length tuple for an input predicate indexed by `index`.
     ///
     /// Return `None` either if `index` is invalid, or if its not a [`Input::CoinPredicate`]
-    pub fn input_coin_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
+    pub fn input_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
         self.metadata()
-            .map(|m| m.input_coin_predicate_offset(index))
-            .unwrap_or_else(|| self._input_coin_predicate_offset(index))
+            .map(|m| m.input_predicate_offset(index))
+            .unwrap_or_else(|| self._input_predicate_offset(index))
     }
 
-    pub(crate) fn _input_coin_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
-        self.input_offset(index)
-            .map(|ofs| ofs + Input::coin_predicate_offset())
-            .and_then(|ofs| {
-                self.inputs()
-                    .get(index)
-                    .and_then(Input::coin_predicate_len)
-                    .map(|l| (ofs, l))
-            })
+    pub(crate) fn _input_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
+        self.inputs().get(index).and_then(|i| {
+            i.predicate_offset()
+                .and_then(|p| self.input_offset(index).map(|o| p + o))
+                .zip(i.predicate_len().map(bytes::padded_len_usize))
+        })
     }
 
     /// Return the serialized bytes offset of the input with the provided index

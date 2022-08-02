@@ -475,11 +475,7 @@ impl Transaction {
     /// should already set by the client beforehand.
     #[cfg(feature = "std")]
     pub fn prepare_init_script(&mut self) -> io::Result<&mut Self> {
-        let outputs = match self {
-            Transaction::Script { outputs, .. } | Transaction::Create { outputs, .. } => outputs,
-        };
-
-        outputs
+        self._outputs_mut()
             .iter_mut()
             .try_for_each(|o| o.prepare_init_script())?;
 

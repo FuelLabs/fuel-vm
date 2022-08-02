@@ -152,8 +152,14 @@ impl<S> Interpreter<S> {
                     .ok_or(PanicReason::InputNotFound)?) as Word
             }
             GTFArgs::InputCoinTxPointer => {
-                // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/59
-                return Err(PanicReason::RESERV00.into());
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_coin())
+                    .map(Input::repr)
+                    .and_then(|r| r.tx_pointer_offset())
+                    .and_then(|ofs| tx.input_offset(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
             }
             GTFArgs::InputCoinWitnessIndex => tx
                 .inputs()
@@ -232,8 +238,14 @@ impl<S> Interpreter<S> {
                     .ok_or(PanicReason::InputNotFound)?) as Word
             }
             GTFArgs::InputContractTxPointer => {
-                // TODO blocked by https://github.com/FuelLabs/fuel-vm/issues/59
-                return Err(PanicReason::RESERV00.into());
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_contract())
+                    .map(Input::repr)
+                    .and_then(|r| r.tx_pointer_offset())
+                    .and_then(|ofs| tx.input_offset(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
             }
             GTFArgs::InputContractId => {
                 (ofs + tx

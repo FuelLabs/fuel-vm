@@ -31,7 +31,7 @@ fn code_coverage() {
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), 0)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)

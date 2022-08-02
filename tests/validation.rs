@@ -12,7 +12,7 @@ fn transaction_can_be_executed_after_maturity() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), 0)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
         .gas_limit(100)
         .maturity(MATURITY)
         .finalize_checked(BLOCK_HEIGHT as Word, &params);

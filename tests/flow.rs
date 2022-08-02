@@ -74,7 +74,7 @@ fn code_copy() {
     let script = script_ops.iter().copied().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(program.as_ref());
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut tx = Transaction::script(
@@ -166,7 +166,7 @@ fn call() {
     let script = script_ops.iter().copied().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(&[0u8; WORD_SIZE * 2]);
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut tx = Transaction::script(
@@ -240,7 +240,7 @@ fn call_frame_code_offset() {
     let state_root = Contract::default_state_root();
     let id = contract.id(&salt, &root, &state_root);
 
-    let input = Input::coin_signed(rng.gen(), rng.gen(), 0, rng.gen(), 0, maturity);
+    let input = Input::coin_signed(rng.gen(), rng.gen(), 0, rng.gen(), rng.gen(), 0, maturity);
     let output = Output::contract_created(id, state_root);
 
     let deploy = Transaction::create(
@@ -261,7 +261,7 @@ fn call_frame_code_offset() {
         .transact(deploy)
         .is_success());
 
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), id);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), id);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     let script_len = 16;
@@ -642,7 +642,7 @@ fn revert() {
     // Deploy the contract into the blockchain
     client.transact(tx);
 
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     // The script needs to locate the data offset at runtime. Hence, we need to know

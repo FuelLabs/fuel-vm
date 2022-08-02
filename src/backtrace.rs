@@ -68,7 +68,7 @@ impl Backtrace {
         &self.result
     }
 
-    /// [`Transaction`] state when the error occurred.
+    /// [`fuel_tx::Transaction`] state when the error occurred.
     pub const fn tx(&self) -> &CheckedTransaction {
         &self.tx
     }

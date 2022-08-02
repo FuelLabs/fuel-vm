@@ -111,10 +111,22 @@ fn metadata() {
     let mut inputs = vec![];
     let mut outputs = vec![];
 
-    inputs.push(Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_call));
+    inputs.push(Input::contract(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        contract_call,
+    ));
     outputs.push(Output::contract(0, rng.gen(), rng.gen()));
 
-    inputs.push(Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_metadata));
+    inputs.push(Input::contract(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        contract_metadata,
+    ));
     outputs.push(Output::contract(1, rng.gen(), rng.gen()));
 
     let mut script = vec![
@@ -197,6 +209,7 @@ fn get_transaction_fields() {
         owner,
         1_500,
         rng.gen(),
+        rng.gen(),
         100,
         predicate.clone(),
         predicate_data.clone(),
@@ -236,12 +249,19 @@ fn get_transaction_fields() {
     let output_message_amt = 3948;
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .prepare_script(true)
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), maturity)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), rng.gen(), maturity)
         .add_input(input_coin_predicate)
-        .add_input(Input::contract(rng.gen(), rng.gen(), state_root, contract_id))
+        .add_input(Input::contract(
+            rng.gen(),
+            rng.gen(),
+            state_root,
+            rng.gen(),
+            contract_id,
+        ))
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .add_output(Output::contract(contract_input_index, rng.gen(), state_root))
         .add_witness(Witness::from(b"some-data".to_vec()))
@@ -254,7 +274,7 @@ fn get_transaction_fields() {
             message_data.clone(),
         )
         .add_input(message_predicate)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, maturity)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .add_output(Output::message(rng.gen(), output_message_amt))
         .finalize_checked(height, &params);
@@ -297,12 +317,14 @@ fn get_transaction_fields() {
         outputs[1].state_root().unwrap().to_vec(), // 23 - OutputContractStateRoot
         outputs[3].recipient().unwrap().to_vec(), // 24 - OutputMessageRecipient
         witnesses[1].as_ref().to_vec(), // 25 - WitnessData
+        inputs[0].tx_pointer().unwrap().clone().to_bytes(), // 26 - InputCoinTxPointer
+        inputs[2].tx_pointer().unwrap().clone().to_bytes(), // 27 - InputContractTxPointer
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
-    let script_len = 1284;
+    let script_reserved_words = 300 * WORD_SIZE;
     let script_offset = params.tx_offset() + Transaction::script_offset();
-    let script_data_offset = script_offset + bytes::padded_len_usize(script_len);
+    let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
     let script_data: Vec<u8> = cases.iter().map(|c| c.iter()).flatten().copied().collect();
 
     // Maybe use predicates to check create context?
@@ -319,7 +341,7 @@ fn get_transaction_fields() {
     // TODO GTFArgs::InputContractTxPointer
 
     #[rustfmt::skip]
-    let script: Vec<u8> = vec![
+    let mut script: Vec<u8> = vec![
         Opcode::MOVI(0x20, 0x01),
         Opcode::gtf(0x30, 0x19, GTFArgs::ScriptData),
 
@@ -389,7 +411,7 @@ fn get_transaction_fields() {
         Opcode::ADD(0x30, 0x30, 0x11),
         Opcode::AND(0x20, 0x20, 0x10),
 
-        Opcode::MOVI(0x11, script_len as Immediate18),
+        Opcode::MOVI(0x11, script_reserved_words as Immediate18),
         Opcode::MOVI(0x19, 0x00),
         Opcode::gtf(0x10, 0x19, GTFArgs::ScriptLength),
         Opcode::EQ(0x10, 0x10, 0x11),
@@ -678,7 +700,7 @@ fn get_transaction_fields() {
         Opcode::ADD(0x30, 0x30, 0x11),
         Opcode::AND(0x20, 0x20, 0x10),
 
-        Opcode::MOVI(0x11, output_message_amt as Immediate18),
+        Opcode::MOVI(0x11, 0),
         Opcode::MOVI(0x19, 0x03),
         Opcode::gtf(0x10, 0x19, GTFArgs::OutputMessageAmount),
         Opcode::EQ(0x10, 0x10, 0x11),
@@ -697,11 +719,29 @@ fn get_transaction_fields() {
         Opcode::ADD(0x30, 0x30, 0x11),
         Opcode::AND(0x20, 0x20, 0x10),
 
+        Opcode::MOVI(0x19, 0),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputCoinTxPointer),
+        Opcode::MOVI(0x11, cases[26].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
+        Opcode::MOVI(0x19, contract_input_index as Immediate18),
+        Opcode::gtf(0x10, 0x19, GTFArgs::InputContractTxPointer),
+        Opcode::MOVI(0x11, cases[27].len() as Immediate18),
+        Opcode::MEQ(0x10, 0x10, 0x30, 0x11),
+        Opcode::ADD(0x30, 0x30, 0x11),
+        Opcode::AND(0x20, 0x20, 0x10),
+
         Opcode::LOG(0x20, 0x00, 0x00, 0x00),
         Opcode::RET(0x00)
     ].into_iter().collect();
 
-    assert_eq!(script.len(), script_len);
+    while script.len() < script_reserved_words {
+        script.extend(Opcode::NOOP.to_bytes());
+    }
+
+    assert_eq!(script.len(), script_reserved_words);
 
     let mut builder = TransactionBuilder::script(script, script_data);
 

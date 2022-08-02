@@ -45,7 +45,8 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use fuel_tx::{
         CheckedTransaction, ConsensusParameters, Contract, Input, InputRepr, Output, OutputRepr, Receipt,
-        ScriptExecutionResult, Transaction, TransactionFee, TransactionRepr, UtxoId, ValidationError, Witness,
+        ScriptExecutionResult, Transaction, TransactionFee, TransactionRepr, TxPointer, UtxoId, ValidationError,
+        Witness,
     };
     #[doc(no_inline)]
     pub use fuel_types::{

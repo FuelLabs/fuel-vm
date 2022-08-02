@@ -61,7 +61,7 @@ fn mint_burn() {
 
     client.transact(tx);
 
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     let mut script_ops = vec![

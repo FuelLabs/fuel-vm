@@ -108,10 +108,10 @@ fn backtrace() {
     script.push(Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS));
     script.push(Opcode::RET(REG_ONE));
 
-    let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_undefined);
+    let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_undefined);
     let output_undefined = Output::contract(0, rng.gen(), rng.gen());
 
-    let input_call = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_call);
+    let input_call = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_call);
     let output_call = Output::contract(1, rng.gen(), rng.gen());
 
     let tx_script = Transaction::script(

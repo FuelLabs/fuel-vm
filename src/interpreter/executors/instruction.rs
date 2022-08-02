@@ -456,36 +456,6 @@ where
                 self.sha256(a, b, c)?;
             }
 
-            OpcodeRepr::XIL => {
-                self.gas_charge(GAS_XIL)?;
-                self.transaction_input_length(ra, b)?;
-            }
-
-            OpcodeRepr::XIS => {
-                self.gas_charge(GAS_XIS)?;
-                self.transaction_input_start(ra, b)?;
-            }
-
-            OpcodeRepr::XOL => {
-                self.gas_charge(GAS_XOL)?;
-                self.transaction_output_length(ra, b)?;
-            }
-
-            OpcodeRepr::XOS => {
-                self.gas_charge(GAS_XOS)?;
-                self.transaction_output_start(ra, b)?;
-            }
-
-            OpcodeRepr::XWL => {
-                self.gas_charge(GAS_XWL)?;
-                self.transaction_witness_length(ra, b)?;
-            }
-
-            OpcodeRepr::XWS => {
-                self.gas_charge(GAS_XWS)?;
-                self.transaction_witness_start(ra, b)?;
-            }
-
             OpcodeRepr::FLAG => {
                 self.gas_charge(GAS_FLAG)?;
                 self.set_flag(a)?;

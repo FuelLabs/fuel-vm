@@ -28,13 +28,13 @@ impl RuntimePredicate {
 
     /// Create a new runtime predicate from a transaction, given the input index
     ///
-    /// Return `None` if the tx input doesn't map to an input coin with a predicate
+    /// Return `None` if the tx input doesn't map to an input with a predicate
     pub fn from_tx<T>(params: &ConsensusParameters, tx: T, idx: usize) -> Option<Self>
     where
         T: Borrow<Transaction>,
     {
         tx.borrow()
-            .input_coin_predicate_offset(idx)
+            .input_predicate_offset(idx)
             .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
             .map(|program| Self { program, idx })
@@ -72,41 +72,58 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
+        predicate.clone(),
+        predicate_data.clone(),
+    );
+
+    let b = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        owner,
+        vec![],
         predicate.clone(),
         predicate_data,
     );
 
-    let tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(a)
-        .finalize_checked_without_signature(height, &params);
+    let inputs = vec![a, b];
 
-    // assert invalid idx wont panic
-    let idx = 1;
-    let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx);
+    for i in inputs {
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .add_input(i)
+            .finalize_checked_without_signature(height, &params);
 
-    assert!(runtime.is_none());
+        // assert invalid idx wont panic
+        let idx = 1;
+        let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx);
 
-    // fetch the input predicate
-    let idx = 0;
-    let runtime =
-        RuntimePredicate::from_tx(&params, tx.as_ref(), idx).expect("failed to generate predicate from valid tx");
+        assert!(runtime.is_none());
 
-    assert_eq!(idx, runtime.idx());
+        // fetch the input predicate
+        let idx = 0;
+        let runtime =
+            RuntimePredicate::from_tx(&params, tx.as_ref(), idx).expect("failed to generate predicate from valid tx");
 
-    let mut interpreter = Interpreter::without_storage();
+        assert_eq!(idx, runtime.idx());
 
-    assert!(interpreter.init_predicate(tx));
+        let mut interpreter = Interpreter::without_storage();
 
-    let pad = bytes::padded_len(&predicate) - predicate.len();
+        assert!(interpreter.init_predicate(tx));
 
-    // assert we are testing an edge case
-    assert_ne!(0, pad);
+        let pad = bytes::padded_len(&predicate) - predicate.len();
 
-    let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
+        // assert we are testing an edge case
+        assert_ne!(0, pad);
 
-    let program = runtime.program();
-    let program = &interpreter.memory()[program.start() as usize..program.end() as usize];
+        let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
 
-    // assert the program in the vm memory is the same of the input
-    assert_eq!(program, &padded_predicate);
+        let program = runtime.program();
+        let program = &interpreter.memory()[program.start() as usize..program.end() as usize];
+
+        // assert the program in the vm memory is the same of the input
+        assert_eq!(program, &padded_predicate);
+    }
 }

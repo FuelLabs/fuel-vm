@@ -34,6 +34,11 @@ impl Default for Context {
 }
 
 impl Context {
+    /// Check if the context is predicate
+    pub const fn is_predicate(&self) -> bool {
+        matches!(self, Self::Predicate { .. })
+    }
+
     /// Return `true` if the context is external; `false` otherwise.
     pub const fn is_external(&self) -> bool {
         matches!(self, Self::Predicate { .. } | Self::Script { .. })

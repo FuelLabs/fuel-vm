@@ -1,4 +1,4 @@
-use crate::{TxId, TxPointer, UtxoId};
+use crate::{TxPointer, UtxoId};
 
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes;
@@ -540,31 +540,6 @@ impl Input {
         owner == &Self::predicate_owner(predicate)
     }
 
-    /// Prepare the output for VM initialization
-    pub fn prepare_init_script(&mut self, tx_id: Bytes32) {
-        match self {
-            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
-                mem::take(tx_pointer);
-            }
-
-            Input::Contract {
-                utxo_id,
-                balance_root,
-                state_root,
-                tx_pointer,
-                ..
-            } => {
-                mem::take(tx_pointer);
-                utxo_id.replace_tx_id(tx_id);
-
-                *balance_root = (*tx_id).into();
-                *state_root = (*tx_id).into();
-            }
-
-            _ => (),
-        }
-    }
-
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_predicate(&mut self) {
         match self {
@@ -582,7 +557,7 @@ impl Input {
                 mem::take(tx_pointer);
                 mem::take(balance_root);
                 mem::take(state_root);
-                utxo_id.replace_tx_id(TxId::zeroed());
+                mem::take(utxo_id);
             }
 
             _ => (),

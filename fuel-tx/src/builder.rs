@@ -12,12 +12,28 @@ use alloc::vec::Vec;
 pub struct TransactionBuilder {
     tx: Transaction,
 
+    should_prepare_script: bool,
+    should_prepare_predicate: bool,
+
     // We take the key by reference so this lib won't have the responsibility to properly zeroize
     // the keys
     sign_keys: Vec<SecretKey>,
 }
 
 impl TransactionBuilder {
+    fn with_tx(tx: Transaction) -> Self {
+        let should_prepare_script = false;
+        let should_prepare_predicate = false;
+        let sign_keys = Vec::new();
+
+        Self {
+            tx,
+            should_prepare_script,
+            should_prepare_predicate,
+            sign_keys,
+        }
+    }
+
     pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
         let mut tx = Transaction::create(
             Default::default(),
@@ -33,9 +49,7 @@ impl TransactionBuilder {
 
         tx._set_bytecode(bytecode);
 
-        let sign_keys = Vec::new();
-
-        Self { tx, sign_keys }
+        Self::with_tx(tx)
     }
 
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
@@ -49,9 +63,22 @@ impl TransactionBuilder {
             Default::default(),
             Default::default(),
         );
-        let sign_keys = Vec::new();
 
-        Self { tx, sign_keys }
+        let mut slf = Self::with_tx(tx);
+
+        slf.prepare_script(true);
+
+        slf
+    }
+
+    pub fn prepare_script(&mut self, should_prepare_script: bool) -> &mut Self {
+        self.should_prepare_script = should_prepare_script;
+        self
+    }
+
+    pub fn prepare_predicate(&mut self, should_prepare_predicate: bool) -> &mut Self {
+        self.should_prepare_predicate = should_prepare_predicate;
+        self
     }
 
     pub fn sign_keys(&self) -> &[SecretKey] {
@@ -144,8 +171,22 @@ impl TransactionBuilder {
         self
     }
 
+    fn prepare_finalize(&mut self) {
+        if self.should_prepare_predicate {
+            self.tx.prepare_init_predicate();
+        }
+
+        if self.should_prepare_script {
+            self.tx
+                .prepare_init_script()
+                .expect("failed to prepare script");
+        }
+    }
+
     #[cfg(feature = "std")]
     pub fn finalize(&mut self) -> Transaction {
+        self.prepare_finalize();
+
         let mut tx = core::mem::take(&mut self.tx);
 
         self.sign_keys.iter().for_each(|k| tx.sign_inputs(k));
@@ -157,6 +198,8 @@ impl TransactionBuilder {
 
     #[cfg(feature = "std")]
     pub fn finalize_without_signature(&mut self) -> Transaction {
+        self.prepare_finalize();
+
         let mut tx = core::mem::take(&mut self.tx);
 
         tx.precompute_metadata();

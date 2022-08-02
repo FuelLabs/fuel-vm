@@ -442,24 +442,6 @@ impl Input {
         INPUT_MESSAGE_FIXED_SIZE
     }
 
-    pub fn coin_predicate_len(&self) -> Option<usize> {
-        match self {
-            Input::CoinPredicate { predicate, .. } => Some(bytes::padded_len(predicate.as_slice())),
-
-            _ => None,
-        }
-    }
-
-    pub fn coin_predicate_data_offset(&self) -> Option<usize> {
-        match self {
-            Input::CoinPredicate { predicate, .. } => {
-                Some(Self::coin_predicate_offset() + bytes::padded_len(predicate.as_slice()))
-            }
-
-            _ => None,
-        }
-    }
-
     pub const fn balance_root(&self) -> Option<&Bytes32> {
         match self {
             Input::Contract { balance_root, .. } => Some(balance_root),

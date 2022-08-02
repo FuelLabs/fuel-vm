@@ -642,7 +642,7 @@ fn transaction() {
 }
 
 #[test]
-fn create_input_coin_data_offset() {
+fn create_input_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let gas_price = 100;
@@ -691,6 +691,19 @@ fn create_input_coin_data_offset() {
         rng.gen(),
         rng.gen(),
         predicate.clone(),
+        predicate_data.clone(),
+    );
+
+    let data = generate_bytes(rng);
+    let input_message = Input::message_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        owner,
+        data,
+        predicate.clone(),
         predicate_data,
     );
 
@@ -700,8 +713,12 @@ fn create_input_coin_data_offset() {
             for outputs in outputs.iter() {
                 for witnesses in witnesses.iter() {
                     let mut inputs = inputs.clone();
-                    let last_input = inputs.len();
+
+                    let input_coin_idx = inputs.len();
                     inputs.push(input_coin.clone());
+
+                    let input_message_idx = inputs.len();
+                    inputs.push(input_message.clone());
 
                     dbg!(&inputs);
 
@@ -728,11 +745,25 @@ fn create_input_coin_data_offset() {
                         .expect("Failed to serialize input");
 
                     let (offset, len) = tx
-                        .input_coin_predicate_offset(last_input)
+                        .input_predicate_offset(input_coin_idx)
                         .expect("Failed to fetch offset");
 
                     let (offset_p, _) = tx_p
-                        .input_coin_predicate_offset(last_input)
+                        .input_predicate_offset(input_coin_idx)
+                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+
+                    assert_eq!(offset, offset_p);
+                    assert_eq!(
+                        predicate.as_slice(),
+                        &buffer[offset..offset + len][..predicate.len()]
+                    );
+
+                    let (offset, len) = tx
+                        .input_predicate_offset(input_message_idx)
+                        .expect("Failed to fetch offset");
+
+                    let (offset_p, _) = tx_p
+                        .input_predicate_offset(input_message_idx)
                         .expect("Failed to fetch offset from tx with precomputed metadata!");
 
                     assert_eq!(offset, offset_p);
@@ -858,10 +889,10 @@ fn script_input_coin_data_offset() {
                         );
 
                         let (offset, len) = tx
-                            .input_coin_predicate_offset(offset)
+                            .input_predicate_offset(offset)
                             .expect("Failed to fetch offset");
 
-                        assert_ne!(predicate.len(), len);
+                        assert_ne!(bytes::padded_len(&predicate), predicate.len());
                         assert_eq!(bytes::padded_len(&predicate), len);
 
                         assert_eq!(

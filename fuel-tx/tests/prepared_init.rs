@@ -10,6 +10,7 @@ fn output_message_prepare_init_zeroes_recipient_and_amount() {
     let zeroed = Output::message(Address::zeroed(), 0);
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .prepare_script(false)
         .add_output(message)
         .finalize();
 
@@ -40,6 +41,7 @@ fn output_variable_prepare_init_zeroes_recipient_and_amount() {
     let zeroed = Output::variable(Address::zeroed(), 0, AssetId::zeroed());
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .prepare_script(false)
         .add_output(variable)
         .finalize();
 

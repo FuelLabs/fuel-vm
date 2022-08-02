@@ -250,7 +250,7 @@ impl CheckedTransaction {
 
     /// Prepare the transaction for VM initialization for script execution
     #[cfg(feature = "std")]
-    pub fn prepare_init_script<F>(&mut self) -> io::Result<&mut Self> {
+    pub fn prepare_init_script(&mut self) -> io::Result<&mut Self> {
         self.transaction.prepare_init_script()?;
         Ok(self)
     }

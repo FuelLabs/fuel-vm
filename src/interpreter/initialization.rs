@@ -13,7 +13,7 @@ use std::io;
 
 impl<S> Interpreter<S> {
     /// Initialize the VM with a given transaction
-    pub fn init(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
+    fn _init(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
         self.tx = tx;
 
         self.frames.clear();
@@ -52,12 +52,14 @@ impl<S> Interpreter<S> {
     }
 
     /// Initialize the VM for a predicate context
-    pub fn init_predicate(&mut self, tx: CheckedTransaction) -> bool {
+    pub fn init_predicate(&mut self, mut tx: CheckedTransaction) -> bool {
         self.context = Context::Predicate {
             program: Default::default(),
         };
 
-        self.init(tx).is_ok()
+        tx.prepare_init_predicate();
+
+        self._init(tx).is_ok()
     }
 }
 
@@ -68,12 +70,14 @@ where
     /// Initialize the VM with a given transaction, backed by a storage provider that allows
     /// execution of contract opcodes.
     ///
-    /// For predicate verification, check [`Self::init`]
-    pub fn init_with_storage(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
+    /// For predicate verification, check [`Self::init_predicate`]
+    pub fn init_script(&mut self, mut tx: CheckedTransaction) -> Result<(), InterpreterError> {
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 
         self.context = Context::Script { block_height };
 
-        self.init(tx)
+        tx.prepare_init_script()?;
+
+        self._init(tx)
     }
 }

@@ -433,7 +433,7 @@ mod tests {
     fn memcopy() {
         let mut vm = Interpreter::with_memory_storage();
 
-        vm.init_with_storage(CheckedTransaction::default())
+        vm.init_script(CheckedTransaction::default())
             .expect("Failed to init VM");
 
         let alloc = 1024;
@@ -489,7 +489,7 @@ mod tests {
         assert_eq!(m, m_p);
 
         let mut vm = Interpreter::with_memory_storage();
-        vm.init_with_storage(CheckedTransaction::default())
+        vm.init_script(CheckedTransaction::default())
             .expect("Failed to init VM");
 
         let bytes = 1024;
@@ -517,7 +517,7 @@ mod tests {
     fn stack_alloc_ownership() {
         let mut vm = Interpreter::with_memory_storage();
 
-        vm.init_with_storage(CheckedTransaction::default())
+        vm.init_script(CheckedTransaction::default())
             .expect("Failed to init VM");
 
         vm.instruction(Opcode::MOVE(0x10, REG_SP).into()).unwrap();

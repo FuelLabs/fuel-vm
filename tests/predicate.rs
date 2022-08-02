@@ -1,5 +1,4 @@
 use fuel_tx::TransactionBuilder;
-use fuel_types::bytes;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -23,12 +22,22 @@ where
     let utxo_id = rng.gen();
     let amount = 0;
     let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
 
     let owner = Input::predicate_owner(&predicate);
-    let input = Input::coin_predicate(utxo_id, owner, amount, asset_id, maturity, predicate, predicate_data);
+    let input = Input::coin_predicate(
+        utxo_id,
+        owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        maturity,
+        predicate,
+        predicate_data,
+    );
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -40,7 +49,7 @@ where
     builder.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
-        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity);
+        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity);
     });
 
     builder.add_input(input);
@@ -62,7 +71,6 @@ fn predicate_minimal() {
 fn predicate() {
     let expected_data = 0x23 as Word;
     let expected_data = expected_data.to_be_bytes().to_vec();
-    let expected_data_len = bytes::padded_len(expected_data.as_slice()) as Immediate12;
 
     let wrong_data = 0x24 as Word;
     let wrong_data = wrong_data.to_be_bytes().to_vec();
@@ -77,10 +85,7 @@ fn predicate() {
     predicate.push(Opcode::ADDI(0x12, REG_HP, 0x01));
     predicate.push(Opcode::SW(0x12, 0x11, 0));
     predicate.push(Opcode::MOVI(0x10, 0x08));
-    predicate.push(Opcode::XIL(0x20, 0));
-    predicate.push(Opcode::XIS(0x11, 0));
-    predicate.push(Opcode::ADD(0x11, 0x11, 0x20));
-    predicate.push(Opcode::SUBI(0x11, 0x11, expected_data_len));
+    predicate.push(Opcode::gtf(0x11, 0, GTFArgs::InputCoinPredicateData));
     predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
     predicate.push(Opcode::RET(0x10));
 

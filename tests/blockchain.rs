@@ -131,7 +131,7 @@ fn state_read_write() {
     .check(height, &params)
     .expect("failed to check tx");
 
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract);
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
     // The script needs to locate the data offset at runtime. Hence, we need to know
@@ -306,7 +306,7 @@ fn load_external_contract_code() {
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 

@@ -279,7 +279,7 @@ where
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(&mut self, tx: CheckedTransaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
-        let state_result = self.init_with_storage(tx).and_then(|_| self.run());
+        let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);

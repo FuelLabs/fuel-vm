@@ -219,7 +219,7 @@ mod tests {
         let mut tx = TransactionBuilder::script(script, Default::default());
 
         balances.iter().copied().for_each(|(asset, amount)| {
-            tx.add_unsigned_coin_input(rng.gen(), rng.gen(), amount, asset, maturity);
+            tx.add_unsigned_coin_input(rng.gen(), rng.gen(), amount, asset, rng.gen(), maturity);
         });
 
         let tx = tx
@@ -229,7 +229,7 @@ mod tests {
             .maturity(maturity)
             .finalize_checked(height as Word, &Default::default());
 
-        vm.init_with_storage(tx).expect("Failed to init VM!");
+        vm.init_script(tx).expect("Failed to init VM!");
 
         for (asset_id, amount) in balances {
             assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
@@ -273,7 +273,7 @@ mod tests {
         .check(height, vm.params())
         .expect("failed to check tx");
 
-        vm.init_with_storage(tx).expect("Failed to init VM!");
+        vm.init_script(tx).expect("Failed to init VM!");
 
         // increase variable output
         let variable = Output::variable(owner, amount_to_set, asset_id_to_update);

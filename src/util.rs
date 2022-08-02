@@ -172,12 +172,13 @@ pub mod test_helpers {
 
         pub fn coin_input(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
             self.builder
-                .add_unsigned_coin_input(self.rng.gen(), self.rng.gen(), amount, asset_id, 0);
+                .add_unsigned_coin_input(self.rng.gen(), self.rng.gen(), amount, asset_id, self.rng.gen(), 0);
             self
         }
 
         pub fn contract_input(&mut self, contract_id: ContractId) -> &mut TestBuilder {
             self.builder.add_input(Input::contract(
+                self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),

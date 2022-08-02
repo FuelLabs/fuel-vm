@@ -471,28 +471,17 @@ impl Transaction {
 
     /// Prepare the transaction for VM initialization for script execution
     ///
-    /// The callback argument is to expect a contract id and return its balance root and state root
+    /// note: Fields dependent on storage/state such as balance and state roots, or tx pointers,
+    /// should already set by the client beforehand.
     #[cfg(feature = "std")]
-    pub fn prepare_init_script<F>(&mut self, mut f: F) -> io::Result<&mut Self>
-    where
-        F: FnMut(&fuel_types::ContractId) -> io::Result<(Bytes32, Bytes32)>,
-    {
-        let id = self.id();
-
-        let (inputs, outputs) = match self {
-            Transaction::Script {
-                inputs, outputs, ..
-            }
-            | Transaction::Create {
-                inputs, outputs, ..
-            } => (inputs, outputs),
+    pub fn prepare_init_script(&mut self) -> io::Result<&mut Self> {
+        let outputs = match self {
+            Transaction::Script { outputs, .. } | Transaction::Create { outputs, .. } => outputs,
         };
-
-        inputs.iter_mut().for_each(|i| i.prepare_init_script(id));
 
         outputs
             .iter_mut()
-            .try_for_each(|o| o.prepare_init_script(inputs, &mut f))?;
+            .try_for_each(|o| o.prepare_init_script())?;
 
         Ok(self)
     }

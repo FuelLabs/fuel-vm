@@ -249,14 +249,9 @@ impl CheckedTransaction {
     }
 
     /// Prepare the transaction for VM initialization for script execution
-    ///
-    /// The callback argument is to expect a contract id and return its balance root and state root
     #[cfg(feature = "std")]
-    pub fn prepare_init_script<F>(&mut self, f: F) -> io::Result<&mut Self>
-    where
-        F: FnMut(&fuel_types::ContractId) -> io::Result<(Bytes32, Bytes32)>,
-    {
-        self.transaction.prepare_init_script(f)?;
+    pub fn prepare_init_script<F>(&mut self) -> io::Result<&mut Self> {
+        self.transaction.prepare_init_script()?;
         Ok(self)
     }
 

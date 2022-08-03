@@ -135,7 +135,11 @@ where
                 // TODO set tree balance
 
                 let program = self.run_program();
-                let gas_used = self.transaction().gas_limit() - self.registers[REG_GGAS];
+                let gas_used = self
+                    .transaction()
+                    .gas_limit()
+                    .checked_sub(self.registers[REG_GGAS])
+                    .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {

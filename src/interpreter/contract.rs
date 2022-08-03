@@ -21,11 +21,11 @@ where
     }
 
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
         if b > VM_MAX_RAM - AssetId::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
             return Err(PanicReason::MemoryOverflow.into());
         }
-
-        Self::is_register_writable(ra)?;
 
         let (b, c) = (b as usize, c as usize);
 

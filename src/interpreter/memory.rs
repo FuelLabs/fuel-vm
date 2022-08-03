@@ -292,6 +292,8 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
         let bc = b.saturating_add(c as RegisterId);
 
         if bc >= VM_MAX_RAM as RegisterId {
@@ -304,6 +306,8 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
         // C is expressed in words; mul by 8
         let (bc, overflow) = b.overflowing_add(c * 8);
         let (bcw, of) = bc.overflowing_add(8);
@@ -410,6 +414,8 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
         let (bd, overflow) = b.overflowing_add(d);
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;

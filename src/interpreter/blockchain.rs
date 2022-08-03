@@ -233,6 +233,8 @@ where
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
         if b > VM_MAX_RAM - Bytes32::LEN as Word {
             return Err(PanicReason::MemoryOverflow.into());
         }

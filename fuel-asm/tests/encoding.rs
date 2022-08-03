@@ -80,6 +80,7 @@ fn opcode() {
         Opcode::SRWQ(r, r),
         Opcode::SWW(r, r),
         Opcode::SWWQ(r, r),
+        Opcode::TIME(r, r),
         Opcode::TR(r, r, r),
         Opcode::TRO(r, r, r, r),
         Opcode::ECR(r, r, r),

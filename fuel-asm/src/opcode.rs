@@ -246,6 +246,9 @@ pub enum Opcode {
     /// Store 32 bytes in contract storage.
     SWWQ(RegisterId, RegisterId),
 
+    /// Get timestamp of block at given height.
+    TIME(RegisterId, RegisterId),
+
     /// Transfer coins to a contract unconditionally.
     TR(RegisterId, RegisterId, RegisterId),
 
@@ -364,6 +367,7 @@ impl Opcode {
             OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb),
             OpcodeRepr::SWW => Opcode::SWW(ra, rb),
             OpcodeRepr::SWWQ => Opcode::SWWQ(ra, rb),
+            OpcodeRepr::TIME => Opcode::TIME(ra, rb),
             OpcodeRepr::TR => Opcode::TR(ra, rb, rc),
             OpcodeRepr::TRO => Opcode::TRO(ra, rb, rc, rd),
             OpcodeRepr::ECR => Opcode::ECR(ra, rb, rc),
@@ -468,6 +472,7 @@ impl Opcode {
             Self::SRWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::SWW(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::SWWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::TIME(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::TR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::TRO(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::ECR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
@@ -554,6 +559,7 @@ impl Opcode {
             | Self::SRWQ(_, _)
             | Self::SWW(_, _)
             | Self::SWWQ(_, _)
+            | Self::TIME(_, _)
             | Self::TR(_, _, _)
             | Self::TRO(_, _, _, _)
             | Self::ECR(_, _, _)
@@ -965,6 +971,9 @@ impl From<Opcode> for u32 {
             }
             Opcode::SWWQ(ra, rb) => {
                 ((OpcodeRepr::SWWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            }
+            Opcode::TIME(ra, rb) => {
+                ((OpcodeRepr::TIME as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
             }
             Opcode::TR(ra, rb, rc) => {
                 ((OpcodeRepr::TR as u32) << 24)

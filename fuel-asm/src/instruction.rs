@@ -270,7 +270,8 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::SRW
             | OpcodeRepr::SRWQ
             | OpcodeRepr::SWW
-            | OpcodeRepr::SWWQ => a | b,
+            | OpcodeRepr::SWWQ
+            | OpcodeRepr::TIME => a | b,
 
             OpcodeRepr::RET
             | OpcodeRepr::ALOC

@@ -238,6 +238,122 @@ fn mint_burn() {
 }
 
 #[test]
+fn balance_cannot_be_written_to_read_only_register() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
+
+    let salt: Salt = rng.gen();
+    let program: Witness = Witness::default();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
+
+    let asset_id = AssetId::from(*contract);
+    let output = Output::contract_created(contract, state_root);
+
+    let bytecode_witness = 0;
+    let tx = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![output],
+        vec![program],
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
+
+    client.transact(tx);
+
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
+    let output = Output::contract(0, rng.gen(), rng.gen());
+
+    let mut script_ops = vec![
+        Opcode::MOVI(0x10, 0),
+        Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
+        Opcode::RET(REG_ONE),
+    ];
+
+    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script,
+        vec![],
+        vec![input.clone()],
+        vec![output],
+        vec![],
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
+
+    let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
+    script_ops[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
+
+    let script_data_check_balance: Vec<u8> = asset_id
+        .as_ref()
+        .iter()
+        .chain(contract.as_ref().iter())
+        .copied()
+        .collect();
+    let mut script_check_balance = vec![
+        Opcode::MOVE(0x11, 0x10),
+        Opcode::ADDI(0x12, 0x10, AssetId::LEN as Immediate12),
+        Opcode::BAL(0x00, 0x11, 0x12), // Attempt to write to read-only register
+        Opcode::RET(REG_ONE),
+    ];
+
+    let tx_check_balance = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script_check_balance.iter().copied().collect(),
+        vec![],
+        vec![input.clone()],
+        vec![output.clone()],
+        vec![],
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
+
+    let script_data_offset = client.tx_offset() + tx_check_balance.transaction().script_data_offset().unwrap();
+    script_check_balance[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
+
+    let tx_check_balance = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script_check_balance.into_iter().collect(),
+        script_data_check_balance,
+        vec![input.clone()],
+        vec![output.clone()],
+        vec![],
+    )
+    .check(height, &params)
+    .expect("failed to generate checked tx");
+
+    let receipts = client.transact(tx_check_balance.clone());
+    if let Receipt::Panic { reason, .. } = receipts.get(0).unwrap() {
+        assert_eq!(*reason.reason(), PanicReason::ReservedRegisterNotWritable);
+    } else {
+        panic!("The contract, unexpectedly, did not panic");
+    }
+}
+
+#[test]
 fn call_increases_contract_asset_balance_and_balance_register() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

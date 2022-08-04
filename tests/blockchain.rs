@@ -474,6 +474,66 @@ fn can_read_state_from_initial_storage_slots() {
 }
 
 #[test]
+fn state_read_word_cannot_be_written_to_read_only_register() {
+    // the initial key and value pair for the contract
+    let key = Hasher::hash(b"initial key");
+    let value = [128u8; 32].into();
+
+    let program = vec![
+        // load memory location of reference to key
+        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        // deref key memory location from script data to 0x10
+        Opcode::LW(0x10, 0x10, 0),
+        // alloc 32 bytes stack space
+        Opcode::ADDI(0x11, REG_SP, 0),
+        Opcode::CFEI(32 as Immediate24),
+        // load state value to stack
+        Opcode::SRW(0x00, 0x10), // Attempt to write to read-only register
+        Opcode::RET(REG_ONE),
+    ];
+
+    let init_storage = vec![StorageSlot::new(key, value)];
+
+    let gas_limit = 1_000_000;
+    let mut builder = TestBuilder::new(2023u64);
+    let contract = builder.setup_contract(program, None, Some(init_storage)).contract_id;
+
+    let (script, offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load position of call arguments from script data
+            Opcode::MOVI(0x10, data_offset + 32),
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            Opcode::RET(REG_ONE),
+        ],
+        builder.tx_offset()
+    );
+
+    let script_data: Vec<u8> = [
+        key.as_ref(),
+        Call::new(contract, offset as Word, 0).to_bytes().as_slice(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
+
+    let log_tx = builder
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .gas_price(0)
+        .contract_input(contract)
+        .contract_output(&contract)
+        .execute();
+
+    if let Receipt::Panic { reason, .. } = log_tx.receipts().get(1).unwrap() {
+        assert_eq!(*reason.reason(), PanicReason::ReservedRegisterNotWritable);
+    } else {
+        panic!("The contract, unexpectedly, did not panic");
+    }
+}
+
+#[test]
 fn smo_instruction_works() {
     fn execute_test<R>(rng: &mut R, balance: Word, amount: Word, data: Vec<u8>)
     where

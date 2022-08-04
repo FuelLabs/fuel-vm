@@ -24,6 +24,12 @@ pub enum Error {
 
     /// Out of preallocated memory
     NotEnoughMemory,
+
+    /// Invalid mnemonic phrase
+    InvalidMnemonic,
+
+    /// Bip32-related error
+    Bip32Error,
 }
 
 impl From<Error> for Infallible {
@@ -41,6 +47,7 @@ impl From<Infallible> for Error {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
+    use coins_bip39::MnemonicError;
     use secp256k1::Error as Secp256k1Error;
     use std::{error, fmt, io};
 
@@ -50,13 +57,27 @@ mod use_std {
                 Secp256k1Error::IncorrectSignature
                 | Secp256k1Error::InvalidSignature
                 | Secp256k1Error::InvalidTweak
-                | Secp256k1Error::TweakCheckFailed
+                | Secp256k1Error::InvalidSharedSecret
+                | Secp256k1Error::InvalidPublicKeySum
+                | Secp256k1Error::InvalidParityValue(_)
                 | Secp256k1Error::InvalidRecoveryId => Self::InvalidSignature,
                 Secp256k1Error::InvalidMessage => Self::InvalidMessage,
                 Secp256k1Error::InvalidPublicKey => Self::InvalidPublicKey,
                 Secp256k1Error::InvalidSecretKey => Self::InvalidSecretKey,
                 Secp256k1Error::NotEnoughMemory => Self::NotEnoughMemory,
             }
+        }
+    }
+
+    impl From<MnemonicError> for Error {
+        fn from(_: MnemonicError) -> Self {
+            Self::InvalidMnemonic
+        }
+    }
+
+    impl From<coins_bip32::Bip32Error> for Error {
+        fn from(_: coins_bip32::Bip32Error) -> Self {
+            Self::Bip32Error
         }
     }
 

@@ -1,5 +1,5 @@
 use fuel_types::Bytes32;
-use sha2::{Digest, Sha256};
+use sha2::{digest::Update, Digest, Sha256};
 
 use core::iter;
 
@@ -16,7 +16,7 @@ impl Hasher {
     where
         B: AsRef<[u8]>,
     {
-        self.0.update(data)
+        sha2::Digest::update(&mut self.0, data)
     }
 
     /// Consume, append data and return the hasher
@@ -50,7 +50,7 @@ impl Hasher {
     {
         let mut hasher = Sha256::new();
 
-        hasher.update(data);
+        sha2::Digest::update(&mut hasher, data);
 
         <[u8; Bytes32::LEN]>::from(hasher.finalize()).into()
     }

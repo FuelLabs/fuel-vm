@@ -101,17 +101,20 @@ impl fmt::Display for SecretKey {
 mod use_std {
     use super::*;
     use crate::{Error, PublicKey};
-
-    use secp256k1::{Error as Secp256k1Error, SecretKey as Secp256k1SecretKey};
-
+    use coins_bip32::path::DerivationPath;
+    use coins_bip39::{English, Mnemonic};
     use core::borrow::Borrow;
     use core::str;
+    use secp256k1::{Error as Secp256k1Error, SecretKey as Secp256k1SecretKey};
+    use std::str::FromStr;
 
     #[cfg(feature = "random")]
     use rand::{
         distributions::{Distribution, Standard},
         Rng,
     };
+
+    pub type W = English;
 
     impl SecretKey {
         /// Create a new random secret
@@ -150,6 +153,28 @@ mod use_std {
             }
 
             Self(secret)
+        }
+
+        /// Generate a new secret key from a mnemonic phrase and its derivation path.
+        /// Both are passed as `&str`. If you want to manually create a `DerivationPath`
+        /// and `Mnemonic`, use [`SecretKey::new_from_mnemonic`].
+        /// The derivation path is a list of integers, each representing a child index.
+        pub fn new_from_mnemonic_phrase_with_path(phrase: &str, path: &str) -> Result<Self, Error> {
+            let mnemonic = Mnemonic::<W>::new_from_phrase(phrase)?;
+            let path = DerivationPath::from_str(path)?;
+            Self::new_from_mnemonic(path, mnemonic)
+        }
+
+        /// Generate a new secret key from a `DerivationPath` and `Mnemonic`.
+        /// If you want to pass strings instead, use [`SecretKey::new_from_mnemonic_phrase_with_path`].
+        pub fn new_from_mnemonic(d: DerivationPath, m: Mnemonic<W>) -> Result<Self, Error> {
+            let derived_priv_key = m.derive_key(d, None)?;
+            let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
+
+            // Safety: this slice will always be of the expected length (`Bytes32`)
+            // because it will be a `Secp256k` secret key, coming from
+            // `coins_bip32::prelude::SigningKey`, which is a 256-bit (32-byte) scalar.
+            Ok(unsafe { SecretKey::from_slice_unchecked(key.to_bytes().as_ref()) })
         }
 
         /// Check if the provided slice represents a scalar that fits the field.

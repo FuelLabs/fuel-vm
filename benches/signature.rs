@@ -1,4 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use sha2::digest::Update;
 
 fn signatures(c: &mut Criterion) {
     let message = b"New opinions are always suspected, and usually opposed, without any other reason but because they are not common.";
@@ -54,15 +55,15 @@ fn signatures(c: &mut Criterion) {
         let public = PublicKey::from_secret_key(&secp, &key);
         let message = fuel_crypto::Message::new(message);
         let message = Message::from_slice(message.as_ref()).expect("failed to create secp message");
-        let signature = secp_signing.sign(&message, &key);
-        let recoverable = secp.sign_recoverable(&message, &key);
+        let signature = secp_signing.sign_ecdsa(&message, &key);
+        let recoverable = secp.sign_ecdsa_recoverable(&message, &key);
 
         secp_verification
-            .verify(&message, &signature, &public)
+            .verify_ecdsa(&message, &signature, &public)
             .expect("failed to verify secp");
 
         let x = secp
-            .recover(&message, &recoverable)
+            .recover_ecdsa(&message, &recoverable)
             .expect("failed to recover");
 
         assert_eq!(public, x);
@@ -104,7 +105,7 @@ fn signatures(c: &mut Criterion) {
             .expect("failed to verify");
 
         let x = recoverable
-            .recover_verify_key_from_digest(digest.clone())
+            .recover_verifying_key_from_digest(digest.clone())
             .expect("failed to recover");
 
         assert_eq!(x, verifying);
@@ -134,7 +135,7 @@ fn signatures(c: &mut Criterion) {
         "secp256k1",
         &(s2_secp_signing, s2_key, s2_message),
         |b, (secp_signing, key, message)| {
-            b.iter(|| secp_signing.sign(black_box(message), black_box(key)))
+            b.iter(|| secp_signing.sign_ecdsa(black_box(message), black_box(key)))
         },
     );
 
@@ -142,7 +143,7 @@ fn signatures(c: &mut Criterion) {
         "secp256k1-recoverable",
         &(s2_secp.clone(), s2_key, s2_message),
         |b, (secp, key, message)| {
-            b.iter(|| secp.sign_recoverable(black_box(message), black_box(key)))
+            b.iter(|| secp.sign_ecdsa_recoverable(black_box(message), black_box(key)))
         },
     );
 
@@ -173,7 +174,7 @@ fn signatures(c: &mut Criterion) {
         &(s2_secp_verification, s2_public, s2_signature, s2_message),
         |b, (secp_verification, public, signature, message)| {
             b.iter(|| {
-                secp_verification.verify(
+                secp_verification.verify_ecdsa(
                     black_box(message),
                     black_box(signature),
                     black_box(public),
@@ -208,7 +209,7 @@ fn signatures(c: &mut Criterion) {
         "secp256k1",
         &(s2_secp, s2_recoverable, s2_message),
         |b, (secp, recoverable, message)| {
-            b.iter(|| secp.recover(black_box(message), black_box(recoverable)))
+            b.iter(|| secp.recover_ecdsa(black_box(message), black_box(recoverable)))
         },
     );
 
@@ -216,7 +217,7 @@ fn signatures(c: &mut Criterion) {
         "k256",
         &(k2_recoverable, k2_digest),
         |b, (recoverable, digest)| {
-            b.iter(|| recoverable.recover_verify_key_from_digest(black_box(digest.clone())))
+            b.iter(|| recoverable.recover_verifying_key_from_digest(black_box(digest.clone())))
         },
     );
 

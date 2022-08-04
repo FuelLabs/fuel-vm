@@ -96,11 +96,9 @@ fn signer() {
 
     signature
         .verify(public_p.as_ref(), &message)
-        .err()
-        .expect("Wrong key should fail verification");
+        .expect_err("Wrong key should fail verification");
 
     signature_p
         .verify(public.as_ref(), &message)
-        .err()
-        .expect("Wrong key should fail verification");
+        .expect_err("Wrong key should fail verification");
 }

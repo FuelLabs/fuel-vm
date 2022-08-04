@@ -134,8 +134,10 @@ mod use_std {
     use crate::{Error, Message, PublicKey, SecretKey, Signature};
 
     use lazy_static::lazy_static;
-    use secp256k1::recovery::{RecoverableSignature as SecpRecoverableSignature, RecoveryId};
-    use secp256k1::Secp256k1;
+    use secp256k1::{
+        ecdsa::{RecoverableSignature as SecpRecoverableSignature, RecoveryId},
+        Secp256k1,
+    };
 
     use std::borrow::Borrow;
 
@@ -189,7 +191,7 @@ mod use_std {
             let secret = secret.borrow();
             let message = message.to_secp();
 
-            let signature = SIGNING_SECP.sign_recoverable(&message, secret);
+            let signature = SIGNING_SECP.sign_ecdsa_recoverable(&message, secret);
 
             Signature::from_secp(signature)
         }
@@ -205,7 +207,7 @@ mod use_std {
             let message = message.to_secp();
 
             let pk = RECOVER_SECP
-                .recover(&message, &signature)
+                .recover_ecdsa(&message, &signature)
                 .map(|pk| PublicKey::from_secp(&pk))?;
 
             Ok(pk)

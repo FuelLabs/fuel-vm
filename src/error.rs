@@ -2,11 +2,11 @@
 
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
 use fuel_tx::ValidationError;
+use thiserror::Error;
 
 use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
-use thiserror::Error;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -153,14 +153,6 @@ impl RuntimeError {
     {
         Self::Halt(e.into())
     }
-
-    /// Halting execution since some invariant has been violated
-    pub fn halt_on_bug(description: &'static str) -> Self {
-        Self::Halt(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("BUG: {description}"),
-        ))
-    }
 }
 
 impl PartialEq for RuntimeError {
@@ -220,5 +212,143 @@ impl From<Infallible> for PanicReason {
 impl Into<io::Error> for Infallible {
     fn into(self) -> io::Error {
         unreachable!()
+    }
+}
+
+/// Unique bug identifier
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "strum", derive(strum::EnumVariantNames))]
+pub enum BugId {
+    ID001,
+    ID002,
+    ID003,
+    ID004,
+    ID005,
+    ID006,
+}
+
+/// Traceable bug variants
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BugVariant {
+    /// Context gas increase has overflow
+    ContextGasOverflow,
+
+    /// Context gas increase has underflow
+    ContextGasUnderflow,
+
+    /// Global gas subtraction has underflow
+    GlobalGasUnderflow,
+}
+
+impl fmt::Display for BugVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ContextGasOverflow => write!(
+                f,
+                r#"The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word.
+
+                This overflow means the registers are corrupted."#
+            ),
+
+            Self::ContextGasUnderflow => write!(
+                f,
+                r#"The context gas cannot underflow since any script should halt upon gas exhaustion.
+
+                This underflow means the registers are corrupted."#
+            ),
+
+            Self::GlobalGasUnderflow => write!(
+                f,
+                r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
+
+                This underflow means the registers are corrupted."#
+            ),
+        }
+    }
+}
+
+/// Bug information with backtrace data
+#[derive(Debug, Clone)]
+pub struct Bug {
+    id: BugId,
+    variant: BugVariant,
+
+    #[cfg(feature = "backtrace")]
+    bt: backtrace::Backtrace,
+}
+
+impl Bug {
+    #[cfg(not(feature = "backtrace"))]
+    /// Report a bug without backtrace data
+    pub const fn new(id: BugId, variant: BugVariant) -> Self {
+        Self { id, variant }
+    }
+
+    /// Unique bug identifier per location
+    pub const fn id(&self) -> BugId {
+        self.id
+    }
+
+    /// Class variant of the bug
+    pub const fn variant(&self) -> BugVariant {
+        self.variant
+    }
+}
+
+#[cfg(feature = "backtrace")]
+mod bt {
+    use super::*;
+    use backtrace::Backtrace;
+    use core::ops::Deref;
+
+    impl Bug {
+        /// Report a bug with backtrace data
+        pub fn new(id: BugId, variant: BugVariant) -> Self {
+            let bt = Backtrace::new();
+
+            Self { id, variant, bt }
+        }
+
+        /// Backtrace data
+        pub const fn bt(&self) -> &Backtrace {
+            &self.bt
+        }
+    }
+
+    impl Deref for Bug {
+        type Target = Backtrace;
+
+        fn deref(&self) -> &Self::Target {
+            &self.bt
+        }
+    }
+}
+
+impl fmt::Display for Bug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "This is a bug [{:?}]! Please, report this incident as an issue in fuel-vm repository\n\n",
+            self.id()
+        )?;
+
+        write!(f, "{}", self.variant())?;
+
+        Ok(())
+    }
+}
+
+impl StdError for Bug {}
+
+impl From<Bug> for RuntimeError {
+    fn from(bug: Bug) -> Self {
+        Self::Halt(io::Error::new(io::ErrorKind::Other, bug))
+    }
+}
+
+impl From<Bug> for InterpreterError {
+    fn from(bug: Bug) -> Self {
+        RuntimeError::from(bug).into()
     }
 }

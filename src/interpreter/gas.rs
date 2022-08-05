@@ -1,6 +1,6 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::{Bug, BugId, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::GasUnit;
 
 use fuel_asm::{OpcodeRepr, PanicReason};
@@ -77,17 +77,17 @@ impl<S> Interpreter<S> {
         if gas > self.registers[REG_CGAS] {
             self.registers[REG_GGAS] = self.registers[REG_GGAS]
                 .checked_sub(self.registers[REG_CGAS])
-                .ok_or(Bug::GlobalGasUnderflow(BugId::ID002))?;
+                .ok_or_else(|| Bug::new(BugId::ID002, BugVariant::GlobalGasUnderflow))?;
             self.registers[REG_CGAS] = 0;
 
             Err(PanicReason::OutOfGas.into())
         } else {
             self.registers[REG_CGAS] = self.registers[REG_CGAS]
                 .checked_sub(gas)
-                .ok_or(Bug::ContextGasUnderflow(BugId::ID004))?;
+                .ok_or_else(|| Bug::new(BugId::ID004, BugVariant::ContextGasUnderflow))?;
             self.registers[REG_GGAS] = self.registers[REG_GGAS]
                 .checked_sub(gas)
-                .ok_or(Bug::GlobalGasUnderflow(BugId::ID005))?;
+                .ok_or_else(|| Bug::new(BugId::ID005, BugVariant::GlobalGasUnderflow))?;
 
             Ok(())
         }

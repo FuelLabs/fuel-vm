@@ -1,7 +1,7 @@
 use super::Interpreter;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
-use crate::error::{Bug, BugId, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
@@ -48,7 +48,7 @@ impl<S> Interpreter<S> {
         if let Some(frame) = self.frames.pop() {
             self.registers[REG_CGAS] = self.registers[REG_CGAS]
                 .checked_add(frame.context_gas())
-                .ok_or(Bug::ContextGasOverflow(BugId::ID001))?;
+                .ok_or_else(|| Bug::new(BugId::ID001, BugVariant::ContextGasOverflow))?;
 
             let cgas = self.registers[REG_CGAS];
             let ggas = self.registers[REG_GGAS];
@@ -172,7 +172,7 @@ where
         // subtract gas
         self.registers[REG_CGAS] = self.registers[REG_CGAS]
             .checked_sub(forward_gas_amount)
-            .ok_or(Bug::ContextGasUnderflow(BugId::ID003))?;
+            .ok_or_else(|| Bug::new(BugId::ID003, BugVariant::ContextGasUnderflow))?;
 
         let mut frame = self.call_frame(call, asset_id)?;
 

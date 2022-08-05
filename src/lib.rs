@@ -58,7 +58,7 @@ pub mod prelude {
     pub use crate::backtrace::Backtrace;
     pub use crate::call::{Call, CallFrame};
     pub use crate::context::Context;
-    pub use crate::error::{Bug, BugId, Infallible, InterpreterError, RuntimeError};
+    pub use crate::error::{Bug, BugId, BugVariant, Infallible, InterpreterError, RuntimeError};
     pub use crate::interpreter::{Interpreter, MemoryRange};
     pub use crate::memory_client::MemoryClient;
     pub use crate::predicate::RuntimePredicate;

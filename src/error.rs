@@ -2,11 +2,11 @@
 
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
 use fuel_tx::ValidationError;
+use thiserror::Error;
 
 use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
-use thiserror::Error;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -230,22 +230,97 @@ pub enum BugId {
 
 /// Traceable bug variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Bug {
+pub enum BugVariant {
     /// Context gas increase has overflow
-    ContextGasOverflow(BugId),
+    ContextGasOverflow,
 
     /// Context gas increase has underflow
-    ContextGasUnderflow(BugId),
+    ContextGasUnderflow,
 
     /// Global gas subtraction has underflow
-    GlobalGasUnderflow(BugId),
+    GlobalGasUnderflow,
+}
+
+impl fmt::Display for BugVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ContextGasOverflow => write!(
+                f,
+                r#"The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word.
+
+                This overflow means the registers are corrupted."#
+            ),
+
+            Self::ContextGasUnderflow => write!(
+                f,
+                r#"The context gas cannot underflow since any script should halt upon gas exhaustion.
+
+                This underflow means the registers are corrupted."#
+            ),
+
+            Self::GlobalGasUnderflow => write!(
+                f,
+                r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
+
+                This underflow means the registers are corrupted."#
+            ),
+        }
+    }
+}
+
+/// Bug information with backtrace data
+#[derive(Debug, Clone)]
+pub struct Bug {
+    id: BugId,
+    variant: BugVariant,
+
+    #[cfg(feature = "backtrace")]
+    bt: backtrace::Backtrace,
 }
 
 impl Bug {
-    /// Return the unique bug identifier per location
+    #[cfg(not(feature = "backtrace"))]
+    /// Report a bug without backtrace data
+    pub const fn new(id: BugId, variant: BugVariant) -> Self {
+        Self { id, variant }
+    }
+
+    /// Unique bug identifier per location
     pub const fn id(&self) -> BugId {
-        match self {
-            Bug::ContextGasOverflow(id) | Bug::ContextGasUnderflow(id) | Bug::GlobalGasUnderflow(id) => *id,
+        self.id
+    }
+
+    /// Class variant of the bug
+    pub const fn variant(&self) -> BugVariant {
+        self.variant
+    }
+}
+
+#[cfg(feature = "backtrace")]
+mod bt {
+    use super::*;
+    use backtrace::Backtrace;
+    use core::ops::Deref;
+
+    impl Bug {
+        /// Report a bug with backtrace data
+        pub fn new(id: BugId, variant: BugVariant) -> Self {
+            let bt = Backtrace::new();
+
+            Self { id, variant, bt }
+        }
+
+        /// Backtrace data
+        pub const fn bt(&self) -> &Backtrace {
+            &self.bt
+        }
+    }
+
+    impl Deref for Bug {
+        type Target = Backtrace;
+
+        fn deref(&self) -> &Self::Target {
+            &self.bt
         }
     }
 }
@@ -258,28 +333,9 @@ impl fmt::Display for Bug {
             self.id()
         )?;
 
-        match self {
-            Bug::ContextGasOverflow(_id) => write!(
-                f,
-                r#"The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word.
+        write!(f, "{}", self.variant())?;
 
-                This overflow means the registers are corrupted."#
-            ),
-
-            Bug::ContextGasUnderflow(_id) => write!(
-                f,
-                r#"The context gas cannot underflow since any script should halt upon gas exhaustion.
-
-                This underflow means the registers are corrupted."#
-            ),
-
-            Bug::GlobalGasUnderflow(_id) => write!(
-                f,
-                r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
-
-                This underflow means the registers are corrupted."#
-            ),
-        }
+        Ok(())
     }
 }
 

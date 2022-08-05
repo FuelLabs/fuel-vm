@@ -139,7 +139,7 @@ where
                     .transaction()
                     .gas_limit()
                     .checked_sub(self.registers[REG_GGAS])
-                    .ok_or(Bug::GlobalGasUnderflow(BugId::ID006))?;
+                    .ok_or_else(|| Bug::new(BugId::ID006, BugVariant::GlobalGasUnderflow))?;
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {

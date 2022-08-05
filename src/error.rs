@@ -153,14 +153,6 @@ impl RuntimeError {
     {
         Self::Halt(e.into())
     }
-
-    /// Halting execution since some invariant has been violated
-    pub fn halt_on_bug(description: &'static str) -> Self {
-        Self::Halt(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("BUG: {description}"),
-        ))
-    }
 }
 
 impl PartialEq for RuntimeError {
@@ -220,5 +212,80 @@ impl From<Infallible> for PanicReason {
 impl Into<io::Error> for Infallible {
     fn into(self) -> io::Error {
         unreachable!()
+    }
+}
+
+/// Unique bug identifier
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "strum", derive(strum::EnumVariantNames))]
+pub enum BugId {
+    ID001,
+    ID002,
+    ID003,
+    ID004,
+    ID005,
+}
+
+/// Traceable bug variants
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Bug {
+    /// Context gas increase has overflow
+    ContextGasOverflow(BugId),
+
+    /// Context gas increase has underflow
+    ContextGasUnderflow(BugId),
+
+    /// Global gas subtraction has underflow
+    GlobalGasUnderflow(BugId),
+}
+
+impl Bug {
+    /// Return the unique bug identifier per location
+    pub const fn id(&self) -> BugId {
+        match self {
+            Bug::ContextGasOverflow(id) | Bug::ContextGasUnderflow(id) | Bug::GlobalGasUnderflow(id) => *id,
+        }
+    }
+}
+
+impl fmt::Display for Bug {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "This is a bug [{:?}]! Please, report this incident as an issue in fuel-vm repository\n\n",
+            self.id()
+        )?;
+
+        match self {
+            Bug::ContextGasOverflow(_id) => write!(
+                f,
+                r#"The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word.
+
+                This overflow means the registers are corrupted."#
+            ),
+
+            Bug::ContextGasUnderflow(_id) => write!(
+                f,
+                r#"The context gas cannot underflow since any script should halt upon gas exhaustion.
+
+                This underflow means the registers are corrupted."#
+            ),
+
+            Bug::GlobalGasUnderflow(_id) => write!(
+                f,
+                r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
+
+                This underflow means the registers are corrupted."#
+            ),
+        }
+    }
+}
+
+impl StdError for Bug {}
+
+impl From<Bug> for RuntimeError {
+    fn from(bug: Bug) -> Self {
+        Self::Halt(io::Error::new(io::ErrorKind::Other, bug))
     }
 }

@@ -1,6 +1,6 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::RuntimeError;
+use crate::error::{Bug, BugId, RuntimeError};
 use crate::gas::GasUnit;
 
 use fuel_asm::{OpcodeRepr, PanicReason};
@@ -77,17 +77,17 @@ impl<S> Interpreter<S> {
         if gas > self.registers[REG_CGAS] {
             self.registers[REG_GGAS] = self.registers[REG_GGAS]
                 .checked_sub(self.registers[REG_CGAS])
-                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+                .ok_or(Bug::GlobalGasUnderflow(BugId::ID002))?;
             self.registers[REG_CGAS] = 0;
 
             Err(PanicReason::OutOfGas.into())
         } else {
             self.registers[REG_CGAS] = self.registers[REG_CGAS]
                 .checked_sub(gas)
-                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+                .ok_or(Bug::ContextGasUnderflow(BugId::ID004))?;
             self.registers[REG_GGAS] = self.registers[REG_GGAS]
                 .checked_sub(gas)
-                .ok_or(RuntimeError::halt_on_bug("gas invariant violation"))?;
+                .ok_or(Bug::GlobalGasUnderflow(BugId::ID005))?;
 
             Ok(())
         }

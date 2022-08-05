@@ -225,6 +225,7 @@ pub enum BugId {
     ID003,
     ID004,
     ID005,
+    ID006,
 }
 
 /// Traceable bug variants
@@ -287,5 +288,11 @@ impl StdError for Bug {}
 impl From<Bug> for RuntimeError {
     fn from(bug: Bug) -> Self {
         Self::Halt(io::Error::new(io::ErrorKind::Other, bug))
+    }
+}
+
+impl From<Bug> for InterpreterError {
+    fn from(bug: Bug) -> Self {
+        RuntimeError::from(bug).into()
     }
 }

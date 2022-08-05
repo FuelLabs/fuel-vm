@@ -139,7 +139,7 @@ where
                     .transaction()
                     .gas_limit()
                     .checked_sub(self.registers[REG_GGAS])
-                    .ok_or(InterpreterError::Panic(PanicReason::OutOfGas))?;
+                    .ok_or(Bug::GlobalGasUnderflow(BugId::ID006))?;
 
                 // Catch VM panic and don't propagate, generating a receipt
                 let (status, program) = match program {

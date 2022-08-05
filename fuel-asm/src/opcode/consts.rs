@@ -3,6 +3,8 @@
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 #[repr(u8)]
 #[non_exhaustive]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OpcodeRepr {
     /// RESERV00
     RESERV00 = 0x00,

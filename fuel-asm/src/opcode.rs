@@ -13,6 +13,7 @@ pub use consts::OpcodeRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Instruction representation for the interpreter.
 ///
 /// ## Memory Opcodes

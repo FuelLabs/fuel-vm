@@ -6,6 +6,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(u8)]
 #[non_exhaustive]
 /// Panic reason representation for the interpreter.
@@ -545,6 +546,7 @@ impl From<convert::Infallible> for PanicReason {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Describe a panic reason with the instruction that generated it
 pub struct InstructionResult {
     reason: PanicReason,

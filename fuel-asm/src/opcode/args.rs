@@ -9,6 +9,8 @@ const GM_GET_VERIFYING_PREDICATE: u8 = 0x03;
 /// Argument list for GM (get metadata) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 // The VM is the only who should match this struct, and it *MUST* always perform exhaustive match
 // so all offered variants are covered.
 pub enum GMArgs {
@@ -119,6 +121,8 @@ const GTF_WITNESS_DATA: u16 = 0x302;
 /// Argument list for GTF (get tx fields) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u16)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 // The VM is the only who should match this struct, and it *MUST* always perform exhaustive match
 // so all offered variants are covered.
 pub enum GTFArgs {

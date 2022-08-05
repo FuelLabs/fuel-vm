@@ -20,3 +20,7 @@ pub use panic_reason::{InstructionResult, PanicReason};
 #[cfg(feature = "serde")]
 #[doc(no_inline)]
 pub use serde;
+
+#[cfg(feature = "arbitrary")]
+#[doc(no_inline)]
+pub use arbitrary;

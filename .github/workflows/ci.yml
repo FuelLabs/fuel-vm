@@ -41,11 +41,17 @@ jobs:
         command: build
         args: --verbose
 
-    - name: Run tests
+    - name: Run basic tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --verbose
+
+    - name: Run all tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose --all-features
 
     - name: Run tests random
       uses: actions-rs/cargo@v1

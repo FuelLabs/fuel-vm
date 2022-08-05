@@ -12,6 +12,7 @@ description = "FuelVM interpreter."
 
 [dependencies]
 anyhow = { version = "1.0", optional = true }
+backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 dyn-clone = { version = "1.0", optional = true }
 fuel-asm = "0.7"
 fuel-crypto = "0.5"
@@ -23,6 +24,7 @@ itertools = "0.10"
 secp256k1 = { version = "0.20", features = ["recovery"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.9"
+strum = { version = "0.24", features = ["derive"], optional = true }
 thiserror = "1.0"
 tracing = "0.1"
 rand = { version = "0.8", optional = true }
@@ -30,6 +32,8 @@ rand = { version = "0.8", optional = true }
 [dev-dependencies]
 fuel-tx = { version = "0.17", features = ["builder", "internals"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
+glob = "0.3"
+regex = "1.6"
 serde_json = "1.0"
 
 [features]
@@ -50,6 +54,11 @@ required-features = ["random"]
 name = "test-blockchain"
 path = "tests/blockchain.rs"
 required-features = ["random"]
+
+[[test]]
+name = "test-bug-id"
+path = "tests/bug-id.rs"
+required-features = ["strum"]
 
 [[test]]
 name = "test-contract"

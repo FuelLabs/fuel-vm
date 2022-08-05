@@ -11,10 +11,7 @@ use fuel_vm::prelude::*;
 #[test]
 fn check_bug_id_unique() {
     let mut matches = HashSet::new();
-
     let re = Regex::new(r"BugId::ID\d{3}").expect("failed to create regex");
-    let re_use = Regex::new(r"BugId::\*").expect("failed to create regex");
-
     let error_source = PathBuf::new().join("src").join("error.rs");
 
     for source in glob("src/**/*.rs").expect("Failed to read glob pattern") {
@@ -23,7 +20,7 @@ fn check_bug_id_unique() {
         if source != error_source {
             let source = fs::read_to_string(source).expect("failed to read source");
 
-            if re_use.is_match(&source) {
+            if source.contains("BugId::*") {
                 panic!("BugId isn't supposed to be required as '*'")
             }
 

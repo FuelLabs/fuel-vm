@@ -11,8 +11,8 @@ repository = "https://github.com/FuelLabs/fuel-tx"
 description = "FuelVM transaction."
 
 [dependencies]
-fuel-asm = { version = "0.7", default-features = false }
-fuel-crypto = { version = "0.5", default-features = false }
+fuel-asm = { version = "0.8", default-features = false }
+fuel-crypto = { version = "0.6", default-features = false }
 fuel-merkle = { version = "0.3", default-features = false }
 fuel-types = { version = "0.5", default-features = false }
 itertools = { version = "0.10", default-features = false }
@@ -22,7 +22,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"], opti
 
 [dev-dependencies]
 bincode = { version = "1.3", default-features = false }
-fuel-crypto = { version = "0.5", default-features = false, features = ["random"] }
+fuel-crypto = { version = "0.6", default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
 fuel-types = { version = "0.5", default-features = false, features = ["random"] }
@@ -30,7 +30,7 @@ insta = "1.0"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
-rstest = "0.13"
+rstest = "0.15"
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]

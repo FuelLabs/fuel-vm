@@ -6,15 +6,10 @@ use std::hint::black_box;
 use libfuzzer_sys::fuzz_target;
 
 use fuel_vm::prelude::*;
-use fuzzed_ops::*;
-
-mod fuzzed_ops;
-
-type FuzzProgram = Vec<FuzzedOp>;
 
 #[derive(arbitrary::Arbitrary, Debug)]
 struct FuzzData {
-    program: FuzzProgram,
+    program: Vec<Opcode>,
     script_data: Vec<u8>,
 }
 
@@ -27,14 +22,11 @@ fuzz_target!(|data: FuzzData| {
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
 
-    let opcodes: Vec<Opcode> = data.program.iter().map(|&fuzzed_op| Opcode::from(fuzzed_op)).collect();
-    let script: Vec<u8> = opcodes.iter().copied().collect();
-
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script,
+        data.program.iter().copied().collect(),
         data.script_data,
         vec![],
         vec![],

@@ -14,6 +14,7 @@ libfuzzer-sys = "0.4"
 
 [dependencies.fuel-vm]
 path = ".."
+features = ["arbitrary"]
 
 # Prevent this from interfering with workspaces
 [workspace]

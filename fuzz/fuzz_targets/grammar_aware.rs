@@ -17,7 +17,7 @@ fuzz_target!(|data: FuzzData| {
     let mut client = MemoryClient::default();
 
     let gas_price = 0;
-    let gas_limit = 1_000_000;
+    let gas_limit = 10_000;
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::DEFAULT;

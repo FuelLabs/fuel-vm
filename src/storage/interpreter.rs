@@ -24,6 +24,14 @@ pub trait InterpreterStorage:
     /// executed.
     fn block_height(&self) -> Result<u32, Self::DataError>;
 
+    /// Return the timestamp of a given block
+    ///
+    /// This isn't optional because the VM is expected to panic if an invalid block height is
+    /// passed - under the assumption that the block height is consistent, the storage should
+    /// necessarily have the timestamp for the block, unless some I/O error prevents it from
+    /// fetching it.
+    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError>;
+
     /// Provide the block hash from a given height.
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
 
@@ -117,6 +125,10 @@ where
 
     fn block_height(&self) -> Result<u32, Self::DataError> {
         <S as InterpreterStorage>::block_height(self.deref())
+    }
+
+    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError> {
+        <S as InterpreterStorage>::timestamp(self.deref(), height)
     }
 
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError> {

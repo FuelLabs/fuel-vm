@@ -5,8 +5,8 @@ use quickcheck_macros::quickcheck;
 // Ensure none of the opcodes can write to reserved registers
 #[quickcheck]
 fn cant_write_to_reserved_registers(opcode: u8, fuzz: u16) -> TestResult {
-    // opcode || REG_ONE || random fuzz
-    let attempt_reserved_reg_access = ((opcode as u32) << 24) | (1 << 18) | ((fuzz >> 4) as u32);
+    // instruction fmt -> (opcode, ra, ...) -> opcode || REG_ONE || random fuzz
+    let attempt_reserved_reg_access = ((opcode as u32) << 24) | (REG_ONE << 18) | ((fuzz >> 4) as u32);
     let instruction = Instruction::new(attempt_reserved_reg_access);
     let opcode = Opcode::new(instruction);
     // skip undefined opcodes
@@ -31,26 +31,24 @@ fn cant_write_to_reserved_registers(opcode: u8, fuzz: u16) -> TestResult {
                 (opcode, &res)
             ));
         }
-    } else {
-        // Ensure REG_ONE wasn't changed.
-        // While not a perfect guarantee against the opcode writing a value
-        // to an invalid register, this increases the likelihood of detecting
-        // erroneous register access.
-        if vm.registers[REG_ONE] != 1 {
-            return TestResult::error("reserved register was modified!");
-        }
-
+    } else if matches!(
+        res,
+        Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
+    ) {
         // throw err if a ReservedRegisterNotWritable err was detected outside our writes_to_ra check
         // This would likely happen if the opcode wasn't properly marked as true in `writes_to_ra`
-        if matches!(
-            res,
-            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
-        ) {
-            return TestResult::error(format!(
-                "unexpected ReservedRegisterNotWritable, test configuration may be faulty {:?}",
-                (opcode, &res)
-            ));
-        }
+        return TestResult::error(format!(
+            "unexpected ReservedRegisterNotWritable, test configuration may be faulty {:?}",
+            (opcode, &res)
+        ));
+    }
+
+    // Ensure REG_ONE wasn't changed.
+    // While not a perfect guarantee against the opcode writing a value
+    // to an invalid register, this increases the likelihood of detecting
+    // erroneous register access.
+    if vm.registers[REG_ONE] != 1 {
+        return TestResult::error("reserved register was modified!");
     }
     TestResult::passed()
 }

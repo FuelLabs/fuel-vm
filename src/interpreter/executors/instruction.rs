@@ -441,6 +441,11 @@ where
                 self.state_write_qword(a, b)?;
             }
 
+            OpcodeRepr::TIME => {
+                self.gas_charge(GAS_TIME)?;
+                self.timestamp(ra, b)?;
+            }
+
             OpcodeRepr::ECR => {
                 self.gas_charge(GAS_ECR)?;
                 self.ecrecover(a, b, c)?;

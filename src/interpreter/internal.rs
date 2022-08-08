@@ -192,6 +192,10 @@ impl<S> Interpreter<S> {
 
         self.registers[REG_FP] = fp;
     }
+
+    pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
+        self.context().block_height().ok_or(PanicReason::TransactionValidity)
+    }
 }
 
 #[cfg(all(test, feature = "random"))]

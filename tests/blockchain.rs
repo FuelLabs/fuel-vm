@@ -553,3 +553,75 @@ fn smo_instruction_works() {
     // check message with zero amount
     execute_test(rng, 1_000, 0, vec![0xfa; 15]);
 }
+
+#[test]
+fn timestamp_works() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let block_height = 0;
+
+    let params = client.params().clone();
+
+    // TODO consider using quickcheck after PR lands
+    // https://github.com/FuelLabs/fuel-vm/pull/187
+    let cases = vec![
+        (0, 0),
+        (0, 1),
+        (5, 0),
+        (5, 5),
+        (5, 6),
+        (10, 0),
+        (10, 5),
+        (10, 10),
+        (10, 1_000),
+    ];
+
+    for (height, input) in cases {
+        client.as_mut().set_block_height(height);
+
+        let expected = client.as_ref().timestamp(input).expect("failed to calculate timestamp");
+
+        #[rustfmt::skip]
+        let script = vec![
+            Opcode::MOVI(0x11, input),              // set the argument
+            Opcode::TIME(0x10, 0x11),               // perform the instruction
+            Opcode::LOG(0x10, 0x00, 0x00, 0x00),    // log output
+            Opcode::RET(REG_ONE)
+        ];
+
+        let script = script.into_iter().collect();
+        let script_data = vec![];
+
+        let tx = TransactionBuilder::script(script, script_data)
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .finalize_checked(block_height, &params);
+
+        let receipts = client.transact(tx);
+        let result = receipts.iter().any(|r| match r {
+            Receipt::ScriptResult {
+                result: ScriptExecutionResult::Success,
+                ..
+            } => true,
+            _ => false,
+        });
+
+        assert_eq!(result, input <= height);
+
+        if result {
+            let ra = receipts
+                .iter()
+                .find_map(|r| match r {
+                    Receipt::Log { ra, .. } => Some(*ra),
+                    _ => None,
+                })
+                .expect("failed to fetch log");
+
+            assert_eq!(ra, expected);
+        }
+    }
+}

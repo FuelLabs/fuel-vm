@@ -324,6 +324,19 @@ where
         self.inc_pc()
     }
 
+    pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+
+        self.block_height()
+            .and_then(|c| (b <= c as Word).then(|| ()).ok_or(PanicReason::TransactionValidity))?;
+
+        let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?;
+
+        self.registers[ra] = self.storage.timestamp(b).map_err(|e| e.into())?;
+
+        self.inc_pc()
+    }
+
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         if b > self.params.max_message_data_length
             || b > MEM_MAX_ACCESS_SIZE

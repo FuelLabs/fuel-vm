@@ -7,6 +7,7 @@ use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
 use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
+use tai64::Tai64;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -204,6 +205,13 @@ impl InterpreterStorage for MemoryStorage {
 
     fn block_height(&self) -> Result<u32, Infallible> {
         Ok(self.block_height)
+    }
+
+    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError> {
+        const GENESIS: Tai64 = Tai64::UNIX_EPOCH;
+        const INTERVAL: Word = 10;
+
+        Ok((GENESIS + (height as Word * INTERVAL)).0)
     }
 
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Infallible> {

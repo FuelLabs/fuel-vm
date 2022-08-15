@@ -71,6 +71,7 @@ pub const GAS_SRW: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_SRWQ: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_SWW: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_SWWQ: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
+pub const GAS_TIME: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_ECR: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_K256: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);
 pub const GAS_S256: Word = Interpreter::<()>::gas_cost_const(OpcodeRepr::ADD);

@@ -2,7 +2,7 @@
 
 use fuel_merkle::binary::in_memory::MerkleTree;
 use fuel_types::{Bytes32, Bytes64};
-use secp256k1::recovery::{RecoverableSignature, RecoveryId};
+use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
 use secp256k1::Error as Secp256k1Error;
 use secp256k1::{Message, Secp256k1, SecretKey};
 
@@ -14,7 +14,7 @@ pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Resu
     let secret = SecretKey::from_slice(secret)?;
     let message = Message::from_slice(message)?;
 
-    let signature = Secp256k1::new().sign_recoverable(&message, &secret);
+    let signature = Secp256k1::new().sign_ecdsa_recoverable(&message, &secret);
     let (v, mut signature) = signature.serialize_compact();
 
     let v = v.to_i32();
@@ -35,7 +35,9 @@ pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Resul
     let v = RecoveryId::from_i32(v)?;
     let signature = RecoverableSignature::from_compact(signature.as_ref(), v)?;
 
-    let pk = Secp256k1::new().recover(&message, &signature)?.serialize_uncompressed();
+    let pk = Secp256k1::new()
+        .recover_ecdsa(&message, &signature)?
+        .serialize_uncompressed();
 
     // Ignore the first byte of the compressed flag
     let pk = &pk[1..];

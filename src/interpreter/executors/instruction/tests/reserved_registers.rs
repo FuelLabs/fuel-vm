@@ -24,6 +24,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     if writes_to_ra(opcode) {
         // if this opcode writes to $rA, expect an error since we're attempting to use a reserved register
+        // This assumes that writeable register is validated before other properties of the instruction.
         if !matches!(
             res,
             Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable

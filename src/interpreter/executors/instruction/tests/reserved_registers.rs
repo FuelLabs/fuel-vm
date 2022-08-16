@@ -4,13 +4,15 @@ use quickcheck_macros::quickcheck;
 
 // Ensure none of the opcodes can write to reserved registers
 #[quickcheck]
-fn cant_write_to_reserved_registers(opcode: u8, fuzz: u16) -> TestResult {
-    // instruction fmt -> (opcode, ra, ...) -> opcode || REG_ONE || random fuzz
-    let attempt_reserved_reg_access = ((opcode as u32) << 24) | (REG_ONE << 18) | ((fuzz >> 4) as u32);
-    let instruction = Instruction::new(attempt_reserved_reg_access);
-    let opcode = Opcode::new(instruction);
+fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
+    let random_instruction = Instruction::new(raw_random_instruction);
+    let opcode = Opcode::new(random_instruction);
     // skip undefined opcodes
     if matches!(opcode, Opcode::Undefined) {
+        return TestResult::discard();
+    }
+    // ignore if rA isn't set to writeable register
+    if random_instruction.ra() >= REG_WRITABLE {
         return TestResult::discard();
     }
 
@@ -18,7 +20,7 @@ fn cant_write_to_reserved_registers(opcode: u8, fuzz: u16) -> TestResult {
 
     vm.init_script(CheckedTransaction::default())
         .expect("Failed to init VM");
-    let res = vm.instruction(instruction);
+    let res = vm.instruction(random_instruction);
 
     if writes_to_ra(opcode) {
         // if this opcode writes to $rA, expect an error since we're attempting to use a reserved register
@@ -43,13 +45,18 @@ fn cant_write_to_reserved_registers(opcode: u8, fuzz: u16) -> TestResult {
         ));
     }
 
-    // Ensure REG_ONE wasn't changed.
+    // Ensure REG_ZERO and REG_ONE were not changed.
     // While not a perfect guarantee against the opcode writing a value
     // to an invalid register, this increases the likelihood of detecting
-    // erroneous register access.
+    // erroneous register access. This is not a comprehensive set of all possible
+    // writeable violations but more can be added.
+    if vm.registers[REG_ZERO] != 0 {
+        return TestResult::error("reserved register was modified!");
+    }
     if vm.registers[REG_ONE] != 1 {
         return TestResult::error("reserved register was modified!");
     }
+
     TestResult::passed()
 }
 
@@ -134,5 +141,6 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::GM(_, _) => true,
         Opcode::GTF(_, _, _) => true,
         Opcode::Undefined => false,
+        Opcode::TIME(_, _) => true,
     }
 }

@@ -148,7 +148,12 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
+        Self::code_size_offset() + WORD_SIZE
+    }
+
+    /// Contract code size memory offset.
+    pub const fn code_size_offset() -> usize {
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// `a` argument memory offset.

@@ -54,7 +54,7 @@ where
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        // compiler will optmize to memset
+        // compiler will optimize to memset
         self.memory[memory_offset..memory_offset_end]
             .iter_mut()
             .for_each(|m| *m = 0);

@@ -1,8 +1,8 @@
 use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::{StorageSlot, TransactionBuilder};
+use fuel_tx::{TransactionBuilder};
 use fuel_types::bytes;
-use fuel_vm::script_with_data_offset;
-use fuel_vm::util::test_helpers::TestBuilder;
+// use fuel_vm::script_with_data_offset;
+// use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -395,6 +395,8 @@ fn load_external_contract_code() {
 
     let receipts = client.transact(tx_deploy_loader);
 
+    println!("{:?}",receipts);
+
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
         code.extend(&[0; 4]);
@@ -410,66 +412,134 @@ fn load_external_contract_code() {
     }
 }
 
-#[test]
-fn can_read_state_from_initial_storage_slots() {
-    // the initial key and value pair for the contract
-    let key = Hasher::hash(b"initial key");
-    let value = [128u8; 32].into();
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
 
-    let program = vec![
-        // load memory location of reference to key
-        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
-        // deref key memory location from script data to 0x10
-        Opcode::LW(0x10, 0x10, 0),
-        // alloc 32 bytes stack space
-        Opcode::ADDI(0x11, REG_SP, 0),
-        Opcode::CFEI(32 as Immediate24),
-        // load state value to stack
-        Opcode::SRWQ(0x11, 0x10),
-        // log value
-        Opcode::MOVI(0x12, 32 as Immediate18),
-        Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
+#[test]
+fn load_contract_code_invalid_args() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let salt: Salt = rng.gen();
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
+
+    // Start by creating and deploying a new example contract
+    let contract_code: Vec<Opcode> = vec![
+        Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
         Opcode::RET(REG_ONE),
+        Opcode::RET(REG_ZERO), // Pad to make length uneven to test padding
     ];
 
-    let init_storage = vec![StorageSlot::new(key, value)];
+    let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
 
-    let gas_limit = 1_000_000;
-    let mut builder = TestBuilder::new(2023u64);
-    let contract = builder.setup_contract(program, None, Some(init_storage)).contract_id;
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let (script, offset) = script_with_data_offset!(
-        data_offset,
-        vec![
-            // load position of call arguments from script data
-            Opcode::MOVI(0x10, data_offset + 32),
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            Opcode::RET(REG_ONE),
-        ],
-        builder.tx_offset()
-    );
+    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let output0 = Output::contract_created(contract_id, state_root);
+    let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let script_data: Vec<u8> = [
-        key.as_ref(),
-        Call::new(contract, offset as Word, 0).to_bytes().as_slice(),
-    ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+    let tx_create_target = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![output0],
+        vec![program.clone()],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
 
-    let log_tx = builder
-        .start_script(script, script_data)
-        .gas_limit(gas_limit)
-        .gas_price(0)
-        .contract_input(contract)
-        .contract_output(&contract)
-        .execute();
+    client.transact(tx_create_target);
 
-    for receipt in log_tx.receipts() {
-        if let Receipt::LogData { data, .. } = receipt {
-            assert_eq!(data.as_slice(), value.as_slice())
-        }
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    let count = ContractId::LEN as Immediate12;
+
+    let mut load_contract: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
+        Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+        Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+    ];
+
+    // Generate code for pushing contract id to heap
+    // for (i, byte) in contract_id.as_ref().iter().enumerate() {
+    //     let index = i as Immediate12;
+    //     let value = *byte as Immediate12;
+    //     load_contract.extend(&[
+    //         Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
+    //         Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
+    //         Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+    //     ]);
+    // }
+
+    load_contract.extend(vec![
+        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
+        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
+        // Opcode::SUBI(reg_a, reg_a, 1),                  // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::OR(reg_b, reg_b, reg_a),                  // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
+        // Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        // Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        // Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        // Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        // Opcode::NOOP,                                   // Patched to the jump later
+    ]);
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        load_contract.clone().into_iter().collect(),
+        vec![],
+        vec![input0.clone()],
+        vec![output1],
+        vec![],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+    // Patch the code with correct jump address
+    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+    *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        load_contract.into_iter().collect(),
+        vec![],
+        vec![input0],
+        vec![output1],
+        vec![],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+    let receipts = client.transact(tx_deploy_loader);
+
+    if let Receipt::Panic { id, reason, .. } = receipts.get(0).expect("No receipt") {
+    // if let receipt = receipts.get(0).expect("No receipt") {
+    //     println!("{:?}",receipt.reason().unwrap().reason().to_string());
+    //     assert_eq!(true, receipt.reason().unwrap().is_error(), "No panic found");
+        assert_eq!("MemoryOverflow", reason.reason().to_string(), "Expected MemoryOverflow, found {}", reason.reason());
+    } else {
+        panic!("Script did not return a value");
     }
 }
 

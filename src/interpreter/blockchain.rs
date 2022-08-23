@@ -91,6 +91,7 @@ where
         memory.copy_from_slice(code);
 
         self.registers[REG_SP]
+            //TODO this is looser than the compare against [REG_HP,REG_SSP+length]
             .checked_add(length as Word)
             .map(|sp| {
                 self.registers[REG_SP] = sp;

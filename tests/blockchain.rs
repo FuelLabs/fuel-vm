@@ -438,7 +438,9 @@ fn load_contract_code_invalid_args() {
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
+    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let output0 = Output::contract_created(contract_id, state_root);
+    let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = Transaction::create(
         gas_price,
@@ -570,6 +572,77 @@ fn load_contract_code_invalid_args() {
 
     if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
         assert_eq!(&ContractNotInInputs, reason.reason(), "Expected ContractNotInInputs, found {}", reason.reason());
+    } else {
+        panic!("Script should have panicked");
+    }
+
+    let count = ContractId::LEN as Immediate12;
+
+    let mut load_contract: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
+        Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+        Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+    ];
+
+    // Generate code for pushing contract id to heap
+    for (i, byte) in contract_id.as_ref().iter().enumerate() {
+        let index = i as Immediate12;
+        let value = *byte as Immediate12;
+        load_contract.extend(&[
+            Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
+            Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
+            Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+        ]);
+    }
+
+    load_contract.extend(vec![
+        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
+        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, reg_a, reg_b),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
+        Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        Opcode::NOOP,                                   // Patched to the jump later
+    ]);
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        load_contract.clone().into_iter().collect(),
+        vec![],
+        vec![input0.clone()],
+        vec![output1],
+        vec![],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+    // Patch the code with correct jump address
+    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+    *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        load_contract.into_iter().collect(),
+        vec![],
+        vec![input0],
+        vec![output1],
+        vec![],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+    let receipts = client.transact(tx_deploy_loader);
+
+    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
+        assert_eq!(&MemoryOverflow, reason.reason(), "Expected MemoryOverflow, found {}", reason.reason());
     } else {
         panic!("Script should have panicked");
     }

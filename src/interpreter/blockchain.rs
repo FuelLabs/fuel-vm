@@ -150,7 +150,11 @@ where
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
 
-        if overflow || d > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM.saturating_sub(d) || bx > VM_MAX_RAM || cd > VM_MAX_RAM
+        if overflow
+            || d > MEM_MAX_ACCESS_SIZE
+            || a > VM_MAX_RAM.saturating_sub(d)
+            || bx > VM_MAX_RAM
+            || cd > VM_MAX_RAM
         {
             return Err(PanicReason::MemoryOverflow.into());
         }

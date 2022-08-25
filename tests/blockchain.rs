@@ -156,7 +156,7 @@ fn state_read_write() {
     .copied()
     .collect::<Vec<u8>>();
 
-    // Assert the offsets are set correctnly
+    // Assert the offsets are set correctly
     let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
@@ -359,7 +359,7 @@ fn load_external_contract_code() {
         Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
         Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
         Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
         Opcode::NOOP,                                   // Patched to the jump later
     ]);
@@ -411,8 +411,7 @@ fn load_external_contract_code() {
     }
 }
 
-#[test]
-fn load_contract_code_invalid_args() {
+fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patch_jump: bool) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -458,63 +457,152 @@ fn load_contract_code_invalid_args() {
 
     client.transact(tx_create_target);
 
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-    let reg_b = 0x21;
+    //test ssp != sp for LDC
+    let mut load_contract: Vec<Opcode>;
 
+    let mut tx_deploy_loader;
+
+    if !should_patch_jump {
+        load_contract = cmd;
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.into_iter().collect(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
+            .check(height, &params)
+            .expect("failed to check tx");
+    } else {
+        let reg_a = 0x20;
+        let count = ContractId::LEN as Immediate12;
+
+        load_contract= vec![
+            Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
+            Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+            Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+        ];
+
+        // Generate code for pushing contract id to heap
+        for (i, byte) in contract_id.as_ref().iter().enumerate() {
+            let index = i as Immediate12;
+            let value = *byte as Immediate12;
+            load_contract.extend(&[
+                Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
+                Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
+                Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+            ]);
+        }
+
+        load_contract.extend(cmd);
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.clone().into_iter().collect(),
+            vec![],
+            vec![input0.clone()],
+            vec![output1],
+            vec![],
+        )
+            .check(height, &params)
+            .expect("failed to check tx");
+
+        // Patch the code with correct jump address
+        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+        *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.into_iter().collect(),
+            vec![],
+            vec![input0],
+            vec![output1],
+            vec![],
+        )
+            .check(height, &params)
+            .expect("failed to check tx");
+    }
+
+    check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
+}
+
+fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: PanicReason) {
+    let client = MemoryClient::default();
+
+    check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
+}
+
+fn check_expected_reason_for_opcodes_with_client(client: MemoryClient, opcodes: Vec<Opcode>, expected_reason: PanicReason) {
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
+
+    let tx_deploy_loader = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        opcodes.into_iter().collect(),
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+    check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
+}
+
+fn check_reason_for_transaction(mut client:MemoryClient, checked_tx: CheckedTransaction, expected_reason: PanicReason) {
+    let receipts = client.transact(checked_tx);
+
+    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
+        assert_eq!(&expected_reason, reason.reason(), "Expected {}, found {}", expected_reason, reason.reason());
+    } else {
+        panic!("Script should have panicked");
+    }
+}
+
+#[test]
+fn ldc_ssp_not_sp() {
     //test ssp != sp for LDC
     let load_contract: Vec<Opcode> = vec![
         Opcode::CFEI(0x1),                    // sp += 1
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::LDC(REG_ZERO, REG_ZERO, REG_ZERO),            // Load first two words from the contract
     ];
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-        .check(height, &params)
-        .expect("failed to check tx");
+    ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
+}
 
-    let receipts = client.transact(tx_deploy_loader);
-
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&ExpectedUnallocatedStack, reason.reason(), "Expected ExpectedUnallocatedStack, found {}", reason.reason());
-    } else {
-        panic!("Script should have panicked");
-    }
+#[test]
+fn ldc_mem_offset_above_reg_hp() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
 
     //test memory offset above reg_hp value
     let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_b, REG_HP),                    // r[a] := $hp
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
+        Opcode::LDC(REG_ZERO, REG_ZERO, reg_a),            // Load first two words from the contract
     ];
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-        .check(height, &params)
-        .expect("failed to check tx");
+    ldc_reason_helper(load_contract, MemoryOverflow, false);
+}
 
-    let receipts = client.transact(tx_deploy_loader);
-
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&MemoryOverflow, reason.reason(), "Expected MemoryOverflow, found {}", reason.reason());
-    } else {
-        panic!("Script should have panicked");
-    }
+#[test]
+fn ldc_contract_id_end_beyond_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
     let load_contract: Vec<Opcode> = vec![
@@ -524,78 +612,35 @@ fn load_contract_code_invalid_args() {
         Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
     ];
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-        .check(height, &params)
-        .expect("failed to check tx");
+    ldc_reason_helper(load_contract, MemoryOverflow, false);
+}
 
-    let receipts = client.transact(tx_deploy_loader);
+#[test]
+fn ldc_contract_not_in_inputs() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
 
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&MemoryOverflow, reason.reason(), "Expected MemoryOverflow, found {}", reason.reason());
-    } else {
-        panic!("Script should have panicked");
-    }
-
-    // cover contract_id_end beyond max ram
+    //contract not in inputs
     let load_contract: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),               // r[b] := 0
-        // Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
         Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
         Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
         Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
     ];
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-        .check(height, &params)
-        .expect("failed to check tx");
+    ldc_reason_helper(load_contract, ContractNotInInputs, false);
 
-    let receipts = client.transact(tx_deploy_loader);
+}
 
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&ContractNotInInputs, reason.reason(), "Expected ContractNotInInputs, found {}", reason.reason());
-    } else {
-        panic!("Script should have panicked");
-    }
+#[test]
+fn ldc_contract_offset_over_length() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
 
-    let count = ContractId::LEN as Immediate12;
-
-    let mut load_contract: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
-        Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
-        Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
-    ];
-
-    // Generate code for pushing contract id to heap
-    for (i, byte) in contract_id.as_ref().iter().enumerate() {
-        let index = i as Immediate12;
-        let value = *byte as Immediate12;
-        load_contract.extend(&[
-            Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
-            Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
-            Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
-        ]);
-    }
-
-    load_contract.extend(vec![
+    let load_contract: Vec<Opcode> = vec![
         Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
         Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
@@ -604,48 +649,194 @@ fn load_contract_code_invalid_args() {
         Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
         Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        Opcode::ORI(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
         Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
         Opcode::NOOP,                                   // Patched to the jump later
-    ]);
+    ];
 
-    let tx_deploy_loader = Transaction::script(
+    ldc_reason_helper(load_contract, MemoryOverflow, true);
+}
+
+#[test]
+fn code_copy() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
+
+    let salt: Salt = rng.gen();
+
+    let program: Vec<u8> = vec![
+        Opcode::MOVI(0x10, 0x11),
+        Opcode::MOVI(0x11, 0x2a),
+        Opcode::ADD(0x12, 0x10, 0x11),
+        Opcode::LOG(0x10, 0x11, 0x12, 0x00),
+        Opcode::RET(0x20),
+    ]
+        .iter()
+        .copied()
+        .collect();
+    let program = Witness::from(program.as_slice());
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
+
+    let contract_size = program.as_ref().len();
+    let output = Output::contract_created(contract, state_root);
+
+    // Deploy the contract
+    let tx = Transaction::create(
         gas_price,
         gas_limit,
         maturity,
-        load_contract.clone().into_iter().collect(),
+        0,
+        salt,
         vec![],
-        vec![input0.clone()],
-        vec![output1],
         vec![],
+        vec![output],
+        vec![program.clone()],
     )
         .check(height, &params)
-        .expect("failed to check tx");
+        .expect("failed to generate a checked tx");
 
-    // Patch the code with correct jump address
-    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
-    *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+    client.transact(tx);
 
-    let tx_deploy_loader = Transaction::script(
+    let mut script_ops = vec![
+        Opcode::MOVI(0x10, 2048),
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x10, REG_HP, 0x01),
+        Opcode::MOVI(0x20, 0x00),
+        Opcode::ADD(0x11, REG_ZERO, 0x20),
+        Opcode::MOVI(0x12, contract_size as Immediate18),
+        Opcode::ADDI(0x12, 0x12, 1),
+        Opcode::CCP(0x10, 0x11, REG_ZERO, 0x12),
+        Opcode::ADDI(0x21, 0x20, ContractId::LEN as Immediate12),
+        Opcode::MEQ(0x30, 0x21, 0x10, 0x12),
+        Opcode::RET(0x30),
+    ];
+
+    let script = script_ops.iter().copied().collect();
+    let mut script_data = contract.to_vec();
+    script_data.extend(program.as_ref());
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
+    let output = Output::contract(0, rng.gen(), rng.gen());
+
+    let mut tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![input0],
-        vec![output1],
+        script,
+        script_data,
+        vec![input],
+        vec![output],
         vec![],
     )
         .check(height, &params)
-        .expect("failed to check tx");
+        .expect("failed to generate a checked tx");
 
-    let receipts = client.transact(tx_deploy_loader);
+    let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
+    script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
+    let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&MemoryOverflow, reason.reason(), "Expected MemoryOverflow, found {}", reason.reason());
-    } else {
-        panic!("Script should have panicked");
+    match tx.as_mut() {
+        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
+        _ => unreachable!(),
     }
+
+    let receipts = client.transact(tx);
+    let ret = receipts.first().expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("A constant `1` was returned."));
+}
+
+#[test]
+fn code_copy_a_gt_vmmax_sub_d() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    //test memory offset above reg_hp value
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_d_over_mem_max() {
+    let reg_a = 0x20;
+
+    //test d over MEM_MAX_ACCESS_SIZE
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, REG_ZERO, REG_ZERO, reg_a)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_b_plus_32_overflow() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_b_gt_vm_max_ram() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 64),
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_c_gt_vm_max_ram() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 64),
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_c_plus_d_overflow() {
+    let reg_a = 0x20;
+//test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a)                    // r[a] := $hp
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
 }
 
 #[test]

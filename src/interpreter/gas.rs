@@ -9,6 +9,12 @@ use fuel_types::Word;
 pub mod consts;
 
 impl<S> Interpreter<S> {
+    /// Maps [`OpcodeRepr`] to a [`GasUnit`] price.
+    /// 
+    /// # Panic
+    /// This function panics for codes that do not have an assigned price.
+    /// This function should only be used in a const context to avoid 
+    /// runtime panics.
     pub(crate) const fn gas_cost_const(op: OpcodeRepr) -> Word {
         use OpcodeRepr::*;
 

@@ -4,9 +4,8 @@ use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::Word;
-use fuel_storage::{MerkleRoot, MerkleStorage, Storage};
-use fuel_tx::Contract;
-use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt};
+use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageError, StorageInspect, StorageMutate};
+use fuel_types::{Address, Bytes32};
 
 /// No-op storage used for predicate operations.
 ///
@@ -16,104 +15,36 @@ use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt};
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PredicateStorage;
 
-impl Storage<ContractId, Contract> for PredicateStorage {
+impl<Type: Mappable> StorageError<Type> for PredicateStorage {
     type Error = InterpreterError;
+}
 
-    fn insert(&mut self, _key: &ContractId, _value: &Contract) -> Result<Option<Contract>, InterpreterError> {
+impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
+    fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::GetValue>>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn remove(&mut self, _key: &ContractId) -> Result<Option<Contract>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn get(&self, _key: &ContractId) -> Result<Option<Cow<'_, Contract>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn contains_key(&self, _key: &ContractId) -> Result<bool, InterpreterError> {
+    fn contains_key(&self, _key: &Type::Key) -> Result<bool, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }
 
-impl Storage<ContractId, (Salt, Bytes32)> for PredicateStorage {
-    type Error = InterpreterError;
-
+impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
     fn insert(
         &mut self,
-        _key: &ContractId,
-        _value: &(Salt, Bytes32),
-    ) -> Result<Option<(Salt, Bytes32)>, InterpreterError> {
+        _key: &Type::Key,
+        _value: &Type::SetValue,
+    ) -> Result<Option<Type::GetValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn remove(&mut self, _key: &ContractId) -> Result<Option<(Salt, Bytes32)>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn get(&self, _key: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn contains_key(&self, _key: &ContractId) -> Result<bool, InterpreterError> {
+    fn remove(&mut self, _key: &Type::Key) -> Result<Option<Type::GetValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }
 
-impl MerkleStorage<ContractId, AssetId, Word> for PredicateStorage {
-    type Error = InterpreterError;
-
-    fn insert(
-        &mut self,
-        _parent: &ContractId,
-        _key: &AssetId,
-        _value: &Word,
-    ) -> Result<Option<Word>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn get(&self, _parent: &ContractId, _key: &AssetId) -> Result<Option<Cow<'_, Word>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn remove(&mut self, _parent: &ContractId, _key: &AssetId) -> Result<Option<Word>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn contains_key(&self, _parent: &ContractId, _key: &AssetId) -> Result<bool, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn root(&mut self, _parent: &ContractId) -> Result<MerkleRoot, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-}
-
-impl MerkleStorage<ContractId, Bytes32, Bytes32> for PredicateStorage {
-    type Error = InterpreterError;
-
-    fn insert(
-        &mut self,
-        _parent: &ContractId,
-        _key: &Bytes32,
-        _value: &Bytes32,
-    ) -> Result<Option<Bytes32>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn get(&self, _parent: &ContractId, _key: &Bytes32) -> Result<Option<Cow<'_, Bytes32>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn remove(&mut self, _parent: &ContractId, _key: &Bytes32) -> Result<Option<Bytes32>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn contains_key(&self, _parent: &ContractId, _key: &Bytes32) -> Result<bool, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
-    }
-
-    fn root(&mut self, _parent: &ContractId) -> Result<MerkleRoot, InterpreterError> {
+impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
+    fn root(&mut self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }

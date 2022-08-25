@@ -5,7 +5,7 @@ use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
 use crate::interpreter::Interpreter;
 use crate::predicate::RuntimePredicate;
 use crate::state::StateTransition;
-use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
+use crate::state::{ExecuteState, ProgramState};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
@@ -264,25 +264,22 @@ where
         tx: CheckedTransaction,
         params: ConsensusParameters,
     ) -> Result<StateTransition, InterpreterError> {
-        Interpreter::with_storage(storage, params)
+        let mut interpreter = Interpreter::with_storage(storage, params);
+        interpreter
             .transact(tx)
-            .map(|st| st.into_owned())
+            .map(|state| StateTransition::new(state, interpreter.tx.into(), interpreter.receipts))
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
-    pub fn transact(&mut self, tx: CheckedTransaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
+    pub fn transact(&mut self, tx: CheckedTransaction) -> Result<ProgramState, InterpreterError> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);
 
-        let state = state_result?;
-
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
+        state_result
     }
 }

@@ -315,7 +315,7 @@ pub mod test_helpers {
                 return Err(anyhow!("{:?}", e));
             }
 
-            let state = txtor.state_transition().unwrap().into_owned();
+            let state = txtor.to_owned_state_transition().unwrap();
 
             let interpreter = txtor.interpreter();
 

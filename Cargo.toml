@@ -16,10 +16,8 @@ coins-bip32 = { version = "0.7", default-features = false, optional = true }
 coins-bip39 = { version = "0.7", default-features = false, optional = true }
 fuel-types = { version = "0.5", default-features = false }
 lazy_static = { version = "1.4", optional = true }
-rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
-# `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise
-# the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
-secp256k1 = { version = "0.24", features = [ "rand-std", "recovery" ], optional = true }
+rand = { version = "0.8", default-features = false, optional = true }
+secp256k1 = { version = "0.24", default-features = false, features = ["recovery"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 sha2 = { version = "0.10", default-features = false }
 
@@ -33,9 +31,13 @@ sha2 = "0.10"
 
 [features]
 default = ["fuel-types/default", "std"]
+alloc = ["rand/alloc", "secp256k1/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
-std = ["fuel-types/std", "lazy_static", "secp256k1", "serde?/default", "coins-bip32", "coins-bip39"]
+# `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise
+# the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
+std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand/std_rng", "secp256k1/rand-std", "serde?/default"]
+wasm = ["secp256k1/rand"]
 
 [[test]]
 name = "test-mnemonic"

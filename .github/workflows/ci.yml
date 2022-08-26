@@ -37,6 +37,13 @@ jobs:
         target: thumbv6m-none-eabi
         override: true
 
+    - name: Install toolchain WASM
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+
     - name: Install Cargo.toml linter
       uses: baptiste0928/cargo-install@v1
       with:
@@ -72,6 +79,24 @@ jobs:
       with:
         command: build
         args: --verbose --target thumbv6m-none-eabi --no-default-features --features random
+
+    - name: Build WASM
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target wasm32-unknown-unknown --no-default-features
+
+    - name: Build WASM alloc
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target wasm32-unknown-unknown --no-default-features --features alloc
+
+    - name: Build WASM random
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --target wasm32-unknown-unknown --no-default-features --features random
 
     - name: Run tests all features
       uses: actions-rs/cargo@v1

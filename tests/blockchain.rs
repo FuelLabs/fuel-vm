@@ -1,5 +1,5 @@
 use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::{TransactionBuilder};
+use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
 // use fuel_vm::script_with_data_offset;
 // use fuel_vm::util::test_helpers::TestBuilder;
@@ -9,8 +9,8 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use std::mem;
 use fuel_asm::PanicReason::{ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -452,8 +452,8 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         vec![output0],
         vec![program.clone()],
     )
-        .check(height, &params)
-        .expect("failed to check tx");
+    .check(height, &params)
+    .expect("failed to check tx");
 
     client.transact(tx_create_target);
 
@@ -475,13 +475,13 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![],
             vec![],
         )
-            .check(height, &params)
-            .expect("failed to check tx");
+        .check(height, &params)
+        .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
         let count = ContractId::LEN as Immediate12;
 
-        load_contract= vec![
+        load_contract = vec![
             Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
             Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
             Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
@@ -510,8 +510,8 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![output1],
             vec![],
         )
-            .check(height, &params)
-            .expect("failed to check tx");
+        .check(height, &params)
+        .expect("failed to check tx");
 
         // Patch the code with correct jump address
         let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
@@ -527,8 +527,8 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![output1],
             vec![],
         )
-            .check(height, &params)
-            .expect("failed to check tx");
+        .check(height, &params)
+        .expect("failed to check tx");
     }
 
     check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
@@ -540,7 +540,11 @@ fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: Pani
     check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
 }
 
-fn check_expected_reason_for_opcodes_with_client(client: MemoryClient, opcodes: Vec<Opcode>, expected_reason: PanicReason) {
+fn check_expected_reason_for_opcodes_with_client(
+    client: MemoryClient,
+    opcodes: Vec<Opcode>,
+    expected_reason: PanicReason,
+) {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = 0;
@@ -557,17 +561,27 @@ fn check_expected_reason_for_opcodes_with_client(client: MemoryClient, opcodes: 
         vec![],
         vec![],
     )
-        .check(height, &params)
-        .expect("failed to check tx");
+    .check(height, &params)
+    .expect("failed to check tx");
 
     check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
 }
 
-fn check_reason_for_transaction(mut client:MemoryClient, checked_tx: CheckedTransaction, expected_reason: PanicReason) {
+fn check_reason_for_transaction(
+    mut client: MemoryClient,
+    checked_tx: CheckedTransaction,
+    expected_reason: PanicReason,
+) {
     let receipts = client.transact(checked_tx);
 
-    if let Receipt::Panic { id:_, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(&expected_reason, reason.reason(), "Expected {}, found {}", expected_reason, reason.reason());
+    if let Receipt::Panic { id: _, reason, .. } = receipts.get(0).expect("No receipt") {
+        assert_eq!(
+            &expected_reason,
+            reason.reason(),
+            "Expected {}, found {}",
+            expected_reason,
+            reason.reason()
+        );
     } else {
         panic!("Script should have panicked");
     }
@@ -577,8 +591,8 @@ fn check_reason_for_transaction(mut client:MemoryClient, checked_tx: CheckedTran
 fn ldc_ssp_not_sp() {
     //test ssp != sp for LDC
     let load_contract: Vec<Opcode> = vec![
-        Opcode::CFEI(0x1),                    // sp += 1
-        Opcode::LDC(REG_ZERO, REG_ZERO, REG_ZERO),            // Load first two words from the contract
+        Opcode::CFEI(0x1),                         // sp += 1
+        Opcode::LDC(REG_ZERO, REG_ZERO, REG_ZERO), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
@@ -591,8 +605,8 @@ fn ldc_mem_offset_above_reg_hp() {
 
     //test memory offset above reg_hp value
     let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
-        Opcode::LDC(REG_ZERO, REG_ZERO, reg_a),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_HP),            // r[a] := $hp
+        Opcode::LDC(REG_ZERO, REG_ZERO, reg_a), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, false);
@@ -606,10 +620,10 @@ fn ldc_contract_id_end_beyond_max_ram() {
 
     // cover contract_id_end beyond max ram
     let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_HP),         // r[a] := $hp
+        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, false);
@@ -623,15 +637,14 @@ fn ldc_contract_not_in_inputs() {
 
     //contract not in inputs
     let load_contract: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),               // r[b] := 0
-        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        Opcode::XOR(reg_a, reg_a, reg_a),    // r[b] := 0
+        Opcode::ADDI(reg_a, reg_a, 1),       // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, ContractNotInInputs, false);
-
 }
 
 #[test]
@@ -645,11 +658,11 @@ fn ldc_contract_offset_over_length() {
         Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
         Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, reg_a, reg_b),            // Load first two words from the contract
+        Opcode::LDC(reg_a, reg_a, reg_b),               // Load first two words from the contract
         Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
         Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
+        Opcode::ORI(reg_b, reg_b, 16),                  // r[b] += 16 (length of the loaded code)
         Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
         Opcode::NOOP,                                   // Patched to the jump later
     ];
@@ -668,7 +681,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::ADDI(reg_a, reg_a, 1),
-        Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+        Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -682,7 +695,7 @@ fn code_copy_d_over_mem_max() {
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, REG_ZERO, REG_ZERO, reg_a)                    // r[a] := $hp
+        Opcode::CCP(REG_ZERO, REG_ZERO, REG_ZERO, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -695,7 +708,7 @@ fn code_copy_b_plus_32_overflow() {
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -710,7 +723,7 @@ fn code_copy_b_gt_vm_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO)                    // r[a] := $hp
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -725,7 +738,7 @@ fn code_copy_c_gt_vm_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::ADDI(reg_a, reg_a, 1),
-        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO)                    // r[a] := $hp
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -734,11 +747,11 @@ fn code_copy_c_gt_vm_max_ram() {
 #[test]
 fn code_copy_c_plus_d_overflow() {
     let reg_a = 0x20;
-//test overflow add
+    //test overflow add
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a)                    // r[a] := $hp
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -753,7 +766,7 @@ fn code_root_a_plus_32_overflow() {
     let code_root: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::CROO(reg_a, REG_ZERO),            // Load first two words from the contract
+        Opcode::CROO(reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -768,7 +781,7 @@ fn code_root_b_plus_32_overflow() {
     let code_root: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::CROO(REG_ZERO, reg_a),            // Load first two words from the contract
+        Opcode::CROO(REG_ZERO, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -785,7 +798,7 @@ fn code_root_a_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::CROO(reg_a, REG_ZERO),            // Load first two words from the contract
+        Opcode::CROO(reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -802,7 +815,7 @@ fn code_root_b_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::CROO(REG_ZERO, reg_a),            // Load first two words from the contract
+        Opcode::CROO(REG_ZERO, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);

@@ -5,7 +5,7 @@ use fuel_types::{Immediate06, Immediate12, Immediate18, Immediate24, RegisterId,
 #[cfg(feature = "std")]
 use std::{io, iter};
 
-/// A version of Opcode that can used without unnecessary branching
+/// A version of Opcode that can be used without unnecessary branching
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]

@@ -1,8 +1,6 @@
 use fuel_crypto::{Hasher, SecretKey};
 use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
-// use fuel_vm::script_with_data_offset;
-// use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 

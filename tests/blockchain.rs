@@ -1058,10 +1058,10 @@ fn message_output_b_gt_msg_len() {
 
     // cover contract_id_end beyond max ram
     let message_output: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 20),
-        Opcode::ADDI(reg_a, reg_a, 1),
+        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] = 0
+        Opcode::ORI(reg_a, reg_a, 1),     // r[a] = 1
+        Opcode::SLLI(reg_a, reg_a, 20),   // r[a] = 2^20
+        Opcode::ADDI(reg_a, reg_a, 1),    //r[a] = 2^20 + 1
         Opcode::SMO(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
@@ -1076,10 +1076,10 @@ fn message_output_a_b_over() {
 
     // cover contract_id_end beyond max ram
     let message_output: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::ADDI(reg_b, reg_b, 1),
+        Opcode::XOR(reg_a, reg_a, reg_a), //r[a] = 0
+        Opcode::XOR(reg_b, reg_b, reg_b), //r[b] = 0
+        Opcode::NOT(reg_a, reg_a),        //r[a] = MAX
+        Opcode::ADDI(reg_b, reg_b, 1),    //r[b] = 1
         Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
     ];
 

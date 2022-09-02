@@ -150,11 +150,7 @@ where
         let (cd, of) = c.overflowing_add(d);
         let overflow = overflow || of;
 
-        if overflow
-            || d > MEM_MAX_ACCESS_SIZE
-            || a > VM_MAX_RAM.saturating_sub(d)
-            || bx > VM_MAX_RAM
-            || cd > VM_MAX_RAM
+        if overflow || d > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM.saturating_sub(d) || bx > VM_MAX_RAM || cd > VM_MAX_RAM
         {
             return Err(PanicReason::MemoryOverflow.into());
         }
@@ -217,9 +213,7 @@ where
         let (bx, of) = b.overflowing_add(ContractId::LEN as Word);
         let overflow = overflow || of;
 
-        if overflow
-            || ax > VM_MAX_RAM
-            || bx > VM_MAX_RAM {
+        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -247,8 +241,7 @@ where
 
         let (bx, overflow) = b.overflowing_add(ContractId::LEN as Word);
 
-        if overflow
-            || bx > VM_MAX_RAM {
+        if overflow || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -267,8 +260,7 @@ where
 
         let (bx, overflow) = b.overflowing_add(Bytes32::LEN as Word);
 
-        if overflow
-            || bx > VM_MAX_RAM {
+        if overflow || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -295,9 +287,7 @@ where
         let (bx, of) = b.overflowing_add(Bytes32::LEN as Word);
         let overflow = overflow || of;
 
-        if overflow
-            || ax > VM_MAX_RAM
-            || bx > VM_MAX_RAM {
+        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -324,8 +314,7 @@ where
     pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(Bytes32::LEN as Word);
 
-        if overflow
-            || ax > VM_MAX_RAM {
+        if overflow || ax > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -352,9 +341,7 @@ where
         let (bx, of) = b.overflowing_add(Bytes32::LEN as Word);
         let overflow = overflow || of;
 
-        if overflow
-            || ax > VM_MAX_RAM
-            || bx > VM_MAX_RAM {
+        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -393,10 +380,7 @@ where
         let overflow = overflow || of;
 
         //TODO check on b vs MEM_MAX_ACCESS_SIZE is looser than msg length check
-        if b > self.params.max_message_data_length
-            || b > MEM_MAX_ACCESS_SIZE
-            || overflow
-            || bx > VM_MAX_RAM {
+        if b > self.params.max_message_data_length || b > MEM_MAX_ACCESS_SIZE || overflow || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 

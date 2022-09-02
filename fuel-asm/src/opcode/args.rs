@@ -96,7 +96,6 @@ const GTF_INPUT_MESSAGE_SENDER: u16 = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT: u16 = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT: u16 = 0x117;
 const GTF_INPUT_MESSAGE_NONCE: u16 = 0x118;
-const GTF_INPUT_MESSAGE_OWNER: u16 = 0x119;
 const GTF_INPUT_MESSAGE_WITNESS_INDEX: u16 = 0x11A;
 const GTF_INPUT_MESSAGE_DATA_LENGTH: u16 = 0x11B;
 const GTF_INPUT_MESSAGE_PREDICATE_LENGTH: u16 = 0x11C;
@@ -285,9 +284,6 @@ pub enum GTFArgs {
     /// Set `$rA` to `Memory address of tx.inputs[$rB].nonce`
     InputMessageNonce = GTF_INPUT_MESSAGE_NONCE,
 
-    /// Set `$rA` to `Memory address of tx.inputs[$rB].owner`
-    InputMessageOwner = GTF_INPUT_MESSAGE_OWNER,
-
     /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
     InputMessageWitnessIndex = GTF_INPUT_MESSAGE_WITNESS_INDEX,
 
@@ -407,7 +403,6 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_MESSAGE_RECIPIENT => Ok(Self::InputMessageRecipient),
             GTF_INPUT_MESSAGE_AMOUNT => Ok(Self::InputMessageAmount),
             GTF_INPUT_MESSAGE_NONCE => Ok(Self::InputMessageNonce),
-            GTF_INPUT_MESSAGE_OWNER => Ok(Self::InputMessageOwner),
             GTF_INPUT_MESSAGE_WITNESS_INDEX => Ok(Self::InputMessageWitnessIndex),
             GTF_INPUT_MESSAGE_DATA_LENGTH => Ok(Self::InputMessageDataLength),
             GTF_INPUT_MESSAGE_PREDICATE_LENGTH => Ok(Self::InputMessagePredicateLength),
@@ -513,7 +508,6 @@ fn encode_gtf_args() {
         GTFArgs::InputMessageRecipient,
         GTFArgs::InputMessageAmount,
         GTFArgs::InputMessageNonce,
-        GTFArgs::InputMessageOwner,
         GTFArgs::InputMessageWitnessIndex,
         GTFArgs::InputMessageDataLength,
         GTFArgs::InputMessagePredicateLength,

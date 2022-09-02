@@ -146,7 +146,6 @@ fn opcode() {
         Opcode::gtf(r, r, GTFArgs::InputMessageRecipient),
         Opcode::gtf(r, r, GTFArgs::InputMessageAmount),
         Opcode::gtf(r, r, GTFArgs::InputMessageNonce),
-        Opcode::gtf(r, r, GTFArgs::InputMessageOwner),
         Opcode::gtf(r, r, GTFArgs::InputMessageWitnessIndex),
         Opcode::gtf(r, r, GTFArgs::InputMessageDataLength),
         Opcode::gtf(r, r, GTFArgs::InputMessagePredicateLength),

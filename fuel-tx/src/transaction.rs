@@ -176,6 +176,31 @@ impl Transaction {
         asset_ids
     }
 
+    /// Convert the type into a JSON string
+    ///
+    /// This is implemented as infallible because serde_json will fail only if the type can't
+    /// serialize one of its attributes. We don't have such case with the transaction because all
+    /// of its attributes are trivially serialized.
+    ///
+    /// If an error happens, a JSON string with the error description will be returned
+    #[cfg(all(feature = "serde", feature = "alloc"))]
+    pub fn to_json(&self) -> alloc::string::String {
+        serde_json::to_string(self).unwrap_or_else(|e| alloc::format!(r#"{{"error": "{}"}}"#, e))
+    }
+
+    /// Attempt to deserialize a transaction from a JSON string, returning `None` if it fails
+    #[cfg(all(feature = "serde", feature = "alloc"))]
+    pub fn from_json<J>(json: J) -> Option<Self>
+    where
+        J: AsRef<str>,
+    {
+        // we opt to return `Option` to not leak serde concrete error implementations in the crate.
+        // considering we don't expect to handle failures downstream (e.g. if a string is not a
+        // valid json, then we simply don't have a transaction out of that), then its not required
+        // to leak the type
+        serde_json::from_str(json.as_ref()).ok()
+    }
+
     #[cfg(feature = "std")]
     pub fn input_contracts(&self) -> impl Iterator<Item = &fuel_types::ContractId> {
         use itertools::Itertools;

@@ -720,8 +720,6 @@ fn create_input_data_offset() {
                     let input_message_idx = inputs.len();
                     inputs.push(input_message.clone());
 
-                    dbg!(&inputs);
-
                     let mut tx = Transaction::create(
                         gas_price,
                         gas_limit,
@@ -736,8 +734,6 @@ fn create_input_data_offset() {
 
                     let mut tx_p = tx.clone();
                     tx_p.precompute_metadata();
-
-                    dbg!(&tx_p.metadata());
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
                     let _ = tx

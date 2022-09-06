@@ -53,7 +53,7 @@ impl Call {
 
 impl SizedBytes for Call {
     fn serialized_size(&self) -> usize {
-        ContractId::LEN + 2 * WORD_SIZE
+        WORD_SIZE.saturating_mul(2).saturating_add(ContractId::LEN)
     }
 }
 
@@ -148,22 +148,34 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        Self::code_size_offset() + WORD_SIZE
+        Self::code_size_offset().saturating_add(WORD_SIZE)
     }
 
     /// Contract code size memory offset.
     pub const fn code_size_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
+        VM_REGISTER_COUNT
+            .saturating_add(2)
+            .saturating_mul(WORD_SIZE)
+            .saturating_add(ContractId::LEN)
+            .saturating_add(AssetId::LEN)
     }
 
     /// `a` argument memory offset.
     pub const fn a_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
+        VM_REGISTER_COUNT
+            .saturating_add(1)
+            .saturating_mul(WORD_SIZE)
+            .saturating_add(ContractId::LEN)
+            .saturating_add(AssetId::LEN)
     }
 
     /// `b` argument memory offset.
     pub const fn b_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
+        VM_REGISTER_COUNT
+            .saturating_add(2)
+            .saturating_mul(WORD_SIZE)
+            .saturating_add(ContractId::LEN)
+            .saturating_add(AssetId::LEN)
     }
 
     /// Registers prior to the called execution.
@@ -199,7 +211,7 @@ impl CallFrame {
 
 impl SizedBytes for CallFrame {
     fn serialized_size(&self) -> usize {
-        Self::code_offset() + bytes::padded_len(self.code.as_ref())
+        Self::code_offset().saturating_add(bytes::padded_len(self.code.as_ref()))
     }
 }
 
@@ -249,7 +261,10 @@ impl io::Write for CallFrame {
         let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
 
         let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
-        n += bytes;
+
+        n = n
+            .checked_add(bytes)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "io bytes overflow"))?;
 
         self.to = to.into();
         self.asset_id = asset_id.into();

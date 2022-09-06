@@ -17,7 +17,7 @@ dyn-clone = { version = "1.0", optional = true }
 fuel-asm = "0.8"
 fuel-crypto = "0.6"
 fuel-merkle = { git = "https://github.com/FuelLabs/fuel-merkle", branch = "feature/split-storage-trait" }
-fuel-storage = { git = "https://github.com/FuelLabs/fuel-storage", branch = "feature/split-storage-trait" }
+fuel-storage = "0.3"
 fuel-tx = "0.18"
 fuel-types = "0.5"
 itertools = "0.10"

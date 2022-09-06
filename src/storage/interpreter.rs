@@ -1,6 +1,6 @@
 //! Trait definitions for storage backend
 
-use fuel_storage::{MerkleRootStorage, Storage, StorageAsMut, StorageAsRef};
+use fuel_storage::{MerkleRootStorage, StorageAsMut, StorageAsRef, StorageMutate};
 use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
@@ -13,8 +13,8 @@ use std::ops::Deref;
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    Storage<ContractsRawCode, Error = Self::DataError>
-    + Storage<ContractsInfo, Error = Self::DataError>
+    StorageMutate<ContractsRawCode, Error = Self::DataError>
+    + StorageMutate<ContractsInfo, Error = Self::DataError>
     + for<'a> MerkleRootStorage<ContractId, ContractsAssets<'a>, Error = Self::DataError>
     + for<'a> MerkleRootStorage<ContractId, ContractsState<'a>, Error = Self::DataError>
     + Sized

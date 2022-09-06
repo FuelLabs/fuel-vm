@@ -3,9 +3,7 @@ use crate::error::Infallible;
 use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState, InterpreterStorage};
 
 use fuel_crypto::Hasher;
-use fuel_storage::{
-    Mappable, MerkleRoot, MerkleRootStorage, StorageAsRef, StorageError, StorageInspect, StorageMutate,
-};
+use fuel_storage::{MerkleRoot, MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate};
 use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
@@ -98,11 +96,9 @@ impl Default for MemoryStorage {
     }
 }
 
-impl<Type: Mappable> StorageError<Type> for MemoryStorage {
-    type Error = Infallible;
-}
-
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
+    type Error = Infallible;
+
     fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Infallible> {
         Ok(self.memory.contracts.get(key).map(Cow::Borrowed))
     }
@@ -123,6 +119,8 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageInspect<ContractsInfo> for MemoryStorage {
+    type Error = Infallible;
+
     fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
         Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
     }
@@ -144,6 +142,8 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
 
 // TODO: Optimize `balances` to work with `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
 impl StorageInspect<ContractsAssets<'_>> for MemoryStorage {
+    type Error = Infallible;
+
     fn get(&self, key: &(&ContractId, &AssetId)) -> Result<Option<Cow<'_, Word>>, Infallible> {
         Ok(self
             .memory
@@ -186,6 +186,8 @@ impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
 
 // TODO: Optimize `contract_state` to work with `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
 impl StorageInspect<ContractsState<'_>> for MemoryStorage {
+    type Error = Infallible;
+
     fn get(&self, key: &(&ContractId, &Bytes32)) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
         Ok(self
             .memory

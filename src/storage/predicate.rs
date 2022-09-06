@@ -4,7 +4,7 @@ use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::Word;
-use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageError, StorageInspect, StorageMutate};
+use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate};
 use fuel_types::{Address, Bytes32};
 
 /// No-op storage used for predicate operations.
@@ -15,11 +15,9 @@ use fuel_types::{Address, Bytes32};
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PredicateStorage;
 
-impl<Type: Mappable> StorageError<Type> for PredicateStorage {
-    type Error = InterpreterError;
-}
-
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
+    type Error = InterpreterError;
+
     fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::GetValue>>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }

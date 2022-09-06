@@ -41,7 +41,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use fuel_crypto::{Hasher, Message, PublicKey, SecretKey, Signature};
     #[doc(no_inline)]
-    pub use fuel_storage::{MerkleRoot, MerkleRootStorage, Storage};
+    pub use fuel_storage::{MerkleRoot, MerkleRootStorage, StorageAsMut, StorageAsRef, StorageInspect, StorageMutate};
     #[doc(no_inline)]
     pub use fuel_tx::{
         CheckedTransaction, ConsensusParameters, Contract, Input, InputRepr, Output, OutputRepr, Receipt,

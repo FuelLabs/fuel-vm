@@ -1,6 +1,6 @@
 [package]
 name = "fuel-tx"
-version = "0.18.0"
+version = "0.19.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["cryptography::cryptocurrencies", "data-structures"]
 edition = "2021"

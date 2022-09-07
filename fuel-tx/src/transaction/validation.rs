@@ -45,7 +45,7 @@ impl Input {
             }
             | Self::MessageSigned {
                 witness_index,
-                owner,
+                recipient: owner,
                 ..
             } => {
                 let witness = witnesses
@@ -79,7 +79,9 @@ impl Input {
                 owner, predicate, ..
             }
             | Self::MessagePredicate {
-                owner, predicate, ..
+                recipient: owner,
+                predicate,
+                ..
             } if !Input::is_predicate_owner_valid(owner, predicate) => {
                 Err(ValidationError::InputPredicateOwner { index })
             }

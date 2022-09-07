@@ -25,7 +25,7 @@ impl InputRepr {
     pub const fn owner_offset(&self) -> Option<usize> {
         match self {
             Self::Coin => Some(INPUT_COIN_OWNER_OFFSET),
-            Self::Message => Some(INPUT_MESSAGE_OWNER_OFFSET),
+            Self::Message => None,
             Self::Contract => None,
         }
     }

@@ -59,7 +59,6 @@ pub enum Input {
         recipient: Address,
         amount: Word,
         nonce: Word,
-        owner: Address,
         witness_index: u8,
         data: Vec<u8>,
     },
@@ -70,7 +69,6 @@ pub enum Input {
         recipient: Address,
         amount: Word,
         nonce: Word,
-        owner: Address,
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -200,7 +198,6 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Word,
-        owner: Address,
         witness_index: u8,
         data: Vec<u8>,
     ) -> Self {
@@ -210,7 +207,6 @@ impl Input {
             recipient,
             amount,
             nonce,
-            owner,
             witness_index,
             data,
         }
@@ -222,7 +218,6 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Word,
-        owner: Address,
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -233,7 +228,6 @@ impl Input {
             recipient,
             amount,
             nonce,
-            owner,
             data,
             predicate,
             predicate_data,
@@ -252,11 +246,10 @@ impl Input {
 
     pub const fn input_owner(&self) -> Option<&Address> {
         match self {
-            Self::CoinSigned { owner, .. }
-            | Self::CoinPredicate { owner, .. }
-            | Self::MessageSigned { owner, .. }
-            | Self::MessagePredicate { owner, .. } => Some(owner),
-            Self::Contract { .. } => None,
+            Self::CoinSigned { owner, .. } | Self::CoinPredicate { owner, .. } => Some(owner),
+            Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract { .. } => {
+                None
+            }
         }
     }
 
@@ -487,7 +480,6 @@ impl Input {
         sender: &Address,
         recipient: &Address,
         nonce: Word,
-        owner: &Address,
         amount: Word,
         data: &[u8],
     ) -> MessageId {
@@ -495,7 +487,6 @@ impl Input {
             .chain(sender)
             .chain(recipient)
             .chain(nonce.to_be_bytes())
-            .chain(owner)
             .chain(amount.to_be_bytes())
             .chain(data)
             .finalize();
@@ -646,7 +637,6 @@ impl io::Read for Input {
                 recipient,
                 amount,
                 nonce,
-                owner,
                 witness_index,
                 data,
             } => {
@@ -656,7 +646,6 @@ impl io::Read for Input {
                 let buf = bytes::store_array_unchecked(buf, recipient);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_number_unchecked(buf, *nonce);
-                let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, *witness_index);
                 let buf = bytes::store_number_unchecked(buf, data.len() as Word);
 
@@ -673,7 +662,6 @@ impl io::Read for Input {
                 recipient,
                 amount,
                 nonce,
-                owner,
                 data,
                 predicate,
                 predicate_data,
@@ -686,7 +674,6 @@ impl io::Read for Input {
                 let buf = bytes::store_array_unchecked(buf, recipient);
                 let buf = bytes::store_number_unchecked(buf, *amount);
                 let buf = bytes::store_number_unchecked(buf, *nonce);
-                let buf = bytes::store_array_unchecked(buf, owner);
                 let buf = bytes::store_number_unchecked(buf, witness_index);
                 let buf = bytes::store_number_unchecked(buf, data.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, predicate.len() as Word);
@@ -815,7 +802,6 @@ impl io::Write for Input {
                 let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
                 let (nonce, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
                 let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
 
                 let (data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
@@ -834,7 +820,6 @@ impl io::Write for Input {
                 let message_id = message_id.into();
                 let sender = sender.into();
                 let recipient = recipient.into();
-                let owner = owner.into();
 
                 *self = if predicate.is_empty() {
                     Self::message_signed(
@@ -843,7 +828,6 @@ impl io::Write for Input {
                         recipient,
                         amount,
                         nonce,
-                        owner,
                         witness_index,
                         data,
                     )
@@ -854,7 +838,6 @@ impl io::Write for Input {
                         recipient,
                         amount,
                         nonce,
-                        owner,
                         data,
                         predicate,
                         predicate_data,

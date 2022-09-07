@@ -23,7 +23,6 @@ fn tx_offset() {
     let mut tested_message_id = false;
     let mut tested_sender = false;
     let mut tested_recipient = false;
-    let mut tested_message_owner = false;
     let mut tested_message_data = false;
     let mut tested_message_predicate = false;
     let mut tested_message_predicate_data = false;
@@ -35,7 +34,7 @@ fn tx_offset() {
     let mut tested_output_contract_created_id = false;
     let mut tested_output_recipient = false;
 
-    let cases = 2;
+    let cases = 100;
 
     // The seed will define how the transaction factory will generate a new transaction. Different
     // seeds might implicate on how many of the cases we cover - since we assert coverage for all
@@ -220,20 +219,6 @@ fn tx_offset() {
                     assert_eq!(recipient, recipient_p);
                 }
 
-                if i.is_message() {
-                    if let Some(owner) = i.input_owner() {
-                        tested_message_owner = true;
-
-                        let ofs =
-                            input_ofs + i.repr().owner_offset().expect("input contains owner");
-
-                        let owner_p =
-                            unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
-
-                        assert_eq!(owner, owner_p);
-                    }
-                }
-
                 if let Some(data) = i.input_data() {
                     tested_message_data = tested_message_data || !data.is_empty();
 
@@ -375,7 +360,6 @@ fn tx_offset() {
     assert!(tested_message_id);
     assert!(tested_sender);
     assert!(tested_recipient);
-    assert!(tested_message_owner);
     assert!(tested_message_data);
     assert!(tested_message_predicate);
     assert!(tested_message_predicate_data);

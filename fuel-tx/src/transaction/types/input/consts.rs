@@ -28,13 +28,11 @@ pub(super) const INPUT_CONTRACT_SIZE: usize = INPUT_CONTRACT_ID_OFFSET + Contrac
 pub(super) const INPUT_MESSAGE_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_MESSAGE_SENDER_OFFSET: usize = INPUT_MESSAGE_ID_OFFSET + MessageId::LEN; // message_id
 pub(super) const INPUT_MESSAGE_RECIPIENT_OFFSET: usize = INPUT_MESSAGE_SENDER_OFFSET + Address::LEN; // sender
-pub(super) const INPUT_MESSAGE_OWNER_OFFSET: usize = INPUT_MESSAGE_RECIPIENT_OFFSET
+
+pub(super) const INPUT_MESSAGE_FIXED_SIZE: usize = INPUT_MESSAGE_RECIPIENT_OFFSET
     + Address::LEN // recipient
     + WORD_SIZE //amount
-    + WORD_SIZE; // nonce
-
-pub(super) const INPUT_MESSAGE_FIXED_SIZE: usize = INPUT_MESSAGE_OWNER_OFFSET
-    + Address::LEN // owner
+    + WORD_SIZE // nonce
     + WORD_SIZE // witness_index
     + WORD_SIZE // Data size
     + WORD_SIZE // Predicate size

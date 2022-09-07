@@ -435,10 +435,10 @@ mod tests {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        let output_amont = 0;
+        let output_amount = 0;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amont);
+        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
 
         let checked = CheckedTransaction::check(tx, 0, &ConsensusParameters::DEFAULT)
             .expect("Expected valid transaction");
@@ -456,10 +456,10 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
         // set a large message output amount
-        let output_amont = u64::MAX;
+        let output_amount = u64::MAX;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amont);
+        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
 
         let checked = CheckedTransaction::check(tx, 0, &ConsensusParameters::DEFAULT)
             .expect("Expected valid transaction");
@@ -839,14 +839,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_message_input(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                input_amount,
-                vec![],
-            )
+            .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![])
             .add_output(Output::message(rng.gen(), output_amount))
             .finalize()
     }
@@ -866,7 +859,6 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 input_amount,
-                rng.gen(),
                 rng.gen(),
                 vec![],
                 vec![],

@@ -127,16 +127,17 @@ impl TransactionBuilder {
         &mut self,
         secret: SecretKey,
         sender: fuel_types::Address,
-        recipient: fuel_types::Address,
         nonce: Word,
         amount: Word,
         data: Vec<u8>,
     ) -> &mut Self {
         let pk = secret.public_key();
-
         self.sign_keys.push(secret);
+
+        let recipient = Input::owner(&pk);
+
         self.tx
-            .add_unsigned_message_input(sender, recipient, nonce, &pk, amount, data);
+            .add_unsigned_message_input(sender, recipient, nonce, amount, data);
 
         self
     }

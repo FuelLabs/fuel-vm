@@ -193,15 +193,14 @@ mod use_std {
 
                     4 => {
                         let predicate = generate_nonempty_padded_bytes(&mut self.rng);
-                        let owner = (*Contract::root_from_code(&predicate)).into();
+                        let recipient = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::message_predicate(
                             self.rng.gen(),
                             self.rng.gen(),
+                            recipient,
                             self.rng.gen(),
                             self.rng.gen(),
-                            self.rng.gen(),
-                            owner,
                             generate_bytes(&mut self.rng),
                             predicate,
                             generate_bytes(&mut self.rng),
@@ -228,7 +227,6 @@ mod use_std {
             input_message_keys.iter().for_each(|k| {
                 builder.add_unsigned_message_input(
                     *k,
-                    self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),

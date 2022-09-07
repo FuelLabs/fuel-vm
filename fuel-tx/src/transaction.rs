@@ -388,13 +388,10 @@ impl Transaction {
         sender: Address,
         recipient: Address,
         nonce: Word,
-        owner: &PublicKey,
         amount: Word,
         data: Vec<u8>,
     ) {
-        let owner = Input::owner(owner);
-        let message_id =
-            Input::compute_message_id(&sender, &recipient, nonce, &owner, amount, &data);
+        let message_id = Input::compute_message_id(&sender, &recipient, nonce, amount, &data);
 
         let witness_index = self.witnesses().len() as u8;
         let input = Input::message_signed(
@@ -403,7 +400,6 @@ impl Transaction {
             recipient,
             amount,
             nonce,
-            owner,
             witness_index,
             data,
         );
@@ -445,7 +441,7 @@ impl Transaction {
                     ..
                 }
                 | Input::MessageSigned {
-                    owner,
+                    recipient: owner,
                     witness_index,
                     ..
                 } if owner == &pk => Some(*witness_index as usize),

@@ -84,7 +84,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
-        self.storage::<ContractsState<'_>>().get(&(id, key))
+        self.storage::<ContractsState>().get(&(id, key))
     }
 
     /// Insert a key-value mapping in a contract storage.
@@ -94,7 +94,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        self.storage::<ContractsState<'_>>().insert(&(contract, key), value)
+        self.storage::<ContractsState>().insert(&(contract, key), value)
     }
 
     /// Fetch the balance of an asset ID in a contract storage.
@@ -104,7 +104,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
     ) -> Result<Option<Word>, Self::DataError> {
         let balance = self
-            .storage::<ContractsAssets<'_>>()
+            .storage::<ContractsAssets>()
             .get(&(id, asset_id))?
             .map(Cow::into_owned);
 
@@ -118,7 +118,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        self.storage::<ContractsAssets<'_>>()
+        self.storage::<ContractsAssets>()
             .insert(&(contract, asset_id), &value)
     }
 }

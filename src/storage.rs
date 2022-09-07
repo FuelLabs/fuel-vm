@@ -13,7 +13,7 @@ pub use interpreter::InterpreterStorage;
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
 
-/// The storage type for contract's raw byte code.
+/// The storage table for contract's raw byte code.
 pub struct ContractsRawCode;
 
 impl Mappable for ContractsRawCode {
@@ -22,7 +22,7 @@ impl Mappable for ContractsRawCode {
     type GetValue = Contract;
 }
 
-/// The storage type for contract's additional information.
+/// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 
 impl Mappable for ContractsInfo {
@@ -33,7 +33,7 @@ impl Mappable for ContractsInfo {
     type GetValue = Self::SetValue;
 }
 
-/// The storage type for contract's assets balances.
+/// The storage table for contract's assets balances.
 ///
 /// Lifetime is for optimization to avoid `clone`.
 pub struct ContractsAssets<'a>(PhantomData<&'a ()>);
@@ -44,13 +44,15 @@ impl<'a> Mappable for ContractsAssets<'a> {
     type GetValue = Self::SetValue;
 }
 
-/// The storage type for contract's state.
+/// The storage table for contract's hashed key-value state.
 ///
 /// Lifetime is for optimization to avoid `clone`.
 pub struct ContractsState<'a>(PhantomData<&'a ()>);
 
 impl<'a> Mappable for ContractsState<'a> {
+    /// The table key is combination of the `ContractId` and `Byte32` hash of the value's key.
     type Key = (&'a ContractId, &'a Bytes32);
+    /// The table value is hash of the value.
     type SetValue = Bytes32;
     type GetValue = Self::SetValue;
 }

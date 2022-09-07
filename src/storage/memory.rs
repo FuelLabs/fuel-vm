@@ -52,7 +52,7 @@ impl MemoryStorage {
     pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
         const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
 
-        self.storage::<ContractsState<'_>>()
+        self.storage::<ContractsState>()
             .get(&(contract, key))
             .expect("Infallible")
             .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))

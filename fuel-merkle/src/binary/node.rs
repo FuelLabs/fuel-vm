@@ -3,7 +3,7 @@ use crate::common::{Bytes32, Position};
 
 use core::fmt::Debug;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Node {
     position: Position,
     hash: Bytes32,

@@ -3,8 +3,10 @@ use crate::common::{Bytes1, Bytes32, Bytes4, Msb, LEAF, NODE};
 use crate::sparse::hash::sum;
 use crate::sparse::zero_sum;
 
-use fuel_storage::Storage;
+// TODO: Return errors instead of `unwrap` during work with storage.
+use fuel_storage::StorageInspect;
 
+use crate::sparse::merkle_tree::NodesTable;
 use core::mem::size_of;
 use core::ops::Range;
 use core::{cmp, fmt};
@@ -357,11 +359,7 @@ pub(crate) struct StorageNode<'storage, StorageType> {
     node: Node,
 }
 
-impl<'storage, StorageType, StorageError> Clone for StorageNode<'storage, StorageType>
-where
-    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
-    StorageError: fmt::Debug + Clone,
-{
+impl<StorageType> Clone for StorageNode<'_, StorageType> {
     fn clone(&self) -> Self {
         Self {
             storage: self.storage,
@@ -370,15 +368,13 @@ where
     }
 }
 
-impl<'storage, StorageType, StorageError> StorageNode<'storage, StorageType>
-where
-    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
-    StorageError: fmt::Debug + Clone,
-{
-    pub fn new(storage: &'storage StorageType, node: Node) -> Self {
+impl<'s, StorageType> StorageNode<'s, StorageType> {
+    pub fn new(storage: &'s StorageType, node: Node) -> Self {
         Self { node, storage }
     }
+}
 
+impl<StorageType> StorageNode<'_, StorageType> {
     pub fn is_leaf(&self) -> bool {
         self.node.is_leaf()
     }
@@ -399,6 +395,16 @@ where
         self.node.height()
     }
 
+    pub fn into_node(self) -> Node {
+        self.node
+    }
+}
+
+impl<StorageType> StorageNode<'_, StorageType>
+where
+    StorageType: StorageInspect<NodesTable>,
+    StorageType::Error: fmt::Debug,
+{
     pub fn left_child(&self) -> Option<Self> {
         assert!(self.is_node());
         let key = self.node.left_child_key();
@@ -424,17 +430,9 @@ where
             Self::new(self.storage, node)
         })
     }
-
-    pub fn into_node(self) -> Node {
-        self.node
-    }
 }
 
-impl<'storage, StorageType, StorageError> crate::common::Node for StorageNode<'storage, StorageType>
-where
-    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
-    StorageError: fmt::Debug + Clone,
-{
+impl<StorageType> crate::common::Node for StorageNode<'_, StorageType> {
     type Key = Bytes32;
 
     fn height(&self) -> u32 {
@@ -450,11 +448,10 @@ where
     }
 }
 
-impl<'storage, StorageType, StorageError> crate::common::ParentNode
-    for StorageNode<'storage, StorageType>
+impl<StorageType> crate::common::ParentNode for StorageNode<'_, StorageType>
 where
-    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
-    StorageError: fmt::Debug + Clone,
+    StorageType: StorageInspect<NodesTable>,
+    StorageType::Error: fmt::Debug,
 {
     fn left_child(&self) -> Self {
         StorageNode::left_child(self).unwrap()
@@ -465,10 +462,10 @@ where
     }
 }
 
-impl<'storage, StorageType, StorageError> fmt::Debug for StorageNode<'storage, StorageType>
+impl<StorageType> fmt::Debug for StorageNode<'_, StorageType>
 where
-    StorageType: Storage<Bytes32, Buffer, Error = StorageError>,
-    StorageError: fmt::Debug + Clone,
+    StorageType: StorageInspect<NodesTable>,
+    StorageType::Error: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
@@ -655,15 +652,15 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
-    use crate::common::{Bytes32, StorageMap};
+    use crate::common::StorageMap;
     use crate::sparse::hash::sum;
-    use crate::sparse::node::Buffer;
+    use crate::sparse::merkle_tree::NodesTable;
     use crate::sparse::{Node, StorageNode};
-    use fuel_storage::Storage;
+    use fuel_storage::StorageMutate;
 
     #[test]
     fn test_node_left_child_returns_the_left_child() {
-        let mut s = StorageMap::<Bytes32, Buffer>::new();
+        let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(&leaf_0.hash(), leaf_0.as_buffer());
@@ -682,7 +679,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_the_right_child() {
-        let mut s = StorageMap::<Bytes32, Buffer>::new();
+        let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(&leaf_0.hash(), leaf_0.as_buffer());
@@ -701,7 +698,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_left_child_returns_placeholder_when_key_is_zero_sum() {
-        let mut s = StorageMap::<Bytes32, Buffer>::new();
+        let mut s = StorageMap::<NodesTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), leaf.as_buffer());
@@ -717,7 +714,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_placeholder_when_key_is_zero_sum() {
-        let mut s = StorageMap::<Bytes32, Buffer>::new();
+        let mut s = StorageMap::<NodesTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), leaf.as_buffer());

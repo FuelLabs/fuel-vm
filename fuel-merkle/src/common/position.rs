@@ -77,7 +77,7 @@ use crate::common::{Bytes8, PositionPath};
 /// balanced Merkle tree, using methods to retrieve a `Position's` sibling,
 /// parent, or uncle `Position`. However, in such cases, the corresponding
 /// sibling or uncle nodes are not guaranteed to exist in the tree.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Position(u64);
 
 const LEFT_CHILD_DIRECTION: i64 = -1;

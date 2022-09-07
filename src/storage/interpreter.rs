@@ -118,8 +118,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        self.storage::<ContractsAssets>()
-            .insert(&(contract, asset_id), &value)
+        self.storage::<ContractsAssets>().insert(&(contract, asset_id), &value)
     }
 }
 

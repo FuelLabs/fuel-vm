@@ -28,7 +28,7 @@ pub struct ContractsInfo;
 impl Mappable for ContractsInfo {
     type Key = ContractId;
     /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Byte32` - is the root hash of the contract's code.
+    /// `Bytes32` - is the root hash of the contract's code.
     type SetValue = (Salt, Bytes32);
     type GetValue = Self::SetValue;
 }
@@ -50,7 +50,7 @@ impl<'a> Mappable for ContractsAssets<'a> {
 pub struct ContractsState<'a>(PhantomData<&'a ()>);
 
 impl<'a> Mappable for ContractsState<'a> {
-    /// The table key is combination of the `ContractId` and `Byte32` hash of the value's key.
+    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's key.
     type Key = (&'a ContractId, &'a Bytes32);
     /// The table value is hash of the value.
     type SetValue = Bytes32;

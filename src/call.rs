@@ -53,7 +53,7 @@ impl Call {
 
 impl SizedBytes for Call {
     fn serialized_size(&self) -> usize {
-        WORD_SIZE.saturating_mul(2).saturating_add(ContractId::LEN)
+        ContractId::LEN + 2 * WORD_SIZE
     }
 }
 
@@ -148,34 +148,22 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        Self::code_size_offset().saturating_add(WORD_SIZE)
+        Self::code_size_offset() + WORD_SIZE
     }
 
     /// Contract code size memory offset.
     pub const fn code_size_offset() -> usize {
-        VM_REGISTER_COUNT
-            .saturating_add(2)
-            .saturating_mul(WORD_SIZE)
-            .saturating_add(ContractId::LEN)
-            .saturating_add(AssetId::LEN)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// `a` argument memory offset.
     pub const fn a_offset() -> usize {
-        VM_REGISTER_COUNT
-            .saturating_add(1)
-            .saturating_mul(WORD_SIZE)
-            .saturating_add(ContractId::LEN)
-            .saturating_add(AssetId::LEN)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
     }
 
     /// `b` argument memory offset.
     pub const fn b_offset() -> usize {
-        VM_REGISTER_COUNT
-            .saturating_add(2)
-            .saturating_mul(WORD_SIZE)
-            .saturating_add(ContractId::LEN)
-            .saturating_add(AssetId::LEN)
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// Registers prior to the called execution.
@@ -211,7 +199,7 @@ impl CallFrame {
 
 impl SizedBytes for CallFrame {
     fn serialized_size(&self) -> usize {
-        Self::code_offset().saturating_add(bytes::padded_len(self.code.as_ref()))
+        Self::code_offset() + bytes::padded_len(self.code.as_ref())
     }
 }
 

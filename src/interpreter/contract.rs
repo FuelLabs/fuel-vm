@@ -1,6 +1,6 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::RuntimeError;
+use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
@@ -23,15 +23,23 @@ where
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        if b > VM_MAX_RAM - AssetId::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
+        let bx = b
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| Bug::new(BugId::ID014, BugVariant::CheckedRegisterOverflow))?;
+
+        let cx = c
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| Bug::new(BugId::ID015, BugVariant::CheckedRegisterOverflow))?;
+
+        if bx > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (b, c) = (b as usize, c as usize);
+        let (b, c, bx, cx) = (b as usize, c as usize, bx as usize, cx as usize);
 
         // Safety: memory bounds checked
-        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..c + ContractId::LEN]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..bx]) };
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         if !self.transaction().input_contracts().any(|input| contract == input) {
             return Err(PanicReason::ContractNotInInputs.into());

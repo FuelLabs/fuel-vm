@@ -1120,7 +1120,6 @@ fn smo_instruction_works() {
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
-        let recipient = rng.gen();
         let nonce = rng.gen();
 
         let message = Output::message(Address::zeroed(), 0);
@@ -1142,7 +1141,7 @@ fn smo_instruction_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .add_unsigned_message_input(secret, sender, recipient, nonce, balance, data)
+            .add_unsigned_message_input(secret, sender, nonce, balance, data)
             .add_output(message)
             .finalize_checked(block_height, params);
 

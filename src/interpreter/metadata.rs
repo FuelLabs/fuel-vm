@@ -299,16 +299,6 @@ impl<S> Interpreter<S> {
                 .filter(|i| i.is_message())
                 .and_then(Input::nonce)
                 .ok_or(PanicReason::InputNotFound)?,
-            GTFArgs::InputMessageOwner => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_message())
-                    .map(Input::repr)
-                    .and_then(|r| r.owner_offset())
-                    .and_then(|ofs| tx.input_offset(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
             GTFArgs::InputMessageWitnessIndex => tx
                 .inputs()
                 .get(b)

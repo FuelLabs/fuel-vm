@@ -55,7 +55,7 @@ impl<S> Interpreter<S> {
             let ret = self.registers[REG_RET];
             let retl = self.registers[REG_RETL];
 
-            self.registers.copy_from_slice(&frame.registers());
+            self.registers.copy_from_slice(frame.registers());
 
             self.registers[REG_CGAS] = cgas;
             self.registers[REG_GGAS] = ggas;

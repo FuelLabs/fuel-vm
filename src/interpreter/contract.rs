@@ -165,10 +165,10 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(&contract, &asset_id)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
         self.storage
-            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }
@@ -180,10 +180,10 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(&contract, &asset_id)?;
+        let balance = self.balance(contract, asset_id)?;
         let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
         self.storage
-            .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
+            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
             .map_err(RuntimeError::from_io)?;
         Ok(balance)
     }

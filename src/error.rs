@@ -229,8 +229,6 @@ pub enum BugId {
     ID007,
     ID008,
     ID009,
-    ID014,
-    ID015,
 }
 
 /// Traceable bug variants

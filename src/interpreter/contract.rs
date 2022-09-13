@@ -25,11 +25,11 @@ where
 
         let bx = b
             .checked_add(AssetId::LEN as Word)
-            .ok_or_else(|| Bug::new(BugId::ID014, BugVariant::CheckedRegisterOverflow))?;
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
         let cx = c
             .checked_add(ContractId::LEN as Word)
-            .ok_or_else(|| Bug::new(BugId::ID015, BugVariant::CheckedRegisterOverflow))?;
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
         if bx > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());

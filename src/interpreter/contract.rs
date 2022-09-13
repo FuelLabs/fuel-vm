@@ -1,6 +1,6 @@
 use super::Interpreter;
 use crate::consts::*;
-use crate::error::{Bug, BugId, BugVariant, RuntimeError};
+use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};

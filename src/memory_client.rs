@@ -87,7 +87,7 @@ impl<'a> MemoryClient<'a> {
 
     /// Consensus parameters
     pub const fn params(&self) -> &ConsensusParameters {
-        &self.transactor.params()
+        self.transactor.params()
     }
 
     /// Tx memory offset

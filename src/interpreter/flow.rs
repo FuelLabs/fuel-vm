@@ -11,7 +11,7 @@ use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, Word};
 
-use std::cmp;
+use std::{cmp, io};
 
 impl<S> Interpreter<S> {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
@@ -224,12 +224,31 @@ where
         rc: RegisterId,
         rd: RegisterId,
     ) -> Result<(), RuntimeError> {
-        let (a, b, c, d) = (
-            self.registers[ra],
-            self.registers[rb],
-            self.registers[rc],
-            self.registers[rd],
-        );
+        const M: &'static str = "the provided id is not a valid register";
+
+        let a = self
+            .registers
+            .get(ra)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let b = self
+            .registers
+            .get(rb)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let c = self
+            .registers
+            .get(rc)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let d = self
+            .registers
+            .get(rd)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         self._prepare_call(a, b, c, d)
     }

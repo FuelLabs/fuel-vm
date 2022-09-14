@@ -5,7 +5,7 @@ use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, InstructionResult};
+use fuel_asm::{Instruction, InstructionResult, RegisterId};
 use fuel_crypto::Hasher;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -136,7 +136,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+    fn _prepare_call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
@@ -213,6 +213,29 @@ where
 
         self.frames.push(frame);
 
+        Ok(())
+    }
+
+    /// Prepare a call instruction for execution
+    pub fn prepare_call(
+        &mut self,
+        ra: RegisterId,
+        rb: RegisterId,
+        rc: RegisterId,
+        rd: RegisterId,
+    ) -> Result<(), RuntimeError> {
+        let (a, b, c, d) = (
+            self.registers[ra],
+            self.registers[rb],
+            self.registers[rc],
+            self.registers[rd],
+        );
+
+        self._prepare_call(a, b, c, d)
+    }
+
+    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+        self._prepare_call(a, b, c, d)?;
         self.run_call()
     }
 }

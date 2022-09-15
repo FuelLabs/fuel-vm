@@ -8,6 +8,7 @@ use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
+use std::cmp;
 
 impl<S> Interpreter<S>
 where
@@ -31,7 +32,11 @@ where
             .checked_add(ContractId::LEN as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        if bx > VM_MAX_RAM || cx > VM_MAX_RAM {
+        //if bx or cx is above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound
+        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
+
+        if bx > min_comparison_value || cx > min_comparison_value {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -53,11 +58,19 @@ where
     }
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (cx, of) = c.overflowing_add(AssetId::LEN as Word);
-        let overflow = overflow || of;
+        let ax = a
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+        let cx = c
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        //if ax or cx is above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound
+        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
+
+        if ax > min_comparison_value || cx > min_comparison_value {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -113,12 +126,21 @@ where
     }
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (dx, of) = d.overflowing_add(AssetId::LEN as Word);
-        let overflow = overflow || of;
+        let ax = a
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        let dx = d
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        //if ax or dx is above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound
+        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
+
         let out_idx = b as usize;
 
-        if overflow || ax > VM_MAX_RAM || dx > VM_MAX_RAM {
+        if ax > min_comparison_value || dx > min_comparison_value {
             return Err(PanicReason::MemoryOverflow.into());
         }
 

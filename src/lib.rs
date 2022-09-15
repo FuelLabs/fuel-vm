@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+pub mod arith;
 pub mod backtrace;
 pub mod call;
 pub mod consts;

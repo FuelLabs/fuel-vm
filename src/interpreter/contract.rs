@@ -23,15 +23,25 @@ where
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        if b > VM_MAX_RAM - AssetId::LEN as Word || c > VM_MAX_RAM - ContractId::LEN as Word {
+        let bx = b
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        let cx = c
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if bx > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (b, c) = (b as usize, c as usize);
+        let (b, c, bx, cx) = (b as usize, c as usize, bx as usize, cx as usize);
 
         // Safety: memory bounds checked
-        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..b + AssetId::LEN]) };
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..c + ContractId::LEN]) };
+        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..bx]) };
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         if !self.transaction().input_contracts().any(|input| contract == input) {
             return Err(PanicReason::ContractNotInInputs.into());
@@ -45,11 +55,17 @@ where
     }
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (cx, of) = c.overflowing_add(AssetId::LEN as Word);
-        let overflow = overflow || of;
+        let ax = a
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        if overflow || ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+        let cx = c
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -105,15 +121,21 @@ where
     }
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(ContractId::LEN as Word);
-        let (dx, of) = d.overflowing_add(AssetId::LEN as Word);
-        let overflow = overflow || of;
-        let out_idx = b as usize;
+        let ax = a
+            .checked_add(ContractId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        if overflow || ax > VM_MAX_RAM || dx > VM_MAX_RAM {
+        let dx = d
+            .checked_add(AssetId::LEN as Word)
+            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
+        let out_idx = b as usize;
         let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
         let asset_id =
             AssetId::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");

@@ -8,7 +8,6 @@ use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
-use std::cmp;
 
 impl<S> Interpreter<S>
 where
@@ -32,11 +31,9 @@ where
             .checked_add(ContractId::LEN as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        //if bx or cx is above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound
-        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
-
-        if bx > min_comparison_value || cx > min_comparison_value {
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if bx > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -66,11 +63,9 @@ where
             .checked_add(AssetId::LEN as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        //if ax or cx is above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound
-        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
-
-        if ax > min_comparison_value || cx > min_comparison_value {
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -134,16 +129,13 @@ where
             .checked_add(AssetId::LEN as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
 
-        //if ax or dx is above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound
-        let min_comparison_value = cmp::min(VM_MAX_RAM, usize::MAX as Word);
-
-        let out_idx = b as usize;
-
-        if ax > min_comparison_value || dx > min_comparison_value {
+        //if above usize::MAX then it cannot be safely cast to usize,
+        // check the tighter bound between VM_MAX_RAM and usize::MAX
+        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
+        let out_idx = b as usize;
         let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
         let asset_id =
             AssetId::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");

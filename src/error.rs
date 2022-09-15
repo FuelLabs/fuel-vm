@@ -153,6 +153,14 @@ impl RuntimeError {
     {
         Self::Halt(e.into())
     }
+
+    /// Unexpected behavior occurred
+    pub fn unexpected_behavior<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn StdError + Send + Sync>>,
+    {
+        Self::Halt(io::Error::new(io::ErrorKind::Other, error))
+    }
 }
 
 impl PartialEq for RuntimeError {

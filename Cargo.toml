@@ -40,8 +40,10 @@ quickcheck_macros = "1.0"
 serde_json = "1.0"
 
 [features]
+default = ["optimized"]
 arbitrary = ["fuel-asm/arbitrary"]
 debug = []
+optimized = []
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this

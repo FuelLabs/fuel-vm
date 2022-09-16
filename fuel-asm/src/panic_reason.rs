@@ -639,3 +639,12 @@ impl From<InstructionResult> for PanicReason {
         r.reason
     }
 }
+
+#[cfg(feature = "std")]
+impl From<PanicReason> for std::io::Error {
+    fn from(reason: PanicReason) -> Self {
+        use std::io;
+
+        io::Error::new(io::ErrorKind::Other, reason)
+    }
+}

@@ -24,8 +24,8 @@ impl<S> Interpreter<S> {
         let message = unsafe { Message::as_ref_unchecked(&self.memory[c..cx]) };
 
         match signature.recover(message) {
-            Ok(public) => {
-                self.try_mem_write(a, public.as_ref())?;
+            Ok(pub_key) => {
+                self.try_mem_write(a, pub_key.as_ref())?;
                 self.clear_err();
             }
             Err(_) => {

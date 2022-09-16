@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use fuel_asm::PanicReason::{ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -709,7 +709,7 @@ fn code_copy_b_plus_32_overflow() {
         Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+    check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
 }
 
 #[test]
@@ -752,7 +752,7 @@ fn code_copy_c_plus_d_overflow() {
         Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+    check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
 }
 
 #[test]
@@ -767,7 +767,7 @@ fn code_root_a_plus_32_overflow() {
         Opcode::CROO(reg_a, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
 }
 
 #[test]
@@ -782,7 +782,7 @@ fn code_root_b_plus_32_overflow() {
         Opcode::CROO(REG_ZERO, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
 }
 
 #[test]
@@ -831,7 +831,7 @@ fn code_size_b_plus_32_overflow() {
         Opcode::CSIZ(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
 }
 
 #[test]
@@ -864,7 +864,7 @@ fn state_r_word_b_plus_32_over() {
         Opcode::SRW(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(state_read_word, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_read_word, ArithmeticOverflow);
 }
 
 #[test]
@@ -897,7 +897,7 @@ fn state_r_qword_a_plus_32_over() {
         Opcode::SRWQ(reg_a, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
 }
 
 #[test]
@@ -913,7 +913,7 @@ fn state_r_qword_b_plus_32_over() {
         Opcode::SRWQ(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
 }
 
 #[test]
@@ -963,7 +963,7 @@ fn state_w_word_a_plus_32_over() {
         Opcode::SWW(reg_a, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(state_write_word, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_write_word, ArithmeticOverflow);
 }
 
 #[test]
@@ -996,7 +996,7 @@ fn state_w_qword_a_plus_32_over() {
         Opcode::SWWQ(reg_a, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
 }
 
 #[test]
@@ -1012,7 +1012,7 @@ fn state_w_qword_b_plus_32_over() {
         Opcode::SWWQ(REG_ZERO, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
 }
 
 #[test]
@@ -1081,7 +1081,7 @@ fn message_output_a_b_over() {
         Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
     ];
 
-    check_expected_reason_for_opcodes(message_output, MemoryOverflow);
+    check_expected_reason_for_opcodes(message_output, ArithmeticOverflow);
 }
 
 #[test]

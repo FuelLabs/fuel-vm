@@ -1018,7 +1018,7 @@ impl From<Opcode> for u32 {
                     | ((rb as u32) << 12)
                     | (imm12 as u32)
             }
-            Opcode::Undefined => (0x00 << 24),
+            Opcode::Undefined => 0x00 << 24,
         }
     }
 }

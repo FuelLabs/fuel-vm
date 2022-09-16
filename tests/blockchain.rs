@@ -409,7 +409,6 @@ fn load_external_contract_code() {
     }
 }
 
-#[cfg(test)]
 fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patch_jump: bool) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
@@ -533,14 +532,12 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
     check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
 }
 
-#[cfg(test)]
 fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: PanicReason) {
     let client = MemoryClient::default();
 
     check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
 }
 
-#[cfg(test)]
 fn check_expected_reason_for_opcodes_with_client(
     client: MemoryClient,
     opcodes: Vec<Opcode>,
@@ -568,7 +565,6 @@ fn check_expected_reason_for_opcodes_with_client(
     check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
 }
 
-#[cfg(test)]
 fn check_reason_for_transaction(
     mut client: MemoryClient,
     checked_tx: CheckedTransaction,

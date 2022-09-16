@@ -1,9 +1,10 @@
 //! Trait definitions for storage backend
 
-use fuel_storage::{MerkleStorage, Storage};
+use fuel_storage::{MerkleRootStorage, StorageAsMut, StorageAsRef, StorageMutate};
 use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
+use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState};
 use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::io;
@@ -12,10 +13,11 @@ use std::ops::Deref;
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    Storage<ContractId, Contract, Error = Self::DataError>
-    + Storage<ContractId, (Salt, Bytes32), Error = Self::DataError>
-    + MerkleStorage<ContractId, AssetId, Word, Error = Self::DataError>
-    + MerkleStorage<ContractId, Bytes32, Bytes32, Error = Self::DataError>
+    StorageMutate<ContractsRawCode, Error = Self::DataError>
+    + StorageMutate<ContractsInfo, Error = Self::DataError>
+    + for<'a> MerkleRootStorage<ContractId, ContractsAssets<'a>, Error = Self::DataError>
+    + for<'a> MerkleRootStorage<ContractId, ContractsState<'a>, Error = Self::DataError>
+    + Sized
 {
     /// Error implementation for reasons unspecified in the protocol.
     type DataError: StdError + Into<io::Error>;
@@ -41,7 +43,7 @@ pub trait InterpreterStorage:
     /// Fetch a previously inserted contract code from the chain state for a
     /// given contract.
     fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
-        <Self as Storage<ContractId, Contract>>::get(self, id)
+        self.storage::<ContractsRawCode>().get(id)
     }
 
     /// Append a contract to the chain, provided its identifier.
@@ -52,18 +54,18 @@ pub trait InterpreterStorage:
         id: &ContractId,
         contract: &Contract,
     ) -> Result<Option<Contract>, Self::DataError> {
-        <Self as Storage<ContractId, Contract>>::insert(self, id, contract)
+        self.storage::<ContractsRawCode>().insert(id, contract.as_ref())
     }
 
     /// Check if a provided contract exists in the chain.
     fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, Self::DataError> {
-        <Self as Storage<ContractId, Contract>>::contains_key(self, id)
+        self.storage::<ContractsRawCode>().contains_key(id)
     }
 
     /// Fetch a previously inserted salt+root tuple from the chain state for a
     /// given contract.
     fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
-        <Self as Storage<ContractId, (Salt, Bytes32)>>::get(self, id)
+        self.storage::<ContractsInfo>().get(id)
     }
 
     /// Append the salt+root of a contract that was appended to the chain.
@@ -73,7 +75,7 @@ pub trait InterpreterStorage:
         salt: &Salt,
         root: &Bytes32,
     ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        <Self as Storage<ContractId, (Salt, Bytes32)>>::insert(self, id, &(*salt, *root))
+        self.storage::<ContractsInfo>().insert(id, &(*salt, *root))
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.
@@ -82,7 +84,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::get(self, id, key)
+        self.storage::<ContractsState>().get(&(id, key))
     }
 
     /// Insert a key-value mapping in a contract storage.
@@ -92,7 +94,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        <Self as MerkleStorage<ContractId, Bytes32, Bytes32>>::insert(self, contract, key, value)
+        self.storage::<ContractsState>().insert(&(contract, key), value)
     }
 
     /// Fetch the balance of an asset ID in a contract storage.
@@ -101,7 +103,10 @@ pub trait InterpreterStorage:
         id: &ContractId,
         asset_id: &AssetId,
     ) -> Result<Option<Word>, Self::DataError> {
-        let balance = <Self as MerkleStorage<ContractId, AssetId, Word>>::get(self, id, asset_id)?.map(Cow::into_owned);
+        let balance = self
+            .storage::<ContractsAssets>()
+            .get(&(id, asset_id))?
+            .map(Cow::into_owned);
 
         Ok(balance)
     }
@@ -113,7 +118,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        <Self as MerkleStorage<ContractId, AssetId, Word>>::insert(self, contract, asset_id, &value)
+        self.storage::<ContractsAssets>().insert(&(contract, asset_id), &value)
     }
 }
 

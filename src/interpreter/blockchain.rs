@@ -102,9 +102,7 @@ where
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
-            let fpx = fp
-                .checked_add(CallFrame::code_size_offset())
-                .ok_or_else(|| Bug::new(BugId::ID008, BugVariant::FramePointerOverflow))?;
+            let fpx = checked_add_usize(fp, CallFrame::code_size_offset())?;
 
             self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
         }
@@ -414,9 +412,7 @@ where
         let data = &self.memory[data..bx];
         let data = data.to_vec();
 
-        let fpx = fp
-            .checked_add(Address::LEN)
-            .ok_or_else(|| Bug::new(BugId::ID009, BugVariant::FramePointerOverflow))?;
+        let fpx = checked_add_usize(fp, Address::LEN)?;
 
         // Safety: $fp is guaranteed to contain enough bytes
         let sender = unsafe { Address::from_slice_unchecked(&self.memory[fp..fpx]) };

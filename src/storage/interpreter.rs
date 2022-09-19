@@ -1,7 +1,7 @@
 //! Trait definitions for storage backend
 
 use fuel_storage::{MerkleRootStorage, StorageAsMut, StorageAsRef, StorageMutate};
-use fuel_tx::Contract;
+use fuel_tx::{Contract, StorageSlot};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
 use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState};
@@ -39,6 +39,37 @@ pub trait InterpreterStorage:
 
     /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
+
+    /// Deploy a contract into the storage
+    fn deploy_contract(
+        &mut self,
+        salt: &Salt,
+        slots: &[StorageSlot],
+        contract: &Contract,
+    ) -> Result<(), Self::DataError> {
+        let storage_root = Contract::initial_state_root(slots.iter());
+        let root = contract.root();
+        let id = contract.id(salt, &root, &storage_root);
+
+        self.deploy_contract_with_id(salt, slots, contract, &root, &id)
+    }
+
+    /// Deploy a contract into the storage with contract id
+    fn deploy_contract_with_id(
+        &mut self,
+        salt: &Salt,
+        slots: &[StorageSlot],
+        contract: &Contract,
+        root: &Bytes32,
+        id: &ContractId,
+    ) -> Result<(), Self::DataError> {
+        self.storage_contract_insert(id, contract)?;
+        self.storage_contract_root_insert(id, salt, root)?;
+
+        slots
+            .iter()
+            .try_for_each(|s| self.merkle_contract_state_insert(id, s.key(), s.value()).map(|_| ()))
+    }
 
     /// Fetch a previously inserted contract code from the chain state for a
     /// given contract.

@@ -4,7 +4,6 @@ use crate::error::RuntimeError;
 
 use crate::arith::{checked_add_word, checked_sub_word};
 use fuel_asm::PanicReason;
-use fuel_asm::PanicReason::ArithmeticOverflow;
 use fuel_crypto::{Hasher, Message, PublicKey, Signature};
 use fuel_types::{Bytes32, Bytes64, Word};
 

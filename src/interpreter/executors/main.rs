@@ -101,18 +101,8 @@ where
                 }
 
                 storage
-                    .storage_contract_insert(&id, &contract)
+                    .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
                     .map_err(InterpreterError::from_io)?;
-
-                storage
-                    .storage_contract_root_insert(&id, salt, &root)
-                    .map_err(InterpreterError::from_io)?;
-
-                for storage_slot in storage_slots {
-                    storage
-                        .merkle_contract_state_insert(&id, storage_slot.key(), storage_slot.value())
-                        .map_err(InterpreterError::from_io)?;
-                }
 
                 ProgramState::Return(1)
             }

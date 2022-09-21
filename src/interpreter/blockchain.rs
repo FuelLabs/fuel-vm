@@ -9,7 +9,7 @@ use fuel_tx::{Input, Output, Receipt};
 use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
-use crate::arith::{checked_add_usize, checked_add_word, checked_sub_word};
+use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use core::{mem, slice};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -102,7 +102,7 @@ where
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
-            let fpx = checked_add_usize(fp, CallFrame::code_size_offset())?;
+            let fpx = add_usize(fp, CallFrame::code_size_offset());
 
             self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
         }

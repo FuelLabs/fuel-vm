@@ -56,7 +56,7 @@ fn ecrecover() {
         .finalize_checked(height, &params);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }
@@ -97,7 +97,7 @@ fn sha256() {
         .finalize_checked(height, &params);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }
@@ -141,7 +141,7 @@ fn keccak256() {
         .finalize_checked(height, &params);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }

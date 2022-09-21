@@ -104,6 +104,11 @@ macro_rules! key_methods {
                 // access
                 &*(bytes.as_ptr() as *const Self)
             }
+
+            /// The memory length of the type by the method.
+            pub const fn len(&self) -> usize {
+                Self::LEN
+            }
         }
 
         #[cfg(feature = "random")]

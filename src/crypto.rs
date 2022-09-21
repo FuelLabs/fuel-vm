@@ -16,7 +16,7 @@ where
 
 #[test]
 #[cfg(feature = "random")]
-fn ephemeral_merkle_root_works() {
+fn ephemeral_merkle_root_returns_the_expected_root() {
     use fuel_crypto::Hasher;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};

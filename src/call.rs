@@ -7,6 +7,7 @@ use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
+use crate::arith::checked_add_usize;
 use std::io::{self, Write};
 use std::mem;
 
@@ -249,7 +250,8 @@ impl io::Write for CallFrame {
         let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
 
         let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
-        n += bytes;
+
+        n = checked_add_usize(n, bytes)?;
 
         self.to = to.into();
         self.asset_id = asset_id.into();

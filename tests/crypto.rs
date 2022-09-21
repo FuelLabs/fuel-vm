@@ -1,15 +1,17 @@
 use fuel_crypto::Hasher;
-use fuel_vm::consts::*;
-use fuel_vm::crypto;
-use fuel_vm::prelude::*;
+use fuel_tx::TransactionBuilder;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+use sha3::{Digest, Keccak256};
 
-use std::str::FromStr;
+use fuel_vm::consts::*;
+use fuel_vm::prelude::*;
 
 #[test]
 fn ecrecover() {
-    use secp256k1::{PublicKey, Secp256k1, SecretKey};
+    let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let storage = MemoryStorage::default();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -17,92 +19,51 @@ fn ecrecover() {
     let height = 0;
     let params = ConsensusParameters::default();
 
-    let secp = Secp256k1::new();
-    let secret = SecretKey::from_str("3b940b5586823dfd02ae3b461bb4336b5ecbaefd6627aa922efc048fec0c881c").unwrap();
-    let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
-    let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
+    let secret = SecretKey::random(rng);
+    let public = secret.public_key();
 
     let message = b"The gift of words is the gift of deception and illusion.";
-    let e = Hasher::hash(&message[..]);
-    let sig =
-        crypto::secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
+    let message = Message::new(message);
 
-    let alloc = e.len() + sig.len() + public.len() + public.len(); // Computed public key
+    let signature = Signature::sign(&secret, &message);
 
-    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
+        Opcode::ADDI(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        Opcode::ADDI(0x22, 0x21, message.as_ref().len() as Immediate12),
+        Opcode::MOVI(0x10, PublicKey::LEN as Immediate18),
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x11, REG_HP, 1),
+        Opcode::ECR(0x11, 0x20, 0x21),
+        Opcode::MEQ(0x12, 0x22, 0x11, 0x10),
+        Opcode::LOG(0x12, 0x00, 0x00, 0x00),
+        Opcode::RET(REG_ONE),
+    ].into_iter().collect();
 
-    e.iter()
-        .chain(sig.iter())
-        .chain(public.iter())
-        .enumerate()
-        .for_each(|(i, b)| {
-            script.push(Opcode::MOVI(0x21, *b as Immediate18));
-            script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
-        });
+    let script_data = signature
+        .as_ref()
+        .iter()
+        .copied()
+        .chain(message.as_ref().iter().copied())
+        .chain(public.as_ref().iter().copied())
+        .collect();
 
-    // Set `e` address to 0x30
-    script.push(Opcode::ADDI(0x30, REG_HP, 1));
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .finalize_checked(height, &params);
 
-    // Set `sig` address to 0x31
-    script.push(Opcode::ADDI(0x31, 0x30, e.len() as Immediate12));
+    let receipts = client.transact(tx);
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
-    // Set `public` address to 0x32
-    script.push(Opcode::ADDI(0x32, 0x31, sig.len() as Immediate12));
-
-    // Set computed public key address to 0x33
-    script.push(Opcode::ADDI(0x33, 0x32, public.len() as Immediate12));
-
-    // Set public key length to 0x34
-    script.push(Opcode::MOVI(0x34, public.len() as Immediate18));
-
-    // Compute the ECRECOVER
-    // m[computed public key] := ecrecover(sig, e)
-    // r[0x10] := m[public] == m[computed public key]
-    script.push(Opcode::ECR(0x33, 0x31, 0x30));
-    script.push(Opcode::MEQ(0x10, 0x32, 0x33, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    // Corrupt the signature
-    // m[sig][0] := !m[sig][0]
-    script.push(Opcode::LB(0x10, 0x30, 0));
-    script.push(Opcode::NOT(0x10, 0x10));
-    script.push(Opcode::SB(0x30, 0x10, 0));
-
-    // Compute the corrupted ECRECOVER
-    // m[computed public key] := ecrecover(sig', e)
-    // r[0x10] := m[public] == m[computed public key]
-    script.push(Opcode::ECR(0x33, 0x31, 0x30));
-    script.push(Opcode::MEQ(0x10, 0x32, 0x33, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    script.push(Opcode::RET(REG_ONE));
-
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(height, &params)
-    .expect("failed to check tx");
-
-    let receipts = Transactor::new(storage, Default::default())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute script!")
-        .to_owned();
-
-    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
-    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
+    assert!(success);
 }
 
 #[test]
 fn sha256() {
-    let storage = MemoryStorage::default();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -111,85 +72,39 @@ fn sha256() {
     let params = ConsensusParameters::default();
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
-    let length = message.len() as Immediate12;
     let hash = Hasher::hash(message);
 
-    let alloc = length  // message
-        + 32 // reference hash
-        + 32; // computed hash
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
+        Opcode::ADDI(0x21, 0x20, message.len() as Immediate12),
+        Opcode::MOVI(0x10, Bytes32::LEN as Immediate18),
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x11, REG_HP, 1),
+        Opcode::MOVI(0x12, message.len() as Immediate18),
+        Opcode::S256(0x11, 0x20, 0x12),
+        Opcode::MEQ(0x13, 0x11, 0x21, 0x10),
+        Opcode::LOG(0x13, 0x00, 0x00, 0x00),
+        Opcode::RET(REG_ONE),
+    ].into_iter().collect();
 
-    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
+    let script_data = message.iter().copied().chain(hash.as_ref().iter().copied()).collect();
 
-    message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        script.push(Opcode::MOVI(0x21, *b as Immediate18));
-        script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
-    });
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .finalize_checked(height, &params);
 
-    // Set message address to 0x30
-    script.push(Opcode::ADDI(0x30, REG_HP, 1));
+    let receipts = client.transact(tx);
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
-    // Set hash address to 0x31
-    script.push(Opcode::ADDI(0x31, 0x30, length));
-
-    // Set computed hash address to 0x32
-    script.push(Opcode::ADDI(0x32, 0x31, 32));
-
-    // Set message length to 0x33
-    script.push(Opcode::MOVI(0x33, length as Immediate18));
-
-    // Set hash length to 0x34
-    script.push(Opcode::MOVI(0x34, 32));
-
-    // Compute the Keccak256
-    // m[computed hash] := keccack256(m[message, length])
-    // r[0x10] := m[hash] == m[computed hash]
-    script.push(Opcode::S256(0x32, 0x30, 0x33));
-    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    // Corrupt the message
-    // m[message][0] := !m[message][0]
-    script.push(Opcode::LB(0x10, 0x30, 0));
-    script.push(Opcode::NOT(0x10, 0x10));
-    script.push(Opcode::SB(0x30, 0x10, 0));
-
-    // Compute the Keccak256
-    // m[computed hash] := keccack256(m[message, length])
-    // r[0x10] := m[hash] == m[computed hash]
-    script.push(Opcode::K256(0x32, 0x30, 0x33));
-    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    script.push(Opcode::RET(REG_ONE));
-
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(height, &params)
-    .expect("failed to check tx");
-
-    let receipts = Transactor::new(storage, Default::default())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute script!")
-        .to_owned();
-
-    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
-    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
+    assert!(success);
 }
 
 #[test]
 fn keccak256() {
-    use sha3::{Digest, Keccak256};
-
-    let storage = MemoryStorage::default();
+    let mut client = MemoryClient::default();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -198,79 +113,35 @@ fn keccak256() {
     let params = ConsensusParameters::default();
 
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
-    let length = message.len() as Immediate12;
 
     let mut hasher = Keccak256::new();
     hasher.update(message);
     let hash = hasher.finalize();
 
-    let alloc = length  // message
-        + 32 // reference hash
-        + 32; // computed hash
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
+        Opcode::ADDI(0x21, 0x20, message.len() as Immediate12),
+        Opcode::MOVI(0x10, Bytes32::LEN as Immediate18),
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x11, REG_HP, 1),
+        Opcode::MOVI(0x12, message.len() as Immediate18),
+        Opcode::K256(0x11, 0x20, 0x12),
+        Opcode::MEQ(0x13, 0x11, 0x21, 0x10),
+        Opcode::LOG(0x13, 0x00, 0x00, 0x00),
+        Opcode::RET(REG_ONE),
+    ].into_iter().collect();
 
-    let mut script = vec![Opcode::MOVI(0x20, alloc as Immediate18), Opcode::ALOC(0x20)];
+    let script_data = message.iter().copied().chain(hash.iter().copied()).collect();
 
-    message.iter().chain(hash.iter()).enumerate().for_each(|(i, b)| {
-        script.push(Opcode::MOVI(0x21, *b as Immediate18));
-        script.push(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12));
-    });
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .finalize_checked(height, &params);
 
-    // Set message address to 0x30
-    script.push(Opcode::ADDI(0x30, REG_HP, 1));
+    let receipts = client.transact(tx);
+    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
-    // Set hash address to 0x31
-    script.push(Opcode::ADDI(0x31, 0x30, length));
-
-    // Set computed hash address to 0x32
-    script.push(Opcode::ADDI(0x32, 0x31, 32));
-
-    // Set message length to 0x33
-    script.push(Opcode::MOVI(0x33, length as Immediate18));
-
-    // Set hash length to 0x34
-    script.push(Opcode::MOVI(0x34, 32));
-
-    // Compute the Keccak256
-    // m[computed hash] := keccack256(m[message, length])
-    // r[0x10] := m[hash] == m[computed hash]
-    script.push(Opcode::K256(0x32, 0x30, 0x33));
-    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    // Corrupt the message
-    // m[message][0] := !m[message][0]
-    script.push(Opcode::LB(0x10, 0x30, 0));
-    script.push(Opcode::NOT(0x10, 0x10));
-    script.push(Opcode::SB(0x30, 0x10, 0));
-
-    // Compute the Keccak256
-    // m[computed hash] := keccack256(m[message, length])
-    // r[0x10] := m[hash] == m[computed hash]
-    script.push(Opcode::K256(0x32, 0x30, 0x33));
-    script.push(Opcode::MEQ(0x10, 0x31, 0x32, 0x34));
-    script.push(Opcode::LOG(0x10, 0, 0, 0));
-
-    script.push(Opcode::RET(REG_ONE));
-
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(height, &params)
-    .expect("failed to check tx");
-
-    let receipts = Transactor::new(storage, Default::default())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute script!")
-        .to_owned();
-
-    assert_eq!(receipts[0].ra().expect("$ra expected in receipt"), 1);
-    assert_eq!(receipts[1].ra().expect("$ra expected in receipt"), 0);
+    assert!(success);
 }

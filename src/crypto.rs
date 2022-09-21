@@ -1,52 +1,7 @@
 //! Crypto implementations for the instructions
 
 use fuel_merkle::binary::in_memory::MerkleTree;
-use fuel_types::{Bytes32, Bytes64};
-use secp256k1::ecdsa::{RecoverableSignature, RecoveryId};
-use secp256k1::Error as Secp256k1Error;
-use secp256k1::{Message, Secp256k1, SecretKey};
-
-/// Sign a given message and compress the `v` to the signature
-///
-/// The compression scheme is described in
-/// <https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#public-key-cryptography>
-pub fn secp256k1_sign_compact_recoverable(secret: &[u8], message: &[u8]) -> Result<Bytes64, Secp256k1Error> {
-    let secret = SecretKey::from_slice(secret)?;
-    let message = Message::from_slice(message)?;
-
-    let signature = Secp256k1::new().sign_ecdsa_recoverable(&message, &secret);
-    let (v, mut signature) = signature.serialize_compact();
-
-    let v = v.to_i32();
-    signature[32] |= (v << 7) as u8;
-
-    Ok(signature.into())
-}
-
-/// Recover the public key from a signature performed with
-/// [`secp256k1_sign_compact_recoverable`]
-pub fn secp256k1_sign_compact_recover(signature: &[u8], message: &[u8]) -> Result<Bytes64, Secp256k1Error> {
-    let message = Message::from_slice(message)?;
-    let mut signature = Bytes64::try_from(signature).map_err(|_| Secp256k1Error::InvalidSignature)?;
-
-    let v = ((signature.as_mut()[32] & 0x80) >> 7) as i32;
-    signature.as_mut()[32] &= 0x7f;
-
-    let v = RecoveryId::from_i32(v)?;
-    let signature = RecoverableSignature::from_compact(signature.as_ref(), v)?;
-
-    let pk = Secp256k1::new()
-        .recover_ecdsa(&message, &signature)?
-        .serialize_uncompressed();
-
-    // Ignore the first byte of the compressed flag
-    let pk = &pk[1..];
-
-    // Safety: secp256k1 protocol specifies 65 bytes output
-    let pk = unsafe { Bytes64::from_slice_unchecked(pk) };
-
-    Ok(pk)
-}
+use fuel_types::Bytes32;
 
 /// Calculate a binary merkle root with in-memory storage
 pub fn ephemeral_merkle_root<L, I>(leaves: I) -> Bytes32
@@ -59,86 +14,54 @@ where
     tree.root().into()
 }
 
-#[cfg(all(test, feature = "random"))]
-mod tests {
-    use crate::crypto::{
-        ephemeral_merkle_root, secp256k1_sign_compact_recover, secp256k1_sign_compact_recoverable, Secp256k1,
-    };
-    use crate::prelude::*;
-
+#[test]
+#[cfg(feature = "random")]
+fn ephemeral_merkle_root_returns_the_expected_root() {
     use fuel_crypto::Hasher;
     use rand::rngs::StdRng;
-    use rand::{Rng, RngCore, SeedableRng};
-    use secp256k1::{PublicKey, SecretKey};
+    use rand::{Rng, SeedableRng};
 
-    #[test]
-    fn ecrecover() {
-        let secp = Secp256k1::new();
-        let mut rng = StdRng::seed_from_u64(2322u64);
-        let mut secret_seed = [0u8; 32];
-        let mut message = [0u8; 95];
+    use crate::prelude::*;
 
-        for _ in 0..10 {
-            rng.fill_bytes(&mut message);
-            rng.fill_bytes(&mut secret_seed);
+    let mut rng = StdRng::seed_from_u64(2322u64);
 
-            let secret = SecretKey::from_slice(&secret_seed).expect("Failed to generate random secret!");
-            let public = PublicKey::from_secret_key(&secp, &secret).serialize_uncompressed();
-            let public = Bytes64::try_from(&public[1..]).expect("Failed to parse public key!");
+    const LEAF_PREFIX: u8 = 0x00;
+    const NODE_PREFIX: u8 = 0x01;
 
-            let e = Hasher::hash(&message);
+    // Test for 0 leaves
+    //
+    // Expected root is `h()`
+    let empty: Vec<Address> = vec![];
 
-            let sig =
-                secp256k1_sign_compact_recoverable(secret.as_ref(), e.as_ref()).expect("Failed to generate signature");
-            let pk_p =
-                secp256k1_sign_compact_recover(sig.as_ref(), e.as_ref()).expect("Failed to recover PK from signature");
+    let root = ephemeral_merkle_root(empty.iter());
+    let empty = Hasher::default().digest();
 
-            assert_eq!(public, pk_p);
-        }
-    }
+    assert_eq!(empty, root);
 
-    #[test]
-    fn ephemeral_merkle_root_works() {
-        let mut rng = StdRng::seed_from_u64(2322u64);
+    // Test for 5 leaves
+    let a: Address = rng.gen();
+    let b: Address = rng.gen();
+    let c: Address = rng.gen();
+    let d: Address = rng.gen();
+    let e: Address = rng.gen();
 
-        const LEAF_PREFIX: u8 = 0x00;
-        const NODE_PREFIX: u8 = 0x01;
+    let initial = [a, b, c, d, e];
 
-        // Test for 0 leaves
-        //
-        // Expected root is `h()`
-        let empty: Vec<Address> = vec![];
+    let a = Hasher::default().chain(&[LEAF_PREFIX]).chain(a).digest();
+    let b = Hasher::default().chain(&[LEAF_PREFIX]).chain(b).digest();
+    let c = Hasher::default().chain(&[LEAF_PREFIX]).chain(c).digest();
+    let d = Hasher::default().chain(&[LEAF_PREFIX]).chain(d).digest();
+    let e = Hasher::default().chain(&[LEAF_PREFIX]).chain(e).digest();
 
-        let root = ephemeral_merkle_root(empty.iter());
-        let empty = Hasher::default().digest();
+    let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+    let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
+    let c = e;
 
-        assert_eq!(empty, root);
+    let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+    let b = c;
 
-        // Test for 5 leaves
-        let a: Address = rng.gen();
-        let b: Address = rng.gen();
-        let c: Address = rng.gen();
-        let d: Address = rng.gen();
-        let e: Address = rng.gen();
+    let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+    let root_p = ephemeral_merkle_root(initial.iter());
 
-        let initial = [a, b, c, d, e];
-
-        let a = Hasher::default().chain(&[LEAF_PREFIX]).chain(a).digest();
-        let b = Hasher::default().chain(&[LEAF_PREFIX]).chain(b).digest();
-        let c = Hasher::default().chain(&[LEAF_PREFIX]).chain(c).digest();
-        let d = Hasher::default().chain(&[LEAF_PREFIX]).chain(d).digest();
-        let e = Hasher::default().chain(&[LEAF_PREFIX]).chain(e).digest();
-
-        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
-        let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
-        let c = e;
-
-        let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
-        let b = c;
-
-        let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
-        let root_p = ephemeral_merkle_root(initial.iter());
-
-        assert_eq!(root, root_p);
-    }
+    assert_eq!(root, root_p);
 }

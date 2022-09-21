@@ -1,4 +1,4 @@
-use fuel_asm::PanicReason::{ErrorFlag, MemoryOverflow};
+use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;
@@ -118,7 +118,7 @@ fn ecrecover_b_gt_vmaxram_sub_64() {
         Opcode::ECR(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn ecrecover_c_gt_vmaxram_sub_32() {
         Opcode::ECR(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
 }
 
 #[test]

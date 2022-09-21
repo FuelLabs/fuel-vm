@@ -9,6 +9,7 @@ use fuel_tx::{Input, Output, Receipt};
 use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
+use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use core::{mem, slice};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -38,12 +39,12 @@ where
         }
 
         let contract_id = a as usize;
-        let contract_id_end = ContractId::LEN.saturating_add(contract_id);
+        let contract_id_end = checked_add_usize(ContractId::LEN, contract_id)?;
         let contract_offset = b as usize;
         let length = bytes::padded_len_usize(c as usize);
 
         let memory_offset = ssp as usize;
-        let memory_offset_end = memory_offset.saturating_add(length);
+        let memory_offset_end = checked_add_usize(memory_offset, length)?;
 
         // Validate arguments
         if memory_offset_end > self.registers[REG_HP] as usize
@@ -91,6 +92,7 @@ where
         memory.copy_from_slice(code);
 
         self.registers[REG_SP]
+            //TODO this is looser than the compare against [REG_HP,REG_SSP+length]
             .checked_add(length as Word)
             .map(|sp| {
                 self.registers[REG_SP] = sp;
@@ -100,9 +102,7 @@ where
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
-            let fpx = fp
-                .checked_add(CallFrame::code_size_offset())
-                .ok_or_else(|| Bug::new(BugId::ID008, BugVariant::FramePointerOverflow))?;
+            let fpx = add_usize(fp, CallFrame::code_size_offset());
 
             self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
         }
@@ -135,7 +135,7 @@ where
         let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, asset_id)?;
-        let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
+        let balance = checked_add_word(balance, a)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
@@ -145,12 +145,10 @@ where
     }
 
     pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (bx, overflow) = b.overflowing_add(ContractId::LEN as Word);
-        let (cd, of) = c.overflowing_add(d);
-        let overflow = overflow || of;
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
+        let cd = checked_add_word(c, d)?;
 
-        if overflow || d > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM.saturating_sub(d) || bx > VM_MAX_RAM || cd > VM_MAX_RAM
-        {
+        if d > MEM_MAX_ACCESS_SIZE || a > checked_sub_word(VM_MAX_RAM, d)? || bx > VM_MAX_RAM || cd > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -208,11 +206,10 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(Bytes32::LEN as Word);
-        let (bx, of) = b.overflowing_add(ContractId::LEN as Word);
-        let overflow = overflow || of;
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
 
-        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -238,9 +235,9 @@ where
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        let (bx, overflow) = b.overflowing_add(ContractId::LEN as Word);
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
 
-        if overflow || bx > VM_MAX_RAM {
+        if bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -257,9 +254,9 @@ where
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        let (bx, overflow) = b.overflowing_add(Bytes32::LEN as Word);
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
 
-        if overflow || bx > VM_MAX_RAM {
+        if bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -282,11 +279,10 @@ where
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(Bytes32::LEN as Word);
-        let (bx, of) = b.overflowing_add(Bytes32::LEN as Word);
-        let overflow = overflow || of;
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
 
-        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -311,9 +307,9 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(Bytes32::LEN as Word);
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
-        if overflow || ax > VM_MAX_RAM {
+        if ax > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -336,11 +332,10 @@ where
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(Bytes32::LEN as Word);
-        let (bx, of) = b.overflowing_add(Bytes32::LEN as Word);
-        let overflow = overflow || of;
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
 
-        if overflow || ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -374,11 +369,11 @@ where
     }
 
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ax, overflow) = a.overflowing_add(Address::LEN as Word);
-        let (bx, of) = ax.overflowing_add(b);
-        let overflow = overflow || of;
+        let ax = checked_add_word(a, Address::LEN as Word)?;
+        let bx = checked_add_word(ax, b)?;
 
-        if b > self.params.max_message_data_length || b > MEM_MAX_ACCESS_SIZE || overflow || bx > VM_MAX_RAM {
+        //TODO check on b vs MEM_MAX_ACCESS_SIZE is looser than msg length check
+        if b > self.params.max_message_data_length || b > MEM_MAX_ACCESS_SIZE || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -417,9 +412,7 @@ where
         let data = &self.memory[data..bx];
         let data = data.to_vec();
 
-        let fpx = fp
-            .checked_add(Address::LEN)
-            .ok_or_else(|| Bug::new(BugId::ID009, BugVariant::FramePointerOverflow))?;
+        let fpx = checked_add_usize(fp, Address::LEN)?;
 
         // Safety: $fp is guaranteed to contain enough bytes
         let sender = unsafe { Address::from_slice_unchecked(&self.memory[fp..fpx]) };

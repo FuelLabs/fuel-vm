@@ -105,8 +105,8 @@ macro_rules! key_methods {
                 &*(bytes.as_ptr() as *const Self)
             }
 
-            /// The memory length of the type by the method.
-            pub const fn len(&self) -> usize {
+            /// The memory size of the type by the method.
+            pub const fn size(&self) -> usize {
                 Self::LEN
             }
         }

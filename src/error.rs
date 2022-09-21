@@ -235,12 +235,6 @@ pub enum BugId {
     ID005,
     ID006,
     ID007,
-    ID008,
-    ID009,
-    ID010,
-    ID011,
-    ID012,
-    ID013,
 }
 
 /// Traceable bug variants
@@ -257,12 +251,6 @@ pub enum BugVariant {
 
     /// The stack point has overflow
     StackPointerOverflow,
-
-    /// The frame point has overflow
-    FramePointerOverflow,
-
-    /// A register overflow
-    CheckedRegisterOverflow,
 }
 
 impl fmt::Display for BugVariant {
@@ -294,20 +282,6 @@ impl fmt::Display for BugVariant {
                 r#"The stack pointer cannot overflow under checked operations.
 
                 This overflow means the registers are corrupted."#
-            ),
-
-            Self::FramePointerOverflow => write!(
-                f,
-                r#"The frame pointer cannot overflow under checked operations.
-
-                This overflow means the registers are corrupted."#
-            ),
-
-            Self::CheckedRegisterOverflow => write!(
-                f,
-                r#"A register was checked and should not overflow.
-
-                This overflow means the registers code is not implemented correctly."#
             ),
         }
     }

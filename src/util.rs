@@ -402,7 +402,7 @@ pub mod test_helpers {
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
 
-    fn check_reason_for_transaction(
+    pub fn check_reason_for_transaction(
         mut client: MemoryClient,
         checked_tx: CheckedTransaction,
         expected_reason: PanicReason,

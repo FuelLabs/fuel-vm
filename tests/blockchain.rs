@@ -8,6 +8,7 @@ use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
 use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -530,59 +531,6 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
     }
 
     check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
-}
-
-fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: PanicReason) {
-    let client = MemoryClient::default();
-
-    check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
-}
-
-fn check_expected_reason_for_opcodes_with_client(
-    client: MemoryClient,
-    opcodes: Vec<Opcode>,
-    expected_reason: PanicReason,
-) {
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
-    let params = ConsensusParameters::default();
-
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        opcodes.into_iter().collect(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(height, &params)
-    .expect("failed to check tx");
-
-    check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
-}
-
-fn check_reason_for_transaction(
-    mut client: MemoryClient,
-    checked_tx: CheckedTransaction,
-    expected_reason: PanicReason,
-) {
-    let receipts = client.transact(checked_tx);
-
-    if let Receipt::Panic { id: _, reason, .. } = receipts.get(0).expect("No receipt") {
-        assert_eq!(
-            &expected_reason,
-            reason.reason(),
-            "Expected {}, found {}",
-            expected_reason,
-            reason.reason()
-        );
-    } else {
-        panic!("Script should have panicked");
-    }
 }
 
 #[test]

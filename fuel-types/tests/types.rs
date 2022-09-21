@@ -36,6 +36,11 @@ macro_rules! check_consistency {
             assert_eq!(a, c);
             assert_eq!(a, d);
             assert_eq!(&a, e);
+            assert_eq!(a.len(), $i::LEN);
+            assert_eq!(b.len(), $i::LEN);
+            assert_eq!(c.len(), $i::LEN);
+            assert_eq!(d.len(), $i::LEN);
+            assert_eq!(e.len(), $i::LEN);
         }
     };
 }

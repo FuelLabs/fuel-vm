@@ -280,3 +280,8 @@ impl ContractId {
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
     pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 }
+
+impl AssetId {
+    /// The base native asset of the Fuel protocol.
+    pub const BASE: AssetId = AssetId::zeroed();
+}

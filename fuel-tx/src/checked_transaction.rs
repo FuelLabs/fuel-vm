@@ -29,10 +29,8 @@ pub struct CheckedTransaction {
     initial_free_balances: BTreeMap<AssetId, Word>,
     /// The block height this tx was verified with
     block_height: Word,
-    /// Max potential fee
-    max_fee: Word,
-    /// Min guaranteed fee
-    min_fee: Word,
+    /// The fees and gas usage
+    fee: TransactionFee,
     /// Signatures verified
     checked_signatures: bool,
 }
@@ -70,16 +68,14 @@ impl CheckedTransaction {
         // validate fees and compute free balances
         let AvailableBalances {
             initial_free_balances,
-            max_fee,
-            min_fee,
+            fee,
         } = Self::_initial_free_balances(&transaction, params)?;
 
         Ok(CheckedTransaction {
             transaction,
             initial_free_balances,
             block_height,
-            max_fee,
-            min_fee,
+            fee,
             checked_signatures: false,
         })
     }
@@ -98,11 +94,19 @@ impl CheckedTransaction {
     }
 
     pub const fn max_fee(&self) -> Word {
-        self.max_fee
+        self.fee.total
     }
 
     pub const fn min_fee(&self) -> Word {
-        self.min_fee
+        self.fee.bytes
+    }
+
+    pub const fn max_gas(&self) -> Word {
+        self.fee.max_gas
+    }
+
+    pub const fn min_gas(&self) -> Word {
+        self.fee.min_gas
     }
 
     pub const fn checked_signatures(&self) -> bool {
@@ -299,8 +303,6 @@ impl CheckedTransaction {
             },
         )?;
 
-        let (min_fee, max_fee) = fee.into_inner();
-
         // reduce free balances by coin outputs
         for (asset_id, amount) in transaction
             .outputs()
@@ -327,16 +329,14 @@ impl CheckedTransaction {
 
         Ok(AvailableBalances {
             initial_free_balances: balances,
-            max_fee,
-            min_fee,
+            fee,
         })
     }
 }
 
 struct AvailableBalances {
     initial_free_balances: BTreeMap<AssetId, Word>,
-    max_fee: Word,
-    min_fee: Word,
+    fee: TransactionFee,
 }
 
 impl AsRef<Transaction> for CheckedTransaction {
@@ -426,7 +426,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.initial_free_balances[&AssetId::default()],
-            input_amount - checked.max_fee - output_amount
+            input_amount - checked.max_fee() - output_amount
         );
     }
 
@@ -446,7 +446,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.initial_free_balances[&AssetId::default()],
-            input_amount - checked.max_fee
+            input_amount - checked.max_fee()
         );
     }
 
@@ -467,7 +467,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.initial_free_balances[&AssetId::default()],
-            input_amount - checked.max_fee
+            input_amount - checked.max_fee()
         );
     }
 
@@ -758,7 +758,7 @@ mod tests {
         let fee_remainder = (total.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.max_fee)
+        Ok(rounded_fee == available_balances.fee.total)
     }
 
     fn is_valid_min_fee(
@@ -775,7 +775,7 @@ mod tests {
         let fee_remainder = (bytes.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.min_fee)
+        Ok(rounded_fee == available_balances.fee.bytes)
     }
 
     fn valid_coin_tx(

@@ -8,8 +8,10 @@ use core::borrow::Borrow;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TransactionFee {
-    bytes: Word,
-    total: Word,
+    pub(crate) bytes: Word,
+    pub(crate) total: Word,
+    pub(crate) min_gas: Word,
+    pub(crate) max_gas: Word,
 }
 
 impl From<TransactionFee> for Word {
@@ -19,8 +21,13 @@ impl From<TransactionFee> for Word {
 }
 
 impl TransactionFee {
-    pub const fn new(bytes: Word, total: Word) -> Self {
-        Self { bytes, total }
+    pub const fn new(bytes: Word, total: Word, min_gas: Word, max_gas: Word) -> Self {
+        Self {
+            bytes,
+            total,
+            min_gas,
+            max_gas,
+        }
     }
 
     /// Minimum fee value to pay for the metered bytes
@@ -32,6 +39,16 @@ impl TransactionFee {
     /// correction
     pub const fn total(&self) -> Word {
         self.total
+    }
+
+    /// The minimum amount of gas (not fee!) used by this tx
+    pub const fn min_gas(&self) -> Word {
+        self.min_gas
+    }
+
+    /// The max amount of gas (not fee!) usable by this tx
+    pub const fn max_gas(&self) -> Word {
+        self.max_gas
     }
 
     /// Convert into a tuple containing the inner min & total fee values
@@ -60,19 +77,20 @@ impl TransactionFee {
         let factor = params.gas_price_factor as u128;
 
         // TODO: use native div_ceil once stabilized out from nightly
-        let bytes = params.gas_per_byte.checked_mul(metered_bytes);
-        let total = bytes
-            .and_then(|bytes| bytes.checked_add(gas_limit))
-            .and_then(|total| total.checked_mul(gas_price))
+        let bytes_gas = params.gas_per_byte.checked_mul(metered_bytes)?;
+        let max_gas = bytes_gas.checked_add(gas_limit)?;
+
+        let total = max_gas
+            .checked_mul(gas_price)
             .and_then(|total| num_integer::div_ceil(total as u128, factor).try_into().ok());
 
-        let bytes = bytes
-            .and_then(|bytes| bytes.checked_mul(gas_price))
+        let bytes = bytes_gas
+            .checked_mul(gas_price)
             .and_then(|bytes| num_integer::div_ceil(bytes as u128, factor).try_into().ok());
 
         bytes
             .zip(total)
-            .map(|(bytes, total)| Self::new(bytes, total))
+            .map(|(bytes, total)| Self::new(bytes, total, bytes_gas, max_gas))
     }
 
     /// Attempt to calculate a gas as asset value, using the price factor defined in the consensus

@@ -1,5 +1,6 @@
 use fuel_crypto::Hasher;
 use fuel_types::bytes;
+use fuel_vm::fuel_tx::io::Serialize;
 use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
 use itertools::Itertools;
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -89,6 +90,8 @@ fn code_copy() {
     )
     .check(height, &params)
     .expect("failed to generate a checked tx");
+
+    let _ = tx.transaction().to_bytes();
 
     let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
@@ -308,7 +311,7 @@ fn call_frame_code_offset() {
     let asset_id = AssetId::default();
     let contract = Contract::from(program.as_ref());
 
-    let mut frame = CallFrame::new(id, asset_id, [0; VM_REGISTER_COUNT], 0, 0, contract);
+    let frame = CallFrame::new(id, asset_id, [0; VM_REGISTER_COUNT], 0, 0, contract);
     let stack = frame.to_bytes().len() as Word;
 
     let receipts = vm.receipts();

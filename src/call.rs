@@ -3,18 +3,18 @@
 use crate::consts::*;
 
 use fuel_asm::PanicReason;
+use fuel_tx::io::Deserialize;
 use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
-use crate::arith::checked_add_usize;
-use std::io::{self, Write};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_tx::io::Deserialize, fuel_tx::io::Serialize)]
 /// Call structure representation, composed of a called contract `to` and two
 /// word arguments.
 ///
@@ -58,58 +58,15 @@ impl SizedBytes for Call {
     }
 }
 
-impl io::Read for Call {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
-
-        let buf = bytes::store_array_unchecked(buf, &self.to);
-        let buf = bytes::store_number_unchecked(buf, self.a);
-        bytes::store_number_unchecked(buf, self.b);
-
-        Ok(n)
-    }
-}
-
-impl io::Write for Call {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
-
-        // Safety: checked buffer lenght
-        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (b, _) = unsafe { bytes::restore_word_unchecked(buf) };
-
-        self.to = to.into();
-        self.a = a;
-        self.b = b;
-
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 impl TryFrom<&[u8]> for Call {
     type Error = PanicReason;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, PanicReason> {
-        let mut call = Self::default();
-
-        call.write(bytes).map_err(|_| PanicReason::MalformedCallStructure)?;
-
-        Ok(call)
+    fn try_from(mut bytes: &[u8]) -> Result<Self, PanicReason> {
+        Ok(Self::decode(&mut bytes).map_err(|_| PanicReason::MalformedCallStructure)?)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, fuel_tx::io::Deserialize, fuel_tx::io::Serialize)]
 /// Call frame representation in the VM stack.
 ///
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>
@@ -117,9 +74,9 @@ pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
+    code: Contract,
     a: Word,
     b: Word,
-    code: Contract,
 }
 
 impl CallFrame {
@@ -201,68 +158,5 @@ impl CallFrame {
 impl SizedBytes for CallFrame {
     fn serialized_size(&self) -> usize {
         Self::code_offset() + bytes::padded_len(self.code.as_ref())
-    }
-}
-
-impl io::Read for CallFrame {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
-
-        let buf = bytes::store_array_unchecked(buf, &self.to);
-        let buf = bytes::store_array_unchecked(buf, &self.asset_id);
-        let buf = self
-            .registers
-            .iter()
-            .fold(buf, |buf, reg| bytes::store_number_unchecked(buf, *reg));
-
-        let buf = bytes::store_number_unchecked(buf, self.code.as_ref().len() as Word);
-        let buf = bytes::store_number_unchecked(buf, self.a);
-        let buf = bytes::store_number_unchecked(buf, self.b);
-
-        bytes::store_raw_bytes(buf, self.code.as_ref())?;
-
-        Ok(n)
-    }
-}
-
-impl io::Write for CallFrame {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut n = Self::code_offset();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
-
-        // Safety: checked buffer length
-        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-
-        let buf = self.registers.iter_mut().fold(buf, |buf, reg| {
-            let (r, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-            *reg = r;
-            buf
-        });
-
-        let (code_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-
-        let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
-
-        n = checked_add_usize(n, bytes)?;
-
-        self.to = to.into();
-        self.asset_id = asset_id.into();
-        self.a = a;
-        self.b = b;
-        self.code = code.into();
-
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }

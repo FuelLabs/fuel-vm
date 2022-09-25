@@ -7,8 +7,8 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, InstructionResult, RegisterId};
 use fuel_crypto::Hasher;
+use fuel_tx::io::Serialize;
 use fuel_tx::{PanicReason, Receipt};
-use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, Word};
 
 use std::{cmp, io};
@@ -174,7 +174,7 @@ where
             .checked_sub(forward_gas_amount)
             .ok_or_else(|| Bug::new(BugId::ID003, BugVariant::ContextGasUnderflow))?;
 
-        let mut frame = self.call_frame(call, asset_id)?;
+        let frame = self.call_frame(call, asset_id)?;
 
         let stack = frame.to_bytes();
         let len = stack.len() as Word;

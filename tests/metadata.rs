@@ -1,4 +1,5 @@
 use fuel_crypto::Hasher;
+use fuel_tx::io::Serialize;
 use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
 use fuel_vm::consts::*;

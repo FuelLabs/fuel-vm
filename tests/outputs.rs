@@ -1,4 +1,5 @@
 use fuel_vm::consts::REG_CGAS;
+use fuel_vm::fuel_tx::io::Serialize;
 use fuel_vm::{
     consts::{REG_FP, REG_ONE, REG_ZERO},
     prelude::*,

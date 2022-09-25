@@ -5,8 +5,8 @@ use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
+use fuel_tx::io::Serialize;
 use fuel_tx::{Output, Receipt};
-use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use core::mem;
@@ -201,10 +201,10 @@ impl<S> Interpreter<S> {
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
+    use fuel_tx::io::Deserialize;
     use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
-    use std::io::Write;
 
     #[test]
     fn external_balance() {
@@ -294,8 +294,7 @@ mod tests {
 
         // verify the vm memory is updated properly
         let position = vm.params.tx_offset() + vm.transaction().output_offset(0).unwrap();
-        let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
-        let _ = mem_output.write(&vm.memory()[position..]).unwrap();
+        let mem_output = Output::decode(&mut &vm.memory()[position..]).unwrap();
         assert_eq!(vm.transaction().outputs()[0], mem_output);
     }
 }

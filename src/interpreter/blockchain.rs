@@ -5,8 +5,9 @@ use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
+use fuel_tx::io::Deserialize;
 use fuel_tx::{Input, Output, Receipt};
-use fuel_types::bytes::{self, Deserializable};
+use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
@@ -395,7 +396,7 @@ where
             .ok_or(PanicReason::OutputNotFound)?;
 
         // halt with I/O error because tx should be serialized correctly into vm memory
-        let output = Output::from_bytes(&self.memory[offset..])?;
+        let output = Output::decode(&mut &self.memory[offset..])?;
 
         // amount isn't checked because we are allowed to send zero balances with a message
         if !matches!(output, Output::Message { recipient, .. } if recipient == Address::zeroed()) {

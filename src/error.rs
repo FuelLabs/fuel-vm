@@ -211,6 +211,12 @@ impl From<Infallible> for RuntimeError {
     }
 }
 
+impl From<fuel_tx::io::Error> for RuntimeError {
+    fn from(_e: fuel_tx::io::Error) -> RuntimeError {
+        unreachable!()
+    }
+}
+
 impl From<Infallible> for PanicReason {
     fn from(_e: Infallible) -> PanicReason {
         unreachable!()

@@ -9,8 +9,9 @@
 ///
 /// ```
 /// use fuel_types::{Immediate18, Word};
+/// use fuel_tx::io::Serialize;
 /// use fuel_vm::consts::{REG_ONE, REG_ZERO};
-/// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
+/// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
 ///
@@ -78,10 +79,10 @@ pub mod test_helpers {
 
     use fuel_asm::Opcode;
     use fuel_tx::{
-        CheckedTransaction, ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction, TransactionBuilder,
-        Witness,
+        io::Deserialize, CheckedTransaction, ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction,
+        TransactionBuilder, Witness,
     };
-    use fuel_types::bytes::{Deserializable, SizedBytes};
+    use fuel_types::bytes::SizedBytes;
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
@@ -321,8 +322,9 @@ pub mod test_helpers {
 
             // verify serialized tx == referenced tx
             let tx_offset = self.params.tx_offset();
-            let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + interpreter.transaction().serialized_size())];
-            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            let mut tx_mem =
+                &interpreter.memory()[tx_offset..(tx_offset + interpreter.transaction().serialized_size())];
+            let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             assert_eq!(deser_tx.outputs(), interpreter.transaction().outputs());
 
@@ -347,7 +349,7 @@ pub mod test_helpers {
             let outputs = self.execute_get_outputs();
             let change = outputs.into_iter().find_map(|output| {
                 if let Output::Change { amount, asset_id, .. } = output {
-                    if &asset_id == &find_asset_id {
+                    if asset_id == find_asset_id {
                         Some(amount)
                     } else {
                         None
@@ -356,7 +358,7 @@ pub mod test_helpers {
                     None
                 }
             });
-            change.expect(format!("no change matching asset ID {:x} was found", &find_asset_id).as_str())
+            change.unwrap_or_else(|_| panic!("no change matching asset ID {:x} was found", &find_asset_id))
         }
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {

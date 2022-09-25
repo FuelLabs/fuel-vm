@@ -358,7 +358,7 @@ pub mod test_helpers {
                     None
                 }
             });
-            change.unwrap_or_else(|_| panic!("no change matching asset ID {:x} was found", &find_asset_id))
+            change.unwrap_or_else(|| panic!("no change matching asset ID {:x} was found", &find_asset_id))
         }
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {

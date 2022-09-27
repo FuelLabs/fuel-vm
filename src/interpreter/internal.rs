@@ -5,7 +5,7 @@ use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
-use fuel_tx::io::Serialize;
+use fuel_tx::canonical::Serialize;
 use fuel_tx::{Output, Receipt};
 use fuel_types::{AssetId, Bytes32, ContractId, RegisterId, Word};
 
@@ -201,7 +201,7 @@ impl<S> Interpreter<S> {
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
-    use fuel_tx::io::Deserialize;
+    use fuel_tx::canonical::Deserialize;
     use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};

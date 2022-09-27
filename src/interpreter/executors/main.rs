@@ -9,7 +9,7 @@ use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
-use fuel_tx::io::Serialize;
+use fuel_tx::canonical::Serialize;
 use fuel_tx::CheckedTransaction;
 use fuel_tx::{ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction};
 use fuel_types::Word;

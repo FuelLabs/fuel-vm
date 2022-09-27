@@ -9,7 +9,7 @@
 ///
 /// ```
 /// use fuel_types::{Immediate18, Word};
-/// use fuel_tx::io::Serialize;
+/// use fuel_tx::canonical::Serialize;
 /// use fuel_vm::consts::{REG_ONE, REG_ZERO};
 /// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode};
 /// use fuel_vm::script_with_data_offset;
@@ -79,8 +79,8 @@ pub mod test_helpers {
 
     use fuel_asm::Opcode;
     use fuel_tx::{
-        io::Deserialize, CheckedTransaction, ConsensusParameters, Contract, Input, Output, StorageSlot, Transaction,
-        TransactionBuilder, Witness,
+        canonical::Deserialize, CheckedTransaction, ConsensusParameters, Contract, Input, Output, StorageSlot,
+        Transaction, TransactionBuilder, Witness,
     };
     use fuel_types::bytes::SizedBytes;
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};

@@ -1,4 +1,4 @@
-use fuel_tx::io::{Deserialize, Error, Serialize};
+use fuel_tx::canonical::{Deserialize, Error, Serialize};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;

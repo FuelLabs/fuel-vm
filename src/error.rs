@@ -211,9 +211,9 @@ impl From<Infallible> for RuntimeError {
     }
 }
 
-impl From<fuel_tx::io::Error> for RuntimeError {
-    fn from(_e: fuel_tx::io::Error) -> RuntimeError {
-        unreachable!()
+impl From<fuel_tx::canonical::Error> for RuntimeError {
+    fn from(e: fuel_tx::canonical::Error) -> RuntimeError {
+        RuntimeError::Halt(io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))
     }
 }
 

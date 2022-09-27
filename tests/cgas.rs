@@ -1,5 +1,5 @@
 use fuel_vm::consts::*;
-use fuel_vm::fuel_tx::io::Serialize;
+use fuel_vm::fuel_tx::canonical::Serialize;
 use fuel_vm::prelude::*;
 use fuel_vm::script_with_data_offset;
 use rand::rngs::StdRng;

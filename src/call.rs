@@ -3,7 +3,7 @@
 use crate::consts::*;
 
 use fuel_asm::PanicReason;
-use fuel_tx::io::Deserialize;
+use fuel_tx::canonical::Deserialize;
 use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
@@ -14,7 +14,7 @@ const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_tx::io::Deserialize, fuel_tx::io::Serialize)]
+#[derive(fuel_tx::canonical::Deserialize, fuel_tx::canonical::Serialize)]
 /// Call structure representation, composed of a called contract `to` and two
 /// word arguments.
 ///
@@ -66,7 +66,7 @@ impl TryFrom<&[u8]> for Call {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, fuel_tx::io::Deserialize, fuel_tx::io::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, fuel_tx::canonical::Deserialize, fuel_tx::canonical::Serialize)]
 /// Call frame representation in the VM stack.
 ///
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>

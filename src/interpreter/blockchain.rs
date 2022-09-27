@@ -5,7 +5,7 @@ use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::io::Deserialize;
+use fuel_tx::canonical::Deserialize;
 use fuel_tx::{Input, Output, Receipt};
 use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};

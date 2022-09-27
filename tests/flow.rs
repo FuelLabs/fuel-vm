@@ -1,6 +1,6 @@
 use fuel_crypto::Hasher;
 use fuel_types::bytes;
-use fuel_vm::fuel_tx::io::Serialize;
+use fuel_vm::fuel_tx::canonical::Serialize;
 use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
 use itertools::Itertools;
 use rand::{rngs::StdRng, Rng, SeedableRng};

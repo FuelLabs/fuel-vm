@@ -7,7 +7,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, InstructionResult, RegisterId};
 use fuel_crypto::Hasher;
-use fuel_tx::io::Serialize;
+use fuel_tx::canonical::Serialize;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::{AssetId, Bytes32, Word};
 

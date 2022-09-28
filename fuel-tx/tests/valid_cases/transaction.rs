@@ -817,3 +817,112 @@ fn tx_id_bytecode_len() {
     // https://github.com/FuelLabs/fuel-specs/blob/1856de801fabc7e52f5c010c45c3fc6d5d4e2be3/specs/protocol/tx_format.md?plain=1#L160
     assert_eq!(id_a, id_c);
 }
+
+mod inputs {
+    use super::*;
+    use itertools::Itertools;
+
+    #[test]
+    fn coin_predicate_check_owner_works() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+
+        let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
+        // The predicate is an owner of the coin
+        let owner: Address = (*Contract::root_from_code(&predicate)).into();
+
+        let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+            .gas_limit(PARAMS.max_gas_per_tx)
+            .gas_price(rng.gen())
+            .maturity(rng.gen())
+            .add_input(Input::coin_predicate(
+                rng.gen(),
+                owner,
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                predicate,
+                vec![],
+            ))
+            .finalize();
+
+        assert!(tx.check_predicate_owners());
+    }
+
+    #[test]
+    fn coin_predicate_check_owners_fails_incorrect_owner() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+
+        let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
+
+        let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+            .gas_limit(PARAMS.max_gas_per_tx)
+            .gas_price(rng.gen())
+            .maturity(rng.gen())
+            .add_input(Input::coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                predicate,
+                vec![],
+            ))
+            .finalize();
+
+        assert!(!tx.check_predicate_owners());
+    }
+
+    #[test]
+    fn message_predicate_check_owners_works() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+
+        let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
+        // The predicate is an recipient(owner) of the message
+        let recipient: Address = (*Contract::root_from_code(&predicate)).into();
+
+        let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+            .gas_limit(PARAMS.max_gas_per_tx)
+            .gas_price(rng.gen())
+            .maturity(rng.gen())
+            .add_input(Input::message_predicate(
+                rng.gen(),
+                rng.gen(),
+                recipient,
+                rng.gen(),
+                rng.gen(),
+                vec![],
+                predicate,
+                vec![],
+            ))
+            .finalize();
+
+        assert!(tx.check_predicate_owners());
+    }
+
+    #[test]
+    fn message_predicate_check_owners_fails_incorrect_owner() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+
+        let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
+
+        let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+            .gas_limit(PARAMS.max_gas_per_tx)
+            .gas_price(rng.gen())
+            .maturity(rng.gen())
+            .add_input(Input::message_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                vec![],
+                predicate,
+                vec![],
+            ))
+            .finalize();
+
+        assert!(!tx.check_predicate_owners());
+    }
+}

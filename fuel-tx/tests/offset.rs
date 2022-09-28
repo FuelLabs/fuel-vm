@@ -99,14 +99,16 @@ fn tx_offset() {
                 }
 
                 if let Some(asset_id) = i.asset_id() {
-                    tested_asset_id = true;
+                    // Message doesn't store `AssetId` explicitly but works with base asset
+                    if let Some(offset) = i.repr().asset_id_offset() {
+                        tested_asset_id = true;
 
-                    let ofs =
-                        input_ofs + i.repr().asset_id_offset().expect("input contains asset id");
-                    let asset_id_p =
-                        unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + AssetId::LEN]) };
+                        let ofs = input_ofs + offset;
+                        let asset_id_p =
+                            unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + AssetId::LEN]) };
 
-                    assert_eq!(asset_id, asset_id_p);
+                        assert_eq!(asset_id, asset_id_p);
+                    }
                 }
 
                 if let Some(predicate) = i.input_predicate() {

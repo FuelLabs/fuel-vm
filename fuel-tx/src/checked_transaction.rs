@@ -17,8 +17,6 @@ use core::{borrow::Borrow, ops::Index};
 use core::mem;
 use std::io::{self, Read};
 
-const BASE_ASSET: AssetId = AssetId::zeroed();
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 // Avoid serde serialization of this type. Since checked tx would need to be re-validated on
 // deserialization anyways, it's cleaner to redo the tx check.
@@ -212,7 +210,8 @@ impl CheckedTransaction {
                 // Note: the initial balance deducts the gas limit from base asset
                 Output::Change {
                     asset_id, amount, ..
-                } if revert && asset_id == &BASE_ASSET => self.initial_free_balances[&BASE_ASSET]
+                } if revert && asset_id == &AssetId::BASE => self.initial_free_balances
+                    [&AssetId::BASE]
                     .checked_add(gas_refund)
                     .map(|v| *amount = v)
                     .ok_or(ValidationError::ArithmeticOverflow),
@@ -228,7 +227,7 @@ impl CheckedTransaction {
                 // The change for the base asset will be the available balance + unused gas
                 Output::Change {
                     asset_id, amount, ..
-                } if asset_id == &BASE_ASSET => balances[asset_id]
+                } if asset_id == &AssetId::BASE => balances[asset_id]
                     .checked_add(gas_refund)
                     .map(|v| *amount = v)
                     .ok_or(ValidationError::ArithmeticOverflow),
@@ -282,7 +281,7 @@ impl CheckedTransaction {
             } => Some((*asset_id, amount)),
             // Sum message inputs
             Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => {
-                Some((BASE_ASSET, amount))
+                Some((AssetId::BASE, amount))
             }
             _ => None,
         }) {
@@ -294,7 +293,7 @@ impl CheckedTransaction {
         let fee = TransactionFee::checked_from_tx(params, transaction)
             .ok_or(ValidationError::ArithmeticOverflow)?;
 
-        let base_asset_balance = balances.entry(BASE_ASSET).or_default();
+        let base_asset_balance = balances.entry(AssetId::BASE).or_default();
 
         *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
             ValidationError::InsufficientFeeAmount {

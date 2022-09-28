@@ -158,6 +158,7 @@ impl Transaction {
             Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => {
                 Some(asset_id)
             }
+            Input::MessagePredicate { .. } | Input::MessageSigned { .. } => Some(&AssetId::BASE),
             _ => None,
         })
     }
@@ -222,6 +223,11 @@ impl Transaction {
                 Input::CoinPredicate {
                     owner, predicate, ..
                 } => Some((owner, predicate)),
+                Input::MessagePredicate {
+                    recipient,
+                    predicate,
+                    ..
+                } => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
@@ -231,11 +237,17 @@ impl Transaction {
 
     #[cfg(feature = "std")]
     pub fn check_predicate_owner(&self, idx: usize) -> bool {
-        matches!(self.inputs().get(idx),
-        Some(Input::CoinPredicate {
-                            owner, predicate, ..
-                        }) if Input::is_predicate_owner_valid(owner, predicate)
-                )
+        match self.inputs().get(idx) {
+            Some(Input::CoinPredicate {
+                owner, predicate, ..
+            }) => Input::is_predicate_owner_valid(owner, predicate),
+            Some(Input::MessagePredicate {
+                recipient,
+                predicate,
+                ..
+            }) => Input::is_predicate_owner_valid(recipient, predicate),
+            _ => false,
+        }
     }
 
     pub const fn gas_price(&self) -> Word {

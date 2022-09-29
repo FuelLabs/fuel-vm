@@ -1,3 +1,4 @@
+use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;
@@ -6,6 +7,7 @@ use sha3::{Digest, Keccak256};
 
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
+use fuel_vm::util::test_helpers::check_expected_reason_for_opcodes;
 
 #[test]
 fn ecrecover() {
@@ -60,6 +62,81 @@ fn ecrecover() {
 
     assert!(success);
 }
+#[test]
+fn ecrecover_error() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let secret = SecretKey::random(rng);
+
+    let message = b"The gift of words is the gift of deception and illusion.";
+    let message = Message::new(message);
+
+    let signature = Signature::sign(&secret, &message);
+
+    #[rustfmt::skip]
+    let script = vec![
+        // Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
+        Opcode::ADDI(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        Opcode::ADDI(0x22, 0x21, message.as_ref().len() as Immediate12),
+        Opcode::MOVI(0x10, PublicKey::LEN as Immediate18),
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x11, REG_HP, 1),
+        Opcode::ECR(0x11, 0x20, 0x21),
+    ];
+
+    check_expected_reason_for_opcodes(script, ErrorFlag)
+}
+
+#[test]
+fn ecrecover_a_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 63),
+        Opcode::ECR(reg_a, reg_b, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
+}
+
+#[test]
+fn ecrecover_b_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 63),
+        Opcode::ECR(reg_b, reg_a, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
+}
+
+#[test]
+fn ecrecover_c_gt_vmaxram_sub_32() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31),
+        Opcode::ECR(reg_b, reg_b, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
+}
 
 #[test]
 fn sha256() {
@@ -100,6 +177,54 @@ fn sha256() {
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
+}
+
+#[test]
+fn s256_a_gt_vmaxram_sub_32() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+        let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::S256(reg_a, reg_b, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
+}
+
+#[test]
+fn s256_c_gt_mem_max() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+        let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::S256(reg_b, reg_b, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
+}
+
+#[test]
+fn s256_b_gt_vmaxram_sub_c() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+        let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::S256(reg_b, reg_a, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
 }
 
 #[test]
@@ -144,4 +269,52 @@ fn keccak256() {
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
+}
+
+#[test]
+fn k256_a_gt_vmaxram_sub_32() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+        let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::K256(reg_a, reg_b, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
+}
+
+#[test]
+fn k256_c_gt_mem_max() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::K256(reg_b, reg_b, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
+}
+
+#[test]
+fn k256_b_gt_vmaxram_sub_c() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+        let script = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::K256(reg_b, reg_a, reg_b),
+    ];
+
+    check_expected_reason_for_opcodes(script, MemoryOverflow);
 }

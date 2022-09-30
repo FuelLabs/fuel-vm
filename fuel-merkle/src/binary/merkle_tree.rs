@@ -277,7 +277,7 @@ mod test {
     fn load_returns_a_valid_tree() {
         const LEAVES_COUNT: u64 = 7;
 
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
 
         let root_1 = {
             let mut tree = MerkleTree::new(&mut storage_map);
@@ -298,7 +298,7 @@ mod test {
 
     #[test]
     fn load_returns_a_load_error_if_the_storage_is_not_valid_for_the_leaves_count() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
 
         {
             let mut tree = MerkleTree::new(&mut storage_map);
@@ -316,7 +316,7 @@ mod test {
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let root = tree.root().unwrap();
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn root_returns_the_merkle_root_for_1_leaf() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..1]; // 1 leaf
@@ -341,7 +341,7 @@ mod test {
 
     #[test]
     fn root_returns_the_merkle_root_for_7_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves
@@ -385,7 +385,7 @@ mod test {
 
     #[test]
     fn prove_returns_invalid_proof_index_error_for_0_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let proof = tree.prove(0);
@@ -394,7 +394,7 @@ mod test {
 
     #[test]
     fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
@@ -408,7 +408,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_1_leaf() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..1]; // 1 leaf
@@ -430,7 +430,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_4_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..4]; // 4 leaves
@@ -499,7 +499,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_5_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
@@ -586,7 +586,7 @@ mod test {
 
     #[test]
     fn prove_returns_the_merkle_root_and_proof_set_for_7_leaves() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
+        let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves

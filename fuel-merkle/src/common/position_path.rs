@@ -1,7 +1,7 @@
 use crate::common::path_iterator::PathIter;
 use crate::common::{AsPathIterator, Position};
 
-/// #PositionPath
+/// # PositionPath
 ///
 /// A PositionPath represents the path of positions created by traversing a
 /// binary tree from the root position to the leaf position. The shape of the
@@ -16,6 +16,7 @@ use crate::common::{AsPathIterator, Position};
 /// described by the path's `leaves_count` parameter, the side node may not
 /// necessarily be the direct sibling of the path node; rather, it can be a
 /// position at a lower spot in the tree altogether.
+///
 pub struct PositionPath {
     root: Position,
     leaf: Position,
@@ -90,8 +91,8 @@ impl Iterator for PositionPathIter {
 
                 return Some((path, side));
             } else {
-                // If the path node is invalid, save reference to the the corresponding side
-                // node.
+                // If the path node is invalid, save reference to the the
+                // corresponding side node.
                 if self.current_side_node.is_none() {
                     self.current_side_node = Some(side);
                 }

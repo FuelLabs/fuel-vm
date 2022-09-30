@@ -13,17 +13,24 @@ use core::{cmp, fmt};
 
 const LEFT: u8 = 0;
 
-/// For a leaf:
-/// `00 - 04`: Height (4 bytes)
-/// `04 - 05`: Prefix (1 byte, 0x00),
-/// `05 - 37`: hash(Key) (32 bytes),
-/// `37 - 69`: hash(Data) (32 bytes)
+/// **Leaf buffer:**
 ///
-/// For a node:
-/// `00 - 04`: Height (4 bytes)
-/// `04 - 05`: Prefix (1 byte, 0x01),
-/// `05 - 37`: Left child key (32 bytes),
-/// `37 - 69`: Right child key (32 bytes)
+/// | Allocation | Data                       |
+/// |------------|----------------------------|
+/// | `00 - 04`  | Height (4 bytes)           |
+/// | `04 - 05`  | Prefix (1 byte, `0x00`)    |
+/// | `05 - 37`  | hash(Key) (32 bytes)       |
+/// | `37 - 69`  | hash(Data) (32 bytes)      |
+///
+/// **Node buffer:**
+///
+/// | Allocation | Data                       |
+/// |------------|----------------------------|
+/// | `00 - 04`  | Height (4 bytes)           |
+/// | `04 - 05`  | Prefix (1 byte, `0x01`)    |
+/// | `05 - 37`  | Left child key (32 bytes)  |
+/// | `37 - 69`  | Right child key (32 bytes) |
+///
 const BUFFER_SIZE: usize =
     size_of::<Bytes4>() + size_of::<Bytes1>() + size_of::<Bytes32>() + size_of::<Bytes32>();
 pub type Buffer = [u8; BUFFER_SIZE];

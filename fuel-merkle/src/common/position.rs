@@ -1,15 +1,15 @@
 use crate::common::{Bytes8, PositionPath};
 
-/// #Position
+/// # Position
 ///
 /// A `Position` represents a node's position in a binary tree by encapsulating
 /// the node's index data. Indices are calculated through in-order traversal of
 /// the nodes, starting with the first leaf node. Indexing starts at 0.
 ///
-/// ##Merkle Trees
+/// Merkle Trees
 ///
 /// In the context of Merkle trees, trees are constructed "upwards" from leaf
-/// nodes. Therefore, traversal is done from the bottom up, starting with the
+/// nodes. Therefore, indexing is done from the bottom up, starting with the
 /// leaves, rather than top down, starting with the root, and we can guarantee a
 /// deterministic construction of index data.
 ///
@@ -51,12 +51,12 @@ use crate::common::{Bytes8, PositionPath};
 /// Traversal of a Merkle Tree can be performed by the methods on a given
 /// `Position` to retrieve its sibling, parent, or uncle `Position`.
 ///
-/// ##Merkle Mountain Ranges
+/// Merkle Mountain Ranges
 ///
 /// Because the `Position` indices are calculated from in-order traversal
 /// starting with the leaves, the deterministic quality of the indices holds
-/// true for imbalanced binary trees, including Merle Mountain Ranges. Consider
-/// the following binary tree construction comprised of seven leaves (with leaf
+/// true for imbalanced binary trees, including Merkle Mountain Ranges. Consider
+/// the following binary tree construction composed of seven leaves (with leaf
 /// indices 0 through 6):
 ///
 /// ```text
@@ -77,6 +77,7 @@ use crate::common::{Bytes8, PositionPath};
 /// balanced Merkle tree, using methods to retrieve a `Position's` sibling,
 /// parent, or uncle `Position`. However, in such cases, the corresponding
 /// sibling or uncle nodes are not guaranteed to exist in the tree.
+///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Position(u64);
 

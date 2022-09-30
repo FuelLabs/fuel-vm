@@ -86,7 +86,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
+        if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
             return Err(PanicReason::MemoryOverflow.into());
         }
 

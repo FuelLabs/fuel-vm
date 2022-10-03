@@ -32,11 +32,13 @@ fn gas_factor_rounds_correctly() {
 
     let profiler = GasProfiler::default();
 
-    let change = Interpreter::with_memory_storage()
-        .with_params(params)
-        .with_profiler(profiler.clone())
+    let mut interpreter = Interpreter::with_memory_storage();
+    interpreter.with_params(params).with_profiler(profiler.clone());
+    let state = interpreter
         .transact(transaction)
-        .expect("failed to execute transaction")
+        .expect("failed to execute transaction");
+    let change = interpreter
+        .state_transition(&state)
         .tx()
         .outputs()
         .iter()

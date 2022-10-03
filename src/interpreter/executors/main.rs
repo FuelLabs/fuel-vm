@@ -4,8 +4,8 @@ use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
 use crate::interpreter::Interpreter;
 use crate::predicate::RuntimePredicate;
-use crate::state::StateTransition;
 use crate::state::{ExecuteState, ProgramState};
+use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
@@ -281,5 +281,10 @@ where
         self.profiler.on_transaction(&state_result);
 
         state_result
+    }
+
+    /// Get the state transaction from a new program state.
+    pub fn state_transition<'a>(&'a self, state: &'a ProgramState) -> StateTransitionRef<'a> {
+        StateTransitionRef::new(state, self.transaction(), self.receipts())
     }
 }

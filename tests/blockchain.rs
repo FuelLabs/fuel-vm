@@ -1106,9 +1106,8 @@ fn smo_instruction_works() {
 
         assert!(success);
 
-        let (recipient, transferred) = client
-            .state_transition()
-            .expect("tx was executed")
+        let state = client.state_transition().expect("tx was executed");
+        let (recipient, transferred) = state
             .tx()
             .outputs()
             .iter()

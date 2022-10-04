@@ -9,23 +9,23 @@ use fuel_tx::{CheckedTransaction, ConsensusParameters, Receipt};
 
 #[derive(Debug, Default)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<'a> {
-    transactor: Transactor<'a, MemoryStorage>,
+pub struct MemoryClient {
+    transactor: Transactor<MemoryStorage>,
 }
 
-impl<'a> AsRef<MemoryStorage> for MemoryClient<'a> {
+impl<'a> AsRef<MemoryStorage> for MemoryClient {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<'a> AsMut<MemoryStorage> for MemoryClient<'a> {
+impl<'a> AsMut<MemoryStorage> for MemoryClient {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<'a> MemoryClient<'a> {
+impl MemoryClient {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(storage: MemoryStorage, params: ConsensusParameters) -> Self {
         Self {
@@ -34,7 +34,7 @@ impl<'a> MemoryClient<'a> {
     }
 
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<'a, MemoryStorage>) -> Self {
+    pub fn from_txtor(transactor: Transactor<MemoryStorage>) -> Self {
         Self { transactor }
     }
 
@@ -51,7 +51,7 @@ impl<'a> MemoryClient<'a> {
     }
 
     /// State transition representation after the execution of a transaction.
-    pub const fn state_transition(&self) -> Option<&StateTransitionRef<'_>> {
+    pub fn state_transition(&self) -> Option<StateTransitionRef<'_>> {
         self.transactor.state_transition()
     }
 
@@ -96,14 +96,14 @@ impl<'a> MemoryClient<'a> {
     }
 }
 
-impl<'a> From<MemoryStorage> for MemoryClient<'a> {
+impl<'a> From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
         Self::new(s, Default::default())
     }
 }
 
-impl<'a> From<MemoryClient<'a>> for Transactor<'a, MemoryStorage> {
-    fn from(client: MemoryClient<'a>) -> Self {
+impl<'a> From<MemoryClient> for Transactor<MemoryStorage> {
+    fn from(client: MemoryClient) -> Self {
         client.transactor
     }
 }

@@ -75,9 +75,11 @@ impl Iterator for PositionPathIter {
                 // If we previously encountered a side node corresponding to an
                 // invalid path node, we observe that the next valid path node
                 // always pairs with this side node. Once the path and side node
-                // have been paired, we continue to pair path  and side nodes
+                // have been paired, we continue to pair path and side nodes
                 // normally.
-                side = self.current_side_node.take().unwrap_or(side);
+                if let Some(node) = self.current_side_node.take() {
+                    side = node;
+                }
 
                 // A side node with an in-order index greater than the index of
                 // the rightmost leaf position is invalid and does not exist in

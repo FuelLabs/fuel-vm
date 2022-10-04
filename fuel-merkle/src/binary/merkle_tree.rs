@@ -1,11 +1,11 @@
-use core::fmt;
-
 use crate::binary::{self, Node};
 use crate::common::{Bytes32, Position, ProofSet, Subtree};
+
 use fuel_storage::{Mappable, StorageMutate};
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use core::fmt;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -35,9 +35,9 @@ pub struct MerkleTree<StorageType> {
     leaves_count: u64,
 }
 
-/// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as a binary array,
-/// where the storage key of the node is the `u64` index and value is the
-/// [`Node`](crate::binary::Node).
+/// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
+/// a binary array, where the storage key of the node is the `u64` index and
+/// value is the [`Node`](crate::binary::Node).
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
@@ -98,7 +98,10 @@ where
         let root_node = self.root_node()?.unwrap();
         let root_position = root_node.position();
         let leaf_position = Position::from_leaf_index(proof_index);
-        let leaf_node = self.storage.get(&leaf_position.in_order_index())?.unwrap();
+        let leaf_node = self
+            .storage
+            .get(&leaf_position.in_order_index())?
+            .ok_or(MerkleTreeError::LoadError(proof_index))?;
         proof_set.push(*leaf_node.hash());
 
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
@@ -110,7 +113,10 @@ where
 
         for side_position in side_positions {
             let key = side_position.in_order_index();
-            let node = self.storage.get(&key)?.unwrap();
+            let node = self
+                .storage
+                .get(&key)?
+                .ok_or(MerkleTreeError::LoadError(key))?;
             proof_set.push(*node.hash());
         }
 
@@ -135,19 +141,120 @@ where
     // PRIVATE
     //
 
+    /// A binary Merkle tree can be built from a collection of Merkle Mountain
+    /// Range (MMR) peaks. The MMR structure can be accurately defined by the
+    /// number of leaves in the leaf row.
+    ///
+    /// Consider a binary Merkle tree with seven leaves, producing the following
+    /// MMR structure:
+    ///
+    /// ```text
+    ///       03
+    ///      /  \
+    ///     /    \
+    ///   01      05      09
+    ///  /  \    /  \    /  \
+    /// 00  02  04  06  08  10  12
+    /// ```
+    ///
+    /// We observe that the tree has three peaks at positions `03`, `09`, and
+    /// `12`. These peak positions are recorded in the order that they appear,
+    /// reading left to right in the tree structure, and only descend in height.
+    /// These peak positions communicate everything needed to determine the
+    /// remaining internal nodes building upwards to the root position:
+    ///
+    /// ```text
+    ///            07
+    ///           /  \
+    ///          /    \
+    ///         /      \
+    ///        /        \
+    ///       /          \
+    ///      /            \
+    ///    03              11
+    ///   /  \            /  \
+    /// ...  ...         /    \
+    ///                09      \
+    ///               /  \      \
+    ///             ...  ...    12
+    /// ```
+    ///
+    /// No additional intermediate nodes or leaves are required to calculate
+    /// the root position.
+    ///
+    /// The positions of the MMR peaks can be deterministically calculated as a
+    /// function of `n + 1` where `n` is the number of leaves in the tree. By
+    /// appending an additional leaf node to the tree, we generate a new tree
+    /// structure with additional internal nodes (N.B.: this may also change the
+    /// root position if the tree is already balanced).
+    ///
+    /// In our example, we add an additional leaf at leaf index `7` (in-order
+    /// index `14`):
+    ///
+    /// ```text
+    ///            07
+    ///           /  \
+    ///          /    \
+    ///         /      \
+    ///        /        \
+    ///       /          \
+    ///      /            \
+    ///    03              11
+    ///   /  \            /  \
+    /// ...  ...         /    \
+    ///                09      13
+    ///               /  \    /  \
+    ///             ...  ... 12  14
+    /// ```
+    ///
+    /// We observe that the path from the root position to our new leaf position
+    /// yields a set of side positions that includes our original peak
+    /// positions (see [Path Iterator](crate::common::path_iterator::PathIter)):
+    ///
+    /// | Path position | Side position |
+    /// |---------------|---------------|
+    /// |            07 |            07 |
+    /// |            11 |            03 |
+    /// |            13 |            09 |
+    /// |            14 |            12 |
+    ///
+    /// By excluding the root position `07`, we have established the set of
+    /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
+    ///
     fn build(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
-        let keys = (0..self.leaves_count).map(|i| Position::from_leaf_index(i).in_order_index());
-        for key in keys {
+        // Define a new tree with a leaf count 1 greater than the current leaf
+        // count.
+        let leaves_count = self.leaves_count + 1;
+
+        // The rightmost leaf position of a tree will always have a leaf index
+        // N - 1, where N is the number of leaves.
+        let leaf_position = Position::from_leaf_index(leaves_count - 1);
+
+        // The root position of a tree will always have an in-order index equal
+        // to N' - 1, where N is the leaves count and N` is N rounded (or equal)
+        // to the next power of 2.
+        let root_index = leaves_count.next_power_of_two() - 1;
+        let root_position = Position::from_in_order_index(root_index);
+
+        let (_, peaks): (Vec<_>, Vec<_>) = root_position
+            .path(&leaf_position, leaves_count)
+            .iter()
+            .unzip();
+
+        let mut current_head = None;
+        let peaks = &peaks.as_slice()[1..]; // Omit the root.
+        for peak in peaks.iter() {
+            let key = peak.in_order_index();
             let node = self
                 .storage
                 .get(&key)?
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned();
-            let next = self.head.take();
-            let head = Box::new(Subtree::<Node>::new(node, next));
-            self.head = Some(head);
-            self.join_all_subtrees()?;
+            let next = Box::new(Subtree::<Node>::new(node, current_head));
+            current_head = Some(next);
         }
+
+        self.head = current_head;
 
         Ok(())
     }
@@ -208,6 +315,7 @@ mod test {
     use super::{MerkleTree, NodesTable};
     use crate::binary::{empty_sum, leaf_sum, node_sum};
     use crate::common::StorageMap;
+    use alloc::vec::Vec;
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::StorageInspect;
 
@@ -275,43 +383,60 @@ mod test {
 
     #[test]
     fn load_returns_a_valid_tree() {
-        const LEAVES_COUNT: u64 = 7;
+        const LEAVES_COUNT: u64 = 2u64.pow(16) - 1;
 
         let mut storage_map = StorageMap::new();
 
-        let root_1 = {
+        let expected_root = {
             let mut tree = MerkleTree::new(&mut storage_map);
-            let data = &TEST_DATA[0..LEAVES_COUNT as usize];
+            let data = (0u64..LEAVES_COUNT)
+                .map(|i| i.to_be_bytes())
+                .collect::<Vec<_>>();
             for datum in data.iter() {
                 let _ = tree.push(datum);
             }
             tree.root().unwrap()
         };
 
-        let root_2 = {
+        let root = {
             let mut tree = MerkleTree::load(&mut storage_map, LEAVES_COUNT).unwrap();
             tree.root().unwrap()
         };
 
-        assert_eq!(root_1, root_2);
+        assert_eq!(expected_root, root);
+    }
+
+    #[test]
+    fn load_returns_empty_tree_for_0_leaves() {
+        const LEAVES_COUNT: u64 = 0;
+
+        let expected_root = *empty_sum();
+
+        let root = {
+            let mut storage_map = StorageMap::new();
+            let mut tree = MerkleTree::load(&mut storage_map, LEAVES_COUNT).unwrap();
+            tree.root().unwrap()
+        };
+
+        assert_eq!(expected_root, root);
     }
 
     #[test]
     fn load_returns_a_load_error_if_the_storage_is_not_valid_for_the_leaves_count() {
+        const LEAVES_COUNT: u64 = 5;
+
         let mut storage_map = StorageMap::new();
 
-        {
-            let mut tree = MerkleTree::new(&mut storage_map);
-            let data = &TEST_DATA[0..5];
-            for datum in data.iter() {
-                let _ = tree.push(datum);
-            }
+        let mut tree = MerkleTree::new(&mut storage_map);
+        let data = (0u64..LEAVES_COUNT)
+            .map(|i| i.to_be_bytes())
+            .collect::<Vec<_>>();
+        for datum in data.iter() {
+            let _ = tree.push(datum);
         }
 
-        {
-            let tree = MerkleTree::load(&mut storage_map, 10);
-            assert!(tree.is_err());
-        }
+        let tree = MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2);
+        assert!(tree.is_err());
     }
 
     #[test]

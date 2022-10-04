@@ -267,6 +267,7 @@ where
         let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
+            .map(|state| ProgramState::from(state))
             .map(|state| StateTransition::new(state, interpreter.tx.into(), interpreter.receipts))
     }
 
@@ -274,17 +275,13 @@ where
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
-    pub fn transact(&mut self, tx: CheckedTransaction) -> Result<ProgramState, InterpreterError> {
+    pub fn transact(&mut self, tx: CheckedTransaction) -> Result<StateTransitionRef<'_>, InterpreterError> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);
 
-        state_result
-    }
-
-    /// Get the state transaction from a new program state.
-    pub fn state_transition<'a>(&'a self, state: &'a ProgramState) -> StateTransitionRef<'a> {
-        StateTransitionRef::new(state, self.transaction(), self.receipts())
+        let state = state_result?;
+        Ok(StateTransitionRef::new(state, self.transaction(), self.receipts()))
     }
 }

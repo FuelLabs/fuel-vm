@@ -33,7 +33,7 @@ impl<'a, S> Transactor<S> {
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
     pub fn state_transition(&'a self) -> Option<StateTransitionRef<'a>> {
-        match self.program_state.as_ref() {
+        match self.program_state {
             Some(state) => Some(StateTransitionRef::new(
                 state,
                 self.interpreter.transaction(),
@@ -63,8 +63,6 @@ impl<'a, S> Transactor<S> {
     /// Follows the same criteria as [`Self::state_transition`] to return
     /// `None`.
     pub fn receipts(&self) -> Option<&[Receipt]> {
-        // TODO improve implementation without changing signature
-
         self.program_state.is_some().then(|| self.interpreter.receipts())
     }
 
@@ -142,7 +140,7 @@ where
     pub fn transact(&mut self, tx: CheckedTransaction) -> &mut Self {
         match self.interpreter.transact(tx) {
             Ok(s) => {
-                self.program_state.replace(s);
+                self.program_state.replace(s.into());
                 self.error.take();
             }
 

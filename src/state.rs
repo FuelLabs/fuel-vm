@@ -165,14 +165,14 @@ impl From<StateTransition> for ProgramState {
 /// Zero-copy Representation of the result of a transaction execution bound to
 /// the lifetime of the VM.
 pub struct StateTransitionRef<'a> {
-    state: &'a ProgramState,
+    state: ProgramState,
     tx: &'a Transaction,
     receipts: &'a [Receipt],
 }
 
 impl<'a> StateTransitionRef<'a> {
     /// Create a new by reference state transition representation.
-    pub const fn new(state: &'a ProgramState, tx: &'a Transaction, receipts: &'a [Receipt]) -> Self {
+    pub const fn new(state: ProgramState, tx: &'a Transaction, receipts: &'a [Receipt]) -> Self {
         Self { state, tx, receipts }
     }
 
@@ -202,15 +202,15 @@ impl<'a> StateTransitionRef<'a> {
 impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {
     fn from(t: &'a StateTransition) -> StateTransitionRef<'a> {
         Self {
-            state: t.state(),
+            state: *t.state(),
             tx: t.tx(),
             receipts: t.receipts(),
         }
     }
 }
 
-impl<'a> From<StateTransitionRef<'a>> for &'a ProgramState {
-    fn from(t: StateTransitionRef<'a>) -> &'a ProgramState {
+impl<'a> From<StateTransitionRef<'a>> for ProgramState {
+    fn from(t: StateTransitionRef<'a>) -> ProgramState {
         t.state
     }
 }

@@ -474,6 +474,16 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
         ),
+        Receipt::panic(
+            rng.gen(),
+            InstructionResult::error(
+                PanicReason::ContractNotInInputs,
+                Opcode::JI(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+            rng.gen(),
+        )
+        .with_panic_contract_id(Some(rng.gen())),
         Receipt::script_result(ScriptExecutionResult::Success, rng.gen()),
         Receipt::script_result(ScriptExecutionResult::Panic, rng.gen()),
         Receipt::script_result(ScriptExecutionResult::Revert, rng.gen()),

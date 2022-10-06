@@ -1,5 +1,6 @@
 use crate::consts::*;
 
+use derivative::Derivative;
 use fuel_asm::Opcode;
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::{self, SizedBytes};
@@ -40,8 +41,9 @@ pub use validation::ValidationError;
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derivative(Eq, PartialEq, Hash)]
 pub enum Transaction {
     Script {
         gas_price: Word,
@@ -53,6 +55,7 @@ pub enum Transaction {
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
         metadata: Option<Metadata>,
     },
 
@@ -67,6 +70,7 @@ pub enum Transaction {
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
         metadata: Option<Metadata>,
     },
 }

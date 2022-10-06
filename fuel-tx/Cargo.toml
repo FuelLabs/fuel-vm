@@ -11,13 +11,14 @@ repository = "https://github.com/FuelLabs/fuel-tx"
 description = "FuelVM transaction."
 
 [dependencies]
+derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
 fuel-asm = { version = "0.9", default-features = false }
 fuel-crypto = { version = "0.6", default-features = false }
 fuel-merkle = { version = "0.4", default-features = false }
 fuel-types = { version = "0.5", default-features = false }
 itertools = { version = "0.10", default-features = false }
-rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 num-integer = { version = "0.1", default-features = false }
+rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 

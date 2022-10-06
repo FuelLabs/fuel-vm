@@ -1,8 +1,8 @@
+use alloc::vec::Vec;
+use derivative::Derivative;
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
-
-use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 mod receipt_std;
@@ -15,9 +15,11 @@ use receipt_repr::ReceiptRepr;
 pub use script_result::ScriptExecutionResult;
 
 use crate::Output;
+use crate::Receipt::Panic;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derivative(Eq, PartialEq, Hash)]
 pub enum Receipt {
     Call {
         id: ContractId,
@@ -53,6 +55,8 @@ pub enum Receipt {
         reason: InstructionResult,
         pc: Word,
         is: Word,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        contract_id: Option<ContractId>,
     },
 
     Revert {
@@ -183,7 +187,24 @@ impl Receipt {
     }
 
     pub const fn panic(id: ContractId, reason: InstructionResult, pc: Word, is: Word) -> Self {
-        Self::Panic { id, reason, pc, is }
+        Panic {
+            id,
+            reason,
+            pc,
+            is,
+            contract_id: None,
+        }
+    }
+
+    pub fn with_panic_contract_id(mut self, _contract_id: Option<ContractId>) -> Self {
+        if let Receipt::Panic {
+            ref mut contract_id,
+            ..
+        } = self
+        {
+            *contract_id = _contract_id;
+        }
+        self
     }
 
     pub const fn revert(id: ContractId, ra: Word, pc: Word, is: Word) -> Self {
@@ -577,24 +598,24 @@ impl Receipt {
 
     fn variant_len_without_data(variant: ReceiptRepr) -> usize {
         ContractId::LEN // id
-                + WORD_SIZE // pc
-                + WORD_SIZE // is
-        + match variant {
+            + WORD_SIZE // pc
+            + WORD_SIZE // is
+            + match variant {
             ReceiptRepr::Call => {
                 ContractId::LEN // to
-                + WORD_SIZE // amount
-                + AssetId::LEN // asset_id
-                + WORD_SIZE // gas
-                + WORD_SIZE // param1
-                + WORD_SIZE // param2
+                    + WORD_SIZE // amount
+                    + AssetId::LEN // asset_id
+                    + WORD_SIZE // gas
+                    + WORD_SIZE // param1
+                    + WORD_SIZE // param2
             }
 
             ReceiptRepr::Return => WORD_SIZE, // val
 
             ReceiptRepr::ReturnData => {
                 WORD_SIZE // ptr
-                + WORD_SIZE // len
-                + Bytes32::LEN // digest
+                    + WORD_SIZE // len
+                    + Bytes32::LEN // digest
             }
 
             ReceiptRepr::Panic => WORD_SIZE, // reason
@@ -602,44 +623,44 @@ impl Receipt {
 
             ReceiptRepr::Log => {
                 WORD_SIZE // ra
-                + WORD_SIZE // rb
-                + WORD_SIZE // rc
-                + WORD_SIZE // rd
+                    + WORD_SIZE // rb
+                    + WORD_SIZE // rc
+                    + WORD_SIZE // rd
             }
 
             ReceiptRepr::LogData => {
                 WORD_SIZE // ra
-                + WORD_SIZE // rb
-                + WORD_SIZE // ptr
-                + WORD_SIZE // len
-                + Bytes32::LEN // digest
+                    + WORD_SIZE // rb
+                    + WORD_SIZE // ptr
+                    + WORD_SIZE // len
+                    + Bytes32::LEN // digest
             }
 
             ReceiptRepr::Transfer => {
                 ContractId::LEN // to
-                + WORD_SIZE // amount
-                + AssetId::LEN // digest
+                    + WORD_SIZE // amount
+                    + AssetId::LEN // digest
             }
 
             ReceiptRepr::TransferOut => {
                 Address::LEN // to
-                + WORD_SIZE // amount
-                + AssetId::LEN // digest
+                    + WORD_SIZE // amount
+                    + AssetId::LEN // digest
             }
 
             ReceiptRepr::ScriptResult => {
                 WORD_SIZE // status
-                + WORD_SIZE // gas_used
+                    + WORD_SIZE // gas_used
             }
 
             ReceiptRepr::MessageOut => {
                 MessageId::LEN // message_id
-                + Address::LEN // sender
-                + Address::LEN // recipient
-                + WORD_SIZE // amount
-                + Bytes32::LEN // nonce
-                + WORD_SIZE // len
-                + Bytes32::LEN // digest
+                    + Address::LEN // sender
+                    + Address::LEN // recipient
+                    + WORD_SIZE // amount
+                    + Bytes32::LEN // nonce
+                    + WORD_SIZE // len
+                    + Bytes32::LEN // digest
             }
         }
     }

@@ -72,7 +72,9 @@ impl io::Read for Receipt {
                 bytes::store_number_unchecked(buf, *is);
             }
 
-            Self::Panic { id, reason, pc, is } => {
+            Self::Panic {
+                id, reason, pc, is, ..
+            } => {
                 let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Panic as Word);
 
                 let buf = bytes::store_array_unchecked(buf, id);

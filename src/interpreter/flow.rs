@@ -5,13 +5,13 @@ use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, InstructionResult};
+use fuel_asm::{Instruction, InstructionResult, RegisterId};
 use fuel_crypto::Hasher;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, Word};
 
-use std::cmp;
+use std::{cmp, io};
 
 impl<S> Interpreter<S> {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
@@ -55,7 +55,7 @@ impl<S> Interpreter<S> {
             let ret = self.registers[REG_RET];
             let retl = self.registers[REG_RETL];
 
-            self.registers.copy_from_slice(&frame.registers());
+            self.registers.copy_from_slice(frame.registers());
 
             self.registers[REG_CGAS] = cgas;
             self.registers[REG_GGAS] = ggas;
@@ -86,7 +86,7 @@ impl<S> Interpreter<S> {
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        if b > MEM_MAX_ACCESS_SIZE || a >= VM_MAX_RAM - b {
+        if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
@@ -136,7 +136,7 @@ impl<S> Interpreter<S>
 where
     S: InterpreterStorage,
 {
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+    fn _prepare_call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(32);
         let (cx, of) = c.overflowing_add(32);
         let overflow = overflow || of;
@@ -213,6 +213,48 @@ where
 
         self.frames.push(frame);
 
+        Ok(())
+    }
+
+    /// Prepare a call instruction for execution
+    pub fn prepare_call(
+        &mut self,
+        ra: RegisterId,
+        rb: RegisterId,
+        rc: RegisterId,
+        rd: RegisterId,
+    ) -> Result<(), RuntimeError> {
+        const M: &'static str = "the provided id is not a valid register";
+
+        let a = self
+            .registers
+            .get(ra)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let b = self
+            .registers
+            .get(rb)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let c = self
+            .registers
+            .get(rc)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        let d = self
+            .registers
+            .get(rd)
+            .copied()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
+
+        self._prepare_call(a, b, c, d)
+    }
+
+    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+        self._prepare_call(a, b, c, d)?;
         self.run_call()
     }
 }

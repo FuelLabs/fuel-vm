@@ -77,6 +77,13 @@ pub const VM_MAX_RAM: u64 = 16 * 1024 * FUEL_MAX_MEMORY_SIZE * WORD_SIZE as u64;
 /// Maximum memory access size, in bytes.
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
 
+/// Tighter of the two bounds for VM_MAX_RAM and usize::MAX
+pub const MIN_VM_MAX_RAM_USIZE_MAX: u64 = if VM_MAX_RAM < usize::MAX as u64 {
+    VM_MAX_RAM
+} else {
+    usize::MAX as u64
+};
+
 // no limits to heap for now.
 
 /// Offset for the assets balances in VM memory

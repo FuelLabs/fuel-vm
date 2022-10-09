@@ -197,12 +197,6 @@ impl<'a> StateTransitionRef<'a> {
             .iter()
             .any(|r| matches!(r, Receipt::Revert { .. } | Receipt::Panic { .. }))
     }
-
-    /// Convert this instance into an owned state transition, cloning its
-    /// internals.
-    pub fn into_owned(self) -> StateTransition {
-        StateTransition::new(self.state, self.tx.clone(), self.receipts.to_vec())
-    }
 }
 
 impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {

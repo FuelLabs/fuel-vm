@@ -1,6 +1,7 @@
 use super::Interpreter;
+use crate::call::CallFrame;
 use crate::consts::*;
-use crate::error::RuntimeError;
+use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
@@ -8,7 +9,8 @@ use fuel_tx::{Input, Output, Receipt};
 use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
-use std::mem;
+use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
+use core::{mem, slice};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
@@ -30,66 +32,80 @@ where
     pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let ssp = self.registers[REG_SSP];
         let sp = self.registers[REG_SP];
-        let hp = self.registers[REG_HP];
-        let fp = self.registers[REG_FP];
-
-        let id_addr = a as usize; // address of contract ID
-        let start_in_contract = b as usize; // start offset
-        let length_to_copy_unpadded = c; // length to copy
-
-        // Validate arguments
-        if ssp + length_to_copy_unpadded > hp
-            || (id_addr + ContractId::LEN) as u64 > VM_MAX_RAM
-            || length_to_copy_unpadded > self.params.contract_max_size.min(MEM_MAX_ACCESS_SIZE)
-        {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
+        let fp = self.registers[REG_FP] as usize;
 
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
-        // Fetch the contract id
-        let contract_id = unsafe {
-            // Safety: this area of memory will not be modified until this ref is dropped
-            let bytes = core::slice::from_raw_parts(self.memory.as_ptr().add(id_addr), ContractId::LEN);
-            // Safety: Memory bounds are checked by the interpreter
-            ContractId::as_ref_unchecked(bytes)
-        };
+        let contract_id = a as usize;
+        let contract_id_end = checked_add_usize(ContractId::LEN, contract_id)?;
+        let contract_offset = b as usize;
+        let length = bytes::padded_len_usize(c as usize);
 
-        // Check that the contract exists
+        let memory_offset = ssp as usize;
+        let memory_offset_end = checked_add_usize(memory_offset, length)?;
+
+        // Validate arguments
+        if memory_offset_end > self.registers[REG_HP] as usize
+            || contract_id_end as Word > VM_MAX_RAM
+            || length > MEM_MAX_ACCESS_SIZE as usize
+            || length > self.params.contract_max_size as usize
+        {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        // compiler will optimize to memset
+        self.memory[memory_offset..memory_offset_end]
+            .iter_mut()
+            .for_each(|m| *m = 0);
+
+        // fetch the contract id
+        let contract_id = &self.memory[contract_id..contract_id_end];
+
+        // Safety: Memory bounds are checked and consistent
+        let contract_id = unsafe { ContractId::as_ref_unchecked(contract_id) };
+
+        // the contract must be declared in the transaction inputs
         if !self.transaction().input_contracts().any(|id| id == contract_id) {
             return Err(PanicReason::ContractNotInInputs.into());
         };
 
-        // Calculate the word aligned padded len based on $rC
-        let cow_contract = self.contract(contract_id)?;
-        let contract = cow_contract.as_ref().as_ref();
-        let contract_len = contract.len();
+        // fetch the storage contract
+        let contract = self.contract(contract_id)?;
+        let contract = contract.as_ref().as_ref();
 
-        let padded_len = bytes::padded_len_usize(length_to_copy_unpadded as usize);
-        let padding_len = padded_len - (length_to_copy_unpadded as usize);
-        let end_in_contract = (start_in_contract + padded_len).min(contract_len);
-        let copy_len = end_in_contract - start_in_contract;
-
-        // Push the contract code to the stack
-        // Safety: Pushing to stack doesn't modify the contract
-        unsafe {
-            let code = core::slice::from_raw_parts(contract.as_ptr().add(start_in_contract), copy_len);
-            self.push_stack(&code)?;
+        if contract_offset > contract.len() {
+            return Err(PanicReason::MemoryOverflow.into());
         }
-        self.push_stack(&[0; core::mem::size_of::<Word>()][..padding_len])?;
-        self.registers[REG_SP] = ssp + (padded_len as u64);
 
-        // Increment the frame code size by len defined in memory
-        let offset_in_frame = ContractId::LEN + AssetId::LEN + WORD_SIZE * VM_REGISTER_COUNT;
-        let start = (fp as usize) + offset_in_frame;
-        // Safety: bounds enforced by the interpreter
-        let old = Word::from_be_bytes(unsafe {
-            bytes::from_slice_unchecked::<WORD_SIZE>(&self.memory[start..start + WORD_SIZE])
-        });
-        let new = ((old as usize) + padded_len) as Word;
-        self.memory[start..start + WORD_SIZE].copy_from_slice(&new.to_be_bytes());
+        let contract = &contract[contract_offset..];
+        let len = contract.len().min(length);
+
+        let code = &contract[..len];
+
+        // Safety: all bounds are checked
+        let memory = &self.memory[memory_offset] as *const u8;
+        let memory = unsafe { slice::from_raw_parts_mut(memory as *mut u8, len) };
+
+        // perform the code copy
+        memory.copy_from_slice(code);
+
+        self.registers[REG_SP]
+            //TODO this is looser than the compare against [REG_HP,REG_SSP+length]
+            .checked_add(length as Word)
+            .map(|sp| {
+                self.registers[REG_SP] = sp;
+                self.registers[REG_SSP] = sp;
+            })
+            .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
+
+        // update frame pointer, if we have a stack frame (e.g. fp > 0)
+        if fp > 0 {
+            let fpx = add_usize(fp, CallFrame::code_size_offset());
+
+            self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
+        }
 
         self.inc_pc()
     }
@@ -119,7 +135,7 @@ where
         let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[c..cx]) };
 
         let balance = self.balance(contract, asset_id)?;
-        let balance = balance.checked_add(a).ok_or(PanicReason::ArithmeticOverflow)?;
+        let balance = checked_add_word(balance, a)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
@@ -129,18 +145,15 @@ where
     }
 
     pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        if d > MEM_MAX_ACCESS_SIZE
-            || a > VM_MAX_RAM - d
-            || b > VM_MAX_RAM - ContractId::LEN as Word
-            || c > VM_MAX_RAM - d
-        {
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
+        let cd = checked_add_word(c, d)?;
+
+        if d > MEM_MAX_ACCESS_SIZE || a > checked_sub_word(VM_MAX_RAM, d)? || bx > VM_MAX_RAM || cd > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b, c, d) = (a as usize, b as usize, c as usize, d as usize);
-
-        let bx = b + ContractId::LEN;
-        let cd = c + d;
+        let (bx, cd) = (bx as usize, cd as usize);
 
         // Safety: Memory bounds are checked by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
@@ -193,14 +206,18 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - ContractId::LEN as Word {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
+
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
+        let bx = bx as usize;
 
         // Safety: Memory bounds are checked by the interpreter
-        let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..b + ContractId::LEN]) };
+        let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
         let (_, root) = self
             .storage
@@ -218,14 +235,16 @@ where
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        if b > VM_MAX_RAM - ContractId::LEN as Word {
+        let bx = checked_add_word(b, ContractId::LEN as Word)?;
+
+        if bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let b = b as usize;
+        let (b, bx) = (b as usize, bx as usize);
 
         // Safety: Memory bounds are checked by the interpreter
-        let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..b + ContractId::LEN]) };
+        let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
         self.registers[ra] = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
 
@@ -235,16 +254,18 @@ where
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        if b > VM_MAX_RAM - Bytes32::LEN as Word {
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+
+        if bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let b = b as usize;
+        let (b, bx) = (b as usize, bx as usize);
 
         let contract = self.internal_contract()?;
 
         // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..b + Bytes32::LEN]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
 
         self.registers[ra] = self
             .storage
@@ -258,16 +279,20 @@ where
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
+        let bx = bx as usize;
 
         let contract = self.internal_contract()?;
 
         // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..b + Bytes32::LEN]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
 
         let state = self
             .storage
@@ -282,20 +307,22 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        if a > VM_MAX_RAM - Bytes32::LEN as Word {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+
+        if ax > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let a = a as usize;
+        let (a, ax) = (a as usize, ax as usize);
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..a + Bytes32::LEN]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
 
         let mut value = Bytes32::default();
 
-        (&mut value[..WORD_SIZE]).copy_from_slice(&b.to_be_bytes());
+        value[..WORD_SIZE].copy_from_slice(&b.to_be_bytes());
 
         self.storage
             .merkle_contract_state_insert(contract, key, &value)
@@ -305,17 +332,21 @@ where
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        if a > VM_MAX_RAM - Bytes32::LEN as Word || b > VM_MAX_RAM - Bytes32::LEN as Word {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+
+        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
         let (a, b) = (a as usize, b as usize);
+        let (ax, bx) = (ax as usize, bx as usize);
         let (c, cx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..a + Bytes32::LEN]) };
-        let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..b + Bytes32::LEN]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
+        let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
 
         self.storage
             .merkle_contract_state_insert(contract, key, value)
@@ -328,7 +359,7 @@ where
         Self::is_register_writable(ra)?;
 
         self.block_height()
-            .and_then(|c| (b <= c as Word).then(|| ()).ok_or(PanicReason::TransactionValidity))?;
+            .and_then(|c| (b <= c as Word).then_some(()).ok_or(PanicReason::TransactionValidity))?;
 
         let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?;
 
@@ -338,18 +369,21 @@ where
     }
 
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        if b > self.params.max_message_data_length
-            || b > MEM_MAX_ACCESS_SIZE
-            || a > VM_MAX_RAM - b - Address::LEN as Word
-        {
+        let ax = checked_add_word(a, Address::LEN as Word)?;
+        let bx = checked_add_word(ax, b)?;
+
+        //TODO check on b vs MEM_MAX_ACCESS_SIZE is looser than msg length check
+        if b > self.params.max_message_data_length || b > MEM_MAX_ACCESS_SIZE || bx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
+
+        let (a, ax, bx) = (a as usize, ax as usize, bx as usize);
 
         let idx = c;
         let amount = d;
 
         // Safety: checked len
-        let recipient = unsafe { Address::from_slice_unchecked(&self.memory[a as usize..a as usize + Address::LEN]) };
+        let recipient = unsafe { Address::from_slice_unchecked(&self.memory[a..ax]) };
         if recipient == Address::zeroed() {
             return Err(PanicReason::ZeroedMessageOutputRecipient.into());
         }
@@ -357,7 +391,7 @@ where
         let offset = self
             .transaction()
             .output_offset(c as usize)
-            .map(|ofs| ofs + self.tx_offset())
+            .and_then(|ofs| ofs.checked_add(self.tx_offset()))
             .ok_or(PanicReason::OutputNotFound)?;
 
         // halt with I/O error because tx should be serialized correctly into vm memory
@@ -374,12 +408,14 @@ where
 
         let fp = self.registers[REG_FP] as usize;
         let txid = self.tx_id();
-        let data = a as usize + Address::LEN;
-        let data = &self.memory[data..data + b as usize];
+        let data = ax;
+        let data = &self.memory[data..bx];
         let data = data.to_vec();
 
+        let fpx = checked_add_usize(fp, Address::LEN)?;
+
         // Safety: $fp is guaranteed to contain enough bytes
-        let sender = unsafe { Address::from_slice_unchecked(&self.memory[fp..fp + Address::LEN]) };
+        let sender = unsafe { Address::from_slice_unchecked(&self.memory[fp..fpx]) };
 
         let message = Output::message(recipient, amount);
         let receipt = Receipt::message_out_from_tx_output(txid, idx, sender, recipient, amount, data);

@@ -7,6 +7,7 @@ use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
+use crate::arith::checked_add_usize;
 use std::io::{self, Write};
 use std::mem;
 
@@ -148,7 +149,12 @@ impl CallFrame {
 
     /// Contract code memory offset.
     pub const fn code_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (3 + VM_REGISTER_COUNT)
+        Self::code_size_offset() + WORD_SIZE
+    }
+
+    /// Contract code size memory offset.
+    pub const fn code_size_offset() -> usize {
+        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
     }
 
     /// `a` argument memory offset.
@@ -244,7 +250,8 @@ impl io::Write for CallFrame {
         let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
 
         let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
-        n += bytes;
+
+        n = checked_add_usize(n, bytes)?;
 
         self.to = to.into();
         self.asset_id = asset_id.into();

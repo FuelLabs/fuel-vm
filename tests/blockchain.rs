@@ -1,14 +1,14 @@
 use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::{StorageSlot, TransactionBuilder};
+use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
-use fuel_vm::script_with_data_offset;
-use fuel_vm::util::test_helpers::TestBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
+use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
@@ -155,7 +155,7 @@ fn state_read_write() {
     .copied()
     .collect::<Vec<u8>>();
 
-    // Assert the offsets are set correctnly
+    // Assert the offsets are set correctly
     let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
@@ -358,7 +358,7 @@ fn load_external_contract_code() {
         Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
         Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
         Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (lenght of the loaded code)
+        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
         Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
         Opcode::NOOP,                                   // Patched to the jump later
     ]);
@@ -410,67 +410,645 @@ fn load_external_contract_code() {
     }
 }
 
-#[test]
-fn can_read_state_from_initial_storage_slots() {
-    // the initial key and value pair for the contract
-    let key = Hasher::hash(b"initial key");
-    let value = [128u8; 32].into();
+fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patch_jump: bool) {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let salt: Salt = rng.gen();
 
-    let program = vec![
-        // load memory location of reference to key
-        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
-        // deref key memory location from script data to 0x10
-        Opcode::LW(0x10, 0x10, 0),
-        // alloc 32 bytes stack space
-        Opcode::ADDI(0x11, REG_SP, 0),
-        Opcode::CFEI(32 as Immediate24),
-        // load state value to stack
-        Opcode::SRWQ(0x11, 0x10),
-        // log value
-        Opcode::MOVI(0x12, 32 as Immediate18),
-        Opcode::LOGD(REG_ZERO, REG_ZERO, 0x11, 0x12),
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
+
+    // Start by creating and deploying a new example contract
+    let contract_code: Vec<Opcode> = vec![
+        Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
         Opcode::RET(REG_ONE),
+        Opcode::RET(REG_ZERO), // Pad to make length uneven to test padding
     ];
 
-    let init_storage = vec![StorageSlot::new(key, value)];
+    let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
 
-    let gas_limit = 1_000_000;
-    let mut builder = TestBuilder::new(2023u64);
-    let contract = builder.setup_contract(program, None, Some(init_storage)).contract_id;
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let (script, offset) = script_with_data_offset!(
-        data_offset,
-        vec![
-            // load position of call arguments from script data
-            Opcode::MOVI(0x10, data_offset + 32),
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            Opcode::RET(REG_ONE),
-        ],
-        builder.tx_offset()
-    );
+    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let output0 = Output::contract_created(contract_id, state_root);
+    let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let script_data: Vec<u8> = [
-        key.as_ref(),
-        Call::new(contract, offset as Word, 0).to_bytes().as_slice(),
-    ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+    let tx_create_target = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![output0],
+        vec![program.clone()],
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
 
-    let log_tx = builder
-        .start_script(script, script_data)
-        .gas_limit(gas_limit)
-        .gas_price(0)
-        .contract_input(contract)
-        .contract_output(&contract)
-        .execute();
+    client.transact(tx_create_target);
 
-    for receipt in log_tx.receipts() {
-        if let Receipt::LogData { data, .. } = receipt {
-            assert_eq!(data.as_slice(), value.as_slice())
+    //test ssp != sp for LDC
+    let mut load_contract: Vec<Opcode>;
+
+    let mut tx_deploy_loader;
+
+    if !should_patch_jump {
+        load_contract = cmd;
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.into_iter().collect(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
+        .check(height, &params)
+        .expect("failed to check tx");
+    } else {
+        let reg_a = 0x20;
+        let count = ContractId::LEN as Immediate12;
+
+        load_contract = vec![
+            Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
+            Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+            Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+        ];
+
+        // Generate code for pushing contract id to heap
+        for (i, byte) in contract_id.as_ref().iter().enumerate() {
+            let index = i as Immediate12;
+            let value = *byte as Immediate12;
+            load_contract.extend(&[
+                Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
+                Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
+                Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+            ]);
         }
+
+        load_contract.extend(cmd);
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.clone().into_iter().collect(),
+            vec![],
+            vec![input0.clone()],
+            vec![output1],
+            vec![],
+        )
+        .check(height, &params)
+        .expect("failed to check tx");
+
+        // Patch the code with correct jump address
+        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+        *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+
+        tx_deploy_loader = Transaction::script(
+            gas_price,
+            gas_limit,
+            maturity,
+            load_contract.into_iter().collect(),
+            vec![],
+            vec![input0],
+            vec![output1],
+            vec![],
+        )
+        .check(height, &params)
+        .expect("failed to check tx");
     }
+
+    check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
+}
+
+#[test]
+fn ldc_ssp_not_sp() {
+    //test ssp != sp for LDC
+    let load_contract: Vec<Opcode> = vec![
+        Opcode::CFEI(0x1),                         // sp += 1
+        Opcode::LDC(REG_ZERO, REG_ZERO, REG_ZERO), // Load first two words from the contract
+    ];
+
+    ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
+}
+
+#[test]
+fn ldc_mem_offset_above_reg_hp() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    //test memory offset above reg_hp value
+    let load_contract: Vec<Opcode> = vec![
+        Opcode::MOVE(reg_a, REG_HP),            // r[a] := $hp
+        Opcode::LDC(REG_ZERO, REG_ZERO, reg_a), // Load first two words from the contract
+    ];
+
+    ldc_reason_helper(load_contract, MemoryOverflow, false);
+}
+
+#[test]
+fn ldc_contract_id_end_beyond_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    // cover contract_id_end beyond max ram
+    let load_contract: Vec<Opcode> = vec![
+        Opcode::MOVE(reg_a, REG_HP),         // r[a] := $hp
+        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
+    ];
+
+    ldc_reason_helper(load_contract, MemoryOverflow, false);
+}
+
+#[test]
+fn ldc_contract_not_in_inputs() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    //contract not in inputs
+    let load_contract: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),    // r[b] := 0
+        Opcode::ADDI(reg_a, reg_a, 1),       // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
+    ];
+
+    ldc_reason_helper(load_contract, ContractNotInInputs, false);
+}
+
+#[test]
+fn ldc_contract_offset_over_length() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    let load_contract: Vec<Opcode> = vec![
+        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
+        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
+        Opcode::LDC(reg_a, reg_a, reg_b),               // Load first two words from the contract
+        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
+        Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
+        Opcode::ORI(reg_b, reg_b, 16),                  // r[b] += 16 (length of the loaded code)
+        Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        Opcode::NOOP,                                   // Patched to the jump later
+    ];
+
+    ldc_reason_helper(load_contract, MemoryOverflow, true);
+}
+
+#[test]
+fn code_copy_a_gt_vmmax_sub_d() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    //test memory offset above reg_hp value
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::ADDI(reg_a, reg_a, 1),
+        Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_d_over_mem_max() {
+    let reg_a = 0x20;
+
+    //test d over MEM_MAX_ACCESS_SIZE
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, REG_ZERO, REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_b_plus_32_overflow() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
+}
+
+#[test]
+fn code_copy_b_gt_vm_max_ram() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31),
+        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_c_gt_vm_max_ram() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::ADDI(reg_a, reg_a, 1),
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
+}
+
+#[test]
+fn code_copy_c_plus_d_overflow() {
+    let reg_a = 0x20;
+    //test overflow add
+    let code_copy: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
+}
+
+#[test]
+fn code_root_a_plus_32_overflow() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CROO(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
+}
+
+#[test]
+fn code_root_b_plus_32_overflow() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CROO(REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
+}
+
+#[test]
+fn code_root_a_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::CROO(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+}
+
+#[test]
+fn code_root_b_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::CROO(REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+}
+
+#[test]
+fn code_size_b_plus_32_overflow() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::CSIZ(reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
+}
+
+#[test]
+fn code_size_b_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let code_root: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::CSIZ(reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(code_root, MemoryOverflow);
+}
+
+#[test]
+fn state_r_word_b_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRW(reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_word, ArithmeticOverflow);
+}
+
+#[test]
+fn state_r_word_b_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRW(reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_word, MemoryOverflow);
+}
+
+#[test]
+fn state_r_qword_a_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRWQ(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
+}
+
+#[test]
+fn state_r_qword_b_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRWQ(reg_a, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
+}
+
+#[test]
+fn state_r_qword_a_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRWQ(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
+}
+
+#[test]
+fn state_r_qword_b_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRWQ(REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
+}
+
+#[test]
+fn state_w_word_a_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SWW(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_word, ArithmeticOverflow);
+}
+
+#[test]
+fn state_w_word_a_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SWW(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_word, MemoryOverflow);
+}
+
+#[test]
+fn state_w_qword_a_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SWWQ(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
+}
+
+#[test]
+fn state_w_qword_b_plus_32_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::NOT(reg_a, reg_a),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SWWQ(REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
+}
+
+#[test]
+fn state_w_qword_a_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::SUBI(reg_a, reg_a, 31),
+        Opcode::SWWQ(reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
+}
+
+#[test]
+fn state_w_qword_b_over_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_write_qword: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::SUBI(reg_a, reg_a, 31),
+        Opcode::SWWQ(REG_ZERO, reg_a),
+    ];
+
+    check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
+}
+
+#[test]
+fn message_output_b_gt_msg_len() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let message_output: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] = 0
+        Opcode::ORI(reg_a, reg_a, 1),     // r[a] = 1
+        Opcode::SLLI(reg_a, reg_a, 20),   // r[a] = 2^20
+        Opcode::ADDI(reg_a, reg_a, 1),    //r[a] = 2^20 + 1
+        Opcode::SMO(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(message_output, MemoryOverflow);
+}
+
+#[test]
+fn message_output_a_b_over() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    // cover contract_id_end beyond max ram
+    let message_output: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a), //r[a] = 0
+        Opcode::XOR(reg_b, reg_b, reg_b), //r[b] = 0
+        Opcode::NOT(reg_a, reg_a),        //r[a] = MAX
+        Opcode::ADDI(reg_b, reg_b, 1),    //r[b] = 1
+        Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(message_output, ArithmeticOverflow);
+}
+
+#[test]
+fn message_output_a_b_gt_max_mem() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    // cover contract_id_end beyond max ram
+    let message_output: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        Opcode::XOR(reg_b, reg_b, reg_b),
+        Opcode::ORI(reg_a, reg_a, 1),
+        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::ADDI(reg_b, reg_b, 1),
+        Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(message_output, MemoryOverflow);
 }
 
 #[test]
@@ -490,7 +1068,6 @@ fn smo_instruction_works() {
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
-        let recipient = rng.gen();
         let nonce = rng.gen();
 
         let message = Output::message(Address::zeroed(), 0);
@@ -512,7 +1089,7 @@ fn smo_instruction_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .add_unsigned_message_input(secret, sender, recipient, nonce, balance, data)
+            .add_unsigned_message_input(secret, sender, nonce, balance, data)
             .add_output(message)
             .finalize_checked(block_height, params);
 
@@ -529,9 +1106,8 @@ fn smo_instruction_works() {
 
         assert!(success);
 
-        let (recipient, transferred) = client
-            .state_transition()
-            .expect("tx was executed")
+        let state = client.state_transition().expect("tx was executed");
+        let (recipient, transferred) = state
             .tx()
             .outputs()
             .iter()

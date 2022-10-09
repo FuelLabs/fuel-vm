@@ -153,6 +153,14 @@ impl RuntimeError {
     {
         Self::Halt(e.into())
     }
+
+    /// Unexpected behavior occurred
+    pub fn unexpected_behavior<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn StdError + Send + Sync>>,
+    {
+        Self::Halt(io::Error::new(io::ErrorKind::Other, error))
+    }
 }
 
 impl PartialEq for RuntimeError {
@@ -226,6 +234,7 @@ pub enum BugId {
     ID004,
     ID005,
     ID006,
+    ID007,
 }
 
 /// Traceable bug variants
@@ -239,6 +248,9 @@ pub enum BugVariant {
 
     /// Global gas subtraction has underflow
     GlobalGasUnderflow,
+
+    /// The stack point has overflow
+    StackPointerOverflow,
 }
 
 impl fmt::Display for BugVariant {
@@ -263,6 +275,13 @@ impl fmt::Display for BugVariant {
                 r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
 
                 This underflow means the registers are corrupted."#
+            ),
+
+            Self::StackPointerOverflow => write!(
+                f,
+                r#"The stack pointer cannot overflow under checked operations.
+
+                This overflow means the registers are corrupted."#
             ),
         }
     }

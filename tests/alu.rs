@@ -145,10 +145,8 @@ fn alu_wrapping(
 
     assert_eq!(log_receipt.ra().expect("$ra expected"), expected);
 
-    assert_eq!(
-        log_receipt.rb().expect("$rb (value of REG_OF) expected"),
-        expected_of.try_into().unwrap()
-    );
+    let expected_of: u64 = expected_of.try_into().unwrap();
+    assert_eq!(log_receipt.rb().expect("$rb (value of REG_OF) expected"), expected_of);
 }
 
 fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {

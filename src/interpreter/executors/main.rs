@@ -1,10 +1,11 @@
 use crate::consts::*;
+use crate::context::Context;
 use crate::crypto;
-use crate::error::InterpreterError;
+use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
 use crate::interpreter::Interpreter;
 use crate::predicate::RuntimePredicate;
-use crate::prelude::*;
-use crate::state::{ExecuteState, ProgramState, StateTransitionRef};
+use crate::state::{ExecuteState, ProgramState};
+use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use fuel_asm::PanicReason;
@@ -100,18 +101,8 @@ where
                 }
 
                 storage
-                    .storage_contract_insert(&id, &contract)
+                    .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
                     .map_err(InterpreterError::from_io)?;
-
-                storage
-                    .storage_contract_root_insert(&id, salt, &root)
-                    .map_err(InterpreterError::from_io)?;
-
-                for storage_slot in storage_slots {
-                    storage
-                        .merkle_contract_state_insert(&id, storage_slot.key(), storage_slot.value())
-                        .map_err(InterpreterError::from_io)?;
-                }
 
                 ProgramState::Return(1)
             }
@@ -273,9 +264,11 @@ where
         tx: CheckedTransaction,
         params: ConsensusParameters,
     ) -> Result<StateTransition, InterpreterError> {
-        Interpreter::with_storage(storage, params)
+        let mut interpreter = Interpreter::with_storage(storage, params);
+        interpreter
             .transact(tx)
-            .map(|st| st.into_owned())
+            .map(|state| ProgramState::from(state))
+            .map(|state| StateTransition::new(state, interpreter.tx.into(), interpreter.receipts))
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
@@ -289,9 +282,6 @@ where
         self.profiler.on_transaction(&state_result);
 
         let state = state_result?;
-
-        let transition = StateTransitionRef::new(state, self.transaction(), self.receipts());
-
-        Ok(transition)
+        Ok(StateTransitionRef::new(state, self.transaction(), self.receipts()))
     }
 }

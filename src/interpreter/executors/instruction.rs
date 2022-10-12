@@ -423,12 +423,12 @@ where
 
             OpcodeRepr::SRW => {
                 self.gas_charge(GAS_SRW)?;
-                self.state_read_word(ra, b)?;
+                self.state_read_word(ra, rb, c)?;
             }
 
             OpcodeRepr::SRWQ => {
                 self.gas_charge(GAS_SRWQ)?;
-                self.state_read_qword(a, b)?;
+                self.state_read_qword(a, rb, c)?;
             }
 
             OpcodeRepr::SWW => {

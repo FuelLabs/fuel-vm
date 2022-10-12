@@ -251,55 +251,61 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
+        Self::is_register_writable(rb)?;
 
-        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+        let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 
-        if bx > VM_MAX_RAM {
+        if cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (b, bx) = (b as usize, bx as usize);
+        let (c, cx) = (c as usize, cx as usize);
 
         let contract = self.internal_contract()?;
 
         // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
 
-        self.registers[ra] = self
+        let result = self
             .storage
             .merkle_contract_state(contract, key)
             .map_err(RuntimeError::from_io)?
             .map(|state| unsafe { Bytes8::from_slice_unchecked(state.as_ref().as_ref()).into() })
-            .map(Word::from_be_bytes)
-            .unwrap_or(0);
+            .map(Word::from_be_bytes);
+
+        self.registers[ra] = result.unwrap_or(0);
+        self.registers[rb] = result.is_some() as Word;
 
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+        let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 
-        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (a, b) = (a as usize, b as usize);
-        let bx = bx as usize;
+        let (a, c) = (a as usize, c as usize);
+        let cx = cx as usize;
 
         let contract = self.internal_contract()?;
 
         // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let state = self
+        let result = self
             .storage
             .merkle_contract_state(contract, key)
             .map_err(RuntimeError::from_io)?
-            .map(|s| s.into_owned())
-            .unwrap_or_default();
+            .map(|s| s.into_owned());
+
+        self.registers[rb] = result.is_some() as Word;
+
+        let state = result.unwrap_or_default();
 
         self.try_mem_write(a, state.as_ref())?;
 

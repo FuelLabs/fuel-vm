@@ -596,6 +596,13 @@ impl Receipt {
         }
     }
 
+    pub const fn contract_id(&self) -> Option<&ContractId> {
+        match self {
+            Self::Panic { contract_id, .. } => contract_id.as_ref(),
+            _ => None,
+        }
+    }
+
     fn variant_len_without_data(variant: ReceiptRepr) -> usize {
         ContractId::LEN // id
             + WORD_SIZE // pc

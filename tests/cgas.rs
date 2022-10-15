@@ -103,7 +103,7 @@ fn cgas_uses_min_available_gas() {
     let asset_id: AssetId = rng.gen();
     let call_amount = 0;
     let initial_internal_balance = 1_000_000;
-    let gas_forward_amount = 2000;
+    let gas_forward_amount = 20_000;
     let call_depth = 3;
 
     // assign registers

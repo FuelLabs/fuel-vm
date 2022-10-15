@@ -634,20 +634,6 @@ fn code_copy_a_gt_vmmax_sub_d() {
 }
 
 #[test]
-fn code_copy_d_over_mem_max() {
-    let reg_a = 0x20;
-
-    //test d over MEM_MAX_ACCESS_SIZE
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, REG_ZERO, REG_ZERO, reg_a),
-    ];
-
-    check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
-}
-
-#[test]
 fn code_copy_b_plus_32_overflow() {
     let reg_a = 0x20;
     //test overflow add
@@ -688,19 +674,6 @@ fn code_copy_c_gt_vm_max_ram() {
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
-}
-
-#[test]
-fn code_copy_c_plus_d_overflow() {
-    let reg_a = 0x20;
-    //test overflow add
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, reg_a),
-    ];
-
-    check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
 }
 
 #[test]

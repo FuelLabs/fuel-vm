@@ -14,7 +14,7 @@ fn code_coverage() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1;
-    let gas_limit = 1_000;
+    let gas_limit = 1_000_000;
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();

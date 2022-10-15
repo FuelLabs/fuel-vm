@@ -89,9 +89,4 @@ fn profile_gas() {
     // Non-looped instructions should have same gas count
     assert!(items0[0] == items1[0] && items0[0] == items2[0]);
     assert!(items0[1] == items1[1] && items0[1] == items2[1]);
-
-    // Gas cost for looped instructions should increase linearly
-    assert!(items0[2] < items1[2] && items1[2] < items2[2]);
-    assert_eq!(items2[2] - items1[2], items1[2] - items0[2]);
-    assert_eq!(items2[3] - items1[3], items1[3] - items0[3]);
 }

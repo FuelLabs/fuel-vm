@@ -113,7 +113,7 @@ fn single_stepping() {
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_price = 0;
-    let gas_limit = 1_000;
+    let gas_limit = 1_000_000;
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();

@@ -381,10 +381,10 @@ pub mod test_helpers {
         expected_reason: PanicReason,
     ) {
         let gas_price = 0;
-        let gas_limit = 1_000_000;
+        let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+        let gas_limit = params.max_gas_per_tx;
         let maturity = 0;
         let height = 0;
-        let params = ConsensusParameters::default();
 
         let tx_deploy_loader = Transaction::script(
             gas_price,

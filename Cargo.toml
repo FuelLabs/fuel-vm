@@ -64,11 +64,6 @@ path = "tests/blockchain.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-bug-id"
-path = "tests/bug-id.rs"
-required-features = ["strum"]
-
-[[test]]
 name = "test-contract"
 path = "tests/contract.rs"
 required-features = ["random"]

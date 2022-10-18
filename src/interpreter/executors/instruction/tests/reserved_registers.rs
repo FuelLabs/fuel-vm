@@ -1,5 +1,5 @@
 use super::*;
-use fuel_tx::{ConsensusParameters, Transaction};
+use fuel_tx::{ConsensusParameters, IntoChecked, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -23,7 +23,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let script = Opcode::RET(0x10).to_bytes().to_vec();
     let block_height = 0;
     let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
-    let tx = tx.check(block_height, &params).expect("failed to check tx");
+    let tx = tx.into_checked(block_height, &params).expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");
     let res = vm.instruction(random_instruction);

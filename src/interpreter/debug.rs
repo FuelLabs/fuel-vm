@@ -2,7 +2,10 @@ use super::Interpreter;
 use crate::consts::*;
 use crate::prelude::*;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Get single-stepping mode
     pub const fn single_stepping(&self) -> bool {
         self.debugger.single_stepping()
@@ -66,7 +69,7 @@ fn breakpoint_script() {
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -130,7 +133,7 @@ fn single_stepping() {
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

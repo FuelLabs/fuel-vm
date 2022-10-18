@@ -1,6 +1,6 @@
 //! Runtime state representation for the VM
 
-use fuel_tx::{Receipt, Transaction};
+use fuel_tx::Receipt;
 use fuel_types::{Bytes32, Word};
 
 #[cfg(feature = "debug")]
@@ -115,15 +115,15 @@ impl ProgramState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Representation of the result of a transaction execution.
-pub struct StateTransition {
+pub struct StateTransition<Tx> {
     state: ProgramState,
-    tx: Transaction,
+    tx: Tx,
     receipts: Vec<Receipt>,
 }
 
-impl StateTransition {
+impl<Tx> StateTransition<Tx> {
     /// Create a new state transition representation.
-    pub const fn new(state: ProgramState, tx: Transaction, receipts: Vec<Receipt>) -> Self {
+    pub const fn new(state: ProgramState, tx: Tx, receipts: Vec<Receipt>) -> Self {
         Self { state, tx, receipts }
     }
 
@@ -133,7 +133,7 @@ impl StateTransition {
     }
 
     /// Resulting mutated transaction after VM execution.
-    pub const fn tx(&self) -> &Transaction {
+    pub const fn tx(&self) -> &Tx {
         &self.tx
     }
 
@@ -150,13 +150,13 @@ impl StateTransition {
     }
 
     /// Convert this instance into its internal attributes.
-    pub fn into_inner(self) -> (ProgramState, Transaction, Vec<Receipt>) {
+    pub fn into_inner(self) -> (ProgramState, Tx, Vec<Receipt>) {
         (self.state, self.tx, self.receipts)
     }
 }
 
-impl From<StateTransition> for ProgramState {
-    fn from(t: StateTransition) -> ProgramState {
+impl<Tx> From<StateTransition<Tx>> for ProgramState {
+    fn from(t: StateTransition<Tx>) -> ProgramState {
         t.state
     }
 }
@@ -164,15 +164,15 @@ impl From<StateTransition> for ProgramState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Zero-copy Representation of the result of a transaction execution bound to
 /// the lifetime of the VM.
-pub struct StateTransitionRef<'a> {
+pub struct StateTransitionRef<'a, Tx> {
     state: ProgramState,
-    tx: &'a Transaction,
+    tx: &'a Tx,
     receipts: &'a [Receipt],
 }
 
-impl<'a> StateTransitionRef<'a> {
+impl<'a, Tx> StateTransitionRef<'a, Tx> {
     /// Create a new by reference state transition representation.
-    pub const fn new(state: ProgramState, tx: &'a Transaction, receipts: &'a [Receipt]) -> Self {
+    pub const fn new(state: ProgramState, tx: &'a Tx, receipts: &'a [Receipt]) -> Self {
         Self { state, tx, receipts }
     }
 
@@ -182,7 +182,7 @@ impl<'a> StateTransitionRef<'a> {
     }
 
     /// Resulting mutated transaction after VM execution.
-    pub const fn tx(&self) -> &Transaction {
+    pub const fn tx(&self) -> &Tx {
         self.tx
     }
 
@@ -199,8 +199,8 @@ impl<'a> StateTransitionRef<'a> {
     }
 }
 
-impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {
-    fn from(t: &'a StateTransition) -> StateTransitionRef<'a> {
+impl<'a, Tx> From<&'a StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
+    fn from(t: &'a StateTransition<Tx>) -> StateTransitionRef<'a, Tx> {
         Self {
             state: *t.state(),
             tx: t.tx(),
@@ -209,8 +209,8 @@ impl<'a> From<&'a StateTransition> for StateTransitionRef<'a> {
     }
 }
 
-impl<'a> From<StateTransitionRef<'a>> for ProgramState {
-    fn from(t: StateTransitionRef<'a>) -> ProgramState {
+impl<'a, Tx> From<StateTransitionRef<'a, Tx>> for ProgramState {
+    fn from(t: StateTransitionRef<'a, Tx>) -> ProgramState {
         t.state
     }
 }

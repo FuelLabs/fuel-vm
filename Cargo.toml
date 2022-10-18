@@ -30,7 +30,7 @@ rand = { version = "0.8", optional = true }
 tai64 = "4.0"
 
 [dev-dependencies]
-fuel-tx = { version = "0.20", features = ["builder", "internals"] }
+fuel-tx = { version = "0.20", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 glob = "0.3"
 regex = "1.6"
@@ -109,3 +109,6 @@ required-features = ["random"]
 name = "test-predicate"
 path = "tests/predicate.rs"
 required-features = ["random"]
+
+[patch.crates-io]
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-tx/", branch = "feature/methods-refactoring" }

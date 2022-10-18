@@ -32,7 +32,7 @@ fuzz_target!(|data: FuzzData| {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     drop(black_box(client.transact(tx)));

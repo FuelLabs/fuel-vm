@@ -39,7 +39,7 @@
 ///         Opcode::CALL(0x10, 0x11, 0x12, 0x13),
 ///         Opcode::RET(REG_ONE),
 ///     ],
-///     ConsensusParameters::DEFAULT.tx_offset()
+///     ConsensusParameters::DEFAULT.tx_offset(true)
 /// );
 /// ```
 #[macro_export]
@@ -55,9 +55,11 @@ macro_rules! script_with_data_offset {
             let script_bytes: ::std::vec::Vec<u8> = ::std::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {
+                use $crate::fuel_tx::field::Script as ScriptField;
+                use $crate::fuel_tx::Script;
                 use $crate::fuel_types::bytes::padded_len;
-                use $crate::prelude::{Immediate18, Transaction};
-                ($tx_offset + Transaction::script_offset() + padded_len(script_bytes.as_slice())) as Immediate18
+                use $crate::prelude::Immediate18;
+                ($tx_offset + Script::script_offset_static() + padded_len(script_bytes.as_slice())) as Immediate18
             }
         };
         // re-evaluate and return the finalized script with the correct data offset length set.
@@ -76,10 +78,12 @@ pub mod test_helpers {
     use crate::transactor::Transactor;
     use anyhow::anyhow;
 
+    use crate::interpreter::{CheckedMetadata, ExecutableTransaction};
     use fuel_asm::{Opcode, PanicReason};
+    use fuel_tx::field::Outputs;
     use fuel_tx::{
-        CheckedTransaction, ConsensusParameters, Contract, Input, Output, Receipt, StorageSlot, Transaction,
-        TransactionBuilder, Witness,
+        Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt, Script, StorageSlot,
+        Transaction, TransactionBuilder, Witness,
     };
     use fuel_types::bytes::{Deserializable, SizedBytes};
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
@@ -88,7 +92,7 @@ pub mod test_helpers {
     use rand::{Rng, SeedableRng};
 
     pub struct CreatedContract {
-        pub tx: Transaction,
+        pub tx: Create,
         pub contract_id: ContractId,
         pub salt: Salt,
     }
@@ -97,7 +101,7 @@ pub mod test_helpers {
         rng: StdRng,
         gas_price: Word,
         gas_limit: Word,
-        builder: TransactionBuilder,
+        builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
         params: ConsensusParameters,
         block_height: u32,
@@ -208,23 +212,18 @@ pub mod test_helpers {
         }
 
         pub const fn tx_offset(&self) -> usize {
-            self.params.tx_offset()
+            self.params.tx_offset(true)
         }
 
-        pub fn build(&mut self) -> CheckedTransaction {
+        pub fn build(&mut self) -> Checked<Script> {
             self.builder.finalize_checked(self.block_height as Word, &self.params)
-        }
-
-        pub fn build_without_signature(&mut self) -> CheckedTransaction {
-            self.builder
-                .finalize_checked_without_signature(self.block_height as Word, &self.params)
         }
 
         pub fn build_get_balance_tx(
             params: &ConsensusParameters,
             contract_id: &ContractId,
             asset_id: &AssetId,
-        ) -> CheckedTransaction {
+        ) -> Checked<Script> {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
@@ -234,7 +233,7 @@ pub mod test_helpers {
                     Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
                     Opcode::RET(REG_ONE)
                 ],
-                params.tx_offset()
+                params.tx_offset(true)
             );
 
             let script_data: Vec<u8> = [asset_id.as_ref(), contract_id.as_ref()]
@@ -282,7 +281,7 @@ pub mod test_helpers {
                 vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
             )
-            .check(self.block_height as Word, &self.params)
+            .into_checked(self.block_height as Word, &self.params)
             .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -302,29 +301,33 @@ pub mod test_helpers {
             }
         }
 
-        pub fn execute_tx(&mut self, tx: CheckedTransaction) -> anyhow::Result<StateTransition> {
+        pub fn execute_tx<Tx>(&mut self, checked: Checked<Tx>) -> anyhow::Result<StateTransition<Tx>>
+        where
+            Tx: ExecutableTransaction,
+            <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        {
             self.storage.set_block_height(self.block_height);
-            let mut client = MemoryClient::new(self.storage.clone(), self.params);
+            let mut transactor = Transactor::new(self.storage.clone(), self.params);
 
-            client.transact(tx);
+            transactor.transact(checked);
 
-            let storage = client.as_ref().clone();
-            let txtor: Transactor<_> = client.into();
+            let storage = transactor.as_mut().clone();
 
-            if let Some(e) = txtor.error() {
+            if let Some(e) = transactor.error() {
                 return Err(anyhow!("{:?}", e));
             }
 
-            let state = txtor.to_owned_state_transition().unwrap();
+            let state = transactor.to_owned_state_transition().unwrap();
 
-            let interpreter = txtor.interpreter();
+            let interpreter = transactor.interpreter();
 
             // verify serialized tx == referenced tx
-            let tx_offset = self.params.tx_offset();
-            let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + interpreter.transaction().serialized_size())];
+            let transaction: Transaction = interpreter.transaction().clone().into();
+            let tx_offset = self.params.tx_offset(false);
+            let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + transaction.serialized_size())];
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
 
-            assert_eq!(deser_tx.outputs(), interpreter.transaction().outputs());
+            assert_eq!(deser_tx, transaction);
 
             // save storage between client instances
             self.storage = storage;
@@ -333,8 +336,8 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it
-        pub fn execute(&mut self) -> StateTransition {
-            let tx = self.build_without_signature();
+        pub fn execute(&mut self) -> StateTransition<Script> {
+            let tx = self.build();
 
             self.execute_tx(tx).expect("expected successful vm execution")
         }
@@ -396,7 +399,7 @@ pub mod test_helpers {
             vec![],
             vec![],
         )
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
@@ -404,7 +407,7 @@ pub mod test_helpers {
 
     pub fn check_reason_for_transaction(
         mut client: MemoryClient,
-        checked_tx: CheckedTransaction,
+        checked_tx: Checked<Script>,
         expected_reason: PanicReason,
     ) {
         let receipts = client.transact(checked_tx);

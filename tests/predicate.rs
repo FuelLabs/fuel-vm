@@ -54,9 +54,8 @@ where
 
     builder.add_input(input);
 
-    let tx = builder.finalize_checked_without_signature(height, &params);
-
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
+    let tx = builder.finalize_checked_partially(height, &params);
+    Interpreter::<PredicateStorage, _>::check_predicates(tx, Default::default())
 }
 
 #[test]

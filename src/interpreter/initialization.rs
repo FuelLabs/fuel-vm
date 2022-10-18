@@ -1,20 +1,28 @@
-use super::Interpreter;
+use super::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::InterpreterError;
-use crate::interpreter::RuntimeBalances;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::CheckedTransaction;
-use fuel_types::bytes::SizedBytes;
+use fuel_tx::{Checked, IntoChecked, Stage, Transaction};
+use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::Word;
 
 use std::io;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Initialize the VM with a given transaction
-    fn _init(&mut self, tx: CheckedTransaction) -> Result<(), InterpreterError> {
-        self.tx = tx;
+    fn _init(&mut self, tx: Tx, initial_balances: InitialBalances) -> Result<(), InterpreterError> {
+        // TODO: Remove cloning of the transaction and convert it into the `Transaction`.
+        // VM can work directly with inner types. It is only added to make the
+        // code as it was before the refactoring.
+        self.tx = tx.clone();
+        let mut transaction: Transaction = tx.into();
+
+        self.initial_balances = initial_balances.clone();
 
         self.frames.clear();
         self.receipts.clear();
@@ -31,53 +39,63 @@ impl<S> Interpreter<S> {
         self.push_stack(self.transaction().id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        RuntimeBalances::from(&self.tx).to_vm(self);
+        RuntimeBalances::from(initial_balances).to_vm(self);
 
-        let tx_size = self.transaction().serialized_size() as Word;
+        let tx_size = transaction.serialized_size() as Word;
 
-        self.registers[REG_GGAS] = self.transaction().gas_limit();
-        self.registers[REG_CGAS] = self.transaction().gas_limit();
+        self.registers[REG_GGAS] = *self.transaction().gas_limit();
+        self.registers[REG_CGAS] = *self.transaction().gas_limit();
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        let tx = self.tx.tx_bytes();
+        let tx_bytes = transaction.to_bytes();
 
-        self.push_stack(tx.as_slice())
+        self.push_stack(tx_bytes.as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         self.registers[REG_SP] = self.registers[REG_SSP];
 
         Ok(())
     }
+}
 
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
+{
     /// Initialize the VM for a predicate context
-    pub fn init_predicate(&mut self, mut tx: CheckedTransaction) -> bool {
+    pub fn init_predicate<St: Stage>(&mut self, checked: Checked<Tx, St>) -> bool {
         self.context = Context::Predicate {
             program: Default::default(),
         };
 
+        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
-        self._init(tx).is_ok()
+        self._init(tx, metadata.balances()).is_ok()
     }
 }
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM with a given transaction, backed by a storage provider that allows
     /// execution of contract opcodes.
     ///
     /// For predicate verification, check [`Self::init_predicate`]
-    pub fn init_script(&mut self, mut tx: CheckedTransaction) -> Result<(), InterpreterError> {
+    pub fn init_script<St: Stage>(&mut self, checked: Checked<Tx, St>) -> Result<(), InterpreterError> {
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 
         self.context = Context::Script { block_height };
 
-        tx.prepare_init_script()?;
+        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
+        tx.prepare_init_script();
 
-        self._init(tx)
+        self._init(tx, metadata.balances())
     }
 }

@@ -9,7 +9,7 @@ use fuel_types::Word;
 
 pub mod consts;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx> {
     /// Maps [`OpcodeRepr`] to a [`GasUnit`] price.
     ///
     /// # Panic

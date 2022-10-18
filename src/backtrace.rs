@@ -4,31 +4,36 @@
 
 use crate::call::CallFrame;
 use crate::consts::*;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 
-use fuel_tx::{CheckedTransaction, ScriptExecutionResult};
+use fuel_tx::ScriptExecutionResult;
 use fuel_types::{ContractId, Word};
 
 #[derive(Debug)]
 /// Runtime description derived from a VM error.
-pub struct Backtrace {
+pub struct Backtrace<Tx> {
     call_stack: Vec<CallFrame>,
     contract: ContractId,
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
     result: ScriptExecutionResult,
-    tx: CheckedTransaction,
+    tx: Tx,
+    initial_balances: InitialBalances,
 }
 
-impl Backtrace {
+impl<Tx> Backtrace<Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S>(vm: &Interpreter<S>, result: ScriptExecutionResult) -> Self {
+    pub fn from_vm_error<S>(vm: &Interpreter<S, Tx>, result: ScriptExecutionResult) -> Self {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract_or_default();
         let memory = vm.memory().to_owned();
-        let tx = vm.checked_transaction().clone();
+        let tx = vm.transaction().clone();
+        let initial_balances = vm.initial_balances().clone();
         let mut registers = [0; VM_REGISTER_COUNT];
 
         registers.copy_from_slice(vm.registers());
@@ -40,6 +45,7 @@ impl Backtrace {
             memory,
             result,
             tx,
+            initial_balances,
         }
     }
 
@@ -68,9 +74,14 @@ impl Backtrace {
         &self.result
     }
 
-    /// [`fuel_tx::Transaction`] state when the error occurred.
-    pub const fn tx(&self) -> &CheckedTransaction {
+    /// The state of transaction when the error occurred.
+    pub const fn tx(&self) -> &Tx {
         &self.tx
+    }
+
+    /// The initial balances.
+    pub const fn initial_balances(&self) -> &InitialBalances {
+        &self.initial_balances
     }
 
     /// Expose the internal attributes of the backtrace.
@@ -82,7 +93,8 @@ impl Backtrace {
         [Word; VM_REGISTER_COUNT],
         Vec<u8>,
         ScriptExecutionResult,
-        CheckedTransaction,
+        Tx,
+        InitialBalances,
     ) {
         let Self {
             call_stack,
@@ -91,8 +103,9 @@ impl Backtrace {
             memory,
             result,
             tx,
+            initial_balances,
         } = self;
 
-        (call_stack, contract, registers, memory, result, tx)
+        (call_stack, contract, registers, memory, result, tx, initial_balances)
     }
 }

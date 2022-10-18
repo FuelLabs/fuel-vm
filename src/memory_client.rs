@@ -5,12 +5,12 @@ use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 
-use fuel_tx::{CheckedTransaction, ConsensusParameters, Receipt};
+use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script, Stage};
 
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
 pub struct MemoryClient {
-    transactor: Transactor<MemoryStorage>,
+    transactor: Transactor<MemoryStorage, Script>,
 }
 
 impl<'a> AsRef<MemoryStorage> for MemoryClient {
@@ -34,13 +34,13 @@ impl MemoryClient {
     }
 
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<MemoryStorage>) -> Self {
+    pub fn from_txtor(transactor: Transactor<MemoryStorage, Script>) -> Self {
         Self { transactor }
     }
 
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
-    pub fn backtrace(&self) -> Option<Backtrace> {
+    pub fn backtrace(&self) -> Option<Backtrace<Script>> {
         self.transactor.backtrace()
     }
 
@@ -51,15 +51,49 @@ impl MemoryClient {
     }
 
     /// State transition representation after the execution of a transaction.
-    pub fn state_transition(&self) -> Option<StateTransitionRef<'_>> {
+    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Script>> {
         self.transactor.state_transition()
+    }
+
+    /// Persist the changes caused by [`Self::transact`].
+    pub fn persist(&mut self) {
+        self.as_mut().persist();
+    }
+
+    /// Consensus parameters
+    pub const fn params(&self) -> &ConsensusParameters {
+        self.transactor.params()
+    }
+
+    /// Tx memory offset
+    pub const fn tx_offset(&self) -> usize {
+        self.transactor.tx_offset()
+    }
+
+    /// Deploys a `Create` transaction.
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<()> {
+        let params = self.transactor.params().clone();
+        let mut deploy_transactor = Transactor::new(self.transactor.as_mut(), params);
+
+        if let Ok(state) = deploy_transactor.transact(tx).result() {
+            if state.should_revert() {
+                self.transactor.as_mut().revert();
+            } else {
+                self.transactor.as_mut().commit();
+            }
+            Some(())
+        } else {
+            // if vm failed to execute, revert storage just in case
+            self.transactor.as_mut().revert();
+            None
+        }
     }
 
     /// Execute a transaction.
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact(&mut self, tx: CheckedTransaction) -> &[Receipt] {
+    pub fn transact<St: Stage>(&mut self, tx: Checked<Script, St>) -> &[Receipt] {
         self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time
@@ -79,21 +113,6 @@ impl MemoryClient {
 
         self.transactor.receipts().unwrap_or_default()
     }
-
-    /// Persist the changes caused by [`Self::transact`].
-    pub fn persist(&mut self) {
-        self.as_mut().persist();
-    }
-
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.transactor.params()
-    }
-
-    /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
-        self.transactor.tx_offset()
-    }
 }
 
 impl<'a> From<MemoryStorage> for MemoryClient {
@@ -102,7 +121,7 @@ impl<'a> From<MemoryStorage> for MemoryClient {
     }
 }
 
-impl<'a> From<MemoryClient> for Transactor<MemoryStorage> {
+impl<'a> From<MemoryClient> for Transactor<MemoryStorage, Script> {
     fn from(client: MemoryClient) -> Self {
         client.transactor
     }

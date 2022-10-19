@@ -438,9 +438,22 @@ mod tests {
     #[test]
     fn memcopy() {
         let mut vm = Interpreter::with_memory_storage();
+        let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+        let tx = Transaction::script(
+            0,
+            params.max_gas_per_tx,
+            0,
+            Opcode::RET(0x10).to_bytes().to_vec(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
 
-        vm.init_script(CheckedTransaction::default())
-            .expect("Failed to init VM");
+        let tx = CheckedTransaction::check(tx, Default::default(), &params)
+            .expect("default tx should produce a valid checked transaction");
+
+        vm.init_script(tx).expect("Failed to init VM");
 
         let alloc = 1024;
 

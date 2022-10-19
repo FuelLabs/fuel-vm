@@ -55,21 +55,6 @@ impl MemoryClient {
         self.transactor.state_transition()
     }
 
-    /// Persist the changes caused by [`Self::transact`].
-    pub fn persist(&mut self) {
-        self.as_mut().persist();
-    }
-
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.transactor.params()
-    }
-
-    /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
-        self.transactor.tx_offset()
-    }
-
     /// Deploys a `Create` transaction.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Option<()> {
         let params = self.transactor.params().clone();
@@ -112,6 +97,21 @@ impl MemoryClient {
         }
 
         self.transactor.receipts().unwrap_or_default()
+    }
+
+    /// Persist the changes caused by [`Self::transact`].
+    pub fn persist(&mut self) {
+        self.as_mut().persist();
+    }
+
+    /// Consensus parameters
+    pub const fn params(&self) -> &ConsensusParameters {
+        self.transactor.params()
+    }
+
+    /// Tx memory offset
+    pub const fn tx_offset(&self) -> usize {
+        self.transactor.tx_offset()
     }
 }
 

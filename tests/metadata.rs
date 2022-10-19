@@ -281,15 +281,15 @@ fn get_transaction_fields() {
         .add_output(Output::message(rng.gen(), output_message_amt))
         .finalize_checked(height, &params);
 
-    let inputs = tx.transaction().inputs();
-    let outputs = tx.transaction().outputs();
-    let witnesses = tx.transaction().witnesses();
+    let inputs = tx.as_ref().inputs();
+    let outputs = tx.as_ref().outputs();
+    let witnesses = tx.as_ref().witnesses();
 
     let inputs_bytes: Vec<Vec<u8>> = inputs.iter().map(|i| i.clone().to_bytes()).collect();
     let outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
     let witnesses_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
-    let receipts_root = tx.transaction().receipts_root();
+    let receipts_root = tx.as_ref().receipts_root();
 
     #[rustfmt::skip]
     let cases = vec![

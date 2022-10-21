@@ -17,8 +17,8 @@ where
     /// Initialize the VM with a given transaction
     fn _init(&mut self, tx: Tx, initial_balances: InitialBalances) -> Result<(), InterpreterError> {
         // TODO: Remove cloning of the transaction and convert it into the `Transaction`.
-        // VM can work directly with inner types. It is only added to make the
-        // code as it was before the refactoring.
+        //  VM can work directly with inner types. It is only added to make the
+        //  code as it was before the refactoring.
         self.tx = tx.clone();
         let mut transaction: Transaction = tx.into();
 

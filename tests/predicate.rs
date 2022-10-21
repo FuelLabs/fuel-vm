@@ -1,22 +1,11 @@
 use fuel_tx::TransactionBuilder;
-use rand::{
-    rngs::StdRng,
-    Rng,
-    SeedableRng,
-};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::{
-    consts::*,
-    prelude::*,
-};
+use fuel_vm::{consts::*, prelude::*};
 
 use core::iter;
 
-fn execute_predicate<P>(
-    predicate: P,
-    predicate_data: Vec<u8>,
-    dummy_inputs: usize,
-) -> bool
+fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
     P: IntoIterator<Item = Opcode>,
 {
@@ -55,20 +44,10 @@ where
 
     let mut builder = TransactionBuilder::script(script, script_data);
 
-    builder
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(maturity);
+    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
-        builder.add_unsigned_coin_input(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        );
+        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity);
     });
 
     builder.add_input(input);
@@ -107,11 +86,7 @@ fn predicate() {
     predicate.push(Opcode::MEQ(0x10, 0x11, 0x12, 0x10));
     predicate.push(Opcode::RET(0x10));
 
-    assert!(execute_predicate(
-        predicate.iter().copied(),
-        expected_data,
-        0
-    ));
+    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));
 }
 

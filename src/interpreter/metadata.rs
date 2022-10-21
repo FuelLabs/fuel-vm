@@ -75,8 +75,8 @@ where
             (_, Some(_), GTFArgs::Type) => TransactionRepr::Create as Word,
 
             // General
-            (_, _, GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice) => *tx.gas_price(),
-            (_, _, GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit) => *tx.gas_limit(),
+            (_, _, GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice) => tx.price(),
+            (_, _, GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit) => tx.limit(),
             (_, _, GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity) => *tx.maturity(),
             (_, _, GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount) => tx.inputs().len() as Word,
             (_, _, GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount) => tx.outputs().len() as Word,

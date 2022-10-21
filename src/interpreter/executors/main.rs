@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
+use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -11,7 +11,8 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Checked, ConsensusParameters, Contract, Input, IntoChecked, Output, Receipt, ScriptExecutionResult, Stage,
+    Chargeable, Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt,
+    ScriptExecutionResult, Stage,
 };
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -32,11 +33,7 @@ where
 }
 
 // FIXME replace for a type-safe transaction
-impl<Tx> Interpreter<PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
-{
+impl<T> Interpreter<PredicateStorage, T> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs.
     ///
@@ -48,9 +45,11 @@ where
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates<S>(checked: Checked<Tx, S>, params: ConsensusParameters) -> bool
+    pub fn check_predicates<S, Tx>(checked: Checked<Tx, S>, params: ConsensusParameters) -> bool
     where
         S: Stage,
+        Tx: ExecutableTransaction,
+        <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params);
 
@@ -119,31 +118,52 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+{
+    fn _deploy(&mut self, mut create: Create, initial_balances: InitialBalances) -> Result<Create, InterpreterError> {
+        let salt = create.salt();
+        let storage_slots = create.storage_slots();
+        let contract = Contract::try_from(&create)?;
+        let root = contract.root();
+        let storage_root = Contract::initial_state_root(storage_slots.iter());
+        let id = contract.id(salt, &root, &storage_root);
+
+        if !create
+            .outputs()
+            .iter()
+            .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
+        {
+            return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
+        }
+
+        let storage = &mut self.storage;
+        storage
+            .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
+            .map_err(InterpreterError::from_io)?;
+
+        // TODO: Maybe the code below is useless because we can't spend any gas and can't execute
+        //  any code, so the output also should be the same.
+        let remaining_gas = create.limit();
+        Self::finalize_outputs(
+            &mut create,
+            false,
+            remaining_gas,
+            &initial_balances,
+            &RuntimeBalances::from(initial_balances.clone()),
+            &self.params,
+        )?;
+        Ok(create)
+    }
+}
+
+impl<S, Tx> Interpreter<S, Tx>
+where
+    S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
-        let state = if let Some(create) = self.tx.as_create() {
-            let salt = create.salt();
-            let storage_slots = create.storage_slots();
-            let contract = Contract::try_from(create)?;
-            let root = contract.root();
-            let storage_root = Contract::initial_state_root(storage_slots.iter());
-            let id = contract.id(salt, &root, &storage_root);
-
-            if !create
-                .outputs()
-                .iter()
-                .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
-            {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
-            }
-
-            let storage = &mut self.storage;
-            storage
-                .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
-                .map_err(InterpreterError::from_io)?;
-
+        let state = if let Some(create) = self.tx.as_create().cloned() {
+            self._deploy(create, self.initial_balances.clone())?;
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
@@ -168,8 +188,8 @@ where
             let program = self.run_program();
             let gas_used = self
                 .transaction()
-                .gas_limit()
-                .checked_sub(self.registers[REG_GGAS])
+                .limit()
+                .checked_sub(self.remaining_gas())
                 .ok_or_else(|| Bug::new(BugId::ID006, BugVariant::GlobalGasUnderflow))?;
 
             // Catch VM panic and don't propagate, generating a receipt
@@ -221,12 +241,22 @@ where
                 *script.receipts_root_mut() = receipts_root;
             }
 
+            let revert = matches!(program, ProgramState::Revert(_));
+            let remaining_gas = self.remaining_gas();
+            Self::finalize_outputs(
+                &mut self.tx,
+                revert,
+                remaining_gas,
+                &self.initial_balances,
+                &self.balances,
+                &self.params,
+            )?;
+
+            let outputs = self.transaction().outputs().len();
+            (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
+
             program
         };
-
-        let revert = matches!(state, ProgramState::Revert(_));
-
-        self.finalize_outputs(revert)?;
 
         Ok(state)
     }
@@ -294,5 +324,16 @@ where
 
         let state = state_result?;
         Ok(StateTransitionRef::new(state, self.transaction(), self.receipts()))
+    }
+}
+impl<S, Tx> Interpreter<S, Tx>
+where
+    S: InterpreterStorage,
+{
+    /// Deploys `Create` transaction without initialization VM and without invalidation of the
+    /// last state of execution of the `Script` transaction.
+    pub fn deploy<St: Stage>(&mut self, tx: Checked<Create, St>) -> Result<Create, InterpreterError> {
+        let (create, metadata) = tx.into();
+        self._deploy(create, metadata.balances())
     }
 }

@@ -209,7 +209,17 @@ impl<'a, Tx> From<&'a StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
     }
 }
 
-impl<'a, Tx> From<StateTransitionRef<'a, Tx>> for ProgramState {
+impl<'a, Tx: Clone> Into<StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
+    fn into(self) -> StateTransition<Tx> {
+        StateTransition {
+            state: self.state,
+            tx: self.tx.clone(),
+            receipts: self.receipts.to_vec(),
+        }
+    }
+}
+
+impl<'a, Tx: Clone> From<StateTransitionRef<'a, Tx>> for ProgramState {
     fn from(t: StateTransitionRef<'a, Tx>) -> ProgramState {
         t.state
     }

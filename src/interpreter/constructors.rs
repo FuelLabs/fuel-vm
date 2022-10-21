@@ -13,7 +13,7 @@ use fuel_tx::ConsensusParameters;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
-    Tx: ExecutableTransaction,
+    Tx: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///

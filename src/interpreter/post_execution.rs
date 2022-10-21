@@ -1,12 +1,13 @@
-use crate::consts::*;
 use crate::prelude::{ExecutableTransaction, Interpreter, InterpreterStorage, RuntimeError};
 
+use crate::interpreter::{InitialBalances, RuntimeBalances};
+use fuel_tx::ConsensusParameters;
+use fuel_types::Word;
 use std::io;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, T> Interpreter<S, T>
 where
     S: InterpreterStorage,
-    Tx: ExecutableTransaction,
 {
     /// Finalize outputs post-execution.
     ///
@@ -19,19 +20,23 @@ where
     ///
     /// The transaction validation is expected to halt in such case. Since the VM only accepts
     /// checked transactions - hence, validated - this case should be unreachable.
-    pub(crate) fn finalize_outputs(&mut self, revert: bool) -> Result<(), RuntimeError> {
-        let outputs = self.transaction().outputs().len();
-        let params = &self.params;
-        let tx = &mut self.tx;
-
-        let remaining_gas = self.registers[REG_GGAS];
-
-        tx.update_outputs(params, revert, remaining_gas, &self.initial_balances, &self.balances)
+    pub(crate) fn finalize_outputs<Tx>(
+        tx: &mut Tx,
+        revert: bool,
+        remaining_gas: Word,
+        initial_balances: &InitialBalances,
+        balances: &RuntimeBalances,
+        params: &ConsensusParameters,
+    ) -> Result<(), RuntimeError>
+    where
+        Tx: ExecutableTransaction,
+    {
+        tx.update_outputs(params, revert, remaining_gas, initial_balances, balances)
             .map_err(|e| io::Error::new(
                 io::ErrorKind::Other,
                 format!("a valid VM execution shouldn't result in a state where it can't compute its refund. This is a bug! {}", e)
             ))?;
 
-        (0..outputs).try_for_each(|o| self.update_memory_output(o))
+        Ok(())
     }
 }

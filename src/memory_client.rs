@@ -40,7 +40,7 @@ impl MemoryClient {
 
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
-    pub fn backtrace(&self) -> Option<Backtrace<Script>> {
+    pub fn backtrace(&self) -> Option<Backtrace> {
         self.transactor.backtrace()
     }
 
@@ -56,22 +56,8 @@ impl MemoryClient {
     }
 
     /// Deploys a `Create` transaction.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<()> {
-        let params = self.transactor.params().clone();
-        let mut deploy_transactor = Transactor::new(self.transactor.as_mut(), params);
-
-        if let Ok(state) = deploy_transactor.transact(tx).result() {
-            if state.should_revert() {
-                self.transactor.as_mut().revert();
-            } else {
-                self.transactor.as_mut().commit();
-            }
-            Some(())
-        } else {
-            // if vm failed to execute, revert storage just in case
-            self.transactor.as_mut().revert();
-            None
-        }
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
+        self.transactor.deploy(tx).ok()
     }
 
     /// Execute a transaction.

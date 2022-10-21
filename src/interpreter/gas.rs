@@ -10,6 +10,10 @@ use fuel_types::Word;
 pub mod consts;
 
 impl<S, Tx> Interpreter<S, Tx> {
+    pub(crate) const fn remaining_gas(&self) -> Word {
+        self.registers[REG_GGAS]
+    }
+
     /// Maps [`OpcodeRepr`] to a [`GasUnit`] price.
     ///
     /// # Panic

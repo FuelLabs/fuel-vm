@@ -43,8 +43,8 @@ where
 
         let tx_size = transaction.serialized_size() as Word;
 
-        self.registers[REG_GGAS] = *self.transaction().gas_limit();
-        self.registers[REG_CGAS] = *self.transaction().gas_limit();
+        self.registers[REG_GGAS] = self.transaction().limit();
+        self.registers[REG_CGAS] = self.transaction().limit();
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

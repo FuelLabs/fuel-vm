@@ -54,7 +54,7 @@ pub use memory::MemoryRange;
 ///
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
-pub struct Interpreter<S, Tx> {
+pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
     frames: Vec<CallFrame>,
@@ -240,7 +240,7 @@ pub trait ExecutableTransaction:
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
-        let gas_refund = TransactionFee::gas_refund_value(params, remaining_gas, *self.gas_price())
+        let gas_refund = TransactionFee::gas_refund_value(params, remaining_gas, self.price())
             .ok_or(CheckError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {

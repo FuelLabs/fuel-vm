@@ -6,7 +6,7 @@ use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 use crate::{backtrace::Backtrace, state::ProgramState};
 
-use fuel_tx::{Checked, ConsensusParameters, IntoChecked, Receipt, Stage};
+use fuel_tx::{Checked, ConsensusParameters, Create, IntoChecked, Receipt, Script, Stage};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -61,14 +61,6 @@ where
         }
     }
 
-    /// Receipts after the execution of a transaction.
-    ///
-    /// Follows the same criteria as [`Self::state_transition`] to return
-    /// `None`.
-    pub fn receipts(&self) -> Option<&[Receipt]> {
-        self.program_state.is_some().then(|| self.interpreter.receipts())
-    }
-
     /// Interpreter error representation after the execution of a transaction.
     ///
     /// Follows the same criteria as [`Self::state_transition`] to return
@@ -78,16 +70,6 @@ where
     /// transaction was executed.
     pub const fn error(&self) -> Option<&InterpreterError> {
         self.error.as_ref()
-    }
-
-    /// Generate a backtrace when at least one receipt of `ScriptResult` was
-    /// found.
-    pub fn backtrace(&self) -> Option<Backtrace<Tx>> {
-        self.receipts()
-            .map(|r| r.iter().find_map(Receipt::result))
-            .flatten()
-            .copied()
-            .map(|result| Backtrace::from_vm_error(&self.interpreter, result))
     }
 
     /// Returns true if last transaction execution was successful
@@ -132,6 +114,36 @@ where
     /// Tx memory offset
     pub const fn tx_offset(&self) -> usize {
         self.interpreter.tx_offset()
+    }
+}
+
+impl<'a, S> Transactor<S, Script> {
+    /// Receipts after the execution of a transaction.
+    ///
+    /// Follows the same criteria as [`Self::state_transition`] to return
+    /// `None`.
+    pub fn receipts(&self) -> Option<&[Receipt]> {
+        self.program_state.is_some().then(|| self.interpreter.receipts())
+    }
+
+    /// Generate a backtrace when at least one receipt of `ScriptResult` was
+    /// found.
+    pub fn backtrace(&self) -> Option<Backtrace> {
+        self.receipts()
+            .map(|r| r.iter().find_map(Receipt::result))
+            .flatten()
+            .copied()
+            .map(|result| Backtrace::from_vm_error(&self.interpreter, result))
+    }
+}
+
+impl<S, Tx> Transactor<S, Tx>
+where
+    S: InterpreterStorage,
+{
+    /// Deploys `Create` checked transactions.
+    pub fn deploy<St: Stage>(&mut self, checked: Checked<Create, St>) -> Result<Create, InterpreterError> {
+        self.interpreter.deploy(checked)
     }
 }
 

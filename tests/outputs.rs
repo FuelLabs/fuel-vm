@@ -1,12 +1,22 @@
-use fuel_vm::consts::REG_CGAS;
 use fuel_vm::{
-    consts::{REG_FP, REG_ONE, REG_ZERO},
-    prelude::*,
+    consts::{
+        REG_CGAS,
+        REG_FP,
+        REG_ONE,
+        REG_ZERO,
+    },
+    prelude::{
+        field::Outputs,
+        *,
+    },
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 /// Testing of post-execution output handling
 
@@ -92,7 +102,9 @@ fn change_is_reduced_by_external_transfer() {
     let contract_code = vec![Opcode::RET(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -145,7 +157,9 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let contract_code = vec![Opcode::RET(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -255,7 +269,9 @@ fn variable_output_set_by_external_transfer_out() {
             && asset_id == asset_id
     ));
 
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -331,7 +347,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -409,7 +427,9 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let output = Output::variable(owner, transfer_amount, asset_id);
 
     assert_eq!(output, outputs[0]);
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -488,5 +508,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

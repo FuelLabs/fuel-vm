@@ -12,7 +12,7 @@ use std::{io, mem};
 
 use fuel_tx::{
     field, Chargeable, CheckError, ConsensusParameters, Create, CreateCheckedMetadata, Executable, IntoChecked, Output,
-    Receipt, Script, ScriptCheckedMetadata, Transaction, TransactionFee, UniqueIdentifier,
+    Receipt, Script, ScriptCheckedMetadata, Transaction, TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::{Address, AssetId, Word};
 
@@ -169,6 +169,9 @@ pub trait ExecutableTransaction:
     /// Casts the `Self` transaction into `&Create` if any.
     fn as_create(&self) -> Option<&Create>;
 
+    /// Returns the type of the transaction like `Transaction::Create` or `Transaction::Script`.
+    fn transaction_type() -> Word;
+
     /// Dumps the `Output` by the `idx` into the `buf` buffer.
     fn output_to_mem(&mut self, idx: usize, buf: &mut [u8]) -> io::Result<usize> {
         self.outputs_mut()
@@ -304,6 +307,10 @@ impl ExecutableTransaction for Create {
     fn as_create(&self) -> Option<&Create> {
         Some(self)
     }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Create as Word
+    }
 }
 
 impl ExecutableTransaction for Script {
@@ -317,6 +324,10 @@ impl ExecutableTransaction for Script {
 
     fn as_create(&self) -> Option<&Create> {
         None
+    }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Script as Word
     }
 }
 

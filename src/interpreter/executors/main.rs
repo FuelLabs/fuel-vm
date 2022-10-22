@@ -326,6 +326,7 @@ where
         Ok(StateTransitionRef::new(state, self.transaction(), self.receipts()))
     }
 }
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,

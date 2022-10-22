@@ -164,6 +164,17 @@ where
 
         self.set_variable_output(out_idx, variable)?;
 
+        let receipt = Receipt::transfer_out(
+            internal_context.unwrap_or_default(),
+            to,
+            amount,
+            asset_id,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.append_receipt(receipt);
+
         self.inc_pc()
     }
 

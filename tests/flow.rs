@@ -188,7 +188,7 @@ fn call() {
 
     let params = ConsensusParameters::default();
 
-    let script_data_mem = params.tx_offset(true) + tx.transaction().script_data_offset();
+    let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
@@ -273,7 +273,7 @@ fn call_frame_code_offset() {
     let params = ConsensusParameters::default();
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = params.tx_offset(true) + Script::script_offset_static() + script_len;
+    let script_data_offset = params.tx_offset() + Script::script_offset_static() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![

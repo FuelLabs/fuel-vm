@@ -186,7 +186,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) const fn tx_offset(&self) -> usize {
-        self.params().tx_offset(true)
+        self.params().tx_offset()
     }
 
     pub(crate) fn tx_id(&self) -> &Bytes32 {

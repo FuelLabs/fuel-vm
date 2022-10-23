@@ -14,6 +14,7 @@ use fuel_tx::{
     field, Chargeable, CheckError, ConsensusParameters, Create, CreateCheckedMetadata, Executable, IntoChecked, Output,
     Receipt, Script, ScriptCheckedMetadata, Transaction, TransactionFee, TransactionRepr, UniqueIdentifier,
 };
+use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Address, AssetId, Word};
 
 mod alu;
@@ -159,6 +160,8 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
+    + SizedBytes
+    + SerializableVec
 {
     /// Casts the `Self` transaction into `&Script` if any.
     fn as_script(&self) -> Option<&Script>;

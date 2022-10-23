@@ -213,7 +213,7 @@ fn variable_output_set_by_external_transfer_out() {
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
         ],
-        params.tx_offset(true)
+        params.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -288,7 +288,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             Opcode::TRO(0x12, 0x13, 0x10, 0x11),
             Opcode::RET(REG_ONE),
         ],
-        params.tx_offset(true)
+        params.tx_offset()
     );
 
     let script_data: Vec<u8> = [

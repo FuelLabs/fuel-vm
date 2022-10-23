@@ -4,8 +4,7 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{Checked, IntoChecked, Stage, Transaction};
-use fuel_types::bytes::{SerializableVec, SizedBytes};
+use fuel_tx::{Checked, IntoChecked, Stage};
 use fuel_types::Word;
 
 use std::io;
@@ -16,11 +15,7 @@ where
 {
     /// Initialize the VM with a given transaction
     fn _init(&mut self, tx: Tx, initial_balances: InitialBalances) -> Result<(), InterpreterError> {
-        // TODO: Remove cloning of the transaction and convert it into the `Transaction`.
-        //  VM can work directly with inner types. It is only added to make the
-        //  code as it was before the refactoring.
-        self.tx = tx.clone();
-        let mut transaction: Transaction = tx.into();
+        self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
 
@@ -41,7 +36,7 @@ where
 
         RuntimeBalances::from(initial_balances).to_vm(self);
 
-        let tx_size = transaction.serialized_size() as Word;
+        let tx_size = self.transaction().serialized_size() as Word;
 
         self.registers[REG_GGAS] = self.transaction().limit();
         self.registers[REG_CGAS] = self.transaction().limit();
@@ -49,7 +44,7 @@ where
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        let tx_bytes = transaction.to_bytes();
+        let tx_bytes = self.tx.to_bytes();
 
         self.push_stack(tx_bytes.as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

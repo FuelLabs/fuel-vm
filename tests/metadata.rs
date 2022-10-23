@@ -1,13 +1,11 @@
 use fuel_crypto::Hasher;
-use fuel_tx::TransactionBuilder;
 use fuel_tx::{
     field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
-    Script,
+    Script, TransactionBuilder,
 };
 use fuel_types::bytes;
 use fuel_vm::consts::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use fuel_vm::prelude::*;
 
@@ -324,7 +322,7 @@ fn get_transaction_fields() {
 
     // hardcoded metadata of script len so it can be checked at runtime
     let script_reserved_words = 300 * WORD_SIZE;
-    let script_offset = params.tx_offset(true) + Script::script_offset_static();
+    let script_offset = params.tx_offset() + Script::script_offset_static();
     let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
     let script_data: Vec<u8> = cases.iter().map(|c| c.iter()).flatten().copied().collect();
 

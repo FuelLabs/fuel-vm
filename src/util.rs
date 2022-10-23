@@ -39,7 +39,7 @@
 ///         Opcode::CALL(0x10, 0x11, 0x12, 0x13),
 ///         Opcode::RET(REG_ONE),
 ///     ],
-///     ConsensusParameters::DEFAULT.tx_offset(true)
+///     ConsensusParameters::DEFAULT.tx_offset()
 /// );
 /// ```
 #[macro_export]
@@ -212,7 +212,7 @@ pub mod test_helpers {
         }
 
         pub const fn tx_offset(&self) -> usize {
-            self.params.tx_offset(true)
+            self.params.tx_offset()
         }
 
         pub fn build(&mut self) -> Checked<Script> {
@@ -233,7 +233,7 @@ pub mod test_helpers {
                     Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
                     Opcode::RET(REG_ONE)
                 ],
-                params.tx_offset(true)
+                params.tx_offset()
             );
 
             let script_data: Vec<u8> = [asset_id.as_ref(), contract_id.as_ref()]
@@ -323,7 +323,7 @@ pub mod test_helpers {
 
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
-            let tx_offset = self.params.tx_offset(false);
+            let tx_offset = self.params.tx_offset();
             let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + transaction.serialized_size())];
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
 

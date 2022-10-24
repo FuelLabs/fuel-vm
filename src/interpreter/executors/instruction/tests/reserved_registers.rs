@@ -20,7 +20,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     let mut vm = Interpreter::with_memory_storage();
 
-    let mut params = ConsensusParameters::default();
+    let params = ConsensusParameters::default();
     let script = Opcode::RET(0x10).to_bytes().to_vec();
     let block_height = 0;
     let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
@@ -32,15 +32,6 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     if writes_to_ra(opcode) {
         // if this opcode writes to $rA, expect an error since we're attempting to use a reserved register
         // This assumes that writeable register is validated before other properties of the instruction.
-        if !matches!(
-            res,
-            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
-        ) {
-            return TestResult::error(format!(
-                "expected ReservedRegisterNotWritable error {:?}",
-                (opcode, &res)
-            ));
-        }
         match res {
             Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable => {
                 // expected failure

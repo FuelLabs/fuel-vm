@@ -258,7 +258,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![program.clone().into()],
     )
-    .into_checked_partially(height, &params)
+    .into_checked_stateless(height, &params)
     .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default())

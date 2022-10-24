@@ -4,7 +4,7 @@ use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{Checked, IntoChecked, Stage};
+use fuel_tx::{Checked, IntoChecked};
 use fuel_types::Word;
 
 use std::io;
@@ -61,7 +61,7 @@ where
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate<St: Stage>(&mut self, checked: Checked<Tx, St>) -> bool {
+    pub fn init_predicate(&mut self, checked: Checked<Tx>) -> bool {
         self.context = Context::Predicate {
             program: Default::default(),
         };
@@ -83,7 +83,7 @@ where
     /// execution of contract opcodes.
     ///
     /// For predicate verification, check [`Self::init_predicate`]
-    pub fn init_script<St: Stage>(&mut self, checked: Checked<Tx, St>) -> Result<(), InterpreterError> {
+    pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 
         self.context = Context::Script { block_height };

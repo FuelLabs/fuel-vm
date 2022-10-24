@@ -6,7 +6,7 @@ use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 use crate::{backtrace::Backtrace, state::ProgramState};
 
-use fuel_tx::{Checked, ConsensusParameters, Create, IntoChecked, Receipt, Script, Stage};
+use fuel_tx::{Checked, ConsensusParameters, Create, IntoChecked, Receipt, Script};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -142,7 +142,7 @@ where
     S: InterpreterStorage,
 {
     /// Deploys `Create` checked transactions.
-    pub fn deploy<St: Stage>(&mut self, checked: Checked<Create, St>) -> Result<Create, InterpreterError> {
+    pub fn deploy(&mut self, checked: Checked<Create>) -> Result<Create, InterpreterError> {
         self.interpreter.deploy(checked)
     }
 }
@@ -154,7 +154,7 @@ where
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Execute a transaction, and return the new state of the transactor
-    pub fn transact<St: Stage>(&mut self, tx: Checked<Tx, St>) -> &mut Self {
+    pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
         match self.interpreter.transact(tx) {
             Ok(s) => {
                 self.program_state.replace(s.into());

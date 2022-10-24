@@ -5,7 +5,7 @@ use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 
-use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script, Stage};
+use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script};
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
@@ -64,7 +64,7 @@ impl MemoryClient {
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact<St: Stage>(&mut self, tx: Checked<Script, St>) -> &[Receipt] {
+    pub fn transact(&mut self, tx: Checked<Script>) -> &[Receipt] {
         self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time

@@ -12,7 +12,7 @@ use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt,
-    ScriptExecutionResult, Stage,
+    ScriptExecutionResult,
 };
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -45,9 +45,8 @@ impl<T> Interpreter<PredicateStorage, T> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates<S, Tx>(checked: Checked<Tx, S>, params: ConsensusParameters) -> bool
+    pub fn check_predicates<Tx>(checked: Checked<Tx>, params: ConsensusParameters) -> bool
     where
-        S: Stage,
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
@@ -300,9 +299,9 @@ where
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the
     /// result of th execution in form of [`StateTransition`]
-    pub fn transact_owned<St: Stage>(
+    pub fn transact_owned(
         storage: S,
-        tx: Checked<Tx, St>,
+        tx: Checked<Tx>,
         params: ConsensusParameters,
     ) -> Result<StateTransition<Tx>, InterpreterError> {
         let mut interpreter = Interpreter::with_storage(storage, params);
@@ -316,7 +315,7 @@ where
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
-    pub fn transact<St: Stage>(&mut self, tx: Checked<Tx, St>) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
+    pub fn transact(&mut self, tx: Checked<Tx>) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
@@ -333,7 +332,7 @@ where
 {
     /// Deploys `Create` transaction without initialization VM and without invalidation of the
     /// last state of execution of the `Script` transaction.
-    pub fn deploy<St: Stage>(&mut self, tx: Checked<Create, St>) -> Result<Create, InterpreterError> {
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (create, metadata) = tx.into();
         self._deploy(create, metadata.balances())
     }

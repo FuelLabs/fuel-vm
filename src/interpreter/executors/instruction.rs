@@ -132,13 +132,7 @@ where
 
             OpcodeRepr::MLOG => {
                 self.gas_charge(GAS_MLOG)?;
-                self.alu_error(
-                    ra,
-                    |b, c| (b as f64).log(c as f64).trunc() as Word,
-                    b,
-                    c,
-                    b == 0 || c <= 1,
-                )?;
+                self.alu_error(ra, |b, c| unchecked_ilog(b, c) as Word, b, c, b == 0 || c <= 1)?;
             }
 
             OpcodeRepr::MOD => {
@@ -493,6 +487,40 @@ where
         }
 
         Ok(ExecuteState::Proceed)
+    }
+}
+
+/// Computes logarithm for given exponent and base.
+/// Diverges when exp == 0 or base <= 1.
+#[inline(always)] // Force copy of each invocation for optimization, see comments below
+const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
+    let mut n = 0;
+    let mut r = exp;
+    while r >= base {
+        r /= base;
+        n += 1;
+    }
+    return n;
+}
+
+/// Logarithm for given exponent and an arbitrary base, rounded
+/// rounded down to nearest integer value.
+///
+/// Must not be called if the exponent == 0, or if the base <= 1,
+/// as that causes either division by zero, or an infinite loop.
+///
+/// TODO: when https://github.com/rust-lang/rust/issues/70887 is stabilized,
+/// consider using that instead.
+const fn unchecked_ilog(exp: Word, base: Word) -> u32 {
+    // Generate separately optimized paths for some common and/or expensive bases.
+    // See https://github.com/FuelLabs/fuel-vm/issues/150#issuecomment-1288797787 for benchmark.
+    match base {
+        2 => _unchecked_ilog_inner(exp, 2),
+        3 => _unchecked_ilog_inner(exp, 3),
+        4 => _unchecked_ilog_inner(exp, 4),
+        5 => _unchecked_ilog_inner(exp, 5),
+        10 => _unchecked_ilog_inner(exp, 10),
+        n => _unchecked_ilog_inner(exp, n),
     }
 }
 

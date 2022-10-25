@@ -235,17 +235,20 @@ pub enum Opcode {
     /// Send a message to recipient address with call abi, coins, and output.
     SMO(RegisterId, RegisterId, RegisterId, RegisterId),
 
-    /// Load a word from contract storage.
-    SRW(RegisterId, RegisterId),
+    /// Clear a series of slots from contract storage.
+    SCWQ(RegisterId, RegisterId, RegisterId),
 
-    /// Load 32 bytes from contract storage.
-    SRWQ(RegisterId, RegisterId),
+    /// Load a word from contract storage.
+    SRW(RegisterId, RegisterId, RegisterId),
+
+    /// Load a series of 32 byte slots from contract storage.
+    SRWQ(RegisterId, RegisterId, RegisterId, RegisterId),
 
     /// Store a word in contract storage.
-    SWW(RegisterId, RegisterId),
+    SWW(RegisterId, RegisterId, RegisterId),
 
-    /// Store 32 bytes in contract storage.
-    SWWQ(RegisterId, RegisterId),
+    /// Store a series of 32 byte slots in contract storage.
+    SWWQ(RegisterId, RegisterId, RegisterId, RegisterId),
 
     /// Get timestamp of block at given height.
     TIME(RegisterId, RegisterId),
@@ -364,10 +367,11 @@ impl Opcode {
             OpcodeRepr::MINT => Opcode::MINT(ra),
             OpcodeRepr::RVRT => Opcode::RVRT(ra),
             OpcodeRepr::SMO => Opcode::SMO(ra, rb, rc, rd),
-            OpcodeRepr::SRW => Opcode::SRW(ra, rb),
-            OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb),
-            OpcodeRepr::SWW => Opcode::SWW(ra, rb),
-            OpcodeRepr::SWWQ => Opcode::SWWQ(ra, rb),
+            OpcodeRepr::SCWQ => Opcode::SCWQ(ra, rb, rc),
+            OpcodeRepr::SRW => Opcode::SRW(ra, rb, rc),
+            OpcodeRepr::SRWQ => Opcode::SRWQ(ra, rb, rc, rd),
+            OpcodeRepr::SWW => Opcode::SWW(ra, rb, rc),
+            OpcodeRepr::SWWQ => Opcode::SWWQ(ra, rb, rc, rd),
             OpcodeRepr::TIME => Opcode::TIME(ra, rb),
             OpcodeRepr::TR => Opcode::TR(ra, rb, rc),
             OpcodeRepr::TRO => Opcode::TRO(ra, rb, rc, rd),
@@ -469,10 +473,11 @@ impl Opcode {
             Self::MINT(ra) => [Some(*ra), None, None, None],
             Self::RVRT(ra) => [Some(*ra), None, None, None],
             Self::SMO(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
-            Self::SRW(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::SRWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::SWW(ra, rb) => [Some(*ra), Some(*rb), None, None],
-            Self::SWWQ(ra, rb) => [Some(*ra), Some(*rb), None, None],
+            Self::SCWQ(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::SRW(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::SRWQ(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
+            Self::SWW(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
+            Self::SWWQ(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
             Self::TIME(ra, rb) => [Some(*ra), Some(*rb), None, None],
             Self::TR(ra, rb, rc) => [Some(*ra), Some(*rb), Some(*rc), None],
             Self::TRO(ra, rb, rc, rd) => [Some(*ra), Some(*rb), Some(*rc), Some(*rd)],
@@ -556,10 +561,11 @@ impl Opcode {
             | Self::SMO(_, _, _, _)
             | Self::JMP(_)
             | Self::JNE(_, _, _)
-            | Self::SRW(_, _)
-            | Self::SRWQ(_, _)
-            | Self::SWW(_, _)
-            | Self::SWWQ(_, _)
+            | Self::SCWQ(_, _, _)
+            | Self::SRW(_, _, _)
+            | Self::SRWQ(_, _, _, _)
+            | Self::SWW(_, _, _)
+            | Self::SWWQ(_, _, _, _)
             | Self::TIME(_, _)
             | Self::TR(_, _, _)
             | Self::TRO(_, _, _, _)
@@ -961,17 +967,37 @@ impl From<Opcode> for u32 {
                     | ((rc as u32) << 6)
                     | (rd as u32)
             }
-            Opcode::SRW(ra, rb) => {
-                ((OpcodeRepr::SRW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            Opcode::SCWQ(ra, rb, rc) => {
+                ((OpcodeRepr::SCWQ as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
             }
-            Opcode::SRWQ(ra, rb) => {
-                ((OpcodeRepr::SRWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            Opcode::SRW(ra, rb, rc) => {
+                ((OpcodeRepr::SRW as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
             }
-            Opcode::SWW(ra, rb) => {
-                ((OpcodeRepr::SWW as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            Opcode::SRWQ(ra, rb, rc, rd) => {
+                ((OpcodeRepr::SRWQ as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
             }
-            Opcode::SWWQ(ra, rb) => {
-                ((OpcodeRepr::SWWQ as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)
+            Opcode::SWW(ra, rb, rc) => {
+                ((OpcodeRepr::SWW as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+            }
+            Opcode::SWWQ(ra, rb, rc, rd) => {
+                ((OpcodeRepr::SWWQ as u32) << 24)
+                    | ((ra as u32) << 18)
+                    | ((rb as u32) << 12)
+                    | ((rc as u32) << 6)
+                    | (rd as u32)
             }
             Opcode::TIME(ra, rb) => {
                 ((OpcodeRepr::TIME as u32) << 24) | ((ra as u32) << 18) | ((rb as u32) << 12)

@@ -241,7 +241,10 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::ECR
             | OpcodeRepr::JNE
             | OpcodeRepr::K256
-            | OpcodeRepr::S256 => a | b | c,
+            | OpcodeRepr::S256
+            | OpcodeRepr::SCWQ
+            | OpcodeRepr::SRW
+            | OpcodeRepr::SWW => a | b | c,
 
             OpcodeRepr::ADDI
             | OpcodeRepr::ANDI
@@ -268,10 +271,6 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::BHSH
             | OpcodeRepr::CROO
             | OpcodeRepr::CSIZ
-            | OpcodeRepr::SRW
-            | OpcodeRepr::SRWQ
-            | OpcodeRepr::SWW
-            | OpcodeRepr::SWWQ
             | OpcodeRepr::TIME => a | b,
 
             OpcodeRepr::RET
@@ -294,7 +293,9 @@ impl From<Instruction> for u32 {
             | OpcodeRepr::LOG
             | OpcodeRepr::LOGD
             | OpcodeRepr::SMO
-            | OpcodeRepr::TRO => a | b | c | d,
+            | OpcodeRepr::TRO
+            | OpcodeRepr::SRWQ
+            | OpcodeRepr::SWWQ => a | b | c | d,
 
             _ => 0,
         };

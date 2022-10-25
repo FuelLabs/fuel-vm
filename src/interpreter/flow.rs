@@ -1,7 +1,8 @@
 use super::Interpreter;
+use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
-use crate::error::{Bug, BugId, BugVariant, RuntimeError};
+use crate::error::RuntimeError;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
@@ -46,9 +47,7 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
         if let Some(frame) = self.frames.pop() {
-            self.registers[REG_CGAS] = self.registers[REG_CGAS]
-                .checked_add(frame.context_gas())
-                .ok_or_else(|| Bug::new(BugId::ID001, BugVariant::ContextGasOverflow))?;
+            self.registers[REG_CGAS] = arith::add_word(self.registers[REG_CGAS], frame.context_gas())?;
 
             let cgas = self.registers[REG_CGAS];
             let ggas = self.registers[REG_GGAS];
@@ -128,6 +127,15 @@ impl<S> Interpreter<S> {
 
         let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
+        let receipt = match result.reason() {
+            PanicReason::ContractNotInInputs => {
+                let call = Call::try_from(&self.memory[self.registers[result.instruction().rb()] as usize..])
+                    .expect("append panic receipt error");
+                receipt.with_panic_contract_id(Some(*call.to()))
+            }
+            _ => receipt,
+        };
+
         self.append_receipt(receipt);
     }
 }
@@ -170,9 +178,7 @@ where
         let forward_gas_amount = cmp::min(self.registers[REG_CGAS], d);
 
         // subtract gas
-        self.registers[REG_CGAS] = self.registers[REG_CGAS]
-            .checked_sub(forward_gas_amount)
-            .ok_or_else(|| Bug::new(BugId::ID003, BugVariant::ContextGasUnderflow))?;
+        self.registers[REG_CGAS] = arith::sub_word(self.registers[REG_CGAS], forward_gas_amount)?;
 
         let mut frame = self.call_frame(call, asset_id)?;
 

@@ -1,4 +1,6 @@
 use super::*;
+use fuel_asm::PanicReason::OutOfGas;
+use fuel_tx::{ConsensusParameters, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -18,21 +20,34 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     let mut vm = Interpreter::with_memory_storage();
 
-    vm.init_script(CheckedTransaction::default())
-        .expect("Failed to init VM");
+    let params = ConsensusParameters::default();
+    let script = Opcode::RET(0x10).to_bytes().to_vec();
+    let block_height = 0;
+    let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
+    let tx = tx.check(block_height, &params).expect("failed to check tx");
+
+    vm.init_script(tx).expect("Failed to init VM");
     let res = vm.instruction(random_instruction);
 
     if writes_to_ra(opcode) {
         // if this opcode writes to $rA, expect an error since we're attempting to use a reserved register
         // This assumes that writeable register is validated before other properties of the instruction.
-        if !matches!(
-            res,
-            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
-        ) {
-            return TestResult::error(format!(
-                "expected ReservedRegisterNotWritable error {:?}",
-                (opcode, &res)
-            ));
+        match res {
+            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable => {
+                // expected failure
+            }
+            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &OutOfGas => {
+                // Some opcodes may run out of gas if they access too much data.
+                // Simply discard these results as an alternative to structural fuzzing that avoids
+                // out of gas errors.
+                return TestResult::discard();
+            }
+            _ => {
+                return TestResult::error(format!(
+                    "expected ReservedRegisterNotWritable error {:?}",
+                    (opcode, &res)
+                ));
+            }
         }
     } else if matches!(
         res,

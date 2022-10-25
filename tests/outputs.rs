@@ -229,7 +229,7 @@ fn variable_output_set_by_external_transfer_out() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
+    let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
@@ -237,7 +237,10 @@ fn variable_output_set_by_external_transfer_out() {
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, to, asset_id }
@@ -251,6 +254,8 @@ fn variable_output_set_by_external_transfer_out() {
             if amount == external_balance - transfer_amount
             && asset_id == asset_id
     ));
+
+    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -299,7 +304,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
+    let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
@@ -307,7 +312,12 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
+
+    println!("{:?}", receipts);
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
@@ -319,6 +329,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             if amount == external_balance
             && asset_id == asset_id
     ));
+
+    // TransferOut receipt should not be present
+    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -381,18 +394,22 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     .collect();
 
     // create and run the tx
-    let outputs = test_context
+    let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     let output = Output::variable(owner, transfer_amount, asset_id);
 
     assert_eq!(output, outputs[0]);
+    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -454,16 +471,22 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     .collect();
 
     // create and run the tx
-    let outputs = test_context
+    let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
     ));
+
+    // TransferOut receipt should not be present
+    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

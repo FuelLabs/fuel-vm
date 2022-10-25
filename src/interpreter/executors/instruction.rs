@@ -338,7 +338,7 @@ where
             }
 
             OpcodeRepr::MEQ => {
-                self.gas_charge(GAS_MEQ)?;
+                self.gas_charge_monad(GAS_MEQ, d)?;
                 self.memeq(ra, b, c, d)?;
             }
 
@@ -387,7 +387,7 @@ where
             }
 
             OpcodeRepr::CCP => {
-                self.gas_charge(GAS_CCP)?;
+                self.gas_charge_monad(GAS_CCP, d)?;
                 self.code_copy(a, b, c, d)?;
             }
 

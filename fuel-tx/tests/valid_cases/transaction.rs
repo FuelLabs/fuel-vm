@@ -25,7 +25,7 @@ fn gas_limit() {
         vec![],
         vec![],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate transaction");
 
     Transaction::create(
@@ -39,7 +39,7 @@ fn gas_limit() {
         vec![],
         vec![vec![0xfau8].into()],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate transaction");
 
     let err = Transaction::script(
@@ -52,10 +52,10 @@ fn gas_limit() {
         vec![],
         vec![],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionGasLimit, err);
+    assert_eq!(CheckError::TransactionGasLimit, err);
 
     let err = Transaction::create(
         rng.gen(),
@@ -68,10 +68,10 @@ fn gas_limit() {
         vec![],
         vec![generate_bytes(rng).into()],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionGasLimit, err);
+    assert_eq!(CheckError::TransactionGasLimit, err);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn maturity() {
         vec![],
         vec![],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate script");
 
     Transaction::create(
@@ -104,7 +104,7 @@ fn maturity() {
         vec![],
         vec![rng.gen()],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate tx create");
 
     let err = Transaction::script(
@@ -117,10 +117,10 @@ fn maturity() {
         vec![],
         vec![],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionMaturity, err);
+    assert_eq!(CheckError::TransactionMaturity, err);
 
     let err = Transaction::create(
         rng.gen(),
@@ -133,10 +133,10 @@ fn maturity() {
         vec![],
         vec![rng.gen()],
     )
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionMaturity, err);
+    assert_eq!(CheckError::TransactionMaturity, err);
 }
 
 #[test]
@@ -168,7 +168,7 @@ fn max_iow() {
 
     builder
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
     // Add inputs up to maximum and validate
@@ -199,7 +199,7 @@ fn max_iow() {
 
     builder
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
     // Overflow maximum inputs and expect error
@@ -228,10 +228,10 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionInputsMax, err);
+    assert_eq!(CheckError::TransactionInputsMax, err);
 
     // Overflow outputs maximum and expect error
     let mut builder = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![]);
@@ -259,10 +259,10 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionOutputsMax, err);
+    assert_eq!(CheckError::TransactionOutputsMax, err);
 
     // Overflow witnesses maximum and expect error
     let mut builder = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![]);
@@ -290,10 +290,10 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionWitnessesMax, err);
+    assert_eq!(CheckError::TransactionWitnessesMax, err);
 }
 
 #[test]
@@ -318,7 +318,7 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), b))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
@@ -330,13 +330,10 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        ValidationError::TransactionOutputChangeAssetIdDuplicated,
-        err
-    );
+    assert_eq!(CheckError::TransactionOutputChangeAssetIdDuplicated, err);
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_limit(PARAMS.max_gas_per_tx)
@@ -347,12 +344,12 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert!(matches!(
         err,
-        ValidationError::TransactionOutputChangeAssetIdNotFound(asset_id) if asset_id == c
+        CheckError::TransactionOutputChangeAssetIdNotFound(asset_id) if asset_id == c
     ));
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
@@ -364,12 +361,12 @@ fn output_change_asset_id() {
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert!(matches!(
         err,
-        ValidationError::TransactionOutputCoinAssetIdNotFound(asset_id) if asset_id == c
+        CheckError::TransactionOutputCoinAssetIdNotFound(asset_id) if asset_id == c
     ));
 }
 
@@ -393,7 +390,7 @@ fn script() {
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate transaction");
 
     let err = TransactionBuilder::script(
@@ -406,11 +403,11 @@ fn script() {
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(
-        ValidationError::TransactionScriptOutputContractCreated { index: 0 },
+        CheckError::TransactionScriptOutputContractCreated { index: 0 },
         err
     );
 
@@ -424,10 +421,10 @@ fn script() {
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionScriptLength, err);
+    assert_eq!(CheckError::TransactionScriptLength, err);
 
     let err = TransactionBuilder::script(
         vec![0xfa; PARAMS.max_script_length as usize],
@@ -439,10 +436,10 @@ fn script() {
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionScriptDataLength, err);
+    assert_eq!(CheckError::TransactionScriptDataLength, err);
 }
 
 #[test]
@@ -461,7 +458,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate tx");
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -477,13 +474,10 @@ fn create() {
         ))
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        ValidationError::TransactionCreateInputContract { index: 0 }
-    );
+    assert_eq!(err, CheckError::TransactionCreateInputContract { index: 0 });
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)
@@ -492,12 +486,12 @@ fn create() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
         err,
-        ValidationError::TransactionCreateOutputVariable { index: 0 }
+        CheckError::TransactionCreateOutputVariable { index: 0 }
     );
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -523,13 +517,10 @@ fn create() {
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        ValidationError::TransactionOutputChangeAssetIdDuplicated,
-    );
+    assert_eq!(err, CheckError::TransactionOutputChangeAssetIdDuplicated,);
 
     let asset_id: AssetId = rng.gen();
 
@@ -556,12 +547,12 @@ fn create() {
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
         err,
-        ValidationError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
+        CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
     );
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -587,12 +578,12 @@ fn create() {
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
         err,
-        ValidationError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
+        CheckError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
     );
 
     TransactionBuilder::create(
@@ -613,7 +604,7 @@ fn create() {
     )
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect("Failed to validate the transaction");
 
     let err = TransactionBuilder::create(
@@ -634,10 +625,10 @@ fn create() {
     )
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
-    .validate(block_height, &PARAMS)
+    .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, ValidationError::TransactionCreateBytecodeLen);
+    assert_eq!(err, CheckError::TransactionCreateBytecodeLen);
 
     let err = Transaction::create(
         rng.gen(),
@@ -650,10 +641,10 @@ fn create() {
         vec![],
         vec![],
     )
-    .validate_without_signature(block_height, &PARAMS)
+    .check_without_signatures(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, ValidationError::TransactionCreateBytecodeWitnessIndex);
+    assert_eq!(err, CheckError::TransactionCreateBytecodeWitnessIndex);
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)
@@ -669,7 +660,7 @@ fn create() {
         )
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate the transaction");
 
     let mut slot_data = [0u8; 64];
@@ -698,7 +689,7 @@ fn create() {
         )
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate the transaction");
 
     // Test max slots can't be exceeded
@@ -721,10 +712,10 @@ fn create() {
         )
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
-        .validate(block_height, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionCreateStorageSlotMax, err);
+    assert_eq!(CheckError::TransactionCreateStorageSlotMax, err);
 
     // Test storage slots must be sorted correctly
     let mut storage_slots_reverse = storage_slots;
@@ -746,10 +737,10 @@ fn create() {
             )
             .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
             .finalize()
-            .validate(block_height, &PARAMS)
+            .check(block_height, &PARAMS)
             .expect_err("Expected erroneous transaction");
 
-    assert_eq!(ValidationError::TransactionCreateStorageSlotOrder, err);
+    assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
 }
 
 #[test]
@@ -809,8 +800,8 @@ fn tx_id_bytecode_len() {
 
     // bytecode with same length and different content should produce same id
     //
-    // Note that this isn't related to the validation itself - this checks exclusively the id
-    // behavior. the witness payload for a bytecode cannot be tampered and the validation rules
+    // Note that this isn't related to the checkable itself - this checks exclusively the id
+    // behavior. the witness payload for a bytecode cannot be tampered and the checkable rules
     // should not allow this case to pass.
     //
     // For further reference, check

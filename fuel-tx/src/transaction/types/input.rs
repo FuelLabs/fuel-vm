@@ -480,6 +480,30 @@ impl Input {
         }
     }
 
+    /// Empties fields that should be zero during the signing.
+    pub(crate) fn prepare_sign(&mut self) {
+        match self {
+            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
+                mem::take(tx_pointer);
+            }
+
+            Input::Contract {
+                utxo_id,
+                balance_root,
+                state_root,
+                tx_pointer,
+                ..
+            } => {
+                mem::take(utxo_id);
+                mem::take(balance_root);
+                mem::take(state_root);
+                mem::take(tx_pointer);
+            }
+
+            _ => (),
+        }
+    }
+
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,
@@ -519,26 +543,7 @@ impl Input {
 
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_predicate(&mut self) {
-        match self {
-            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
-                mem::take(tx_pointer);
-            }
-
-            Input::Contract {
-                utxo_id,
-                balance_root,
-                state_root,
-                tx_pointer,
-                ..
-            } => {
-                mem::take(tx_pointer);
-                mem::take(balance_root);
-                mem::take(state_root);
-                mem::take(utxo_id);
-            }
-
-            _ => (),
-        }
+        self.prepare_sign()
     }
 }
 

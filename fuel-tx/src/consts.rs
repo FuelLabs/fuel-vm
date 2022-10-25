@@ -23,5 +23,3 @@ pub const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
     + Salt::LEN; // Salt
-
-pub const TRANSACTION_CREATE_SALT_OFFSET: usize = TRANSACTION_CREATE_FIXED_SIZE - Salt::LEN;

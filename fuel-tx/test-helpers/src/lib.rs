@@ -38,30 +38,34 @@ where
 #[cfg(feature = "std")]
 mod use_std {
     use fuel_crypto::SecretKey;
-    use fuel_tx::{Contract, Input, Output, Transaction, TransactionBuilder};
+    use fuel_tx::{
+        Buildable, Contract, Create, Input, Output, Script, Transaction, TransactionBuilder,
+    };
     use fuel_types::bytes::Deserializable;
     use rand::distributions::{Distribution, Uniform};
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
+    use std::marker::PhantomData;
 
     use crate::{generate_bytes, generate_nonempty_padded_bytes};
 
-    pub struct TransactionFactory<R>
+    pub struct TransactionFactory<R, Tx>
     where
         R: Rng,
+        Tx: Buildable,
     {
         rng: R,
         input_sampler: Uniform<usize>,
         output_sampler: Uniform<usize>,
-        tx_sampler: Uniform<usize>,
+        marker: PhantomData<Tx>,
     }
 
-    impl<R> From<R> for TransactionFactory<R>
+    impl<R, Tx> From<R> for TransactionFactory<R, Tx>
     where
         R: Rng,
+        Tx: Buildable,
     {
         fn from(rng: R) -> Self {
-            let tx_sampler = Uniform::from(0..2);
             let input_sampler = Uniform::from(0..5);
             let output_sampler = Uniform::from(0..6);
 
@@ -103,44 +107,28 @@ mod use_std {
 
             Self {
                 rng,
-                tx_sampler,
                 input_sampler,
                 output_sampler,
+                marker: Default::default(),
             }
         }
     }
 
-    impl TransactionFactory<StdRng> {
+    impl<Tx: Buildable> TransactionFactory<StdRng, Tx> {
         pub fn from_seed(seed: u64) -> Self {
             StdRng::seed_from_u64(seed).into()
         }
     }
 
-    impl<R> TransactionFactory<R>
+    impl<R, Tx> TransactionFactory<R, Tx>
     where
         R: Rng,
+        Tx: Buildable,
     {
-        pub fn transaction(&mut self) -> Transaction {
-            self.transaction_with_keys().0
-        }
-
-        pub fn transaction_with_keys(&mut self) -> (Transaction, Vec<SecretKey>) {
-            let variant = self.tx_sampler.sample(&mut self.rng);
-
-            let slots = self.rng.gen_range(0..10);
-            let mut builder = match variant {
-                0 => TransactionBuilder::script(
-                    generate_bytes(&mut self.rng),
-                    generate_bytes(&mut self.rng),
-                ),
-                1 => TransactionBuilder::create(
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    (0..slots).map(|_| self.rng.gen()).collect(),
-                ),
-                _ => unreachable!(),
-            };
-
+        fn fill_transaction(
+            &mut self,
+            mut builder: TransactionBuilder<Tx>,
+        ) -> (Tx, Vec<SecretKey>) {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
@@ -263,18 +251,66 @@ mod use_std {
             let mut input_keys = input_coin_keys;
 
             input_keys.append(&mut input_message_keys);
-
             (tx, input_keys)
         }
     }
 
-    impl<R> Iterator for TransactionFactory<R>
+    impl<R> TransactionFactory<R, Create>
     where
         R: Rng,
     {
-        type Item = (Transaction, Vec<SecretKey>);
+        pub fn transaction(&mut self) -> Create {
+            self.transaction_with_keys().0
+        }
 
-        fn next(&mut self) -> Option<(Transaction, Vec<SecretKey>)> {
+        pub fn transaction_with_keys(&mut self) -> (Create, Vec<SecretKey>) {
+            let slots = self.rng.gen_range(0..10);
+            let builder = TransactionBuilder::<Create>::create(
+                self.rng.gen(),
+                self.rng.gen(),
+                (0..slots).map(|_| self.rng.gen()).collect(),
+            );
+
+            self.fill_transaction(builder)
+        }
+    }
+
+    impl<R> TransactionFactory<R, Script>
+    where
+        R: Rng,
+    {
+        pub fn transaction(&mut self) -> Script {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Script, Vec<SecretKey>) {
+            let builder = TransactionBuilder::<Script>::script(
+                generate_bytes(&mut self.rng),
+                generate_bytes(&mut self.rng),
+            );
+
+            self.fill_transaction(builder)
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Create>
+    where
+        R: Rng,
+    {
+        type Item = (Create, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Create, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Script>
+    where
+        R: Rng,
+    {
+        type Item = (Script, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Script, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

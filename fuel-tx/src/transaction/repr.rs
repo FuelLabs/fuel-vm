@@ -4,6 +4,7 @@ use crate::Transaction;
 use fuel_types::Word;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TransactionRepr {
     Script = 0x00,
     Create = 0x01,

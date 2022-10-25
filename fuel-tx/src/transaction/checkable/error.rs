@@ -8,7 +8,7 @@ use std::{error, io};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
-pub enum ValidationError {
+pub enum CheckError {
     InputWitnessIndexBounds {
         index: usize,
     },
@@ -102,7 +102,7 @@ pub enum ValidationError {
     ArithmeticOverflow,
 }
 
-impl fmt::Display for ValidationError {
+impl fmt::Display for CheckError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO better describe the error variants
         write!(f, "{:?}", self)
@@ -110,15 +110,15 @@ impl fmt::Display for ValidationError {
 }
 
 #[cfg(feature = "std")]
-impl error::Error for ValidationError {
+impl error::Error for CheckError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         None
     }
 }
 
 #[cfg(feature = "std")]
-impl From<ValidationError> for io::Error {
-    fn from(v: ValidationError) -> io::Error {
+impl From<CheckError> for io::Error {
+    fn from(v: CheckError) -> io::Error {
         io::Error::new(io::ErrorKind::Other, v)
     }
 }

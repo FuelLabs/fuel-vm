@@ -8,7 +8,7 @@ fn coin() {
     let rng = &mut rng_base;
 
     Output::coin(rng.gen(), rng.next_u64(), rng.gen())
-        .validate(1, &[])
+        .check(1, &[])
         .unwrap();
 }
 
@@ -18,7 +18,7 @@ fn contract() {
     let rng = &mut rng_base;
 
     Output::contract(1, rng.gen(), rng.gen())
-        .validate(
+        .check(
             2,
             &[
                 Input::coin_signed(
@@ -36,7 +36,7 @@ fn contract() {
         .unwrap();
 
     let err = Output::contract(0, rng.gen(), rng.gen())
-        .validate(
+        .check(
             2,
             &[
                 Input::coin_signed(
@@ -54,10 +54,10 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(ValidationError::OutputContractInputIndex { index: 2 }, err);
+    assert_eq!(CheckError::OutputContractInputIndex { index: 2 }, err);
 
     let err = Output::contract(2, rng.gen(), rng.gen())
-        .validate(
+        .check(
             2,
             &[
                 Input::coin_signed(
@@ -75,7 +75,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(ValidationError::OutputContractInputIndex { index: 2 }, err);
+    assert_eq!(CheckError::OutputContractInputIndex { index: 2 }, err);
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn change() {
     let rng = &mut rng_base;
 
     Output::change(rng.gen(), rng.next_u64(), rng.gen())
-        .validate(1, &[])
+        .check(1, &[])
         .unwrap();
 }
 
@@ -94,7 +94,7 @@ fn variable() {
     let rng = &mut rng_base;
 
     Output::variable(rng.gen(), rng.next_u64(), rng.gen())
-        .validate(1, &[])
+        .check(1, &[])
         .unwrap();
 }
 
@@ -104,6 +104,6 @@ fn contract_created() {
     let rng = &mut rng_base;
 
     Output::contract_created(rng.gen(), rng.gen())
-        .validate(1, &[])
+        .check(1, &[])
         .unwrap();
 }

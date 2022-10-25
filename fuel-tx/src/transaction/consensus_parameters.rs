@@ -56,7 +56,7 @@ impl ConsensusParameters {
     pub const fn tx_offset(&self) -> usize {
         Bytes32::LEN // Tx ID
             + WORD_SIZE // Tx size
-              // Asset ID/Balance coin input pairs
+            // Asset ID/Balance coin input pairs
             + self.max_inputs as usize * (AssetId::LEN + WORD_SIZE)
     }
 

@@ -237,37 +237,8 @@ impl Output {
         Hasher::hash(data)
     }
 
-    /// Prepare the output for VM initialization for script execution
-    #[cfg(feature = "std")]
-    pub fn prepare_init_script(&mut self) -> io::Result<()> {
-        match self {
-            Output::Message { recipient, amount } => {
-                mem::take(recipient);
-                mem::take(amount);
-            }
-
-            Output::Change { amount, .. } => {
-                mem::take(amount);
-            }
-
-            Output::Variable {
-                to,
-                amount,
-                asset_id,
-            } => {
-                mem::take(to);
-                mem::take(amount);
-                mem::take(asset_id);
-            }
-
-            _ => (),
-        }
-
-        Ok(())
-    }
-
-    /// Prepare the output for VM initialization for predicate verification
-    pub fn prepare_init_predicate(&mut self) {
+    /// Empties fields that should be zero during the signing.
+    pub(crate) fn prepare_sign(&mut self) {
         match self {
             Output::Contract {
                 balance_root,
@@ -291,6 +262,7 @@ impl Output {
                 to,
                 amount,
                 asset_id,
+                ..
             } => {
                 mem::take(to);
                 mem::take(amount);
@@ -299,6 +271,38 @@ impl Output {
 
             _ => (),
         }
+    }
+
+    /// Prepare the output for VM initialization for script execution
+    #[cfg(feature = "std")]
+    pub fn prepare_init_script(&mut self) {
+        match self {
+            Output::Message { recipient, amount } => {
+                mem::take(recipient);
+                mem::take(amount);
+            }
+
+            Output::Change { amount, .. } => {
+                mem::take(amount);
+            }
+
+            Output::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
+                mem::take(to);
+                mem::take(amount);
+                mem::take(asset_id);
+            }
+
+            _ => (),
+        }
+    }
+
+    /// Prepare the output for VM initialization for predicate verification
+    pub fn prepare_init_predicate(&mut self) {
+        self.prepare_sign()
     }
 }
 

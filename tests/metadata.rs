@@ -197,7 +197,7 @@ fn get_transaction_fields() {
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_checked(height, &params);
 
-    client.deploy(tx);
+    client.deploy(&tx);
 
     let mut predicate = vec![0u8; 128];
     let mut predicate_data = vec![0u8; 512];

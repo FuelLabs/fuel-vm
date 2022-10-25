@@ -60,7 +60,7 @@ fn mint_burn() {
     .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
-    client.deploy(tx);
+    client.deploy(&tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());

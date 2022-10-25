@@ -60,7 +60,7 @@ fn code_copy() {
     .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
-    client.deploy(tx);
+    client.deploy(&tx);
 
     let mut script_ops = vec![
         Opcode::MOVI(0x10, 2048),
@@ -644,7 +644,7 @@ fn revert() {
     .expect("failed to generate a checked tx");
 
     // Deploy the contract into the blockchain
-    client.deploy(tx);
+    client.deploy(&tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());

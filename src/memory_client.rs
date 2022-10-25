@@ -56,7 +56,7 @@ impl MemoryClient {
     }
 
     /// Deploys a `Create` transaction.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
+    pub fn deploy(&mut self, tx: &Checked<Create>) -> Option<()> {
         self.transactor.deploy(tx).ok()
     }
 

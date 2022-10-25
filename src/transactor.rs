@@ -142,8 +142,8 @@ where
     S: InterpreterStorage,
 {
     /// Deploys `Create` checked transactions.
-    pub fn deploy(&mut self, checked: Checked<Create>) -> Result<Create, InterpreterError> {
-        self.interpreter.deploy(checked)
+    pub fn deploy(&mut self, checked: &Checked<Create>) -> Result<(), InterpreterError> {
+        self.interpreter.deploy(&checked)
     }
 }
 

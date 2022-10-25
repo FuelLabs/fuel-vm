@@ -18,7 +18,7 @@ fuel-asm = "0.9"
 fuel-crypto = "0.6"
 fuel-merkle = "0.4"
 fuel-storage = "0.3"
-fuel-tx = "0.21"
+fuel-tx = "0.22"
 fuel-types = "0.5"
 itertools = "0.10"
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -30,7 +30,7 @@ rand = { version = "0.8", optional = true }
 tai64 = "4.0"
 
 [dev-dependencies]
-fuel-tx = { version = "0.21", features = ["builder"] }
+fuel-tx = { version = "0.22", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 glob = "0.3"
 regex = "1.6"
@@ -109,6 +109,3 @@ required-features = ["random"]
 name = "test-predicate"
 path = "tests/predicate.rs"
 required-features = ["random"]
-
-[patch.crates-io]
-fuel-tx = { git = "https://github.com/FuelLabs/fuel-tx/" }

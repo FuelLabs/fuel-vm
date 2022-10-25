@@ -5,8 +5,8 @@
 
 #![allow(non_upper_case_globals)]
 use crate::{
-    field, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Input, Output, Script,
-    Transaction, TransactionFee,
+    field, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Input, Mint, Output,
+    Script, Transaction, TransactionFee,
 };
 use fuel_types::{AssetId, Word};
 
@@ -161,6 +161,7 @@ pub trait IntoChecked: Checkable + Sized {
 pub enum CheckedTransaction {
     Script(Checked<Script>),
     Create(Checked<Create>),
+    Mint(Checked<Mint>),
 }
 
 impl From<Checked<Transaction>> for CheckedTransaction {
@@ -179,11 +180,15 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => {
                 Self::Create(Checked::new(transaction, metadata, checks_bitmask))
             }
+            (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => {
+                Self::Mint(Checked::new(transaction, metadata, checks_bitmask))
+            }
             // The code should produce the `CheckedMetadata` for the corresponding transaction
             // variant. It is done in the implementation of the `IntoChecked` trait for
             // `Transaction`. With the current implementation, the patterns below are unreachable.
             (Transaction::Script(_), _) => unreachable!(),
             (Transaction::Create(_), _) => unreachable!(),
+            (Transaction::Mint(_), _) => unreachable!(),
         }
     }
 }
@@ -200,6 +205,12 @@ impl From<Checked<Create>> for CheckedTransaction {
     }
 }
 
+impl From<Checked<Mint>> for CheckedTransaction {
+    fn from(checked: Checked<Mint>) -> Self {
+        Self::Mint(checked)
+    }
+}
+
 impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
@@ -213,6 +224,11 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 metadata,
                 checks_bitmask,
             }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            CheckedTransaction::Mint(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
         }
     }
 }
@@ -222,6 +238,7 @@ impl From<CheckedTransaction> for Checked<Transaction> {
 pub enum CheckedMetadata {
     Script(<Script as IntoChecked>::Metadata),
     Create(<Create as IntoChecked>::Metadata),
+    Mint(<Mint as IntoChecked>::Metadata),
 }
 
 impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
@@ -233,6 +250,12 @@ impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
 impl From<<Create as IntoChecked>::Metadata> for CheckedMetadata {
     fn from(metadata: <Create as IntoChecked>::Metadata) -> Self {
         Self::Create(metadata)
+    }
+}
+
+impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Mint as IntoChecked>::Metadata) -> Self {
+        Self::Mint(metadata)
     }
 }
 
@@ -253,6 +276,10 @@ impl IntoChecked for Transaction {
             Transaction::Create(create) => {
                 let (transaction, metadata) =
                     create.into_checked_basic(block_height, params)?.into();
+                (transaction.into(), metadata.into())
+            }
+            Transaction::Mint(mint) => {
+                let (transaction, metadata) = mint.into_checked_basic(block_height, params)?.into();
                 (transaction.into(), metadata.into())
             }
         };

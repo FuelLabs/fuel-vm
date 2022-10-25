@@ -1,3 +1,4 @@
+use crate::TxPointer;
 use fuel_types::bytes::WORD_SIZE;
 use fuel_types::{Bytes32, Salt};
 
@@ -23,3 +24,7 @@ pub const TRANSACTION_CREATE_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
     + Salt::LEN; // Salt
+
+pub const TRANSACTION_MINT_FIXED_SIZE: usize = WORD_SIZE // Identifier
+    + TxPointer::LEN // Tx pointer
+    + WORD_SIZE; // Outputs size

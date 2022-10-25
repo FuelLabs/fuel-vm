@@ -333,7 +333,7 @@ fn output_change_asset_id() {
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionOutputChangeAssetIdDuplicated, err);
+    assert_eq!(CheckError::TransactionOutputChangeAssetIdDuplicated(a), err);
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_limit(PARAMS.max_gas_per_tx)
@@ -514,13 +514,16 @@ fn create() {
             rng.gen(),
             maturity,
         )
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionOutputChangeAssetIdDuplicated,);
+    assert_eq!(
+        err,
+        CheckError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE)
+    );
 
     let asset_id: AssetId = rng.gen();
 
@@ -741,6 +744,49 @@ fn create() {
             .expect_err("Expected erroneous transaction");
 
     assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+}
+
+#[test]
+fn mint() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000;
+
+    TransactionBuilder::mint(block_height, rng.gen())
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
+        .finalize()
+        .check(block_height as Word, &PARAMS)
+        .expect("Failed to validate tx");
+
+    let err = TransactionBuilder::mint(block_height, rng.gen())
+        .add_output(Output::contract(0, rng.gen(), rng.gen()))
+        .finalize()
+        .check(block_height as Word, &PARAMS)
+        .expect_err("Expected erroneous transaction");
+
+    assert_eq!(err, CheckError::TransactionMintOutputIsNotCoin);
+
+    let err = TransactionBuilder::mint(block_height, rng.gen())
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
+        .finalize()
+        .check(block_height as Word, &PARAMS)
+        .expect_err("Expected erroneous transaction");
+
+    assert_eq!(
+        err,
+        CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE)
+    );
+
+    let err = TransactionBuilder::mint(block_height, rng.gen())
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
+        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
+        .finalize()
+        .check(block_height as Word + 1, &PARAMS)
+        .expect_err("Expected erroneous transaction");
+
+    assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);
 }
 
 #[test]

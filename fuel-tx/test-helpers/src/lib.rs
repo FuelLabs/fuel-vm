@@ -39,7 +39,8 @@ where
 mod use_std {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        Buildable, Contract, Create, Input, Output, Script, Transaction, TransactionBuilder,
+        field, Buildable, Contract, Create, Input, Mint, Output, Script, Transaction,
+        TransactionBuilder,
     };
     use fuel_types::bytes::Deserializable;
     use rand::distributions::{Distribution, Uniform};
@@ -52,7 +53,6 @@ mod use_std {
     pub struct TransactionFactory<R, Tx>
     where
         R: Rng,
-        Tx: Buildable,
     {
         rng: R,
         input_sampler: Uniform<usize>,
@@ -63,7 +63,6 @@ mod use_std {
     impl<R, Tx> From<R> for TransactionFactory<R, Tx>
     where
         R: Rng,
-        Tx: Buildable,
     {
         fn from(rng: R) -> Self {
             let input_sampler = Uniform::from(0..5);
@@ -99,6 +98,7 @@ mod use_std {
                     .map(|t| match t {
                         Transaction::Script { .. } => (),
                         Transaction::Create { .. } => (),
+                        Transaction::Mint { .. } => (),
                     })
                     .unwrap_or(());
 
@@ -114,7 +114,7 @@ mod use_std {
         }
     }
 
-    impl<Tx: Buildable> TransactionFactory<StdRng, Tx> {
+    impl<Tx> TransactionFactory<StdRng, Tx> {
         pub fn from_seed(seed: u64) -> Self {
             StdRng::seed_from_u64(seed).into()
         }
@@ -123,12 +123,35 @@ mod use_std {
     impl<R, Tx> TransactionFactory<R, Tx>
     where
         R: Rng,
+        Tx: field::Outputs,
+    {
+        fn fill_outputs(&mut self, builder: &mut TransactionBuilder<Tx>) {
+            let outputs = self.rng.gen_range(0..10);
+            for _ in 0..outputs {
+                let variant = self.output_sampler.sample(&mut self.rng);
+
+                let output = match variant {
+                    0 => Output::coin(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    1 => Output::contract(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    2 => Output::message(self.rng.gen(), self.rng.gen()),
+                    3 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    4 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    5 => Output::contract_created(self.rng.gen(), self.rng.gen()),
+
+                    _ => unreachable!(),
+                };
+
+                builder.add_output(output);
+            }
+        }
+    }
+
+    impl<R, Tx> TransactionFactory<R, Tx>
+    where
+        R: Rng,
         Tx: Buildable,
     {
-        fn fill_transaction(
-            &mut self,
-            mut builder: TransactionBuilder<Tx>,
-        ) -> (Tx, Vec<SecretKey>) {
+        fn fill_transaction(&mut self, builder: &mut TransactionBuilder<Tx>) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
@@ -222,23 +245,7 @@ mod use_std {
                 );
             });
 
-            let outputs = self.rng.gen_range(0..10);
-            for _ in 0..outputs {
-                let variant = self.output_sampler.sample(&mut self.rng);
-
-                let output = match variant {
-                    0 => Output::coin(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    1 => Output::contract(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    2 => Output::message(self.rng.gen(), self.rng.gen()),
-                    3 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    4 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    5 => Output::contract_created(self.rng.gen(), self.rng.gen()),
-
-                    _ => unreachable!(),
-                };
-
-                builder.add_output(output);
-            }
+            self.fill_outputs(builder);
 
             let witnesses = self.rng.gen_range(0..10);
             for _ in 0..witnesses {
@@ -247,11 +254,9 @@ mod use_std {
                 builder.add_witness(witness);
             }
 
-            let tx = builder.finalize();
             let mut input_keys = input_coin_keys;
-
             input_keys.append(&mut input_message_keys);
-            (tx, input_keys)
+            input_keys
         }
     }
 
@@ -265,13 +270,14 @@ mod use_std {
 
         pub fn transaction_with_keys(&mut self) -> (Create, Vec<SecretKey>) {
             let slots = self.rng.gen_range(0..10);
-            let builder = TransactionBuilder::<Create>::create(
+            let mut builder = TransactionBuilder::<Create>::create(
                 self.rng.gen(),
                 self.rng.gen(),
                 (0..slots).map(|_| self.rng.gen()).collect(),
             );
 
-            self.fill_transaction(builder)
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
         }
     }
 
@@ -284,12 +290,25 @@ mod use_std {
         }
 
         pub fn transaction_with_keys(&mut self) -> (Script, Vec<SecretKey>) {
-            let builder = TransactionBuilder::<Script>::script(
+            let mut builder = TransactionBuilder::<Script>::script(
                 generate_bytes(&mut self.rng),
                 generate_bytes(&mut self.rng),
             );
 
-            self.fill_transaction(builder)
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
+    impl<R> TransactionFactory<R, Mint>
+    where
+        R: Rng,
+    {
+        pub fn transaction(&mut self) -> Mint {
+            let mut builder = TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
+
+            self.fill_outputs(&mut builder);
+            builder.finalize()
         }
     }
 
@@ -312,6 +331,17 @@ mod use_std {
 
         fn next(&mut self) -> Option<(Script, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Mint>
+    where
+        R: Rng,
+    {
+        type Item = Mint;
+
+        fn next(&mut self) -> Option<Mint> {
+            Some(self.transaction())
         }
     }
 }

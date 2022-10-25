@@ -650,6 +650,14 @@ fn transaction() {
             vec![],
         ),
     ]);
+    assert_encoding_correct(&[
+        Transaction::mint(rng.gen(), vec![o]),
+        Transaction::mint(rng.gen(), vec![o, o]),
+        Transaction::mint(rng.gen(), vec![o, o, o]),
+        Transaction::mint(rng.gen(), vec![o, o, o, o]),
+        Transaction::mint(rng.gen(), vec![o, o, o, o, o]),
+        Transaction::mint(rng.gen(), vec![o, o, o, o, o, o]),
+    ]);
 }
 
 #[test]

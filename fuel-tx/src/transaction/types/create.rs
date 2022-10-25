@@ -161,7 +161,7 @@ impl Checkable for Create {
                 }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root
-                // maybe move from `fuel-vm` to here
+                //  maybe move from `fuel-vm` to here
                 Output::ContractCreated { .. } if contract_created => {
                     Err(CheckError::TransactionCreateOutputContractCreatedMultiple { index })
                 }

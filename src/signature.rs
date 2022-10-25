@@ -224,7 +224,7 @@ mod use_std {
             // https://github.com/FuelLabs/fuel-crypto/issues/4
 
             self.recover(message)
-                .and_then(|pk_p| (pk == &pk_p).then(|| ()).ok_or(Error::InvalidSignature))
+                .and_then(|pk_p| (pk == &pk_p).then_some(()).ok_or(Error::InvalidSignature))
         }
     }
 }

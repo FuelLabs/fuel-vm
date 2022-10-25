@@ -20,6 +20,7 @@ rand = { version = "0.8", default-features = false, optional = true }
 secp256k1 = { version = "0.24", default-features = false, features = ["recovery"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 sha2 = { version = "0.10", default-features = false }
+zeroize = { version = "1.5", features = ["derive"] }
 
 [dev-dependencies]
 bincode = { version = "1.3", default-features = false }

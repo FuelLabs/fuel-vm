@@ -201,7 +201,7 @@ mod use_std {
 
             public
                 .is_in_curve()
-                .then(|| public)
+                .then_some(public)
                 .ok_or(Error::InvalidPublicKey)
         }
     }

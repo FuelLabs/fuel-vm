@@ -132,7 +132,13 @@ where
 
             OpcodeRepr::MLOG => {
                 self.gas_charge(GAS_MLOG)?;
-                self.alu_error(ra, |b, c| unchecked_ilog(b, c) as Word, b, c, b == 0 || c <= 1)?;
+                self.alu_error(
+                    ra,
+                    |b, c| checked_ilog(b, c).expect("checked_ilog returned None for valid values") as Word,
+                    b,
+                    c,
+                    b == 0 || c <= 1,
+                )?;
             }
 
             OpcodeRepr::MOD => {
@@ -492,6 +498,11 @@ where
 
 /// Computes logarithm for given exponent and base.
 /// Diverges when exp == 0 or base <= 1.
+///
+/// This code is originally from [rust corelib][rust-corelib-impl],
+/// but with all additional clutter removed.
+///
+/// [rust-corelib-impl]: https://github.com/rust-lang/rust/blob/415d8fcc3e17f8c1324a81cf2aa7127b4fcfa32e/library/core/src/num/uint_macros.rs#L774
 #[inline(always)] // Force copy of each invocation for optimization, see comments below
 const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
     let mut n = 0;
@@ -506,22 +517,25 @@ const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
 /// Logarithm for given exponent and an arbitrary base, rounded
 /// rounded down to nearest integer value.
 ///
-/// Must not be called if the exponent == 0, or if the base <= 1,
-/// as that causes either division by zero, or an infinite loop.
+/// Returns `None` if the exponent == 0, or if the base <= 1.
 ///
-/// TODO: when https://github.com/rust-lang/rust/issues/70887 is stabilized,
+/// TODO: when <https://github.com/rust-lang/rust/issues/70887> is stabilized,
 /// consider using that instead.
-const fn unchecked_ilog(exp: Word, base: Word) -> u32 {
+const fn checked_ilog(exp: Word, base: Word) -> Option<u32> {
+    if exp <= 0 || base <= 1 {
+        return None;
+    }
+
     // Generate separately optimized paths for some common and/or expensive bases.
-    // See https://github.com/FuelLabs/fuel-vm/issues/150#issuecomment-1288797787 for benchmark.
-    match base {
+    // See <https://github.com/FuelLabs/fuel-vm/issues/150#issuecomment-1288797787> for benchmark.
+    Some(match base {
         2 => _unchecked_ilog_inner(exp, 2),
         3 => _unchecked_ilog_inner(exp, 3),
         4 => _unchecked_ilog_inner(exp, 4),
         5 => _unchecked_ilog_inner(exp, 5),
         10 => _unchecked_ilog_inner(exp, 10),
         n => _unchecked_ilog_inner(exp, n),
-    }
+    })
 }
 
 #[cfg(test)]

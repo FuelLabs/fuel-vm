@@ -1,4 +1,4 @@
-use crate::{StorageSlot, Transaction, ValidationError};
+use crate::{CheckError, StorageSlot, Transaction};
 
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
@@ -120,20 +120,12 @@ impl AsMut<[u8]> for Contract {
 }
 
 impl TryFrom<&Transaction> for Contract {
-    type Error = ValidationError;
+    type Error = CheckError;
 
     fn try_from(tx: &Transaction) -> Result<Self, Self::Error> {
         match tx {
-            Transaction::Create {
-                bytecode_witness_index,
-                witnesses,
-                ..
-            } => witnesses
-                .get(*bytecode_witness_index as usize)
-                .map(|c| c.as_ref().into())
-                .ok_or(ValidationError::TransactionCreateBytecodeWitnessIndex),
-
-            _ => Err(ValidationError::TransactionScriptOutputContractCreated { index: 0 }),
+            Transaction::Create(create) => TryFrom::try_from(create),
+            _ => Err(CheckError::TransactionScriptOutputContractCreated { index: 0 }),
         }
     }
 }

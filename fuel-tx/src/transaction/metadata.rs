@@ -1,133 +1,128 @@
-#[cfg(feature = "std")]
-use super::Transaction;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::SizedBytes;
-
+use alloc::vec::Vec;
 use fuel_types::Bytes32;
 
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use crate::{field, UniqueIdentifier};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Metadata {
-    id: Bytes32,
-    script_data_offset: Option<usize>,
-    input_predicate_offset: Vec<Option<(usize, usize)>>,
-    inputs_offset: Vec<usize>,
-    outputs_offset: Vec<usize>,
-    witnesses_offset: Vec<usize>,
-}
+/// Entity support metadata computation to cache results.
+pub trait Cacheable {
+    /// The cache is already computed.
+    ///
+    /// # Note: `true` doesn't mean that the cache is actual.
+    fn is_computed(&self) -> bool;
 
-impl Metadata {
-    pub const fn new(
-        id: Bytes32,
-        script_data_offset: Option<usize>,
-        input_predicate_offset: Vec<Option<(usize, usize)>>,
-        inputs_offset: Vec<usize>,
-        outputs_offset: Vec<usize>,
-        witnesses_offset: Vec<usize>,
-    ) -> Self {
-        Self {
-            id,
-            script_data_offset,
-            input_predicate_offset,
-            inputs_offset,
-            outputs_offset,
-            witnesses_offset,
-        }
-    }
-
-    pub const fn id(&self) -> &Bytes32 {
-        &self.id
-    }
-
-    pub fn script_data_offset(&self) -> Option<usize> {
-        self.script_data_offset
-    }
-
-    pub fn input_predicate_offset(&self, index: usize) -> Option<(usize, usize)> {
-        self.input_predicate_offset.get(index).copied().flatten()
-    }
-
-    pub fn inputs_offset(&self, index: usize) -> Option<usize> {
-        self.inputs_offset.get(index).copied()
-    }
-
-    pub fn outputs_offset(&self, index: usize) -> Option<usize> {
-        self.outputs_offset.get(index).copied()
-    }
-
-    pub fn witnesses_offset(&self, index: usize) -> Option<usize> {
-        self.witnesses_offset.get(index).copied()
-    }
+    /// Computes the cache for the entity.
+    fn precompute(&mut self);
 }
 
 #[cfg(feature = "std")]
-impl Transaction {
-    fn metadata_mut(&mut self) -> &mut Option<Metadata> {
+impl Cacheable for super::Transaction {
+    fn is_computed(&self) -> bool {
         match self {
-            Self::Script { metadata, .. } => metadata,
-            Self::Create { metadata, .. } => metadata,
+            Self::Script(script) => script.is_computed(),
+            Self::Create(create) => create.is_computed(),
         }
     }
 
-    pub fn precompute_metadata(&mut self) {
-        let id = self._id();
+    fn precompute(&mut self) {
+        match self {
+            Self::Script(script) => script.precompute(),
+            Self::Create(create) => create.precompute(),
+        }
+    }
+}
 
-        let script_data_offset = self._script_data_offset();
-        let input_predicate_offset = self
+/// Common metadata for `Script` and `Create` transactions.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct CommonMetadata {
+    pub id: Bytes32,
+    pub inputs_offset: usize,
+    pub inputs_offset_at: Vec<usize>,
+    pub inputs_predicate_offset_at: Vec<Option<(usize, usize)>>,
+    pub outputs_offset: usize,
+    pub outputs_offset_at: Vec<usize>,
+    pub witnesses_offset: usize,
+    pub witnesses_offset_at: Vec<usize>,
+    pub serialized_size: usize,
+}
+
+#[cfg(feature = "std")]
+impl CommonMetadata {
+    /// Computes the `Metadata` for the `tx` transaction.
+    pub fn compute<Tx>(tx: &Tx) -> Self
+    where
+        Tx: UniqueIdentifier,
+        Tx: field::Inputs,
+        Tx: field::Outputs,
+        Tx: field::Witnesses,
+        Tx: fuel_types::bytes::SizedBytes,
+    {
+        use fuel_types::bytes::SizedBytes;
+        use itertools::Itertools;
+
+        let id = tx.id();
+
+        let inputs_predicate_offset_at = tx
             .inputs()
             .iter()
             .enumerate()
-            .map(|(i, _)| self._input_predicate_offset(i))
-            .collect();
+            .map(|(i, _)| tx.inputs_predicate_offset_at(i))
+            .collect_vec();
 
-        let offset = self.inputs_offset();
-        let inputs_offset = self
+        let mut offset = tx.inputs_offset();
+        let inputs_offset = offset;
+        let inputs_offset_at = tx
             .inputs()
             .iter()
-            .scan(offset, |offset, input| {
-                let i = *offset;
-                *offset += input.serialized_size();
-
-                Some(i)
+            .map(|input| {
+                let i = offset;
+                offset += input.serialized_size();
+                i
             })
-            .collect();
+            .collect_vec();
 
-        let offset = self.outputs_offset();
-        let outputs_offset = self
+        let outputs_offset = offset;
+        #[cfg(feature = "internals")]
+        assert_eq!(outputs_offset, tx.outputs_offset());
+
+        let outputs_offset_at = tx
             .outputs()
             .iter()
-            .scan(offset, |offset, output| {
-                let i = *offset;
-                *offset += output.serialized_size();
-
-                Some(i)
+            .map(|output| {
+                let i = offset;
+                offset += output.serialized_size();
+                i
             })
-            .collect();
+            .collect_vec();
 
-        let offset = self.witnesses_offset();
-        let witnesses_offset = self
+        let witnesses_offset = offset;
+        #[cfg(feature = "internals")]
+        assert_eq!(witnesses_offset, tx.witnesses_offset());
+
+        let witnesses_offset_at = tx
             .witnesses()
             .iter()
-            .scan(offset, |offset, witness| {
-                let i = *offset;
-                *offset += witness.serialized_size();
-
-                Some(i)
+            .map(|witness| {
+                let i = offset;
+                offset += witness.serialized_size();
+                i
             })
-            .collect();
+            .collect_vec();
+        let serialized_size = offset;
 
-        let metadata = Metadata::new(
+        #[cfg(feature = "internals")]
+        assert_eq!(serialized_size, tx.serialized_size());
+
+        Self {
             id,
-            script_data_offset,
-            input_predicate_offset,
             inputs_offset,
+            inputs_offset_at,
+            inputs_predicate_offset_at,
             outputs_offset,
+            outputs_offset_at,
             witnesses_offset,
-        );
-
-        self.metadata_mut().replace(metadata);
+            witnesses_offset_at,
+            serialized_size,
+        }
     }
 }

@@ -1,4 +1,5 @@
 use fuel_tx::*;
+use fuel_tx::{field::Outputs, Executable};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 

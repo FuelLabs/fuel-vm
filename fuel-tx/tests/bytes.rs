@@ -5,6 +5,7 @@ use fuel_types::{bytes, Immediate24};
 use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 
+use fuel_tx::field::{Inputs, Script, ScriptData};
 use std::fmt;
 use std::io::{self, Read, Write};
 
@@ -580,6 +581,8 @@ fn transaction() {
             vec![],
             vec![],
         ),
+    ]);
+    assert_encoding_correct(&[
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
@@ -740,7 +743,7 @@ fn create_input_data_offset() {
                     );
 
                     let mut tx_p = tx.clone();
-                    tx_p.precompute_metadata();
+                    tx_p.precompute();
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
                     let _ = tx
@@ -748,11 +751,11 @@ fn create_input_data_offset() {
                         .expect("Failed to serialize input");
 
                     let (offset, len) = tx
-                        .input_predicate_offset(input_coin_idx)
+                        .inputs_predicate_offset_at(input_coin_idx)
                         .expect("Failed to fetch offset");
 
                     let (offset_p, _) = tx_p
-                        .input_predicate_offset(input_coin_idx)
+                        .inputs_predicate_offset_at(input_coin_idx)
                         .expect("Failed to fetch offset from tx with precomputed metadata!");
 
                     assert_eq!(offset, offset_p);
@@ -762,11 +765,11 @@ fn create_input_data_offset() {
                     );
 
                     let (offset, len) = tx
-                        .input_predicate_offset(input_message_idx)
+                        .inputs_predicate_offset_at(input_message_idx)
                         .expect("Failed to fetch offset");
 
                     let (offset_p, _) = tx_p
-                        .input_predicate_offset(input_message_idx)
+                        .inputs_predicate_offset_at(input_message_idx)
                         .expect("Failed to fetch offset from tx with precomputed metadata!");
 
                     assert_eq!(offset, offset_p);
@@ -863,7 +866,7 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute_metadata();
+                        tx_p.precompute();
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
 
@@ -871,19 +874,15 @@ fn script_input_coin_data_offset() {
                             .read(buffer.as_mut_slice())
                             .expect("Failed to serialize input");
 
-                        let script_offset = Transaction::script_offset();
+                        let script_offset = tx.script_offset();
                         assert_eq!(
                             script.as_slice(),
                             &buffer[script_offset..script_offset + script.len()]
                         );
 
-                        let script_data_offset = tx
-                            .script_data_offset()
-                            .expect("Transaction is Script and should return data offset");
+                        let script_data_offset = tx.script_data_offset();
 
-                        let script_data_offset_p = tx_p.script_data_offset().expect(
-                            "Transaction metadata script data offset failed after precompute!",
-                        );
+                        let script_data_offset_p = tx_p.script_data_offset();
 
                         assert_eq!(script_data_offset, script_data_offset_p);
                         assert_eq!(
@@ -892,7 +891,7 @@ fn script_input_coin_data_offset() {
                         );
 
                         let (offset, len) = tx
-                            .input_predicate_offset(offset)
+                            .inputs_predicate_offset_at(offset)
                             .expect("Failed to fetch offset");
 
                         assert_ne!(bytes::padded_len(&predicate), predicate.len());

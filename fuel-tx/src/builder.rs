@@ -1,6 +1,8 @@
+use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
+use crate::transaction::{field, Chargeable, Create, Executable, Script, Signable};
 use crate::{
-    CheckedTransaction, ConsensusParameters, Input, Output, StorageSlot, Transaction, TxPointer,
-    Witness,
+    Cacheable, Checked, ConsensusParameters, Input, IntoChecked, Output, StorageSlot, Transaction,
+    TxPointer, Witness,
 };
 
 use fuel_crypto::SecretKey;
@@ -8,9 +10,69 @@ use fuel_types::{Salt, Word};
 
 use alloc::vec::Vec;
 
+pub trait Buildable
+where
+    Self: Default
+        + Clone
+        + Cacheable
+        + Executable
+        + Chargeable
+        + Signable
+        + field::GasLimit
+        + field::GasPrice
+        + field::Maturity
+        + IntoChecked
+        + Into<Transaction>,
+{
+    /// Append an input to the transaction
+    fn add_input(&mut self, input: Input) {
+        self.inputs_mut().push(input)
+    }
+
+    /// Append an output to the transaction
+    fn add_output(&mut self, output: Output) {
+        self.outputs_mut().push(output)
+    }
+
+    /// Append a witness to the transaction
+    fn add_witness(&mut self, witness: Witness) {
+        self.witnesses_mut().push(witness);
+    }
+
+    /// Set the gas price
+    fn set_gas_price(&mut self, price: Word) {
+        *self.gas_price_mut() = price;
+    }
+
+    /// Set the gas limit
+    fn set_gas_limit(&mut self, limit: Word) {
+        *self.gas_limit_mut() = limit;
+    }
+
+    /// Set the maturity
+    fn set_maturity(&mut self, maturity: Word) {
+        *self.maturity_mut() = maturity;
+    }
+}
+
+impl<T> Buildable for T where
+    Self: Default
+        + Clone
+        + Cacheable
+        + Executable
+        + Chargeable
+        + Signable
+        + field::GasPrice
+        + field::GasLimit
+        + field::Maturity
+        + IntoChecked
+        + Into<Transaction>
+{
+}
+
 #[derive(Debug, Clone)]
-pub struct TransactionBuilder {
-    tx: Transaction,
+pub struct TransactionBuilder<Tx: Buildable> {
+    tx: Tx,
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
@@ -20,8 +82,56 @@ pub struct TransactionBuilder {
     sign_keys: Vec<SecretKey>,
 }
 
-impl TransactionBuilder {
-    fn with_tx(tx: Transaction) -> Self {
+impl TransactionBuilder<Script> {
+    pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
+        let tx = Script {
+            gas_price: Default::default(),
+            gas_limit: Default::default(),
+            maturity: Default::default(),
+            script,
+            script_data,
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            receipts_root: Default::default(),
+            metadata: None,
+        };
+
+        let mut slf = Self::with_tx(tx);
+
+        slf.prepare_script(true);
+
+        slf
+    }
+}
+
+impl TransactionBuilder<Create> {
+    pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
+        let mut tx = Create {
+            gas_price: Default::default(),
+            gas_limit: Default::default(),
+            maturity: Default::default(),
+            bytecode_length: Default::default(),
+            bytecode_witness_index: Default::default(),
+            salt,
+            storage_slots,
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
+
+        *tx.bytecode_length_mut() = (bytecode.as_ref().len() / 4) as Word;
+        *tx.bytecode_witness_index_mut() = tx.witnesses().len() as u8;
+
+        tx.witnesses_mut().push(bytecode);
+
+        Self::with_tx(tx)
+    }
+}
+
+impl<Tx: Buildable> TransactionBuilder<Tx> {
+    fn with_tx(tx: Tx) -> Self {
         let should_prepare_script = false;
         let should_prepare_predicate = false;
         let sign_keys = Vec::new();
@@ -32,43 +142,6 @@ impl TransactionBuilder {
             should_prepare_predicate,
             sign_keys,
         }
-    }
-
-    pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
-        let mut tx = Transaction::create(
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            salt,
-            storage_slots,
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-
-        tx._set_bytecode(bytecode);
-
-        Self::with_tx(tx)
-    }
-
-    pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
-        let tx = Transaction::script(
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            script,
-            script_data,
-            Default::default(),
-            Default::default(),
-            Default::default(),
-        );
-
-        let mut slf = Self::with_tx(tx);
-
-        slf.prepare_script(true);
-
-        slf
     }
 
     pub fn prepare_script(&mut self, should_prepare_script: bool) -> &mut Self {
@@ -178,55 +251,59 @@ impl TransactionBuilder {
         }
 
         if self.should_prepare_script {
-            self.tx
-                .prepare_init_script()
-                .expect("failed to prepare script");
+            self.tx.prepare_init_script();
         }
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Transaction {
+    pub fn finalize(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
         self.sign_keys.iter().for_each(|k| tx.sign_inputs(k));
 
-        tx.precompute_metadata();
+        tx.precompute();
 
         tx
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Transaction {
+    pub fn finalize_as_transaction(&mut self) -> Transaction {
+        self.finalize().into()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn finalize_without_signature(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute_metadata();
+        tx.precompute();
 
         tx
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> CheckedTransaction {
+    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
+        self.finalize_without_signature().into()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Tx> {
         self.finalize()
-            .check(height, params)
+            .into_checked(height, params)
             .expect("failed to check tx")
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked_without_signature(
+    pub fn finalize_checked_basic(
         &mut self,
         height: Word,
         params: &ConsensusParameters,
-    ) -> CheckedTransaction {
-        self.finalize_without_signature()
-            .check_without_signature(height, params)
+    ) -> Checked<Tx> {
+        self.finalize()
+            .into_checked_basic(height, params)
             .expect("failed to check tx")
     }
 }

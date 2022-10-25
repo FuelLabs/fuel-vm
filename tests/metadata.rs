@@ -755,7 +755,7 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .finalize_checked_stateless(height, &params);
+        .finalize_checked_basic(height, &params);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

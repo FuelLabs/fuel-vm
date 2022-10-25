@@ -6,6 +6,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
+const SET_STATUS_REG: usize = 0x29;
 
 #[test]
 fn code_copy() {
@@ -604,9 +605,9 @@ fn revert() {
     let routine_add_word_to_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x30, 13),       // (0, b) Add word to state
         Opcode::LW(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
-        Opcode::SRW(0x21, 0x11),            // r[0x21]      := s[m[b, 32], 8]
+        Opcode::SRW(0x21, SET_STATUS_REG, 0x11),            // r[0x21]      := s[m[b, 32], 8]
         Opcode::ADD(0x20, 0x20, 0x21),      // r[0x20]      += r[0x21]
-        Opcode::SWW(0x11, 0x20),            // s[m[b,32]]   := r[0x20]
+        Opcode::SWW(0x11, SET_STATUS_REG, 0x20),            // s[m[b,32]]   := r[0x20]
         Opcode::LOG(0x20, 0x21, 0x00, 0x00),
         Opcode::RET(REG_ONE),
     ];

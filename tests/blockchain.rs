@@ -12,6 +12,7 @@ use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reaso
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
+const SET_STATUS_REG: usize = 0x29;
 
 #[test]
 fn state_read_write() {
@@ -52,9 +53,9 @@ fn state_read_write() {
     let routine_add_word_to_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x30, 13),       // (0, b) Add word to state
         Opcode::LW(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
-        Opcode::SRW(0x21, 0x11),            // r[0x21]      := s[m[b, 32], 8]
+        Opcode::SRW(0x21, SET_STATUS_REG, 0x11),            // r[0x21]      := s[m[b, 32], 8]
         Opcode::ADD(0x20, 0x20, 0x21),      // r[0x20]      += r[0x21]
-        Opcode::SWW(0x11, 0x20),            // s[m[b,32]]   := r[0x20]
+        Opcode::SWW(0x11, SET_STATUS_REG, 0x20),            // s[m[b,32]]   := r[0x20]
         Opcode::LOG(0x20, 0x21, 0x00, 0x00),
         Opcode::RET(REG_ONE),
     ];
@@ -65,7 +66,7 @@ fn state_read_write() {
         Opcode::MOVI(0x20, 32),   // r[0x20]      := 32
         Opcode::ALOC(0x20),                 // aloc            0x20
         Opcode::ADDI(0x20, REG_HP, 1),      // r[0x20]      := $hp+1
-        Opcode::SRWQ(0x20, 0x11),           // m[0x20,32]   := s[m[b, 32], 32]
+        Opcode::SRWQ(0x20, SET_STATUS_REG, 0x11, REG_ONE),           // m[0x20,32]   := s[m[b, 32], 32]
         Opcode::LW(0x21, 0x11, 4),          // r[0x21]      := m[b+32, 8]
         Opcode::LOG(0x21, 0x00, 0x00, 0x00),
         Opcode::SRLI(0x22, 0x21, 48),       // r[0x22]      := r[0x21] >> 48
@@ -91,7 +92,7 @@ fn state_read_write() {
         Opcode::XOR(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
         Opcode::LOG(0x26, 0x00, 0x00, 0x00),
         Opcode::SW(0x20, 0x26, 3),          // m[0x20+24,8] := r[0x26]
-        Opcode::SWWQ(0x11, 0x20),           // s[m[b,32],32]:= m[0x20, 32]
+        Opcode::SWWQ(0x11, SET_STATUS_REG, 0x20, REG_ONE),           // s[m[b,32],32]:= m[0x20, 32]
         Opcode::RET(REG_ONE),
     ];
 
@@ -782,7 +783,7 @@ fn state_r_word_b_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRW(reg_a, reg_a),
+        Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, ArithmeticOverflow);
@@ -799,7 +800,7 @@ fn state_r_word_b_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRW(reg_a, reg_a),
+        Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, MemoryOverflow);
@@ -815,7 +816,7 @@ fn state_r_qword_a_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, REG_ZERO),
+        Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
@@ -831,7 +832,7 @@ fn state_r_qword_b_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, reg_a),
+        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
@@ -848,7 +849,7 @@ fn state_r_qword_a_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, REG_ZERO),
+        Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
@@ -865,7 +866,7 @@ fn state_r_qword_b_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(REG_ZERO, reg_a),
+        Opcode::SRWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
@@ -881,7 +882,7 @@ fn state_w_word_a_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWW(reg_a, REG_ZERO),
+        Opcode::SWW(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_write_word, ArithmeticOverflow);
@@ -898,7 +899,7 @@ fn state_w_word_a_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWW(reg_a, REG_ZERO),
+        Opcode::SWW(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_write_word, MemoryOverflow);
@@ -914,7 +915,7 @@ fn state_w_qword_a_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(reg_a, REG_ZERO),
+        Opcode::SWWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
@@ -930,7 +931,7 @@ fn state_w_qword_b_plus_32_over() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(REG_ZERO, reg_a),
+        Opcode::SWWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
@@ -947,7 +948,7 @@ fn state_w_qword_a_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23),
         Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::SWWQ(reg_a, REG_ZERO),
+        Opcode::SWWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
@@ -964,7 +965,7 @@ fn state_w_qword_b_over_max_ram() {
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, 23),
         Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::SWWQ(REG_ZERO, reg_a),
+        Opcode::SWWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);

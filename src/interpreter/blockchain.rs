@@ -252,6 +252,7 @@ where
     }
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
         //TODO: This is temporary until sequential clears are implemented

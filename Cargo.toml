@@ -111,4 +111,4 @@ path = "tests/predicate.rs"
 required-features = ["random"]
 
 [patch.crates-io]
-fuel-tx = { git = "https://github.com/FuelLabs/fuel-tx/", branch = "feature/methods-refactoring" }
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-tx/" }

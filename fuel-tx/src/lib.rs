@@ -11,11 +11,13 @@
 extern crate alloc;
 
 pub mod consts;
+mod tx_pointer;
 
 pub use fuel_asm::{InstructionResult, PanicReason};
 pub use fuel_types::{
     Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, MessageId, Salt, Word,
 };
+pub use tx_pointer::TxPointer;
 
 #[cfg(feature = "builder")]
 mod builder;
@@ -41,8 +43,8 @@ pub use receipt::{Receipt, ScriptExecutionResult};
 #[cfg(feature = "alloc")]
 pub use transaction::{
     field, Cacheable, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Executable,
-    Input, InputRepr, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee,
-    TransactionRepr, TxId, TxPointer, UtxoId, Witness,
+    Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee,
+    TransactionRepr, TxId, UtxoId, Witness,
 };
 
 #[cfg(feature = "std")]

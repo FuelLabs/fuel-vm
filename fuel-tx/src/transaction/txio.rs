@@ -1,5 +1,5 @@
 use super::TransactionRepr;
-use crate::{Create, Script, Transaction};
+use crate::{Create, Mint, Script, Transaction};
 
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
 use fuel_types::Word;
@@ -26,6 +26,7 @@ impl io::Read for Transaction {
         match self {
             Self::Script(script) => script.read(buf),
             Self::Create(create) => create.read(buf),
+            Self::Mint(mint) => mint.read(buf),
         }
     }
 }
@@ -59,6 +60,15 @@ impl Write for Transaction {
 
                 Ok(n)
             }
+
+            TransactionRepr::Mint => {
+                let mut mint = Mint::default();
+                let n = mint.write(buf)?;
+
+                *self = Transaction::Mint(mint);
+
+                Ok(n)
+            }
         }
     }
 
@@ -66,6 +76,7 @@ impl Write for Transaction {
         match self {
             Transaction::Script(script) => script.flush(),
             Transaction::Create(create) => create.flush(),
+            Transaction::Mint(mint) => mint.flush(),
         }
     }
 }

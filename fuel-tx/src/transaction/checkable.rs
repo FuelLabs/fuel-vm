@@ -206,6 +206,7 @@ impl Checkable for Transaction {
         match self {
             Transaction::Script(script) => script.check_signatures(),
             Transaction::Create(create) => create.check_signatures(),
+            Transaction::Mint(mint) => mint.check_signatures(),
         }
     }
 
@@ -221,6 +222,7 @@ impl Checkable for Transaction {
             Transaction::Create(create) => {
                 create.check_without_signatures(block_height, parameters)
             }
+            Transaction::Mint(mint) => mint.check_without_signatures(block_height, parameters),
         }
     }
 }
@@ -275,7 +277,9 @@ where
             .count()
             > 1
         {
-            return Err(CheckError::TransactionOutputChangeAssetIdDuplicated);
+            return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(
+                *input_asset_id,
+            ));
         }
 
         Ok(())

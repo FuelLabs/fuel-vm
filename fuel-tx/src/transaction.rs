@@ -25,8 +25,10 @@ pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::{
-    Create, Input, InputRepr, Output, OutputRepr, Script, StorageSlot, TxPointer, UtxoId, Witness,
+    Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness,
 };
+
+use crate::TxPointer;
 
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
@@ -42,6 +44,7 @@ pub type TxId = Bytes32;
 pub enum Transaction {
     Script(Script),
     Create(Create),
+    Mint(Mint),
 }
 
 impl Default for Transaction {
@@ -110,6 +113,18 @@ impl Transaction {
         }
     }
 
+    pub fn mint(
+        tx_pointer: TxPointer,
+        // TODO: Use directly `Output::Coin` here.
+        outputs: Vec<Output>,
+    ) -> Mint {
+        Mint {
+            tx_pointer,
+            outputs,
+            metadata: None,
+        }
+    }
+
     /// Convert the type into a JSON string
     ///
     /// This is implemented as infallible because serde_json will fail only if the type can't
@@ -143,6 +158,24 @@ impl Transaction {
         matches!(self, Self::Create { .. })
     }
 
+    pub const fn is_mint(&self) -> bool {
+        matches!(self, Self::Mint { .. })
+    }
+
+    pub const fn as_script(&self) -> Option<&Script> {
+        match self {
+            Self::Script(script) => Some(script),
+            _ => None,
+        }
+    }
+
+    pub fn as_script_mut(&mut self) -> Option<&mut Script> {
+        match self {
+            Self::Script(script) => Some(script),
+            _ => None,
+        }
+    }
+
     pub const fn as_create(&self) -> Option<&Create> {
         match self {
             Self::Create(create) => Some(create),
@@ -157,16 +190,16 @@ impl Transaction {
         }
     }
 
-    pub const fn as_script(&self) -> Option<&Script> {
+    pub const fn as_mint(&self) -> Option<&Mint> {
         match self {
-            Self::Script(script) => Some(script),
+            Self::Mint(mint) => Some(mint),
             _ => None,
         }
     }
 
-    pub fn as_script_mut(&mut self) -> Option<&mut Script> {
+    pub fn as_mint_mut(&mut self) -> Option<&mut Mint> {
         match self {
-            Self::Script(script) => Some(script),
+            Self::Mint(mint) => Some(mint),
             _ => None,
         }
     }
@@ -340,6 +373,7 @@ impl SizedBytes for Transaction {
         match self {
             Self::Script(script) => script.serialized_size(),
             Self::Create(create) => create.serialized_size(),
+            Self::Mint(mint) => mint.serialized_size(),
         }
     }
 }
@@ -353,6 +387,12 @@ impl From<Script> for Transaction {
 impl From<Create> for Transaction {
     fn from(create: Create) -> Self {
         Transaction::Create(create)
+    }
+}
+
+impl From<Mint> for Transaction {
+    fn from(mint: Mint) -> Self {
+        Transaction::Mint(mint)
     }
 }
 
@@ -392,6 +432,16 @@ pub mod field {
         }
 
         fn maturity_offset_static() -> usize;
+    }
+
+    pub trait TxPointer {
+        fn tx_pointer(&self) -> &crate::TxPointer;
+        fn tx_pointer_mut(&mut self) -> &mut crate::TxPointer;
+        fn tx_pointer_offset(&self) -> usize {
+            Self::tx_pointer_static()
+        }
+
+        fn tx_pointer_static() -> usize;
     }
 
     pub trait ReceiptsRoot {

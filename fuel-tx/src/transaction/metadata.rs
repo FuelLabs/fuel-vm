@@ -21,6 +21,7 @@ impl Cacheable for super::Transaction {
         match self {
             Self::Script(script) => script.is_computed(),
             Self::Create(create) => create.is_computed(),
+            Self::Mint(mint) => mint.is_computed(),
         }
     }
 
@@ -28,6 +29,7 @@ impl Cacheable for super::Transaction {
         match self {
             Self::Script(script) => script.precompute(),
             Self::Create(create) => create.precompute(),
+            Self::Mint(mint) => mint.precompute(),
         }
     }
 }

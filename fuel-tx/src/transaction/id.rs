@@ -14,6 +14,7 @@ impl UniqueIdentifier for Transaction {
         match self {
             Transaction::Script(script) => script.id(),
             Transaction::Create(create) => create.id(),
+            Self::Mint(mint) => mint.id(),
         }
     }
 }

@@ -109,3 +109,6 @@ required-features = ["random"]
 name = "test-predicate"
 path = "tests/predicate.rs"
 required-features = ["random"]
+
+[patch.crates-io]
+fuel-asm = { git = "https://github.com/FuelLabs/fuel-asm/" }

@@ -92,6 +92,8 @@ impl<S> Interpreter<S> {
 
             MINT => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(2)),
 
+            SCWQ => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(4)),
+
             SRW => Arithmetic(1).join(Branching(2)).join(StorageReadTree(1)),
 
             SRWQ => Arithmetic(1).join(Branching(2)).join(StorageReadTree(4)),

@@ -313,6 +313,8 @@ where
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
         let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 
@@ -349,6 +351,8 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
         if ax > VM_MAX_RAM {
@@ -377,6 +381,8 @@ where
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
         let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 

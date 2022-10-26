@@ -7,7 +7,9 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_asm::PanicReason::{
+    ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
+};
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 use std::mem;
@@ -992,8 +994,6 @@ fn srwq_wrong_size() {
     // cover contract_id_end beyond max ram
     let state_read_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
-        // Opcode::NOT(reg_a, reg_a),
-        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
     ];
@@ -1009,8 +1009,6 @@ fn swwq_wrong_size() {
     // cover contract_id_end beyond max ram
     let state_read_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
-        // Opcode::NOT(reg_a, reg_a),
-        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SWWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
     ];

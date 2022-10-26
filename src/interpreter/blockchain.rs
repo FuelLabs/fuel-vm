@@ -252,62 +252,109 @@ where
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_word(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        Self::is_register_writable(ra)?;
+    pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
-        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+        //TODO: This is temporary until sequential clears are implemented
+        if c != 1 {
+            return Err(PanicReason::ErrorFlag.into());
+        }
 
-        if bx > VM_MAX_RAM {
+        if ax > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (b, bx) = (b as usize, bx as usize);
+        let a = a as usize;
+        let ax = ax as usize;
+        let (d, dx) = self.internal_contract_bounds()?;
 
-        let contract = self.internal_contract()?;
+        // Safety: Memory bounds logically verified by the interpreter
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[d..dx]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
 
-        // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
-
-        self.registers[ra] = self
+        let result = self
             .storage
-            .merkle_contract_state(contract, key)
-            .map_err(RuntimeError::from_io)?
-            .map(|state| unsafe { Bytes8::from_slice_unchecked(state.as_ref().as_ref()).into() })
-            .map(Word::from_be_bytes)
-            .unwrap_or(0);
+            .merkle_contract_state_remove(contract, key)
+            .map_err(RuntimeError::from_io)?;
+
+        self.registers[rb] = result.is_some() as Word;
 
         self.inc_pc()
     }
 
-    pub(crate) fn state_read_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+    pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(ra)?;
+        Self::is_register_writable(rb)?;
 
-        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        let cx = checked_add_word(c, Bytes32::LEN as Word)?;
+
+        if cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (a, b) = (a as usize, b as usize);
-        let bx = bx as usize;
+        let (c, cx) = (c as usize, cx as usize);
 
         let contract = self.internal_contract()?;
 
         // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
 
-        let state = self
+        let result = self
             .storage
             .merkle_contract_state(contract, key)
             .map_err(RuntimeError::from_io)?
-            .map(|s| s.into_owned())
-            .unwrap_or_default();
+            .map(|state| unsafe { Bytes8::from_slice_unchecked(state.as_ref().as_ref()).into() })
+            .map(Word::from_be_bytes);
+
+        self.registers[ra] = result.unwrap_or(0);
+        self.registers[rb] = result.is_some() as Word;
+
+        self.inc_pc()
+    }
+
+    pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+
+        //TODO: This is temporary until sequential reads are implemented
+        if d != 1 {
+            return Err(PanicReason::ErrorFlag.into());
+        }
+
+        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
+
+        if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (a, c) = (a as usize, c as usize);
+        let cx = cx as usize;
+
+        let contract = self.internal_contract()?;
+
+        // Safety: Memory bounds are checked by the interpreter
+        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
+
+        let result = self
+            .storage
+            .merkle_contract_state(contract, key)
+            .map_err(RuntimeError::from_io)?
+            .map(|s| s.into_owned());
+
+        self.registers[rb] = result.is_some() as Word;
+
+        let state = result.unwrap_or_default();
 
         self.try_mem_write(a, state.as_ref())?;
 
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_word(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn state_write_word(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
+
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
         if ax > VM_MAX_RAM {
@@ -315,43 +362,57 @@ where
         }
 
         let (a, ax) = (a as usize, ax as usize);
-        let (c, cx) = self.internal_contract_bounds()?;
+        let (d, dx) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[d..dx]) };
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
 
         let mut value = Bytes32::default();
 
-        value[..WORD_SIZE].copy_from_slice(&b.to_be_bytes());
+        value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-        self.storage
+        let result = self
+            .storage
             .merkle_contract_state_insert(contract, key, &value)
             .map_err(RuntimeError::from_io)?;
+
+        self.registers[rb] = result.is_some() as Word;
 
         self.inc_pc()
     }
 
-    pub(crate) fn state_write_qword(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let bx = checked_add_word(b, Bytes32::LEN as Word)?;
+    pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        Self::is_register_writable(rb)?;
 
-        if ax > VM_MAX_RAM || bx > VM_MAX_RAM {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+
+        //TODO: This is temporary until sequential writes are implemented
+        if d != 1 {
+            return Err(PanicReason::ErrorFlag.into());
+        }
+
+        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
+
+        if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (a, b) = (a as usize, b as usize);
-        let (ax, bx) = (ax as usize, bx as usize);
-        let (c, cx) = self.internal_contract_bounds()?;
+        let (a, c) = (a as usize, c as usize);
+        let (ax, cx) = (ax as usize, cx as usize);
+        let (e, ex) = self.internal_contract_bounds()?;
 
         // Safety: Memory bounds logically verified by the interpreter
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
+        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[e..ex]) };
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
-        let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[b..bx]) };
+        let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
 
-        self.storage
+        let result = self
+            .storage
             .merkle_contract_state_insert(contract, key, value)
             .map_err(RuntimeError::from_io)?;
+
+        self.registers[rb] = result.is_some() as Word;
 
         self.inc_pc()
     }

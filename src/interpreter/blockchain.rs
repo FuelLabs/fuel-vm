@@ -10,9 +10,7 @@ use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
-use core::{mem, slice};
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
+use core::slice;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

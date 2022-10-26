@@ -12,9 +12,7 @@ use fuel_asm::PanicReason::{
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
-use std::mem;
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
 const SET_STATUS_REG: RegisterId = 0x39;
 
 #[test]

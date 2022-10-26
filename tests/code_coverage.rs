@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 
 use std::sync::{Arc, Mutex};
 
-const HALF_WORD_SIZE: u64 = 4;
+const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 
 #[test]
 fn code_coverage() {

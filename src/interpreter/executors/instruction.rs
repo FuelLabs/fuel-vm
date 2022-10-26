@@ -419,24 +419,29 @@ where
                 self.mint(a)?;
             }
 
+            OpcodeRepr::SCWQ => {
+                self.gas_charge(GAS_SCWQ)?;
+                self.state_clear_qword(a, rb, c)?;
+            }
+
             OpcodeRepr::SRW => {
                 self.gas_charge(GAS_SRW)?;
-                self.state_read_word(ra, b)?;
+                self.state_read_word(ra, rb, c)?;
             }
 
             OpcodeRepr::SRWQ => {
                 self.gas_charge(GAS_SRWQ)?;
-                self.state_read_qword(a, b)?;
+                self.state_read_qword(a, rb, c, d)?;
             }
 
             OpcodeRepr::SWW => {
                 self.gas_charge(GAS_SWW)?;
-                self.state_write_word(a, b)?;
+                self.state_write_word(a, rb, c)?;
             }
 
             OpcodeRepr::SWWQ => {
                 self.gas_charge(GAS_SWWQ)?;
-                self.state_write_qword(a, b)?;
+                self.state_write_qword(a, rb, c, d)?;
             }
 
             OpcodeRepr::TIME => {

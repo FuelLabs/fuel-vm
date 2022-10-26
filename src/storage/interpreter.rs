@@ -128,6 +128,15 @@ pub trait InterpreterStorage:
         self.storage::<ContractsState>().insert(&(contract, key), value)
     }
 
+    /// Remove a key-value mapping from a contract storage.
+    fn merkle_contract_state_remove(
+        &mut self,
+        contract: &ContractId,
+        key: &Bytes32,
+    ) -> Result<Option<Bytes32>, Self::DataError> {
+        self.storage::<ContractsState>().remove(&(contract, key))
+    }
+
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,

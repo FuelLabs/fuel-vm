@@ -96,15 +96,30 @@ impl<S, Tx> Interpreter<S, Tx> {
 
             MINT => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(2)),
 
-            SCWQ => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(4)),
+            SCWQ => Arithmetic(1)
+                .join(Branching(2))
+                .join(StorageWriteTree(4))
+                .join(RegisterWrite(1)),
 
-            SRW => Arithmetic(1).join(Branching(2)).join(StorageReadTree(1)),
+            SRW => Arithmetic(1)
+                .join(Branching(2))
+                .join(StorageReadTree(1))
+                .join(RegisterWrite(1)),
 
-            SRWQ => Arithmetic(1).join(Branching(2)).join(StorageReadTree(4)),
+            SRWQ => Arithmetic(1)
+                .join(Branching(2))
+                .join(StorageReadTree(4))
+                .join(RegisterWrite(1)),
 
-            SWW => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(1)),
+            SWW => Arithmetic(1)
+                .join(Branching(2))
+                .join(StorageWriteTree(1))
+                .join(RegisterWrite(1)),
 
-            SWWQ => Arithmetic(1).join(Branching(2)).join(StorageWriteTree(4)),
+            SWWQ => Arithmetic(1)
+                .join(Branching(2))
+                .join(StorageWriteTree(4))
+                .join(RegisterWrite(1)),
 
             TIME => Arithmetic(1).join(Branching(2)).join(StorageReadTree(4)),
 

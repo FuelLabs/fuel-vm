@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::storage::InterpreterStorage;
@@ -9,9 +9,10 @@ use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     pub(crate) fn contract(&self, contract: &ContractId) -> Result<Cow<'_, Contract>, RuntimeError> {
         self.storage

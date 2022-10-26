@@ -256,6 +256,8 @@ fn transaction() {
             vec![],
             vec![],
         ),
+    ]);
+    assert_encoding_correct(&[
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,

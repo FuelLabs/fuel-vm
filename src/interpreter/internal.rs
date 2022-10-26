@@ -1,17 +1,79 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason};
+use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use core::mem;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
+    /// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
+    /// serialized tx in vm memory.
+    pub(crate) fn set_variable_output(&mut self, idx: usize, variable: Output) -> Result<(), RuntimeError> {
+        self.tx.replace_variable_output(idx, variable)?;
+        self.update_memory_output(idx)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn set_message_output(&mut self, idx: usize, message: Output) -> Result<(), RuntimeError> {
+        self.tx.replace_message_output(idx, message)?;
+        self.update_memory_output(idx)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn update_memory_output(&mut self, idx: usize) -> Result<(), RuntimeError> {
+        let offset = self.tx_offset()
+            + self
+                .transaction()
+                .outputs_offset_at(idx)
+                .ok_or(PanicReason::OutputNotFound)?;
+
+        let tx = &mut self.tx;
+        let mem = &mut self.memory[offset..];
+
+        tx.output_to_mem(idx, mem)?;
+
+        Ok(())
+    }
+
+    pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
+        self.receipts.push(receipt);
+
+        if let Some(script) = self.tx.as_script() {
+            let offset = self.tx_offset() + script.receipts_root_offset();
+
+            // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
+            // linear monadic model and should be discussed. Maybe the receipts tree should have
+            // constant capacity so the gas cost is also constant to the maximum depth?
+            let root = if self.receipts().is_empty() {
+                EMPTY_RECEIPTS_MERKLE_ROOT.into()
+            } else {
+                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
+            };
+
+            if let Some(script) = self.tx.as_script_mut() {
+                *script.receipts_root_mut() = root;
+            }
+
+            // Transaction memory space length is already checked on initialization so its
+            // guaranteed to fit
+            (&mut self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
+        }
+    }
+}
+
+impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
         let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(len);
 
@@ -123,63 +185,8 @@ impl<S> Interpreter<S> {
         self.external_asset_id_balance_sub(&AssetId::default(), value)
     }
 
-    /// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
-    /// serialized tx in vm memory.
-    pub(crate) fn set_variable_output(&mut self, idx: usize, variable: Output) -> Result<(), RuntimeError> {
-        self.tx.tx_replace_variable_output(idx, variable)?;
-        self.update_memory_output(idx)?;
-
-        Ok(())
-    }
-
-    pub(crate) fn set_message_output(&mut self, idx: usize, message: Output) -> Result<(), RuntimeError> {
-        self.tx.tx_replace_message_output(idx, message)?;
-        self.update_memory_output(idx)?;
-
-        Ok(())
-    }
-
-    pub(crate) fn update_memory_output(&mut self, idx: usize) -> Result<(), RuntimeError> {
-        let offset = self.tx_offset()
-            + self
-                .transaction()
-                .output_offset(idx)
-                .ok_or(PanicReason::OutputNotFound)?;
-
-        let tx = &mut self.tx;
-        let mem = &mut self.memory[offset..];
-
-        tx.tx_output_to_mem(idx, mem)?;
-
-        Ok(())
-    }
-
-    pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
-        self.receipts.push(receipt);
-
-        self.transaction()
-            .receipts_root_offset()
-            .map(|offset| offset + self.tx_offset())
-            .map(|offset| {
-                // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
-                // linear monadic model and should be discussed. Maybe the receipts tree should have
-                // constant capacity so the gas cost is also constant to the maximum depth?
-                let root = if self.receipts().is_empty() {
-                    EMPTY_RECEIPTS_MERKLE_ROOT.into()
-                } else {
-                    crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
-                };
-
-                self.tx.tx_set_receipts_root(root);
-
-                // Transaction memory space length is already checked on initialization so its
-                // guaranteed to fit
-                (&mut self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
-            });
-    }
-
     pub(crate) const fn tx_offset(&self) -> usize {
-        self.params.tx_offset()
+        self.params().tx_offset()
     }
 
     pub(crate) fn tx_id(&self) -> &Bytes32 {
@@ -201,6 +208,7 @@ impl<S> Interpreter<S> {
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
+    use fuel_tx::field::Outputs;
     use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -274,7 +282,7 @@ mod tests {
             vec![variable_output],
             vec![Witness::default()],
         )
-        .check(height, vm.params())
+        .into_checked(height, vm.params())
         .expect("failed to check tx");
 
         vm.init_script(tx).expect("Failed to init VM!");
@@ -293,7 +301,7 @@ mod tests {
         ));
 
         // verify the vm memory is updated properly
-        let position = vm.params.tx_offset() + vm.transaction().output_offset(0).unwrap();
+        let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
         let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
         let _ = mem_output.write(&vm.memory()[position..]).unwrap();
         assert_eq!(vm.transaction().outputs()[0], mem_output);

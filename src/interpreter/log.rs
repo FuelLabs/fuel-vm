@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
 
@@ -7,7 +7,10 @@ use fuel_crypto::Hasher;
 use fuel_tx::Receipt;
 use fuel_types::Word;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let receipt = Receipt::log(
             self.internal_contract_or_default(),

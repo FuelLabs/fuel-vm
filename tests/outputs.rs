@@ -1,12 +1,10 @@
-use fuel_vm::consts::REG_CGAS;
 use fuel_vm::{
-    consts::{REG_FP, REG_ONE, REG_ZERO},
-    prelude::*,
+    consts::{REG_CGAS, REG_FP, REG_ONE, REG_ZERO},
+    prelude::{field::Outputs, *},
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 /// Testing of post-execution output handling
 

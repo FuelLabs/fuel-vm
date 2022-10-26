@@ -1,9 +1,7 @@
 use fuel_tx::TransactionBuilder;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
+use fuel_vm::{consts::*, prelude::*};
 
 use core::iter;
 
@@ -54,8 +52,7 @@ where
 
     builder.add_input(input);
 
-    let tx = builder.finalize_checked_without_signature(height, &params);
-
+    let tx = builder.finalize_checked_basic(height, &params);
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
 }
 

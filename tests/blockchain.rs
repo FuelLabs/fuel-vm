@@ -1025,7 +1025,7 @@ fn state_r_word_b_plus_32_over() {
     let state_read_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
     ];
 

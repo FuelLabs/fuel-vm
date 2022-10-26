@@ -49,7 +49,7 @@ fn backtrace() {
     .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
-    client.deploy(&tx_deploy);
+    client.deploy(tx_deploy);
 
     #[rustfmt::skip]
     let mut function_call: Vec<Opcode> = vec![
@@ -91,7 +91,7 @@ fn backtrace() {
     .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
-    client.deploy(&tx_deploy);
+    client.deploy(tx_deploy);
 
     #[rustfmt::skip]
     let mut script: Vec<Opcode> = vec![

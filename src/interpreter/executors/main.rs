@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
+use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -11,7 +11,8 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt, ScriptExecutionResult,
+    Chargeable, Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt,
+    ScriptExecutionResult,
 };
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
@@ -117,15 +118,14 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
 {
-    fn _deploy(create: &Create, storage: &mut S) -> Result<(), InterpreterError> {
+    fn _deploy(&mut self, mut create: Create, initial_balances: InitialBalances) -> Result<Create, InterpreterError> {
         let salt = create.salt();
         let storage_slots = create.storage_slots();
-        let contract = Contract::try_from(create)?;
+        let contract = Contract::try_from(&create)?;
         let root = contract.root();
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
 
-        // TODO: Move this check to `fuel-tx`.
         if !create
             .outputs()
             .iter()
@@ -134,11 +134,23 @@ where
             return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
         }
 
+        let storage = &mut self.storage;
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
 
-        Ok(())
+        // TODO: Maybe the code below is useless because we can't spend any gas and can't execute
+        //  any code, so the output also should be the same.
+        let remaining_gas = create.limit();
+        Self::finalize_outputs(
+            &mut create,
+            false,
+            remaining_gas,
+            &initial_balances,
+            &RuntimeBalances::from(initial_balances.clone()),
+            &self.params,
+        )?;
+        Ok(create)
     }
 }
 
@@ -149,8 +161,8 @@ where
 {
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
-        let state = if let Some(create) = self.tx.as_create() {
-            Self::_deploy(create, &mut self.storage)?;
+        let state = if let Some(create) = self.tx.as_create().cloned() {
+            self._deploy(create, self.initial_balances.clone())?;
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
@@ -229,7 +241,18 @@ where
             }
 
             let revert = matches!(program, ProgramState::Revert(_));
-            self.finalize_outputs(revert)?;
+            let remaining_gas = self.remaining_gas();
+            Self::finalize_outputs(
+                &mut self.tx,
+                revert,
+                remaining_gas,
+                &self.initial_balances,
+                &self.balances,
+                &self.params,
+            )?;
+
+            let outputs = self.transaction().outputs().len();
+            (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
 
             program
         };
@@ -309,7 +332,8 @@ where
 {
     /// Deploys `Create` transaction without initialization VM and without invalidation of the
     /// last state of execution of the `Script` transaction.
-    pub fn deploy(&mut self, tx: &Checked<Create>) -> Result<(), InterpreterError> {
-        Self::_deploy(tx.transaction(), &mut self.storage)
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
+        let (create, metadata) = tx.into();
+        self._deploy(create, metadata.balances())
     }
 }

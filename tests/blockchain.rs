@@ -197,7 +197,7 @@ fn state_read_write() {
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.deploy(&tx_deploy);
+    client.deploy(tx_deploy);
     client.transact(tx_add_word);
 
     let receipts = client.receipts().expect("The transaction was executed");
@@ -325,7 +325,7 @@ fn load_external_contract_code() {
     .into_checked(height, &params)
     .expect("failed to check tx");
 
-    client.deploy(&tx_create_target);
+    client.deploy(tx_create_target);
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -455,7 +455,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
     .into_checked(height, &params)
     .expect("failed to check tx");
 
-    client.deploy(&tx_create_target);
+    client.deploy(tx_create_target);
 
     //test ssp != sp for LDC
     let mut load_contract: Vec<Opcode>;

@@ -317,12 +317,13 @@ where
         Self::is_register_writable(rb)?;
 
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 
         //TODO: This is temporary until sequential reads are implemented
         if d != 1 {
             return Err(PanicReason::ErrorFlag.into());
         }
+
+        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
 
         if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
@@ -385,12 +386,13 @@ where
         Self::is_register_writable(rb)?;
 
         let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let cx = checked_add_word(c, Bytes32::LEN as Word)?;
 
         //TODO: This is temporary until sequential writes are implemented
         if d != 1 {
             return Err(PanicReason::ErrorFlag.into());
         }
+
+        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
 
         if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());

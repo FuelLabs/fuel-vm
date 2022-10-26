@@ -17,7 +17,7 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
@@ -48,7 +48,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage.clone(), Default::default())
@@ -76,7 +76,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
@@ -132,7 +132,7 @@ fn alu_wrapping(
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
@@ -165,7 +165,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage.clone(), Default::default())
@@ -193,7 +193,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())
@@ -224,7 +224,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(storage, Default::default())

@@ -44,11 +44,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use fuel_storage::{MerkleRoot, MerkleRootStorage, StorageAsMut, StorageAsRef, StorageInspect, StorageMutate};
     #[doc(no_inline)]
-    pub use fuel_tx::{
-        CheckedTransaction, ConsensusParameters, Contract, Input, InputRepr, Output, OutputRepr, Receipt,
-        ScriptExecutionResult, Transaction, TransactionFee, TransactionRepr, TxPointer, UtxoId, ValidationError,
-        Witness,
-    };
+    pub use fuel_tx::*;
     #[doc(no_inline)]
     pub use fuel_types::{
         bytes::{Deserializable, SerializableVec, SizedBytes},
@@ -60,7 +56,7 @@ pub mod prelude {
     pub use crate::call::{Call, CallFrame};
     pub use crate::context::Context;
     pub use crate::error::{Bug, BugId, BugVariant, Infallible, InterpreterError, RuntimeError};
-    pub use crate::interpreter::{Interpreter, MemoryRange};
+    pub use crate::interpreter::{ExecutableTransaction, Interpreter, MemoryRange};
     pub use crate::memory_client::MemoryClient;
     pub use crate::predicate::RuntimePredicate;
     pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};

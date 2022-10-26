@@ -7,9 +7,8 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use fuel_asm::PanicReason::{
-    ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
-};
+use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 use std::mem;
 
@@ -131,7 +130,7 @@ fn state_read_write() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -146,7 +145,7 @@ fn state_read_write() {
     let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
+    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -159,7 +158,7 @@ fn state_read_write() {
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
@@ -192,14 +191,14 @@ fn state_read_write() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.transact(tx_deploy);
+    client.deploy(tx_deploy);
     client.transact(tx_add_word);
 
     let receipts = client.receipts().expect("The transaction was executed");
@@ -242,7 +241,7 @@ fn state_read_write() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Mutate the state
@@ -324,10 +323,10 @@ fn load_external_contract_code() {
         vec![output0],
         vec![program.clone()],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
-    client.transact(tx_create_target);
+    client.deploy(tx_create_target);
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -376,11 +375,11 @@ fn load_external_contract_code() {
         vec![output1],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
-    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
     *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
 
     let tx_deploy_loader = Transaction::script(
@@ -393,7 +392,7 @@ fn load_external_contract_code() {
         vec![output1],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -454,10 +453,10 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         vec![output0],
         vec![program.clone()],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
-    client.transact(tx_create_target);
+    client.deploy(tx_create_target);
 
     //test ssp != sp for LDC
     let mut load_contract: Vec<Opcode>;
@@ -477,7 +476,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![],
             vec![],
         )
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
@@ -512,11 +511,11 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![output1],
             vec![],
         )
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
         // Patch the code with correct jump address
-        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Transaction::script_offset();
+        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
         *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
 
         tx_deploy_loader = Transaction::script(
@@ -529,7 +528,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             vec![output1],
             vec![],
         )
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
     }
 

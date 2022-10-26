@@ -1,11 +1,12 @@
 use crate::error::InterpreterError;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     /// Continue the execution from a previously interrupted program flow.
     pub fn resume(&mut self) -> Result<ProgramState, InterpreterError> {

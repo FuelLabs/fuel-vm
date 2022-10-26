@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
@@ -14,9 +14,10 @@ use core::{mem, slice};
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     pub(crate) fn coinbase(&self) -> Result<Address, RuntimeError> {
         self.storage.coinbase().map_err(RuntimeError::from_io)
@@ -449,7 +450,7 @@ where
 
         let offset = self
             .transaction()
-            .output_offset(c as usize)
+            .outputs_offset_at(c as usize)
             .and_then(|ofs| ofs.checked_add(self.tx_offset()))
             .ok_or(PanicReason::OutputNotFound)?;
 

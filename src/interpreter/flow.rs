@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
@@ -14,7 +14,10 @@ use fuel_types::{AssetId, Bytes32, Word};
 
 use std::{cmp, io};
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
         let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
@@ -140,9 +143,10 @@ impl<S> Interpreter<S> {
     }
 }
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     fn _prepare_call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(32);

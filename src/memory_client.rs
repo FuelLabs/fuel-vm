@@ -5,12 +5,12 @@ use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 
-use fuel_tx::{CheckedTransaction, ConsensusParameters, Receipt};
+use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script};
 
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
 pub struct MemoryClient {
-    transactor: Transactor<MemoryStorage>,
+    transactor: Transactor<MemoryStorage, Script>,
 }
 
 impl<'a> AsRef<MemoryStorage> for MemoryClient {
@@ -34,7 +34,7 @@ impl MemoryClient {
     }
 
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<MemoryStorage>) -> Self {
+    pub fn from_txtor(transactor: Transactor<MemoryStorage, Script>) -> Self {
         Self { transactor }
     }
 
@@ -51,15 +51,20 @@ impl MemoryClient {
     }
 
     /// State transition representation after the execution of a transaction.
-    pub fn state_transition(&self) -> Option<StateTransitionRef<'_>> {
+    pub fn state_transition(&self) -> Option<StateTransitionRef<'_, Script>> {
         self.transactor.state_transition()
+    }
+
+    /// Deploys a `Create` transaction.
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
+        self.transactor.deploy(tx).ok()
     }
 
     /// Execute a transaction.
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact(&mut self, tx: CheckedTransaction) -> &[Receipt] {
+    pub fn transact(&mut self, tx: Checked<Script>) -> &[Receipt] {
         self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time
@@ -102,7 +107,7 @@ impl<'a> From<MemoryStorage> for MemoryClient {
     }
 }
 
-impl<'a> From<MemoryClient> for Transactor<MemoryStorage> {
+impl<'a> From<MemoryClient> for Transactor<MemoryStorage, Script> {
     fn from(client: MemoryClient) -> Self {
         client.transactor
     }

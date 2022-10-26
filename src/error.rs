@@ -1,7 +1,7 @@
 //! Runtime interpreter error implementation
 
 use fuel_asm::{Instruction, InstructionResult, PanicReason};
-use fuel_tx::ValidationError;
+use fuel_tx::CheckError;
 use thiserror::Error;
 
 use std::convert::Infallible as StdInfallible;
@@ -21,8 +21,8 @@ pub enum InterpreterError {
     #[error("Execution error: {0:?}")]
     Panic(PanicReason),
     /// The provided transaction isn't valid.
-    #[error("Failed to validate the transaction: {0}")]
-    ValidationError(#[from] ValidationError),
+    #[error("Failed to check the transaction: {0}")]
+    CheckError(#[from] CheckError),
     /// The predicate verification failed.
     #[error("Execution error")]
     PredicateFailure,
@@ -110,7 +110,7 @@ impl PartialEq for InterpreterError {
         match (self, other) {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
-            (Self::ValidationError(s), Self::ValidationError(o)) => s == o,
+            (Self::CheckError(s), Self::CheckError(o)) => s == o,
             (Self::PredicateFailure, Self::PredicateFailure) => true,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Io(s), Self::Io(o)) => s.kind() == o.kind(),

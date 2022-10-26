@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::gas::consts::*;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
@@ -13,9 +13,10 @@ use std::ops::Div;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {

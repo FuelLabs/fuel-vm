@@ -1,5 +1,6 @@
 use fuel_vm::prelude::*;
 
+use fuel_tx::field::Outputs;
 use std::iter;
 
 #[test]

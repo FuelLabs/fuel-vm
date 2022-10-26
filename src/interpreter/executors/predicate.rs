@@ -1,12 +1,15 @@
 use crate::consts::*;
 use crate::error::InterpreterError;
-use crate::interpreter::Interpreter;
+use crate::prelude::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::PredicateStorage;
 
 use fuel_asm::PanicReason;
 
-impl Interpreter<PredicateStorage> {
+impl<Tx> Interpreter<PredicateStorage, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     pub(crate) fn verify_predicate(&mut self) -> Result<ProgramState, InterpreterError> {
         let (start, end) = self
             .context

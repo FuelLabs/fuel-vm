@@ -1,9 +1,11 @@
 use fuel_crypto::Hasher;
-use fuel_tx::TransactionBuilder;
+use fuel_tx::{
+    field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
+    Script, TransactionBuilder,
+};
 use fuel_types::bytes;
 use fuel_vm::consts::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use fuel_vm::prelude::*;
 
@@ -54,7 +56,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -100,7 +102,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -146,7 +148,7 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .check(height, &params)
+        .into_checked(height, &params)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(&mut storage, Default::default())
@@ -195,7 +197,7 @@ fn get_transaction_fields() {
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_checked(height, &params);
 
-    client.transact(tx);
+    client.deploy(tx);
 
     let mut predicate = vec![0u8; 128];
     let mut predicate_data = vec![0u8; 512];
@@ -285,7 +287,7 @@ fn get_transaction_fields() {
     let outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
     let witnesses_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
-    let receipts_root = tx.as_ref().receipts_root().expect("failed to fetch receipts root");
+    let receipts_root = tx.as_ref().receipts_root();
 
     #[rustfmt::skip]
     let cases = vec![
@@ -320,7 +322,7 @@ fn get_transaction_fields() {
 
     // hardcoded metadata of script len so it can be checked at runtime
     let script_reserved_words = 300 * WORD_SIZE;
-    let script_offset = params.tx_offset() + Transaction::script_offset();
+    let script_offset = params.tx_offset() + Script::script_offset_static();
     let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
     let script_data: Vec<u8> = cases.iter().map(|c| c.iter()).flatten().copied().collect();
 
@@ -753,7 +755,7 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .finalize_checked_without_signature(height, &params);
+        .finalize_checked_basic(height, &params);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

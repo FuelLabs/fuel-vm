@@ -18,7 +18,7 @@ pub enum Context {
         /// Block height of the context
         block_height: u32,
     },
-    /// Current context is under a `CALL` scop.e
+    /// Current context is under a `CALL` scope
     Call {
         /// Block height of the context
         block_height: u32,

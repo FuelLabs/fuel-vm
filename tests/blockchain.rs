@@ -7,12 +7,14 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use fuel_asm::PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow};
+use fuel_asm::PanicReason::{
+    ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
+};
 use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 use std::mem;
 
 const WORD_SIZE: usize = mem::size_of::<Word>();
-const SET_STATUS_REG: usize = 0x29;
+const SET_STATUS_REG: RegisterId = 0x39;
 
 #[test]
 fn state_read_write() {
@@ -774,6 +776,250 @@ fn code_size_b_over_max_ram() {
 }
 
 #[test]
+fn sww_sets_status() {
+    #[rustfmt::skip]
+        let program: Vec<Opcode> = vec![
+        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
+        Opcode::SRW(0x31, SET_STATUS_REG + 1, REG_ZERO),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
+}
+
+#[test]
+fn scwq_clears_status() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
+        Opcode::SCWQ(0x30, SET_STATUS_REG + 1, REG_ONE),
+        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
+}
+
+#[test]
+fn srw_reads_status() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
+        Opcode::SRW(0x30, SET_STATUS_REG + 1, REG_ZERO),
+        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
+        Opcode::SRW(0x30, SET_STATUS_REG + 3, REG_ONE),
+        Opcode::LOG(SET_STATUS_REG, 
+                    SET_STATUS_REG + 1, 
+                    SET_STATUS_REG + 2, 
+                    SET_STATUS_REG + 3),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 1, 0]);
+}
+
+#[test]
+fn srwq_reads_status() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::SWW(0x31,  SET_STATUS_REG, REG_ZERO),
+        Opcode::SRWQ(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
+        Opcode::SRW(0x31, SET_STATUS_REG + 2, 0x31),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 1, 0]);
+}
+
+#[test]
+fn swwq_sets_status() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::ALOC(0x10),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::SRW(0x31, SET_STATUS_REG, 0x31),
+        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
+        Opcode::SRW(0x31, SET_STATUS_REG + 2, 0x31),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
+}
+
+fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Word>) -> bool {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::default();
+
+    let salt: Salt = rng.gen();
+
+    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract = contract.id(&salt, &contract_root, &state_root);
+
+    let output = Output::contract_created(contract, state_root);
+
+    let bytecode_witness = 0;
+    let tx_deploy = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![output],
+        vec![program],
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
+
+    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
+    let output = Output::contract(0, rng.gen(), rng.gen());
+
+    // The script needs to locate the data offset at runtime. Hence, we need to know
+    // upfront the serialized size of the script so we can set the registers
+    // accordingly.
+    //
+    // This variable is created to assert we have correct script size in the
+    // instructions.
+    let script_len = 16;
+
+    // Based on the defined script length, we set the appropriate data offset
+    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
+    let script_data_offset = script_data_offset as Immediate18;
+
+    let script = vec![
+        Opcode::MOVI(0x10, script_data_offset),
+        Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+        Opcode::RET(REG_ONE),
+    ]
+    .iter()
+    .copied()
+    .collect::<Vec<u8>>();
+
+    // Assert the offsets are set correctly
+    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    assert_eq!(script_data_offset, offset as Immediate18);
+
+    let mut script_data = vec![];
+
+    // Routine to be called: Add word to state
+    let routine: Word = 0;
+
+    // Offset of the script data relative to the call data
+    let call_data_offset = script_data_offset as usize + ContractId::LEN + 2 * WORD_SIZE;
+    let call_data_offset = call_data_offset as Word;
+
+    // Key and value to be added
+    let key = Hasher::hash(b"some key");
+    let val: Word = 150;
+
+    // Script data containing the call arguments (contract, a, b) and (key, value)
+    script_data.extend(contract.as_ref());
+    script_data.extend(&routine.to_be_bytes());
+    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(key.as_ref());
+    script_data.extend(&val.to_be_bytes());
+
+    let tx_add_word = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script.clone(),
+        script_data,
+        vec![input.clone()],
+        vec![output],
+        vec![],
+    )
+    .check(height, &params)
+    .expect("failed to check tx");
+
+    // Assert the initial state of `key` is empty
+    let state = client.as_ref().contract_state(&contract, &key);
+    assert_eq!(Bytes32::default(), state.into_owned());
+
+    client.transact(tx_deploy);
+    client.transact(tx_add_word);
+
+    let receipts = client.receipts().expect("The transaction was executed");
+
+    // Expect the correct receipt
+    assert_eq!(receipts[1].ra().expect("Register value expected"), expected_values[0]);
+    assert_eq!(receipts[1].rb().expect("Register value expected"), expected_values[1]);
+    assert_eq!(receipts[1].rc().expect("Register value expected"), expected_values[2]);
+    assert_eq!(receipts[1].rd().expect("Register value expected"), expected_values[3]);
+
+    return true;
+}
+
+#[test]
+fn scwq_wrong_size() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        // Opcode::NOT(reg_a, reg_a),
+        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SCWQ(reg_a, SET_STATUS_REG, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
+}
+
+#[test]
+fn srwq_wrong_size() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        // Opcode::NOT(reg_a, reg_a),
+        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
+}
+
+#[test]
+fn swwq_wrong_size() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+
+    // cover contract_id_end beyond max ram
+    let state_read_word: Vec<Opcode> = vec![
+        Opcode::XOR(reg_a, reg_a, reg_a),
+        // Opcode::NOT(reg_a, reg_a),
+        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
+        Opcode::SWWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
+    ];
+
+    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
+}
+
+#[test]
 fn state_r_word_b_plus_32_over() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -782,7 +1028,7 @@ fn state_r_word_b_plus_32_over() {
     let state_read_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
+        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
     ];
 

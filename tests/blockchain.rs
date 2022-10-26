@@ -887,7 +887,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -902,7 +902,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
     let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
+    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -915,7 +915,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
@@ -948,14 +948,14 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to check tx");
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.transact(tx_deploy);
+    client.deploy(tx_deploy);
     client.transact(tx_add_word);
 
     let receipts = client.receipts().expect("The transaction was executed");

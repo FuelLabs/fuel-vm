@@ -3,10 +3,6 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use std::mem;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
-
 #[test]
 fn backtrace() {
     let rng = &mut StdRng::seed_from_u64(2322u64);

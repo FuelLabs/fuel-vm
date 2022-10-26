@@ -7,9 +7,6 @@ use fuel_types::bytes;
 use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
 use itertools::Itertools;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::mem;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[test]
 fn code_copy() {

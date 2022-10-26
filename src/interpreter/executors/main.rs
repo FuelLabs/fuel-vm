@@ -126,6 +126,7 @@ where
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
 
+        // TODO: Move this check to `fuel-tx`.
         if !create
             .outputs()
             .iter()

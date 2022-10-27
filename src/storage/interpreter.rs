@@ -145,7 +145,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<&[Option<Cow<Bytes32>>], Self::DataError>;
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns None if any of the keys in the range were previously unset.

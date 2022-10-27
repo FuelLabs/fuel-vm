@@ -5,7 +5,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate};
-use fuel_types::{Address, Bytes32};
+use fuel_types::{Address, Bytes32, ContractId};
 
 /// No-op storage used for predicate operations.
 ///
@@ -63,6 +63,33 @@ impl InterpreterStorage for PredicateStorage {
     }
 
     fn coinbase(&self) -> Result<Address, InterpreterError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+
+    fn merkle_contract_state_range(
+        &self,
+        _id: &ContractId,
+        _start_key: &Bytes32,
+        _range: Word,
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+
+    fn merkle_contract_state_insert_range(
+        &mut self,
+        _contract: &ContractId,
+        _start_key: &Bytes32,
+        _values: &[Bytes32],
+    ) -> Result<Option<()>, Self::DataError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+
+    fn merkle_contract_state_remove_range(
+        &mut self,
+        _contract: &ContractId,
+        _start_key: &Bytes32,
+        _range: Word,
+    ) -> Result<Option<()>, Self::DataError> {
         Err(InterpreterError::PredicateFailure)
     }
 }

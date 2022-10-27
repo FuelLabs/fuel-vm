@@ -250,4 +250,31 @@ impl InterpreterStorage for MemoryStorage {
     fn coinbase(&self) -> Result<Address, Infallible> {
         Ok(self.coinbase)
     }
+
+    fn merkle_contract_state_range(
+        &self,
+        _id: &ContractId,
+        _start_key: &Bytes32,
+        _range: Word,
+    ) -> Result<&[Option<Cow<Bytes32>>], Self::DataError> {
+        unimplemented!()
+    }
+
+    fn merkle_contract_state_insert_range(
+        &mut self,
+        _contract: &ContractId,
+        _start_key: &Bytes32,
+        _values: &[Bytes32],
+    ) -> Result<Option<()>, Self::DataError> {
+        unimplemented!()
+    }
+
+    fn merkle_contract_state_remove_range(
+        &mut self,
+        _contract: &ContractId,
+        _start_key: &Bytes32,
+        _range: Word,
+    ) -> Result<Option<()>, Self::DataError> {
+        unimplemented!()
+    }
 }

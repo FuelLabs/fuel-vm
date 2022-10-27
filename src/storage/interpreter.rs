@@ -138,6 +138,7 @@ pub trait InterpreterStorage:
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
+    /// Returns None if any of the slots in the range are unset.
     fn merkle_contract_state_range(
         &self,
         id: &ContractId,

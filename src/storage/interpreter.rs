@@ -137,6 +137,43 @@ pub trait InterpreterStorage:
         self.storage::<ContractsState>().remove(&(contract, key))
     }
 
+    /// Fetch a range of values from a key-value mapping in a contract storage.
+    fn merkle_contract_state_range(
+        &self,
+        id: &ContractId,
+        start_key: &Bytes32,
+        #[allow(unused)] range: Word,
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+        self.storage::<ContractsState>().get(&(id, start_key)).map(|v| vec![v])
+    }
+
+    /// Insert a range of key-value mappings into contract storage.
+    /// Returns None if any of the keys in the range were previously unset.
+    fn merkle_contract_state_insert_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        #[allow(unused)] range: Word,
+        value: &[Bytes32],
+    ) -> Result<Option<()>, Self::DataError> {
+        self.storage::<ContractsState>()
+            .insert(&(contract, start_key), &value[0])
+            .map(|v| v.map(|_| ()))
+    }
+
+    /// Remove a range of key-values from contract storage.
+    /// Returns None if any of the keys in the range were already unset.
+    fn merkle_contract_state_remove_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        #[allow(unused)] range: Word,
+    ) -> Result<Option<()>, Self::DataError> {
+        self.storage::<ContractsState>()
+            .remove(&(contract, start_key))
+            .map(|v| v.map(|_| ()))
+    }
+
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,

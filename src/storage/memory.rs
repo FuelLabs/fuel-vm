@@ -256,7 +256,7 @@ impl InterpreterStorage for MemoryStorage {
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: Word,
-    ) -> Result<&[Option<Cow<Bytes32>>], Self::DataError> {
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
         unimplemented!()
     }
 

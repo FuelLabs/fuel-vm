@@ -217,7 +217,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<&[Option<Cow<Bytes32>>], Self::DataError> {
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_range(self.deref(), id, start_key, range)
     }
 

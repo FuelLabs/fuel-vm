@@ -172,6 +172,9 @@ pub trait ExecutableTransaction:
     /// Casts the `Self` transaction into `&Create` if any.
     fn as_create(&self) -> Option<&Create>;
 
+    /// Casts the `Self` transaction into `&mut Create` if any.
+    fn as_create_mut(&mut self) -> Option<&mut Create>;
+
     /// Returns the type of the transaction like `Transaction::Create` or `Transaction::Script`.
     fn transaction_type() -> Word;
 
@@ -311,6 +314,10 @@ impl ExecutableTransaction for Create {
         Some(self)
     }
 
+    fn as_create_mut(&mut self) -> Option<&mut Create> {
+        Some(self)
+    }
+
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
@@ -326,6 +333,10 @@ impl ExecutableTransaction for Script {
     }
 
     fn as_create(&self) -> Option<&Create> {
+        None
+    }
+
+    fn as_create_mut(&mut self) -> Option<&mut Create> {
         None
     }
 

@@ -120,6 +120,14 @@ pub mod test_helpers {
             }
         }
 
+        pub fn get_block_height(&self) -> u32 {
+            self.block_height
+        }
+
+        pub fn get_params(&self) -> &ConsensusParameters {
+            &self.params
+        }
+
         pub fn start_script(&mut self, script: Vec<Opcode>, script_data: Vec<u8>) -> &mut Self {
             self.builder = TransactionBuilder::script(script.into_iter().collect(), script_data);
             self.builder.gas_price(self.gas_price);
@@ -348,18 +356,7 @@ pub mod test_helpers {
 
         pub fn execute_get_change(&mut self, find_asset_id: AssetId) -> Word {
             let outputs = self.execute_get_outputs();
-            let change = outputs.into_iter().find_map(|output| {
-                if let Output::Change { amount, asset_id, .. } = output {
-                    if &asset_id == &find_asset_id {
-                        Some(amount)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            });
-            change.expect(format!("no change matching asset ID {:x} was found", &find_asset_id).as_str())
+            find_change(outputs, find_asset_id)
         }
 
         pub fn get_contract_balance(&mut self, contract_id: &ContractId, asset_id: &AssetId) -> Word {
@@ -423,6 +420,21 @@ pub mod test_helpers {
         } else {
             panic!("Script should have panicked");
         }
+    }
+
+    pub fn find_change(outputs: Vec<Output>, find_asset_id: AssetId) -> Word {
+        let change = outputs.into_iter().find_map(|output| {
+            if let Output::Change { amount, asset_id, .. } = output {
+                if &asset_id == &find_asset_id {
+                    Some(amount)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+        change.expect(format!("no change matching asset ID {:x} was found", &find_asset_id).as_str())
     }
 }
 

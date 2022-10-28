@@ -14,6 +14,8 @@ use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
 
 const SET_STATUS_REG: RegisterId = 0x39;
+// log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL: 1<<log2(VM_MAX_MEM)
+const MAX_MEM_SHL: Immediate12 = 26 as Immediate12;
 
 #[test]
 fn state_read_write() {
@@ -627,7 +629,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::ADDI(reg_a, reg_a, 1),
         Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO),
     ];
@@ -655,7 +657,7 @@ fn code_copy_b_gt_vm_max_ram() {
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31),
         Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
@@ -670,7 +672,7 @@ fn code_copy_c_gt_vm_max_ram() {
     let code_copy: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::ADDI(reg_a, reg_a, 1),
         Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO),
     ];
@@ -717,7 +719,7 @@ fn code_root_a_over_max_ram() {
     let code_root: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::CROO(reg_a, REG_ZERO),
     ];
@@ -734,7 +736,7 @@ fn code_root_b_over_max_ram() {
     let code_root: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::CROO(REG_ZERO, reg_a),
     ];
@@ -766,7 +768,7 @@ fn code_size_b_over_max_ram() {
     let code_root: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::CSIZ(reg_a, reg_a),
     ];
@@ -1039,7 +1041,7 @@ fn state_r_word_b_over_max_ram() {
     let state_read_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
     ];
@@ -1088,7 +1090,7 @@ fn state_r_qword_a_over_max_ram() {
     let state_read_qword: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
@@ -1105,7 +1107,7 @@ fn state_r_qword_b_over_max_ram() {
     let state_read_qword: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SRWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
@@ -1138,7 +1140,7 @@ fn state_w_word_a_over_max_ram() {
     let state_write_word: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23 as Immediate12),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
         Opcode::SWW(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
@@ -1187,7 +1189,7 @@ fn state_w_qword_a_over_max_ram() {
     let state_write_qword: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31),
         Opcode::SWWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
@@ -1204,7 +1206,7 @@ fn state_w_qword_b_over_max_ram() {
     let state_write_qword: Vec<Opcode> = vec![
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31),
         Opcode::SWWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
@@ -1258,7 +1260,7 @@ fn message_output_a_b_gt_max_mem() {
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::XOR(reg_b, reg_b, reg_b),
         Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, 23),
+        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::ADDI(reg_b, reg_b, 1),
         Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
     ];

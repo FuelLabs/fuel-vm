@@ -118,10 +118,15 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
 {
-    fn _deploy(&mut self, mut create: Create, initial_balances: InitialBalances) -> Result<Create, InterpreterError> {
+    fn _deploy(
+        create: &mut Create,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        params: &ConsensusParameters,
+    ) -> Result<(), InterpreterError> {
         let salt = create.salt();
         let storage_slots = create.storage_slots();
-        let contract = Contract::try_from(&create)?;
+        let contract = Contract::try_from(&*create)?;
         let root = contract.root();
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
@@ -135,23 +140,20 @@ where
             return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
         }
 
-        let storage = &mut self.storage;
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
 
-        // TODO: Maybe the code below is useless because we can't spend any gas and can't execute
-        //  any code, so the output also should be the same.
         let remaining_gas = create.limit();
         Self::finalize_outputs(
-            &mut create,
+            create,
             false,
             remaining_gas,
             &initial_balances,
             &RuntimeBalances::from(initial_balances.clone()),
-            &self.params,
+            params,
         )?;
-        Ok(create)
+        Ok(())
     }
 }
 
@@ -160,10 +162,17 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
+    fn update_transaction_outputs(&mut self) -> Result<(), InterpreterError> {
+        let outputs = self.transaction().outputs().len();
+        (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
+        Ok(())
+    }
+
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
-        let state = if let Some(create) = self.tx.as_create().cloned() {
-            self._deploy(create, self.initial_balances.clone())?;
+        let state = if let Some(create) = self.tx.as_create_mut() {
+            Self::_deploy(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
@@ -251,9 +260,7 @@ where
                 &self.balances,
                 &self.params,
             )?;
-
-            let outputs = self.transaction().outputs().len();
-            (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
+            self.update_transaction_outputs()?;
 
             program
         };
@@ -333,8 +340,11 @@ where
 {
     /// Deploys `Create` transaction without initialization VM and without invalidation of the
     /// last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
-        let (create, metadata) = tx.into();
-        self._deploy(create, metadata.balances())
+        let (mut create, metadata) = tx.into();
+        Self::_deploy(&mut create, &mut self.storage, metadata.balances(), &self.params)?;
+        Ok(create)
     }
 }

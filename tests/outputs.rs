@@ -1,3 +1,4 @@
+use fuel_vm::util::test_helpers::find_change;
 use fuel_vm::{
     consts::{REG_CGAS, REG_FP, REG_ONE, REG_ZERO},
     prelude::{field::Outputs, *},
@@ -62,7 +63,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
 }
 
 #[test]
-fn correct_change_is_provided_for_coin_outputs() {
+fn correct_change_is_provided_for_coin_outputs_script() {
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;
@@ -74,6 +75,57 @@ fn correct_change_is_provided_for_coin_outputs() {
         .change_output(asset_id)
         .coin_output(asset_id, spend_amount)
         .execute_get_change(asset_id);
+
+    assert_eq!(change, input_amount - spend_amount);
+}
+
+#[test]
+fn correct_change_is_provided_for_coin_outputs_create() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let input_amount = 1000;
+    let gas_price = 0;
+    let spend_amount = 600;
+    let asset_id = AssetId::BASE;
+
+    #[rustfmt::skip]
+    let function_undefined: Vec<Opcode> = vec![
+        Opcode::Undefined,
+    ];
+
+    let salt: Salt = rng.gen();
+    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+
+    let output = Output::contract_created(contract_undefined, state_root);
+
+    let mut context = TestBuilder::new(2322u64);
+    let bytecode_witness = 0;
+    let mut create = Transaction::create(
+        gas_price,
+        0,
+        0,
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![
+            output,
+            Output::change(rng.gen(), 0, asset_id),
+            Output::coin(rng.gen(), spend_amount, asset_id),
+        ],
+        vec![program],
+    );
+    create.add_unsigned_coin_input(rng.gen(), &Default::default(), input_amount, asset_id, rng.gen(), 0);
+    let create = create
+        .into_checked_basic(context.get_block_height() as Word, context.get_params())
+        .expect("failed to generate checked tx");
+
+    let state = context.execute_tx(create).expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), AssetId::BASE);
 
     assert_eq!(change, input_amount - spend_amount);
 }

@@ -132,7 +132,7 @@ where
 
         let receipt = match result.reason() {
             PanicReason::ContractNotInInputs => {
-                let call = Call::try_from(&self.memory[self.registers[result.instruction().rb()] as usize..])
+                let call = Call::try_from(&self.memory[self.registers[result.instruction().ra()] as usize..])
                     .expect("append panic receipt error");
                 receipt.with_panic_contract_id(Some(*call.to()))
             }

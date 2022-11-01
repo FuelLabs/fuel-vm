@@ -21,7 +21,6 @@ pub(crate) struct MintMetadata {
     pub id: Bytes32,
     pub outputs_offset: usize,
     pub outputs_offset_at: Vec<usize>,
-    pub serialized_size: usize,
 }
 
 #[cfg(feature = "std")]
@@ -52,15 +51,10 @@ impl MintMetadata {
             })
             .collect_vec();
 
-        let serialized_size = offset;
-        #[cfg(feature = "internals")]
-        assert_eq!(serialized_size, tx.serialized_size());
-
         Self {
             id,
             outputs_offset,
             outputs_offset_at,
-            serialized_size,
         }
     }
 }
@@ -145,13 +139,6 @@ impl crate::Cacheable for Mint {
 
 impl SizedBytes for Mint {
     fn serialized_size(&self) -> usize {
-        if let Some(MintMetadata {
-            serialized_size, ..
-        }) = &self.metadata
-        {
-            return *serialized_size;
-        }
-
         self.outputs_offset()
             + self
                 .outputs()

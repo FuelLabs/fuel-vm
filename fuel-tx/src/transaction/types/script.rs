@@ -173,16 +173,6 @@ impl crate::Cacheable for Script {
 
 impl SizedBytes for Script {
     fn serialized_size(&self) -> usize {
-        if let Some(ScriptMetadata {
-            common: CommonMetadata {
-                serialized_size, ..
-            },
-            ..
-        }) = &self.metadata
-        {
-            return *serialized_size;
-        }
-
         self.witnesses_offset()
             + self
                 .witnesses()

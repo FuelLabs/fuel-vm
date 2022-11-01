@@ -1,7 +1,18 @@
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId, expected: Word) {
+/// Set a register `r` to a Word-sized number value using left-shifts
+fn set_full_word(r: RegisterId, v: Word) -> Vec<Opcode> {
+    let mut ops = vec![Opcode::MOVI(r, 0)];
+    for byte in v.to_be_bytes() {
+        ops.push(Opcode::ORI(r, r, byte as Immediate12));
+        ops.push(Opcode::SLLI(r, r, 8));
+    }
+    ops.pop().unwrap(); // Remove last shift
+    ops
+}
+
+fn alu(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -12,7 +23,8 @@ fn alu(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: RegisterId
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| Opcode::MOVI(*r, *v))
+        .map(|(r, v)| set_full_word(*r, *v))
+        .flatten()
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
@@ -98,13 +110,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
     }
 }
 
-fn alu_wrapping(
-    registers_init: &[(RegisterId, Immediate18)],
-    op: Opcode,
-    reg: RegisterId,
-    expected: Word,
-    expected_of: bool,
-) {
+fn alu_wrapping(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expected: Word, expected_of: bool) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -113,7 +119,7 @@ fn alu_wrapping(
     let height = 0;
     let params = ConsensusParameters::default();
 
-    let set_regs = registers_init.iter().map(|(r, v)| Opcode::MOVI(*r, *v));
+    let set_regs = registers_init.iter().map(|(r, v)| set_full_word(*r, *v)).flatten();
 
     let script = [
         // TODO avoid magic constants
@@ -208,7 +214,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
     );
 }
 
-fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
+fn alu_reserved(registers_init: &[(RegisterId, Word)], op: Opcode) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -219,7 +225,8 @@ fn alu_reserved(registers_init: &[(RegisterId, Immediate18)], op: Opcode) {
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| Opcode::MOVI(*r, *v))
+        .map(|(r, v)| set_full_word(*r, *v))
+        .flatten()
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
@@ -438,6 +445,49 @@ fn exp() {
     );
     alu_wrapping(&[(0x10, 2)], Opcode::EXPI(0x10, 0x10, 32), 0x10, 2u64.pow(32), false);
     alu_wrapping(&[(0x10, 2)], Opcode::EXPI(0x10, 0x10, 64), 0x10, 0, true);
+}
+
+#[test]
+fn mlog() {
+    alu(&[(0x10, 1), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);
+    alu(&[(0x10, 10), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 1);
+    alu(&[(0x10, 100), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 2);
+    alu(&[(0x10, 999), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 2);
+    alu(&[(0x10, 1000), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 3);
+    alu(&[(0x10, 1001), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 3);
+
+    alu(&[(0x10, 1), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);
+    alu(&[(0x10, 2), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 1);
+    alu(&[(0x10, 3), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 1);
+    alu(&[(0x10, 4), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 2);
+
+    alu(
+        &[(0x10, 2u64.pow(32)), (0x11, 2)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        32,
+    );
+    alu(
+        &[(0x10, Word::MAX), (0x11, 2)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        63,
+    );
+    alu(
+        &[(0x10, 10u64.pow(10)), (0x11, 10)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        10,
+    );
+    alu(
+        &[(0x10, 10u64.pow(11)), (0x11, 10)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        11,
+    );
+
+    alu_err(&[(0x10, 0), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);
+    alu_err(&[(0x10, 0), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);
 }
 
 #[test]

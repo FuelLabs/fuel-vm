@@ -44,7 +44,6 @@ fn alu(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expec
     );
 }
 
-
 fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bool) {
     let storage = MemoryStorage::default();
 
@@ -111,13 +110,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
     }
 }
 
-fn alu_wrapping(
-    registers_init: &[(RegisterId, Word)],
-    op: Opcode,
-    reg: RegisterId,
-    expected: Word,
-    expected_of: bool,
-) {
+fn alu_wrapping(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expected: Word, expected_of: bool) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -467,11 +460,31 @@ fn mlog() {
     alu(&[(0x10, 2), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 1);
     alu(&[(0x10, 3), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 1);
     alu(&[(0x10, 4), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 2);
-    
-    alu(&[(0x10, 2u64.pow(32)), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 32);
-    alu(&[(0x10, Word::MAX), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 63);
-    alu(&[(0x10, 10u64.pow(10)), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 10);
-    alu(&[(0x10, 10u64.pow(11)), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 11);
+
+    alu(
+        &[(0x10, 2u64.pow(32)), (0x11, 2)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        32,
+    );
+    alu(
+        &[(0x10, Word::MAX), (0x11, 2)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        63,
+    );
+    alu(
+        &[(0x10, 10u64.pow(10)), (0x11, 10)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        10,
+    );
+    alu(
+        &[(0x10, 10u64.pow(11)), (0x11, 10)],
+        Opcode::MLOG(0x12, 0x10, 0x11),
+        0x12,
+        11,
+    );
 
     alu_err(&[(0x10, 0), (0x11, 10)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);
     alu_err(&[(0x10, 0), (0x11, 2)], Opcode::MLOG(0x12, 0x10, 0x11), 0x12, 0);

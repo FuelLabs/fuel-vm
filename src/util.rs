@@ -409,7 +409,13 @@ pub mod test_helpers {
     ) {
         let receipts = client.transact(checked_tx);
 
-        if let Receipt::Panic { id: _, reason, .. } = receipts.get(0).expect("No receipt") {
+        if let Receipt::Panic {
+            id: _,
+            reason,
+            contract_id,
+            ..
+        } = receipts.get(0).expect("No receipt")
+        {
             assert_eq!(
                 &expected_reason,
                 reason.reason(),
@@ -417,6 +423,10 @@ pub mod test_helpers {
                 expected_reason,
                 reason.reason()
             );
+            match expected_reason {
+                PanicReason::ContractNotInInputs => assert!(contract_id.is_some()),
+                _ => {}
+            };
         } else {
             panic!("Script should have panicked");
         }

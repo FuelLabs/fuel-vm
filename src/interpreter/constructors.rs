@@ -3,6 +3,7 @@
 use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::consts::*;
 use crate::context::Context;
+use crate::interpreter::PanicContext;
 use crate::state::Debugger;
 use crate::storage::MemoryStorage;
 
@@ -35,6 +36,7 @@ where
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             params,
+            panic_context: PanicContext::None,
         }
     }
 

@@ -15,7 +15,7 @@ use fuel_tx::{
     Receipt, Script, ScriptCheckedMetadata, Transaction, TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{Address, AssetId, Word};
+use fuel_types::{Address, AssetId, ContractId, Word};
 
 mod alu;
 mod balances;
@@ -46,7 +46,6 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
-#[derive(Debug, Clone)]
 /// VM interpreter.
 ///
 /// The internal state of the VM isn't expose because the intended usage is to
@@ -55,6 +54,7 @@ pub use memory::MemoryRange;
 ///
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
+#[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Vec<u8>,
@@ -69,6 +69,21 @@ pub struct Interpreter<S, Tx = ()> {
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
     params: ConsensusParameters,
+    /// `PanicContext` after the latest execution. It is consumed by `append_panic_receipt`
+    /// and is `PanicContext::None` after consumption.
+    panic_context: PanicContext,
+}
+
+/// Sometimes it is possible to add some additional context information
+/// regarding panic reasons to simplify debugging.
+// TODO: Move this enum into `fuel-tx` and use it inside of the `Receipt::Panic` as meta
+//  information. Maybe better to have `Vec<PanicContext>` to provide more information.
+#[derive(Debug, Clone)]
+pub(crate) enum PanicContext {
+    /// No additional information.
+    None,
+    /// `ContractId` retrieved during instruction execution.
+    ContractId(ContractId),
 }
 
 impl<S, Tx> Interpreter<S, Tx> {

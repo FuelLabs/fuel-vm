@@ -11,7 +11,7 @@ use fuel_asm::PanicReason::{
     ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
-use fuel_vm::util::test_helpers::{check_expected_reason_for_opcodes, check_reason_for_transaction};
+use fuel_vm::util::test_helpers::check_expected_reason_for_opcodes;
 
 const SET_STATUS_REG: RegisterId = 0x39;
 // log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL: 1<<log2(VM_MAX_MEM)
@@ -534,7 +534,31 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         .expect("failed to check tx");
     }
 
-    check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
+    let receipts = client.transact(tx_deploy_loader);
+    if let Receipt::Panic {
+        id: _,
+        reason,
+        contract_id: actual_contract_id,
+        ..
+    } = receipts.get(0).expect("No receipt")
+    {
+        assert_eq!(
+            &expected_reason,
+            reason.reason(),
+            "Expected {}, found {}",
+            expected_reason,
+            reason.reason()
+        );
+        match expected_reason {
+            PanicReason::ContractNotInInputs => {
+                assert!(actual_contract_id.is_some());
+                assert_ne!(actual_contract_id, &Some(contract_id));
+            }
+            _ => {}
+        };
+    } else {
+        panic!("Script should have panicked");
+    }
 }
 
 #[test]

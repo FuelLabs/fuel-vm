@@ -424,7 +424,10 @@ pub mod test_helpers {
                 reason.reason()
             );
             match expected_reason {
-                PanicReason::ContractNotInInputs => assert!(contract_id.is_some()),
+                PanicReason::ContractNotInInputs => {
+                    assert!(contract_id.is_some());
+                    assert_ne!(contract_id.unwrap(), ContractId::zeroed());
+                }
                 _ => {}
             };
         } else {

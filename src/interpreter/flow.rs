@@ -3,6 +3,7 @@ use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
 use crate::error::RuntimeError;
+use crate::interpreter::PanicContext;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
@@ -128,16 +129,15 @@ where
         let pc = self.registers[REG_PC];
         let is = self.registers[REG_IS];
 
-        let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
+        let mut receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
-        let receipt = match result.reason() {
-            PanicReason::ContractNotInInputs => {
-                let call = Call::try_from(&self.memory[self.registers[result.instruction().ra()] as usize..])
-                    .expect("append panic receipt error");
-                receipt.with_panic_contract_id(Some(*call.to()))
+        match self.panic_context {
+            PanicContext::None => {}
+            PanicContext::ContractId(contract_id) => {
+                receipt = receipt.with_panic_contract_id(Some(contract_id));
             }
-            _ => receipt,
         };
+        self.panic_context = PanicContext::None;
 
         self.append_receipt(receipt);
     }
@@ -173,6 +173,7 @@ where
             .input_contracts()
             .any(|contract| call.to() == contract)
         {
+            self.panic_context = PanicContext::ContractId(call.to().clone());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 

@@ -1,6 +1,7 @@
 use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
+use crate::interpreter::PanicContext;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
@@ -45,6 +46,7 @@ where
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         if !self.transaction().input_contracts().any(|input| contract == input) {
+            self.panic_context = PanicContext::ContractId(contract.clone());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -81,6 +83,7 @@ where
             .input_contracts()
             .any(|contract| &destination == contract)
         {
+            self.panic_context = PanicContext::ContractId(destination);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 

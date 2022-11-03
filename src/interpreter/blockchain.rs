@@ -5,11 +5,12 @@ use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::PanicReason;
-use fuel_tx::{Input, Output, Receipt};
+use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
 
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
+use crate::interpreter::PanicContext;
 use core::slice;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -67,6 +68,7 @@ where
 
         // the contract must be declared in the transaction inputs
         if !self.transaction().input_contracts().any(|id| id == contract_id) {
+            self.panic_context = PanicContext::ContractId(contract_id.clone());
             return Err(PanicReason::ContractNotInInputs.into());
         };
 
@@ -157,12 +159,8 @@ where
         // Safety: Memory bounds are checked by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
-        if !self
-            .transaction()
-            .inputs()
-            .iter()
-            .any(|input| matches!(input, Input::Contract { contract_id, .. } if contract_id == contract))
-        {
+        if !self.transaction().input_contracts().any(|input| input == contract) {
+            self.panic_context = PanicContext::ContractId(contract.clone());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 

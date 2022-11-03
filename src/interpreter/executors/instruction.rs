@@ -163,7 +163,7 @@ where
                 self.gas_charge(GAS_MROO)?;
                 self.alu_error(
                     ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
+                    |b, c| checked_nth_root(b, c).expect("checked_nth_root returned None for valid values") as Word,
                     b,
                     c,
                     c == 0,
@@ -497,6 +497,58 @@ where
 
         Ok(ExecuteState::Proceed)
     }
+}
+
+fn checked_nth_root(target: Word, nth_root: Word) -> Option<u64> {
+    if nth_root == 0 {
+        // Zeroth root is not defined
+        return None;
+    }
+
+    if nth_root == 1 || target <= 1 {
+        // Corner cases
+        return Some(target);
+    }
+
+    if nth_root >= target {
+        // For any root >= target, result always 1
+        return Some(1);
+    }
+
+    if nth_root > 64 {
+        // For any n>1, n**64 can never fit into u64
+        return Some(1);
+    }
+
+    let nth_root = nth_root as u32; // Never loses bits, checked above
+
+    // Use floating point operation to get an approximation for the starting point.
+    // This is at most off by one in either direction.
+    let guess = (target as f64).powf((nth_root as f64).recip()) as u64;
+
+    debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
+
+    // Compute guess**n to check if the guess is too large.
+    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return here.
+    let Some(g1) = guess.checked_pow(nth_root) else {
+        // guess**nth_root >= 2**64 and target < 2**64
+        return Some(guess - 1);
+    };
+    if target < g1 {
+        return Some(guess - 1);
+    }
+
+    // Check if the initial guess was correct
+    let Some(g2) = (guess + 1).checked_pow(nth_root) else {
+        // (guess + 1)**nth_root >= 2**64 and target < 2**64
+        return Some(guess);
+    };
+    if target < g2 {
+        return Some(guess);
+    }
+
+    // Check if the guess was correct
+    Some(guess + 1)
 }
 
 /// Computes logarithm for given exponent and base.

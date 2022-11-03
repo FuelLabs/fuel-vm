@@ -499,6 +499,9 @@ where
     }
 }
 
+/// Computes nth root of target, rounding down to nearest integer.
+/// This function uses the floating point operation to get an approximate solution,
+/// but corrects the result using exponentation to check for inaccuracy.
 fn checked_nth_root(target: Word, nth_root: Word) -> Option<u64> {
     if nth_root == 0 {
         // Zeroth root is not defined
@@ -510,12 +513,8 @@ fn checked_nth_root(target: Word, nth_root: Word) -> Option<u64> {
         return Some(target);
     }
 
-    if nth_root >= target {
+    if nth_root >= target || nth_root > 64 {
         // For any root >= target, result always 1
-        return Some(1);
-    }
-
-    if nth_root > 64 {
         // For any n>1, n**64 can never fit into u64
         return Some(1);
     }

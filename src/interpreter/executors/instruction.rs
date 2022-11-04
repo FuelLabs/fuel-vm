@@ -163,7 +163,7 @@ where
                 self.gas_charge(GAS_MROO)?;
                 self.alu_error(
                     ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
+                    |b, c| checked_nth_root(b, c).expect("checked_nth_root returned None for valid values") as Word,
                     b,
                     c,
                     c == 0,
@@ -497,6 +497,55 @@ where
 
         Ok(ExecuteState::Proceed)
     }
+}
+
+/// Computes nth root of target, rounding down to nearest integer.
+/// This function uses the floating point operation to get an approximate solution,
+/// but corrects the result using exponentation to check for inaccuracy.
+fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
+    if nth_root == 0 {
+        // Zeroth root is not defined
+        return None;
+    }
+
+    if nth_root == 1 || target <= 1 {
+        // Corner cases
+        return Some(target);
+    }
+
+    if nth_root >= target || nth_root > 64 {
+        // For any root >= target, result always 1
+        // For any n>1, n**64 can never fit into u64
+        return Some(1);
+    }
+
+    let nth_root = nth_root as u32; // Never loses bits, checked above
+
+    // Use floating point operation to get an approximation for the starting point.
+    // This is at most off by one in either direction.
+    let guess = (target as f64).powf((nth_root as f64).recip()) as u64;
+
+    debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
+
+    // Check if a value raised to nth_power is below the target value, handling overflow correctly
+    let is_nth_power_below_target = |v: u64| match v.checked_pow(nth_root) {
+        Some(pow) => target < pow,
+        None => true, // v**nth_root >= 2**64 and target < 2**64
+    };
+
+    // Compute guess**n to check if the guess is too large.
+    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return here.
+    if is_nth_power_below_target(guess) {
+        return Some(guess - 1);
+    }
+
+    // Check if the initial guess was correct
+    if is_nth_power_below_target(guess + 1) {
+        return Some(guess);
+    }
+
+    // Check if the guess was correct
+    Some(guess + 1)
 }
 
 /// Computes logarithm for given exponent and base.

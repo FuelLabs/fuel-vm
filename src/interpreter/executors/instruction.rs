@@ -502,7 +502,7 @@ where
 /// Computes nth root of target, rounding down to nearest integer.
 /// This function uses the floating point operation to get an approximate solution,
 /// but corrects the result using exponentation to check for inaccuracy.
-fn checked_nth_root(target: Word, nth_root: Word) -> Option<u64> {
+fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
     if nth_root == 0 {
         // Zeroth root is not defined
         return None;
@@ -527,22 +527,20 @@ fn checked_nth_root(target: Word, nth_root: Word) -> Option<u64> {
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
 
+    // Check if a value raised to nth_power is below the target value, handling overflow correctly
+    let is_nth_power_below_target = |v: u64| match v.checked_pow(nth_root) {
+        Some(pow) => target < pow,
+        None => true, // v**nth_root >= 2**64 and target < 2**64
+    };
+
     // Compute guess**n to check if the guess is too large.
     // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return here.
-    let Some(g1) = guess.checked_pow(nth_root) else {
-        // guess**nth_root >= 2**64 and target < 2**64
-        return Some(guess - 1);
-    };
-    if target < g1 {
+    if is_nth_power_below_target(guess) {
         return Some(guess - 1);
     }
 
     // Check if the initial guess was correct
-    let Some(g2) = (guess + 1).checked_pow(nth_root) else {
-        // (guess + 1)**nth_root >= 2**64 and target < 2**64
-        return Some(guess);
-    };
-    if target < g2 {
+    if is_nth_power_below_target(guess + 1) {
         return Some(guess);
     }
 

@@ -7,6 +7,7 @@ use fuel_types::{RegisterId, Word};
 
 use std::{ops, ptr};
 
+#[allow(clippy::derive_hash_xor_eq)]
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Memory range representation for the VM.
@@ -219,7 +220,7 @@ where
                     ptr::copy_nonoverlapping(src, dst, data.len());
                 }
             })
-            .ok_or(PanicReason::MemoryOwnership.into())
+            .ok_or_else(|| PanicReason::MemoryOwnership.into())
     }
 
     pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
@@ -231,9 +232,9 @@ where
 
         self.has_ownership_range(&range)
             .then(|| {
-                (&mut self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
+                (self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
             })
-            .ok_or(PanicReason::MemoryOwnership.into())
+            .ok_or_else(|| PanicReason::MemoryOwnership.into())
     }
 
     /// Grant ownership of the range `[a..ab[`

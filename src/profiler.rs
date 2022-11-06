@@ -169,7 +169,7 @@ impl Profiler {
     /// Called by the VM after a transaction, send collected data to receiver
     pub fn on_transaction(&mut self, state_result: &Result<ProgramState, InterpreterError>) {
         if let Some(r) = &mut self.receiver {
-            r.on_transaction(&state_result, &self.data);
+            r.on_transaction(state_result, &self.data);
         }
     }
 

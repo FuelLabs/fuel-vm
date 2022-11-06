@@ -425,7 +425,7 @@ pub mod test_helpers {
     pub fn find_change(outputs: Vec<Output>, find_asset_id: AssetId) -> Word {
         let change = outputs.into_iter().find_map(|output| {
             if let Output::Change { amount, asset_id, .. } = output {
-                if &asset_id == &find_asset_id {
+                if asset_id == find_asset_id {
                     Some(amount)
                 } else {
                     None
@@ -434,7 +434,7 @@ pub mod test_helpers {
                 None
             }
         });
-        change.expect(format!("no change matching asset ID {:x} was found", &find_asset_id).as_str())
+        change.unwrap_or_else(|| panic!("no change matching asset ID {:x} was found", &find_asset_id))
     }
 }
 

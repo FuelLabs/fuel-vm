@@ -68,7 +68,7 @@ where
 
         // the contract must be declared in the transaction inputs
         if !self.transaction().input_contracts().any(|id| id == contract_id) {
-            self.panic_context = PanicContext::ContractId(contract_id.clone());
+            self.panic_context = PanicContext::ContractId(*contract_id);
             return Err(PanicReason::ContractNotInInputs.into());
         };
 
@@ -160,7 +160,7 @@ where
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
         if !self.transaction().input_contracts().any(|input| input == contract) {
-            self.panic_context = PanicContext::ContractId(contract.clone());
+            self.panic_context = PanicContext::ContractId(*contract);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 

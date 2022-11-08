@@ -57,6 +57,7 @@ where
             .map_err(|e| InterpreterError::from_runtime(e, instruction))
     }
 
+    #[tracing::instrument(name = "instruction", skip(self))]
     fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
         let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
         let (a, b, c, d) = (
@@ -65,6 +66,8 @@ where
             self.registers[rc],
             self.registers[rd],
         );
+
+        tracing::trace!("Op code: {:?}, Registers: a {}, b, {}, c {}, d {}", op, a, b, c, d);
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68

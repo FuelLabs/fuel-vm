@@ -68,7 +68,7 @@ where
 
             // Transaction memory space length is already checked on initialization so its
             // guaranteed to fit
-            (self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
+            self.memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
         }
     }
 }

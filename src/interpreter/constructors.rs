@@ -1,17 +1,21 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use super::{Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::consts::*;
 use crate::context::Context;
+use crate::interpreter::PanicContext;
 use crate::state::Debugger;
 use crate::storage::MemoryStorage;
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::{ProfileReceiver, Profiler};
 
-use fuel_tx::{CheckedTransaction, ConsensusParameters};
+use fuel_tx::ConsensusParameters;
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: Default,
+{
     /// Create a new interpreter instance out of a storage implementation.
     ///
     /// If the provided storage implements
@@ -23,7 +27,8 @@ impl<S> Interpreter<S> {
             memory: vec![0; VM_MAX_RAM as usize],
             frames: vec![],
             receipts: vec![],
-            tx: CheckedTransaction::default(),
+            tx: Default::default(),
+            initial_balances: Default::default(),
             storage,
             debugger: Debugger::default(),
             context: Context::default(),
@@ -31,6 +36,7 @@ impl<S> Interpreter<S> {
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             params,
+            panic_context: PanicContext::None,
         }
     }
 
@@ -51,9 +57,10 @@ impl<S> Interpreter<S> {
     }
 }
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: Clone,
+    Tx: ExecutableTransaction,
 {
     /// Build the interpreter
     pub fn build(&mut self) -> Self {
@@ -61,16 +68,20 @@ where
     }
 }
 
-impl<S> Default for Interpreter<S>
+impl<S, Tx> Default for Interpreter<S, Tx>
 where
     S: Default,
+    Tx: ExecutableTransaction,
 {
     fn default() -> Self {
         Self::with_storage(Default::default(), Default::default())
     }
 }
 
-impl Interpreter<()> {
+impl<Tx> Interpreter<(), Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Create a new interpreter without a storage backend.
     ///
     /// It will have restricted capabilities.
@@ -79,7 +90,10 @@ impl Interpreter<()> {
     }
 }
 
-impl Interpreter<MemoryStorage> {
+impl<Tx> Interpreter<MemoryStorage, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Create a new storage with a provided in-memory storage.
     ///
     /// It will have full capabilities.

@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::{MEM_MAX_ACCESS_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
 use crate::error::RuntimeError;
 
@@ -7,7 +7,10 @@ use fuel_asm::PanicReason;
 use fuel_crypto::{Hasher, Message, PublicKey, Signature};
 use fuel_types::{Bytes32, Bytes64, Word};
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let bx = checked_add_word(b, Bytes64::LEN as Word)?;
         let cx = checked_add_word(c, Bytes32::LEN as Word)?;

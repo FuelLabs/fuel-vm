@@ -1,7 +1,9 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
+use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::consts::*;
-use crate::error::{Bug, BugId, BugVariant, RuntimeError};
+use crate::error::RuntimeError;
+use crate::interpreter::PanicContext;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
@@ -13,7 +15,10 @@ use fuel_types::{AssetId, Bytes32, Word};
 
 use std::{cmp, io};
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
         let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
 
@@ -46,9 +51,7 @@ impl<S> Interpreter<S> {
 
     pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
         if let Some(frame) = self.frames.pop() {
-            self.registers[REG_CGAS] = self.registers[REG_CGAS]
-                .checked_add(frame.context_gas())
-                .ok_or_else(|| Bug::new(BugId::ID001, BugVariant::ContextGasOverflow))?;
+            self.registers[REG_CGAS] = arith::add_word(self.registers[REG_CGAS], frame.context_gas())?;
 
             let cgas = self.registers[REG_CGAS];
             let ggas = self.registers[REG_GGAS];
@@ -126,15 +129,24 @@ impl<S> Interpreter<S> {
         let pc = self.registers[REG_PC];
         let is = self.registers[REG_IS];
 
-        let receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
+        let mut receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
+
+        match self.panic_context {
+            PanicContext::None => {}
+            PanicContext::ContractId(contract_id) => {
+                receipt = receipt.with_panic_contract_id(Some(contract_id));
+            }
+        };
+        self.panic_context = PanicContext::None;
 
         self.append_receipt(receipt);
     }
 }
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     fn _prepare_call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (ax, overflow) = a.overflowing_add(32);
@@ -161,6 +173,7 @@ where
             .input_contracts()
             .any(|contract| call.to() == contract)
         {
+            self.panic_context = PanicContext::ContractId(call.to().clone());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -170,9 +183,7 @@ where
         let forward_gas_amount = cmp::min(self.registers[REG_CGAS], d);
 
         // subtract gas
-        self.registers[REG_CGAS] = self.registers[REG_CGAS]
-            .checked_sub(forward_gas_amount)
-            .ok_or_else(|| Bug::new(BugId::ID003, BugVariant::ContextGasUnderflow))?;
+        self.registers[REG_CGAS] = arith::sub_word(self.registers[REG_CGAS], forward_gas_amount)?;
 
         let mut frame = self.call_frame(call, asset_id)?;
 

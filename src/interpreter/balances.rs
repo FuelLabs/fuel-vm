@@ -1,8 +1,8 @@
 use crate::consts::*;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 
 use fuel_asm::Word;
-use fuel_tx::{CheckedTransaction, ValidationError};
+use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
@@ -43,11 +43,9 @@ pub struct RuntimeBalances {
     state: HashMap<AssetId, Balance>,
 }
 
-impl From<&CheckedTransaction> for RuntimeBalances {
-    fn from(tx: &CheckedTransaction) -> Self {
-        let iter = tx.free_balances().map(|(asset, value)| (*asset, *value));
-
-        Self::try_from_iter(iter).expect(
+impl From<InitialBalances> for RuntimeBalances {
+    fn from(balances: InitialBalances) -> Self {
+        Self::try_from_iter(balances.into_iter()).expect(
 r#"This is a bug!
 
 A checked transaction shouldn't produce a malformed initial free balances set.
@@ -61,7 +59,7 @@ impl RuntimeBalances {
     ///
     /// This will fail if, and only if, the provided asset/balance pair isn't consistent or a
     /// balance overflows.
-    pub fn try_from_iter<T>(iter: T) -> Result<Self, ValidationError>
+    pub fn try_from_iter<T>(iter: T) -> Result<Self, CheckError>
     where
         T: IntoIterator<Item = (AssetId, Word)>,
     {
@@ -75,7 +73,7 @@ impl RuntimeBalances {
                     .entry(asset)
                     .or_insert(Balance::new(0, offset))
                     .checked_add(balance)
-                    .ok_or(ValidationError::ArithmeticOverflow)?;
+                    .ok_or(CheckError::ArithmeticOverflow)?;
 
                 Ok(state)
             })
@@ -124,7 +122,10 @@ impl RuntimeBalances {
     }
 
     /// Write all assets into the VM memory.
-    pub fn to_vm<S>(self, vm: &mut Interpreter<S>) {
+    pub fn to_vm<S, Tx>(self, vm: &mut Interpreter<S, Tx>)
+    where
+        Tx: ExecutableTransaction,
+    {
         let len = vm.params().max_inputs * (AssetId::LEN + WORD_SIZE) as Word;
 
         vm.registers[REG_SP] += len;
@@ -158,7 +159,7 @@ fn writes_to_memory_correctly() {
     use rand::{Rng, SeedableRng};
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let mut interpreter = Interpreter::without_storage();
+    let mut interpreter = Interpreter::<_, Script>::without_storage();
 
     let base = AssetId::zeroed();
     let base_balance = 950;
@@ -232,7 +233,7 @@ fn try_from_iter_wont_overflow() {
     let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (a, 1)];
     let err = RuntimeBalances::try_from_iter(balances.clone()).expect_err("overflow set should fail");
 
-    assert_eq!(ValidationError::ArithmeticOverflow, err);
+    assert_eq!(CheckError::ArithmeticOverflow, err);
 }
 
 #[test]
@@ -243,7 +244,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = Interpreter::without_storage().memory;
+    let mut memory = Interpreter::<_, Script>::without_storage().memory;
 
     let asset: AssetId = rng.gen();
 

@@ -1,6 +1,6 @@
 [package]
 name = "fuel-vm"
-version = "0.18.2"
+version = "0.22.4"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
 edition = "2021"
@@ -14,11 +14,11 @@ description = "FuelVM interpreter."
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.9"
+fuel-asm = "0.10"
 fuel-crypto = "0.6"
 fuel-merkle = "0.4"
 fuel-storage = "0.3"
-fuel-tx = "0.20"
+fuel-tx = "0.23"
 fuel-types = "0.5"
 itertools = "0.10"
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -30,12 +30,14 @@ rand = { version = "0.8", optional = true }
 tai64 = "4.0"
 
 [dev-dependencies]
-fuel-tx = { version = "0.20", features = ["builder", "internals"] }
+fuel-tx = { version = "0.23", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 glob = "0.3"
-regex = "1.6"
+num-integer = "0.1.45"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
+rayon = "1.5.3"
+regex = "1.6"
 serde_json = "1.0"
 
 [features]
@@ -59,11 +61,6 @@ required-features = ["random"]
 name = "test-blockchain"
 path = "tests/blockchain.rs"
 required-features = ["random"]
-
-[[test]]
-name = "test-bug-id"
-path = "tests/bug-id.rs"
-required-features = ["strum"]
 
 [[test]]
 name = "test-contract"

@@ -1,4 +1,4 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
 
@@ -73,7 +73,10 @@ impl MemoryRange {
     /// Return the boundaries of the slice with exclusive end `[a, b[`
     ///
     /// Remap the unbound boundaries to stack or heap when applicable.
-    pub const fn boundaries<S>(&self, vm: &Interpreter<S>) -> (Word, Word) {
+    pub const fn boundaries<S, Tx>(&self, vm: &Interpreter<S, Tx>) -> (Word, Word)
+    where
+        Tx: ExecutableTransaction,
+    {
         use ops::Bound::*;
 
         let stack = vm.registers()[REG_SP];
@@ -101,7 +104,10 @@ impl MemoryRange {
 
     /// Return an owned memory slice with a relative address to the heap space
     /// defined in `r[$hp]`
-    pub const fn to_heap<S>(mut self, vm: &Interpreter<S>) -> Self {
+    pub const fn to_heap<S, Tx>(mut self, vm: &Interpreter<S, Tx>) -> Self
+    where
+        Tx: ExecutableTransaction,
+    {
         use ops::Bound::*;
 
         let heap = vm.registers()[REG_HP].saturating_add(1);
@@ -186,7 +192,10 @@ impl PartialEq for MemoryRange {
     }
 }
 
-impl<S> Interpreter<S> {
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
+{
     /// Copy `data` into `addr[..|data|[`
     ///
     /// Check for overflow and memory ownership
@@ -434,13 +443,28 @@ impl<S> Interpreter<S> {
 mod tests {
     use crate::consts::*;
     use crate::prelude::*;
+    use fuel_tx::Script;
 
     #[test]
     fn memcopy() {
         let mut vm = Interpreter::with_memory_storage();
+        let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+        let tx = Transaction::script(
+            0,
+            params.max_gas_per_tx,
+            0,
+            Opcode::RET(0x10).to_bytes().to_vec(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
 
-        vm.init_script(CheckedTransaction::default())
-            .expect("Failed to init VM");
+        let tx = tx
+            .into_checked(Default::default(), &params)
+            .expect("default tx should produce a valid checked transaction");
+
+        vm.init_script(tx).expect("Failed to init VM");
 
         let alloc = 1024;
 
@@ -495,8 +519,7 @@ mod tests {
         assert_eq!(m, m_p);
 
         let mut vm = Interpreter::with_memory_storage();
-        vm.init_script(CheckedTransaction::default())
-            .expect("Failed to init VM");
+        vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
         let bytes = 1024;
         vm.instruction(Opcode::ADDI(0x10, REG_ZERO, bytes as Immediate12).into())
@@ -523,8 +546,7 @@ mod tests {
     fn stack_alloc_ownership() {
         let mut vm = Interpreter::with_memory_storage();
 
-        vm.init_script(CheckedTransaction::default())
-            .expect("Failed to init VM");
+        vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
         vm.instruction(Opcode::MOVE(0x10, REG_SP).into()).unwrap();
         vm.instruction(Opcode::CFEI(2).into()).unwrap();

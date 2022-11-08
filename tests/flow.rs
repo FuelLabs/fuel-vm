@@ -1,11 +1,14 @@
 use fuel_crypto::Hasher;
+use fuel_tx::{
+    field::{Script as ScriptField, ScriptData},
+    Script,
+};
 use fuel_types::bytes;
 use fuel_vm::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
 use itertools::Itertools;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use std::mem;
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
+const SET_STATUS_REG: usize = 0x29;
 
 #[test]
 fn code_copy() {
@@ -53,10 +56,10 @@ fn code_copy() {
         vec![output],
         vec![program.clone()],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
-    client.transact(tx);
+    client.deploy(tx);
 
     let mut script_ops = vec![
         Opcode::MOVI(0x10, 2048),
@@ -87,17 +90,17 @@ fn code_copy() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
-    let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset().unwrap();
+    let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
-    match tx.as_mut() {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
+    tx.as_mut()
+        .script_mut()
+        .as_mut_slice()
+        .copy_from_slice(script_mem.as_slice());
 
     let receipts = client.transact(tx);
     let ret = receipts.first().expect("A `RET` opcode was part of the program.");
@@ -149,7 +152,7 @@ fn call() {
         vec![output],
         vec![program.clone()],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default())
@@ -179,19 +182,19 @@ fn call() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     let params = ConsensusParameters::default();
 
-    let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset().unwrap();
+    let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
     let script_mem: Vec<u8> = script_ops.iter().copied().collect();
 
-    match tx.as_mut() {
-        Transaction::Script { script, .. } => script.as_mut_slice().copy_from_slice(script_mem.as_slice()),
-        _ => unreachable!(),
-    }
+    tx.as_mut()
+        .script_mut()
+        .as_mut_slice()
+        .copy_from_slice(script_mem.as_slice());
 
     let receipts = Transactor::new(&mut storage, params)
         .transact(tx)
@@ -254,7 +257,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![program.clone().into()],
     )
-    .check_without_signature(height, &params)
+    .into_checked_basic(height, &params)
     .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default())
@@ -269,7 +272,7 @@ fn call_frame_code_offset() {
     let params = ConsensusParameters::default();
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = params.tx_offset() + Transaction::script_offset() + script_len;
+    let script_data_offset = params.tx_offset() + Script::script_offset_static() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -298,7 +301,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     let mut vm = Interpreter::with_storage(storage, params);
@@ -399,7 +402,7 @@ fn jump_if_not_zero_immediate_jump() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -440,7 +443,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -482,7 +485,7 @@ fn jump_dynamic() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -524,7 +527,7 @@ fn jump_dynamic_condition_true() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -566,7 +569,7 @@ fn jump_dynamic_condition_false() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -604,9 +607,9 @@ fn revert() {
     let routine_add_word_to_state: Vec<Opcode> = vec![
         Opcode::JNEI(0x10, 0x30, 13),       // (0, b) Add word to state
         Opcode::LW(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
-        Opcode::SRW(0x21, 0x11),            // r[0x21]      := s[m[b, 32], 8]
+        Opcode::SRW(0x21, SET_STATUS_REG, 0x11),            // r[0x21]      := s[m[b, 32], 8]
         Opcode::ADD(0x20, 0x20, 0x21),      // r[0x20]      += r[0x21]
-        Opcode::SWW(0x11, 0x20),            // s[m[b,32]]   := r[0x20]
+        Opcode::SWW(0x11, SET_STATUS_REG, 0x20),            // s[m[b,32]]   := r[0x20]
         Opcode::LOG(0x20, 0x21, 0x00, 0x00),
         Opcode::RET(REG_ONE),
     ];
@@ -636,11 +639,11 @@ fn revert() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     // Deploy the contract into the blockchain
-    client.transact(tx);
+    client.deploy(tx);
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
@@ -654,7 +657,7 @@ fn revert() {
     let script_len = 16;
 
     // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Transaction::script_offset() + script_len;
+    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
@@ -667,7 +670,7 @@ fn revert() {
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctnly
-    let offset = client.tx_offset() + Transaction::script_offset() + bytes::padded_len(script.as_slice());
+    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
     assert_eq!(script_data_offset, offset as Immediate18);
 
     let mut script_data = vec![];
@@ -700,7 +703,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     // Assert the initial state of `key` is empty
@@ -751,7 +754,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     // Assert the state of `key` is reverted to `val`
@@ -804,7 +807,7 @@ fn retd_from_top_of_heap() {
         vec![],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
     client.transact(tx);

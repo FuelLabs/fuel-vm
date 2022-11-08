@@ -1,6 +1,7 @@
-use super::Interpreter;
+use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
+use crate::interpreter::PanicContext;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{PanicReason, RegisterId, Word};
@@ -9,9 +10,10 @@ use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
 
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     pub(crate) fn contract(&self, contract: &ContractId) -> Result<Cow<'_, Contract>, RuntimeError> {
         self.storage
@@ -44,6 +46,7 @@ where
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         if !self.transaction().input_contracts().any(|input| contract == input) {
+            self.panic_context = PanicContext::ContractId(contract.clone());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -80,6 +83,7 @@ where
             .input_contracts()
             .any(|contract| &destination == contract)
         {
+            self.panic_context = PanicContext::ContractId(destination);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -162,6 +166,17 @@ where
         let variable = Output::variable(to, amount, asset_id);
 
         self.set_variable_output(out_idx, variable)?;
+
+        let receipt = Receipt::transfer_out(
+            internal_context.unwrap_or_default(),
+            to,
+            amount,
+            asset_id,
+            self.registers[REG_PC],
+            self.registers[REG_IS],
+        );
+
+        self.append_receipt(receipt);
 
         self.inc_pc()
     }

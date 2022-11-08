@@ -1,21 +1,19 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::gas::consts::*;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
 use fuel_types::{bytes, Immediate12, Immediate18, Word};
 
-use std::mem;
 use std::ops::Div;
 
-const WORD_SIZE: usize = mem::size_of::<Word>();
-
-impl<S> Interpreter<S>
+impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    Tx: ExecutableTransaction,
 {
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
@@ -137,7 +135,7 @@ where
                 self.gas_charge(GAS_MLOG)?;
                 self.alu_error(
                     ra,
-                    |b, c| (b as f64).log(c as f64).trunc() as Word,
+                    |b, c| checked_ilog(b, c).expect("checked_ilog returned None for valid values") as Word,
                     b,
                     c,
                     b == 0 || c <= 1,
@@ -168,7 +166,7 @@ where
                 self.gas_charge(GAS_MROO)?;
                 self.alu_error(
                     ra,
-                    |b, c| (b as f64).powf((c as f64).recip()).trunc() as Word,
+                    |b, c| checked_nth_root(b, c).expect("checked_nth_root returned None for valid values") as Word,
                     b,
                     c,
                     c == 0,
@@ -341,7 +339,7 @@ where
             }
 
             OpcodeRepr::MEQ => {
-                self.gas_charge(GAS_MEQ)?;
+                self.gas_charge_monad(GAS_MEQ, d)?;
                 self.memeq(ra, b, c, d)?;
             }
 
@@ -390,7 +388,7 @@ where
             }
 
             OpcodeRepr::CCP => {
-                self.gas_charge(GAS_CCP)?;
+                self.gas_charge_monad(GAS_CCP, d)?;
                 self.code_copy(a, b, c, d)?;
             }
 
@@ -424,24 +422,29 @@ where
                 self.mint(a)?;
             }
 
+            OpcodeRepr::SCWQ => {
+                self.gas_charge(GAS_SCWQ)?;
+                self.state_clear_qword(a, rb, c)?;
+            }
+
             OpcodeRepr::SRW => {
                 self.gas_charge(GAS_SRW)?;
-                self.state_read_word(ra, b)?;
+                self.state_read_word(ra, rb, c)?;
             }
 
             OpcodeRepr::SRWQ => {
                 self.gas_charge(GAS_SRWQ)?;
-                self.state_read_qword(a, b)?;
+                self.state_read_qword(a, rb, c, d)?;
             }
 
             OpcodeRepr::SWW => {
                 self.gas_charge(GAS_SWW)?;
-                self.state_write_word(a, b)?;
+                self.state_write_word(a, rb, c)?;
             }
 
             OpcodeRepr::SWWQ => {
                 self.gas_charge(GAS_SWWQ)?;
-                self.state_write_qword(a, b)?;
+                self.state_write_qword(a, rb, c, d)?;
             }
 
             OpcodeRepr::TIME => {
@@ -497,6 +500,97 @@ where
 
         Ok(ExecuteState::Proceed)
     }
+}
+
+/// Computes nth root of target, rounding down to nearest integer.
+/// This function uses the floating point operation to get an approximate solution,
+/// but corrects the result using exponentation to check for inaccuracy.
+fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
+    if nth_root == 0 {
+        // Zeroth root is not defined
+        return None;
+    }
+
+    if nth_root == 1 || target <= 1 {
+        // Corner cases
+        return Some(target);
+    }
+
+    if nth_root >= target || nth_root > 64 {
+        // For any root >= target, result always 1
+        // For any n>1, n**64 can never fit into u64
+        return Some(1);
+    }
+
+    let nth_root = nth_root as u32; // Never loses bits, checked above
+
+    // Use floating point operation to get an approximation for the starting point.
+    // This is at most off by one in either direction.
+    let guess = (target as f64).powf((nth_root as f64).recip()) as u64;
+
+    debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
+
+    // Check if a value raised to nth_power is below the target value, handling overflow correctly
+    let is_nth_power_below_target = |v: u64| match v.checked_pow(nth_root) {
+        Some(pow) => target < pow,
+        None => true, // v**nth_root >= 2**64 and target < 2**64
+    };
+
+    // Compute guess**n to check if the guess is too large.
+    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return here.
+    if is_nth_power_below_target(guess) {
+        return Some(guess - 1);
+    }
+
+    // Check if the initial guess was correct
+    if is_nth_power_below_target(guess + 1) {
+        return Some(guess);
+    }
+
+    // Check if the guess was correct
+    Some(guess + 1)
+}
+
+/// Computes logarithm for given exponent and base.
+/// Diverges when exp == 0 or base <= 1.
+///
+/// This code is originally from [rust corelib][rust-corelib-impl],
+/// but with all additional clutter removed.
+///
+/// [rust-corelib-impl]: https://github.com/rust-lang/rust/blob/415d8fcc3e17f8c1324a81cf2aa7127b4fcfa32e/library/core/src/num/uint_macros.rs#L774
+#[inline(always)] // Force copy of each invocation for optimization, see comments below
+const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
+    let mut n = 0;
+    let mut r = exp;
+    while r >= base {
+        r /= base;
+        n += 1;
+    }
+    return n;
+}
+
+/// Logarithm for given exponent and an arbitrary base, rounded
+/// rounded down to nearest integer value.
+///
+/// Returns `None` if the exponent == 0, or if the base <= 1.
+///
+/// TODO: when <https://github.com/rust-lang/rust/issues/70887> is stabilized,
+/// consider using that instead.
+const fn checked_ilog(exp: Word, base: Word) -> Option<u32> {
+    if exp <= 0 || base <= 1 {
+        return None;
+    }
+
+    // Generate separately optimized paths for some common and/or expensive bases.
+    // See <https://github.com/FuelLabs/fuel-vm/issues/150#issuecomment-1288797787> for benchmark.
+    Some(match base {
+        2 => _unchecked_ilog_inner(exp, 2),
+        3 => _unchecked_ilog_inner(exp, 3),
+        4 => _unchecked_ilog_inner(exp, 4),
+        5 => _unchecked_ilog_inner(exp, 5),
+        10 => _unchecked_ilog_inner(exp, 10),
+        n => _unchecked_ilog_inner(exp, n),
+    })
 }
 
 #[cfg(test)]

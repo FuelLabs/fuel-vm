@@ -7,14 +7,14 @@ use rand::{Rng, SeedableRng};
 
 use std::sync::{Arc, Mutex};
 
-const HALF_WORD_SIZE: u64 = 4;
+const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 
 #[test]
 fn code_coverage() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1;
-    let gas_limit = 1_000;
+    let gas_limit = 1_000_000;
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();

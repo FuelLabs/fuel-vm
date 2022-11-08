@@ -7,11 +7,8 @@ use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
-use crate::arith::checked_add_usize;
+use crate::{arith::checked_add_usize, consts::WORD_SIZE};
 use std::io::{self, Write};
-use std::mem;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

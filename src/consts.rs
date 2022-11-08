@@ -68,11 +68,11 @@ pub const REG_WRITABLE: usize = 0x10;
 /// Length of a word, in bytes
 pub const WORD_SIZE: usize = mem::size_of::<Word>();
 
-/// Maximum memory word count
+/// Maximum memory in MiB
 pub const FUEL_MAX_MEMORY_SIZE: u64 = 64;
 
 /// Maximum VM RAM, in bytes.
-pub const VM_MAX_RAM: u64 = 16 * 1024 * FUEL_MAX_MEMORY_SIZE * WORD_SIZE as u64;
+pub const VM_MAX_RAM: u64 = 1024 * 1024 * FUEL_MAX_MEMORY_SIZE;
 
 /// Maximum memory access size, in bytes.
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;

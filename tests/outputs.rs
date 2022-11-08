@@ -1,12 +1,11 @@
-use fuel_vm::consts::REG_CGAS;
+use fuel_vm::util::test_helpers::find_change;
 use fuel_vm::{
-    consts::{REG_FP, REG_ONE, REG_ZERO},
-    prelude::*,
+    consts::{REG_CGAS, REG_FP, REG_ONE, REG_ZERO},
+    prelude::{field::Outputs, *},
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 /// Testing of post-execution output handling
 
@@ -64,7 +63,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
 }
 
 #[test]
-fn correct_change_is_provided_for_coin_outputs() {
+fn correct_change_is_provided_for_coin_outputs_script() {
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;
@@ -76,6 +75,57 @@ fn correct_change_is_provided_for_coin_outputs() {
         .change_output(asset_id)
         .coin_output(asset_id, spend_amount)
         .execute_get_change(asset_id);
+
+    assert_eq!(change, input_amount - spend_amount);
+}
+
+#[test]
+fn correct_change_is_provided_for_coin_outputs_create() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let input_amount = 1000;
+    let gas_price = 0;
+    let spend_amount = 600;
+    let asset_id = AssetId::BASE;
+
+    #[rustfmt::skip]
+    let function_undefined: Vec<Opcode> = vec![
+        Opcode::Undefined,
+    ];
+
+    let salt: Salt = rng.gen();
+    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+
+    let output = Output::contract_created(contract_undefined, state_root);
+
+    let mut context = TestBuilder::new(2322u64);
+    let bytecode_witness = 0;
+    let mut create = Transaction::create(
+        gas_price,
+        0,
+        0,
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![
+            output,
+            Output::change(rng.gen(), 0, asset_id),
+            Output::coin(rng.gen(), spend_amount, asset_id),
+        ],
+        vec![program],
+    );
+    create.add_unsigned_coin_input(rng.gen(), &Default::default(), input_amount, asset_id, rng.gen(), 0);
+    let create = create
+        .into_checked_basic(context.get_block_height() as Word, context.get_params())
+        .expect("failed to generate checked tx");
+
+    let state = context.execute_tx(create).expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), AssetId::BASE);
 
     assert_eq!(change, input_amount - spend_amount);
 }
@@ -229,7 +279,7 @@ fn variable_output_set_by_external_transfer_out() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
+    let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
@@ -237,7 +287,10 @@ fn variable_output_set_by_external_transfer_out() {
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, to, asset_id }
@@ -251,6 +304,8 @@ fn variable_output_set_by_external_transfer_out() {
             if amount == external_balance - transfer_amount
             && asset_id == asset_id
     ));
+
+    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -299,7 +354,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     .collect();
 
     // create and run the tx
-    let outputs = TestBuilder::new(2322u64)
+    let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .params(params)
         .gas_price(gas_price)
@@ -307,7 +362,12 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
+
+    println!("{:?}", receipts);
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
@@ -319,6 +379,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             if amount == external_balance
             && asset_id == asset_id
     ));
+
+    // TransferOut receipt should not be present
+    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -381,18 +444,22 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     .collect();
 
     // create and run the tx
-    let outputs = test_context
+    let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     let output = Output::variable(owner, transfer_amount, asset_id);
 
     assert_eq!(output, outputs[0]);
+    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -454,16 +521,22 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     .collect();
 
     // create and run the tx
-    let outputs = test_context
+    let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
-        .execute_get_outputs();
+        .execute();
+
+    let outputs = result.tx().outputs();
+    let receipts = result.receipts();
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
     ));
+
+    // TransferOut receipt should not be present
+    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

@@ -8,7 +8,7 @@ use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, Contracts
 use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::io;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
@@ -128,6 +128,43 @@ pub trait InterpreterStorage:
         self.storage::<ContractsState>().insert(&(contract, key), value)
     }
 
+    /// Remove a key-value mapping from a contract storage.
+    fn merkle_contract_state_remove(
+        &mut self,
+        contract: &ContractId,
+        key: &Bytes32,
+    ) -> Result<Option<Bytes32>, Self::DataError> {
+        self.storage::<ContractsState>().remove(&(contract, key))
+    }
+
+    /// Fetch a range of values from a key-value mapping in a contract storage.
+    /// Returns the full range requested using optional values in case
+    /// a requested slot is unset.  
+    fn merkle_contract_state_range(
+        &self,
+        id: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
+
+    /// Insert a range of key-value mappings into contract storage.
+    /// Returns None if any of the keys in the range were previously unset.
+    fn merkle_contract_state_insert_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        values: &[Bytes32],
+    ) -> Result<Option<()>, Self::DataError>;
+
+    /// Remove a range of key-values from contract storage.
+    /// Returns None if any of the keys in the range were already unset.
+    fn merkle_contract_state_remove_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
+    ) -> Result<Option<()>, Self::DataError>;
+
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,
@@ -173,5 +210,32 @@ where
 
     fn coinbase(&self) -> Result<Address, Self::DataError> {
         <S as InterpreterStorage>::coinbase(self.deref())
+    }
+
+    fn merkle_contract_state_range(
+        &self,
+        id: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+        <S as InterpreterStorage>::merkle_contract_state_range(self.deref(), id, start_key, range)
+    }
+
+    fn merkle_contract_state_insert_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        values: &[Bytes32],
+    ) -> Result<Option<()>, Self::DataError> {
+        <S as InterpreterStorage>::merkle_contract_state_insert_range(self.deref_mut(), contract, start_key, values)
+    }
+
+    fn merkle_contract_state_remove_range(
+        &mut self,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
+    ) -> Result<Option<()>, Self::DataError> {
+        <S as InterpreterStorage>::merkle_contract_state_remove_range(self.deref_mut(), contract, start_key, range)
     }
 }

@@ -3,10 +3,6 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use std::mem;
-
-const WORD_SIZE: usize = mem::size_of::<Word>();
-
 #[test]
 fn backtrace() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -46,10 +42,10 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
-    client.transact(tx_deploy);
+    client.deploy(tx_deploy);
 
     #[rustfmt::skip]
     let mut function_call: Vec<Opcode> = vec![
@@ -88,10 +84,10 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
-    client.transact(tx_deploy);
+    client.deploy(tx_deploy);
 
     #[rustfmt::skip]
     let mut script: Vec<Opcode> = vec![
@@ -124,7 +120,7 @@ fn backtrace() {
         vec![output_undefined, output_call],
         vec![],
     )
-    .check(height, &params)
+    .into_checked(height, &params)
     .expect("failed to generate checked tx");
 
     client.transact(tx_script);

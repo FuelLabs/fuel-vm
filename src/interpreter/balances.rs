@@ -136,8 +136,8 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            (vm.memory[ofs..ofs + AssetId::LEN]).copy_from_slice(asset.as_ref());
-            (vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]).copy_from_slice(&value.to_be_bytes());
+            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
+            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE].copy_from_slice(&value.to_be_bytes());
         });
 
         vm.balances = self;

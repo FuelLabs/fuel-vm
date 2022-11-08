@@ -232,7 +232,7 @@ where
 
         self.has_ownership_range(&range)
             .then(|| {
-                (self.memory[addr..]).iter_mut().take(len).for_each(|m| *m = 0);
+                self.memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
             })
             .ok_or_else(|| PanicReason::MemoryOwnership.into())
     }

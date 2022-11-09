@@ -110,7 +110,6 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
     fn insert(&mut self, key: &ContractId, value: &[u8]) -> Result<Option<Contract>, Infallible> {
-        // Or Ok(self.memory.contracts.insert(*key, &(*value).clone().into())) if reference should be cloned
         Ok(self.memory.contracts.insert(*key, value.into()))
     }
 

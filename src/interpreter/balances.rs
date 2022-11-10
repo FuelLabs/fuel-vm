@@ -71,7 +71,7 @@ impl RuntimeBalances {
 
                 state
                     .entry(asset)
-                    .or_insert(Balance::new(0, offset))
+                    .or_insert_with(|| Balance::new(0, offset))
                     .checked_add(balance)
                     .ok_or(CheckError::ArithmeticOverflow)?;
 
@@ -108,7 +108,7 @@ impl RuntimeBalances {
             .get_mut(asset)
             .and_then(|b| b.checked_add(value))
             .map(|balance| Self::_set_memory_balance(balance, memory))
-            .or((value == 0).then(|| 0))
+            .or_else(|| (value == 0).then_some(0))
     }
 
     /// Attempt to subtract the balance of an asset, updating the VM memory in the appropriate
@@ -118,7 +118,7 @@ impl RuntimeBalances {
             .get_mut(asset)
             .and_then(|b| b.checked_sub(value))
             .map(|balance| Self::_set_memory_balance(balance, memory))
-            .or((value == 0).then(|| 0))
+            .or_else(|| (value == 0).then_some(0))
     }
 
     /// Write all assets into the VM memory.
@@ -136,8 +136,8 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            (&mut vm.memory[ofs..ofs + AssetId::LEN]).copy_from_slice(asset.as_ref());
-            (&mut vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]).copy_from_slice(&value.to_be_bytes());
+            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
+            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE].copy_from_slice(&value.to_be_bytes());
         });
 
         vm.balances = self;

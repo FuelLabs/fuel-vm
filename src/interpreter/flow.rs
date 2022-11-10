@@ -173,7 +173,7 @@ where
             .input_contracts()
             .any(|contract| call.to() == contract)
         {
-            self.panic_context = PanicContext::ContractId(call.to().clone());
+            self.panic_context = PanicContext::ContractId(*call.to());
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -235,7 +235,7 @@ where
         rc: RegisterId,
         rd: RegisterId,
     ) -> Result<(), RuntimeError> {
-        const M: &'static str = "the provided id is not a valid register";
+        const M: &str = "the provided id is not a valid register";
 
         let a = self
             .registers

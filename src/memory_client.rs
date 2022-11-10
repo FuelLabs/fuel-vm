@@ -13,13 +13,13 @@ pub struct MemoryClient {
     transactor: Transactor<MemoryStorage, Script>,
 }
 
-impl<'a> AsRef<MemoryStorage> for MemoryClient {
+impl AsRef<MemoryStorage> for MemoryClient {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<'a> AsMut<MemoryStorage> for MemoryClient {
+impl AsMut<MemoryStorage> for MemoryClient {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
@@ -101,13 +101,13 @@ impl MemoryClient {
     }
 }
 
-impl<'a> From<MemoryStorage> for MemoryClient {
+impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
         Self::new(s, Default::default())
     }
 }
 
-impl<'a> From<MemoryClient> for Transactor<MemoryStorage, Script> {
+impl From<MemoryClient> for Transactor<MemoryStorage, Script> {
     fn from(client: MemoryClient) -> Self {
         client.transactor
     }

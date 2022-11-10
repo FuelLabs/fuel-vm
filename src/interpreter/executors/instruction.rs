@@ -34,13 +34,11 @@ where
         // Should execute `lo` only if there is no rupture in the flow - that means
         // either a breakpoint or some instruction that would skip `lo` such as
         // `RET`, `JI` or `CALL`
-        let result = if self.registers[REG_PC] == pc && state.should_continue() {
+        if self.registers[REG_PC] == pc && state.should_continue() {
             self.instruction(lo)
         } else {
             Ok(state)
-        };
-
-        result
+        }
     }
 
     /// Execute a provided instruction
@@ -566,7 +564,8 @@ const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
         r /= base;
         n += 1;
     }
-    return n;
+
+    n
 }
 
 /// Logarithm for given exponent and an arbitrary base, rounded
@@ -577,7 +576,7 @@ const fn _unchecked_ilog_inner(exp: Word, base: Word) -> u32 {
 /// TODO: when <https://github.com/rust-lang/rust/issues/70887> is stabilized,
 /// consider using that instead.
 const fn checked_ilog(exp: Word, base: Word) -> Option<u32> {
-    if exp <= 0 || base <= 1 {
+    if exp == 0 || base <= 1 {
         return None;
     }
 

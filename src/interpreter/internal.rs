@@ -68,7 +68,7 @@ where
 
             // Transaction memory space length is already checked on initialization so its
             // guaranteed to fit
-            (&mut self.memory[offset..offset + Bytes32::LEN]).copy_from_slice(&root[..]);
+            self.memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
         }
     }
 }
@@ -109,7 +109,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
         self.registers[REG_PC]
             .checked_add(Instruction::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow.into())
+            .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
             .map(|pc| self.registers[REG_PC] = pc)
     }
 
@@ -161,7 +161,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 
                 (c, cx)
             })
-            .ok_or(PanicReason::ExpectedInternalContext.into())
+            .ok_or_else(|| PanicReason::ExpectedInternalContext.into())
     }
 
     /// Reduces the unspent balance of a given asset ID

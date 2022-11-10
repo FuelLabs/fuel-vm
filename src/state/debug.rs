@@ -78,10 +78,7 @@ impl From<Breakpoint> for DebugEval {
 impl DebugEval {
     /// Flag whether the program execution should break.
     pub const fn should_continue(&self) -> bool {
-        match self {
-            Self::Continue => true,
-            _ => false,
-        }
+        matches!(self, Self::Continue)
     }
 
     /// Return a breakpoint description if the current evaluation should break;

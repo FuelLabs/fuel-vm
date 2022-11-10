@@ -25,10 +25,7 @@ where
     fn _check_predicate(&mut self, predicate: RuntimePredicate) -> bool {
         self.context = Context::Predicate { program: predicate };
 
-        match self.verify_predicate() {
-            Ok(ProgramState::Return(0x01)) => true,
-            _ => false,
-        }
+        matches!(self.verify_predicate(), Ok(ProgramState::Return(0x01)))
     }
 }
 
@@ -87,7 +84,7 @@ where
             let state = self.execute().map_err(|e| {
                 e.panic_reason()
                     .map(RuntimeError::Recoverable)
-                    .unwrap_or(RuntimeError::Halt(e.into()))
+                    .unwrap_or_else(|| RuntimeError::Halt(e.into()))
             })?;
 
             match state {
@@ -234,7 +231,7 @@ where
 
             #[cfg(feature = "debug")]
             if program.is_debug() {
-                self.debugger_set_last_state(program.clone());
+                self.debugger_set_last_state(program);
             }
 
             let receipts_root = if self.receipts().is_empty() {
@@ -315,7 +312,7 @@ where
         let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
-            .map(|state| ProgramState::from(state))
+            .map(ProgramState::from)
             .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts))
     }
 

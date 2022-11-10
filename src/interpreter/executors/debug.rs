@@ -27,7 +27,7 @@ where
         }?;
 
         if state.is_debug() {
-            self.debugger_set_last_state(state.clone());
+            self.debugger_set_last_state(state);
         }
 
         Ok(state)

@@ -19,7 +19,7 @@ where
         self.storage
             .storage_contract(contract)
             .map_err(RuntimeError::from_io)?
-            .ok_or(PanicReason::ContractNotFound.into())
+            .ok_or_else(|| PanicReason::ContractNotFound.into())
     }
 
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -27,11 +27,11 @@ where
 
         let bx = b
             .checked_add(AssetId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         let cx = c
             .checked_add(ContractId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         //if above usize::MAX then it cannot be safely cast to usize,
         // check the tighter bound between VM_MAX_RAM and usize::MAX
@@ -46,7 +46,7 @@ where
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
 
         if !self.transaction().input_contracts().any(|input| contract == input) {
-            self.panic_context = PanicContext::ContractId(contract.clone());
+            self.panic_context = PanicContext::ContractId(*contract);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
@@ -60,11 +60,11 @@ where
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let ax = a
             .checked_add(ContractId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         let cx = c
             .checked_add(AssetId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         //if above usize::MAX then it cannot be safely cast to usize,
         // check the tighter bound between VM_MAX_RAM and usize::MAX
@@ -127,11 +127,11 @@ where
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let ax = a
             .checked_add(ContractId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         let dx = d
             .checked_add(AssetId::LEN as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow)?;
+            .ok_or(PanicReason::ArithmeticOverflow)?;
 
         //if above usize::MAX then it cannot be safely cast to usize,
         // check the tighter bound between VM_MAX_RAM and usize::MAX

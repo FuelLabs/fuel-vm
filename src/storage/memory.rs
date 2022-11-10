@@ -110,7 +110,7 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
     fn insert(&mut self, key: &ContractId, value: &[u8]) -> Result<Option<Contract>, Infallible> {
-        Ok(self.memory.contracts.insert(*key, value.clone().into()))
+        Ok(self.memory.contracts.insert(*key, value.into()))
     }
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
@@ -145,27 +145,22 @@ impl StorageInspect<ContractsAssets<'_>> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &AssetId)) -> Result<Option<Cow<'_, Word>>, Infallible> {
-        Ok(self
-            .memory
-            .balances
-            .get(&(key.0.clone(), key.1.clone()))
-            .copied()
-            .map(Cow::Owned))
+        Ok(self.memory.balances.get(&(*key.0, *key.1)).copied().map(Cow::Owned))
     }
 
     fn contains_key(&self, key: &(&ContractId, &AssetId)) -> Result<bool, Infallible> {
-        Ok(self.memory.balances.contains_key(&(key.0.clone(), key.1.clone())))
+        Ok(self.memory.balances.contains_key(&(*key.0, *key.1)))
     }
 }
 
 impl StorageMutate<ContractsAssets<'_>> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &AssetId), value: &Word) -> Result<Option<Word>, Infallible> {
-        Ok(self.memory.balances.insert((key.0.clone(), key.1.clone()), *value))
+        Ok(self.memory.balances.insert((*key.0, *key.1), *value))
     }
 
     // TODO: Optimize `balances` to remove by `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
     fn remove(&mut self, key: &(&ContractId, &AssetId)) -> Result<Option<Word>, Infallible> {
-        Ok(self.memory.balances.remove(&(key.0.clone(), key.1.clone())))
+        Ok(self.memory.balances.remove(&(*key.0, *key.1)))
     }
 }
 
@@ -175,7 +170,7 @@ impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
             .memory
             .balances
             .iter()
-            .filter_map(|((contract, asset_id), balance)| (contract == parent).then(|| (asset_id, balance)))
+            .filter_map(|((contract, asset_id), balance)| (contract == parent).then_some((asset_id, balance)))
             .sorted_by_key(|t| t.0)
             .map(|(_, &balance)| balance)
             .map(Word::to_be_bytes);
@@ -189,29 +184,22 @@ impl StorageInspect<ContractsState<'_>> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &Bytes32)) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
-        Ok(self
-            .memory
-            .contract_state
-            .get(&(key.0.clone(), key.1.clone()))
-            .map(Cow::Borrowed))
+        Ok(self.memory.contract_state.get(&(*key.0, *key.1)).map(Cow::Borrowed))
     }
 
     fn contains_key(&self, key: &(&ContractId, &Bytes32)) -> Result<bool, Infallible> {
-        Ok(self.memory.contract_state.contains_key(&(key.0.clone(), key.1.clone())))
+        Ok(self.memory.contract_state.contains_key(&(*key.0, *key.1)))
     }
 }
 
 impl StorageMutate<ContractsState<'_>> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &Bytes32), value: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
-        Ok(self
-            .memory
-            .contract_state
-            .insert((key.0.clone(), key.1.clone()), *value))
+        Ok(self.memory.contract_state.insert((*key.0, *key.1), *value))
     }
 
     // TODO: Optimize `contract_state` to remove by `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
     fn remove(&mut self, key: &(&ContractId, &Bytes32)) -> Result<Option<Bytes32>, Infallible> {
-        Ok(self.memory.contract_state.remove(&(key.0.clone(), key.1.clone())))
+        Ok(self.memory.contract_state.remove(&(*key.0, *key.1)))
     }
 }
 
@@ -221,7 +209,7 @@ impl MerkleRootStorage<ContractId, ContractsState<'_>> for MemoryStorage {
             .memory
             .contract_state
             .iter()
-            .filter_map(|((contract, key), value)| (contract == parent).then(|| (key, value)))
+            .filter_map(|((contract, key), value)| (contract == parent).then_some((key, value)))
             .sorted_by_key(|t| t.0)
             .map(|(_, value)| value);
 
@@ -244,7 +232,7 @@ impl InterpreterStorage for MemoryStorage {
     }
 
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Infallible> {
-        Ok(Hasher::hash(&block_height.to_be_bytes()))
+        Ok(Hasher::hash(block_height.to_be_bytes()))
     }
 
     fn coinbase(&self) -> Result<Address, Infallible> {

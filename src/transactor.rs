@@ -36,14 +36,8 @@ where
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
     pub fn state_transition(&'a self) -> Option<StateTransitionRef<'a, Tx>> {
-        match self.program_state {
-            Some(state) => Some(StateTransitionRef::new(
-                state,
-                self.interpreter.transaction(),
-                self.interpreter.receipts(),
-            )),
-            None => None,
-        }
+        self.program_state
+            .map(|state| StateTransitionRef::new(state, self.interpreter.transaction(), self.interpreter.receipts()))
     }
 
     /// State transition representation after the execution of a transaction.
@@ -51,14 +45,13 @@ where
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
     pub fn to_owned_state_transition(&self) -> Option<StateTransition<Tx>> {
-        match self.program_state.clone() {
-            Some(state) => Some(StateTransition::new(
+        self.program_state.map(|state| {
+            StateTransition::new(
                 state,
                 self.interpreter.transaction().clone(),
                 self.interpreter.receipts().to_vec(),
-            )),
-            None => None,
-        }
+            )
+        })
     }
 
     /// Interpreter error representation after the execution of a transaction.
@@ -117,7 +110,7 @@ where
     }
 }
 
-impl<'a, S> Transactor<S, Script> {
+impl<S> Transactor<S, Script> {
     /// Receipts after the execution of a transaction.
     ///
     /// Follows the same criteria as [`Self::state_transition`] to return
@@ -130,8 +123,7 @@ impl<'a, S> Transactor<S, Script> {
     /// found.
     pub fn backtrace(&self) -> Option<Backtrace> {
         self.receipts()
-            .map(|r| r.iter().find_map(Receipt::result))
-            .flatten()
+            .and_then(|r| r.iter().find_map(Receipt::result))
             .copied()
             .map(|result| Backtrace::from_vm_error(&self.interpreter, result))
     }

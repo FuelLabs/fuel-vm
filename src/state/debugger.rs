@@ -70,8 +70,7 @@ impl Debugger {
 
         self.breakpoints
             .get(&contract)
-            .map(|set| set.get(&pc))
-            .flatten()
+            .and_then(|set| set.get(&pc))
             .map(|_| match last_state {
                 Some(s) if s == current => DebugEval::Continue,
                 _ => current.into(),

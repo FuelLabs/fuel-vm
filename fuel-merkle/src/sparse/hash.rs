@@ -13,6 +13,6 @@ pub fn zero_sum() -> &'static Bytes32 {
 
 pub fn sum(data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
-    hash.update(&data);
+    hash.update(data);
     hash.finalize().try_into().unwrap()
 }

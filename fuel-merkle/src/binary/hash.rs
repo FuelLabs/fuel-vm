@@ -16,9 +16,9 @@ pub const fn empty_sum() -> &'static Bytes32 {
 pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
 
-    hash.update(&[NODE]);
-    hash.update(&lhs_data);
-    hash.update(&rhs_data);
+    hash.update([NODE]);
+    hash.update(lhs_data);
+    hash.update(rhs_data);
 
     hash.finalize().into()
 }
@@ -28,8 +28,8 @@ pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Bytes32 {
 pub fn leaf_sum(data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
 
-    hash.update(&[LEAF]);
-    hash.update(&data);
+    hash.update([LEAF]);
+    hash.update(data);
 
     hash.finalize().into()
 }

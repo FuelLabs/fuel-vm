@@ -53,6 +53,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             return false;
         }
 
+        #[allow(clippy::needless_collect)] // Needed for now because checked is only freed once the value is collected into a Vec
         let predicates: Vec<RuntimePredicate> = checked
             .transaction()
             .inputs()

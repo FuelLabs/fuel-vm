@@ -198,6 +198,5 @@ fn cgas_uses_min_available_gas() {
     assert!(transfer_tx
         .receipts()
         .iter()
-        .any(|receipt| matches!(&receipt, Receipt::Log {ra: cgas, ..} if *cgas < gas_forward_amount.into()))
-    );
-    }
+        .any(|receipt| matches!(&receipt, Receipt::Log {ra: cgas, ..} if *cgas < gas_forward_amount.into())));
+}

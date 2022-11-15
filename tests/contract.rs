@@ -233,9 +233,7 @@ fn mint_burn() {
 
     client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance)[0]
-        .ra()
-        .expect("Balance expected");
+    let storage_balance = client.transact(tx_check_balance)[0].ra().expect("Balance expected");
     assert_eq!(0, storage_balance);
 }
 

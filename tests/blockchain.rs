@@ -1335,10 +1335,15 @@ fn smo_instruction_works() {
         let txid = tx.transaction().id();
         let receipts = client.transact(tx);
 
-        let success = receipts.iter().any(|r| matches!(r, Receipt::ScriptResult {
-            result: ScriptExecutionResult::Success,
-            ..
-        }));
+        let success = receipts.iter().any(|r| {
+            matches!(
+                r,
+                Receipt::ScriptResult {
+                    result: ScriptExecutionResult::Success,
+                    ..
+                }
+            )
+        });
 
         assert!(success);
 
@@ -1414,10 +1419,15 @@ fn timestamp_works() {
             .finalize_checked(block_height, &params);
 
         let receipts = client.transact(tx);
-        let result = receipts.iter().any(|r| matches!(r, Receipt::ScriptResult {
-            result: ScriptExecutionResult::Success,
-            ..
-        }));
+        let result = receipts.iter().any(|r| {
+            matches!(
+                r,
+                Receipt::ScriptResult {
+                    result: ScriptExecutionResult::Success,
+                    ..
+                }
+            )
+        });
 
         assert_eq!(result, input <= height);
 

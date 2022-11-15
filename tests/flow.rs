@@ -476,18 +476,9 @@ fn jump_dynamic() {
     .copied()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -518,18 +509,9 @@ fn jump_dynamic_condition_true() {
     .copied()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -560,18 +542,9 @@ fn jump_dynamic_condition_false() {
     .copied()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -798,18 +771,9 @@ fn retd_from_top_of_heap() {
     .copied()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 

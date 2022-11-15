@@ -72,9 +72,18 @@ fn predicate() {
     let wrong_data = wrong_data.to_be_bytes().to_vec();
 
     // A script that will succeed only if the argument is 0x23
-    let predicate = vec![Opcode::MOVI(0x10, 0x11), Opcode::ADDI(0x11, 0x10, 0x12), Opcode::MOVI(0x12, 0x08),
-    Opcode::ALOC(0x12), Opcode::ADDI(0x12, REG_HP, 0x01), Opcode::SW(0x12, 0x11, 0), Opcode::MOVI(0x10, 0x08), Opcode::gtf(0x11, 0, GTFArgs::InputCoinPredicateData), 
-    Opcode::MEQ(0x10, 0x11, 0x12, 0x10), Opcode::RET(0x10)];
+    let predicate = vec![
+        Opcode::MOVI(0x10, 0x11),
+        Opcode::ADDI(0x11, 0x10, 0x12),
+        Opcode::MOVI(0x12, 0x08),
+        Opcode::ALOC(0x12),
+        Opcode::ADDI(0x12, REG_HP, 0x01),
+        Opcode::SW(0x12, 0x11, 0),
+        Opcode::MOVI(0x10, 0x08),
+        Opcode::gtf(0x11, 0, GTFArgs::InputCoinPredicateData),
+        Opcode::MEQ(0x10, 0x11, 0x12, 0x10),
+        Opcode::RET(0x10),
+    ];
 
     assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));

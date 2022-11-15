@@ -1,4 +1,3 @@
-#![allow(clippy::iter_cloned_collect)]
 use fuel_crypto::Hasher;
 use fuel_tx::{
     field::{Script as ScriptField, ScriptData},
@@ -74,7 +73,7 @@ fn code_copy() {
         Opcode::RET(0x30),
     ];
 
-    let script = script_ops.iter().copied().collect();
+    let script = script_ops.clone().into_iter().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(program.as_ref());
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -95,7 +94,7 @@ fn code_copy() {
 
     let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
-    let script_mem: Vec<u8> = script_ops.iter().copied().collect();
+    let script_mem: Vec<u8> = script_ops.clone().into_iter().collect();
 
     tx.as_mut()
         .script_mut()
@@ -165,7 +164,7 @@ fn call() {
         Opcode::RET(0x30),
     ];
 
-    let script = script_ops.iter().copied().collect();
+    let script = script_ops.clone().into_iter().collect();
     let mut script_data = contract.to_vec();
     script_data.extend([0u8; WORD_SIZE * 2]);
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);

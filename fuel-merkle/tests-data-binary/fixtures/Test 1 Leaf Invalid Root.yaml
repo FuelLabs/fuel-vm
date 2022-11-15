@@ -1,0 +1,12 @@
+name: Test 1 Leaf Invalid Root
+function_name: generate_test_1_leaf_invalid_root
+description: Build a proof from a binary Merkle tree consisting of 1 leaf and manually set the root. The root is manually set to the SHA256 hash of the string "invalid". This proof is invalid because root is not generated from canonical Merkle tree construction. Verification is expected to fail.
+root:
+  value: f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4
+  encoding: hex
+proof_set:
+- value: 8d216d9f1b01ce2f51e3be1243e0da2591679f57bf2d062b9dbaae361558bb21
+  encoding: hex
+proof_index: 0
+num_leaves: 1
+expected_verification: false

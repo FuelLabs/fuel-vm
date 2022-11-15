@@ -1,4 +1,5 @@
 pub mod binary;
+pub mod data;
 
 mod test_data;
 

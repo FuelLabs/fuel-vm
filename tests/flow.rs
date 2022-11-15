@@ -32,8 +32,7 @@ fn code_copy() {
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x20),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
     let program = Witness::from(program.as_slice());
 
@@ -129,8 +128,7 @@ fn call() {
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x12),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
     let program = Witness::from(program.as_slice());
 
@@ -190,7 +188,7 @@ fn call() {
 
     let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
-    let script_mem: Vec<u8> = script_ops.iter().copied().collect();
+    let script_mem: Vec<u8> = script_ops.into_iter().collect();
 
     tx.as_mut()
         .script_mut()
@@ -282,8 +280,7 @@ fn call_frame_code_offset() {
         Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     let mut script_data = vec![];
@@ -389,8 +386,7 @@ fn jump_if_not_zero_immediate_jump() {
         Opcode::JNZI(REG_ONE, 2),   // Jump to last instr if reg one is zero
         Opcode::RVRT(REG_ONE),       // Revert
         Opcode::RET(REG_ONE),        // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(
@@ -430,8 +426,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         Opcode::JNZI(REG_ZERO, 2),   // Jump to last instr if reg zero is zero
         Opcode::RVRT(REG_ONE),       // Revert
         Opcode::RET(REG_ONE),        // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(
@@ -472,8 +467,7 @@ fn jump_dynamic() {
         Opcode::JMP(REG_WRITABLE),      // Jump
         Opcode::RVRT(REG_ONE),          // Revert
         Opcode::RET(REG_ONE),           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -505,8 +499,7 @@ fn jump_dynamic_condition_true() {
         Opcode::JNE(REG_ZERO, REG_ONE, REG_WRITABLE),   // Conditional jump (yes, because 0 != 1)
         Opcode::RVRT(REG_ONE),                          // Revert
         Opcode::RET(REG_ONE),                           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -538,8 +531,7 @@ fn jump_dynamic_condition_false() {
         Opcode::JNE(REG_ZERO, REG_ZERO, REG_WRITABLE),  // Conditional jump (no, because 0 != 0)
         Opcode::RVRT(REG_ONE),                          // Revert
         Opcode::RET(REG_ONE),                           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -639,8 +631,7 @@ fn revert() {
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctnly
@@ -702,8 +693,7 @@ fn revert() {
         Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RVRT(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     let mut script_data = vec![];
@@ -767,8 +757,7 @@ fn retd_from_top_of_heap() {
         Opcode::ALOC(REG_SIZE),             // $hp -= 32.
         Opcode::ADDI(REG_PTR, REG_HP, 1),   // Pointer is $hp + 1, first byte in allocated buffer.
         Opcode::RETD(REG_PTR, REG_SIZE),    // Return the allocated buffer.
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])

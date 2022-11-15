@@ -33,8 +33,7 @@ fn mint_burn() {
         Opcode::BURN(0x11),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>()
     .into();
 
@@ -216,7 +215,7 @@ fn mint_burn() {
     assert_eq!(balance as Word, storage_balance);
 
     // Burn the remainder balance
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.into_iter().collect();
     let script_data = Call::new(contract, 1, balance).to_bytes();
     let tx = Transaction::script(
         gas_price,

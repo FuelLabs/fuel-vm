@@ -1,4 +1,3 @@
-#![allow(clippy::iter_cloned_collect)]
 use fuel_crypto::{Hasher, SecretKey};
 use fuel_tx::TransactionBuilder;
 use fuel_types::bytes;
@@ -156,8 +155,7 @@ fn state_read_write() {
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly
@@ -932,8 +930,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly

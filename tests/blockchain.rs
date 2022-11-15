@@ -273,10 +273,10 @@ fn state_read_write() {
     let mut bytes = [0u8; 32];
 
     // Reconstruct the final state out of the limbs
-    (bytes[..8]).copy_from_slice(&m.to_be_bytes());
-    (bytes[8..16]).copy_from_slice(&n.to_be_bytes());
-    (bytes[16..24]).copy_from_slice(&o.to_be_bytes());
-    (bytes[24..]).copy_from_slice(&p.to_be_bytes());
+    bytes[..8].copy_from_slice(&m.to_be_bytes());
+    bytes[8..16].copy_from_slice(&n.to_be_bytes());
+    bytes[16..24].copy_from_slice(&o.to_be_bytes());
+    bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);

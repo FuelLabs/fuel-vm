@@ -273,8 +273,6 @@ pub mod test_helpers {
 
             let salt: Salt = self.rng.gen();
             let program: Witness = contract
-                .iter()
-                .copied()
                 .into_iter()
                 .flat_map(Opcode::to_bytes)
                 .collect::<Vec<u8>>()

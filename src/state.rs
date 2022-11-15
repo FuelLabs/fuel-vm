@@ -214,7 +214,7 @@ impl<'a, Tx: Clone> From<StateTransitionRef<'a, Tx>> for StateTransition<Tx> {
         StateTransition {
             state: *t.state(),
             tx: t.tx().clone(),
-            receipts: (*t.receipts()).to_vec(),
+            receipts: t.receipts().to_vec(),
         }
     }
 }

@@ -145,6 +145,7 @@ fn metadata() {
     script.push(Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS));
     script.push(Opcode::RET(REG_ONE));
 
+    #[allow(clippy::iter_cloned_collect)] // collection is also perfomring a type conversion
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
@@ -324,7 +325,7 @@ fn get_transaction_fields() {
     let script_reserved_words = 300 * WORD_SIZE;
     let script_offset = params.tx_offset() + Script::script_offset_static();
     let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
-    let script_data: Vec<u8> = cases.iter().map(|c| c.iter()).flatten().copied().collect();
+    let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
     // Maybe use predicates to check create context?
     // TODO GTFArgs::CreateBytecodeLength
@@ -744,7 +745,7 @@ fn get_transaction_fields() {
     });
 
     tx.as_ref().outputs().iter().for_each(|o| {
-        builder.add_output(o.clone());
+        builder.add_output(*o);
     });
 
     tx.as_ref().witnesses().iter().for_each(|w| {

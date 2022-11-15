@@ -272,7 +272,7 @@ pub mod test_helpers {
             };
 
             let salt: Salt = self.rng.gen();
-            let program: Witness = contract.iter().copied().collect::<Vec<u8>>().into();
+            let program: Witness = contract.iter().copied().into_iter().flat_map(Opcode::to_bytes).collect::<Vec<u8>>().into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
             let contract = Contract::from(program.as_ref());
             let contract_root = contract.root();

@@ -1,3 +1,4 @@
+#![allow(clippy::iter_cloned_collect)]
 use fuel_tx::field::ScriptData;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
@@ -125,7 +126,7 @@ fn mint_burn() {
         script_check_balance.iter().copied().collect(),
         vec![],
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     )
     .into_checked(height, &params)
@@ -141,7 +142,7 @@ fn mint_burn() {
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     )
     .into_checked(height, &params)
@@ -223,7 +224,7 @@ fn mint_burn() {
         maturity,
         script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )
@@ -232,7 +233,7 @@ fn mint_burn() {
 
     client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
+    let storage_balance = client.transact(tx_check_balance)[0]
         .ra()
         .expect("Balance expected");
     assert_eq!(0, storage_balance);

@@ -176,7 +176,7 @@ fn writes_to_memory_correctly() {
 
     assert_ne!(assets_sorted, assets);
 
-    let balances = assets.clone().into_iter();
+    let balances = assets.into_iter();
 
     RuntimeBalances::try_from_iter(balances)
         .expect("failed to generate balances")
@@ -221,7 +221,7 @@ fn try_from_iter_wont_overflow() {
     // Aggregated sum check
     let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (b, 1)];
     let balances_aggregated = vec![(a, u64::MAX), (b, 16), (c, 0)];
-    let runtime_balances = RuntimeBalances::try_from_iter(balances.clone()).expect("failed to create balance set");
+    let runtime_balances = RuntimeBalances::try_from_iter(balances).expect("failed to create balance set");
 
     balances_aggregated.iter().for_each(|(asset, val)| {
         let bal = runtime_balances.balance(asset).expect("failed to fetch balance");
@@ -231,7 +231,7 @@ fn try_from_iter_wont_overflow() {
 
     // Overflow won't panic
     let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (a, 1)];
-    let err = RuntimeBalances::try_from_iter(balances.clone()).expect_err("overflow set should fail");
+    let err = RuntimeBalances::try_from_iter(balances).expect_err("overflow set should fail");
 
     assert_eq!(CheckError::ArithmeticOverflow, err);
 }

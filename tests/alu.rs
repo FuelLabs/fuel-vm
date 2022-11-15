@@ -23,8 +23,7 @@ fn alu(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expec
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| set_full_word(*r, *v))
-        .flatten()
+        .flat_map(|(r, v)| set_full_word(*r, *v))
         .chain([op, Opcode::LOG(reg, 0, 0, 0), Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
@@ -119,7 +118,7 @@ fn alu_wrapping(registers_init: &[(RegisterId, Word)], op: Opcode, reg: Register
     let height = 0;
     let params = ConsensusParameters::default();
 
-    let set_regs = registers_init.iter().map(|(r, v)| set_full_word(*r, *v)).flatten();
+    let set_regs = registers_init.iter().flat_map(|(r, v)| set_full_word(*r, *v));
 
     let script = [
         // TODO avoid magic constants
@@ -225,8 +224,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], op: Opcode) {
 
     let script = registers_init
         .iter()
-        .map(|(r, v)| set_full_word(*r, *v))
-        .flatten()
+        .flat_map(|(r, v)| set_full_word(*r, *v))
         .chain([op, Opcode::RET(REG_ONE)].iter().copied())
         .collect();
 
@@ -377,7 +375,7 @@ fn sub() {
             Opcode::SUB(0x10, 0x10, 0x11),
         ],
         0x10,
-        (0 as u128).wrapping_sub(10),
+        (0_u128).wrapping_sub(10),
         false,
     );
 }
@@ -388,7 +386,7 @@ fn subi() {
     alu_overflow(
         &[Opcode::MOVE(0x10, REG_ZERO), Opcode::SUBI(0x10, 0x10, 10)],
         0x10,
-        (0 as u128).wrapping_sub(10),
+        (0_u128).wrapping_sub(10),
         false,
     );
 }

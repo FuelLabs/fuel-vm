@@ -1,3 +1,4 @@
+#![allow(clippy::iter_cloned_collect)]
 use fuel_crypto::Hasher;
 use fuel_tx::{
     field::{Script as ScriptField, ScriptData},
@@ -150,7 +151,7 @@ fn call() {
         vec![],
         vec![],
         vec![output],
-        vec![program.clone()],
+        vec![program],
     )
     .into_checked(height, &params)
     .expect("failed to generate a checked tx");
@@ -168,7 +169,7 @@ fn call() {
 
     let script = script_ops.iter().copied().collect();
     let mut script_data = contract.to_vec();
-    script_data.extend(&[0u8; WORD_SIZE * 2]);
+    script_data.extend([0u8; WORD_SIZE * 2]);
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
@@ -288,8 +289,8 @@ fn call_frame_code_offset() {
     let mut script_data = vec![];
 
     script_data.extend(id.as_ref());
-    script_data.extend(&Word::default().to_be_bytes());
-    script_data.extend(&Word::default().to_be_bytes());
+    script_data.extend(Word::default().to_be_bytes());
+    script_data.extend(Word::default().to_be_bytes());
 
     let script = Transaction::script(
         gas_price,
@@ -396,7 +397,7 @@ fn jump_if_not_zero_immediate_jump() {
         gas_price,
         gas_limit,
         maturity,
-        script_jnzi_does_jump.clone(),
+        script_jnzi_does_jump,
         vec![],
         vec![],
         vec![],
@@ -437,7 +438,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         gas_price,
         gas_limit,
         maturity,
-        script_jnzi_does_not_jump.clone(),
+        script_jnzi_does_not_jump,
         vec![],
         vec![],
         vec![],
@@ -479,7 +480,7 @@ fn jump_dynamic() {
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -521,7 +522,7 @@ fn jump_dynamic_condition_true() {
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -563,7 +564,7 @@ fn jump_dynamic_condition_false() {
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],
@@ -688,16 +689,16 @@ fn revert() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&val.to_be_bytes());
+    script_data.extend(val.to_be_bytes());
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
@@ -739,18 +740,18 @@ fn revert() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&rev.to_be_bytes());
+    script_data.extend(rev.to_be_bytes());
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )
@@ -784,7 +785,7 @@ fn retd_from_top_of_heap() {
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
 
-    const REG_SIZE: usize = REG_WRITABLE + 0;
+    const REG_SIZE: usize = REG_WRITABLE;
     const REG_PTR: usize = REG_WRITABLE + 1;
 
     #[rustfmt::skip]
@@ -801,7 +802,7 @@ fn retd_from_top_of_heap() {
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         vec![],
         vec![],
         vec![],

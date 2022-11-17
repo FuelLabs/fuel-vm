@@ -209,12 +209,12 @@ impl<'a, Tx> From<&'a StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
     }
 }
 
-impl<'a, Tx: Clone> Into<StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
-    fn into(self) -> StateTransition<Tx> {
+impl<'a, Tx: Clone> From<StateTransitionRef<'a, Tx>> for StateTransition<Tx> {
+    fn from(t: StateTransitionRef<Tx>) -> StateTransition<Tx> {
         StateTransition {
-            state: self.state,
-            tx: self.tx.clone(),
-            receipts: self.receipts.to_vec(),
+            state: *t.state(),
+            tx: t.tx().clone(),
+            receipts: t.receipts().to_vec(),
         }
     }
 }

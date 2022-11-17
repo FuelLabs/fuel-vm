@@ -41,6 +41,12 @@ jobs:
         command: build
         args: --verbose
 
+    - name: Run clippy checks
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-targets --all-features
+
     - name: Run basic tests
       uses: actions-rs/cargo@v1
       with:

@@ -31,8 +31,7 @@ fn code_copy() {
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x20),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
     let program = Witness::from(program.as_slice());
 
@@ -74,7 +73,7 @@ fn code_copy() {
         Opcode::RET(0x30),
     ];
 
-    let script = script_ops.iter().copied().collect();
+    let script = script_ops.clone().into_iter().collect();
     let mut script_data = contract.to_vec();
     script_data.extend(program.as_ref());
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -95,7 +94,7 @@ fn code_copy() {
 
     let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset();
     script_ops[3] = Opcode::MOVI(0x20, script_data_mem as Immediate18);
-    let script_mem: Vec<u8> = script_ops.iter().copied().collect();
+    let script_mem: Vec<u8> = script_ops.clone().into_iter().collect();
 
     tx.as_mut()
         .script_mut()
@@ -128,8 +127,7 @@ fn call() {
         Opcode::LOG(0x10, 0x11, 0x12, 0x00),
         Opcode::RET(0x12),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
     let program = Witness::from(program.as_slice());
 
@@ -150,7 +148,7 @@ fn call() {
         vec![],
         vec![],
         vec![output],
-        vec![program.clone()],
+        vec![program],
     )
     .into_checked(height, &params)
     .expect("failed to generate a checked tx");
@@ -166,9 +164,9 @@ fn call() {
         Opcode::RET(0x30),
     ];
 
-    let script = script_ops.iter().copied().collect();
+    let script = script_ops.clone().into_iter().collect();
     let mut script_data = contract.to_vec();
-    script_data.extend(&[0u8; WORD_SIZE * 2]);
+    script_data.extend([0u8; WORD_SIZE * 2]);
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
@@ -189,7 +187,7 @@ fn call() {
 
     let script_data_mem = params.tx_offset() + tx.transaction().script_data_offset();
     script_ops[0] = Opcode::MOVI(0x10, script_data_mem as Immediate18);
-    let script_mem: Vec<u8> = script_ops.iter().copied().collect();
+    let script_mem: Vec<u8> = script_ops.into_iter().collect();
 
     tx.as_mut()
         .script_mut()
@@ -281,15 +279,14 @@ fn call_frame_code_offset() {
         Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     let mut script_data = vec![];
 
     script_data.extend(id.as_ref());
-    script_data.extend(&Word::default().to_be_bytes());
-    script_data.extend(&Word::default().to_be_bytes());
+    script_data.extend(Word::default().to_be_bytes());
+    script_data.extend(Word::default().to_be_bytes());
 
     let script = Transaction::script(
         gas_price,
@@ -388,15 +385,14 @@ fn jump_if_not_zero_immediate_jump() {
         Opcode::JNZI(REG_ONE, 2),   // Jump to last instr if reg one is zero
         Opcode::RVRT(REG_ONE),       // Revert
         Opcode::RET(REG_ONE),        // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script_jnzi_does_jump.clone(),
+        script_jnzi_does_jump,
         vec![],
         vec![],
         vec![],
@@ -429,15 +425,14 @@ fn jump_if_not_zero_immediate_no_jump() {
         Opcode::JNZI(REG_ZERO, 2),   // Jump to last instr if reg zero is zero
         Opcode::RVRT(REG_ONE),       // Revert
         Opcode::RET(REG_ONE),        // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script_jnzi_does_not_jump.clone(),
+        script_jnzi_does_not_jump,
         vec![],
         vec![],
         vec![],
@@ -471,22 +466,12 @@ fn jump_dynamic() {
         Opcode::JMP(REG_WRITABLE),      // Jump
         Opcode::RVRT(REG_ONE),          // Revert
         Opcode::RET(REG_ONE),           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -513,22 +498,12 @@ fn jump_dynamic_condition_true() {
         Opcode::JNE(REG_ZERO, REG_ONE, REG_WRITABLE),   // Conditional jump (yes, because 0 != 1)
         Opcode::RVRT(REG_ONE),                          // Revert
         Opcode::RET(REG_ONE),                           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -555,22 +530,12 @@ fn jump_dynamic_condition_false() {
         Opcode::JNE(REG_ZERO, REG_ZERO, REG_WRITABLE),  // Conditional jump (no, because 0 != 0)
         Opcode::RVRT(REG_ONE),                          // Revert
         Opcode::RET(REG_ONE),                           // Return successfully
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 
@@ -665,8 +630,7 @@ fn revert() {
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctnly
@@ -688,16 +652,16 @@ fn revert() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&val.to_be_bytes());
+    script_data.extend(val.to_be_bytes());
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
         vec![input.clone()],
         vec![output],
@@ -728,8 +692,7 @@ fn revert() {
         Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS),
         Opcode::RVRT(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     let mut script_data = vec![];
@@ -739,18 +702,18 @@ fn revert() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&rev.to_be_bytes());
+    script_data.extend(rev.to_be_bytes());
 
     let tx = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )
@@ -784,7 +747,7 @@ fn retd_from_top_of_heap() {
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
 
-    const REG_SIZE: usize = REG_WRITABLE + 0;
+    const REG_SIZE: usize = REG_WRITABLE;
     const REG_PTR: usize = REG_WRITABLE + 1;
 
     #[rustfmt::skip]
@@ -793,22 +756,12 @@ fn retd_from_top_of_heap() {
         Opcode::ALOC(REG_SIZE),             // $hp -= 32.
         Opcode::ADDI(REG_PTR, REG_HP, 1),   // Pointer is $hp + 1, first byte in allocated buffer.
         Opcode::RETD(REG_PTR, REG_SIZE),    // Return the allocated buffer.
-    ].iter()
-    .copied()
+    ].into_iter()
     .collect::<Vec<u8>>();
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
 
     client.transact(tx);
 

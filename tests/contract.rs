@@ -32,8 +32,7 @@ fn mint_burn() {
         Opcode::BURN(0x11),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>()
     .into();
 
@@ -71,7 +70,7 @@ fn mint_burn() {
         Opcode::RET(REG_ONE),
     ];
 
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.clone().into_iter().collect();
     let tx = Transaction::script(
         gas_price,
         gas_limit,
@@ -88,7 +87,7 @@ fn mint_burn() {
     let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset();
     script_ops[0] = Opcode::MOVI(0x10, script_data_offset as Immediate18);
 
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.clone().into_iter().collect();
     let script_data = Call::new(contract, 0, balance).to_bytes();
     let tx = Transaction::script(
         gas_price,
@@ -122,10 +121,10 @@ fn mint_burn() {
         gas_price,
         gas_limit,
         maturity,
-        script_check_balance.iter().copied().collect(),
+        script_check_balance.clone().into_iter().collect(),
         vec![],
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     )
     .into_checked(height, &params)
@@ -141,7 +140,7 @@ fn mint_burn() {
         script_check_balance.into_iter().collect(),
         script_data_check_balance,
         vec![input.clone()],
-        vec![output.clone()],
+        vec![output],
         vec![],
     )
     .into_checked(height, &params)
@@ -160,7 +159,7 @@ fn mint_burn() {
     assert_eq!(balance as Word, storage_balance);
 
     // Try to burn more than the available balance
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.clone().into_iter().collect();
     let script_data = Call::new(contract, 1, balance + 1).to_bytes();
     let tx = Transaction::script(
         gas_price,
@@ -191,7 +190,7 @@ fn mint_burn() {
     // Burn some of the balance
     let burn = 100;
 
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.clone().into_iter().collect();
     let script_data = Call::new(contract, 1, burn).to_bytes();
     let tx = Transaction::script(
         gas_price,
@@ -215,7 +214,7 @@ fn mint_burn() {
     assert_eq!(balance as Word, storage_balance);
 
     // Burn the remainder balance
-    let script: Vec<u8> = script_ops.iter().copied().collect();
+    let script: Vec<u8> = script_ops.into_iter().collect();
     let script_data = Call::new(contract, 1, balance).to_bytes();
     let tx = Transaction::script(
         gas_price,
@@ -223,7 +222,7 @@ fn mint_burn() {
         maturity,
         script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )
@@ -232,9 +231,7 @@ fn mint_burn() {
 
     client.transact(tx);
 
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
+    let storage_balance = client.transact(tx_check_balance)[0].ra().expect("Balance expected");
     assert_eq!(0, storage_balance);
 }
 

@@ -47,20 +47,20 @@ fn ephemeral_merkle_root_returns_the_expected_root() {
 
     let initial = [a, b, c, d, e];
 
-    let a = Hasher::default().chain(&[LEAF_PREFIX]).chain(a).digest();
-    let b = Hasher::default().chain(&[LEAF_PREFIX]).chain(b).digest();
-    let c = Hasher::default().chain(&[LEAF_PREFIX]).chain(c).digest();
-    let d = Hasher::default().chain(&[LEAF_PREFIX]).chain(d).digest();
-    let e = Hasher::default().chain(&[LEAF_PREFIX]).chain(e).digest();
+    let a = Hasher::default().chain([LEAF_PREFIX]).chain(a).digest();
+    let b = Hasher::default().chain([LEAF_PREFIX]).chain(b).digest();
+    let c = Hasher::default().chain([LEAF_PREFIX]).chain(c).digest();
+    let d = Hasher::default().chain([LEAF_PREFIX]).chain(d).digest();
+    let e = Hasher::default().chain([LEAF_PREFIX]).chain(e).digest();
 
-    let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
-    let b = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([c, d]).digest();
+    let a = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
+    let b = Hasher::default().chain([NODE_PREFIX]).extend_chain([c, d]).digest();
     let c = e;
 
-    let a = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+    let a = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
     let b = c;
 
-    let root = Hasher::default().chain(&[NODE_PREFIX]).extend_chain([a, b]).digest();
+    let root = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
     let root_p = ephemeral_merkle_root(initial.iter());
 
     assert_eq!(root, root_p);

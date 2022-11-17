@@ -155,8 +155,7 @@ fn state_read_write() {
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly
@@ -178,10 +177,10 @@ fn state_read_write() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&val.to_be_bytes());
+    script_data.extend(val.to_be_bytes());
 
     let tx_add_word = Transaction::script(
         gas_price,
@@ -228,10 +227,10 @@ fn state_read_write() {
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&val.to_be_bytes());
+    script_data.extend(val.to_be_bytes());
 
     let tx_unpack_xor = Transaction::script(
         gas_price,
@@ -259,9 +258,9 @@ fn state_read_write() {
     assert_eq!(receipts[2].rd().expect("Register value expected"), d);
 
     let m = a ^ 0x96;
-    let n = a ^ 0x00;
-    let o = a ^ 0x00;
-    let p = a ^ 0x00;
+    let n = a;
+    let o = a;
+    let p = a;
 
     // Expect the value to be unpacked correctly into 4x16 limbs + XOR state
     assert_eq!(receipts[3].ra().expect("Register value expected"), m);
@@ -272,10 +271,10 @@ fn state_read_write() {
     let mut bytes = [0u8; 32];
 
     // Reconstruct the final state out of the limbs
-    (&mut bytes[..8]).copy_from_slice(&m.to_be_bytes());
-    (&mut bytes[8..16]).copy_from_slice(&n.to_be_bytes());
-    (&mut bytes[16..24]).copy_from_slice(&o.to_be_bytes());
-    (&mut bytes[24..]).copy_from_slice(&p.to_be_bytes());
+    bytes[..8].copy_from_slice(&m.to_be_bytes());
+    bytes[8..16].copy_from_slice(&n.to_be_bytes());
+    bytes[16..24].copy_from_slice(&o.to_be_bytes());
+    bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
@@ -346,7 +345,7 @@ fn load_external_contract_code() {
     for (i, byte) in contract_id.as_ref().iter().enumerate() {
         let index = i as Immediate12;
         let value = *byte as Immediate12;
-        load_contract.extend(&[
+        load_contract.extend([
             Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
             Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
             Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
@@ -401,7 +400,7 @@ fn load_external_contract_code() {
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
-        code.extend(&[0; 4]);
+        code.extend([0; 4]);
         assert_eq!(digest, &Hasher::hash(&code), "Loaded code digest incorrect");
     } else {
         panic!("Script did not return a value");
@@ -453,7 +452,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         vec![],
         vec![],
         vec![output0],
-        vec![program.clone()],
+        vec![program],
     )
     .into_checked(height, &params)
     .expect("failed to check tx");
@@ -494,7 +493,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         for (i, byte) in contract_id.as_ref().iter().enumerate() {
             let index = i as Immediate12;
             let value = *byte as Immediate12;
-            load_contract.extend(&[
+            load_contract.extend([
                 Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
                 Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
                 Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
@@ -549,12 +548,9 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             expected_reason,
             reason.reason()
         );
-        match expected_reason {
-            PanicReason::ContractNotInInputs => {
-                assert!(actual_contract_id.is_some());
-                assert_ne!(actual_contract_id, &Some(contract_id));
-            }
-            _ => {}
+        if expected_reason == PanicReason::ContractNotInInputs {
+            assert!(actual_contract_id.is_some());
+            assert_ne!(actual_contract_id, &Some(contract_id));
         };
     } else {
         panic!("Script should have panicked");
@@ -934,8 +930,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
         Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
         Opcode::RET(REG_ONE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect::<Vec<u8>>();
 
     // Assert the offsets are set correctly
@@ -957,18 +952,18 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
     script_data.extend(contract.as_ref());
-    script_data.extend(&routine.to_be_bytes());
-    script_data.extend(&call_data_offset.to_be_bytes());
+    script_data.extend(routine.to_be_bytes());
+    script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
-    script_data.extend(&val.to_be_bytes());
+    script_data.extend(val.to_be_bytes());
 
     let tx_add_word = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        script.clone(),
+        script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )
@@ -990,7 +985,7 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
     assert_eq!(receipts[1].rc().expect("Register value expected"), expected_values[2]);
     assert_eq!(receipts[1].rd().expect("Register value expected"), expected_values[3]);
 
-    return true;
+    true
 }
 
 #[test]
@@ -1337,12 +1332,14 @@ fn smo_instruction_works() {
         let txid = tx.transaction().id();
         let receipts = client.transact(tx);
 
-        let success = receipts.iter().any(|r| match r {
-            Receipt::ScriptResult {
-                result: ScriptExecutionResult::Success,
-                ..
-            } => true,
-            _ => false,
+        let success = receipts.iter().any(|r| {
+            matches!(
+                r,
+                Receipt::ScriptResult {
+                    result: ScriptExecutionResult::Success,
+                    ..
+                }
+            )
         });
 
         assert!(success);
@@ -1380,7 +1377,7 @@ fn timestamp_works() {
     let maturity = 0;
     let block_height = 0;
 
-    let params = client.params().clone();
+    let params = *client.params();
 
     // TODO consider using quickcheck after PR lands
     // https://github.com/FuelLabs/fuel-vm/pull/187
@@ -1419,12 +1416,14 @@ fn timestamp_works() {
             .finalize_checked(block_height, &params);
 
         let receipts = client.transact(tx);
-        let result = receipts.iter().any(|r| match r {
-            Receipt::ScriptResult {
-                result: ScriptExecutionResult::Success,
-                ..
-            } => true,
-            _ => false,
+        let result = receipts.iter().any(|r| {
+            matches!(
+                r,
+                Receipt::ScriptResult {
+                    result: ScriptExecutionResult::Success,
+                    ..
+                }
+            )
         });
 
         assert_eq!(result, input <= height);

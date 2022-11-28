@@ -306,10 +306,9 @@ fn call_frame_code_offset() {
     vm.transact(script).expect("Failed to call deployed contract");
 
     let asset_id = AssetId::default();
-    let contract = Contract::from(program.as_ref());
 
-    let mut frame = CallFrame::new(id, asset_id, [0; VM_REGISTER_COUNT], 0, 0, contract);
-    let stack = frame.to_bytes().len() as Word;
+    let mut frame = CallFrame::new(id, asset_id, [0; VM_REGISTER_COUNT], 0, 0);
+    let stack = (frame.to_bytes().len() + WORD_SIZE + program.len()) as Word;
 
     let receipts = vm.receipts();
 

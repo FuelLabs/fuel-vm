@@ -12,6 +12,8 @@ use tai64::Tai64;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use super::ReadContractBytes;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
     contracts: HashMap<ContractId, Contract>,
@@ -214,6 +216,22 @@ impl MerkleRootStorage<ContractId, ContractsState<'_>> for MemoryStorage {
             .map(|(_, value)| value);
 
         Ok(crypto::ephemeral_merkle_root(root).into())
+    }
+}
+
+impl ReadContractBytes for MemoryStorage {
+    type Error = Infallible;
+
+    fn read_contract_bytes(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        let r = self.memory.contracts.get(key).and_then(|code| {
+            if code.as_ref().len() > buf.len() {
+                return None;
+            }
+            buf.get_mut(..code.as_ref().len())
+                .map(|buf| buf.copy_from_slice(&code.as_ref()[..]))
+                .map(|_| code.as_ref().len())
+        });
+        Ok(r)
     }
 }
 

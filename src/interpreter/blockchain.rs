@@ -103,7 +103,7 @@ where
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
-            let fpx = add_usize(fp, CallFrame::code_size_offset());
+            let fpx = add_usize(fp, CallFrame::len());
 
             self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
         }

@@ -7,6 +7,8 @@ use fuel_asm::Word;
 use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate};
 use fuel_types::{Address, Bytes32, ContractId};
 
+use super::ReadContractBytes;
+
 /// No-op storage used for predicate operations.
 ///
 /// The storage implementations are expected to provide KV-like operations for contract operations.
@@ -43,6 +45,14 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
     fn root(&mut self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+}
+
+impl ReadContractBytes for PredicateStorage {
+    type Error = InterpreterError;
+
+    fn read_contract_bytes(&self, _key: &ContractId, _buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         Err(InterpreterError::PredicateFailure)
     }
 }

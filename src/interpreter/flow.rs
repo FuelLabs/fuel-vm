@@ -185,37 +185,59 @@ where
         // subtract gas
         self.registers[REG_CGAS] = arith::sub_word(self.registers[REG_CGAS], forward_gas_amount)?;
 
+        let (frame_to, frame_a, frame_b) = call.into_inner();
+
         let mut frame = self.call_frame(call, asset_id)?;
 
         let stack = frame.to_bytes();
-        let len = stack.len() as Word;
-
-        if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
 
         let id = self.internal_contract_or_default();
 
         self.set_frame_pointer(self.registers[REG_SP]);
 
+        self.registers[REG_SP] += CallFrame::len() as Word;
+
+        if CallFrame::len() as u64 > self.registers[REG_HP]
+            || self.registers[REG_SP] > self.registers[REG_HP] - CallFrame::len() as u64
+        {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        // Copy call frame to memory.
+        // Leave one word for the code size.
+        let end = self.registers[REG_SP] as usize - WORD_SIZE;
+        self.memory[self.registers[REG_FP] as usize..end].copy_from_slice(stack.as_slice());
+
+        // Copy the contract code to memory.
+        let len = match self.storage.read_contract_bytes(
+            &frame_to,
+            &mut self.memory[self.registers[REG_SP] as usize..(self.registers[REG_HP] as usize)],
+        ) {
+            Ok(Some(len)) => len as u64,
+            Ok(None) => return Err(PanicReason::ContractNotFound.into()),
+            Err(_) => return Err(PanicReason::MemoryOverflow.into()),
+        };
+
+        // Copy the code size to memory
+        let start = self.registers[REG_FP] as usize + CallFrame::code_size_offset();
+        self.memory[start..(start + WORD_SIZE)].copy_from_slice(&(len as Word).to_be_bytes()[..]);
+
         self.registers[REG_SP] += len;
         self.registers[REG_SSP] = self.registers[REG_SP];
 
-        self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
-
         self.registers[REG_BAL] = b;
-        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
+        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::len() as Word);
         self.registers[REG_IS] = self.registers[REG_PC];
         self.registers[REG_CGAS] = forward_gas_amount;
 
         let receipt = Receipt::call(
             id,
-            *frame.to(),
+            frame_to,
             b,
-            *frame.asset_id(),
+            asset_id,
             d,
-            frame.a(),
-            frame.b(),
+            frame_a,
+            frame_b,
             self.registers[REG_PC],
             self.registers[REG_IS],
         );

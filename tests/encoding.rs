@@ -77,7 +77,6 @@ fn call_frame() {
                     [rng.gen(); VM_REGISTER_COUNT],
                     rng.gen(),
                     rng.gen(),
-                    vec![rng.gen(); 200].into(),
                 )
             })
             .collect::<Vec<CallFrame>>()

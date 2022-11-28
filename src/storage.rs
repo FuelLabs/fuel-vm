@@ -22,6 +22,29 @@ impl Mappable for ContractsRawCode {
     type GetValue = Contract;
 }
 
+/// A trait that allows reading contract code directly into
+/// a memory buffer and avoid serialization.
+pub trait ReadContractBytes {
+    /// The error that can be returned if
+    /// the read fails.
+    type Error: std::fmt::Debug;
+
+    /// Read the contract word aligned bytes into the given buffer.
+    /// Returns `None` if the [`ContractId`] is not found.
+    /// Returns the number of bytes read into the buffer.
+    fn read_contract_bytes(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
+}
+
+impl<S> ReadContractBytes for &mut S
+where
+    S: ReadContractBytes,
+{
+    type Error = S::Error;
+
+    fn read_contract_bytes(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        (**self).read_contract_bytes(key, buf)
+    }
+}
 /// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 

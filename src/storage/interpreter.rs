@@ -10,6 +10,8 @@ use std::error::Error as StdError;
 use std::io;
 use std::ops::{Deref, DerefMut};
 
+use super::ReadContractBytes;
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -17,6 +19,7 @@ pub trait InterpreterStorage:
     + StorageMutate<ContractsInfo, Error = Self::DataError>
     + for<'a> MerkleRootStorage<ContractId, ContractsAssets<'a>, Error = Self::DataError>
     + for<'a> MerkleRootStorage<ContractId, ContractsState<'a>, Error = Self::DataError>
+    + ReadContractBytes
     + Sized
 {
     /// Error implementation for reasons unspecified in the protocol.

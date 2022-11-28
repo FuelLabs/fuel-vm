@@ -308,7 +308,7 @@ where
 
             OpcodeRepr::LB => {
                 self.gas_charge(GAS_LB)?;
-                self.load_byte(ra, rb, imm)?;
+                self.load_byte(ra, b, imm)?;
             }
 
             OpcodeRepr::LW => {

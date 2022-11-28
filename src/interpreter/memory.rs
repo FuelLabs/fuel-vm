@@ -301,10 +301,10 @@ where
         }
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: RegisterId, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        let bc = b.saturating_add(c as RegisterId);
+        let bc = b.saturating_add(c) as usize;
 
         if bc >= VM_MAX_RAM as RegisterId {
             Err(PanicReason::MemoryOverflow.into())

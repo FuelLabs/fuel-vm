@@ -111,3 +111,8 @@ required-features = ["random"]
 name = "test-predicate"
 path = "tests/predicate.rs"
 required-features = ["random"]
+
+[[test]]
+name = "test-memory"
+path = "tests/memory.rs"
+required-features = ["random"]

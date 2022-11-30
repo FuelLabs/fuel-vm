@@ -44,6 +44,7 @@ serde_json = "1.0"
 default = ["optimized"]
 arbitrary = ["fuel-asm/arbitrary"]
 debug = []
+ignore_gas = []
 optimized = []
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]

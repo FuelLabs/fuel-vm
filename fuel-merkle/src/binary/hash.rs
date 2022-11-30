@@ -1,4 +1,4 @@
-use crate::common::{self, Bytes32, LEAF, NODE};
+use crate::common::{empty_sum_sha256, Bytes32, Prefix};
 
 use digest::Digest;
 use sha2::Sha256;
@@ -8,7 +8,7 @@ type Hash = Sha256;
 // Merkle Tree hash of an empty list
 // MTH({}) = Hash()
 pub const fn empty_sum() -> &'static Bytes32 {
-    common::empty_sum_sha256()
+    empty_sum_sha256()
 }
 
 // Merkle tree hash of an n-element list D[n]
@@ -16,7 +16,7 @@ pub const fn empty_sum() -> &'static Bytes32 {
 pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
 
-    hash.update([NODE]);
+    hash.update(Prefix::Node);
     hash.update(lhs_data);
     hash.update(rhs_data);
 
@@ -28,7 +28,7 @@ pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Bytes32 {
 pub fn leaf_sum(data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
 
-    hash.update([LEAF]);
+    hash.update(Prefix::Leaf);
     hash.update(data);
 
     hash.finalize().into()

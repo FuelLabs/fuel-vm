@@ -1,10 +1,11 @@
-use crate::binary::{self, Node};
-use crate::common::{Bytes32, Position, ProofSet, Subtree};
+use crate::{
+    binary::{empty_sum, Node},
+    common::{Bytes32, Position, ProofSet, Subtree},
+};
 
 use fuel_storage::{Mappable, StorageMutate};
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 use core::fmt;
 
 #[derive(Debug, Clone)]
@@ -19,7 +20,7 @@ pub enum MerkleTreeError<StorageError> {
     )]
     LoadError(u64),
 
-    #[cfg_attr(feature = "std", error("a storage error was thrown: {0}"))]
+    #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
 }
 
@@ -29,6 +30,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
     }
 }
 
+#[derive(Debug)]
 pub struct MerkleTree<StorageType> {
     storage: StorageType,
     head: Option<Box<Subtree<Node>>>,
@@ -38,6 +40,7 @@ pub struct MerkleTree<StorageType> {
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
 /// value is the [`Node`](crate::binary::Node).
+#[derive(Debug)]
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
@@ -78,7 +81,7 @@ where
     pub fn root(&mut self) -> Result<Bytes32, MerkleTreeError<StorageError>> {
         let root_node = self.root_node()?;
         let root = match root_node {
-            None => *binary::empty_sum(),
+            None => *empty_sum(),
             Some(ref node) => *node.hash(),
         };
 
@@ -312,12 +315,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{MerkleTree, NodesTable};
-    use crate::binary::{empty_sum, leaf_sum, node_sum};
-    use crate::common::StorageMap;
-    use alloc::vec::Vec;
+    use super::{MerkleTree, MerkleTreeError, NodesTable};
+    use crate::{
+        binary::{empty_sum, leaf_sum, node_sum},
+        common::StorageMap,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::StorageInspect;
+
+    use alloc::vec::Vec;
 
     #[test]
     fn test_push_builds_internal_tree_structure() {
@@ -435,8 +441,9 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let tree = MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2);
-        assert!(tree.is_err());
+        let err = MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2)
+            .expect_err("Expected load() to return Error; got Ok");
+        assert!(matches!(err, MerkleTreeError::LoadError(_)));
     }
 
     #[test]
@@ -513,8 +520,10 @@ mod test {
         let mut storage_map = StorageMap::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
-        let proof = tree.prove(0);
-        assert!(proof.is_err());
+        let err = tree
+            .prove(0)
+            .expect_err("Expected prove() to return Error; got Ok");
+        assert!(matches!(err, MerkleTreeError::InvalidProofIndex(0)));
     }
 
     #[test]
@@ -527,8 +536,10 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let proof = tree.prove(10);
-        assert!(proof.is_err());
+        let err = tree
+            .prove(10)
+            .expect_err("Expected prove() to return Error; got Ok");
+        assert!(matches!(err, MerkleTreeError::InvalidProofIndex(10)));
     }
 
     #[test]

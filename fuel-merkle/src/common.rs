@@ -3,8 +3,11 @@ mod node;
 mod path_iterator;
 mod position;
 mod position_path;
+mod prefix;
 mod storage_map;
 mod subtree;
+
+pub(crate) mod error;
 
 pub use msb::Msb;
 pub use node::{Node, ParentNode};
@@ -14,9 +17,7 @@ pub use storage_map::StorageMap;
 pub use subtree::Subtree;
 
 pub(crate) use position_path::PositionPath;
-
-pub const NODE: u8 = 0x01;
-pub const LEAF: u8 = 0x00;
+pub(crate) use prefix::{Prefix, PrefixError};
 
 pub type Bytes1 = [u8; 1];
 pub type Bytes2 = [u8; 2];

@@ -94,11 +94,7 @@ impl Checkable for Mint {
         Ok(())
     }
 
-    fn check_without_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         if self.outputs().len() > parameters.max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax);
         }
@@ -110,9 +106,7 @@ impl Checkable for Mint {
         for output in self.outputs() {
             if let Output::Coin { asset_id, .. } = output {
                 if assets.contains(asset_id) {
-                    return Err(CheckError::TransactionOutputCoinAssetIdDuplicated(
-                        *asset_id,
-                    ));
+                    return Err(CheckError::TransactionOutputCoinAssetIdDuplicated(*asset_id));
                 } else {
                     assets.push(*asset_id);
                 }
@@ -139,20 +133,13 @@ impl crate::Cacheable for Mint {
 
 impl SizedBytes for Mint {
     fn serialized_size(&self) -> usize {
-        self.outputs_offset()
-            + self
-                .outputs()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+        self.outputs_offset() + self.outputs().iter().map(|w| w.serialized_size()).sum::<usize>()
     }
 }
 
 #[cfg(feature = "std")]
 pub mod checked {
-    use crate::{
-        Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Mint,
-    };
+    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Mint};
     use fuel_types::Word;
 
     impl IntoChecked for Mint {
@@ -213,10 +200,7 @@ mod field {
 
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(MintMetadata {
-                outputs_offset_at, ..
-            }) = &self.metadata
-            {
+            if let Some(MintMetadata { outputs_offset_at, .. }) = &self.metadata {
                 return outputs_offset_at.get(idx).cloned();
             }
 
@@ -247,9 +231,7 @@ impl io::Read for Mint {
 
         let buf = bytes::store_number_unchecked(buf, crate::TransactionRepr::Mint as Word);
         let Mint {
-            tx_pointer,
-            outputs,
-            ..
+            tx_pointer, outputs, ..
         } = self;
 
         let skip = tx_pointer.read(buf)?;
@@ -304,9 +286,7 @@ impl io::Write for Mint {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.outputs
-            .iter_mut()
-            .try_for_each(|output| output.flush())?;
+        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
 
         Ok(())
     }

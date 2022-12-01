@@ -33,17 +33,10 @@ impl Input {
     }
 
     #[cfg(feature = "std")]
-    pub fn check_signature(
-        &self,
-        index: usize,
-        txhash: &Bytes32,
-        witnesses: &[Witness],
-    ) -> Result<(), CheckError> {
+    pub fn check_signature(&self, index: usize, txhash: &Bytes32, witnesses: &[Witness]) -> Result<(), CheckError> {
         match self {
             Self::CoinSigned {
-                witness_index,
-                owner,
-                ..
+                witness_index, owner, ..
             }
             | Self::MessageSigned {
                 witness_index,
@@ -77,16 +70,12 @@ impl Input {
                 Ok(())
             }
 
-            Self::CoinPredicate {
-                owner, predicate, ..
-            }
+            Self::CoinPredicate { owner, predicate, .. }
             | Self::MessagePredicate {
                 recipient: owner,
                 predicate,
                 ..
-            } if !Input::is_predicate_owner_valid(owner, predicate) => {
-                Err(CheckError::InputPredicateOwner { index })
-            }
+            } if !Input::is_predicate_owner_valid(owner, predicate) => Err(CheckError::InputPredicateOwner { index }),
 
             _ => Ok(()),
         }
@@ -112,8 +101,7 @@ impl Input {
                 Err(CheckError::InputPredicateLength { index })
             }
 
-            Self::CoinPredicate { predicate_data, .. }
-            | Self::MessagePredicate { predicate_data, .. }
+            Self::CoinPredicate { predicate_data, .. } | Self::MessagePredicate { predicate_data, .. }
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
@@ -130,9 +118,7 @@ impl Input {
                 if 1 != outputs
                     .iter()
                     .filter_map(|output| match output {
-                        Output::Contract { input_index, .. } if *input_index as usize == index => {
-                            Some(())
-                        }
+                        Output::Contract { input_index, .. } if *input_index as usize == index => Some(()),
                         _ => None,
                     })
                     .count() =>
@@ -176,11 +162,7 @@ pub trait Checkable {
     #[cfg(feature = "std")]
     /// Fully validates the transaction. It checks the validity of fields according to rules in
     /// the specification and validity of signatures.
-    fn check(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    fn check(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
         self.check_signatures()?;
 
@@ -193,11 +175,7 @@ pub trait Checkable {
 
     /// Validates the transactions according to rules from the specification:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
-    fn check_without_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError>;
+    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError>;
 }
 
 impl Checkable for Transaction {
@@ -210,18 +188,10 @@ impl Checkable for Transaction {
         }
     }
 
-    fn check_without_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => {
-                script.check_without_signatures(block_height, parameters)
-            }
-            Transaction::Create(create) => {
-                create.check_without_signatures(block_height, parameters)
-            }
+            Transaction::Script(script) => script.check_without_signatures(block_height, parameters),
+            Transaction::Create(create) => create.check_without_signatures(block_height, parameters),
             Transaction::Mint(mint) => mint.check_without_signatures(block_height, parameters),
         }
     }
@@ -233,12 +203,7 @@ pub(crate) fn check_common_part<T>(
     parameters: &ConsensusParameters,
 ) -> Result<(), CheckError>
 where
-    T: field::GasPrice
-        + field::GasLimit
-        + field::Maturity
-        + field::Inputs
-        + field::Outputs
-        + field::Witnesses,
+    T: field::GasPrice + field::GasLimit + field::Maturity + field::Inputs + field::Outputs + field::Witnesses,
 {
     if tx.gas_limit() > &parameters.max_gas_per_tx {
         Err(CheckError::TransactionGasLimit)?
@@ -267,9 +232,7 @@ where
             .iter()
             .filter_map(|output| match output {
                 Output::Change { asset_id, .. } if input_asset_id == asset_id => Some(()),
-                Output::Change { asset_id, .. }
-                    if asset_id != &AssetId::default() && input_asset_id == asset_id =>
-                {
+                Output::Change { asset_id, .. } if asset_id != &AssetId::default() && input_asset_id == asset_id => {
                     Some(())
                 }
                 _ => None,
@@ -277,9 +240,7 @@ where
             .count()
             > 1
         {
-            return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(
-                *input_asset_id,
-            ));
+            return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(*input_asset_id));
         }
 
         Ok(())
@@ -309,41 +270,27 @@ where
     }
 
     // Validate the inputs without checking signature
-    tx.inputs()
-        .iter()
-        .enumerate()
-        .try_for_each(|(index, input)| {
-            input.check_without_signature(index, tx.outputs(), tx.witnesses(), parameters)
-        })?;
+    tx.inputs().iter().enumerate().try_for_each(|(index, input)| {
+        input.check_without_signature(index, tx.outputs(), tx.witnesses(), parameters)
+    })?;
 
-    tx.outputs()
-        .iter()
-        .enumerate()
-        .try_for_each(|(index, output)| {
-            output.check(index, tx.inputs())?;
+    tx.outputs().iter().enumerate().try_for_each(|(index, output)| {
+        output.check(index, tx.inputs())?;
 
-            if let Output::Change { asset_id, .. } = output {
-                if !tx
-                    .input_asset_ids()
-                    .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(CheckError::TransactionOutputChangeAssetIdNotFound(
-                        *asset_id,
-                    ));
-                }
+        if let Output::Change { asset_id, .. } = output {
+            if !tx.input_asset_ids().any(|input_asset_id| input_asset_id == asset_id) {
+                return Err(CheckError::TransactionOutputChangeAssetIdNotFound(*asset_id));
             }
+        }
 
-            if let Output::Coin { asset_id, .. } = output {
-                if !tx
-                    .input_asset_ids()
-                    .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id));
-                }
+        if let Output::Coin { asset_id, .. } = output {
+            if !tx.input_asset_ids().any(|input_asset_id| input_asset_id == asset_id) {
+                return Err(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id));
             }
+        }
 
-            Ok(())
-        })?;
+        Ok(())
+    })?;
 
     Ok(())
 }

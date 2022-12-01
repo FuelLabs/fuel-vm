@@ -175,9 +175,7 @@ mod tests {
     }
 
     #[rstest]
-    fn state_root_snapshot(
-        #[values(Vec::new(), vec![Bytes64::new([1u8; 64])])] state_slot_bytes: Vec<Bytes64>,
-    ) {
+    fn state_root_snapshot(#[values(Vec::new(), vec![Bytes64::new([1u8; 64])])] state_slot_bytes: Vec<Bytes64>) {
         let slots: Vec<StorageSlot> = state_slot_bytes.iter().map(Into::into).collect_vec();
         let state_root = Contract::initial_state_root(&mut slots.iter());
         // take root snapshot

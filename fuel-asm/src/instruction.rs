@@ -141,16 +141,7 @@ impl Instruction {
     /// Convert the instruction into its internal representation
     ///
     /// `(repr, $ra, $rb, $rc, $rd, immediate)`
-    pub const fn into_inner(
-        self,
-    ) -> (
-        OpcodeRepr,
-        RegisterId,
-        RegisterId,
-        RegisterId,
-        RegisterId,
-        Word,
-    ) {
+    pub const fn into_inner(self) -> (OpcodeRepr, RegisterId, RegisterId, RegisterId, RegisterId, Word) {
         let Self {
             op,
             ra,

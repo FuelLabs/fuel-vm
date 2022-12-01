@@ -24,9 +24,7 @@ pub use consensus_parameters::ConsensusParameters;
 pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
-pub use types::{
-    Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness,
-};
+pub use types::{Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness};
 
 use crate::TxPointer;
 
@@ -211,12 +209,8 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => {
-                    Some(asset_id)
-                }
-                Input::MessagePredicate { .. } | Input::MessageSigned { .. } => {
-                    Some(&AssetId::BASE)
-                }
+                Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => Some(asset_id),
+                Input::MessagePredicate { .. } | Input::MessageSigned { .. } => Some(&AssetId::BASE),
                 _ => None,
             })
             .collect_vec()
@@ -257,13 +251,9 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::CoinPredicate {
-                    owner, predicate, ..
-                } => Some((owner, predicate)),
+                Input::CoinPredicate { owner, predicate, .. } => Some((owner, predicate)),
                 Input::MessagePredicate {
-                    recipient,
-                    predicate,
-                    ..
+                    recipient, predicate, ..
                 } => Some((recipient, predicate)),
                 _ => None,
             })
@@ -292,15 +282,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         let owner = Input::owner(owner);
 
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::coin_signed(
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
-            witness_index,
-            maturity,
-        );
+        let input = Input::coin_signed(utxo_id, owner, amount, asset_id, tx_pointer, witness_index, maturity);
 
         self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
@@ -325,15 +307,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         let message_id = Input::compute_message_id(&sender, &recipient, nonce, amount, &data);
 
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::message_signed(
-            message_id,
-            sender,
-            recipient,
-            amount,
-            nonce,
-            witness_index,
-            data,
-        );
+        let input = Input::message_signed(message_id, sender, recipient, amount, nonce, witness_index, data);
 
         self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
@@ -345,22 +319,16 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     /// should already set by the client beforehand.
     #[cfg(feature = "std")]
     fn prepare_init_script(&mut self) -> &mut Self {
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(|o| o.prepare_init_script());
+        self.outputs_mut().iter_mut().for_each(|o| o.prepare_init_script());
 
         self
     }
 
     /// Prepare the transaction for VM initialization for predicate verification
     fn prepare_init_predicate(&mut self) -> &mut Self {
-        self.inputs_mut()
-            .iter_mut()
-            .for_each(|i| i.prepare_init_predicate());
+        self.inputs_mut().iter_mut().for_each(|i| i.prepare_init_predicate());
 
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(|o| o.prepare_init_predicate());
+        self.outputs_mut().iter_mut().for_each(|o| o.prepare_init_predicate());
 
         self
     }
@@ -551,35 +519,17 @@ mod tests {
     #[test]
     fn metered_data_excludes_witnesses() {
         // test script
-        let script_with_no_witnesses =
-            Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![]);
-        let script_with_witnesses = Transaction::script(
-            0,
-            0,
-            0,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![[0u8; 64].to_vec().into()],
-        );
+        let script_with_no_witnesses = Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![]);
+        let script_with_witnesses =
+            Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![[0u8; 64].to_vec().into()]);
 
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
             script_with_no_witnesses.metered_bytes_size()
         );
         // test create
-        let create_with_no_witnesses = Transaction::create(
-            0,
-            0,
-            0,
-            0,
-            Default::default(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        );
+        let create_with_no_witnesses =
+            Transaction::create(0, 0, 0, 0, Default::default(), vec![], vec![], vec![], vec![]);
         let create_with_witnesses = Transaction::create(
             0,
             0,

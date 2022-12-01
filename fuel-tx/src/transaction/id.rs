@@ -51,9 +51,7 @@ where
             .iter()
             .filter_map(|input| match input {
                 Input::CoinSigned {
-                    owner,
-                    witness_index,
-                    ..
+                    owner, witness_index, ..
                 }
                 | Input::MessageSigned {
                     recipient: owner,
@@ -189,13 +187,7 @@ mod tests {
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned, witness_index, not);
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned, maturity, not);
 
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinPredicate,
-                utxo_id,
-                invert_utxo_id
-            );
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, utxo_id, invert_utxo_id);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, owner, invert);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, amount, not);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, asset_id, invert);
@@ -229,19 +221,11 @@ mod tests {
             assert_io_eq!(tx, outputs_mut, Output::Variable, amount, not);
             assert_io_eq!(tx, outputs_mut, Output::Variable, asset_id, invert);
 
-            assert_io_ne!(
-                tx,
-                outputs_mut,
-                Output::ContractCreated,
-                contract_id,
-                invert
-            );
+            assert_io_ne!(tx, outputs_mut, Output::ContractCreated, contract_id, invert);
         }
 
         if !tx.witnesses().is_empty() {
-            assert_id_eq(tx, |t| {
-                inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut())
-            });
+            assert_id_eq(tx, |t| inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut()));
         }
     }
 
@@ -287,10 +271,7 @@ mod tests {
             ],
         ];
 
-        let witnesses = vec![
-            vec![],
-            vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
-        ];
+        let witnesses = vec![vec![], vec![generate_bytes(rng).into(), generate_bytes(rng).into()]];
 
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
@@ -336,9 +317,7 @@ mod tests {
                         assert_id_ne(&tx, |t| invert(&mut t.salt));
 
                         if !storage_slots.is_empty() {
-                            assert_id_ne(&tx, |t| {
-                                invert_storage_slot(t.storage_slots.first_mut().unwrap())
-                            });
+                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots.first_mut().unwrap()));
                         }
 
                         assert_id_common_attrs(&tx);

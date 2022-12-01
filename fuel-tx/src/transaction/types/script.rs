@@ -1,8 +1,7 @@
 use crate::transaction::{
     checkable::{check_common_part, Checkable},
     field::{
-        GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField,
-        ScriptData, Witnesses,
+        GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
     },
     metadata::CommonMetadata,
     Chargeable,
@@ -84,10 +83,7 @@ impl crate::UniqueIdentifier for Script {
         // Empties fields that should be zero during the signing.
         *clone.receipts_root_mut() = Default::default();
         clone.inputs_mut().iter_mut().for_each(Input::prepare_sign);
-        clone
-            .outputs_mut()
-            .iter_mut()
-            .for_each(Output::prepare_sign);
+        clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
         fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
@@ -127,11 +123,7 @@ impl Checkable for Script {
         Ok(())
     }
 
-    fn check_without_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         check_common_part(self, block_height, parameters)?;
 
         if self.script.len() > parameters.max_script_length as usize {
@@ -146,9 +138,7 @@ impl Checkable for Script {
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
-                Output::ContractCreated { .. } => {
-                    Err(CheckError::TransactionScriptOutputContractCreated { index })
-                }
+                Output::ContractCreated { .. } => Err(CheckError::TransactionScriptOutputContractCreated { index }),
                 _ => Ok(()),
             })?;
 
@@ -173,22 +163,14 @@ impl crate::Cacheable for Script {
 
 impl SizedBytes for Script {
     fn serialized_size(&self) -> usize {
-        self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+        self.witnesses_offset() + self.witnesses().iter().map(|w| w.serialized_size()).sum::<usize>()
     }
 }
 
 #[cfg(feature = "std")]
 pub mod checked {
     use crate::checked_transaction::{initial_free_balances, AvailableBalances};
-    use crate::{
-        Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Script,
-        TransactionFee,
-    };
+    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Script, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 
@@ -336,10 +318,7 @@ mod field {
 
         #[inline(always)]
         fn script_data_offset(&self) -> usize {
-            if let Some(ScriptMetadata {
-                script_data_offset, ..
-            }) = &self.metadata
-            {
+            if let Some(ScriptMetadata { script_data_offset, .. }) = &self.metadata {
                 return *script_data_offset;
             }
 
@@ -374,9 +353,7 @@ mod field {
         #[inline(always)]
         fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common: CommonMetadata {
-                    inputs_offset_at, ..
-                },
+                common: CommonMetadata { inputs_offset_at, .. },
                 ..
             }) = &self.metadata
             {
@@ -415,9 +392,7 @@ mod field {
             self.inputs().get(idx).and_then(|input| {
                 input
                     .predicate_offset()
-                    .and_then(|predicate| {
-                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
-                    })
+                    .and_then(|predicate| self.inputs_offset_at(idx).map(|inputs| inputs + predicate))
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
         }
@@ -444,20 +419,13 @@ mod field {
                 return *outputs_offset;
             }
 
-            self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.inputs_offset() + self.inputs().iter().map(|i| i.serialized_size()).sum::<usize>()
         }
 
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common: CommonMetadata {
-                    outputs_offset_at, ..
-                },
+                common: CommonMetadata { outputs_offset_at, .. },
                 ..
             }) = &self.metadata
             {
@@ -494,31 +462,22 @@ mod field {
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                common: CommonMetadata {
-                    witnesses_offset, ..
-                },
+                common: CommonMetadata { witnesses_offset, .. },
                 ..
             }) = &self.metadata
             {
                 return *witnesses_offset;
             }
 
-            self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.outputs_offset() + self.outputs().iter().map(|i| i.serialized_size()).sum::<usize>()
         }
 
         #[inline(always)]
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common:
-                    CommonMetadata {
-                        witnesses_offset_at,
-                        ..
-                    },
+                common: CommonMetadata {
+                    witnesses_offset_at, ..
+                },
                 ..
             }) = &self.metadata
             {
@@ -675,12 +634,8 @@ impl io::Write for Script {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs
-            .iter_mut()
-            .try_for_each(|output| output.flush())?;
-        self.witnesses
-            .iter_mut()
-            .try_for_each(|witness| witness.flush())?;
+        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
+        self.witnesses.iter_mut().try_for_each(|witness| witness.flush())?;
 
         Ok(())
     }

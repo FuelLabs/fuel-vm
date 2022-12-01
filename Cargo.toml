@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "fuel-asm",
+    "fuel-storage",
+    "fuel-types",
+    "fuel-tx",
+    "fuel-types",
+    "fuel-vm",
+]

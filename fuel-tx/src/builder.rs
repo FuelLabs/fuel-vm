@@ -1,8 +1,8 @@
 use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
 use crate::transaction::{field, Chargeable, Create, Executable, Script, Signable};
 use crate::{
-    Cacheable, Checked, ConsensusParameters, Input, IntoChecked, Mint, Output, StorageSlot,
-    Transaction, TxPointer, Witness,
+    Cacheable, Checked, ConsensusParameters, Input, IntoChecked, Mint, Output, StorageSlot, Transaction, TxPointer,
+    Witness,
 };
 
 use fuel_crypto::SecretKey;
@@ -311,22 +311,14 @@ impl TransactionBuilder<Script> {
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Script> {
+    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Script> {
         self.finalize()
             .into_checked(height, params)
             .expect("failed to check tx")
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Script> {
+    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Script> {
         self.finalize()
             .into_checked_basic(height, params)
             .expect("failed to check tx")
@@ -355,22 +347,14 @@ impl TransactionBuilder<Create> {
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Create> {
+    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Create> {
         self.finalize()
             .into_checked(height, params)
             .expect("failed to check tx")
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Create> {
+    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Create> {
         self.finalize()
             .into_checked_basic(height, params)
             .expect("failed to check tx")
@@ -401,22 +385,14 @@ impl TransactionBuilder<Mint> {
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Mint> {
+    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Mint> {
         self.finalize()
             .into_checked(height, params)
             .expect("failed to check tx")
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(
-        &mut self,
-        height: Word,
-        params: &ConsensusParameters,
-    ) -> Checked<Mint> {
+    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Mint> {
         self.finalize()
             .into_checked_basic(height, params)
             .expect("failed to check tx")

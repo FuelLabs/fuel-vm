@@ -5,8 +5,8 @@
 
 #![allow(non_upper_case_globals)]
 use crate::{
-    field, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Input, Mint, Output,
-    Script, Transaction, TransactionFee,
+    field, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Input, Mint, Output, Script, Transaction,
+    TransactionFee,
 };
 use fuel_types::{AssetId, Word};
 
@@ -102,9 +102,7 @@ impl<Tx: IntoChecked + Default> Default for Checked<Tx> {
 impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::Metadata) {
     fn from(checked: Checked<Tx>) -> Self {
         let Checked {
-            transaction,
-            metadata,
-            ..
+            transaction, metadata, ..
         } = checked;
 
         (transaction, metadata)
@@ -135,21 +133,12 @@ pub trait IntoChecked: Checkable + Sized {
     type Metadata: Sized;
 
     /// Returns transaction that passed all `Checks`.
-    fn into_checked(
-        self,
-        block_height: Word,
-        params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError> {
-        self.into_checked_basic(block_height, params)?
-            .check_signatures()
+    fn into_checked(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError> {
+        self.into_checked_basic(block_height, params)?.check_signatures()
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
-    fn into_checked_basic(
-        self,
-        block_height: Word,
-        params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>;
+    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError>;
 }
 
 /// The Enum version of `Checked<Transaction>` allows getting the inner variant without losing
@@ -262,20 +251,14 @@ impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(
-        self,
-        block_height: Word,
-        params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError> {
+    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
-                let (transaction, metadata) =
-                    script.into_checked_basic(block_height, params)?.into();
+                let (transaction, metadata) = script.into_checked_basic(block_height, params)?.into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Create(create) => {
-                let (transaction, metadata) =
-                    create.into_checked_basic(block_height, params)?.into();
+                let (transaction, metadata) = create.into_checked_basic(block_height, params)?.into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Mint(mint) => {
@@ -300,45 +283,33 @@ where
     // Add up all the inputs for each asset ID
     for (asset_id, amount) in transaction.inputs().iter().filter_map(|input| match input {
         // Sum coin inputs
-        Input::CoinPredicate {
-            asset_id, amount, ..
+        Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
+            Some((*asset_id, amount))
         }
-        | Input::CoinSigned {
-            asset_id, amount, ..
-        } => Some((*asset_id, amount)),
         // Sum message inputs
-        Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => {
-            Some((AssetId::BASE, amount))
-        }
+        Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => Some((AssetId::BASE, amount)),
         _ => None,
     }) {
         *balances.entry(asset_id).or_default() += amount;
     }
 
     // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(params, transaction)
-        .ok_or(CheckError::ArithmeticOverflow)?;
+    let fee = TransactionFee::checked_from_tx(params, transaction).ok_or(CheckError::ArithmeticOverflow)?;
 
     let base_asset_balance = balances.entry(AssetId::BASE).or_default();
 
-    *base_asset_balance =
-        fee.checked_deduct_total(*base_asset_balance)
-            .ok_or(CheckError::InsufficientFeeAmount {
-                expected: fee.total(),
-                provided: *base_asset_balance,
-            })?;
+    *base_asset_balance = fee
+        .checked_deduct_total(*base_asset_balance)
+        .ok_or(CheckError::InsufficientFeeAmount {
+            expected: fee.total(),
+            provided: *base_asset_balance,
+        })?;
 
     // reduce free balances by coin outputs
-    for (asset_id, amount) in transaction
-        .outputs()
-        .iter()
-        .filter_map(|output| match output {
-            Output::Coin {
-                asset_id, amount, ..
-            } => Some((asset_id, amount)),
-            _ => None,
-        })
-    {
+    for (asset_id, amount) in transaction.outputs().iter().filter_map(|output| match output {
+        Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
+        _ => None,
+    }) {
         let balance = balances
             .get_mut(asset_id)
             .ok_or(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
@@ -577,13 +548,7 @@ mod tests {
                 0,
                 0,
             ))
-            .add_input(Input::contract(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-            ))
+            .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), 10, asset))
             .add_output(Output::change(rng.gen(), 0, asset))
@@ -663,9 +628,7 @@ mod tests {
         let params = ConsensusParameters::default().with_gas_price_factor(1);
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let err = transaction
-            .into_checked(0, &params)
-            .expect_err("overflow expected");
+        let err = transaction.into_checked(0, &params).expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
     }
@@ -680,9 +643,7 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let err = transaction
-            .into_checked(0, &params)
-            .expect_err("overflow expected");
+        let err = transaction.into_checked(0, &params).expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
     }
@@ -697,14 +658,7 @@ mod tests {
             .gas_price(1)
             .gas_limit(100)
             // base asset
-            .add_unsigned_coin_input(
-                secret,
-                rng.gen(),
-                input_amount,
-                AssetId::default(),
-                rng.gen(),
-                0,
-            )
+            .add_unsigned_coin_input(secret, rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             // arbitrary spending asset
             .add_unsigned_coin_input(secret, rng.gen(), input_amount, any_asset, rng.gen(), 0)
@@ -732,8 +686,7 @@ mod tests {
     {
         let available_balances = initial_free_balances(tx, params)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes =
-            (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
+        let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
         let gas = tx.limit() as u128 * tx.price() as u128;
         let total = bytes + gas;
         // use different division mechanism than impl
@@ -750,8 +703,7 @@ mod tests {
     {
         let available_balances = initial_free_balances(tx, params)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes =
-            (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
+        let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
         // use different division mechanism than impl
         let fee = bytes / params.gas_price_factor as u128;
         let fee_remainder = (bytes.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
@@ -772,13 +724,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, rng.gen(), 0)
-            .add_input(Input::contract(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-            ))
+            .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), output_amount, asset))
             .add_output(Output::change(rng.gen(), 0, asset))
@@ -786,12 +732,7 @@ mod tests {
     }
 
     // used when proptesting to avoid expensive crypto signatures
-    fn predicate_tx(
-        rng: &mut StdRng,
-        gas_price: u64,
-        gas_limit: u64,
-        fee_input_amount: u64,
-    ) -> Script {
+    fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
         let asset = AssetId::default();
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
@@ -850,23 +791,11 @@ mod tests {
             .finalize()
     }
 
-    fn base_asset_tx(
-        rng: &mut StdRng,
-        input_amount: u64,
-        gas_price: u64,
-        gas_limit: u64,
-    ) -> Script {
+    fn base_asset_tx(rng: &mut StdRng, input_amount: u64, gas_price: u64, gas_limit: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(
-                rng.gen(),
-                rng.gen(),
-                input_amount,
-                AssetId::default(),
-                rng.gen(),
-                0,
-            )
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
     }

@@ -31,10 +31,7 @@ impl UtxoId {
     pub const LEN: usize = TxId::LEN + WORD_SIZE;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
-        Self {
-            tx_id,
-            output_index,
-        }
+        Self { tx_id, output_index }
     }
 
     pub const fn tx_id(&self) -> &TxId {
@@ -169,9 +166,7 @@ mod tests {
 
     #[test]
     fn from_str_utxo_id() -> Result<(), &'static str> {
-        let utxo_id = UtxoId::from_str(
-            "0x0c0000000000000000000000000000000000000000000000000000000000000b1a",
-        )?;
+        let utxo_id = UtxoId::from_str("0x0c0000000000000000000000000000000000000000000000000000000000000b1a")?;
 
         assert_eq!(utxo_id.output_index, 26);
         assert_eq!(utxo_id.tx_id[31], 11);

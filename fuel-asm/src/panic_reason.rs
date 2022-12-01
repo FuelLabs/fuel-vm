@@ -559,18 +559,12 @@ impl InstructionResult {
         let reason = PanicReason::from_u8(0);
         let instruction = Instruction::new(0);
 
-        Self {
-            reason,
-            instruction,
-        }
+        Self { reason, instruction }
     }
 
     /// Represents an error described by a reason and an instruction.
     pub const fn error(reason: PanicReason, instruction: Instruction) -> Self {
-        Self {
-            reason,
-            instruction,
-        }
+        Self { reason, instruction }
     }
 
     /// Underlying panic reason
@@ -615,10 +609,7 @@ impl From<Word> for InstructionResult {
         let reason = PanicReason::from(reason);
         let instruction = Instruction::from(instruction as u32);
 
-        Self {
-            reason,
-            instruction,
-        }
+        Self { reason, instruction }
     }
 }
 

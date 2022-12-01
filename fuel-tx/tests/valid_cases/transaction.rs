@@ -406,10 +406,7 @@ fn script() {
     .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        CheckError::TransactionScriptOutputContractCreated { index: 0 },
-        err
-    );
+    assert_eq!(CheckError::TransactionScriptOutputContractCreated { index: 0 }, err);
 
     let err = TransactionBuilder::script(
         vec![0xfa; 1 + PARAMS.max_script_length as usize],
@@ -465,13 +462,7 @@ fn create() {
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_input(Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-        ))
+        .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -489,41 +480,21 @@ fn create() {
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        CheckError::TransactionCreateOutputVariable { index: 0 }
-    );
+    assert_eq!(err, CheckError::TransactionCreateOutputVariable { index: 0 });
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        CheckError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE)
-    );
+    assert_eq!(err, CheckError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE));
 
     let asset_id: AssetId = rng.gen();
 
@@ -531,53 +502,22 @@ fn create() {
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            asset_id,
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), asset_id, rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
-    );
+    assert_eq!(err, CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },);
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
@@ -597,14 +537,7 @@ fn create() {
     .gas_limit(PARAMS.max_gas_per_tx)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &PARAMS)
@@ -618,14 +551,7 @@ fn create() {
     .gas_limit(PARAMS.max_gas_per_tx)
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &PARAMS)
@@ -653,14 +579,7 @@ fn create() {
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -682,14 +601,7 @@ fn create() {
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -705,14 +617,7 @@ fn create() {
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -725,23 +630,15 @@ fn create() {
 
     storage_slots_reverse.reverse();
 
-    let err =
-        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), storage_slots_reverse)
-            .gas_limit(PARAMS.max_gas_per_tx)
-            .gas_price(rng.gen())
-            .maturity(maturity)
-            .add_unsigned_coin_input(
-                secret,
-                rng.gen(),
-                rng.gen(),
-                AssetId::default(),
-                rng.gen(),
-                maturity,
-            )
-            .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-            .finalize()
-            .check(block_height, &PARAMS)
-            .expect_err("Expected erroneous transaction");
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), storage_slots_reverse)
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .gas_price(rng.gen())
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
 }
@@ -774,10 +671,7 @@ fn mint() {
         .check(block_height as Word, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(
-        err,
-        CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE)
-    );
+    assert_eq!(err, CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE));
 
     let err = TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))

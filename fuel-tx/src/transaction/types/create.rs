@@ -1,14 +1,12 @@
 use crate::transaction::{
     checkable::{check_common_part, Checkable},
     field::{
-        BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs,
-        Salt as SaltField, StorageSlots, Witnesses,
+        BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs, Salt as SaltField,
+        StorageSlots, Witnesses,
     },
     metadata::CommonMetadata,
 };
-use crate::{
-    Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness,
-};
+use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness};
 use derivative::Derivative;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, AssetId, Salt, Word};
@@ -52,10 +50,7 @@ impl crate::UniqueIdentifier for Create {
 
         // Empties fields that should be zero during the signing.
         clone.inputs_mut().iter_mut().for_each(Input::prepare_sign);
-        clone
-            .outputs_mut()
-            .iter_mut()
-            .for_each(Output::prepare_sign);
+        clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
         fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
@@ -95,11 +90,7 @@ impl Checkable for Create {
         Ok(())
     }
 
-    fn check_without_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         check_common_part(self, block_height, parameters)?;
 
         let bytecode_witness_len = self
@@ -108,9 +99,7 @@ impl Checkable for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > parameters.contract_max_size
-            || bytecode_witness_len / 4 != self.bytecode_length
-        {
+        if bytecode_witness_len > parameters.contract_max_size || bytecode_witness_len / 4 != self.bytecode_length {
             return Err(CheckError::TransactionCreateBytecodeLen);
         }
 
@@ -120,41 +109,29 @@ impl Checkable for Create {
             return Err(CheckError::TransactionCreateStorageSlotMax);
         }
 
-        if !self
-            .storage_slots
-            .as_slice()
-            .windows(2)
-            .all(|s| s[0] <= s[1])
-        {
+        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] <= s[1]) {
             return Err(CheckError::TransactionCreateStorageSlotOrder);
         }
 
         // TODO The computed contract ADDRESS (see below) is not equal to the
         // contractADDRESS of the one OutputType.ContractCreated output
 
-        self.inputs
-            .iter()
-            .enumerate()
-            .try_for_each(|(index, input)| {
-                if let Input::Contract { .. } = input {
-                    return Err(CheckError::TransactionCreateInputContract { index });
-                }
+        self.inputs.iter().enumerate().try_for_each(|(index, input)| {
+            if let Input::Contract { .. } = input {
+                return Err(CheckError::TransactionCreateInputContract { index });
+            }
 
-                Ok(())
-            })?;
+            Ok(())
+        })?;
 
         let mut contract_created = false;
         self.outputs
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
-                Output::Contract { .. } => {
-                    Err(CheckError::TransactionCreateOutputContract { index })
-                }
+                Output::Contract { .. } => Err(CheckError::TransactionCreateOutputContract { index }),
 
-                Output::Variable { .. } => {
-                    Err(CheckError::TransactionCreateOutputVariable { index })
-                }
+                Output::Variable { .. } => Err(CheckError::TransactionCreateOutputVariable { index }),
 
                 Output::Change { asset_id, .. } if asset_id != &AssetId::BASE => {
                     Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
@@ -193,22 +170,14 @@ impl crate::Cacheable for Create {
 
 impl SizedBytes for Create {
     fn serialized_size(&self) -> usize {
-        self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+        self.witnesses_offset() + self.witnesses().iter().map(|w| w.serialized_size()).sum::<usize>()
     }
 }
 
 #[cfg(feature = "std")]
 pub mod checked {
     use crate::checked_transaction::{initial_free_balances, AvailableBalances};
-    use crate::{
-        Cacheable, CheckError, Checkable, Checked, ConsensusParameters, Create, IntoChecked,
-        TransactionFee,
-    };
+    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, Create, IntoChecked, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 
@@ -438,9 +407,7 @@ mod field {
             self.inputs().get(idx).and_then(|input| {
                 input
                     .predicate_offset()
-                    .and_then(|predicate| {
-                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
-                    })
+                    .and_then(|predicate| self.inputs_offset_at(idx).map(|inputs| inputs + predicate))
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
         }
@@ -463,12 +430,7 @@ mod field {
                 return *outputs_offset;
             }
 
-            self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.inputs_offset() + self.inputs().iter().map(|i| i.serialized_size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -510,19 +472,11 @@ mod field {
 
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
-            if let Some(CommonMetadata {
-                witnesses_offset, ..
-            }) = &self.metadata
-            {
+            if let Some(CommonMetadata { witnesses_offset, .. }) = &self.metadata {
                 return *witnesses_offset;
             }
 
-            self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.outputs_offset() + self.outputs().iter().map(|i| i.serialized_size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -692,15 +646,9 @@ impl io::Write for Create {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs
-            .iter_mut()
-            .try_for_each(|output| output.flush())?;
-        self.witnesses
-            .iter_mut()
-            .try_for_each(|witness| witness.flush())?;
-        self.storage_slots
-            .iter_mut()
-            .try_for_each(|slot| slot.flush())?;
+        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
+        self.witnesses.iter_mut().try_for_each(|witness| witness.flush())?;
+        self.storage_slots.iter_mut().try_for_each(|slot| slot.flush())?;
 
         Ok(())
     }

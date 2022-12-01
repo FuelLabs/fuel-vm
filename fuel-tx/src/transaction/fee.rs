@@ -141,10 +141,9 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let fee: Word =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .expect("failed to calculate fee")
-                .into();
+        let fee: Word = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
+            .expect("failed to calculate fee")
+            .into();
 
         let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
         let expected = expected * gas_price;
@@ -160,10 +159,9 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let fee: Word =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .expect("failed to calculate fee")
-                .into();
+        let fee: Word = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
+            .expect("failed to calculate fee")
+            .into();
 
         let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
         let expected = expected * gas_price;
@@ -181,10 +179,9 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 0;
 
-        let fee: Word =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .expect("failed to calculate fee")
-                .into();
+        let fee: Word = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
+            .expect("failed to calculate fee")
+            .into();
 
         let expected = 0u64;
 
@@ -197,9 +194,7 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price).is_none();
 
         assert!(overflow);
     }
@@ -210,9 +205,7 @@ mod tests {
         let gas_limit = Word::MAX;
         let gas_price = 11;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price).is_none();
 
         assert!(overflow);
     }
@@ -223,9 +216,7 @@ mod tests {
         let gas_limit = 7;
         let gas_price = Word::MAX;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_limit, gas_price).is_none();
 
         assert!(overflow);
     }

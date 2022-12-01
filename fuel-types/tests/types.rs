@@ -95,11 +95,9 @@ fn hex_encoding() {
         assert_eq!(upper_alternate, upper_alternate_w0);
 
         let lower = T::from_str(lower.as_str()).expect("Failed to parse lower");
-        let lower_alternate =
-            T::from_str(lower_alternate.as_str()).expect("Failed to parse lower alternate");
+        let lower_alternate = T::from_str(lower_alternate.as_str()).expect("Failed to parse lower alternate");
         let upper = T::from_str(upper.as_str()).expect("Failed to parse upper");
-        let upper_alternate =
-            T::from_str(upper_alternate.as_str()).expect("Failed to parse upper alternate");
+        let upper_alternate = T::from_str(upper_alternate.as_str()).expect("Failed to parse upper alternate");
 
         assert_eq!(t, lower);
         assert_eq!(t, lower_alternate);
@@ -160,8 +158,7 @@ fn test_key_serde() {
     assert_eq!(ast_id, ast_id_t);
 
     let contract_id_t = bincode::serialize(&contract_id).expect("Failed to serialize ContractId");
-    let contract_id_t: ContractId =
-        bincode::deserialize(&contract_id_t).expect("Failed to deserialize ContractId");
+    let contract_id_t: ContractId = bincode::deserialize(&contract_id_t).expect("Failed to deserialize ContractId");
     assert_eq!(contract_id, contract_id_t);
 
     let bytes4_t = bincode::serialize(&bytes4).expect("Failed to serialize Bytes4");
@@ -173,18 +170,15 @@ fn test_key_serde() {
     assert_eq!(bytes8, bytes8_t);
 
     let bytes20_t = bincode::serialize(&bytes20).expect("Failed to serialize Bytes20");
-    let bytes20_t: Bytes20 =
-        bincode::deserialize(&bytes20_t).expect("Failed to deserialize Bytes20");
+    let bytes20_t: Bytes20 = bincode::deserialize(&bytes20_t).expect("Failed to deserialize Bytes20");
     assert_eq!(bytes20, bytes20_t);
 
     let bytes32_t = bincode::serialize(&bytes32).expect("Failed to serialize Bytes32");
-    let bytes32_t: Bytes32 =
-        bincode::deserialize(&bytes32_t).expect("Failed to deserialize Bytes32");
+    let bytes32_t: Bytes32 = bincode::deserialize(&bytes32_t).expect("Failed to deserialize Bytes32");
     assert_eq!(bytes32, bytes32_t);
 
     let message_id_t = bincode::serialize(&message_id).expect("Failed to serialize MessageId");
-    let message_id_t: MessageId =
-        bincode::deserialize(&message_id_t).expect("Failed to deserialize MessageId");
+    let message_id_t: MessageId = bincode::deserialize(&message_id_t).expect("Failed to deserialize MessageId");
     assert_eq!(message_id, message_id_t);
 
     let salt_t = bincode::serialize(&salt).expect("Failed to serialize Salt");
@@ -192,8 +186,7 @@ fn test_key_serde() {
     assert_eq!(salt, salt_t);
 
     let bytes64_t = bincode::serialize(&bytes64).expect("Failed to serialize Bytes64");
-    let bytes64_t: Bytes64 =
-        bincode::deserialize(&bytes64_t).expect("Failed to deserialize Bytes64");
+    let bytes64_t: Bytes64 = bincode::deserialize(&bytes64_t).expect("Failed to deserialize Bytes64");
     assert_eq!(bytes64, bytes64_t);
 }
 
@@ -203,13 +196,11 @@ fn test_key_types_hex_serialization() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let adr: Address = rng.gen();
-    let adr_to_string =
-        serde_json::to_string(&adr).expect("serde_json::to_string failed on Address");
+    let adr_to_string = serde_json::to_string(&adr).expect("serde_json::to_string failed on Address");
     assert_eq!(format!("\"{}\"", adr), adr_to_string);
 
     let ast_id: AssetId = rng.gen();
-    let ast_id_to_string =
-        serde_json::to_string(&ast_id).expect("serde_json::to_string failed on AssetId");
+    let ast_id_to_string = serde_json::to_string(&ast_id).expect("serde_json::to_string failed on AssetId");
     assert_eq!(format!("\"{}\"", ast_id), ast_id_to_string);
 
     let contract_id: ContractId = rng.gen();
@@ -218,33 +209,27 @@ fn test_key_types_hex_serialization() {
     assert_eq!(format!("\"{}\"", contract_id), contract_id_to_string);
 
     let bytes4: Bytes4 = rng.gen();
-    let bytes4_to_string =
-        serde_json::to_string(&bytes4).expect("serde_json::to_string failed on Bytes4");
+    let bytes4_to_string = serde_json::to_string(&bytes4).expect("serde_json::to_string failed on Bytes4");
     assert_eq!(format!("\"{}\"", bytes4), bytes4_to_string);
 
     let bytes8: Bytes8 = rng.gen();
-    let bytes8_to_string =
-        serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
+    let bytes8_to_string = serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
     assert_eq!(format!("\"{}\"", bytes8), bytes8_to_string);
 
     let bytes20: Bytes20 = rng.gen();
-    let bytes20_to_string =
-        serde_json::to_string(&bytes20).expect("serde_json::to_string failed on Bytes20");
+    let bytes20_to_string = serde_json::to_string(&bytes20).expect("serde_json::to_string failed on Bytes20");
     assert_eq!(format!("\"{}\"", bytes20), bytes20_to_string);
 
     let bytes32: Bytes32 = rng.gen();
-    let bytes32_to_string =
-        serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
+    let bytes32_to_string = serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
     assert_eq!(format!("\"{}\"", bytes32), bytes32_to_string);
 
     let message_id: MessageId = rng.gen();
-    let message_id_to_string =
-        serde_json::to_string(&message_id).expect("serde_json::to_string failed on MessageId");
+    let message_id_to_string = serde_json::to_string(&message_id).expect("serde_json::to_string failed on MessageId");
     assert_eq!(format!("\"{}\"", message_id), message_id_to_string);
 
     let salt: Salt = rng.gen();
-    let salt_to_string =
-        serde_json::to_string(&salt).expect("serde_json::to_string failed on Salt");
+    let salt_to_string = serde_json::to_string(&salt).expect("serde_json::to_string failed on Salt");
     assert_eq!(format!("\"{}\"", salt), salt_to_string);
 
     let bytes64: Bytes64 = rng.gen();

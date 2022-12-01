@@ -153,14 +153,7 @@ impl Receipt {
         Self::Return { id, val, pc, is }
     }
 
-    pub fn return_data(
-        id: ContractId,
-        ptr: Word,
-        digest: Bytes32,
-        data: Vec<u8>,
-        pc: Word,
-        is: Word,
-    ) -> Self {
+    pub fn return_data(id: ContractId, ptr: Word, digest: Bytes32, data: Vec<u8>, pc: Word, is: Word) -> Self {
         let len = bytes::padded_len(&data) as Word;
 
         Self::return_data_with_len(id, ptr, len, digest, data, pc, is)
@@ -198,8 +191,7 @@ impl Receipt {
 
     pub fn with_panic_contract_id(mut self, _contract_id: Option<ContractId>) -> Self {
         if let Receipt::Panic {
-            ref mut contract_id,
-            ..
+            ref mut contract_id, ..
         } = self
         {
             *contract_id = _contract_id;
@@ -211,15 +203,7 @@ impl Receipt {
         Self::Revert { id, ra, pc, is }
     }
 
-    pub const fn log(
-        id: ContractId,
-        ra: Word,
-        rb: Word,
-        rc: Word,
-        rd: Word,
-        pc: Word,
-        is: Word,
-    ) -> Self {
+    pub const fn log(id: ContractId, ra: Word, rb: Word, rc: Word, rd: Word, pc: Word, is: Word) -> Self {
         Self::Log {
             id,
             ra,
@@ -270,14 +254,7 @@ impl Receipt {
         }
     }
 
-    pub const fn transfer(
-        id: ContractId,
-        to: ContractId,
-        amount: Word,
-        asset_id: AssetId,
-        pc: Word,
-        is: Word,
-    ) -> Self {
+    pub const fn transfer(id: ContractId, to: ContractId, amount: Word, asset_id: AssetId, pc: Word, is: Word) -> Self {
         Self::Transfer {
             id,
             to,
@@ -336,9 +313,7 @@ impl Receipt {
     ) -> Self {
         let len = bytes::padded_len(&data) as Word;
 
-        Self::message_out_with_len(
-            message_id, sender, recipient, amount, nonce, len, digest, data,
-        )
+        Self::message_out_with_len(message_id, sender, recipient, amount, nonce, len, digest, data)
     }
 
     pub const fn message_out_with_len(

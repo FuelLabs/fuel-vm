@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings -D clippy::dbg_macro
+
+jobs:
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+
+  cargo-verifications:
+    needs: cancel-previous-runs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - command: fmt
+            args: --all --verbose -- --check
+          - command: clippy
+            args: --all-targets --all-features
+          - command: check
+            args: --all-targets
+          - command: check
+            args: --all-targets --all-features
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
+          - command: check
+            args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde
+          - command: test
+            args: --all-targets --all-features
+          - command: test
+            args: --all-targets --no-default-features
+          - command: test
+            args: --all-targets --no-default-features --features serde
+          - command: test
+            args: --all-targets --no-default-features --features alloc
+          - command: test
+            args: --all-targets --features serde
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
+          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
+          #
+          # Can be replaced by other targets that guarantee bare-minimum no-std
+          target: thumbv6m-none-eabi
+      - uses: Swatinem/rust-cache@v1
+        with:
+          # This action doesn't customize the cache key for each matrix run by default
+          # leading to conflicts and overrides between different feature sets
+          key: "${{ matrix.job.command }} ${{ matrix.job.args }}"
+      - name: ${{ matrix.command }} ${{ matrix.args }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: ${{ matrix.command }}
+          args: ${{ matrix.args }}
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v1
+        if: always() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
+          footer: ''
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+          RUSTFLAGS: -D warnings
+
+  publish:
+    # Only do this job if publishing a release
+    needs:
+      - cargo-verifications
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Verify tag version
+        run: |
+          curl -sSLf "https://github.com/TomWright/dasel/releases/download/v1.24.3/dasel_linux_amd64" -L -o dasel && chmod +x dasel
+          mv ./dasel /usr/local/bin/dasel
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
+
+      - name: Publish crate
+        uses: katyo/publish-crates@v1
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}

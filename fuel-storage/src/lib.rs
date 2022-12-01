@@ -57,11 +57,7 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     ///
     /// If `Key` was already mappped to a value, return the replaced value as `Ok(Some(Value))`. Return
     /// `Ok(None)` otherwise.
-    fn insert(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, Self::Error>;
+    fn insert(&mut self, key: &Type::Key, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error>;
 
     /// Remove `Key->Value` mapping from the storage.
     ///
@@ -131,10 +127,7 @@ pub trait StorageAsRef {
 impl<'a, T> StorageAsRef for T {}
 
 /// The wrapper around the storage that supports methods from `StorageInspect` and `StorageMutate`.
-pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(
-    &'a mut T,
-    core::marker::PhantomData<Type>,
-);
+pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marker::PhantomData<Type>);
 
 /// Helper trait for `StorageMutate` to provide user-friendly API to retrieve storage as mutable
 /// reference.

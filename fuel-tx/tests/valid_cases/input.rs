@@ -73,13 +73,7 @@ fn input_coin_message_signature() {
             let data = generate_bytes(rng);
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
-                tx.add_unsigned_message_input(
-                    sender,
-                    Input::owner(public),
-                    nonce,
-                    amount,
-                    data.clone(),
-                )
+                tx.add_unsigned_message_input(sender, Input::owner(public), nonce, amount, data.clone())
             })
             .expect("Failed to validate transaction");
         }
@@ -96,15 +90,7 @@ fn coin_signed() {
 
     let mut tx = Script::default();
 
-    let input = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let input = Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -198,10 +184,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
-        err
-    );
+    assert_eq!(CheckError::InputContractAssociatedOutputContract { index: 1 }, err);
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .check(
@@ -214,10 +197,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
-        err
-    );
+    assert_eq!(CheckError::InputContractAssociatedOutputContract { index: 1 }, err);
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .check(
@@ -230,10 +210,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
-        err
-    );
+    assert_eq!(CheckError::InputContractAssociatedOutputContract { index: 1 }, err);
 }
 
 #[test]
@@ -300,17 +277,9 @@ fn message() {
 
     let data = vec![0xff; PARAMS.max_message_data_length as usize + 1];
 
-    let err = Input::message_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        data.clone(),
-    )
-    .check(1, &txhash, &[], &[vec![].into()], &Default::default())
-    .expect_err("expected max data length error");
+    let err = Input::message_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, data.clone())
+        .check(1, &txhash, &[], &[vec![].into()], &Default::default())
+        .expect_err("expected max data length error");
 
     assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
 
@@ -369,24 +338,8 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let utxo_id = rng.gen();
 
-    let a = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
-    let b = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
+    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
@@ -404,15 +357,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let message_id = rng.gen();
 
-    let message_input = Input::message_signed(
-        message_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        0,
-        generate_bytes(rng),
-    );
+    let message_input = Input::message_signed(message_id, rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(message_input.clone())

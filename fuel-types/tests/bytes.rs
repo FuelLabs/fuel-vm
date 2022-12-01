@@ -21,17 +21,11 @@ fn store_restore_number_unchecked_works() {
     {
         let mut buffer = [0u8; 255];
 
-        assert_eq!(
-            0,
-            bytes::store_number_unchecked(&mut buffer[..WORD_SIZE], n).len()
-        );
+        assert_eq!(0, bytes::store_number_unchecked(&mut buffer[..WORD_SIZE], n).len());
         assert_eq!(n, unsafe { f(&buffer).0 });
         assert_eq!(0, unsafe { f(&buffer[..WORD_SIZE]).1.len() });
 
-        assert_eq!(
-            x,
-            bytes::store_number_unchecked(&mut buffer[..WORD_SIZE + x], n).len()
-        );
+        assert_eq!(x, bytes::store_number_unchecked(&mut buffer[..WORD_SIZE + x], n).len());
         assert_eq!(n, unsafe { f(&buffer).0 });
         assert_eq!(x, unsafe { f(&buffer[..WORD_SIZE + x]).1.len() });
     }

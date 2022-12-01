@@ -72,9 +72,7 @@ impl io::Read for Receipt {
                 bytes::store_number_unchecked(buf, *is);
             }
 
-            Self::Panic {
-                id, reason, pc, is, ..
-            } => {
+            Self::Panic { id, reason, pc, is, .. } => {
                 let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Panic as Word);
 
                 let buf = bytes::store_array_unchecked(buf, id);
@@ -405,9 +403,7 @@ impl io::Write for Receipt {
                 let nonce = nonce.into();
                 let digest = digest.into();
 
-                *self = Self::message_out_with_len(
-                    message_id, sender, recipient, amount, nonce, len, digest, data,
-                );
+                *self = Self::message_out_with_len(message_id, sender, recipient, amount, nonce, len, digest, data);
             }
         }
 

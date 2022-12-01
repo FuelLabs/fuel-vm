@@ -38,10 +38,7 @@ where
 #[cfg(feature = "std")]
 mod use_std {
     use fuel_crypto::SecretKey;
-    use fuel_tx::{
-        field, Buildable, Contract, Create, Input, Mint, Output, Script, Transaction,
-        TransactionBuilder,
-    };
+    use fuel_tx::{field, Buildable, Contract, Create, Input, Mint, Output, Script, Transaction, TransactionBuilder};
     use fuel_types::bytes::Deserializable;
     use rand::distributions::{Distribution, Uniform};
     use rand::rngs::StdRng;
@@ -290,10 +287,8 @@ mod use_std {
         }
 
         pub fn transaction_with_keys(&mut self) -> (Script, Vec<SecretKey>) {
-            let mut builder = TransactionBuilder::<Script>::script(
-                generate_bytes(&mut self.rng),
-                generate_bytes(&mut self.rng),
-            );
+            let mut builder =
+                TransactionBuilder::<Script>::script(generate_bytes(&mut self.rng), generate_bytes(&mut self.rng));
 
             let keys = self.fill_transaction(&mut builder);
             (builder.finalize(), keys)

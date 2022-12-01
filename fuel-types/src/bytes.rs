@@ -171,10 +171,7 @@ pub unsafe fn restore_usize_unchecked(buf: &[u8]) -> (usize, &[u8]) {
 /// # Panics
 ///
 /// This function will panic if the length of `buf` is smaller than `N`
-pub fn store_array_unchecked<'a, const N: usize>(
-    buf: &'a mut [u8],
-    array: &[u8; N],
-) -> &'a mut [u8] {
+pub fn store_array_unchecked<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> &'a mut [u8] {
     buf[..N].copy_from_slice(array);
 
     &mut buf[N..]
@@ -271,10 +268,7 @@ mod use_std {
 
     /// End of file error representation.
     pub fn eof() -> io::Error {
-        io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "The provided buffer is not big enough!",
-        )
+        io::Error::new(io::ErrorKind::UnexpectedEof, "The provided buffer is not big enough!")
     }
 
     /// Attempt to store into the provided buffer the length of `bytes` as big-endian, and then
@@ -282,10 +276,7 @@ mod use_std {
     ///
     /// If the buffer is big enough to store length+bytes, will return the amount of bytes written
     /// and the remainder of the buffer. Return [`std::io::Error`] otherwise.
-    pub fn store_bytes<'a>(
-        mut buf: &'a mut [u8],
-        bytes: &[u8],
-    ) -> io::Result<(usize, &'a mut [u8])> {
+    pub fn store_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
         let len = (bytes.len() as Word).to_be_bytes();
         let pad = bytes.len() % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
@@ -312,10 +303,7 @@ mod use_std {
     ///
     /// If the buffer is big enough to store the padded bytes, will return the amount of bytes
     /// written and the remainder of the buffer. Return [`std::io::Error`] otherwise.
-    pub fn store_raw_bytes<'a>(
-        mut buf: &'a mut [u8],
-        bytes: &[u8],
-    ) -> io::Result<(usize, &'a mut [u8])> {
+    pub fn store_raw_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
         let pad = bytes.len() % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
         if buf.len() < bytes.len() + pad {
@@ -406,10 +394,7 @@ mod use_std {
     }
 
     /// Store a statically sized array into a buffer, returning the remainder of the buffer.
-    pub fn store_array<'a, const N: usize>(
-        buf: &'a mut [u8],
-        array: &[u8; N],
-    ) -> io::Result<&'a mut [u8]> {
+    pub fn store_array<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> io::Result<&'a mut [u8]> {
         buf.chunks_exact_mut(N)
             .next()
             .map(|chunk| chunk.copy_from_slice(array))

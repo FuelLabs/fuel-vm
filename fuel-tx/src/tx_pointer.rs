@@ -28,10 +28,7 @@ impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;
 
     pub const fn new(block_height: u32, tx_index: u16) -> Self {
-        Self {
-            block_height,
-            tx_index,
-        }
+        Self { block_height, tx_index }
     }
 
     pub const fn block_height(&self) -> u32 {
@@ -96,11 +93,9 @@ impl io::Write for TxPointer {
         let (block_height, buf) = unsafe { bytes::restore_word_unchecked(buf) };
         let (tx_index, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
-        self.block_height =
-            u32::try_from(block_height).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.block_height = u32::try_from(block_height).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.tx_index =
-            u16::try_from(tx_index).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.tx_index = u16::try_from(tx_index).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         Ok(Self::LEN)
     }

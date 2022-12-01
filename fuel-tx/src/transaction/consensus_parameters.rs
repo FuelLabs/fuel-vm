@@ -536,8 +536,7 @@ pub mod default_parameters {
     pub const MAX_SCRIPT_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_script_data_length;
     pub const MAX_STORAGE_SLOTS: u64 = ConsensusParameters::DEFAULT.max_storage_slots;
     pub const MAX_PREDICATE_LENGTH: u64 = ConsensusParameters::DEFAULT.max_predicate_length;
-    pub const MAX_PREDICATE_DATA_LENGTH: u64 =
-        ConsensusParameters::DEFAULT.max_predicate_data_length;
+    pub const MAX_PREDICATE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_predicate_data_length;
     pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
     pub const MAX_MESSAGE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_message_data_length;

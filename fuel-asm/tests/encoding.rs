@@ -201,9 +201,7 @@ fn opcode() {
     let mut buffer = [0u8; Opcode::LEN];
 
     for mut op in data.clone() {
-        let _ = op
-            .read(&mut buffer)
-            .expect("Failed to write opcode to buffer");
+        let _ = op.read(&mut buffer).expect("Failed to write opcode to buffer");
         bytes.extend(&buffer);
 
         let op_p = u32::from(op);
@@ -234,15 +232,13 @@ fn opcode() {
             op_bytes.pop();
 
             let op_r = unsafe { Opcode::from_bytes_unchecked(op_bytes.as_slice()) };
-            let op_s = Opcode::from_bytes(op_bytes.as_slice())
-                .expect("Failed to safely generate op from bytes!");
+            let op_s = Opcode::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
 
             assert_eq!(op, op_r);
             assert_eq!(op, op_s);
 
             let ins_r = unsafe { Instruction::from_slice_unchecked(op_bytes.as_slice()) };
-            let ins_s = Instruction::from_bytes(op_bytes.as_slice())
-                .expect("Failed to safely generate op from bytes!");
+            let ins_s = Instruction::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
 
             assert_eq!(op, Opcode::from(ins_r));
             assert_eq!(op, Opcode::from(ins_s));
@@ -265,16 +261,11 @@ fn opcode() {
     }
 
     let mut op_p = Opcode::Undefined;
-    bytes
-        .chunks(Opcode::LEN)
-        .zip(data.iter())
-        .for_each(|(chunk, op)| {
-            let _ = op_p
-                .write(chunk)
-                .expect("Failed to parse opcode from chunk");
+    bytes.chunks(Opcode::LEN).zip(data.iter()).for_each(|(chunk, op)| {
+        let _ = op_p.write(chunk).expect("Failed to parse opcode from chunk");
 
-            assert_eq!(op, &op_p);
-        });
+        assert_eq!(op, &op_p);
+    });
 }
 
 #[test]
@@ -325,8 +316,7 @@ fn panic_reason_description() {
     #[cfg(feature = "serde")]
     {
         let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-        let pd_s: InstructionResult =
-            bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+        let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
         assert_eq!(pd_s, pd);
     }
@@ -352,8 +342,7 @@ fn panic_reason_description() {
         #[cfg(feature = "serde")]
         {
             let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-            let pd_s: InstructionResult =
-                bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+            let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
             assert_eq!(pd_s, pd);
         }

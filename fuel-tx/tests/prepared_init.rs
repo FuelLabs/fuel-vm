@@ -23,11 +23,7 @@ fn output_message_prepare_init_zeroes_recipient_and_amount() {
         .cloned()
         .expect("failed to fetch output");
 
-    let output_p = tx
-        .outputs()
-        .first()
-        .cloned()
-        .expect("failed to fetch output");
+    let output_p = tx.outputs().first().cloned().expect("failed to fetch output");
 
     assert_ne!(zeroed, message);
     assert_eq!(zeroed, output);
@@ -54,11 +50,7 @@ fn output_variable_prepare_init_zeroes_recipient_and_amount() {
         .cloned()
         .expect("failed to fetch output");
 
-    let output_p = tx
-        .outputs()
-        .first()
-        .cloned()
-        .expect("failed to fetch output");
+    let output_p = tx.outputs().first().cloned().expect("failed to fetch output");
 
     assert_ne!(zeroed, variable);
     assert_eq!(zeroed, output);

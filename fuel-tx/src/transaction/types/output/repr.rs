@@ -20,18 +20,14 @@ pub enum OutputRepr {
 impl OutputRepr {
     pub const fn to_offset(&self) -> Option<usize> {
         match self {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                Some(OUTPUT_CCV_TO_OFFSET)
-            }
+            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => Some(OUTPUT_CCV_TO_OFFSET),
             _ => None,
         }
     }
 
     pub const fn asset_id_offset(&self) -> Option<usize> {
         match self {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                Some(OUTPUT_CCV_ASSET_ID_OFFSET)
-            }
+            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => Some(OUTPUT_CCV_ASSET_ID_OFFSET),
             _ => None,
         }
     }

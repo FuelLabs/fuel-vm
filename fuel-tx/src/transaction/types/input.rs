@@ -104,9 +104,7 @@ impl bytes::SizedBytes for Input {
 
             Self::Contract { .. } => INPUT_CONTRACT_SIZE,
 
-            Self::MessageSigned { data, .. } => {
-                INPUT_MESSAGE_FIXED_SIZE + bytes::padded_len(data.as_slice())
-            }
+            Self::MessageSigned { data, .. } => INPUT_MESSAGE_FIXED_SIZE + bytes::padded_len(data.as_slice()),
 
             Self::MessagePredicate {
                 data,
@@ -236,9 +234,9 @@ impl Input {
 
     pub const fn utxo_id(&self) -> Option<&UtxoId> {
         match self {
-            Self::CoinSigned { utxo_id, .. }
-            | Self::CoinPredicate { utxo_id, .. }
-            | Self::Contract { utxo_id, .. } => Some(utxo_id),
+            Self::CoinSigned { utxo_id, .. } | Self::CoinPredicate { utxo_id, .. } | Self::Contract { utxo_id, .. } => {
+                Some(utxo_id)
+            }
             Self::MessageSigned { .. } => None,
             Self::MessagePredicate { .. } => None,
         }
@@ -247,17 +245,13 @@ impl Input {
     pub const fn input_owner(&self) -> Option<&Address> {
         match self {
             Self::CoinSigned { owner, .. } | Self::CoinPredicate { owner, .. } => Some(owner),
-            Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract { .. } => {
-                None
-            }
+            Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract { .. } => None,
         }
     }
 
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Input::CoinSigned { asset_id, .. } | Input::CoinPredicate { asset_id, .. } => {
-                Some(asset_id)
-            }
+            Input::CoinSigned { asset_id, .. } | Input::CoinPredicate { asset_id, .. } => Some(asset_id),
             Input::MessageSigned { .. } | Input::MessagePredicate { .. } => Some(&AssetId::BASE),
             Input::Contract { .. } => None,
         }
@@ -282,31 +276,26 @@ impl Input {
 
     pub const fn witness_index(&self) -> Option<u8> {
         match self {
-            Input::CoinSigned { witness_index, .. }
-            | Input::MessageSigned { witness_index, .. } => Some(*witness_index),
-            Input::CoinPredicate { .. }
-            | Input::Contract { .. }
-            | Input::MessagePredicate { .. } => None,
+            Input::CoinSigned { witness_index, .. } | Input::MessageSigned { witness_index, .. } => {
+                Some(*witness_index)
+            }
+            Input::CoinPredicate { .. } | Input::Contract { .. } | Input::MessagePredicate { .. } => None,
         }
     }
 
     pub const fn maturity(&self) -> Option<Word> {
         match self {
-            Input::CoinSigned { maturity, .. } | Input::CoinPredicate { maturity, .. } => {
-                Some(*maturity)
-            }
-            Input::Contract { .. }
-            | Input::MessageSigned { .. }
-            | Input::MessagePredicate { .. } => None,
+            Input::CoinSigned { maturity, .. } | Input::CoinPredicate { maturity, .. } => Some(*maturity),
+            Input::Contract { .. } | Input::MessageSigned { .. } | Input::MessagePredicate { .. } => None,
         }
     }
 
     pub fn predicate_offset(&self) -> Option<usize> {
         match self {
             Input::CoinPredicate { .. } => InputRepr::Coin.coin_predicate_offset(),
-            Input::MessagePredicate { data, .. } => InputRepr::Message
-                .data_offset()
-                .map(|o| o + bytes::padded_len(data)),
+            Input::MessagePredicate { data, .. } => {
+                InputRepr::Message.data_offset().map(|o| o + bytes::padded_len(data))
+            }
             Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
         }
     }
@@ -314,8 +303,7 @@ impl Input {
     pub fn predicate_data_offset(&self) -> Option<usize> {
         match self {
             Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
-                self.predicate_offset()
-                    .map(|o| o + bytes::padded_len(predicate))
+                self.predicate_offset().map(|o| o + bytes::padded_len(predicate))
             }
             Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
         }
@@ -323,9 +311,7 @@ impl Input {
 
     pub fn predicate_len(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
-                Some(predicate.len())
-            }
+            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => Some(predicate.len()),
             Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
             Input::Contract { .. } => None,
         }
@@ -333,8 +319,9 @@ impl Input {
 
     pub fn predicate_data_len(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { predicate_data, .. }
-            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data.len()),
+            Input::CoinPredicate { predicate_data, .. } | Input::MessagePredicate { predicate_data, .. } => {
+                Some(predicate_data.len())
+            }
             Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
             Input::Contract { .. } => None,
         }
@@ -342,9 +329,7 @@ impl Input {
 
     pub const fn message_id(&self) -> Option<&MessageId> {
         match self {
-            Self::MessagePredicate { message_id, .. } | Self::MessageSigned { message_id, .. } => {
-                Some(message_id)
-            }
+            Self::MessagePredicate { message_id, .. } | Self::MessageSigned { message_id, .. } => Some(message_id),
             _ => None,
         }
     }
@@ -367,9 +352,7 @@ impl Input {
 
     pub fn input_predicate(&self) -> Option<&[u8]> {
         match self {
-            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
-                Some(predicate)
-            }
+            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => Some(predicate),
 
             _ => None,
         }
@@ -377,8 +360,9 @@ impl Input {
 
     pub fn input_predicate_data(&self) -> Option<&[u8]> {
         match self {
-            Input::CoinPredicate { predicate_data, .. }
-            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data),
+            Input::CoinPredicate { predicate_data, .. } | Input::MessagePredicate { predicate_data, .. } => {
+                Some(predicate_data)
+            }
 
             _ => None,
         }
@@ -455,27 +439,21 @@ impl Input {
 
     pub const fn sender(&self) -> Option<&Address> {
         match self {
-            Input::MessageSigned { sender, .. } | Input::MessagePredicate { sender, .. } => {
-                Some(sender)
-            }
+            Input::MessageSigned { sender, .. } | Input::MessagePredicate { sender, .. } => Some(sender),
             _ => None,
         }
     }
 
     pub const fn recipient(&self) -> Option<&Address> {
         match self {
-            Input::MessageSigned { recipient, .. } | Input::MessagePredicate { recipient, .. } => {
-                Some(recipient)
-            }
+            Input::MessageSigned { recipient, .. } | Input::MessagePredicate { recipient, .. } => Some(recipient),
             _ => None,
         }
     }
 
     pub const fn nonce(&self) -> Option<Word> {
         match self {
-            Input::MessageSigned { nonce, .. } | Input::MessagePredicate { nonce, .. } => {
-                Some(*nonce)
-            }
+            Input::MessageSigned { nonce, .. } | Input::MessagePredicate { nonce, .. } => Some(*nonce),
             _ => None,
         }
     }
@@ -798,9 +776,7 @@ impl io::Write for Input {
                 Ok(INPUT_CONTRACT_SIZE)
             }
 
-            InputRepr::Message if buf.len() < INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE => {
-                Err(bytes::eof())
-            }
+            InputRepr::Message if buf.len() < INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE => Err(bytes::eof()),
 
             InputRepr::Message => {
                 let mut n = INPUT_MESSAGE_FIXED_SIZE;
@@ -831,15 +807,7 @@ impl io::Write for Input {
                 let recipient = recipient.into();
 
                 *self = if predicate.is_empty() {
-                    Self::message_signed(
-                        message_id,
-                        sender,
-                        recipient,
-                        amount,
-                        nonce,
-                        witness_index,
-                        data,
-                    )
+                    Self::message_signed(message_id, sender, recipient, amount, nonce, witness_index, data)
                 } else {
                     Self::message_predicate(
                         message_id,

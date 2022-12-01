@@ -1,6 +1,4 @@
-use crate::{
-    Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRef,
-};
+use crate::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRef};
 use alloc::borrow::Cow;
 
 impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'a T {
@@ -28,11 +26,7 @@ impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> 
 }
 
 impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type> for &'a mut T {
-    fn insert(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, Self::Error> {
+    fn insert(&mut self, key: &Type::Key, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error> {
         <T as StorageMutate<Type>>::insert(self, key, value)
     }
 
@@ -41,9 +35,7 @@ impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type> fo
     }
 }
 
-impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable> MerkleRootStorage<Key, Type>
-    for &'a mut T
-{
+impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable> MerkleRootStorage<Key, Type> for &'a mut T {
     fn root(&mut self, key: &Key) -> Result<MerkleRoot, Self::Error> {
         <T as MerkleRootStorage<Key, Type>>::root(self, key)
     }
@@ -77,11 +69,7 @@ impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageMut<'a, T, Type> {
 
 impl<'a, T: StorageMutate<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
-    pub fn insert(
-        self,
-        key: &Type::Key,
-        value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, T::Error> {
+    pub fn insert(self, key: &Type::Key, value: &Type::SetValue) -> Result<Option<Type::GetValue>, T::Error> {
         self.0.insert(key, value)
     }
 

@@ -1,6 +1,5 @@
 use fuel_tx::field::{
-    Inputs, Outputs, ReceiptsRoot, Salt as SaltField, StorageSlots, TxPointer as TxPointerField,
-    Witnesses,
+    Inputs, Outputs, ReceiptsRoot, Salt as SaltField, StorageSlots, TxPointer as TxPointerField, Witnesses,
 };
 use fuel_tx::*;
 use fuel_tx_test_helpers::TransactionFactory;
@@ -41,9 +40,7 @@ struct TestedFields {
 
 fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
     tx.inputs().iter().enumerate().for_each(|(idx, i)| {
-        let input_ofs = tx
-            .inputs_offset_at(idx)
-            .expect("failed to fetch input offset");
+        let input_ofs = tx.inputs_offset_at(idx).expect("failed to fetch input offset");
         let i_p = Input::from_bytes(&bytes[input_ofs..]).expect("failed to deserialize input");
 
         assert_eq!(i, &i_p);
@@ -52,8 +49,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             cases.utxo_id = true;
 
             let ofs = input_ofs + i.repr().utxo_id_offset().expect("input have utxo_id");
-            let utxo_id_p =
-                UtxoId::from_bytes(&bytes[ofs..]).expect("failed to deserialize utxo id");
+            let utxo_id_p = UtxoId::from_bytes(&bytes[ofs..]).expect("failed to deserialize utxo id");
 
             assert_eq!(utxo_id, &utxo_id_p);
         }
@@ -73,8 +69,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                 cases.asset_id = true;
 
                 let ofs = input_ofs + offset;
-                let asset_id_p =
-                    unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + AssetId::LEN]) };
+                let asset_id_p = unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + AssetId::LEN]) };
 
                 assert_eq!(asset_id, asset_id_p);
             }
@@ -82,8 +77,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
         if let Some(predicate) = i.input_predicate() {
             cases.predicate_coin = cases.predicate_coin || i.is_coin() && !predicate.is_empty();
-            cases.predicate_message =
-                cases.predicate_message || i.is_message() && !predicate.is_empty();
+            cases.predicate_message = cases.predicate_message || i.is_message() && !predicate.is_empty();
 
             let ofs = input_ofs + i.predicate_offset().expect("input contains predicate");
             let predicate_p = &bytes[ofs..ofs + predicate.len()];
@@ -92,14 +86,10 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         }
 
         if let Some(predicate_data) = i.input_predicate_data() {
-            cases.predicate_data_coin =
-                cases.predicate_data_coin || i.is_coin() && !predicate_data.is_empty();
-            cases.predicate_data_message =
-                cases.predicate_data_message || i.is_message() && !predicate_data.is_empty();
+            cases.predicate_data_coin = cases.predicate_data_coin || i.is_coin() && !predicate_data.is_empty();
+            cases.predicate_data_message = cases.predicate_data_message || i.is_message() && !predicate_data.is_empty();
 
-            let ofs = input_ofs
-                + i.predicate_data_offset()
-                    .expect("input contains predicate data");
+            let ofs = input_ofs + i.predicate_data_offset().expect("input contains predicate data");
             let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
 
             assert_eq!(predicate_data, predicate_data_p);
@@ -113,8 +103,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_balance_root_offset()
                     .expect("input contains balance root");
 
-            let balance_root_p =
-                unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let balance_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -127,8 +116,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_state_root_offset()
                     .expect("input contains state root");
 
-            let state_root_p =
-                unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let state_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
 
             assert_eq!(state_root, state_root_p);
         }
@@ -136,13 +124,9 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(contract_id) = i.contract_id() {
             cases.contract_id = true;
 
-            let ofs = input_ofs
-                + i.repr()
-                    .contract_id_offset()
-                    .expect("input contains contract id");
+            let ofs = input_ofs + i.repr().contract_id_offset().expect("input contains contract id");
 
-            let contract_id_p =
-                unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
+            let contract_id_p = unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -150,13 +134,9 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(message_id) = i.message_id() {
             cases.message_id = true;
 
-            let ofs = input_ofs
-                + i.repr()
-                    .message_id_offset()
-                    .expect("input contains message id");
+            let ofs = input_ofs + i.repr().message_id_offset().expect("input contains message id");
 
-            let message_id_p =
-                unsafe { MessageId::as_ref_unchecked(&bytes[ofs..ofs + MessageId::LEN]) };
+            let message_id_p = unsafe { MessageId::as_ref_unchecked(&bytes[ofs..ofs + MessageId::LEN]) };
 
             assert_eq!(message_id, message_id_p);
         }
@@ -164,10 +144,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(sender) = i.sender() {
             cases.sender = true;
 
-            let ofs = input_ofs
-                + i.repr()
-                    .message_sender_offset()
-                    .expect("input contains sender");
+            let ofs = input_ofs + i.repr().message_sender_offset().expect("input contains sender");
 
             let sender_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
 
@@ -177,10 +154,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(recipient) = i.recipient() {
             cases.recipient = true;
 
-            let ofs = input_ofs
-                + i.repr()
-                    .message_recipient_offset()
-                    .expect("input contains recipient");
+            let ofs = input_ofs + i.repr().message_recipient_offset().expect("input contains recipient");
 
             let recipient_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
 
@@ -209,12 +183,9 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
         if i.is_message() {
             if let Some(predicate_data) = i.input_predicate_data() {
-                cases.message_predicate_data =
-                    cases.message_predicate_data || !predicate_data.is_empty();
+                cases.message_predicate_data = cases.message_predicate_data || !predicate_data.is_empty();
 
-                let ofs = input_ofs
-                    + i.predicate_data_offset()
-                        .expect("input contains predicate data");
+                let ofs = input_ofs + i.predicate_data_offset().expect("input contains predicate data");
                 let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
 
                 assert_eq!(predicate_data, predicate_data_p);
@@ -227,9 +198,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
 fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
     tx.outputs().iter().enumerate().for_each(|(idx, o)| {
-        let output_ofs = tx
-            .outputs_offset_at(idx)
-            .expect("failed to fetch output offset");
+        let output_ofs = tx.outputs_offset_at(idx).expect("failed to fetch output offset");
         let o_p = Output::from_bytes(&bytes[output_ofs..]).expect("failed to deserialize output");
 
         assert_eq!(o, &o_p);
@@ -259,8 +228,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
                 + o.repr()
                     .contract_balance_root_offset()
                     .expect("output have balance root");
-            let balance_root_p =
-                unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let balance_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -268,9 +236,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
         if let Some(state_root) = o.state_root() {
             let ofs = if o.is_contract() {
                 cases.output_contract_state_root = true;
-                o.repr()
-                    .contract_state_root_offset()
-                    .expect("output have state root")
+                o.repr().contract_state_root_offset().expect("output have state root")
             } else {
                 cases.output_contract_created_state_root = true;
                 o.repr()
@@ -279,8 +245,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             };
 
             let ofs = output_ofs + ofs;
-            let state_root_p =
-                unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let state_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
 
             assert_eq!(state_root, state_root_p);
         }
@@ -288,12 +253,8 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
         if let Some(contract_id) = o.contract_id() {
             cases.output_contract_created_id = true;
 
-            let ofs = output_ofs
-                + o.repr()
-                    .contract_id_offset()
-                    .expect("output have contract id");
-            let contract_id_p =
-                unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
+            let ofs = output_ofs + o.repr().contract_id_offset().expect("output have contract id");
+            let contract_id_p = unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -330,23 +291,17 @@ fn tx_offset_create() {
 
             assert_eq!(tx.salt(), salt_p);
 
-            tx.storage_slots()
-                .iter()
-                .enumerate()
-                .for_each(|(idx, slot)| {
-                    cases.slots = true;
+            tx.storage_slots().iter().enumerate().for_each(|(idx, slot)| {
+                cases.slots = true;
 
-                    let ofs = tx
-                        .storage_slots_offset_at(idx)
-                        .expect("tx with slots contains offsets");
+                let ofs = tx.storage_slots_offset_at(idx).expect("tx with slots contains offsets");
 
-                    let bytes =
-                        unsafe { Bytes64::as_ref_unchecked(&bytes[ofs..ofs + Bytes64::LEN]) };
+                let bytes = unsafe { Bytes64::as_ref_unchecked(&bytes[ofs..ofs + Bytes64::LEN]) };
 
-                    let slot_p = StorageSlot::from(bytes);
+                let slot_p = StorageSlot::from(bytes);
 
-                    assert_eq!(slot, &slot_p);
-                });
+                assert_eq!(slot, &slot_p);
+            });
 
             common_parts_create_and_script(&tx, &bytes, &mut cases);
         });
@@ -434,8 +389,8 @@ fn tx_offset_mint() {
             let bytes = tx.to_bytes();
 
             let ofs = tx.tx_pointer_offset();
-            let tx_pointer_p = TxPointer::from_bytes(&bytes[ofs..ofs + TxPointer::LEN])
-                .expect("Should decode `TxPointer`");
+            let tx_pointer_p =
+                TxPointer::from_bytes(&bytes[ofs..ofs + TxPointer::LEN]).expect("Should decode `TxPointer`");
 
             assert_eq!(*tx.tx_pointer(), tx_pointer_p);
 
@@ -468,8 +423,7 @@ fn iow_offset() {
                 let offset = tx.inputs_offset_at(x).unwrap();
                 let offset_p = tx_p.inputs_offset_at(x).unwrap();
 
-                let input =
-                    Input::from_bytes(&bytes[offset..]).expect("Failed to deserialize input!");
+                let input = Input::from_bytes(&bytes[offset..]).expect("Failed to deserialize input!");
 
                 assert_eq!(i, &input);
                 assert_eq!(offset, offset_p);
@@ -479,8 +433,7 @@ fn iow_offset() {
                 let offset = tx.outputs_offset_at(x).unwrap();
                 let offset_p = tx_p.outputs_offset_at(x).unwrap();
 
-                let output =
-                    Output::from_bytes(&bytes[offset..]).expect("Failed to deserialize output!");
+                let output = Output::from_bytes(&bytes[offset..]).expect("Failed to deserialize output!");
 
                 assert_eq!(o, &output);
                 assert_eq!(offset, offset_p);
@@ -490,8 +443,7 @@ fn iow_offset() {
                 let offset = tx.witnesses_offset_at(x).unwrap();
                 let offset_p = tx_p.witnesses_offset_at(x).unwrap();
 
-                let witness =
-                    Witness::from_bytes(&bytes[offset..]).expect("Failed to deserialize witness!");
+                let witness = Witness::from_bytes(&bytes[offset..]).expect("Failed to deserialize witness!");
 
                 assert_eq!(w, &witness);
                 assert_eq!(offset, offset_p);

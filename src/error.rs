@@ -1,6 +1,6 @@
 //! Runtime interpreter error implementation
 
-use fuel_asm::{Instruction, InstructionResult, PanicReason};
+use fuel_asm::{Instruction, InstructionResult, PanicReason, RawInstruction};
 use fuel_tx::CheckError;
 use thiserror::Error;
 
@@ -11,6 +11,9 @@ use std::{fmt, io};
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
 pub enum InterpreterError {
+    /// Encountered an invalid instruction while interpreting raw instructions.
+    #[error("Execution error: Encountered an invalid instruction: {0:X}")]
+    InvalidInstruction(RawInstruction),
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
     #[error("Execution error: {0:?}")]
@@ -41,14 +44,6 @@ pub enum InterpreterError {
 }
 
 impl InterpreterError {
-    /// Describe the error as recoverable or halt.
-    pub fn from_runtime(error: RuntimeError, instruction: Instruction) -> Self {
-        match error {
-            RuntimeError::Recoverable(reason) => Self::PanicInstruction(InstructionResult::error(reason, instruction)),
-            RuntimeError::Halt(e) => Self::Io(e),
-        }
-    }
-
     /// Return the specified panic reason that caused this error, if applicable.
     pub const fn panic_reason(&self) -> Option<PanicReason> {
         match self {
@@ -84,15 +79,10 @@ impl InterpreterError {
     }
 }
 
-impl From<InstructionResult> for InterpreterError {
-    fn from(r: InstructionResult) -> InterpreterError {
-        Self::PanicInstruction(r)
-    }
-}
-
 impl From<RuntimeError> for InterpreterError {
     fn from(error: RuntimeError) -> Self {
         match error {
+            RuntimeError::InvalidInstruction(e) => Self::InvalidInstruction(e),
             RuntimeError::Recoverable(e) => Self::Panic(e),
             RuntimeError::Halt(e) => Self::Io(e),
         }
@@ -108,6 +98,7 @@ impl From<InterpreterError> for io::Error {
 impl PartialEq for InterpreterError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::InvalidInstruction(s), Self::InvalidInstruction(o)) => s == o,
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
             (Self::CheckError(s), Self::CheckError(o)) => s == o,
@@ -127,6 +118,9 @@ impl PartialEq for InterpreterError {
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {
+    /// Encountered an invalid instruction.
+    #[error("Invalid Instruction: {0:X}")]
+    InvalidInstruction(fuel_asm::RawInstruction),
     /// Specified error with well-formed fallback strategy.
     #[error(transparent)]
     Recoverable(#[from] PanicReason),

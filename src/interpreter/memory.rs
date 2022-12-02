@@ -444,6 +444,7 @@ where
 mod tests {
     use crate::consts::*;
     use crate::prelude::*;
+    use fuel_asm::op;
     use fuel_tx::Script;
 
     #[test]
@@ -454,7 +455,7 @@ mod tests {
             0,
             params.max_gas_per_tx,
             0,
-            Opcode::RET(0x10).to_bytes().to_vec(),
+            <[u8; 4]>::from(op::ret(0x10)).to_vec(),
             vec![],
             vec![],
             vec![],
@@ -470,45 +471,45 @@ mod tests {
         let alloc = 1024;
 
         // r[0x10] := 1024
-        vm.instruction(Opcode::ADDI(0x10, REG_ZERO, alloc).into()).unwrap();
-        vm.instruction(Opcode::ALOC(0x10).into()).unwrap();
+        vm.instruction(op::addi(0x10, REG_ZERO, alloc).into()).unwrap();
+        vm.instruction(op::aloc(0x10).into()).unwrap();
 
         // r[0x20] := 128
-        vm.instruction(Opcode::ADDI(0x20, 0x20, 128).into()).unwrap();
+        vm.instruction(op::addi(0x20, 0x20, 128).into()).unwrap();
 
         for i in 0..alloc {
-            vm.instruction(Opcode::ADDI(0x21, REG_ZERO, i).into()).unwrap();
-            vm.instruction(Opcode::SB(REG_HP, 0x21, (i + 1) as Immediate12).into())
+            vm.instruction(op::addi(0x21, REG_ZERO, i).into()).unwrap();
+            vm.instruction(op::sb(REG_HP, 0x21, (i + 1) as Immediate12).into())
                 .unwrap();
         }
 
         // r[0x23] := m[$hp, 0x20] == m[0x12, 0x20]
-        vm.instruction(Opcode::MEQ(0x23, REG_HP, 0x12, 0x20).into()).unwrap();
+        vm.instruction(op::meq(0x23, REG_HP, 0x12, 0x20).into()).unwrap();
 
         assert_eq!(0, vm.registers()[0x23]);
 
         // r[0x12] := $hp + r[0x20]
-        vm.instruction(Opcode::ADD(0x12, REG_HP, 0x20).into()).unwrap();
-        vm.instruction(Opcode::ADD(0x12, REG_ONE, 0x12).into()).unwrap();
+        vm.instruction(op::add(0x12, REG_HP, 0x20).into()).unwrap();
+        vm.instruction(op::add(0x12, REG_ONE, 0x12).into()).unwrap();
 
         // Test ownership
-        vm.instruction(Opcode::ADD(0x30, REG_HP, REG_ONE).into()).unwrap();
-        vm.instruction(Opcode::MCP(0x30, 0x12, 0x20).into()).unwrap();
+        vm.instruction(op::add(0x30, REG_HP, REG_ONE).into()).unwrap();
+        vm.instruction(op::mcp(0x30, 0x12, 0x20).into()).unwrap();
 
         // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
-        vm.instruction(Opcode::MEQ(0x23, 0x30, 0x12, 0x20).into()).unwrap();
+        vm.instruction(op::meq(0x23, 0x30, 0x12, 0x20).into()).unwrap();
 
         assert_eq!(1, vm.registers()[0x23]);
 
         // Assert ownership
-        vm.instruction(Opcode::SUBI(0x24, REG_HP, 1).into()).unwrap();
-        let ownership_violated = vm.instruction(Opcode::MCP(0x24, 0x12, 0x20).into());
+        vm.instruction(op::subi(0x24, REG_HP, 1).into()).unwrap();
+        let ownership_violated = vm.instruction(op::mcp(0x24, 0x12, 0x20).into());
 
         assert!(ownership_violated.is_err());
 
         // Assert no panic on overlapping
-        vm.instruction(Opcode::SUBI(0x25, 0x12, 1).into()).unwrap();
-        let overlapping = vm.instruction(Opcode::MCP(REG_HP, 0x25, 0x20).into());
+        vm.instruction(op::subi(0x25, 0x12, 1).into()).unwrap();
+        let overlapping = vm.instruction(op::mcp(REG_HP, 0x25, 0x20).into());
 
         assert!(overlapping.is_err());
     }
@@ -523,9 +524,9 @@ mod tests {
         vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
         let bytes = 1024;
-        vm.instruction(Opcode::ADDI(0x10, REG_ZERO, bytes as Immediate12).into())
+        vm.instruction(op::addi(0x10, REG_ZERO, bytes as Immediate12).into())
             .unwrap();
-        vm.instruction(Opcode::ALOC(0x10).into()).unwrap();
+        vm.instruction(op::aloc(0x10).into()).unwrap();
 
         let m = MemoryRange::new(vm.registers()[REG_HP], bytes);
         assert!(!vm.has_ownership_range(&m));
@@ -549,10 +550,10 @@ mod tests {
 
         vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
-        vm.instruction(Opcode::MOVE(0x10, REG_SP).into()).unwrap();
-        vm.instruction(Opcode::CFEI(2).into()).unwrap();
+        vm.instruction(op::move_(0x10, REG_SP).into()).unwrap();
+        vm.instruction(op::cfei(2).into()).unwrap();
 
         // Assert allocated stack is writable
-        vm.instruction(Opcode::MCLI(0x10, 2).into()).unwrap();
+        vm.instruction(op::mcli(0x10, 2).into()).unwrap();
     }
 }

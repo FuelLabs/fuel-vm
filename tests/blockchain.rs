@@ -7,8 +7,12 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
-use fuel_asm::PanicReason::{
-    ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
+use fuel_asm::{
+    op,
+    PanicReason::{
+        ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack,
+        MemoryOverflow,
+    },
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::check_expected_reason_for_opcodes;
@@ -39,69 +43,69 @@ fn state_read_write() {
     // state[key] with unpacked b
 
     #[rustfmt::skip]
-    let function_selector: Vec<Opcode> = vec![
-        Opcode::MOVE(0x30,  REG_ZERO),
-        Opcode::MOVE(0x31, REG_ONE),
+    let function_selector = vec![
+        op::move_(0x30,  REG_ZERO),
+        op::move_(0x31, REG_ONE),
     ];
 
     #[rustfmt::skip]
-    let call_arguments_parser: Vec<Opcode> = vec![
-        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
-        Opcode::LW(0x10, 0x10, 0),
-        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
-        Opcode::LW(0x11, 0x11, 0),
+    let call_arguments_parser = vec![
+        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        op::lw(0x10, 0x10, 0),
+        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        op::lw(0x11, 0x11, 0),
     ];
 
     #[rustfmt::skip]
-    let routine_add_word_to_state: Vec<Opcode> = vec![
-        Opcode::JNEI(0x10, 0x30, 13),       // (0, b) Add word to state
-        Opcode::LW(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
-        Opcode::SRW(0x21, SET_STATUS_REG, 0x11),            // r[0x21]      := s[m[b, 32], 8]
-        Opcode::ADD(0x20, 0x20, 0x21),      // r[0x20]      += r[0x21]
-        Opcode::SWW(0x11, SET_STATUS_REG, 0x20),            // s[m[b,32]]   := r[0x20]
-        Opcode::LOG(0x20, 0x21, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+    let routine_add_word_to_state = vec![
+        op::jnei(0x10, 0x30, 13),       // (0, b) Add word to state
+        op::lw(0x20, 0x11, 4),          // r[0x20]      := m[b+32, 8]
+        op::srw(0x21, SET_STATUS_REG, 0x11),            // r[0x21]      := s[m[b, 32], 8]
+        op::add(0x20, 0x20, 0x21),      // r[0x20]      += r[0x21]
+        op::sww(0x11, SET_STATUS_REG, 0x20),            // s[m[b,32]]   := r[0x20]
+        op::log(0x20, 0x21, 0x00, 0x00),
+        op::ret(REG_ONE),
     ];
 
     #[rustfmt::skip]
-    let routine_unpack_and_xor_limbs_into_state: Vec<Opcode> = vec![
-        Opcode::JNEI(0x10, 0x31, 45),       // (1, b) Unpack arg into 4x16 and xor into state
-        Opcode::MOVI(0x20, 32),   // r[0x20]      := 32
-        Opcode::ALOC(0x20),                 // aloc            0x20
-        Opcode::ADDI(0x20, REG_HP, 1),      // r[0x20]      := $hp+1
-        Opcode::SRWQ(0x20, SET_STATUS_REG, 0x11, REG_ONE),           // m[0x20,32]   := s[m[b, 32], 32]
-        Opcode::LW(0x21, 0x11, 4),          // r[0x21]      := m[b+32, 8]
-        Opcode::LOG(0x21, 0x00, 0x00, 0x00),
-        Opcode::SRLI(0x22, 0x21, 48),       // r[0x22]      := r[0x21] >> 48
-        Opcode::SRLI(0x23, 0x21, 32),       // r[0x23]      := r[0x21] >> 32
-        Opcode::ANDI(0x23, 0x23, 0xff),     // r[0x23]      &= 0xffff
-        Opcode::SRLI(0x24, 0x21, 16),       // r[0x24]      := r[0x21] >> 16
-        Opcode::ANDI(0x24, 0x24, 0xff),     // r[0x24]      &= 0xffff
-        Opcode::ANDI(0x25, 0x21, 0xff),     // r[0x25]      := r[0x21] & 0xffff
-        Opcode::LOG(0x22, 0x23, 0x24, 0x25),
-        Opcode::LW(0x26, 0x20, 0),          // r[0x26]      := m[$fp, 8]
-        Opcode::XOR(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
-        Opcode::LOG(0x26, 0x00, 0x00, 0x00),
-        Opcode::SW(0x20, 0x26, 0),          // m[0x20,8]    := r[0x26]
-        Opcode::LW(0x26, 0x20, 1),          // r[0x26]      := m[$fp+8, 8]
-        Opcode::XOR(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
-        Opcode::LOG(0x26, 0x00, 0x00, 0x00),
-        Opcode::SW(0x20, 0x26, 1),          // m[0x20+8,8]  := r[0x26]
-        Opcode::LW(0x26, 0x20, 2),          // r[0x26]      := m[$fp+16, 8]
-        Opcode::XOR(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
-        Opcode::LOG(0x26, 0x00, 0x00, 0x00),
-        Opcode::SW(0x20, 0x26, 2),          // m[0x20+16,8] := r[0x26]
-        Opcode::LW(0x26, 0x20, 3),          // r[0x26]      := m[$fp+24, 8]
-        Opcode::XOR(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
-        Opcode::LOG(0x26, 0x00, 0x00, 0x00),
-        Opcode::SW(0x20, 0x26, 3),          // m[0x20+24,8] := r[0x26]
-        Opcode::SWWQ(0x11, SET_STATUS_REG, 0x20, REG_ONE),           // s[m[b,32],32]:= m[0x20, 32]
-        Opcode::RET(REG_ONE),
+    let routine_unpack_and_xor_limbs_into_state = vec![
+        op::jnei(0x10, 0x31, 45),       // (1, b) Unpack arg into 4x16 and xor into state
+        op::movi(0x20, 32),   // r[0x20]      := 32
+        op::aloc(0x20),                 // aloc            0x20
+        op::addi(0x20, REG_HP, 1),      // r[0x20]      := $hp+1
+        op::srwq(0x20, SET_STATUS_REG, 0x11, REG_ONE),           // m[0x20,32]   := s[m[b, 32], 32]
+        op::lw(0x21, 0x11, 4),          // r[0x21]      := m[b+32, 8]
+        op::log(0x21, 0x00, 0x00, 0x00),
+        op::srli(0x22, 0x21, 48),       // r[0x22]      := r[0x21] >> 48
+        op::srli(0x23, 0x21, 32),       // r[0x23]      := r[0x21] >> 32
+        op::andi(0x23, 0x23, 0xff),     // r[0x23]      &= 0xffff
+        op::srli(0x24, 0x21, 16),       // r[0x24]      := r[0x21] >> 16
+        op::andi(0x24, 0x24, 0xff),     // r[0x24]      &= 0xffff
+        op::andi(0x25, 0x21, 0xff),     // r[0x25]      := r[0x21] & 0xffff
+        op::log(0x22, 0x23, 0x24, 0x25),
+        op::lw(0x26, 0x20, 0),          // r[0x26]      := m[$fp, 8]
+        op::xor(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
+        op::log(0x26, 0x00, 0x00, 0x00),
+        op::sw(0x20, 0x26, 0),          // m[0x20,8]    := r[0x26]
+        op::lw(0x26, 0x20, 1),          // r[0x26]      := m[$fp+8, 8]
+        op::xor(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
+        op::log(0x26, 0x00, 0x00, 0x00),
+        op::sw(0x20, 0x26, 1),          // m[0x20+8,8]  := r[0x26]
+        op::lw(0x26, 0x20, 2),          // r[0x26]      := m[$fp+16, 8]
+        op::xor(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
+        op::log(0x26, 0x00, 0x00, 0x00),
+        op::sw(0x20, 0x26, 2),          // m[0x20+16,8] := r[0x26]
+        op::lw(0x26, 0x20, 3),          // r[0x26]      := m[$fp+24, 8]
+        op::xor(0x26, 0x26, 0x22),      // r[0x26]      ^= r[0x22]
+        op::log(0x26, 0x00, 0x00, 0x00),
+        op::sw(0x20, 0x26, 3),          // m[0x20+24,8] := r[0x26]
+        op::swwq(0x11, SET_STATUS_REG, 0x20, REG_ONE),           // s[m[b,32],32]:= m[0x20, 32]
+        op::ret(REG_ONE),
     ];
 
     #[rustfmt::skip]
-    let invalid_call: Vec<Opcode> = vec![
-        Opcode::RET(REG_ZERO),
+    let invalid_call = vec![
+        op::ret(REG_ZERO),
     ];
 
     let program: Witness = function_selector
@@ -151,9 +155,9 @@ fn state_read_write() {
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
-        Opcode::MOVI(0x10, script_data_offset),
-        Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-        Opcode::RET(REG_ONE),
+        op::movi(0x10, script_data_offset),
+        op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+        op::ret(REG_ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -296,10 +300,10 @@ fn load_external_contract_code() {
     let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
-    let contract_code: Vec<Opcode> = vec![
-        Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
-        Opcode::RET(REG_ONE),
-        Opcode::RET(REG_ZERO), // Pad to make length uneven to test padding
+    let contract_code = vec![
+        op::log(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
+        op::ret(REG_ONE),
+        op::ret(REG_ZERO), // Pad to make length uneven to test padding
     ];
 
     let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
@@ -335,10 +339,10 @@ fn load_external_contract_code() {
 
     let count = ContractId::LEN as Immediate12;
 
-    let mut load_contract: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
-        Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
-        Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+    let mut load_contract = vec![
+        op::xor(reg_a, reg_a, reg_a), // r[a] := 0
+        op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+        op::aloc(reg_a),              // Reserve space for contract id in the heap
     ];
 
     // Generate code for pushing contract id to heap
@@ -346,31 +350,31 @@ fn load_external_contract_code() {
         let index = i as Immediate12;
         let value = *byte as Immediate12;
         load_contract.extend([
-            Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
-            Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
-            Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+            op::xor(reg_a, reg_a, reg_a),     // r[a] := 0
+            op::ori(reg_a, reg_a, value),     // r[a] := r[a] | value
+            op::sb(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
         ]);
     }
 
-    load_contract.extend(vec![
-        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
-        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
-        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
-        Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ADDI(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
-        Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
-        Opcode::NOOP,                                   // Patched to the jump later
+    load_contract.extend([
+        op::move_(reg_a, REG_HP),                   // r[a] := $hp
+        op::addi(reg_a, reg_a, 1),                  // r[a] += 1
+        op::xor(reg_b, reg_b, reg_b),               // r[b] := 0
+        op::ori(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, REG_ZERO, reg_b),            // Load first two words from the contract
+        op::move_(reg_a, REG_SSP),                  // r[b] := $ssp
+        op::subi(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        op::xor(reg_b, reg_b, reg_b),               // r[b] := 0
+        op::addi(reg_b, reg_b, 16),                 // r[b] += 16 (length of the loaded code)
+        op::logd(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        op::noop(),                                 // Patched to the jump later
     ]);
 
     let tx_deploy_loader = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
-        load_contract.clone().into_iter().collect(),
+        load_contract.iter().copied().collect(),
         vec![],
         vec![input0.clone()],
         vec![output1],
@@ -381,7 +385,7 @@ fn load_external_contract_code() {
 
     // Patch the code with correct jump address
     let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
-    *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+    *load_contract.last_mut().unwrap() = op::JI((transaction_end_addr / 4) as Immediate24);
 
     let tx_deploy_loader = Transaction::script(
         gas_price,
@@ -426,10 +430,10 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
     let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
-    let contract_code: Vec<Opcode> = vec![
-        Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
-        Opcode::RET(REG_ONE),
-        Opcode::RET(REG_ZERO), // Pad to make length uneven to test padding
+    let contract_code = vec![
+        op::log(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
+        op::ret(REG_ONE),
+        op::ret(REG_ZERO), // Pad to make length uneven to test padding
     ];
 
     let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
@@ -484,9 +488,9 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
         let count = ContractId::LEN as Immediate12;
 
         load_contract = vec![
-            Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
-            Opcode::ORI(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
-            Opcode::ALOC(reg_a),              // Reserve space for contract id in the heap
+            op::xor(reg_a, reg_a, reg_a), // r[a] := 0
+            op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+            op::aloc(reg_a),              // Reserve space for contract id in the heap
         ];
 
         // Generate code for pushing contract id to heap
@@ -494,9 +498,9 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
             let index = i as Immediate12;
             let value = *byte as Immediate12;
             load_contract.extend([
-                Opcode::XOR(reg_a, reg_a, reg_a),     // r[a] := 0
-                Opcode::ORI(reg_a, reg_a, value),     // r[a] := r[a] | value
-                Opcode::SB(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+                op::xor(reg_a, reg_a, reg_a),     // r[a] := 0
+                op::ori(reg_a, reg_a, value),     // r[a] := r[a] | value
+                op::sb(REG_HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
             ]);
         }
 
@@ -517,7 +521,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
 
         // Patch the code with correct jump address
         let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
-        *load_contract.last_mut().unwrap() = Opcode::JI((transaction_end_addr / 4) as Immediate24);
+        *load_contract.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
 
         tx_deploy_loader = Transaction::script(
             gas_price,
@@ -560,9 +564,9 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
 #[test]
 fn ldc_ssp_not_sp() {
     //test ssp != sp for LDC
-    let load_contract: Vec<Opcode> = vec![
-        Opcode::CFEI(0x1),                         // sp += 1
-        Opcode::LDC(REG_ZERO, REG_ZERO, REG_ZERO), // Load first two words from the contract
+    let load_contract = vec![
+        op::cfei(0x1),                         // sp += 1
+        op::ldc(REG_ZERO, REG_ZERO, REG_ZERO), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
@@ -574,9 +578,9 @@ fn ldc_mem_offset_above_reg_hp() {
     let reg_a = 0x20;
 
     //test memory offset above reg_hp value
-    let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_a, REG_HP),            // r[a] := $hp
-        Opcode::LDC(REG_ZERO, REG_ZERO, reg_a), // Load first two words from the contract
+    let load_contract = vec![
+        op::move_(reg_a, REG_HP),           // r[a] := $hp
+        op::ldc(REG_ZERO, REG_ZERO, reg_a), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, false);
@@ -589,11 +593,11 @@ fn ldc_contract_id_end_beyond_max_ram() {
     let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
-    let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_a, REG_HP),         // r[a] := $hp
-        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
+    let load_contract = vec![
+        op::move_(reg_a, REG_HP),        // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b),    // r[b] := 0
+        op::ori(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, false);
@@ -606,12 +610,12 @@ fn ldc_contract_not_in_inputs() {
     let reg_b = 0x21;
 
     //contract not in inputs
-    let load_contract: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),    // r[b] := 0
-        Opcode::ADDI(reg_a, reg_a, 1),       // r[a] += 1
-        Opcode::XOR(reg_b, reg_b, reg_b),    // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
+    let load_contract = vec![
+        op::xor(reg_a, reg_a, reg_a),    // r[b] := 0
+        op::addi(reg_a, reg_a, 1),       // r[a] += 1
+        op::xor(reg_b, reg_b, reg_b),    // r[b] := 0
+        op::ori(reg_b, reg_b, 12),       // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, REG_ZERO, reg_b), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, ContractNotInInputs, false);
@@ -623,18 +627,18 @@ fn ldc_contract_offset_over_length() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
-    let load_contract: Vec<Opcode> = vec![
-        Opcode::MOVE(reg_a, REG_HP),                    // r[a] := $hp
-        Opcode::ADDI(reg_a, reg_a, 1),                  // r[a] += 1
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
-        Opcode::LDC(reg_a, reg_a, reg_b),               // Load first two words from the contract
-        Opcode::MOVE(reg_a, REG_SSP),                   // r[b] := $ssp
-        Opcode::SUBI(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
-        Opcode::XOR(reg_b, reg_b, reg_b),               // r[b] := 0
-        Opcode::ORI(reg_b, reg_b, 16),                  // r[b] += 16 (length of the loaded code)
-        Opcode::LOGD(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
-        Opcode::NOOP,                                   // Patched to the jump later
+    let load_contract = vec![
+        op::move_(reg_a, REG_HP),                   // r[a] := $hp
+        op::addi(reg_a, reg_a, 1),                  // r[a] += 1
+        op::xor(reg_b, reg_b, reg_b),               // r[b] := 0
+        op::ori(reg_b, reg_b, 12),                  // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, reg_a, reg_b),               // Load first two words from the contract
+        op::move_(reg_a, REG_SSP),                  // r[b] := $ssp
+        op::subi(reg_a, reg_a, 8 * 2),              // r[a] -= 16 (start of the loaded code)
+        op::xor(reg_b, reg_b, reg_b),               // r[b] := 0
+        op::ori(reg_b, reg_b, 16),                  // r[b] += 16 (length of the loaded code)
+        op::logd(REG_ZERO, REG_ZERO, reg_a, reg_b), // Log digest of the loaded code
+        op::noop(),                                 // Patched to the jump later
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, true);
@@ -646,12 +650,12 @@ fn code_copy_a_gt_vmmax_sub_d() {
     let reg_a = 0x20;
 
     //test memory offset above reg_hp value
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::ADDI(reg_a, reg_a, 1),
-        Opcode::CCP(reg_a, REG_ZERO, REG_ZERO, REG_ZERO),
+    let code_copy = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::addi(reg_a, reg_a, 1),
+        op::ccp(reg_a, REG_ZERO, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -661,10 +665,10 @@ fn code_copy_a_gt_vmmax_sub_d() {
 fn code_copy_b_plus_32_overflow() {
     let reg_a = 0x20;
     //test overflow add
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    let code_copy = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::ccp(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, ArithmeticOverflow);
@@ -674,12 +678,12 @@ fn code_copy_b_plus_32_overflow() {
 fn code_copy_b_gt_vm_max_ram() {
     let reg_a = 0x20;
     //test overflow add
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::CCP(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    let code_copy = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31),
+        op::ccp(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -689,12 +693,12 @@ fn code_copy_b_gt_vm_max_ram() {
 fn code_copy_c_gt_vm_max_ram() {
     let reg_a = 0x20;
     //test overflow add
-    let code_copy: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::ADDI(reg_a, reg_a, 1),
-        Opcode::CCP(REG_ZERO, REG_ZERO, reg_a, REG_ZERO),
+    let code_copy = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::addi(reg_a, reg_a, 1),
+        op::ccp(REG_ZERO, REG_ZERO, reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_copy, MemoryOverflow);
@@ -706,10 +710,10 @@ fn code_root_a_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CROO(reg_a, REG_ZERO),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::croo(reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
@@ -721,10 +725,10 @@ fn code_root_b_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CROO(REG_ZERO, reg_a),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::croo(REG_ZERO, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
@@ -736,12 +740,12 @@ fn code_root_a_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::CROO(reg_a, REG_ZERO),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::croo(reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -753,12 +757,12 @@ fn code_root_b_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::CROO(REG_ZERO, reg_a),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::croo(REG_ZERO, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -770,10 +774,10 @@ fn code_size_b_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::CSIZ(reg_a, reg_a),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::csiz(reg_a, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, ArithmeticOverflow);
@@ -785,12 +789,12 @@ fn code_size_b_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::CSIZ(reg_a, reg_a),
+    let code_root = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::csiz(reg_a, reg_a),
     ];
 
     check_expected_reason_for_opcodes(code_root, MemoryOverflow);
@@ -799,11 +803,11 @@ fn code_size_b_over_max_ram() {
 #[test]
 fn sww_sets_status() {
     #[rustfmt::skip]
-        let program: Vec<Opcode> = vec![
-        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
-        Opcode::SRW(0x31, SET_STATUS_REG + 1, REG_ZERO),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+        let program = vec![
+        op::sww(0x30,  SET_STATUS_REG, REG_ZERO),
+        op::srw(0x31, SET_STATUS_REG + 1, REG_ZERO),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
+        op::ret(REG_ONE),
     ];
 
     check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
@@ -812,12 +816,12 @@ fn sww_sets_status() {
 #[test]
 fn scwq_clears_status() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
-        Opcode::SCWQ(0x30, SET_STATUS_REG + 1, REG_ONE),
-        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::sww(0x30,  SET_STATUS_REG, REG_ZERO),
+        op::scwq(0x30, SET_STATUS_REG + 1, REG_ONE),
+        op::srw(0x30, SET_STATUS_REG + 2, REG_ZERO),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        op::ret(REG_ONE),
     ];
 
     check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
@@ -826,16 +830,16 @@ fn scwq_clears_status() {
 #[test]
 fn srw_reads_status() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::SWW(0x30,  SET_STATUS_REG, REG_ZERO),
-        Opcode::SRW(0x30, SET_STATUS_REG + 1, REG_ZERO),
-        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
-        Opcode::SRW(0x30, SET_STATUS_REG + 3, REG_ONE),
-        Opcode::LOG(SET_STATUS_REG, 
-                    SET_STATUS_REG + 1, 
-                    SET_STATUS_REG + 2, 
+    let program = vec![
+        op::sww(0x30,  SET_STATUS_REG, REG_ZERO),
+        op::srw(0x30, SET_STATUS_REG + 1, REG_ZERO),
+        op::srw(0x30, SET_STATUS_REG + 2, REG_ZERO),
+        op::srw(0x30, SET_STATUS_REG + 3, REG_ONE),
+        op::log(SET_STATUS_REG,
+                    SET_STATUS_REG + 1,
+                    SET_STATUS_REG + 2,
                     SET_STATUS_REG + 3),
-        Opcode::RET(REG_ONE),
+        op::ret(REG_ONE),
     ];
 
     check_receipts_for_program_call(program, vec![0, 1, 1, 0]);
@@ -844,14 +848,14 @@ fn srw_reads_status() {
 #[test]
 fn srwq_reads_status() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::SWW(0x31,  SET_STATUS_REG, REG_ZERO),
-        Opcode::SRWQ(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
-        Opcode::SRW(0x31, SET_STATUS_REG + 2, 0x31),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::aloc(0x10),
+        op::addi(0x31, REG_HP, 0x5),
+        op::sww(0x31,  SET_STATUS_REG, REG_ZERO),
+        op::srwq(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
+        op::srw(0x31, SET_STATUS_REG + 2, 0x31),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        op::ret(REG_ONE),
     ];
 
     check_receipts_for_program_call(program, vec![0, 1, 1, 0]);
@@ -860,14 +864,14 @@ fn srwq_reads_status() {
 #[test]
 fn swwq_sets_status() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::SRW(0x31, SET_STATUS_REG, 0x31),
-        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
-        Opcode::SRW(0x31, SET_STATUS_REG + 2, 0x31),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::aloc(0x10),
+        op::addi(0x31, REG_HP, 0x5),
+        op::srw(0x31, SET_STATUS_REG, 0x31),
+        op::swwq(0x31, SET_STATUS_REG + 1, 0x31, REG_ONE),
+        op::srw(0x31, SET_STATUS_REG + 2, 0x31),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        op::ret(REG_ONE),
     ];
 
     check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
@@ -926,9 +930,9 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
     let script_data_offset = script_data_offset as Immediate18;
 
     let script = vec![
-        Opcode::MOVI(0x10, script_data_offset),
-        Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-        Opcode::RET(REG_ONE),
+        op::movi(0x10, script_data_offset),
+        op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+        op::ret(REG_ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -994,12 +998,12 @@ fn scwq_wrong_size() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        // Opcode::NOT(reg_a, reg_a),
-        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SCWQ(reg_a, SET_STATUS_REG, REG_ZERO),
+    let state_read_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        // op::not(reg_a, reg_a),
+        // op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::addi(reg_a, reg_a, 31 as Immediate12),
+        op::scwq(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
@@ -1011,10 +1015,10 @@ fn srwq_wrong_size() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
+    let state_read_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::addi(reg_a, reg_a, 31 as Immediate12),
+        op::srwq(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
@@ -1026,10 +1030,10 @@ fn swwq_wrong_size() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
+    let state_read_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::addi(reg_a, reg_a, 31 as Immediate12),
+        op::swwq(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
@@ -1041,11 +1045,11 @@ fn state_r_word_b_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
+    let state_read_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, ArithmeticOverflow);
@@ -1057,12 +1061,12 @@ fn state_r_word_b_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRW(reg_a, SET_STATUS_REG, reg_a),
+    let state_read_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
 
     check_expected_reason_for_opcodes(state_read_word, MemoryOverflow);
@@ -1074,11 +1078,11 @@ fn state_r_qword_a_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
+    let state_read_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srwq(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
@@ -1090,11 +1094,11 @@ fn state_r_qword_b_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ONE),
+    let state_read_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srwq(reg_a, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
@@ -1106,12 +1110,12 @@ fn state_r_qword_a_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
+    let state_read_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srwq(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
@@ -1123,12 +1127,12 @@ fn state_r_qword_b_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_read_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
+    let state_read_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::srwq(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
@@ -1140,11 +1144,11 @@ fn state_w_word_a_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWW(reg_a, SET_STATUS_REG, REG_ZERO),
+    let state_write_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::sww(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_write_word, ArithmeticOverflow);
@@ -1156,12 +1160,12 @@ fn state_w_word_a_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWW(reg_a, SET_STATUS_REG, REG_ZERO),
+    let state_write_word = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::sww(reg_a, SET_STATUS_REG, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(state_write_word, MemoryOverflow);
@@ -1173,11 +1177,11 @@ fn state_w_qword_a_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
+    let state_write_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::swwq(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
@@ -1189,11 +1193,11 @@ fn state_w_qword_b_plus_32_over() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
+    let state_write_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31 as Immediate12),
+        op::swwq(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, ArithmeticOverflow);
@@ -1205,12 +1209,12 @@ fn state_w_qword_a_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::SWWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
+    let state_write_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31),
+        op::swwq(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
@@ -1222,12 +1226,12 @@ fn state_w_qword_b_over_max_ram() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let state_write_qword: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::SWWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
+    let state_write_qword = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::subi(reg_a, reg_a, 31),
+        op::swwq(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_write_qword, MemoryOverflow);
@@ -1239,12 +1243,12 @@ fn message_output_b_gt_msg_len() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let message_output: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a), // r[a] = 0
-        Opcode::ORI(reg_a, reg_a, 1),     // r[a] = 1
-        Opcode::SLLI(reg_a, reg_a, 20),   // r[a] = 2^20
-        Opcode::ADDI(reg_a, reg_a, 1),    //r[a] = 2^20 + 1
-        Opcode::SMO(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
+    let message_output = vec![
+        op::xor(reg_a, reg_a, reg_a), // r[a] = 0
+        op::ori(reg_a, reg_a, 1),     // r[a] = 1
+        op::slli(reg_a, reg_a, 20),   // r[a] = 2^20
+        op::addi(reg_a, reg_a, 1),    //r[a] = 2^20 + 1
+        op::smo(REG_ZERO, reg_a, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(message_output, MemoryOverflow);
@@ -1257,12 +1261,12 @@ fn message_output_a_b_over() {
     let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
-    let message_output: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a), //r[a] = 0
-        Opcode::XOR(reg_b, reg_b, reg_b), //r[b] = 0
-        Opcode::NOT(reg_a, reg_a),        //r[a] = MAX
-        Opcode::ADDI(reg_b, reg_b, 1),    //r[b] = 1
-        Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
+    let message_output = vec![
+        op::xor(reg_a, reg_a, reg_a), //r[a] = 0
+        op::xor(reg_b, reg_b, reg_b), //r[b] = 0
+        op::not(reg_a, reg_a),        //r[a] = MAX
+        op::addi(reg_b, reg_b, 1),    //r[b] = 1
+        op::smo(reg_a, reg_b, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(message_output, ArithmeticOverflow);
@@ -1275,13 +1279,13 @@ fn message_output_a_b_gt_max_mem() {
     let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
-    let message_output: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::ORI(reg_a, reg_a, 1),
-        Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
-        Opcode::ADDI(reg_b, reg_b, 1),
-        Opcode::SMO(reg_a, reg_b, REG_ZERO, REG_ZERO),
+    let message_output = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::ori(reg_a, reg_a, 1),
+        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::addi(reg_b, reg_b, 1),
+        op::smo(reg_a, reg_b, REG_ZERO, REG_ZERO),
     ];
 
     check_expected_reason_for_opcodes(message_output, MemoryOverflow);
@@ -1310,12 +1314,12 @@ fn smo_instruction_works() {
 
         #[rustfmt::skip]
         let script = vec![
-            Opcode::MOVI(0x10, 0),                          // set the txid as recipient
-            Opcode::MOVI(0x11, data.len() as Immediate24),  // send the whole data buffer
-            Opcode::MOVI(0x12, 0),                          // tx output idx
-            Opcode::MOVI(0x13, amount as Immediate24),      // expected output amount
-            Opcode::SMO(0x10,0x11,0x12,0x13),
-            Opcode::RET(REG_ONE)
+            op::movi(0x10, 0),                          // set the txid as recipient
+            op::movi(0x11, data.len() as Immediate24),  // send the whole data buffer
+            op::movi(0x12, 0),                          // tx output idx
+            op::movi(0x13, amount as Immediate24),      // expected output amount
+            op::smo(0x10,0x11,0x12,0x13),
+            op::ret(REG_ONE)
         ];
 
         let script = script.into_iter().collect();
@@ -1400,10 +1404,10 @@ fn timestamp_works() {
 
         #[rustfmt::skip]
         let script = vec![
-            Opcode::MOVI(0x11, input),              // set the argument
-            Opcode::TIME(0x10, 0x11),               // perform the instruction
-            Opcode::LOG(0x10, 0x00, 0x00, 0x00),    // log output
-            Opcode::RET(REG_ONE)
+            op::movi(0x11, input),              // set the argument
+            op::time(0x10, 0x11),               // perform the instruction
+            op::log(0x10, 0x00, 0x00, 0x00),    // log output
+            op::ret(REG_ONE)
         ];
 
         let script = script.into_iter().collect();

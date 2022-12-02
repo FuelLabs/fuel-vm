@@ -10,6 +10,10 @@ license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
 description = "FuelVM interpreter."
 
+[patch.crates-io]
+fuel-asm = { path = "../fuel-asm" }
+fuel-tx = { path = "../fuel-tx" }
+
 [dependencies]
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
@@ -18,7 +22,7 @@ fuel-asm = "0.10"
 fuel-crypto = "0.6"
 fuel-merkle = "0.4"
 fuel-storage = "0.3"
-fuel-tx = "0.23"
+fuel-tx = "0.23.1"
 fuel-types = "0.5"
 itertools = "0.10"
 serde = { version = "1.0", features = ["derive"], optional = true }

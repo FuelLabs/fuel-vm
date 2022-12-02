@@ -38,7 +38,7 @@ pub use fuel_types;
 pub mod prelude {
     //! Required implementations for full functionality
     #[doc(no_inline)]
-    pub use fuel_asm::{GMArgs, GTFArgs, Instruction, InstructionResult, Opcode, OpcodeRepr, PanicReason};
+    pub use fuel_asm::{GMArgs, GTFArgs, Instruction, Opcode, PanicReason};
     #[doc(no_inline)]
     pub use fuel_crypto::{Hasher, Message, PublicKey, SecretKey, Signature};
     #[doc(no_inline)]

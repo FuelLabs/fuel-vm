@@ -10,11 +10,8 @@ cargo-fuzz = true
 
 [dependencies]
 arbitrary = { version = "1.0", features = ["derive"] }
+fuel-vm = { path = "..", features = ["arbitrary"] }
 libfuzzer-sys = "0.4"
-
-[dependencies.fuel-vm]
-path = ".."
-features = ["arbitrary"]
 
 # Prevent this from interfering with workspaces
 [workspace]

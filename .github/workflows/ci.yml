@@ -16,7 +16,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  cargo-verifications:
+  cargo:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -101,7 +101,7 @@ jobs:
 
   verifications-complete:
     needs:
-      - cargo-verifications
+      - cargo
       - cargo-toml-fmt-check
       - cargo-unused-deps-check
     runs-on: ubuntu-latest

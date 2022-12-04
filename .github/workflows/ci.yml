@@ -30,7 +30,8 @@ jobs:
           command: build
           args: --verbose
 
-  # TODO: Currently only builds fuel-asm, but we probably want all crates to support no-std.
+  # TODO: Currently only builds fuel-asm, fuel-storage, but we probably want
+  # all crates to support no-std.
   cargo-build-no-std:
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +47,11 @@ jobs:
         with:
           command: build
           args: --verbose -p fuel-asm --target thumbv6m-none-eabi --no-default-features
+      - name: Build fuel-storage
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose -p fuel-storage --target thumbv6m-none-eabi --no-default-features
 
   cargo-clippy:
     runs-on: ubuntu-latest

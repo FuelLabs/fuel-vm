@@ -20,7 +20,7 @@ where
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());
 
-    data.into()
+    data
 }
 
 pub fn generate_bytes<R>(rng: &mut R) -> Vec<u8>
@@ -32,7 +32,7 @@ where
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());
 
-    data.into()
+    data
 }
 
 #[cfg(feature = "std")]

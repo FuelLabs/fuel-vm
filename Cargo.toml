@@ -4,6 +4,7 @@ members = [
     "fuel-storage",
     "fuel-types",
     "fuel-tx",
+    "fuel-tx/test-helpers",
     "fuel-types",
     "fuel-vm",
 ]

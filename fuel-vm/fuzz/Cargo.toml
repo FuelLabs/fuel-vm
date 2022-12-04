@@ -13,7 +13,7 @@ arbitrary = { version = "1.0", features = ["derive"] }
 fuel-vm = { path = "..", features = ["arbitrary"] }
 libfuzzer-sys = "0.4"
 
-# Prevent this from interfering with workspaces
+# Prevent this from interfering with workspaces as this crate requires unstable features.
 [workspace]
 members = ["."]
 

@@ -32,7 +32,6 @@ tracing = "0.1"
 [dev-dependencies]
 fuel-tx = { version = "0.23", path = "../fuel-tx", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
-glob = "0.3"
 num-integer = "0.1.45"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"

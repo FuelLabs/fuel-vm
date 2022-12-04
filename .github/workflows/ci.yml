@@ -93,7 +93,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: udeps
-          args: --all-targets
+          args: --all-targets --all-features
 
   verifications-complete:
     needs:

@@ -14,25 +14,24 @@ description = "FuelVM interpreter."
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.10"
+fuel-asm = { version = "0.10", path = "../fuel-asm" }
 fuel-crypto = "0.6"
 fuel-merkle = "0.4"
-fuel-storage = "0.3"
-fuel-tx = "0.23"
-fuel-types = "0.5"
+fuel-storage = { version = "0.3", path = "../fuel-storage" }
+fuel-tx = { version = "0.23", path = "../fuel-tx" }
+fuel-types = { version = "0.5", path = "../fuel-types" }
 itertools = "0.10"
+rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.10"
 strum = { version = "0.24", features = ["derive"], optional = true }
+tai64 = "4.0"
 thiserror = "1.0"
 tracing = "0.1"
-rand = { version = "0.8", optional = true }
-tai64 = "4.0"
 
 [dev-dependencies]
-fuel-tx = { version = "0.23", features = ["builder"] }
+fuel-tx = { version = "0.23", path = "../fuel-tx", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
-glob = "0.3"
 num-integer = "0.1.45"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
@@ -64,6 +63,11 @@ path = "tests/blockchain.rs"
 required-features = ["random"]
 
 [[test]]
+name = "test-code-coverage"
+path = "tests/code_coverage.rs"
+required-features = ["random", "profile-coverage"]
+
+[[test]]
 name = "test-contract"
 path = "tests/contract.rs"
 required-features = ["random"]
@@ -74,26 +78,6 @@ path = "tests/crypto.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-gas-factor"
-path = "tests/gas_factor.rs"
-required-features = ["profile-gas"]
-
-[[test]]
-name = "test-profile-gas"
-path = "tests/profile_gas.rs"
-required-features = ["random", "profile-gas"]
-
-[[test]]
-name = "test-code-coverage"
-path = "tests/code_coverage.rs"
-required-features = ["random", "profile-coverage"]
-
-[[test]]
-name = "test-serde-profile"
-path = "tests/serde_profile.rs"
-required-features = ["random", "profile-coverage", "profile-gas", "serde"]
-
-[[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
 required-features = ["random"]
@@ -101,6 +85,16 @@ required-features = ["random"]
 [[test]]
 name = "test-flow"
 path = "tests/flow.rs"
+required-features = ["random"]
+
+[[test]]
+name = "test-gas-factor"
+path = "tests/gas_factor.rs"
+required-features = ["profile-gas"]
+
+[[test]]
+name = "test-memory"
+path = "tests/memory.rs"
 required-features = ["random"]
 
 [[test]]
@@ -114,6 +108,11 @@ path = "tests/predicate.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-memory"
-path = "tests/memory.rs"
-required-features = ["random"]
+name = "test-profile-gas"
+path = "tests/profile_gas.rs"
+required-features = ["random", "profile-gas"]
+
+[[test]]
+name = "test-serde-profile"
+path = "tests/serde_profile.rs"
+required-features = ["random", "profile-coverage", "profile-gas", "serde"]

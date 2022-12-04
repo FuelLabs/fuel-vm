@@ -106,7 +106,7 @@ fn hex_encoding() {
 
         let reduced = t.as_ref().iter().fold(0u8, |acc, x| acc ^ x);
 
-        let x = hex::encode(&[reduced]);
+        let x = hex::encode([reduced]);
         let y = format!("{:2x}", t);
 
         assert_eq!(x, y);

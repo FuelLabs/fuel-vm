@@ -202,7 +202,7 @@ fn opcode() {
 
     for mut op in data.clone() {
         let _ = op.read(&mut buffer).expect("Failed to write opcode to buffer");
-        bytes.extend(&buffer);
+        bytes.extend(buffer);
 
         let op_p = u32::from(op);
         let op_bytes = op_p.to_be_bytes().to_vec();

@@ -57,7 +57,15 @@ impl Iterator for PositionPathIter {
     type Item = (Position, Position);
 
     fn next(&mut self) -> Option<Self::Item> {
-        for (path, mut side) in self.path_iter.by_ref() {
+        // Find the next set of path and side positions by iterating from the
+        // given root position to the given leaf position and evaluating each
+        // position against the tree described by the leaves count.
+        for (path, mut side) in self.path_iter.by_ref().map(|(path, side)| {
+            // SAFETY: Path iteration over positions is infallible. Path
+            // positions and side positions are both guaranteed to be valid in
+            // this context.
+            (path.unwrap(), side.unwrap())
+        }) {
             // To determine if the position is in the tree, we observe that the
             // highest in-order index belongs to the tree's rightmost leaf
             // position (as defined by the `leaves_count` parameter) and that
@@ -93,7 +101,7 @@ impl Iterator for PositionPathIter {
 
                 return Some((path, side));
             } else {
-                // If the path node is invalid, save reference to the the
+                // If the path node is invalid, save reference to the
                 // corresponding side node.
                 if self.current_side_node.is_none() {
                     self.current_side_node = Some(side);
@@ -109,6 +117,18 @@ impl Iterator for PositionPathIter {
 mod test {
     use crate::common::Position;
     use alloc::vec::Vec;
+
+    #[test]
+    fn test_path_set_returns_path_and_side_nodes_for_1_leaf() {
+        let root = Position::from_in_order_index(0);
+        let leaf = Position::from_leaf_index(0);
+        let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
+            root.path(&leaf, 1).iter().unzip();
+        let expected_path = [Position::from_in_order_index(0)];
+        let expected_side = [Position::from_in_order_index(0)];
+        assert_eq!(path_positions, expected_path);
+        assert_eq!(side_positions, expected_side);
+    }
 
     #[test]
     fn test_path_set_returns_path_and_side_nodes_for_4_leaves() {

@@ -1,6 +1,6 @@
 use crate::{
-    common::{error::DeserializeError, AsPathIterator, Bytes32},
-    sparse::{zero_sum, Buffer, Node, StorageNode},
+    common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
+    sparse::{zero_sum, Buffer, Node, StorageNode, StorageNodeError},
 };
 use fuel_storage::{Mappable, StorageMutate};
 
@@ -21,6 +21,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[cfg_attr(feature = "std", error(transparent))]
     DeserializeError(DeserializeError),
+
+    #[cfg_attr(feature = "std", error(transparent))]
+    ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -53,7 +56,7 @@ impl Mappable for NodesTable {
 impl<StorageType, StorageError> MerkleTree<StorageType>
 where
     StorageType: StorageMutate<NodesTable, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
+    StorageError: Clone + fmt::Debug + 'static,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -100,7 +103,7 @@ where
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone());
+            let (path_nodes, side_nodes) = self.path_set(leaf_node.clone())?;
             self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -119,7 +122,8 @@ where
             let leaf_node: Node = buffer
                 .try_into()
                 .map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone());
+            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
+                self.path_set(leaf_node.clone())?;
             self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -141,20 +145,30 @@ where
         self.root_node = node;
     }
 
-    fn path_set(&self, leaf_node: Node) -> (Vec<Node>, Vec<Node>) {
+    fn path_set(
+        &self,
+        leaf_node: Node,
+    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
             .as_path_iter(&leaf_storage_node)
-            .map(|(node, side_node)| (node.into_node(), side_node.into_node()))
+            .map(|(path_node, side_node)| {
+                Ok((
+                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                ))
+            })
+            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+            .into_iter()
             .unzip();
         path_nodes.reverse();
         side_nodes.reverse();
         side_nodes.pop(); // The last element in the side nodes list is the
                           // root; remove it.
 
-        (path_nodes, side_nodes)
+        Ok((path_nodes, side_nodes))
     }
 
     fn update_with_path_set(
@@ -246,8 +260,7 @@ where
         // and a placeholder must be similarly discarded from further
         // calculation. We then create a valid ancestor node for the orphaned
         // leaf node by joining it with the earliest non-placeholder side node.
-        let first_side_node = side_nodes.first();
-        if let Some(first_side_node) = first_side_node {
+        if let Some(first_side_node) = side_nodes.first() {
             if first_side_node.is_leaf() {
                 side_nodes_iter.next();
                 current_node = first_side_node.clone();

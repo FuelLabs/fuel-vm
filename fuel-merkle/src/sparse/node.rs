@@ -1,5 +1,8 @@
 use crate::{
-    common::{error::DeserializeError, Bytes1, Bytes32, Bytes4, Msb, Node as NodeTrait, Prefix},
+    common::{
+        error::DeserializeError, Bytes1, Bytes32, Bytes4, ChildError, ChildResult, Msb,
+        Node as NodeTrait, ParentNode as ParentNodeTrait, Prefix,
+    },
     sparse::{hash::sum, merkle_tree::NodesTable, zero_sum},
 };
 
@@ -338,7 +341,7 @@ impl TryFrom<Buffer> for Node {
     }
 }
 
-impl crate::common::Node for Node {
+impl NodeTrait for Node {
     type Key = Bytes32;
 
     fn height(&self) -> u32 {
@@ -351,6 +354,10 @@ impl crate::common::Node for Node {
 
     fn is_leaf(&self) -> bool {
         Node::is_leaf(self)
+    }
+
+    fn is_node(&self) -> bool {
+        Node::is_node(self)
     }
 }
 
@@ -395,24 +402,8 @@ impl<'s, StorageType> StorageNode<'s, StorageType> {
 }
 
 impl<StorageType> StorageNode<'_, StorageType> {
-    pub fn is_leaf(&self) -> bool {
-        self.node.is_leaf()
-    }
-
-    pub fn is_node(&self) -> bool {
-        self.node.is_node()
-    }
-
-    pub fn leaf_key(&self) -> &Bytes32 {
-        self.node.leaf_key()
-    }
-
     pub fn hash(&self) -> Bytes32 {
         self.node.hash()
-    }
-
-    pub fn height(&self) -> u32 {
-        self.node.height()
     }
 
     pub fn into_node(self) -> Node {
@@ -420,65 +411,79 @@ impl<StorageType> StorageNode<'_, StorageType> {
     }
 }
 
-impl<StorageType> StorageNode<'_, StorageType>
-where
-    StorageType: StorageInspect<NodesTable>,
-    StorageType::Error: fmt::Debug,
-{
-    pub fn left_child(&self) -> Result<Option<Self>, DeserializeError> {
-        assert!(self.is_node());
-        let key = self.node.left_child_key();
-        if key == zero_sum() {
-            return Ok(Some(Self::new(self.storage, Node::create_placeholder())));
-        }
-        let buffer = self.storage.get(key).unwrap();
-        Ok(buffer
-            .map(|buffer| buffer.into_owned().try_into())
-            .transpose()?
-            .map(|node| Self::new(self.storage, node)))
-    }
-
-    pub fn right_child(&self) -> Result<Option<Self>, DeserializeError> {
-        assert!(self.is_node());
-        let key = self.node.right_child_key();
-        if key == zero_sum() {
-            return Ok(Some(Self::new(self.storage, Node::create_placeholder())));
-        }
-        let buffer = self.storage.get(key).unwrap();
-        Ok(buffer
-            .map(|buffer| buffer.into_owned().try_into())
-            .transpose()?
-            .map(|node| Self::new(self.storage, node)))
-    }
-}
-
-impl<StorageType> crate::common::Node for StorageNode<'_, StorageType> {
+impl<StorageType> NodeTrait for StorageNode<'_, StorageType> {
     type Key = Bytes32;
 
     fn height(&self) -> u32 {
-        StorageNode::height(self)
+        self.node.height()
     }
 
     fn leaf_key(&self) -> Self::Key {
-        *StorageNode::leaf_key(self)
+        *self.node.leaf_key()
     }
 
     fn is_leaf(&self) -> bool {
-        StorageNode::is_leaf(self)
+        self.node.is_leaf()
+    }
+
+    fn is_node(&self) -> bool {
+        self.node.is_node()
     }
 }
 
-impl<StorageType> crate::common::ParentNode for StorageNode<'_, StorageType>
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
+pub enum StorageNodeError<StorageError> {
+    #[cfg_attr(feature = "std", error(transparent))]
+    StorageError(StorageError),
+    #[cfg_attr(feature = "std", error(transparent))]
+    DeserializeError(DeserializeError),
+}
+
+impl<StorageType> ParentNodeTrait for StorageNode<'_, StorageType>
 where
     StorageType: StorageInspect<NodesTable>,
-    StorageType::Error: fmt::Debug,
 {
-    fn left_child(&self) -> Self {
-        StorageNode::left_child(self).unwrap().unwrap()
+    type Error = StorageNodeError<StorageType::Error>;
+
+    fn left_child(&self) -> ChildResult<Self> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf);
+        }
+        let key = self.node.left_child_key();
+        if key == zero_sum() {
+            return Ok(Self::new(self.storage, Node::create_placeholder()));
+        }
+        let buffer = self
+            .storage
+            .get(key)
+            .map_err(StorageNodeError::StorageError)?
+            .ok_or(ChildError::ChildNotFound(*key))?;
+        Ok(buffer
+            .into_owned()
+            .try_into()
+            .map(|node| Self::new(self.storage, node))
+            .map_err(StorageNodeError::DeserializeError)?)
     }
 
-    fn right_child(&self) -> Self {
-        StorageNode::right_child(self).unwrap().unwrap()
+    fn right_child(&self) -> ChildResult<Self> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf);
+        }
+        let key = self.node.right_child_key();
+        if key == zero_sum() {
+            return Ok(Self::new(self.storage, Node::create_placeholder()));
+        }
+        let buffer = self
+            .storage
+            .get(key)
+            .map_err(StorageNodeError::StorageError)?
+            .ok_or(ChildError::ChildNotFound(*key))?;
+        Ok(buffer
+            .into_owned()
+            .try_into()
+            .map(|node| Self::new(self.storage, node))
+            .map_err(StorageNodeError::DeserializeError)?)
     }
 }
 
@@ -677,8 +682,11 @@ mod test_node {
 #[cfg(test)]
 mod test_storage_node {
     use crate::{
-        common::{error::DeserializeError, StorageMap},
-        sparse::{hash::sum, merkle_tree::NodesTable, node::BUFFER_SIZE, Node, StorageNode},
+        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap},
+        sparse::{
+            hash::sum, merkle_tree::NodesTable, node::StorageNodeError, node::BUFFER_SIZE, Node,
+            StorageNode,
+        },
     };
     use fuel_storage::StorageMutate;
 
@@ -696,7 +704,7 @@ mod test_storage_node {
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.left_child().unwrap().unwrap();
+        let child = storage_node.left_child().unwrap();
 
         assert_eq!(child.hash(), leaf_0.hash());
     }
@@ -715,7 +723,7 @@ mod test_storage_node {
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.right_child().unwrap().unwrap();
+        let child = storage_node.right_child().unwrap();
 
         assert_eq!(child.hash(), leaf_1.hash());
     }
@@ -731,7 +739,7 @@ mod test_storage_node {
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.left_child().unwrap().unwrap();
+        let child = storage_node.left_child().unwrap();
 
         assert!(child.node.is_placeholder());
     }
@@ -747,27 +755,59 @@ mod test_storage_node {
         let _ = s.insert(&node_0.hash(), node_0.as_buffer());
 
         let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.right_child().unwrap().unwrap();
+        let child = storage_node.right_child().unwrap();
 
         assert!(child.node.is_placeholder());
     }
 
     #[test]
-    fn test_node_left_child_returns_none_when_key_is_not_found() {
+    fn test_node_left_child_returns_error_when_node_is_leaf() {
         let s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
-        let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
+        let storage_node = StorageNode::new(&s, leaf_0);
+        let err = storage_node
+            .left_child()
+            .expect_err("Expected left_child() to return Error; got OK");
 
-        let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.left_child().unwrap();
-
-        assert!(child.is_none());
+        assert!(matches!(err, ChildError::NodeIsLeaf));
     }
 
     #[test]
-    fn test_node_right_child_returns_none_when_key_is_not_found() {
+    fn test_node_right_child_returns_error_when_node_is_leaf() {
+        let s = StorageMap::<NodesTable>::new();
+
+        let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
+        let storage_node = StorageNode::new(&s, leaf_0);
+        let err = storage_node
+            .right_child()
+            .expect_err("Expected right_child() to return Error; got OK");
+
+        assert!(matches!(err, ChildError::NodeIsLeaf));
+    }
+
+    #[test]
+    fn test_node_left_child_returns_error_when_key_is_not_found() {
+        let s = StorageMap::<NodesTable>::new();
+
+        let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[0u8; 32]);
+        let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
+        let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
+
+        let storage_node = StorageNode::new(&s, node_0);
+        let err = storage_node
+            .left_child()
+            .expect_err("Expected left_child() to return Error; got Ok");
+
+        let key = *storage_node.into_node().left_child_key();
+        assert!(matches!(
+            err,
+            ChildError::ChildNotFound(k) if k == key
+        ));
+    }
+
+    #[test]
+    fn test_node_right_child_returns_error_when_key_is_not_found() {
         let s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
@@ -775,9 +815,15 @@ mod test_storage_node {
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
         let storage_node = StorageNode::new(&s, node_0);
-        let child = storage_node.right_child().unwrap();
+        let err = storage_node
+            .right_child()
+            .expect_err("Expected right_child() to return Error; got Ok");
 
-        assert!(child.is_none());
+        let key = *storage_node.into_node().right_child_key();
+        assert!(matches!(
+            err,
+            ChildError::ChildNotFound(k) if k == key
+        ));
     }
 
     #[test]
@@ -794,7 +840,12 @@ mod test_storage_node {
             .left_child()
             .expect_err("Expected left_child() to be Error; got Ok");
 
-        assert!(matches!(err, DeserializeError::PrefixError(_)));
+        assert!(matches!(
+            err,
+            ChildError::Error(StorageNodeError::DeserializeError(
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(255))
+            ))
+        ));
     }
 
     #[test]
@@ -811,6 +862,11 @@ mod test_storage_node {
             .right_child()
             .expect_err("Expected right_child() to be Error; got Ok");
 
-        assert!(matches!(err, DeserializeError::PrefixError(_)));
+        assert!(matches!(
+            err,
+            ChildError::Error(StorageNodeError::DeserializeError(
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(255))
+            ))
+        ));
     }
 }

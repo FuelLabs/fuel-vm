@@ -16,6 +16,7 @@ pub use position::Position;
 pub use storage_map::StorageMap;
 pub use subtree::Subtree;
 
+pub(crate) use node::{ChildError, ChildResult};
 pub(crate) use position_path::PositionPath;
 pub(crate) use prefix::{Prefix, PrefixError};
 

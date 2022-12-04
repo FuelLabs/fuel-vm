@@ -28,7 +28,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked --verbose
+          args: --verbose
 
   cargo-build-no-std:
     runs-on: ubuntu-latest
@@ -209,7 +209,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: udeps
-          args: --locked --all-targets
+          args: --all-targets
 
   validation-complete:
     needs:

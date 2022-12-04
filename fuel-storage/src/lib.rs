@@ -124,7 +124,7 @@ pub trait StorageAsRef {
     }
 }
 
-impl<'a, T> StorageAsRef for T {}
+impl<T> StorageAsRef for T {}
 
 /// The wrapper around the storage that supports methods from `StorageInspect` and `StorageMutate`.
 pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marker::PhantomData<Type>);
@@ -172,4 +172,4 @@ pub trait StorageAsMut {
     }
 }
 
-impl<'a, T> StorageAsMut for T {}
+impl<T> StorageAsMut for T {}

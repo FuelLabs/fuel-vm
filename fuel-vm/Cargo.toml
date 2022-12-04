@@ -25,9 +25,9 @@ rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.10"
 strum = { version = "0.24", features = ["derive"], optional = true }
+tai64 = "4.0"
 thiserror = "1.0"
 tracing = "0.1"
-tai64 = "4.0"
 
 [dev-dependencies]
 fuel-tx = { version = "0.23", path = "../fuel-tx", features = ["builder"] }

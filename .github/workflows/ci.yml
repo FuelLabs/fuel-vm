@@ -33,11 +33,11 @@ jobs:
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --verbose --target thumbv6m-none-eabi --no-default-features
+            args: --verbose -p fuel-asm,fuel-storage,fuel-types --target thumbv6m-none-eabi --no-default-features
           - command: check
-            args: --verbose --target thumbv6m-none-eabi --no-default-features --features alloc
+            args: --verbose -p fuel-asm,fuel-storage,fuel-types --target thumbv6m-none-eabi --no-default-features --features alloc
           - command: check
-            args: --verbose --target thumbv6m-none-eabi --no-default-features --features serde
+            args: --verbose -p fuel-asm,fuel-storage,fuel-types --target thumbv6m-none-eabi --no-default-features --features serde
           - command: test
             args: --all-targets --all-features
           - command: test

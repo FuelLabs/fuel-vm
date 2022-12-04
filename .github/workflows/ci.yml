@@ -56,15 +56,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          # Using thumbv6m-none-eabi as ARMv6-M arbitrary common choice for a bare-minimum target.
-          # More info: https://docs.rs/cortex-m-rt/latest/cortex_m_rt/
-          #
-          # Can be replaced by other targets that guarantee bare-minimum no-std
           target: thumbv6m-none-eabi
-      - uses: Swatinem/rust-cache@v1
-          # This action doesn't customize the cache key for each matrix run by default
-          # leading to conflicts and overrides between different feature sets
-          key: "${{ matrix.job.command }} ${{ matrix.job.args }}"
       - name: ${{ matrix.command }} ${{ matrix.args }}
         uses: actions-rs/cargo@v1
         with:

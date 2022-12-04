@@ -12,70 +12,189 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  cargo-clippy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Check Clippy Linter
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --all-targets -- -D warnings
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+  cargo-toml-fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Cargo.toml linter
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-toml-lint
+          version: "0.1"
+      - name: Run Cargo.toml linter
+        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
-    - name: Install rustfmt
-      run: rustup component add rustfmt
+  cargo-fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check Formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
 
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --verbose -- --check
+  cargo-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked --verbose
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
+  cargo-build-no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: thumbv6m-none-eabi
+          override: true
+      - uses: Swatinem/rust-cache@v1
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --target thumbv6m-none-eabi --no-default-features
 
-    - name: Run basic tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose
+  cargo-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
 
-    - name: Run all tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --all-features
+  cargo-test-all-features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --all-features
 
-    - name: Run tests random
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features random
+  cargo-test-random:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --features "random"
 
-    - name: Run tests profiling
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features random,profile-gas,profile-coverage,serde
+  cargo-test-profiling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test profiling
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --features random,profile-gas,profile-coverage,serde
 
-    - name: Run debug tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features debug
+  cargo-test-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test debug
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --features debug
 
-    - name: Run tests serde
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose --features serde
+  cargo-test-serde:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test serde
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --features serde
+
+  cargo-test-no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test no-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features
+
+  cargo-test-serde-no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Test no-std serde
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --no-default-features --features serde
 
   publish:
     # Only do this job if publishing a release
@@ -84,11 +203,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true

@@ -63,6 +63,11 @@ path = "tests/blockchain.rs"
 required-features = ["random"]
 
 [[test]]
+name = "test-code-coverage"
+path = "tests/code_coverage.rs"
+required-features = ["random", "profile-coverage"]
+
+[[test]]
 name = "test-contract"
 path = "tests/contract.rs"
 required-features = ["random"]
@@ -73,26 +78,6 @@ path = "tests/crypto.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-gas-factor"
-path = "tests/gas_factor.rs"
-required-features = ["profile-gas"]
-
-[[test]]
-name = "test-profile-gas"
-path = "tests/profile_gas.rs"
-required-features = ["random", "profile-gas"]
-
-[[test]]
-name = "test-code-coverage"
-path = "tests/code_coverage.rs"
-required-features = ["random", "profile-coverage"]
-
-[[test]]
-name = "test-serde-profile"
-path = "tests/serde_profile.rs"
-required-features = ["random", "profile-coverage", "profile-gas", "serde"]
-
-[[test]]
 name = "test-encoding"
 path = "tests/encoding.rs"
 required-features = ["random"]
@@ -100,6 +85,16 @@ required-features = ["random"]
 [[test]]
 name = "test-flow"
 path = "tests/flow.rs"
+required-features = ["random"]
+
+[[test]]
+name = "test-gas-factor"
+path = "tests/gas_factor.rs"
+required-features = ["profile-gas"]
+
+[[test]]
+name = "test-memory"
+path = "tests/memory.rs"
 required-features = ["random"]
 
 [[test]]
@@ -113,6 +108,11 @@ path = "tests/predicate.rs"
 required-features = ["random"]
 
 [[test]]
-name = "test-memory"
-path = "tests/memory.rs"
-required-features = ["random"]
+name = "test-profile-gas"
+path = "tests/profile_gas.rs"
+required-features = ["random", "profile-gas"]
+
+[[test]]
+name = "test-serde-profile"
+path = "tests/serde_profile.rs"
+required-features = ["random", "profile-coverage", "profile-gas", "serde"]

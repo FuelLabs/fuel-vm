@@ -30,6 +30,7 @@ jobs:
           command: build
           args: --verbose
 
+  # TODO: Currently only builds fuel-asm, but we probably want all crates to support no-std.
   cargo-build-no-std:
     runs-on: ubuntu-latest
     steps:
@@ -40,11 +41,11 @@ jobs:
           target: thumbv6m-none-eabi
           override: true
       - uses: Swatinem/rust-cache@v1
-      - name: Build
+      - name: Build fuel-asm
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --target thumbv6m-none-eabi --no-default-features
+          args: --verbose -p fuel-asm --target thumbv6m-none-eabi --no-default-features
 
   cargo-clippy:
     runs-on: ubuntu-latest

@@ -14,12 +14,12 @@ description = "FuelVM interpreter."
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.10"
+fuel-asm = { version = "0.10", path = "../fuel-asm" }
 fuel-crypto = "0.6"
 fuel-merkle = "0.4"
-fuel-storage = "0.3"
-fuel-tx = "0.23"
-fuel-types = "0.5"
+fuel-storage = { version = "0.3", path = "../fuel-storage" }
+fuel-tx = { version = "0.23", path = "../fuel-tx" }
+fuel-types = { version = "0.5", path = "../fuel-types" }
 itertools = "0.10"
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha3 = "0.10"
@@ -30,7 +30,7 @@ rand = { version = "0.8", optional = true }
 tai64 = "4.0"
 
 [dev-dependencies]
-fuel-tx = { version = "0.23", features = ["builder"] }
+fuel-tx = { version = "0.23", path = "../fuel-tx", features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 glob = "0.3"
 num-integer = "0.1.45"

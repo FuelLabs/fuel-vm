@@ -13,10 +13,10 @@ description = "FuelVM transaction."
 [dependencies]
 bitflags = "1"
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
-fuel-asm = { version = "0.10", default-features = false }
+fuel-asm = { version = "0.10", path = "../fuel-asm", default-features = false }
 fuel-crypto = { version = "0.6", default-features = false }
 fuel-merkle = { version = "0.4", default-features = false }
-fuel-types = { version = "0.5", default-features = false }
+fuel-types = { version = "0.5", path = "../fuel-types", default-features = false }
 itertools = { version = "0.10", default-features = false }
 num-integer = { version = "0.1", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
@@ -28,7 +28,7 @@ bincode = { version = "1.3", default-features = false }
 fuel-crypto = { version = "0.6", default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
-fuel-types = { version = "0.5", default-features = false, features = ["random"] }
+fuel-types = { version = "0.5", path = "../fuel-types", default-features = false, features = ["random"] }
 insta = "1.0"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"

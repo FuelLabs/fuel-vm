@@ -1,5 +1,4 @@
 [workspace]
-
 members = [
     "fuel-asm",
     "fuel-storage",
@@ -8,3 +7,10 @@ members = [
     "fuel-types",
     "fuel-vm",
 ]
+
+# We have a dependency cycle between repositories where `fuel-crypto` depends
+# on `fuel-types`, while `fuel-tx` depends on both `fuel-crypto` and
+# `fuel-types`. This temporarily works around the issue by forcing all
+# instances of `fuel-types` within the graph to point to our local copy.
+[patch.crates-io]
+fuel-types = { path = "./fuel-types" }

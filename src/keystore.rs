@@ -21,9 +21,7 @@ pub trait Keystore {
     #[cfg(feature = "std")]
     fn public(&self, id: &Self::KeyId) -> Result<Option<Borrown<'_, PublicKey>>, Self::Error> {
         let secret = self.secret(id)?;
-        let public = secret
-            .map(|s| PublicKey::from(s.as_ref()))
-            .map(Borrown::Owned);
+        let public = secret.map(|s| PublicKey::from(s.as_ref())).map(Borrown::Owned);
 
         Ok(public)
     }

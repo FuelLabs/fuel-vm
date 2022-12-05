@@ -199,10 +199,7 @@ mod use_std {
         fn try_from(b: Bytes64) -> Result<Self, Self::Error> {
             let public = PublicKey(b);
 
-            public
-                .is_in_curve()
-                .then_some(public)
-                .ok_or(Error::InvalidPublicKey)
+            public.is_in_curve().then_some(public).ok_or(Error::InvalidPublicKey)
         }
     }
 

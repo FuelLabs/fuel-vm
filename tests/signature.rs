@@ -6,8 +6,7 @@ use rand::SeedableRng;
 fn recover() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let message =
-        b"A beast can never be as cruel as a human being, so artistically, so picturesquely cruel.";
+    let message = b"A beast can never be as cruel as a human being, so artistically, so picturesquely cruel.";
 
     for _ in 0..100 {
         let message = Message::new(message);
@@ -26,8 +25,7 @@ fn recover() {
 fn verify() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let message =
-        b"Music expresses that which cannot be put into words and that which cannot remain silent.";
+    let message = b"Music expresses that which cannot be put into words and that which cannot remain silent.";
 
     for _ in 0..100 {
         let message = Message::new(message);
@@ -37,9 +35,7 @@ fn verify() {
 
         let signature = Signature::sign(&secret, &message);
 
-        signature
-            .verify(&public, &message)
-            .expect("Failed to verify signature");
+        signature.verify(&public, &message).expect("Failed to verify signature");
     }
 }
 

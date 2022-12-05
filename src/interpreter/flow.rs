@@ -190,6 +190,11 @@ where
         let stack = frame.to_bytes();
         let len = stack.len() as Word;
 
+        // FIXME: This is checking the cost after the db call has happened.
+        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
+        // should happen on the pinned slice before reading it.
+        self.dependant_gas_charge(self.gas_costs.call, len)?;
+
         if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
         }

@@ -153,7 +153,7 @@ fn call() {
     .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), Default::default())
         .transact(tx)
         .is_success());
 
@@ -194,7 +194,7 @@ fn call() {
         .as_mut_slice()
         .copy_from_slice(script_mem.as_slice());
 
-    let receipts = Transactor::new(&mut storage, params)
+    let receipts = Transactor::new(&mut storage, params, Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute script")
@@ -258,7 +258,7 @@ fn call_frame_code_offset() {
     .into_checked_basic(height, &params)
     .expect("failed to generate a checked tx");
 
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), Default::default())
         .transact(deploy)
         .is_success());
 
@@ -301,7 +301,7 @@ fn call_frame_code_offset() {
     .into_checked(height, &params)
     .expect("failed to generate a checked tx");
 
-    let mut vm = Interpreter::with_storage(storage, params);
+    let mut vm = Interpreter::with_storage(storage, params, Default::default());
 
     vm.transact(script).expect("Failed to call deployed contract");
 

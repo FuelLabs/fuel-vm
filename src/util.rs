@@ -72,6 +72,7 @@ macro_rules! script_with_data_offset {
 /// Testing utilities
 pub mod test_helpers {
     use crate::consts::*;
+    use crate::gas::GasCosts;
     use crate::memory_client::MemoryClient;
     use crate::state::StateTransition;
     use crate::storage::{InterpreterStorage, MemoryStorage};
@@ -104,6 +105,7 @@ pub mod test_helpers {
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
         params: ConsensusParameters,
+        gas_costs: GasCosts,
         block_height: u32,
     }
 
@@ -116,6 +118,7 @@ pub mod test_helpers {
                 builder: TransactionBuilder::script(vec![Opcode::RET(REG_ONE)].into_iter().collect(), vec![]),
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
+                gas_costs: Default::default(),
                 block_height: 0,
             }
         }
@@ -319,7 +322,7 @@ pub mod test_helpers {
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
         {
             self.storage.set_block_height(self.block_height);
-            let mut transactor = Transactor::new(self.storage.clone(), self.params);
+            let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());
 
             transactor.transact(checked);
 

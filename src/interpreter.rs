@@ -3,6 +3,7 @@
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
+use crate::gas::GasCosts;
 use crate::state::Debugger;
 use fuel_asm::PanicReason;
 use std::collections::BTreeMap;
@@ -66,6 +67,7 @@ pub struct Interpreter<S, Tx = ()> {
     debugger: Debugger,
     context: Context,
     balances: RuntimeBalances,
+    gas_costs: GasCosts,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
     params: ConsensusParameters,
@@ -147,6 +149,12 @@ impl<S, Tx> Interpreter<S, Tx> {
     #[cfg(feature = "profile-any")]
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
+    }
+
+    #[cfg(feature = "bench-helpers")]
+    /// Clear any receipts in memory
+    pub fn clear_receipts(&mut self) {
+        self.receipts.clear()
     }
 }
 

@@ -6,9 +6,9 @@ edition = "2021"
 publish = false
 
 [dependencies]
-fuel-crypto = { version = "0.6", default-features = false, features = ["random"] }
+fuel-crypto = { version = "0.6", path = "../../fuel-crypto", default-features = false, features = ["random"] }
 fuel-tx = { path = "../../fuel-tx", default-features = false, features = ["builder", "random"] }
-fuel-types = { version = "0.5", default-features = false, features = ["random"] }
+fuel-types = { version = "0.5", path = "../../fuel-types", default-features = false, features = ["random"] }
 rand = { version = "0.8", default-features = false }
 
 [features]

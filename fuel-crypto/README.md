@@ -1,6 +1,6 @@
 # Fuel Crypto
 
-[![build](https://github.com/FuelLabs/fuel-crypto/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/fuel-crypto/actions/workflows/ci.yml)
+[![build](https://github.com/FuelLabs/fuel-vm/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/fuel-vm/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/fuel-crypto?label=latest)](https://crates.io/crates/fuel-crypto)
 [![docs](https://docs.rs/fuel-crypto/badge.svg)](https://docs.rs/fuel-crypto/)
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)

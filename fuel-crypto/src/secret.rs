@@ -142,12 +142,8 @@ mod use_std {
                 rng.fill(secret.as_mut());
 
                 // Safety: FFI call
-                let overflow = unsafe {
-                    ffi::secp256k1_ec_seckey_verify(
-                        ffi::secp256k1_context_no_precomp,
-                        secret.as_c_ptr(),
-                    )
-                };
+                let overflow =
+                    unsafe { ffi::secp256k1_ec_seckey_verify(ffi::secp256k1_context_no_precomp, secret.as_c_ptr()) };
 
                 if overflow != 0 {
                     break;
@@ -191,10 +187,7 @@ mod use_std {
             let secret = Self::as_ref_unchecked(slice);
 
             // Safety: FFI call
-            let overflow = ffi::secp256k1_ec_seckey_verify(
-                ffi::secp256k1_context_no_precomp,
-                secret.as_c_ptr(),
-            );
+            let overflow = ffi::secp256k1_ec_seckey_verify(ffi::secp256k1_context_no_precomp, secret.as_c_ptr());
 
             overflow != 0
         }
@@ -220,10 +213,7 @@ mod use_std {
         fn try_from(b: Bytes32) -> Result<Self, Self::Error> {
             let secret = SecretKey(b);
 
-            secret
-                .is_in_field()
-                .then_some(secret)
-                .ok_or(Error::InvalidSecretKey)
+            secret.is_in_field().then_some(secret).ok_or(Error::InvalidSecretKey)
         }
     }
 

@@ -157,11 +157,9 @@ mod use_std {
             let v = RecoveryId::from_i32(v)
                 .unwrap_or_else(|_| RecoveryId::from_i32(0).expect("0 is infallible recovery ID"));
 
-            let signature = SecpRecoverableSignature::from_compact(self.as_ref(), v)
-                .unwrap_or_else(|_| {
-                    SecpRecoverableSignature::from_compact(&[0u8; 64], v)
-                        .expect("Zeroed signature is infallible")
-                });
+            let signature = SecpRecoverableSignature::from_compact(self.as_ref(), v).unwrap_or_else(|_| {
+                SecpRecoverableSignature::from_compact(&[0u8; 64], v).expect("Zeroed signature is infallible")
+            });
 
             signature
         }

@@ -16,10 +16,7 @@ mod use_std {
         /// Generates a random mnemonic phrase given a random number generator and
         /// the number of words to generate, `count`.
         #[cfg(feature = "random")]
-        pub fn generate_mnemonic_phrase<R: Rng>(
-            rng: &mut R,
-            count: usize,
-        ) -> Result<String, Error> {
+        pub fn generate_mnemonic_phrase<R: Rng>(rng: &mut R, count: usize) -> Result<String, Error> {
             Ok(Mnemonic::<W>::new_with_count(rng, count)?.to_phrase()?)
         }
     }

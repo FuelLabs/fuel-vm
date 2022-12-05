@@ -28,8 +28,7 @@ fn secret_key_from_mnemonic() {
     let m = Mnemonic::<W>::new_from_phrase(phrase).expect("failed to create mnemonic");
 
     let d = DerivationPath::from_str("m/44'/60'/0'/0/0").expect("failed to create derivation path");
-    let secret =
-        SecretKey::new_from_mnemonic(d, m).expect("failed to create secret key from mnemonic");
+    let secret = SecretKey::new_from_mnemonic(d, m).expect("failed to create secret key from mnemonic");
 
     let public = secret.public_key();
     let public_key = public.to_string();
@@ -42,8 +41,7 @@ fn random_mnemonic_phrase() {
     // create rng
     let mut rng = rand::thread_rng();
 
-    let phrase = FuelMnemonic::generate_mnemonic_phrase(&mut rng, 12)
-        .expect("failed to generate mnemonic phrase");
+    let phrase = FuelMnemonic::generate_mnemonic_phrase(&mut rng, 12).expect("failed to generate mnemonic phrase");
 
     let _secret = SecretKey::new_from_mnemonic_phrase_with_path(&phrase, "m/44'/60'/0'/0/0")
         .expect("failed to create secret key from mnemonic phrase");

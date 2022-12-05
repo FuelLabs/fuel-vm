@@ -33,7 +33,7 @@ jobs:
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --verbose -p fuel-asm -p fuel-storage --target thumbv6m-none-eabi --no-default-features
+            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage --no-default-features
           - command: test
             args: --all-targets --all-features
           - command: test
@@ -59,6 +59,23 @@ jobs:
         with:
           command: ${{ matrix.command }}
           args: ${{ matrix.args }}
+
+  # We include this in its own job as we are unable to specify multiple targets
+  # using `actions-rs/toolchain@v1`. See this issue:
+  # https://github.com/actions-rs/toolchain/issues/165
+  cargo-check-wasm32:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+      - name: cargo check wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest

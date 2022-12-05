@@ -167,6 +167,7 @@ impl Default for GasCostsValues {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct GasCostsValues {
     pub add: Word,
     pub addi: Word,

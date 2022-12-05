@@ -1,9 +1,9 @@
 use super::*;
 
-pub const GIT: &'static str = "002cf51c0669371856276e46a91afe45cf7cbbcd";
+pub const GIT: &'static str = "191107574449225ea7a176a6e6b7ffaeea627dc4";
 pub fn default_gas_costs() -> GasCostsValues {
     GasCostsValues {
-        add: 2,
+        add: 1,
         addi: 1,
         and: 1,
         andi: 1,
@@ -19,7 +19,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         modi: 1,
         move_op: 1,
         movi: 1,
-        mroo: 1,
+        mroo: 2,
         mul: 1,
         muli: 1,
         noop: 1,
@@ -39,7 +39,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         jnzi: 1,
         jmp: 1,
         jne: 1,
-        ret: 1,
+        ret: 12,
         retd: 1,
         rvrt: 1,
         smo: 1,
@@ -50,11 +50,10 @@ pub fn default_gas_costs() -> GasCostsValues {
         lw: 1,
         sb: 1,
         sw: 1,
-        bal: 1,
+        bal: 178,
         bhei: 1,
-        bhsh: 1,
+        bhsh: 2,
         burn: 1,
-        call: 1,
         cb: 1,
         croo: 1,
         csiz: 1,
@@ -65,12 +64,12 @@ pub fn default_gas_costs() -> GasCostsValues {
         scwq: 1,
         srw: 1,
         srwq: 1,
-        sww: 1,
+        sww: 94,
         swwq: 1,
         time: 1,
-        ecr: 1,
-        k256: 1,
-        s256: 1,
+        ecr: 1845,
+        k256: 19,
+        s256: 4,
         flag: 1,
         gm: 1,
         gtf: 1,
@@ -78,15 +77,15 @@ pub fn default_gas_costs() -> GasCostsValues {
         tro: 1,
         mcl: DependantCost {
             base: 1,
-            dep_per_unit: 0,
+            dep_per_unit: 2122,
         },
         mcli: DependantCost {
             base: 1,
-            dep_per_unit: 0,
+            dep_per_unit: 2122,
         },
         mcp: DependantCost {
-            base: 10,
-            dep_per_unit: 1475,
+            base: 1,
+            dep_per_unit: 1114,
         },
         mcpi: DependantCost {
             base: 1,
@@ -98,7 +97,11 @@ pub fn default_gas_costs() -> GasCostsValues {
         },
         meq: DependantCost {
             base: 1,
-            dep_per_unit: 0,
+            dep_per_unit: 2071,
+        },
+        call: DependantCost {
+            base: 363,
+            dep_per_unit: 11,
         },
     }
 }

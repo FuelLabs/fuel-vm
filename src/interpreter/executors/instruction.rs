@@ -371,7 +371,7 @@ where
             }
 
             OpcodeRepr::CALL => {
-                self.gas_charge(self.gas_costs.call)?;
+                self.dependant_gas_charge(self.gas_costs.call, todo!("Figure out how to get contract size here"))?;
                 let state = self.call(a, b, c, d)?;
                 // raise revert state to halt execution for the callee
                 if let ProgramState::Revert(ra) = state {

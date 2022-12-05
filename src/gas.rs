@@ -220,7 +220,6 @@ pub struct GasCostsValues {
     pub bhei: Word,
     pub bhsh: Word,
     pub burn: Word,
-    pub call: Word,
     pub cb: Word,
     pub croo: Word,
     pub csiz: Word,
@@ -250,6 +249,7 @@ pub struct GasCostsValues {
     pub mcpi: DependantCost,
     pub ccp: DependantCost,
     pub meq: DependantCost,
+    pub call: DependantCost,
 }
 
 #[allow(missing_docs)]
@@ -327,7 +327,6 @@ impl GasCostsValues {
             bhei: 0,
             bhsh: 0,
             burn: 0,
-            call: 0,
             cb: 0,
             croo: 0,
             csiz: 0,
@@ -355,6 +354,7 @@ impl GasCostsValues {
             mcpi: DependantCost::free(),
             ccp: DependantCost::free(),
             meq: DependantCost::free(),
+            call: DependantCost::free(),
         }
     }
 
@@ -412,7 +412,6 @@ impl GasCostsValues {
             bhei: 1,
             bhsh: 1,
             burn: 1,
-            call: 1,
             cb: 1,
             croo: 1,
             csiz: 1,
@@ -440,6 +439,7 @@ impl GasCostsValues {
             mcpi: DependantCost::unit(),
             ccp: DependantCost::unit(),
             meq: DependantCost::unit(),
+            call: DependantCost::unit(),
         }
     }
 }

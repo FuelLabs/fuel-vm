@@ -534,9 +534,21 @@ impl std::error::Error for PanicReason {
     }
 }
 
+// TODO: Remove this - `Infallible` has nothing to do with `PanicReason`.
 impl From<convert::Infallible> for PanicReason {
     fn from(_i: convert::Infallible) -> Self {
         unreachable!()
+    }
+}
+
+// TODO: `PanicReason` shouldn't list reserved variants, and this should be `TryFrom` with no
+// `unsafe`.
+impl From<u8> for PanicReason {
+    fn from(b: u8) -> Self {
+        // Currently, the language doesn't support customized type coercion
+        //
+        // Safety: all possible values of `b` are either allocated or reserved
+        unsafe { core::mem::transmute::<u8, Self>(b) }
     }
 }
 

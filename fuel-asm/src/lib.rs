@@ -7,6 +7,7 @@
 
 mod gm_args;
 mod instruction_result;
+// This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
 #[macro_use]
 pub mod macros;
 mod panic_reason;
@@ -681,12 +682,12 @@ fn bytes_from_imm24(imm: Imm24) -> [u8; 3] {
 
 // --------------------------------------------------------
 
-// Ignore the opcode byte, take the remaining data.
+// Ignore the opcode byte, take the remaining instruction data.
 fn u8x3_from_u8x4([_, a, b, c]: [u8; 4]) -> [u8; 3] {
     [a, b, c]
 }
 
-// Produce the big-endian bytes for a u32, ignoring the opcode byte.
+// Produce the big-endian bytes for an instruction's data, with a zeroed opcode byte.
 fn u8x4_from_u8x3([a, b, c]: [u8; 3]) -> [u8; 4] {
     [0, a, b, c]
 }

@@ -7,7 +7,7 @@ edition = "2021"
 homepage = "https://fuel.network/"
 keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/fuel-types"
+repository = "https://github.com/FuelLabs/fuel-vm"
 description = "Atomic types of the FuelVM."
 
 [dependencies]

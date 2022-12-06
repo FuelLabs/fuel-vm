@@ -34,7 +34,7 @@ fn test_lw() {
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
-    let result = vm.registers()[0x13_usize];
+    let result = vm.registers()[0x13 as usize];
     assert_eq!(1, result);
 }
 
@@ -51,6 +51,6 @@ fn test_lb() {
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
-    let result = vm.registers()[0x13_usize] as u8;
+    let result = vm.registers()[0x13 as usize] as u8;
     assert_eq!(1, result);
 }

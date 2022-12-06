@@ -79,7 +79,7 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use crate::interpreter::{CheckedMetadata, ExecutableTransaction};
-    use fuel_asm::{Opcode, PanicReason};
+    use fuel_asm::{op, Instruction, PanicReason};
     use fuel_tx::field::Outputs;
     use fuel_tx::{
         Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt, Script, StorageSlot,
@@ -109,11 +109,12 @@ pub mod test_helpers {
 
     impl TestBuilder {
         pub fn new(seed: u64) -> Self {
+            let bytecode = core::iter::once(op::ret(REG_ONE as u8)).collect();
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
                 gas_limit: 100,
-                builder: TransactionBuilder::script(vec![Opcode::RET(REG_ONE)].into_iter().collect(), vec![]),
+                builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
                 block_height: 0,
@@ -128,8 +129,9 @@ pub mod test_helpers {
             &self.params
         }
 
-        pub fn start_script(&mut self, script: Vec<Opcode>, script_data: Vec<u8>) -> &mut Self {
-            self.builder = TransactionBuilder::script(script.into_iter().collect(), script_data);
+        pub fn start_script(&mut self, script: Vec<Instruction>, script_data: Vec<u8>) -> &mut Self {
+            let bytecode = script.into_iter().collect();
+            self.builder = TransactionBuilder::script(bytecode, script_data);
             self.builder.gas_price(self.gas_price);
             self.builder.gas_limit(self.gas_limit);
             self
@@ -235,11 +237,11 @@ pub mod test_helpers {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
-                    Opcode::MOVI(0x11, data_offset),
-                    Opcode::ADDI(0x12, 0x11, AssetId::LEN as Immediate12),
-                    Opcode::BAL(0x10, 0x11, 0x12),
-                    Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
-                    Opcode::RET(REG_ONE)
+                    op::movi(0x11, data_offset),
+                    op::addi(0x12, 0x11, AssetId::LEN as Immediate12),
+                    op::bal(0x10, 0x11, 0x12),
+                    op::log(0x10, REG_ZERO as u8, REG_ZERO as u8, REG_ZERO as u8),
+                    op::ret(REG_ONE as u8)
                 ],
                 params.tx_offset()
             );
@@ -261,7 +263,7 @@ pub mod test_helpers {
 
         pub fn setup_contract(
             &mut self,
-            contract: Vec<Opcode>,
+            contract: Vec<Instruction>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
@@ -274,7 +276,7 @@ pub mod test_helpers {
             let salt: Salt = self.rng.gen();
             let program: Witness = contract
                 .into_iter()
-                .flat_map(Opcode::to_bytes)
+                .flat_map(<[u8; 4]>::from)
                 .collect::<Vec<u8>>()
                 .into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
@@ -373,15 +375,15 @@ pub mod test_helpers {
         }
     }
 
-    pub fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: PanicReason) {
+    pub fn check_expected_reason_for_instructions(instructions: Vec<Instruction>, expected_reason: PanicReason) {
         let client = MemoryClient::default();
 
-        check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
+        check_expected_reason_for_instructions_with_client(client, instructions, expected_reason);
     }
 
-    fn check_expected_reason_for_opcodes_with_client(
+    fn check_expected_reason_for_instructions_with_client(
         client: MemoryClient,
-        opcodes: Vec<Opcode>,
+        instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
         let gas_price = 0;
@@ -390,11 +392,12 @@ pub mod test_helpers {
         let maturity = 0;
         let height = 0;
 
+        let bytecode = instructions.into_iter().collect();
         let tx_deploy_loader = Transaction::script(
             gas_price,
             gas_limit,
             maturity,
-            opcodes.into_iter().collect(),
+            bytecode,
             vec![],
             vec![],
             vec![],

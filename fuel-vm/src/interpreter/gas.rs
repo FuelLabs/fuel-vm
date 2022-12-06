@@ -4,7 +4,7 @@ use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::gas::GasUnit;
 
-use fuel_asm::{OpcodeRepr, PanicReason};
+use fuel_asm::{Opcode, PanicReason};
 use fuel_types::Word;
 
 pub mod consts;
@@ -14,15 +14,15 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.registers[REG_GGAS]
     }
 
-    /// Maps [`OpcodeRepr`] to a [`GasUnit`] price.
+    /// Maps [`Opcode`] to a [`GasUnit`] price.
     ///
     /// # Panic
     /// This function panics for codes that do not have an assigned price.
     /// This function should only be used in a const context to avoid
     /// runtime panics.
-    pub(crate) const fn gas_cost_const(op: OpcodeRepr) -> Word {
+    pub(crate) const fn gas_cost_const(op: Opcode) -> Word {
         use GasUnit::*;
-        use OpcodeRepr::*;
+        use Opcode::*;
 
         match op {
             ADD | MUL | SLL | SRL | SUB | ADDI | MULI | SLLI | SRLI | SUBI => Arithmetic(1).join(RegisterWrite(3)),
@@ -147,9 +147,9 @@ impl<S, Tx> Interpreter<S, Tx> {
     // TODO Rust support for const fn pointers didn't land in stable yet
     // This fn should return both the base and the variable fn
     // https://github.com/rust-lang/rust/issues/57563
-    pub(crate) const fn gas_cost_monad_base(op: OpcodeRepr) -> Word {
+    pub(crate) const fn gas_cost_monad_base(op: Opcode) -> Word {
         use GasUnit::*;
-        use OpcodeRepr::*;
+        use Opcode::*;
 
         match op {
             MCL | MCLI => Arithmetic(1).join(MemoryOwnership(1)),

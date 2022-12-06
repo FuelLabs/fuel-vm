@@ -64,7 +64,8 @@ fn breakpoint_script() {
         Opcode::ADDI(0x14, REG_ZERO, 128),
         Opcode::RET(0x10),
     ]
-    .into_iter()
+    .iter()
+    .copied()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -127,7 +128,8 @@ fn single_stepping() {
         Opcode::JNEI(0x10, 0x11, 1),
         Opcode::RET(0x10),
     ]
-    .into_iter()
+    .iter()
+    .copied()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])

@@ -5,8 +5,8 @@ use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
-use fuel_types::{bytes, Immediate12, Immediate18, Word};
+use fuel_asm::{Instruction, PanicReason, RawInstruction};
+use fuel_types::{bytes, Word};
 
 use std::ops::Div;
 
@@ -18,16 +18,16 @@ where
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
-        let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]
+        let [hi, lo] = self.memory[self.registers[REG_PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
             .map(|b| unsafe { bytes::from_slice_unchecked(b) })
             .map(Word::from_be_bytes)
-            .map(Instruction::parse_word)
+            .map(fuel_asm::raw_instructions_from_word)
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[REG_PC] + Instruction::LEN as Word;
+        let pc = self.registers[REG_PC] + core::mem::size_of::<RawInstruction>() as Word;
         let state = self.instruction(hi)?;
 
         // TODO optimize
@@ -42,7 +42,7 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, InterpreterError> {
+    pub fn instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
             let debug = self.eval_debugger_state();
@@ -51,448 +51,538 @@ where
             }
         }
 
-        self._instruction(instruction)
-            .map_err(|e| InterpreterError::from_runtime(e, instruction))
+        self._instruction(raw)
+            .map_err(|e| InterpreterError::from(e))
     }
 
     #[tracing::instrument(name = "instruction", skip(self))]
-    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
-        let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
-        let (a, b, c, d) = (
-            self.registers[ra],
-            self.registers[rb],
-            self.registers[rc],
-            self.registers[rd],
-        );
+    fn _instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
+        let instruction = Instruction::try_from(raw)
+            .map_err(|_| RuntimeError::InvalidInstruction(raw))?;
 
-        tracing::trace!("Op code: {:?}, Registers: a {}, b, {}, c {}, d {}", op, a, b, c, d);
+        tracing::trace!("Instruction: {:?}", instruction);
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68
-        if self.is_predicate() && !op.is_predicate_allowed() {
+        if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
             return Err(PanicReason::TransactionValidity.into());
         }
 
-        match op {
-            OpcodeRepr::ADD => {
+        // Short-hand for retrieving the value from the register with the given ID.
+        macro_rules! r {
+            ($id:expr) => { self.registers[usize::from($id)] };
+        }
+
+        match instruction {
+            Instruction::ADD(add) => {
                 self.gas_charge(GAS_ADD)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), c.into())?;
+                let (a, b, c) = add.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::ADDI => {
+            Instruction::ADDI(addi) => {
                 self.gas_charge(GAS_ADDI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), imm.into())?;
+                let (a, b, imm) = addi.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::AND => {
+            Instruction::AND(and) => {
                 self.gas_charge(GAS_AND)?;
-                self.alu_set(ra, b & c)?;
+                let (a, b, c) = and.unpack();
+                self.alu_set(a.into(), r!(b) & r!(c))?;
             }
 
-            OpcodeRepr::ANDI => {
+            Instruction::ANDI(andi) => {
                 self.gas_charge(GAS_ANDI)?;
-                self.alu_set(ra, b & imm)?;
+                let (a, b, imm) = andi.unpack();
+                self.alu_set(a.into(), r!(b) & Word::from(imm))?;
             }
 
-            OpcodeRepr::DIV => {
+            Instruction::DIV(div) => {
                 self.gas_charge(GAS_DIV)?;
-                self.alu_error(ra, Word::div, b, c, c == 0)?;
+                let (a, b, c) = div.unpack();
+                let c = r!(c);
+                self.alu_error(a.into(), Word::div, r!(b), c, c == 0)?;
             }
 
-            OpcodeRepr::DIVI => {
+            Instruction::DIVI(divi) => {
                 self.gas_charge(GAS_DIVI)?;
-                self.alu_error(ra, Word::div, b, imm, imm == 0)?;
+                let (a, b, imm) = divi.unpack();
+                let imm = Word::from(imm);
+                self.alu_error(a.into(), Word::div, r!(b), imm, imm == 0)?;
             }
 
-            OpcodeRepr::EQ => {
+            Instruction::EQ(eq) => {
                 self.gas_charge(GAS_EQ)?;
-                self.alu_set(ra, (b == c) as Word)?;
+                let (a, b, c) = eq.unpack();
+                self.alu_set(a.into(), (r!(b) == r!(c)) as Word)?;
             }
 
-            OpcodeRepr::EXP => {
+            Instruction::EXP(exp) => {
                 self.gas_charge(GAS_EXP)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, c as u32)?;
+                let (a, b, c) = exp.unpack();
+                let expo = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
             }
 
-            OpcodeRepr::EXPI => {
+            Instruction::EXPI(expi) => {
                 self.gas_charge(GAS_EXPI)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
+                let (a, b, imm) = expi.unpack();
+                let expo = u32::from(imm);
+                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
             }
 
-            OpcodeRepr::GT => {
+            Instruction::GT(gt) => {
                 self.gas_charge(GAS_GT)?;
-                self.alu_set(ra, (b > c) as Word)?;
+                let (a, b, c) = gt.unpack();
+                self.alu_set(a.into(), (r!(b) > r!(c)) as Word)?;
             }
 
-            OpcodeRepr::LT => {
+            Instruction::LT(lt) => {
                 self.gas_charge(GAS_LT)?;
-                self.alu_set(ra, (b < c) as Word)?;
+                let (a, b, c) = lt.unpack();
+                self.alu_set(a.into(), (r!(b) < r!(c)) as Word)?;
             }
 
-            OpcodeRepr::MLOG => {
+            Instruction::MLOG(mlog) => {
                 self.gas_charge(GAS_MLOG)?;
+                let (a, b, c) = mlog.unpack();
+                let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
-                    ra,
-                    |b, c| checked_ilog(b, c).expect("checked_ilog returned None for valid values") as Word,
-                    b,
-                    c,
-                    b == 0 || c <= 1,
+                    a.into(),
+                    |l, r| checked_ilog(l, r).expect("checked_ilog returned None for valid values") as Word,
+                    lhs,
+                    rhs,
+                    lhs == 0 || rhs <= 1,
                 )?;
             }
 
-            OpcodeRepr::MOD => {
+            Instruction::MOD(mod_) => {
                 self.gas_charge(GAS_MOD)?;
-                self.alu_error(ra, Word::wrapping_rem, b, c, c == 0)?;
+                let (a, b, c) = mod_.unpack();
+                let rhs = r!(c);
+                self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
-            OpcodeRepr::MODI => {
+            Instruction::MODI(modi) => {
                 self.gas_charge(GAS_MODI)?;
-                self.alu_error(ra, Word::wrapping_rem, b, imm, imm == 0)?;
+                let (a, b, imm) = modi.unpack();
+                let rhs = Word::from(imm);
+                self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
-            OpcodeRepr::MOVE => {
+            Instruction::MOVE(move_) => {
                 self.gas_charge(GAS_MOVE)?;
-                self.alu_set(ra, b)?;
+                let (a, b) = move_.unpack();
+                self.alu_set(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::MOVI => {
+            Instruction::MOVI(movi) => {
                 self.gas_charge(GAS_MOVI)?;
-                self.alu_set(ra, imm)?;
+                let (a, imm) = movi.unpack();
+                self.alu_set(a.into(), Word::from(imm))?;
             }
 
-            OpcodeRepr::MROO => {
+            Instruction::MROO(mroo) => {
                 self.gas_charge(GAS_MROO)?;
+                let (a, b, c) = mroo.unpack();
+                let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
-                    ra,
-                    |b, c| checked_nth_root(b, c).expect("checked_nth_root returned None for valid values") as Word,
-                    b,
-                    c,
-                    c == 0,
+                    a.into(),
+                    |l, r| checked_nth_root(l, r).expect("checked_nth_root returned None for valid values") as Word,
+                    lhs,
+                    rhs,
+                    rhs == 0,
                 )?;
             }
 
-            OpcodeRepr::MUL => {
+            Instruction::MUL(mul) => {
                 self.gas_charge(GAS_MUL)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), c.into())?;
+                let (a, b, c) = mul.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::MULI => {
+            Instruction::MULI(muli) => {
                 self.gas_charge(GAS_MULI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), imm.into())?;
+                let (a, b, imm) = muli.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::NOOP => {
+            Instruction::NOOP(_noop) => {
                 self.gas_charge(GAS_NOOP)?;
                 self.alu_clear()?;
             }
 
-            OpcodeRepr::NOT => {
+            Instruction::NOT(not) => {
                 self.gas_charge(GAS_NOT)?;
-                self.alu_set(ra, !b)?;
+                let (a, b) = not.unpack();
+                self.alu_set(a.into(), !r!(b))?;
             }
 
-            OpcodeRepr::OR => {
+            Instruction::OR(or) => {
                 self.gas_charge(GAS_OR)?;
-                self.alu_set(ra, b | c)?;
+                let (a, b, c) = or.unpack();
+                self.alu_set(a.into(), r!(b) | r!(c))?;
             }
 
-            OpcodeRepr::ORI => {
+            Instruction::ORI(ori) => {
                 self.gas_charge(GAS_ORI)?;
-                self.alu_set(ra, b | imm)?;
+                let (a, b, imm) = ori.unpack();
+                self.alu_set(a.into(), r!(b) | Word::from(imm))?;
             }
 
-            OpcodeRepr::SLL => {
+            Instruction::SLL(sll) => {
                 self.gas_charge(GAS_SLL)?;
-                self.alu_set(ra, b.checked_shl(c as u32).unwrap_or_default())?;
+                let (a, b, c) = sll.unpack();
+                let rhs = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SLLI => {
+            Instruction::SLLI(slli) => {
                 self.gas_charge(GAS_SLLI)?;
-                self.alu_set(ra, b.checked_shl(imm as u32).unwrap_or_default())?;
+                let (a, b, imm) = slli.unpack();
+                let rhs = u32::from(imm);
+                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SRL => {
+            Instruction::SRL(srl) => {
                 self.gas_charge(GAS_SRL)?;
-                self.alu_set(ra, b.checked_shr(c as u32).unwrap_or_default())?;
+                let (a, b, c) = srl.unpack();
+                let rhs = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SRLI => {
+            Instruction::SRLI(srli) => {
                 self.gas_charge(GAS_SRLI)?;
-                self.alu_set(ra, b.checked_shr(imm as u32).unwrap_or_default())?;
+                let (a, b, imm) = srli.unpack();
+                let rhs = u32::from(imm);
+                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SUB => {
+            Instruction::SUB(sub) => {
                 self.gas_charge(GAS_SUB)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), c.into())?;
+                let (a, b, c) = sub.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::SUBI => {
+            Instruction::SUBI(subi) => {
                 self.gas_charge(GAS_SUBI)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), imm.into())?;
+                let (a, b, imm) = subi.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::XOR => {
+            Instruction::XOR(xor) => {
                 self.gas_charge(GAS_XOR)?;
-                self.alu_set(ra, b ^ c)?;
+                let (a, b, c) = xor.unpack();
+                self.alu_set(a.into(), r!(b) ^ r!(c))?;
             }
 
-            OpcodeRepr::XORI => {
+            Instruction::XORI(xori) => {
                 self.gas_charge(GAS_XORI)?;
-                self.alu_set(ra, b ^ imm)?;
+                let (a, b, imm) = xori.unpack();
+                self.alu_set(a.into(), r!(b) ^ Word::from(imm))?;
             }
 
-            OpcodeRepr::JI => {
+            Instruction::JI(ji) => {
                 self.gas_charge(GAS_JI)?;
-                self.jump(imm)?;
+                let imm = ji.unpack();
+                self.jump(imm.into())?;
             }
 
-            OpcodeRepr::JNEI => {
+            Instruction::JNEI(jnei) => {
                 self.gas_charge(GAS_JNEI)?;
-                self.jump_not_equal(a, b, imm)?;
+                let (a, b, imm) = jnei.unpack();
+                self.jump_not_equal(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::JNZI => {
+            Instruction::JNZI(jnzi) => {
                 self.gas_charge(GAS_JNZI)?;
-                self.jump_not_zero(a, imm)?;
+                let (a, imm) = jnzi.unpack();
+                self.jump_not_zero(r!(a), imm.into())?;
             }
 
-            OpcodeRepr::JMP => {
+            Instruction::JMP(jmp) => {
                 self.gas_charge(GAS_JMP)?;
-                self.jump(a)?;
+                let a = jmp.unpack();
+                self.jump(r!(a))?;
             }
 
-            OpcodeRepr::JNE => {
+            Instruction::JNE(jne) => {
                 self.gas_charge(GAS_JNE)?;
-                self.jump_not_equal(a, b, c)?;
+                let (a, b, c) = jne.unpack();
+                self.jump_not_equal(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::RET => {
+            Instruction::RET(ret) => {
                 self.gas_charge(GAS_RET)?;
-                self.ret(a)?;
-
-                return Ok(ExecuteState::Return(a));
+                let a = ret.unpack();
+                let ra = r!(a);
+                self.ret(ra)?;
+                return Ok(ExecuteState::Return(ra));
             }
 
-            OpcodeRepr::RETD => {
+            Instruction::RETD(retd) => {
                 self.gas_charge(GAS_RETD)?;
-
-                return self.ret_data(a, b).map(ExecuteState::ReturnData);
+                let (a, b) = retd.unpack();
+                return self.ret_data(r!(a), r!(b)).map(ExecuteState::ReturnData);
             }
 
-            OpcodeRepr::RVRT => {
+            Instruction::RVRT(rvrt) => {
                 self.gas_charge(GAS_RVRT)?;
-                self.revert(a);
-
-                return Ok(ExecuteState::Revert(a));
+                let a = rvrt.unpack();
+                let ra = r!(a);
+                self.revert(ra);
+                return Ok(ExecuteState::Revert(ra));
             }
 
-            OpcodeRepr::SMO => {
+            Instruction::SMO(smo) => {
                 self.gas_charge(GAS_SMO)?;
-                self.message_output(a, b, c, d)?;
+                let (a, b, c, d) = smo.unpack();
+                self.message_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::ALOC => {
+            Instruction::ALOC(aloc) => {
                 self.gas_charge(GAS_ALOC)?;
-                self.malloc(a)?;
+                let a = aloc.unpack();
+                self.malloc(r!(a))?;
             }
 
-            OpcodeRepr::CFEI => {
+            Instruction::CFEI(cfei) => {
                 self.gas_charge(GAS_CFEI)?;
-                self.stack_pointer_overflow(Word::overflowing_add, imm)?;
+                let imm = cfei.unpack();
+                self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
             }
 
-            OpcodeRepr::CFSI => {
+            Instruction::CFSI(cfsi) => {
                 self.gas_charge(GAS_CFSI)?;
-                self.stack_pointer_overflow(Word::overflowing_sub, imm)?;
+                let imm = cfsi.unpack();
+                self.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
             }
 
-            OpcodeRepr::LB => {
+            Instruction::LB(lb) => {
                 self.gas_charge(GAS_LB)?;
-                self.load_byte(ra, b, imm)?;
+                let (a, b, imm) = lb.unpack();
+                self.load_byte(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::LW => {
+            Instruction::LW(lw) => {
                 self.gas_charge(GAS_LW)?;
-                self.load_word(ra, b, imm)?;
+                let (a, b, imm) = lw.unpack();
+                self.load_word(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::MCL => {
-                self.gas_charge_monad(GAS_MCL, b)?;
-                self.memclear(a, b)?;
+            Instruction::MCL(mcl) => {
+                let (a, b) = mcl.unpack();
+                let len = r!(b);
+                self.gas_charge_monad(GAS_MCL, len)?;
+                self.memclear(r!(a), len)?;
             }
 
-            OpcodeRepr::MCLI => {
-                self.gas_charge_monad(GAS_MCLI, b)?;
-                self.memclear(a, imm)?;
+            Instruction::MCLI(mcli) => {
+                let (a, imm) = mcli.unpack();
+                let len = Word::from(imm);
+                self.gas_charge_monad(GAS_MCLI, len)?;
+                self.memclear(r!(a), len)?;
             }
 
-            OpcodeRepr::MCP => {
-                self.gas_charge_monad(GAS_MCP, c)?;
-                self.memcopy(a, b, c)?;
+            Instruction::MCP(mcp) => {
+                let (a, b, c) = mcp.unpack();
+                let len = r!(c);
+                self.gas_charge_monad(GAS_MCP, len)?;
+                self.memcopy(r!(a), r!(b), len)?;
             }
 
-            OpcodeRepr::MCPI => {
-                self.gas_charge_monad(GAS_MCPI, imm)?;
-                self.memcopy(a, b, imm)?;
+            Instruction::MCPI(mcpi) => {
+                let (a, b, imm) = mcpi.unpack();
+                let len = imm.into();
+                self.gas_charge_monad(GAS_MCPI, len)?;
+                self.memcopy(r!(a), r!(b), len)?;
             }
 
-            OpcodeRepr::MEQ => {
-                self.gas_charge_monad(GAS_MEQ, d)?;
-                self.memeq(ra, b, c, d)?;
+            Instruction::MEQ(meq) => {
+                let (a, b, c, d) = meq.unpack();
+                let len = r!(d);
+                self.gas_charge_monad(GAS_MEQ, len)?;
+                self.memeq(a.into(), r!(b), r!(c), len)?;
             }
 
-            OpcodeRepr::SB => {
+            Instruction::SB(sb) => {
                 self.gas_charge(GAS_SB)?;
-                self.store_byte(a, b, imm)?;
+                let (a, b, imm) =  sb.unpack();
+                self.store_byte(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::SW => {
+            Instruction::SW(sw) => {
                 self.gas_charge(GAS_SW)?;
-                self.store_word(a, b, imm)?;
+                let (a, b, imm) = sw.unpack();
+                self.store_word(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::BAL => {
+            Instruction::BAL(bal) => {
                 self.gas_charge(GAS_BAL)?;
-                self.contract_balance(ra, b, c)?;
+                let (a, b, c) = bal.unpack();
+                self.contract_balance(a.into(), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::BHEI => {
+            Instruction::BHEI(bhei) => {
                 self.gas_charge(GAS_BHEI)?;
-                self.set_block_height(ra)?;
+                let a = bhei.unpack();
+                self.set_block_height(a.into())?;
             }
 
-            OpcodeRepr::BHSH => {
+            Instruction::BHSH(bhsh) => {
                 self.gas_charge(GAS_BHSH)?;
-                self.block_hash(a, b)?;
+                let (a, b) = bhsh.unpack();
+                self.block_hash(r!(a), r!(b))?;
             }
 
-            OpcodeRepr::BURN => {
+            Instruction::BURN(burn) => {
                 self.gas_charge(GAS_BURN)?;
-                self.burn(a)?;
+                let a = burn.unpack();
+                self.burn(r!(a))?;
             }
 
-            OpcodeRepr::CALL => {
+            Instruction::CALL(call) => {
                 self.gas_charge(GAS_CALL)?;
-                let state = self.call(a, b, c, d)?;
+                let (a, b, c, d) = call.unpack();
+                let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
                 // raise revert state to halt execution for the callee
                 if let ProgramState::Revert(ra) = state {
                     return Ok(ExecuteState::Revert(ra));
                 }
             }
 
-            OpcodeRepr::CB => {
+            Instruction::CB(cb) => {
                 self.gas_charge(GAS_CB)?;
-                self.block_proposer(a)?;
+                let a = cb.unpack();
+                self.block_proposer(r!(a))?;
             }
 
-            OpcodeRepr::CCP => {
-                self.gas_charge_monad(GAS_CCP, d)?;
-                self.code_copy(a, b, c, d)?;
+            Instruction::CCP(ccp) => {
+                let (a, b, c, d) = ccp.unpack();
+                let len = r!(d);
+                self.gas_charge_monad(GAS_CCP, len)?;
+                self.code_copy(r!(a), r!(b), r!(c), len)?;
             }
 
-            OpcodeRepr::CROO => {
+            Instruction::CROO(croo) => {
                 self.gas_charge(GAS_CROO)?;
-                self.code_root(a, b)?;
+                let (a, b) = croo.unpack();
+                self.code_root(r!(a), r!(b))?;
             }
 
-            OpcodeRepr::CSIZ => {
+            Instruction::CSIZ(csiz) => {
                 self.gas_charge(GAS_CSIZ)?;
-                self.code_size(ra, self.registers[rb])?;
+                let (a, b) = csiz.unpack();
+                self.code_size(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::LDC => {
+            Instruction::LDC(ldc) => {
                 self.gas_charge(GAS_LDC)?;
-                self.load_contract_code(a, b, c)?;
+                let (a, b, c) = ldc.unpack();
+                self.load_contract_code(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::LOG => {
+            Instruction::LOG(log) => {
                 self.gas_charge(GAS_LOG)?;
-                self.log(a, b, c, d)?;
+                let (a, b, c, d) = log.unpack();
+                self.log(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::LOGD => {
+            Instruction::LOGD(logd) => {
                 self.gas_charge(GAS_LOGD)?;
-                self.log_data(a, b, c, d)?;
+                let (a, b, c, d) = logd.unpack();
+                self.log_data(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::MINT => {
+            Instruction::MINT(mint) => {
                 self.gas_charge(GAS_MINT)?;
-                self.mint(a)?;
+                let a = mint.unpack();
+                self.mint(r!(a))?;
             }
 
-            OpcodeRepr::SCWQ => {
+            Instruction::SCWQ(scwq) => {
                 self.gas_charge(GAS_SCWQ)?;
-                self.state_clear_qword(a, rb, c)?;
+                let (a, b, c) = scwq.unpack();
+                self.state_clear_qword(r!(a), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SRW => {
+            Instruction::SRW(srw) => {
                 self.gas_charge(GAS_SRW)?;
-                self.state_read_word(ra, rb, c)?;
+                let (a, b, c) = srw.unpack();
+                self.state_read_word(a.into(), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SRWQ => {
+            Instruction::SRWQ(srwq) => {
                 self.gas_charge(GAS_SRWQ)?;
-                self.state_read_qword(a, rb, c, d)?;
+                let (a, b, c, d) = srwq.unpack();
+                self.state_read_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::SWW => {
+            Instruction::SWW(sww) => {
                 self.gas_charge(GAS_SWW)?;
-                self.state_write_word(a, rb, c)?;
+                let (a, b, c) = sww.unpack();
+                self.state_write_word(r!(a), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SWWQ => {
+            Instruction::SWWQ(swwq) => {
                 self.gas_charge(GAS_SWWQ)?;
-                self.state_write_qword(a, rb, c, d)?;
+                let (a, b, c, d) = swwq.unpack();
+                self.state_write_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::TIME => {
+            Instruction::TIME(time) => {
                 self.gas_charge(GAS_TIME)?;
-                self.timestamp(ra, b)?;
+                let (a, b) = time.unpack();
+                self.timestamp(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::ECR => {
+            Instruction::ECR(ecr) => {
                 self.gas_charge(GAS_ECR)?;
-                self.ecrecover(a, b, c)?;
+                let (a, b, c) = ecr.unpack();
+                self.ecrecover(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::K256 => {
+            Instruction::K256(k256) => {
                 self.gas_charge(GAS_K256)?;
-                self.keccak256(a, b, c)?;
+                let (a, b, c) = k256.unpack();
+                self.keccak256(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::S256 => {
+            Instruction::S256(s256) => {
                 self.gas_charge(GAS_S256)?;
-                self.sha256(a, b, c)?;
+                let (a, b, c) = s256.unpack();
+                self.sha256(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::FLAG => {
+            Instruction::FLAG(flag) => {
                 self.gas_charge(GAS_FLAG)?;
-                self.set_flag(a)?;
+                let a = flag.unpack();
+                self.set_flag(r!(a))?;
             }
 
-            OpcodeRepr::GM => {
+            Instruction::GM(gm) => {
                 self.gas_charge(GAS_GM)?;
-                self.metadata(ra, imm as Immediate18)?;
+                let (a, imm) = gm.unpack();
+                self.metadata(a.into(), imm.into())?;
             }
 
-            OpcodeRepr::GTF => {
+            Instruction::GTF(gtf) => {
                 self.gas_charge(GAS_GTF)?;
-                self.get_transaction_field(ra, b, imm as Immediate12)?;
+                let (a, b, imm) = gtf.unpack();
+                self.get_transaction_field(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::TR => {
+            Instruction::TR(tr) => {
                 self.gas_charge(GAS_TR)?;
-                self.transfer(a, b, c)?;
+                let (a, b, c) = tr.unpack();
+                self.transfer(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::TRO => {
+            Instruction::TRO(tro) => {
                 self.gas_charge(GAS_TRO)?;
-                self.transfer_output(a, b, c, d)?;
-            }
-
-            // list of currently unimplemented opcodes
-            _ => {
-                return Err(PanicReason::ErrorFlag.into());
+                let (a, b, c, d) = tro.unpack();
+                self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
             }
         }
 

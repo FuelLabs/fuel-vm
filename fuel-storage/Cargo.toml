@@ -6,5 +6,5 @@ edition = "2021"
 homepage = "https://fuel.network/"
 keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/fuel-storage"
+repository = "https://github.com/FuelLabs/fuel-vm"
 description = "Storage traits for Fuel storage-backed data structures."

@@ -16,63 +16,34 @@ Instruction set for the [FuelVM](https://github.com/FuelLabs/fuel-specs).
 
 ```rust
 use fuel_asm::*;
-use Opcode::*;
 
 // A sample program to perform ecrecover
 let program = vec![
-    MOVE(0x10, 0x01),      // set r[0x10] := $one
-    SLLI(0x20, 0x10, 5),   // set r[0x20] := `r[0x10] << 5 == 32`
-    SLLI(0x21, 0x10, 6),   // set r[0x21] := `r[0x10] << 6 == 64`
-    ALOC(0x21),            // alloc `r[0x21] == 64` to the heap
-    ADDI(0x10, 0x07, 1),   // set r[0x10] := `$hp + 1` (allocated heap)
-    MOVE(0x11, 0x04),      // set r[0x11] := $ssp
-    ADD(0x12, 0x04, 0x20), // set r[0x12] := `$ssp + r[0x20]`
-    ECR(0x10, 0x11, 0x12), // recover public key in memory[r[0x10], 64]
-    RET(0x01),             // return `1`
+    op::move_(0x10, 0x01),     // set r[0x10] := $one
+    op::slli(0x20, 0x10, 5),   // set r[0x20] := `r[0x10] << 5 == 32`
+    op::slli(0x21, 0x10, 6),   // set r[0x21] := `r[0x10] << 6 == 64`
+    op::aloc(0x21),            // alloc `r[0x21] == 64` to the heap
+    op::addi(0x10, 0x07, 1),   // set r[0x10] := `$hp + 1` (allocated heap)
+    op::move_(0x11, 0x04),     // set r[0x11] := $ssp
+    op::add(0x12, 0x04, 0x20), // set r[0x12] := `$ssp + r[0x20]`
+    op::ecr(0x10, 0x11, 0x12), // recover public key in memory[r[0x10], 64]
+    op::ret(0x01),             // return `1`
 ];
 
 // Convert program to bytes representation
 let bytes: Vec<u8> = program.iter().copied().collect();
 
 // A program can be reconstructed from an iterator of bytes
-let restored = Opcode::from_bytes_iter(bytes.iter().copied());
-
-assert_eq!(program, restored);
+let restored: Result<Vec<Instruction>, _> = fuel_asm::from_bytes(bytes).collect();
+assert_eq!(program, restored.unwrap());
 
 // Every instruction can be described as `u32` big-endian bytes
-let halfwords: Vec<u32> = program.iter().copied().map(u32::from).collect();
+let halfwords: Vec<u32> = program.iter().copied().collect();
 let bytes = halfwords.iter().copied().map(u32::to_be_bytes).flatten();
-let restored = Opcode::from_bytes_iter(bytes);
-
-assert_eq!(program, restored);
+let restored: Result<Vec<Instruction>, _> = fuel_asm::from_bytes(bytes).collect();
+assert_eq!(program, restored.unwrap());
 
 // We can also reconstruct the instructions individually
-let restored: Vec<Opcode> = halfwords.iter().copied().map(Opcode::from).collect();
-
-assert_eq!(program, restored);
-
-// We have an unchecked variant for optimal performance
-let restored: Vec<Opcode> = halfwords
-    .iter()
-    .copied()
-    .map(|w| unsafe { Opcode::from_bytes_unchecked(&w.to_be_bytes()) })
-    .collect();
-
-assert_eq!(program, restored);
-
-// Finally, we have [`Instruction`] to allow optimal runtime parsing of the components of the
-// opcode
-//
-// `Opcode` itself is only but an abstraction/helper to facilitate visualization, but the VM is
-// expected to use raw instructions
-let instrs: Vec<Instruction> = program.iter().copied().map(Instruction::from).collect();
-let restored: Vec<Opcode> = instrs.iter().copied().map(Opcode::from).collect();
-
-assert_eq!(program, restored);
-
-// An instruction is composed by the opcode representation registers Id and immediate values
-assert_eq!(instrs[1].op(), OpcodeRepr::SLLI as u8);
-assert_eq!(instrs[1].ra(), 0x20);
-assert_eq!(instrs[1].rb(), 0x10);
-assert_eq!(instrs[1].imm12(), 5);
+let restored: Result<Vec<Instruction>, _> = fuel_asm::from_u32s(halfwords).collect();
+assert_eq!(program, restored.unwrap());
 ```

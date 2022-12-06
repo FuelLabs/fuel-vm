@@ -1,7 +1,6 @@
 #![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
 
 use fuel_asm::*;
-use std::io::{Read, Write};
 
 #[test]
 fn opcode() {
@@ -11,261 +10,192 @@ fn opcode() {
     let imm18 = 0x02fffd;
     let imm24 = 0xbffffd;
 
-    let mut data = vec![
-        Opcode::ADD(r, r, r),
-        Opcode::ADDI(r, r, imm12),
-        Opcode::AND(r, r, r),
-        Opcode::ANDI(r, r, imm12),
-        Opcode::DIV(r, r, r),
-        Opcode::DIVI(r, r, imm12),
-        Opcode::EQ(r, r, r),
-        Opcode::EXP(r, r, r),
-        Opcode::EXPI(r, r, imm12),
-        Opcode::GT(r, r, r),
-        Opcode::LT(r, r, r),
-        Opcode::MLOG(r, r, r),
-        Opcode::MROO(r, r, r),
-        Opcode::MOD(r, r, r),
-        Opcode::MODI(r, r, imm12),
-        Opcode::MOVE(r, r),
-        Opcode::MOVI(r, imm18),
-        Opcode::MUL(r, r, r),
-        Opcode::MULI(r, r, imm12),
-        Opcode::NOT(r, r),
-        Opcode::OR(r, r, r),
-        Opcode::ORI(r, r, imm12),
-        Opcode::SLL(r, r, r),
-        Opcode::SLLI(r, r, imm12),
-        Opcode::SRL(r, r, r),
-        Opcode::SRLI(r, r, imm12),
-        Opcode::SUB(r, r, r),
-        Opcode::SUBI(r, r, imm12),
-        Opcode::XOR(r, r, r),
-        Opcode::XORI(r, r, imm12),
-        Opcode::JI(imm24),
-        Opcode::JNEI(r, r, imm12),
-        Opcode::JNZI(r, imm18),
-        Opcode::JMP(r),
-        Opcode::JNE(r, r, r),
-        Opcode::RET(r),
-        Opcode::RETD(r, r),
-        Opcode::CFEI(imm24),
-        Opcode::CFSI(imm24),
-        Opcode::LB(r, r, imm12),
-        Opcode::LW(r, r, imm12),
-        Opcode::ALOC(r),
-        Opcode::MCL(r, r),
-        Opcode::MCLI(r, imm18),
-        Opcode::MCP(r, r, r),
-        Opcode::MCPI(r, r, imm12),
-        Opcode::MEQ(r, r, r, r),
-        Opcode::SB(r, r, imm12),
-        Opcode::SW(r, r, imm12),
-        Opcode::BAL(r, r, r),
-        Opcode::BHSH(r, r),
-        Opcode::BHEI(r),
-        Opcode::BURN(r),
-        Opcode::CALL(r, r, r, r),
-        Opcode::CCP(r, r, r, r),
-        Opcode::CROO(r, r),
-        Opcode::CSIZ(r, r),
-        Opcode::CB(r),
-        Opcode::LDC(r, r, r),
-        Opcode::LOG(r, r, r, r),
-        Opcode::LOGD(r, r, r, r),
-        Opcode::MINT(r),
-        Opcode::RVRT(r),
-        Opcode::SMO(r, r, r, r),
-        Opcode::SCWQ(r, r, r),
-        Opcode::SRW(r, r, r),
-        Opcode::SRWQ(r, r, r, r),
-        Opcode::SWW(r, r, r),
-        Opcode::SWWQ(r, r, r, r),
-        Opcode::TIME(r, r),
-        Opcode::TR(r, r, r),
-        Opcode::TRO(r, r, r, r),
-        Opcode::ECR(r, r, r),
-        Opcode::K256(r, r, r),
-        Opcode::S256(r, r, r),
-        Opcode::NOOP,
-        Opcode::FLAG(r),
-        Opcode::GM(r, imm18),
-        Opcode::gm(r, GMArgs::IsCallerExternal),
-        Opcode::gm(r, GMArgs::GetCaller),
-        Opcode::gm(r, GMArgs::GetVerifyingPredicate),
-        Opcode::GTF(r, r, imm12),
-        Opcode::gtf(r, r, GTFArgs::Type),
-        Opcode::gtf(r, r, GTFArgs::ScriptGasPrice),
-        Opcode::gtf(r, r, GTFArgs::ScriptGasLimit),
-        Opcode::gtf(r, r, GTFArgs::ScriptMaturity),
-        Opcode::gtf(r, r, GTFArgs::ScriptLength),
-        Opcode::gtf(r, r, GTFArgs::ScriptDataLength),
-        Opcode::gtf(r, r, GTFArgs::ScriptInputsCount),
-        Opcode::gtf(r, r, GTFArgs::ScriptOutputsCount),
-        Opcode::gtf(r, r, GTFArgs::ScriptWitnessesCound),
-        Opcode::gtf(r, r, GTFArgs::ScriptReceiptsRoot),
-        Opcode::gtf(r, r, GTFArgs::Script),
-        Opcode::gtf(r, r, GTFArgs::ScriptData),
-        Opcode::gtf(r, r, GTFArgs::ScriptInputAtIndex),
-        Opcode::gtf(r, r, GTFArgs::ScriptOutputAtIndex),
-        Opcode::gtf(r, r, GTFArgs::ScriptWitnessAtIndex),
-        Opcode::gtf(r, r, GTFArgs::CreateGasPrice),
-        Opcode::gtf(r, r, GTFArgs::CreateGasLimit),
-        Opcode::gtf(r, r, GTFArgs::CreateMaturity),
-        Opcode::gtf(r, r, GTFArgs::CreateBytecodeLength),
-        Opcode::gtf(r, r, GTFArgs::CreateBytecodeWitnessIndex),
-        Opcode::gtf(r, r, GTFArgs::CreateStorageSlotsCount),
-        Opcode::gtf(r, r, GTFArgs::CreateInputsCount),
-        Opcode::gtf(r, r, GTFArgs::CreateOutputsCount),
-        Opcode::gtf(r, r, GTFArgs::CreateWitnessesCount),
-        Opcode::gtf(r, r, GTFArgs::CreateSalt),
-        Opcode::gtf(r, r, GTFArgs::CreateStorageSlotAtIndex),
-        Opcode::gtf(r, r, GTFArgs::CreateInputAtIndex),
-        Opcode::gtf(r, r, GTFArgs::CreateOutputAtIndex),
-        Opcode::gtf(r, r, GTFArgs::CreateWitnessAtIndex),
-        Opcode::gtf(r, r, GTFArgs::InputType),
-        Opcode::gtf(r, r, GTFArgs::InputCoinTxId),
-        Opcode::gtf(r, r, GTFArgs::InputCoinOutputIndex),
-        Opcode::gtf(r, r, GTFArgs::InputCoinOwner),
-        Opcode::gtf(r, r, GTFArgs::InputCoinAmount),
-        Opcode::gtf(r, r, GTFArgs::InputCoinAssetId),
-        Opcode::gtf(r, r, GTFArgs::InputCoinTxPointer),
-        Opcode::gtf(r, r, GTFArgs::InputCoinWitnessIndex),
-        Opcode::gtf(r, r, GTFArgs::InputCoinMaturity),
-        Opcode::gtf(r, r, GTFArgs::InputCoinPredicateLength),
-        Opcode::gtf(r, r, GTFArgs::InputCoinPredicateDataLength),
-        Opcode::gtf(r, r, GTFArgs::InputCoinPredicate),
-        Opcode::gtf(r, r, GTFArgs::InputCoinPredicateData),
-        Opcode::gtf(r, r, GTFArgs::InputContractTxId),
-        Opcode::gtf(r, r, GTFArgs::InputContractOutputIndex),
-        Opcode::gtf(r, r, GTFArgs::InputContractBalanceRoot),
-        Opcode::gtf(r, r, GTFArgs::InputContractStateRoot),
-        Opcode::gtf(r, r, GTFArgs::InputContractTxPointer),
-        Opcode::gtf(r, r, GTFArgs::InputContractId),
-        Opcode::gtf(r, r, GTFArgs::InputMessageId),
-        Opcode::gtf(r, r, GTFArgs::InputMessageSender),
-        Opcode::gtf(r, r, GTFArgs::InputMessageRecipient),
-        Opcode::gtf(r, r, GTFArgs::InputMessageAmount),
-        Opcode::gtf(r, r, GTFArgs::InputMessageNonce),
-        Opcode::gtf(r, r, GTFArgs::InputMessageWitnessIndex),
-        Opcode::gtf(r, r, GTFArgs::InputMessageDataLength),
-        Opcode::gtf(r, r, GTFArgs::InputMessagePredicateLength),
-        Opcode::gtf(r, r, GTFArgs::InputMessagePredicateDataLength),
-        Opcode::gtf(r, r, GTFArgs::InputMessageData),
-        Opcode::gtf(r, r, GTFArgs::InputMessagePredicate),
-        Opcode::gtf(r, r, GTFArgs::InputMessagePredicateData),
-        Opcode::gtf(r, r, GTFArgs::OutputType),
-        Opcode::gtf(r, r, GTFArgs::OutputCoinTo),
-        Opcode::gtf(r, r, GTFArgs::OutputCoinAmount),
-        Opcode::gtf(r, r, GTFArgs::OutputCoinAssetId),
-        Opcode::gtf(r, r, GTFArgs::OutputContractInputIndex),
-        Opcode::gtf(r, r, GTFArgs::OutputContractBalanceRoot),
-        Opcode::gtf(r, r, GTFArgs::OutputContractStateRoot),
-        Opcode::gtf(r, r, GTFArgs::OutputMessageRecipient),
-        Opcode::gtf(r, r, GTFArgs::OutputMessageAmount),
-        Opcode::gtf(r, r, GTFArgs::OutputContractCreatedContractId),
-        Opcode::gtf(r, r, GTFArgs::OutputContractCreatedStateRoot),
-        Opcode::gtf(r, r, GTFArgs::WitnessDataLength),
-        Opcode::gtf(r, r, GTFArgs::WitnessData),
-        Opcode::Undefined,
+    let mut instructions = vec![
+        op::add(r, r, r),
+        op::addi(r, r, imm12),
+        op::and(r, r, r),
+        op::andi(r, r, imm12),
+        op::div(r, r, r),
+        op::divi(r, r, imm12),
+        op::eq(r, r, r),
+        op::exp(r, r, r),
+        op::expi(r, r, imm12),
+        op::gt(r, r, r),
+        op::lt(r, r, r),
+        op::mlog(r, r, r),
+        op::mroo(r, r, r),
+        op::mod_(r, r, r),
+        op::modi(r, r, imm12),
+        op::move_(r, r),
+        op::movi(r, imm18),
+        op::mul(r, r, r),
+        op::muli(r, r, imm12),
+        op::not(r, r),
+        op::or(r, r, r),
+        op::ori(r, r, imm12),
+        op::sll(r, r, r),
+        op::slli(r, r, imm12),
+        op::srl(r, r, r),
+        op::srli(r, r, imm12),
+        op::sub(r, r, r),
+        op::subi(r, r, imm12),
+        op::xor(r, r, r),
+        op::xori(r, r, imm12),
+        op::ji(imm24),
+        op::jnei(r, r, imm12),
+        op::jnzi(r, imm18),
+        op::jmp(r),
+        op::jne(r, r, r),
+        op::ret(r),
+        op::retd(r, r),
+        op::cfei(imm24),
+        op::cfsi(imm24),
+        op::lb(r, r, imm12),
+        op::lw(r, r, imm12),
+        op::aloc(r),
+        op::mcl(r, r),
+        op::mcli(r, imm18),
+        op::mcp(r, r, r),
+        op::mcpi(r, r, imm12),
+        op::meq(r, r, r, r),
+        op::sb(r, r, imm12),
+        op::sw(r, r, imm12),
+        op::bal(r, r, r),
+        op::bhsh(r, r),
+        op::bhei(r),
+        op::burn(r),
+        op::call(r, r, r, r),
+        op::ccp(r, r, r, r),
+        op::croo(r, r),
+        op::csiz(r, r),
+        op::cb(r),
+        op::ldc(r, r, r),
+        op::log(r, r, r, r),
+        op::logd(r, r, r, r),
+        op::mint(r),
+        op::rvrt(r),
+        op::smo(r, r, r, r),
+        op::scwq(r, r, r),
+        op::srw(r, r, r),
+        op::srwq(r, r, r, r),
+        op::sww(r, r, r),
+        op::swwq(r, r, r, r),
+        op::time(r, r),
+        op::tr(r, r, r),
+        op::tro(r, r, r, r),
+        op::ecr(r, r, r),
+        op::k256(r, r, r),
+        op::s256(r, r, r),
+        op::noop(),
+        op::flag(r),
+        op::gm(r, imm18),
+        Instruction::gm(r, GMArgs::IsCallerExternal),
+        Instruction::gm(r, GMArgs::GetCaller),
+        Instruction::gm(r, GMArgs::GetVerifyingPredicate),
+        op::gtf(r, r, imm12),
+        Instruction::gtf(r, r, GTFArgs::Type),
+        Instruction::gtf(r, r, GTFArgs::ScriptGasPrice),
+        Instruction::gtf(r, r, GTFArgs::ScriptGasLimit),
+        Instruction::gtf(r, r, GTFArgs::ScriptMaturity),
+        Instruction::gtf(r, r, GTFArgs::ScriptLength),
+        Instruction::gtf(r, r, GTFArgs::ScriptDataLength),
+        Instruction::gtf(r, r, GTFArgs::ScriptInputsCount),
+        Instruction::gtf(r, r, GTFArgs::ScriptOutputsCount),
+        Instruction::gtf(r, r, GTFArgs::ScriptWitnessesCound),
+        Instruction::gtf(r, r, GTFArgs::ScriptReceiptsRoot),
+        Instruction::gtf(r, r, GTFArgs::Script),
+        Instruction::gtf(r, r, GTFArgs::ScriptData),
+        Instruction::gtf(r, r, GTFArgs::ScriptInputAtIndex),
+        Instruction::gtf(r, r, GTFArgs::ScriptOutputAtIndex),
+        Instruction::gtf(r, r, GTFArgs::ScriptWitnessAtIndex),
+        Instruction::gtf(r, r, GTFArgs::CreateGasPrice),
+        Instruction::gtf(r, r, GTFArgs::CreateGasLimit),
+        Instruction::gtf(r, r, GTFArgs::CreateMaturity),
+        Instruction::gtf(r, r, GTFArgs::CreateBytecodeLength),
+        Instruction::gtf(r, r, GTFArgs::CreateBytecodeWitnessIndex),
+        Instruction::gtf(r, r, GTFArgs::CreateStorageSlotsCount),
+        Instruction::gtf(r, r, GTFArgs::CreateInputsCount),
+        Instruction::gtf(r, r, GTFArgs::CreateOutputsCount),
+        Instruction::gtf(r, r, GTFArgs::CreateWitnessesCount),
+        Instruction::gtf(r, r, GTFArgs::CreateSalt),
+        Instruction::gtf(r, r, GTFArgs::CreateStorageSlotAtIndex),
+        Instruction::gtf(r, r, GTFArgs::CreateInputAtIndex),
+        Instruction::gtf(r, r, GTFArgs::CreateOutputAtIndex),
+        Instruction::gtf(r, r, GTFArgs::CreateWitnessAtIndex),
+        Instruction::gtf(r, r, GTFArgs::InputType),
+        Instruction::gtf(r, r, GTFArgs::InputCoinTxId),
+        Instruction::gtf(r, r, GTFArgs::InputCoinOutputIndex),
+        Instruction::gtf(r, r, GTFArgs::InputCoinOwner),
+        Instruction::gtf(r, r, GTFArgs::InputCoinAmount),
+        Instruction::gtf(r, r, GTFArgs::InputCoinAssetId),
+        Instruction::gtf(r, r, GTFArgs::InputCoinTxPointer),
+        Instruction::gtf(r, r, GTFArgs::InputCoinWitnessIndex),
+        Instruction::gtf(r, r, GTFArgs::InputCoinMaturity),
+        Instruction::gtf(r, r, GTFArgs::InputCoinPredicateLength),
+        Instruction::gtf(r, r, GTFArgs::InputCoinPredicateDataLength),
+        Instruction::gtf(r, r, GTFArgs::InputCoinPredicate),
+        Instruction::gtf(r, r, GTFArgs::InputCoinPredicateData),
+        Instruction::gtf(r, r, GTFArgs::InputContractTxId),
+        Instruction::gtf(r, r, GTFArgs::InputContractOutputIndex),
+        Instruction::gtf(r, r, GTFArgs::InputContractBalanceRoot),
+        Instruction::gtf(r, r, GTFArgs::InputContractStateRoot),
+        Instruction::gtf(r, r, GTFArgs::InputContractTxPointer),
+        Instruction::gtf(r, r, GTFArgs::InputContractId),
+        Instruction::gtf(r, r, GTFArgs::InputMessageId),
+        Instruction::gtf(r, r, GTFArgs::InputMessageSender),
+        Instruction::gtf(r, r, GTFArgs::InputMessageRecipient),
+        Instruction::gtf(r, r, GTFArgs::InputMessageAmount),
+        Instruction::gtf(r, r, GTFArgs::InputMessageNonce),
+        Instruction::gtf(r, r, GTFArgs::InputMessageWitnessIndex),
+        Instruction::gtf(r, r, GTFArgs::InputMessageDataLength),
+        Instruction::gtf(r, r, GTFArgs::InputMessagePredicateLength),
+        Instruction::gtf(r, r, GTFArgs::InputMessagePredicateDataLength),
+        Instruction::gtf(r, r, GTFArgs::InputMessageData),
+        Instruction::gtf(r, r, GTFArgs::InputMessagePredicate),
+        Instruction::gtf(r, r, GTFArgs::InputMessagePredicateData),
+        Instruction::gtf(r, r, GTFArgs::OutputType),
+        Instruction::gtf(r, r, GTFArgs::OutputCoinTo),
+        Instruction::gtf(r, r, GTFArgs::OutputCoinAmount),
+        Instruction::gtf(r, r, GTFArgs::OutputCoinAssetId),
+        Instruction::gtf(r, r, GTFArgs::OutputContractInputIndex),
+        Instruction::gtf(r, r, GTFArgs::OutputContractBalanceRoot),
+        Instruction::gtf(r, r, GTFArgs::OutputContractStateRoot),
+        Instruction::gtf(r, r, GTFArgs::OutputMessageRecipient),
+        Instruction::gtf(r, r, GTFArgs::OutputMessageAmount),
+        Instruction::gtf(r, r, GTFArgs::OutputContractCreatedContractId),
+        Instruction::gtf(r, r, GTFArgs::OutputContractCreatedStateRoot),
+        Instruction::gtf(r, r, GTFArgs::WitnessDataLength),
+        Instruction::gtf(r, r, GTFArgs::WitnessData),
     ];
 
     // Pad to even length
-    if data.len() % 2 != 0 {
-        data.push(Opcode::Undefined);
+    if instructions.len() % 2 != 0 {
+        instructions.push(op::noop());
     }
 
-    let bytes: Vec<u8> = data.iter().copied().collect();
+    let bytes: Vec<u8> = instructions.iter().copied().collect();
 
-    let data_p = Opcode::from_bytes_iter(bytes.clone());
-    let data_q = Instruction::from_bytes_iter(bytes.clone());
-    let data_q: Vec<Opcode> = data_q.into_iter().collect();
+    let instructions_from_bytes: Result<Vec<Instruction>, _> =
+        fuel_asm::from_bytes(bytes.iter().copied()).collect();
 
-    assert_eq!(data, data_p);
-    assert_eq!(data, data_q);
+    assert_eq!(instructions, instructions_from_bytes.unwrap());
 
-    let pairs = bytes.chunks(8).into_iter().map(|chunk| {
-        let mut arr = [0; core::mem::size_of::<Word>()];
-        arr.copy_from_slice(chunk);
-        Instruction::parse_word(Word::from_be_bytes(arr))
-    });
-
-    let result: Vec<Opcode> = pairs
-        .into_iter()
-        .flat_map(|(a, b)| [Opcode::from(a), Opcode::from(b)])
+    let words: Vec<Word> = bytes
+        .chunks(core::mem::size_of::<Word>())
+        .map(|chunk| {
+            let mut arr = [0; core::mem::size_of::<Word>()];
+            arr.copy_from_slice(chunk);
+            Word::from_be_bytes(arr)
+        })
         .collect();
 
-    assert_eq!(data, result);
+    let instructions_from_words: Vec<Instruction> = words
+        .into_iter()
+        .flat_map(raw_instructions_from_word)
+        .map(|raw| Instruction::try_from(raw).unwrap())
+        .collect();
 
-    let mut bytes: Vec<u8> = vec![];
-    let mut buffer = [0u8; Opcode::LEN];
-
-    for mut op in data.clone() {
-        let _ = op.read(&mut buffer).expect("Failed to write opcode to buffer");
-        bytes.extend(buffer);
-
-        let op_p = u32::from(op);
-        let op_bytes = op_p.to_be_bytes().to_vec();
-
-        let ins = Instruction::from(op_p);
-        let ins_p = Instruction::from(op);
-
-        assert_eq!(ins, ins_p);
-
-        let (_, _, _, _, _, imm_ins) = ins.into_inner();
-        let imm_op = op.immediate().unwrap_or_default();
-
-        assert_eq!(imm_op, imm_ins);
-
-        let op_p = Opcode::from(op_p);
-        let op_q = unsafe { Opcode::from_bytes_unchecked(op_bytes.as_slice()) };
-
-        assert_eq!(op, Opcode::from(ins));
-        assert_eq!(op, op_p);
-        assert_eq!(op, op_q);
-
-        let mut op_bytes = op.to_bytes().to_vec();
-
-        // Assert opcode can be created from big slices
-        op_bytes.extend_from_slice(&[0xff; 25]);
-        while op_bytes.len() > Opcode::LEN {
-            op_bytes.pop();
-
-            let op_r = unsafe { Opcode::from_bytes_unchecked(op_bytes.as_slice()) };
-            let op_s = Opcode::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
-
-            assert_eq!(op, op_r);
-            assert_eq!(op, op_s);
-
-            let ins_r = unsafe { Instruction::from_slice_unchecked(op_bytes.as_slice()) };
-            let ins_s = Instruction::from_bytes(op_bytes.as_slice()).expect("Failed to safely generate op from bytes!");
-
-            assert_eq!(op, Opcode::from(ins_r));
-            assert_eq!(op, Opcode::from(ins_s));
-        }
-
-        // Assert no panic with checked function
-        while !op_bytes.is_empty() {
-            op_bytes.pop();
-
-            assert!(Opcode::from_bytes(op_bytes.as_slice()).is_err());
-        }
-
-        #[cfg(feature = "serde")]
-        {
-            let op_s = bincode::serialize(&op).expect("Failed to serialize opcode");
-            let op_s: Opcode = bincode::deserialize(&op_s).expect("Failed to deserialize opcode");
-
-            assert_eq!(op_s, op);
-        }
-    }
-
-    let mut op_p = Opcode::Undefined;
-    bytes.chunks(Opcode::LEN).zip(data.iter()).for_each(|(chunk, op)| {
-        let _ = op_p.write(chunk).expect("Failed to parse opcode from chunk");
-
-        assert_eq!(op, &op_p);
-    });
+    assert_eq!(instructions, instructions_from_words);
 }
 
 #[test]
@@ -306,43 +236,39 @@ fn panic_reason_description() {
         PanicReason::IllegalJump,
     ];
 
-    let pd = InstructionResult::success();
-
+    let pd = InstructionResult::error(PanicReason::Success, op::noop());
     let w = Word::from(pd);
     let pd_p = InstructionResult::from(w);
-
     assert_eq!(pd, pd_p);
 
     #[cfg(feature = "serde")]
     {
         let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-        let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+        let pd_s: InstructionResult =
+            bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
         assert_eq!(pd_s, pd);
     }
 
     for r in reasons {
-        let b = u8::from(r);
+        let b = r as u8;
         let r_p = PanicReason::from(b);
-
-        let w = Word::from(r);
-        let r_q = PanicReason::from(w);
-
+        let w = Word::from(r as u8);
+        let r_q = PanicReason::from(u8::try_from(w).unwrap());
         assert_eq!(r, r_p);
         assert_eq!(r, r_q);
 
-        let op = Opcode::JI(imm24);
+        let op = op::ji(imm24);
         let pd = InstructionResult::error(r, op.into());
-
         let w = Word::from(pd);
         let pd_p = InstructionResult::from(w);
-
         assert_eq!(pd, pd_p);
 
         #[cfg(feature = "serde")]
         {
             let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-            let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+            let pd_s: InstructionResult =
+                bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
             assert_eq!(pd_s, pd);
         }

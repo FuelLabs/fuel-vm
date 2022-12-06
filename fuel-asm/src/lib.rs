@@ -216,6 +216,14 @@ impl RegId {
     pub fn new(u: u8) -> Self {
         Self(u & 0b_0011_1111)
     }
+
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 6-bit value range.
+    pub fn new_checked(u: u8) -> Option<Self> {
+        let r = Self::new(u);
+        if r.0 == u { Some(r) } else { None }
+    }
 }
 
 impl Imm12 {
@@ -224,6 +232,14 @@ impl Imm12 {
     /// The given value will be masked to 12 bits.
     pub fn new(u: u16) -> Self {
         Self(u & 0b_0000_1111_1111_1111)
+    }
+
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 12-bit value range.
+    pub fn new_checked(u: u16) -> Option<Self> {
+        let imm = Self::new(u);
+        if imm.0 == u { Some(imm) } else { None }
     }
 }
 
@@ -234,6 +250,14 @@ impl Imm18 {
     pub fn new(u: u32) -> Self {
         Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
     }
+
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 18-bit value range.
+    pub fn new_checked(u: u32) -> Option<Self> {
+        let imm = Self::new(u);
+        if imm.0 == u { Some(imm) } else { None }
+    }
 }
 
 impl Imm24 {
@@ -242,6 +266,14 @@ impl Imm24 {
     /// The given value will be masked to 24 bits.
     pub fn new(u: u32) -> Self {
         Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
+    }
+
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 24-bit value range.
+    pub fn new_checked(u: u32) -> Option<Self> {
+        let imm = Self::new(u);
+        if imm.0 == u { Some(imm) } else { None }
     }
 }
 
@@ -463,6 +495,28 @@ where
     I: IntoIterator<Item = u32>,
 {
     us.into_iter().map(|u| Instruction::try_from(u))
+}
+
+// --------------------------------------------------------
+
+fn check_reg_id(u: u8) -> RegId {
+    RegId::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{:X}` out of range for 6-bit register ID", u))
+}
+
+fn check_imm12(u: u16) -> Imm12 {
+    Imm12::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{}` out of range for 12-bit immediate", u))
+}
+
+fn check_imm18(u: u32) -> Imm18 {
+    Imm18::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{}` out of range for 18-bit immediate", u))
+}
+
+fn check_imm24(u: u32) -> Imm24 {
+    Imm24::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{}` out of range for 24-bit immediate", u))
 }
 
 // --------------------------------------------------------

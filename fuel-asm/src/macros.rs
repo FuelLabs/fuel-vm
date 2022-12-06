@@ -129,16 +129,17 @@
 //!     // ...
 //!
 //!     // A short-hand `Instruction` constructor for each operation to make it easier to
-//!     // hand-write assembly for tests and benchmarking.
+//!     // hand-write assembly for tests and benchmarking. As these constructors are public and
+//!     // accept literal values, we check that the values are within range.
 //!
 //!     /// Adds two registers.
 //!     pub fn add(ra: u8, rb: u8, rc: u8) -> Instruction {
-//!         ADD::new(RegId::new(ra), RegId::new(rb), RegId::new(rc)).into()
+//!         ADD::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc)).into()
 //!     }
 //!
 //!     /// Bitwise ANDs two registers.
 //!     pub fn and(ra: u8, rb: u8, rc: u8) -> Instruction {
-//!         AND::new(RegId::new(ra), RegId::new(rb), RegId::new(rc)).into()
+//!         AND::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc)).into()
 //!     }
 //!
 //!     // ...
@@ -379,47 +380,47 @@ macro_rules! impl_instructions {
     };
     (impl_op_unpack []) => {};
 
-    // Generate a free function named after the $op for constructing an `Instruction`.
+    // Generate a shorthand free function named after the $op for constructing an `Instruction`.
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId]) => {
         #[doc = $doc]
         pub fn $op(ra: u8) -> Instruction {
-            $Op::new(RegId::new(ra)).into()
+            $Op::new(check_reg_id(ra)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId]) => {
         #[doc = $doc]
         pub fn $op(ra: u8, rb: u8) -> Instruction {
-            $Op::new(RegId::new(ra), RegId::new(rb)).into()
+            $Op::new(check_reg_id(ra), check_reg_id(rb)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId RegId]) => {
         #[doc = $doc]
         pub fn $op(ra: u8, rb: u8, rc: u8) -> Instruction {
-            $Op::new(RegId::new(ra), RegId::new(rb), RegId::new(rc)).into()
+            $Op::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId RegId RegId]) => {
         #[doc = $doc]
         pub fn $op(ra: u8, rb: u8, rc: u8, rd: u8) -> Instruction {
-            $Op::new(RegId::new(ra), RegId::new(rb), RegId::new(rc), RegId::new(rd)).into()
+            $Op::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc), check_reg_id(rd)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId Imm12]) => {
         #[doc = $doc]
         pub fn $op(ra: u8, rb: u8, imm: u16) -> Instruction {
-            $Op::new(RegId::new(ra), RegId::new(rb), Imm12::new(imm)).into()
+            $Op::new(check_reg_id(ra), check_reg_id(rb), check_imm12(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId Imm18]) => {
         #[doc = $doc]
         pub fn $op(ra: u8, imm: u32) -> Instruction {
-            $Op::new(RegId::new(ra), Imm18::new(imm)).into()
+            $Op::new(check_reg_id(ra), check_imm18(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [Imm24]) => {
         #[doc = $doc]
         pub fn $op(imm: u32) -> Instruction {
-            $Op::new(Imm24::new(imm)).into()
+            $Op::new(check_imm24(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident []) => {

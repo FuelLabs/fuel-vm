@@ -187,6 +187,27 @@ impl_instructions! {
     0x92 CFSI cfsi [Imm24]
 }
 
+pub mod op {
+    //! Definitions and implementations for each unique instruction type, one for each
+    //! unique `Opcode` variant.
+    use super::{GMArgs, GTFArgs, Instruction, RegId};
+    // Here we re-export the generated instruction types and constructors, but extend them with
+    // `gm_args` and `gtf_args` short-hand constructors below to take their `GMArgs` and `GTFArgs`
+    // values respectively.
+    #[doc(inline)]
+    pub use super::_op::*;
+
+    /// Construct a `GM` instruction from its arguments.
+    pub fn gm_args(ra: u8, args: GMArgs) -> Instruction {
+        Instruction::GM(GM::from_args(RegId::from(ra), args))
+    }
+
+    /// Construct a `GM` instruction from its arguments.
+    pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> Instruction {
+        Instruction::GTF(GTF::from_args(RegId::from(ra), RegId::from(rb), args))
+    }
+}
+
 /// Represents a 6-bit register ID, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RegId(u8);
@@ -214,7 +235,7 @@ impl RegId {
     /// Construct a register ID from the given value.
     ///
     /// The given value will be masked to 6 bits.
-    pub fn new(u: u8) -> Self {
+    pub const fn new(u: u8) -> Self {
         Self(u & 0b_0011_1111)
     }
 
@@ -225,13 +246,18 @@ impl RegId {
         let r = Self::new(u);
         if r.0 == u { Some(r) } else { None }
     }
+
+    /// A const alternative to the `Into<u8>` implementation.
+    pub const fn to_u8(self) -> u8 {
+        self.0
+    }
 }
 
 impl Imm12 {
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 12 bits.
-    pub fn new(u: u16) -> Self {
+    pub const fn new(u: u16) -> Self {
         Self(u & 0b_0000_1111_1111_1111)
     }
 
@@ -242,13 +268,18 @@ impl Imm12 {
         let imm = Self::new(u);
         if imm.0 == u { Some(imm) } else { None }
     }
+
+    /// A const alternative to the `Into<u16>` implementation.
+    pub const fn to_u16(self) -> u16 {
+        self.0
+    }
 }
 
 impl Imm18 {
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 18 bits.
-    pub fn new(u: u32) -> Self {
+    pub const fn new(u: u32) -> Self {
         Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
     }
 
@@ -259,13 +290,18 @@ impl Imm18 {
         let imm = Self::new(u);
         if imm.0 == u { Some(imm) } else { None }
     }
+
+    /// A const alternative to the `Into<u32>` implementation.
+    pub const fn to_u32(self) -> u32 {
+        self.0
+    }
 }
 
 impl Imm24 {
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 24 bits.
-    pub fn new(u: u32) -> Self {
+    pub const fn new(u: u32) -> Self {
         Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
     }
 
@@ -275,6 +311,11 @@ impl Imm24 {
     pub fn new_checked(u: u32) -> Option<Self> {
         let imm = Self::new(u);
         if imm.0 == u { Some(imm) } else { None }
+    }
+
+    /// A const alternative to the `Into<u32>` implementation.
+    pub const fn to_u32(self) -> u32 {
+        self.0
     }
 }
 
@@ -308,18 +349,6 @@ impl op::GTF {
     /// Construct a `GTF` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, args: GTFArgs) -> Self {
         Self::new(ra, rb, Imm12::new(args as _))
-    }
-}
-
-impl Instruction {
-    /// Construct a `GM` instruction from its arguments.
-    pub fn gm(ra: u8, args: GMArgs) -> Self {
-        Self::GM(op::GM::from_args(RegId::from(ra), args))
-    }
-
-    /// Construct a `GM` instruction from its arguments.
-    pub fn gtf(ra: u8, rb: u8, args: GTFArgs) -> Self {
-        Self::GTF(op::GTF::from_args(RegId::from(ra), RegId::from(rb), args))
     }
 }
 
@@ -439,6 +468,27 @@ impl core::convert::TryFrom<RawInstruction> for Instruction {
     type Error = InvalidOpcode;
     fn try_from(u: RawInstruction) -> Result<Self, Self::Error> {
         Self::try_from(u.to_be_bytes())
+    }
+}
+
+// --------------------------------------------------------
+
+impl<T> core::ops::Index<RegId> for [T]
+where
+    [T]: core::ops::Index<usize, Output = T>,
+{
+    type Output = T;
+    fn index(&self, ix: RegId) -> &Self::Output {
+        &self[usize::from(ix)]
+    }
+}
+
+impl<T> core::ops::IndexMut<RegId> for [T]
+where
+    [T]: core::ops::IndexMut<usize, Output = T>,
+{
+    fn index_mut(&mut self, ix: RegId) -> &mut Self::Output {
+        &mut self[usize::from(ix)]
     }
 }
 

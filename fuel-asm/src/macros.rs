@@ -430,6 +430,54 @@ macro_rules! impl_instructions {
         }
     };
 
+    // Generate a private fn for use within the `Instruction::reg_ids` implementation.
+    (impl_op_reg_ids [RegId]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let ra = self.unpack();
+            [Some(ra), None, None, None]
+        }
+    };
+    (impl_op_reg_ids [RegId RegId]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, rb) = self.unpack();
+            [Some(ra), Some(rb), None, None]
+        }
+    };
+    (impl_op_reg_ids [RegId RegId RegId]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, rb, rc) = self.unpack();
+            [Some(ra), Some(rb), Some(rc), None]
+        }
+    };
+    (impl_op_reg_ids [RegId RegId RegId RegId]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, rb, rc, rd) = self.unpack();
+            [Some(ra), Some(rb), Some(rc), Some(rd)]
+        }
+    };
+    (impl_op_reg_ids [RegId RegId Imm12]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, rb, _) = self.unpack();
+            [Some(ra), Some(rb), None, None]
+        }
+    };
+    (impl_op_reg_ids [RegId Imm18]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, _) = self.unpack();
+            [Some(ra), None, None, None]
+        }
+    };
+    (impl_op_reg_ids [Imm24]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            [None; 4]
+        }
+    };
+    (impl_op_reg_ids []) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            [None; 4]
+        }
+    };
+
     // Implement constructors and accessors for register and immediate values.
     (impl_op $doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*] $($rest:tt)*) => {
         impl $Op {
@@ -439,6 +487,7 @@ macro_rules! impl_instructions {
             impl_instructions!(impl_op_new [$($field)*]);
             impl_instructions!(impl_op_accessors [$($field)*]);
             impl_instructions!(impl_op_unpack [$($field)*]);
+            impl_instructions!(impl_op_reg_ids [$($field)*]);
         }
 
         impl_instructions!(impl_op_constructor $doc $Op $op [$($field)*]);
@@ -497,6 +546,15 @@ macro_rules! impl_instructions {
                     )*
                 }
             }
+
+            /// Unpacks all register IDs into a slice of options.
+            pub fn reg_ids(&self) -> [Option<RegId>; 4] {
+                match self {
+                    $(
+                        Self::$Op(op) => op.reg_ids(),
+                    )*
+                }
+            }
         }
 
         impl From<Instruction> for [u8; 4] {
@@ -524,9 +582,7 @@ macro_rules! impl_instructions {
     // Entrypoint to the macro, generates structs, methods, opcode enum and instruction enum
     // separately.
     ($($tts:tt)*) => {
-        pub mod op {
-            //! Definitions and implementations for each unique instruction type, one for each
-            //! unique `Opcode` variant.
+        mod _op {
             use super::*;
             impl_instructions!(decl_op_struct $($tts)*);
             impl_instructions!(impl_op $($tts)*);

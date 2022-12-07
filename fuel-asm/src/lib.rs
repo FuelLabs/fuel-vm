@@ -461,12 +461,14 @@ where
 
 // Collect instructions into bytes or halfwords
 
+#[cfg(feature = "std")]
 impl core::iter::FromIterator<Instruction> for Vec<u8> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
         iter.into_iter().flat_map(<[u8; 4]>::from).collect()
     }
 }
 
+#[cfg(feature = "std")]
 impl core::iter::FromIterator<Instruction> for Vec<u32> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
         iter.into_iter().map(u32::from).collect()

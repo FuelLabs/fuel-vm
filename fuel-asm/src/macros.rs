@@ -468,12 +468,7 @@ macro_rules! impl_instructions {
             [Some(ra), None, None, None]
         }
     };
-    (impl_op_reg_ids [Imm24]) => {
-        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
-            [None; 4]
-        }
-    };
-    (impl_op_reg_ids []) => {
+    (impl_op_reg_ids [$($rest:tt)*]) => {
         pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
             [None; 4]
         }

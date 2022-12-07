@@ -1,6 +1,6 @@
 //! Definitions and implementations for each unique instruction type, one for each
 //! unique `Opcode` variant.
-use super::{GMArgs, GTFArgs, Instruction, RegId, Imm12, Imm18};
+use super::{GMArgs, GTFArgs, Imm12, Imm18, Instruction, RegId};
 
 // Here we re-export the generated instruction types and constructors, but extend them with
 // `gm_args` and `gtf_args` short-hand constructors below to take their `GMArgs` and `GTFArgs`

@@ -86,7 +86,14 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     let script = [op::movi(0x10, 0x02), op::flag(0x10)]
         .into_iter()
         .chain(program.iter().copied())
-        .chain([op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0), op::ret(REG_ONE.into())].iter().copied())
+        .chain(
+            [
+                op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0),
+                op::ret(REG_ONE.into()),
+            ]
+            .iter()
+            .copied(),
+        )
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -112,7 +119,13 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     }
 }
 
-fn alu_wrapping(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId, expected: Word, expected_of: bool) {
+fn alu_wrapping(
+    registers_init: &[(RegisterId, Word)],
+    ins: Instruction,
+    reg: RegisterId,
+    expected: Word,
+    expected_of: bool,
+) {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -133,9 +146,13 @@ fn alu_wrapping(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: Re
     .copied()
     .chain(set_regs)
     .chain(
-        [ins, op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0), op::ret(REG_ONE.into())]
-            .iter()
-            .copied(),
+        [
+            ins,
+            op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0),
+            op::ret(REG_ONE.into()),
+        ]
+        .iter()
+        .copied(),
     )
     .collect();
 
@@ -197,7 +214,11 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
     // https://github.com/FuelLabs/fuel-asm/issues/60
     let script = [op::movi(0x10, 0x01), op::flag(0x10)]
         .into_iter()
-        .chain(registers_init.iter().map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)))
+        .chain(
+            registers_init
+                .iter()
+                .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
+        )
         .chain([ins, op::log(reg, 0, 0, 0), op::ret(REG_ONE.into())].iter().copied())
         .collect();
 
@@ -419,11 +440,7 @@ fn exp() {
     // EXP
     alu(&[(0x10, 6), (0x11, 3)], op::exp(0x12, 0x10, 0x11), 0x12, 216);
     alu_overflow(
-        &[
-            op::movi(0x10, 2),
-            op::movi(0x11, 64),
-            op::exp(0x10, 0x10, 0x11),
-        ],
+        &[op::movi(0x10, 2), op::movi(0x11, 64), op::exp(0x10, 0x10, 0x11)],
         0x10,
         true as u128,
         true,
@@ -439,12 +456,7 @@ fn exp() {
 
     // EXPI
     alu(&[(0x10, 6)], op::expi(0x12, 0x10, 3), 0x12, 216);
-    alu_overflow(
-        &[op::movi(0x10, 2), op::expi(0x10, 0x10, 64)],
-        0x10,
-        true as u128,
-        true,
-    );
+    alu_overflow(&[op::movi(0x10, 2), op::expi(0x10, 0x10, 64)], 0x10, true as u128, true);
     alu_wrapping(&[(0x10, 2)], op::expi(0x10, 0x10, 32), 0x10, 2u64.pow(32), false);
     alu_wrapping(&[(0x10, 2)], op::expi(0x10, 0x10, 64), 0x10, 0, true);
 }
@@ -509,18 +521,8 @@ fn mlog() {
     alu(&[(0x10, 3), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 1);
     alu(&[(0x10, 4), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 2);
 
-    alu(
-        &[(0x10, 2u64.pow(32)), (0x11, 2)],
-        op::mlog(0x12, 0x10, 0x11),
-        0x12,
-        32,
-    );
-    alu(
-        &[(0x10, Word::MAX), (0x11, 2)],
-        op::mlog(0x12, 0x10, 0x11),
-        0x12,
-        63,
-    );
+    alu(&[(0x10, 2u64.pow(32)), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 32);
+    alu(&[(0x10, Word::MAX), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 63);
     alu(
         &[(0x10, 10u64.pow(10)), (0x11, 10)],
         op::mlog(0x12, 0x10, 0x11),

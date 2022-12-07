@@ -244,7 +244,7 @@ impl RegId {
     /// Returns `None` if the value is outside the 6-bit value range.
     pub fn new_checked(u: u8) -> Option<Self> {
         let r = Self::new(u);
-        if r.0 == u { Some(r) } else { None }
+        (r.0 == u).then(|| r)
     }
 
     /// A const alternative to the `Into<u8>` implementation.
@@ -266,7 +266,7 @@ impl Imm12 {
     /// Returns `None` if the value is outside the 12-bit value range.
     pub fn new_checked(u: u16) -> Option<Self> {
         let imm = Self::new(u);
-        if imm.0 == u { Some(imm) } else { None }
+        (imm.0 == u).then(|| imm)
     }
 
     /// A const alternative to the `Into<u16>` implementation.
@@ -288,7 +288,7 @@ impl Imm18 {
     /// Returns `None` if the value is outside the 18-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {
         let imm = Self::new(u);
-        if imm.0 == u { Some(imm) } else { None }
+        (imm.0 == u).then(|| imm)
     }
 
     /// A const alternative to the `Into<u32>` implementation.
@@ -310,7 +310,7 @@ impl Imm24 {
     /// Returns `None` if the value is outside the 24-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {
         let imm = Self::new(u);
-        if imm.0 == u { Some(imm) } else { None }
+        (imm.0 == u).then(|| imm)
     }
 
     /// A const alternative to the `Into<u32>` implementation.
@@ -328,11 +328,10 @@ impl Opcode {
     pub fn is_predicate_allowed(&self) -> bool {
         use Opcode::*;
         match self {
-            ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR
-            | SLL | SRL | SUB | XOR | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP
-            | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI
-            | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | CFEI
-            | CFSI | GTF => true,
+            ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
+            | XOR | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
+            | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
+            | JNZI | JI | JMP | JNE | CFEI | CFSI | GTF => true,
             _ => false,
         }
     }
@@ -551,23 +550,19 @@ where
 // --------------------------------------------------------
 
 fn check_reg_id(u: u8) -> RegId {
-    RegId::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{:X}` out of range for 6-bit register ID", u))
+    RegId::new_checked(u).unwrap_or_else(|| panic!("Value `{:X}` out of range for 6-bit register ID", u))
 }
 
 fn check_imm12(u: u16) -> Imm12 {
-    Imm12::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{}` out of range for 12-bit immediate", u))
+    Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 12-bit immediate", u))
 }
 
 fn check_imm18(u: u32) -> Imm18 {
-    Imm18::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{}` out of range for 18-bit immediate", u))
+    Imm18::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 18-bit immediate", u))
 }
 
 fn check_imm24(u: u32) -> Imm24 {
-    Imm24::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{}` out of range for 24-bit immediate", u))
+    Imm24::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 24-bit immediate", u))
 }
 
 // --------------------------------------------------------
@@ -639,7 +634,12 @@ fn ra_rb_rc_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId) {
 }
 
 fn ra_rb_rc_rd_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId, RegId) {
-    (ra_from_bytes(bs), rb_from_bytes(bs), rc_from_bytes(bs), rd_from_bytes(bs))
+    (
+        ra_from_bytes(bs),
+        rb_from_bytes(bs),
+        rc_from_bytes(bs),
+        rd_from_bytes(bs),
+    )
 }
 
 fn ra_rb_imm12_from_bytes(bs: [u8; 3]) -> (RegId, RegId, Imm12) {
@@ -748,7 +748,10 @@ fn u8x4_from_u8x3([a, b, c]: [u8; 3]) -> [u8; 4] {
 // 1 byte for the opcode, 3 bytes for registers and immediates.
 #[test]
 fn test_instruction_size() {
-    assert_eq!(core::mem::size_of::<Instruction>(), core::mem::size_of::<RawInstruction>());
+    assert_eq!(
+        core::mem::size_of::<Instruction>(),
+        core::mem::size_of::<RawInstruction>()
+    );
 }
 
 // The size of the opcode is exactly one byte.
@@ -764,8 +767,8 @@ fn check_predicate_allowed() {
     for byte in 0..u8::MAX {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
-                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG | LOGD | MINT
-                | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME | TR | TRO => false,
+                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG | LOGD | MINT | RETD | RVRT
+                | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME | TR | TRO => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

@@ -8,12 +8,8 @@ use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
 use fuel_asm::{
-    op,
-    Instruction,
-    PanicReason::{
-        ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack,
-        MemoryOverflow,
-    },
+    op, Instruction,
+    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow},
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -351,24 +347,24 @@ fn load_external_contract_code() {
         let index = i as Immediate12;
         let value = *byte as Immediate12;
         load_contract.extend([
-            op::xor(reg_a, reg_a, reg_a),               // r[a] := 0
-            op::ori(reg_a, reg_a, value),               // r[a] := r[a] | value
-            op::sb(REG_HP.into(), reg_a, index + 1),    // m[$hp+index+1] := r[a] (=value)
+            op::xor(reg_a, reg_a, reg_a),            // r[a] := 0
+            op::ori(reg_a, reg_a, value),            // r[a] := r[a] | value
+            op::sb(REG_HP.into(), reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
         ]);
     }
 
     load_contract.extend([
-        op::move_(reg_a, REG_HP.into()),                            // r[a] := $hp
-        op::addi(reg_a, reg_a, 1),                                  // r[a] += 1
-        op::xor(reg_b, reg_b, reg_b),                               // r[b] := 0
-        op::ori(reg_b, reg_b, 12),                                  // r[b] += 12 (will be padded to 16)
-        op::ldc(reg_a, REG_ZERO.into(), reg_b),                     // Load first two words from the contract
-        op::move_(reg_a, REG_SSP.into()),                           // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2),                              // r[a] -= 16 (start of the loaded code)
-        op::xor(reg_b, reg_b, reg_b),                               // r[b] := 0
-        op::addi(reg_b, reg_b, 16),                                 // r[b] += 16 (length of the loaded code)
-        op::logd(REG_ZERO.into(), REG_ZERO.into(), reg_a, reg_b),   // Log digest of the loaded code
-        op::noop(),                                                 // Patched to the jump later
+        op::move_(reg_a, REG_HP.into()),                          // r[a] := $hp
+        op::addi(reg_a, reg_a, 1),                                // r[a] += 1
+        op::xor(reg_b, reg_b, reg_b),                             // r[b] := 0
+        op::ori(reg_b, reg_b, 12),                                // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, REG_ZERO.into(), reg_b),                   // Load first two words from the contract
+        op::move_(reg_a, REG_SSP.into()),                         // r[b] := $ssp
+        op::subi(reg_a, reg_a, 8 * 2),                            // r[a] -= 16 (start of the loaded code)
+        op::xor(reg_b, reg_b, reg_b),                             // r[b] := 0
+        op::addi(reg_b, reg_b, 16),                               // r[b] += 16 (length of the loaded code)
+        op::logd(REG_ZERO.into(), REG_ZERO.into(), reg_a, reg_b), // Log digest of the loaded code
+        op::noop(),                                               // Patched to the jump later
     ]);
 
     let tx_deploy_loader = Transaction::script(
@@ -566,7 +562,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
 fn ldc_ssp_not_sp() {
     //test ssp != sp for LDC
     let load_contract = vec![
-        op::cfei(0x1),                         // sp += 1
+        op::cfei(0x1),                                              // sp += 1
         op::ldc(REG_ZERO.into(), REG_ZERO.into(), REG_ZERO.into()), // Load first two words from the contract
     ];
 
@@ -580,7 +576,7 @@ fn ldc_mem_offset_above_reg_hp() {
 
     //test memory offset above reg_hp value
     let load_contract = vec![
-        op::move_(reg_a, REG_HP.into()),           // r[a] := $hp
+        op::move_(reg_a, REG_HP.into()),                  // r[a] := $hp
         op::ldc(REG_ZERO.into(), REG_ZERO.into(), reg_a), // Load first two words from the contract
     ];
 

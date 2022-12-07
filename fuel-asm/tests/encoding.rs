@@ -175,8 +175,7 @@ fn opcode() {
 
     let bytes: Vec<u8> = instructions.iter().copied().collect();
 
-    let instructions_from_bytes: Result<Vec<Instruction>, _> =
-        fuel_asm::from_bytes(bytes.iter().copied()).collect();
+    let instructions_from_bytes: Result<Vec<Instruction>, _> = fuel_asm::from_bytes(bytes.iter().copied()).collect();
 
     assert_eq!(instructions, instructions_from_bytes.unwrap());
 
@@ -244,8 +243,7 @@ fn panic_reason_description() {
     #[cfg(feature = "serde")]
     {
         let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-        let pd_s: InstructionResult =
-            bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+        let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
         assert_eq!(pd_s, pd);
     }
@@ -267,8 +265,7 @@ fn panic_reason_description() {
         #[cfg(feature = "serde")]
         {
             let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-            let pd_s: InstructionResult =
-                bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+            let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
             assert_eq!(pd_s, pd);
         }

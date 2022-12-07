@@ -394,18 +394,10 @@ pub mod test_helpers {
         let height = 0;
 
         let bytecode = instructions.into_iter().collect();
-        let tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            bytecode,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
-        .into_checked(height, &params)
-        .expect("failed to check tx");
+        let tx_deploy_loader =
+            Transaction::script(gas_price, gas_limit, maturity, bytecode, vec![], vec![], vec![], vec![])
+                .into_checked(height, &params)
+                .expect("failed to check tx");
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

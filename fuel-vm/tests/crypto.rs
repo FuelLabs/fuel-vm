@@ -1,5 +1,5 @@
-use fuel_asm::{op, GTFArgs};
 use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
+use fuel_asm::{op, GTFArgs};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;

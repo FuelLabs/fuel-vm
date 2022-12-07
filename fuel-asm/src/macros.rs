@@ -69,7 +69,7 @@
 //! ///
 //! /// The register and immediate data associated with the instruction is represented within
 //! /// an inner unit type wrapper around the 3 remaining bytes.
-//! #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+//! #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 //! #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 //! pub enum Instruction {
 //!     /// Adds two registers.
@@ -195,14 +195,14 @@ macro_rules! impl_instructions {
     // Recursively declares a unique struct for each opcode.
     (decl_op_struct $doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*] $($rest:tt)*) => {
         #[doc = $doc]
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        #[derive(Clone, Copy, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $Op(pub (super) [u8; 3]);
         impl_instructions!(decl_op_struct $($rest)*);
     };
     (decl_op_struct) => {};
 
-    // Define the `OpcodeRepr` enum.
+    // Define the `Opcode` enum.
     (decl_opcode_enum $($doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*])*) => {
         /// Solely the opcode portion of an instruction represented as a single byte.
         #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -216,7 +216,7 @@ macro_rules! impl_instructions {
         }
     };
 
-    // Define the `Opcode` enum.
+    // Define the `Instruction` enum.
     (decl_instruction_enum $($doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*])*) => {
         /// Representation of a single instruction for the interpreter.
         ///
@@ -225,7 +225,7 @@ macro_rules! impl_instructions {
         ///
         /// The register and immediate data associated with the instruction is represented within
         /// an inner unit type wrapper around the 3 remaining bytes.
-        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        #[derive(Clone, Copy, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum Instruction {
             $(
@@ -474,6 +474,79 @@ macro_rules! impl_instructions {
         }
     };
 
+    // Debug implementations for each instruction.
+    (impl_op_debug_fmt $Op:ident [RegId]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let ra = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId RegId]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, rb) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("rb", &u8::from(rb))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId RegId RegId]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, rb, rc) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("rb", &u8::from(rb))
+                .field("rc", &u8::from(rc))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId RegId RegId RegId]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, rb, rc, rd) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("rb", &u8::from(rb))
+                .field("rc", &u8::from(rc))
+                .field("rd", &u8::from(rd))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId RegId Imm12]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, rb, imm) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("rb", &u8::from(rb))
+                .field("imm", &u16::from(imm))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId Imm18]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, imm) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("imm", &u32::from(imm))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [Imm24]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let imm = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("imm", &u32::from(imm))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident []) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            f.debug_struct(stringify!($Op))
+                .finish()
+        }
+    };
+
     // Implement constructors and accessors for register and immediate values.
     (impl_op $doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*] $($rest:tt)*) => {
         impl $Op {
@@ -510,6 +583,10 @@ macro_rules! impl_instructions {
             fn from(op: $Op) -> Self {
                 Instruction::$Op(op)
             }
+        }
+
+        impl core::fmt::Debug for $Op {
+            impl_instructions!(impl_op_debug_fmt $Op [$($field)*]);
         }
 
         impl_instructions!(impl_op $($rest)*);
@@ -569,6 +646,16 @@ macro_rules! impl_instructions {
                 match Opcode::try_from(op)? {
                     $(
                         Opcode::$Op => Ok(Self::$Op(op::$Op([a, b, c]))),
+                    )*
+                }
+            }
+        }
+
+        impl core::fmt::Debug for Instruction {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                match self {
+                    $(
+                        Self::$Op(op) => op.fmt(f),
                     )*
                 }
             }

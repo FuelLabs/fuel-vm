@@ -1,4 +1,4 @@
-use crate::{Instruction, PanicReason, RawInstruction, Word};
+use crate::{PanicReason, RawInstruction, Word};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -6,12 +6,12 @@ use crate::{Instruction, PanicReason, RawInstruction, Word};
 /// Describe a panic reason with the instruction that generated it
 pub struct InstructionResult {
     reason: PanicReason,
-    instruction: Instruction,
+    instruction: RawInstruction,
 }
 
 impl InstructionResult {
     /// Represents an error described by a reason and an instruction.
-    pub const fn error(reason: PanicReason, instruction: Instruction) -> Self {
+    pub const fn error(reason: PanicReason, instruction: RawInstruction) -> Self {
         Self { reason, instruction }
     }
 
@@ -21,7 +21,7 @@ impl InstructionResult {
     }
 
     /// Underlying instruction
-    pub const fn instruction(&self) -> &Instruction {
+    pub const fn instruction(&self) -> &RawInstruction {
         &self.instruction
     }
 
@@ -54,9 +54,8 @@ impl From<Word> for InstructionResult {
         // NOTE: Safe to cast as we've shifted the 8 MSB.
         let reason_u8 = (val >> REASON_OFFSET) as u8;
         // NOTE: Cast to truncate in order to remove the `reason` bits.
-        let inst_u32 = (val >> INSTR_OFFSET) as u32;
+        let instruction = (val >> INSTR_OFFSET) as u32;
         let reason = PanicReason::from(reason_u8);
-        let instruction = Instruction::try_from(inst_u32).expect("invalid instruction");
         Self { reason, instruction }
     }
 }

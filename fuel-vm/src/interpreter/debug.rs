@@ -47,6 +47,7 @@ where
 #[test]
 fn breakpoint_script() {
     use crate::consts::*;
+    use fuel_asm::op;
 
     let mut vm = Interpreter::with_memory_storage();
 
@@ -57,15 +58,14 @@ fn breakpoint_script() {
     let params = ConsensusParameters::default();
 
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 8),
-        Opcode::ADDI(0x11, REG_ZERO, 16),
-        Opcode::ADDI(0x12, REG_ZERO, 32),
-        Opcode::ADDI(0x13, REG_ZERO, 64),
-        Opcode::ADDI(0x14, REG_ZERO, 128),
-        Opcode::RET(0x10),
+        op::addi(0x10, REG_ZERO.into(), 8),
+        op::addi(0x11, REG_ZERO.into(), 16),
+        op::addi(0x12, REG_ZERO.into(), 32),
+        op::addi(0x13, REG_ZERO.into(), 64),
+        op::addi(0x14, REG_ZERO.into(), 128),
+        op::ret(0x10),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -113,6 +113,7 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
+    use fuel_asm::op;
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_price = 0;
@@ -123,13 +124,12 @@ fn single_stepping() {
 
     // Repeats the middle two instructions five times
     let script = vec![
-        Opcode::ADDI(0x10, REG_ZERO, 5),
-        Opcode::ADDI(0x11, 0x11, 1),
-        Opcode::JNEI(0x10, 0x11, 1),
-        Opcode::RET(0x10),
+        op::addi(0x10, REG_ZERO.into(), 5),
+        op::addi(0x11, 0x11, 1),
+        op::jnei(0x10, 0x11, 1),
+        op::ret(0x10),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])

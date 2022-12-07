@@ -371,6 +371,7 @@ fn load_external_contract_code() {
         gas_price,
         gas_limit,
         maturity,
+        #[allow(clippy::iter_cloned_collect)]
         load_contract.iter().copied().collect(),
         vec![],
         vec![input0.clone()],

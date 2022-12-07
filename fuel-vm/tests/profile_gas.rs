@@ -1,3 +1,4 @@
+use fuel_asm::op;
 use fuel_tx::TransactionBuilder;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;

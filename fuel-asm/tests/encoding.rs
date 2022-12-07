@@ -179,14 +179,11 @@ fn opcode() {
 
     assert_eq!(instructions, instructions_from_bytes.unwrap());
 
-    let words: Vec<Word> = bytes
-        .chunks(core::mem::size_of::<Word>())
-        .map(|chunk| {
-            let mut arr = [0; core::mem::size_of::<Word>()];
-            arr.copy_from_slice(chunk);
-            Word::from_be_bytes(arr)
-        })
-        .collect();
+    let words = bytes.chunks(core::mem::size_of::<Word>()).map(|chunk| {
+        let mut arr = [0; core::mem::size_of::<Word>()];
+        arr.copy_from_slice(chunk);
+        Word::from_be_bytes(arr)
+    });
 
     let instructions_from_words: Vec<Instruction> = words
         .into_iter()

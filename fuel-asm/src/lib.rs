@@ -244,7 +244,7 @@ impl RegId {
     /// Returns `None` if the value is outside the 6-bit value range.
     pub fn new_checked(u: u8) -> Option<Self> {
         let r = Self::new(u);
-        (r.0 == u).then(|| r)
+        (r.0 == u).then_some(r)
     }
 
     /// A const alternative to the `Into<u8>` implementation.
@@ -266,7 +266,7 @@ impl Imm12 {
     /// Returns `None` if the value is outside the 12-bit value range.
     pub fn new_checked(u: u16) -> Option<Self> {
         let imm = Self::new(u);
-        (imm.0 == u).then(|| imm)
+        (imm.0 == u).then_some(imm)
     }
 
     /// A const alternative to the `Into<u16>` implementation.
@@ -288,7 +288,7 @@ impl Imm18 {
     /// Returns `None` if the value is outside the 18-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {
         let imm = Self::new(u);
-        (imm.0 == u).then(|| imm)
+        (imm.0 == u).then_some(imm)
     }
 
     /// A const alternative to the `Into<u32>` implementation.
@@ -310,7 +310,7 @@ impl Imm24 {
     /// Returns `None` if the value is outside the 24-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {
         let imm = Self::new(u);
-        (imm.0 == u).then(|| imm)
+        (imm.0 == u).then_some(imm)
     }
 
     /// A const alternative to the `Into<u32>` implementation.

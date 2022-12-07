@@ -280,6 +280,7 @@ macro_rules! impl_instructions {
     };
     (impl_op_new []) => {
         /// Construct the instruction.
+        #[allow(clippy::new_without_default)]
         pub fn new() -> Self {
             Self([0; 3])
         }

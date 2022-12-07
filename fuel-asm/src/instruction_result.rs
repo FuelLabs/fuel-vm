@@ -43,6 +43,7 @@ const INSTR_OFFSET: Word = REASON_OFFSET - (core::mem::size_of::<RawInstruction>
 impl From<InstructionResult> for Word {
     fn from(r: InstructionResult) -> Word {
         let reason = Word::from(r.reason as u8);
+        #[allow(clippy::useless_conversion)]
         let instruction = Word::from(u32::from(r.instruction));
         (reason << REASON_OFFSET) | (instruction << INSTR_OFFSET)
     }

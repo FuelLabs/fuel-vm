@@ -545,7 +545,7 @@ pub fn from_u32s<I>(us: I) -> impl Iterator<Item = Result<Instruction, InvalidOp
 where
     I: IntoIterator<Item = u32>,
 {
-    us.into_iter().map(|u| Instruction::try_from(u))
+    us.into_iter().map(Instruction::try_from)
 }
 
 // --------------------------------------------------------

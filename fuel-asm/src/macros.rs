@@ -113,7 +113,7 @@
 //!
 //!         /// Construct the instruction from its parts.
 //!         pub fn new(ra: RegId, rb: RegId, rc: RegId) -> Self {
-//!             Self(bytes_from_ra_rb_rc(ra, rb, rc))
+//!             Self(conv::bytes_from_ra_rb_rc(ra, rb, rc))
 //!         }
 //!
 //!         /// Convert the instruction into its parts.
@@ -239,43 +239,43 @@ macro_rules! impl_instructions {
     (impl_op_new [RegId]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId) -> Self {
-            Self(bytes_from_ra(ra))
+            Self(conv::bytes_from_ra(ra))
         }
     };
     (impl_op_new [RegId RegId]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, rb: RegId) -> Self {
-            Self(bytes_from_ra_rb(ra, rb))
+            Self(conv::bytes_from_ra_rb(ra, rb))
         }
     };
     (impl_op_new [RegId RegId RegId]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, rb: RegId, rc: RegId) -> Self {
-            Self(bytes_from_ra_rb_rc(ra, rb, rc))
+            Self(conv::bytes_from_ra_rb_rc(ra, rb, rc))
         }
     };
     (impl_op_new [RegId RegId RegId RegId]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> Self {
-            Self(bytes_from_ra_rb_rc_rd(ra, rb, rc, rd))
+            Self(conv::bytes_from_ra_rb_rc_rd(ra, rb, rc, rd))
         }
     };
     (impl_op_new [RegId RegId Imm12]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, rb: RegId, imm: Imm12) -> Self {
-            Self(bytes_from_ra_rb_imm12(ra, rb, imm))
+            Self(conv::bytes_from_ra_rb_imm12(ra, rb, imm))
         }
     };
     (impl_op_new [RegId Imm18]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, imm: Imm18) -> Self {
-            Self(bytes_from_ra_imm18(ra, imm))
+            Self(conv::bytes_from_ra_imm18(ra, imm))
         }
     };
     (impl_op_new [Imm24]) => {
         /// Construct the instruction from its parts.
         pub fn new(imm: Imm24) -> Self {
-            Self(bytes_from_imm24(imm))
+            Self(conv::bytes_from_imm24(imm))
         }
     };
     (impl_op_new []) => {
@@ -290,48 +290,48 @@ macro_rules! impl_instructions {
     (impl_op_accessors [RegId]) => {
         /// Access the ID for register A.
         pub fn ra(&self) -> RegId {
-            ra_from_bytes(self.0)
+            conv::ra_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId RegId]) => {
         impl_instructions!(impl_op_accessors [RegId]);
         /// Access the ID for register B.
         pub fn rb(&self) -> RegId {
-            rb_from_bytes(self.0)
+            conv::rb_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId RegId RegId]) => {
         impl_instructions!(impl_op_accessors [RegId RegId]);
         /// Access the ID for register C.
         pub fn rc(&self) -> RegId {
-            rc_from_bytes(self.0)
+            conv::rc_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId RegId RegId RegId]) => {
         impl_instructions!(impl_op_accessors [RegId RegId RegId]);
         /// Access the ID for register D.
         pub fn rd(&self) -> RegId {
-            rd_from_bytes(self.0)
+            conv::rd_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId RegId Imm12]) => {
         impl_instructions!(impl_op_accessors [RegId RegId]);
         /// Access the 12-bit immediate value.
         pub fn imm12(&self) -> Imm12 {
-            imm12_from_bytes(self.0)
+            conv::imm12_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId Imm18]) => {
         impl_instructions!(impl_op_accessors [RegId]);
         /// Access the 18-bit immediate value.
         pub fn imm18(&self) -> Imm18 {
-            imm18_from_bytes(self.0)
+            conv::imm18_from_bytes(self.0)
         }
     };
     (impl_op_accessors [Imm24]) => {
         /// Access the 24-bit immediate value.
         pub fn imm24(&self) -> Imm24 {
-            imm24_from_bytes(self.0)
+            conv::imm24_from_bytes(self.0)
         }
     };
     (impl_op_accessors []) => {};
@@ -340,43 +340,43 @@ macro_rules! impl_instructions {
     (impl_op_unpack [RegId]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> RegId {
-            ra_from_bytes(self.0)
+            conv::ra_from_bytes(self.0)
         }
     };
     (impl_op_unpack [RegId RegId]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, RegId) {
-            ra_rb_from_bytes(self.0)
+            conv::ra_rb_from_bytes(self.0)
         }
     };
     (impl_op_unpack [RegId RegId RegId]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, RegId, RegId) {
-            ra_rb_rc_from_bytes(self.0)
+            conv::ra_rb_rc_from_bytes(self.0)
         }
     };
     (impl_op_unpack [RegId RegId RegId RegId]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, RegId, RegId, RegId) {
-            ra_rb_rc_rd_from_bytes(self.0)
+            conv::ra_rb_rc_rd_from_bytes(self.0)
         }
     };
     (impl_op_unpack [RegId RegId Imm12]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, RegId, Imm12) {
-            ra_rb_imm12_from_bytes(self.0)
+            conv::ra_rb_imm12_from_bytes(self.0)
         }
     };
     (impl_op_unpack [RegId Imm18]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, Imm18) {
-            ra_imm18_from_bytes(self.0)
+            conv::ra_imm18_from_bytes(self.0)
         }
     };
     (impl_op_unpack [Imm24]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> Imm24 {
-            imm24_from_bytes(self.0)
+            conv::imm24_from_bytes(self.0)
         }
     };
     (impl_op_unpack []) => {};

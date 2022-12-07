@@ -5,11 +5,13 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 
+mod conv;
 mod gm_args;
 mod instruction_result;
 // This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
 #[macro_use]
 pub mod macros;
+pub mod op;
 mod panic_reason;
 
 pub use fuel_types::{RegisterId, Word};
@@ -17,6 +19,29 @@ pub use fuel_types::{RegisterId, Word};
 pub use gm_args::{GMArgs, GTFArgs};
 pub use instruction_result::InstructionResult;
 pub use panic_reason::PanicReason;
+
+/// Represents a 6-bit register ID, guaranteed to be masked by construction.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RegId(u8);
+
+/// Represents a 12-bit immediate value, guaranteed to be masked by construction.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Imm12(u16);
+
+/// Represents a 18-bit immediate value, guaranteed to be masked by construction.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Imm18(u32);
+
+/// Represents a 24-bit immediate value, guaranteed to be masked by construction.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Imm24(u32);
+
+/// An instruction in its raw, packed, unparsed representation.
+pub type RawInstruction = u32;
+
+/// Failed to parse a `u8` as a valid or non-reserved opcode.
+#[derive(Debug, Eq, PartialEq)]
+pub struct InvalidOpcode;
 
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a unique type
 // for each opcode's instruction variant. For a detailed explanation of how this works, see the
@@ -187,50 +212,6 @@ impl_instructions! {
     0x92 CFSI cfsi [Imm24]
 }
 
-pub mod op {
-    //! Definitions and implementations for each unique instruction type, one for each
-    //! unique `Opcode` variant.
-    use super::{GMArgs, GTFArgs, Instruction, RegId};
-    // Here we re-export the generated instruction types and constructors, but extend them with
-    // `gm_args` and `gtf_args` short-hand constructors below to take their `GMArgs` and `GTFArgs`
-    // values respectively.
-    #[doc(inline)]
-    pub use super::_op::*;
-
-    /// Construct a `GM` instruction from its arguments.
-    pub fn gm_args(ra: u8, args: GMArgs) -> Instruction {
-        Instruction::GM(GM::from_args(RegId::from(ra), args))
-    }
-
-    /// Construct a `GM` instruction from its arguments.
-    pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> Instruction {
-        Instruction::GTF(GTF::from_args(RegId::from(ra), RegId::from(rb), args))
-    }
-}
-
-/// Represents a 6-bit register ID, guaranteed to be masked by construction.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct RegId(u8);
-
-/// Represents a 12-bit immediate value, guaranteed to be masked by construction.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Imm12(u16);
-
-/// Represents a 18-bit immediate value, guaranteed to be masked by construction.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Imm18(u32);
-
-/// Represents a 24-bit immediate value, guaranteed to be masked by construction.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Imm24(u32);
-
-/// An instruction in its raw, unparsed representation.
-pub type RawInstruction = u32;
-
-/// Failed to parse a `u8` as a valid or non-reserved opcode.
-#[derive(Debug, Eq, PartialEq)]
-pub struct InvalidOpcode;
-
 impl RegId {
     /// Construct a register ID from the given value.
     ///
@@ -334,20 +315,6 @@ impl Opcode {
             | JNZI | JI | JMP | JNE | CFEI | CFSI | GTF => true,
             _ => false,
         }
-    }
-}
-
-impl op::GM {
-    /// Construct a `GM` instruction from its arguments.
-    pub fn from_args(ra: RegId, args: GMArgs) -> Self {
-        Self::new(ra, Imm18::new(args as _))
-    }
-}
-
-impl op::GTF {
-    /// Construct a `GTF` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, args: GTFArgs) -> Self {
-        Self::new(ra, rb, Imm12::new(args as _))
     }
 }
 
@@ -470,7 +437,7 @@ impl core::convert::TryFrom<RawInstruction> for Instruction {
     }
 }
 
-// --------------------------------------------------------
+// Index slices with `RegId`
 
 impl<T> core::ops::Index<RegId> for [T]
 where
@@ -491,7 +458,7 @@ where
     }
 }
 
-// --------------------------------------------------------
+// Collect instructions into bytes or halfwords
 
 impl core::iter::FromIterator<Instruction> for Vec<u8> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
@@ -504,8 +471,6 @@ impl core::iter::FromIterator<Instruction> for Vec<u32> {
         iter.into_iter().map(u32::from).collect()
     }
 }
-
-// --------------------------------------------------------
 
 /// Produce two raw instructions from a word's hi and lo parts.
 pub fn raw_instructions_from_word(word: Word) -> [RawInstruction; 2] {
@@ -547,7 +512,7 @@ where
     us.into_iter().map(Instruction::try_from)
 }
 
-// --------------------------------------------------------
+// Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
 
 fn check_reg_id(u: u8) -> RegId {
     RegId::new_checked(u).unwrap_or_else(|| panic!("Value `{:X}` out of range for 6-bit register ID", u))
@@ -563,183 +528,6 @@ fn check_imm18(u: u32) -> Imm18 {
 
 fn check_imm24(u: u32) -> Imm24 {
     Imm24::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 24-bit immediate", u))
-}
-
-// --------------------------------------------------------
-
-fn ra_from_u32(u: u32) -> RegId {
-    RegId::new((u >> 18) as u8)
-}
-
-fn rb_from_u32(u: u32) -> RegId {
-    RegId::new((u >> 12) as u8)
-}
-
-fn rc_from_u32(u: u32) -> RegId {
-    RegId::new((u >> 6) as u8)
-}
-
-fn rd_from_u32(u: u32) -> RegId {
-    RegId::new(u as u8)
-}
-
-fn imm12_from_u32(u: u32) -> Imm12 {
-    Imm12::new(u as u16)
-}
-
-fn imm18_from_u32(u: u32) -> Imm18 {
-    Imm18::new(u)
-}
-
-fn imm24_from_u32(u: u32) -> Imm24 {
-    Imm24::new(u)
-}
-
-// -----------------------------------------------------
-
-fn ra_from_bytes(bs: [u8; 3]) -> RegId {
-    ra_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn rb_from_bytes(bs: [u8; 3]) -> RegId {
-    rb_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn rc_from_bytes(bs: [u8; 3]) -> RegId {
-    rc_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn rd_from_bytes(bs: [u8; 3]) -> RegId {
-    rd_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn imm12_from_bytes(bs: [u8; 3]) -> Imm12 {
-    imm12_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn imm18_from_bytes(bs: [u8; 3]) -> Imm18 {
-    imm18_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn imm24_from_bytes(bs: [u8; 3]) -> Imm24 {
-    imm24_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
-}
-
-fn ra_rb_from_bytes(bs: [u8; 3]) -> (RegId, RegId) {
-    (ra_from_bytes(bs), rb_from_bytes(bs))
-}
-
-fn ra_rb_rc_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId) {
-    (ra_from_bytes(bs), rb_from_bytes(bs), rc_from_bytes(bs))
-}
-
-fn ra_rb_rc_rd_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId, RegId) {
-    (
-        ra_from_bytes(bs),
-        rb_from_bytes(bs),
-        rc_from_bytes(bs),
-        rd_from_bytes(bs),
-    )
-}
-
-fn ra_rb_imm12_from_bytes(bs: [u8; 3]) -> (RegId, RegId, Imm12) {
-    (ra_from_bytes(bs), rb_from_bytes(bs), imm12_from_bytes(bs))
-}
-
-fn ra_imm18_from_bytes(bs: [u8; 3]) -> (RegId, Imm18) {
-    (ra_from_bytes(bs), imm18_from_bytes(bs))
-}
-
-// -----------------------------------------------------
-
-fn u32_from_ra(r: RegId) -> u32 {
-    (r.0 as u32) << 18
-}
-
-fn u32_from_rb(r: RegId) -> u32 {
-    (r.0 as u32) << 12
-}
-
-fn u32_from_rc(r: RegId) -> u32 {
-    (r.0 as u32) << 6
-}
-
-fn u32_from_rd(r: RegId) -> u32 {
-    r.0 as u32
-}
-
-fn u32_from_imm12(imm: Imm12) -> u32 {
-    imm.0 as u32
-}
-
-fn u32_from_imm18(imm: Imm18) -> u32 {
-    imm.0
-}
-
-fn u32_from_imm24(imm: Imm24) -> u32 {
-    imm.0
-}
-
-fn u32_from_ra_rb(ra: RegId, rb: RegId) -> u32 {
-    u32_from_ra(ra) | u32_from_rb(rb)
-}
-
-fn u32_from_ra_rb_rc(ra: RegId, rb: RegId, rc: RegId) -> u32 {
-    u32_from_ra_rb(ra, rb) | u32_from_rc(rc)
-}
-
-fn u32_from_ra_rb_rc_rd(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> u32 {
-    u32_from_ra_rb_rc(ra, rb, rc) | u32_from_rd(rd)
-}
-
-fn u32_from_ra_rb_imm12(ra: RegId, rb: RegId, imm: Imm12) -> u32 {
-    u32_from_ra_rb(ra, rb) | u32_from_imm12(imm)
-}
-
-fn u32_from_ra_imm18(ra: RegId, imm: Imm18) -> u32 {
-    u32_from_ra(ra) | u32_from_imm18(imm)
-}
-
-// --------------------------------------------------------
-
-fn bytes_from_ra(ra: RegId) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra(ra).to_be_bytes())
-}
-
-fn bytes_from_ra_rb(ra: RegId, rb: RegId) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra_rb(ra, rb).to_be_bytes())
-}
-
-fn bytes_from_ra_rb_rc(ra: RegId, rb: RegId, rc: RegId) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra_rb_rc(ra, rb, rc).to_be_bytes())
-}
-
-fn bytes_from_ra_rb_rc_rd(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra_rb_rc_rd(ra, rb, rc, rd).to_be_bytes())
-}
-
-fn bytes_from_ra_rb_imm12(ra: RegId, rb: RegId, imm: Imm12) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra_rb_imm12(ra, rb, imm).to_be_bytes())
-}
-
-fn bytes_from_ra_imm18(ra: RegId, imm: Imm18) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_ra_imm18(ra, imm).to_be_bytes())
-}
-
-fn bytes_from_imm24(imm: Imm24) -> [u8; 3] {
-    u8x3_from_u8x4(u32_from_imm24(imm).to_be_bytes())
-}
-
-// --------------------------------------------------------
-
-// Ignore the opcode byte, take the remaining instruction data.
-fn u8x3_from_u8x4([_, a, b, c]: [u8; 4]) -> [u8; 3] {
-    [a, b, c]
-}
-
-// Produce the big-endian bytes for an instruction's data, with a zeroed opcode byte.
-fn u8x4_from_u8x3([a, b, c]: [u8; 3]) -> [u8; 4] {
-    [0, a, b, c]
 }
 
 // --------------------------------------------------------

@@ -43,18 +43,16 @@ const INSTR_OFFSET: Word = REASON_OFFSET - (core::mem::size_of::<RawInstruction>
 impl From<InstructionResult> for Word {
     fn from(r: InstructionResult) -> Word {
         let reason = Word::from(r.reason as u8);
-        #[allow(clippy::useless_conversion)]
-        let instruction = Word::from(u32::from(r.instruction));
+        let instruction = Word::from(r.instruction);
         (reason << REASON_OFFSET) | (instruction << INSTR_OFFSET)
     }
 }
 
-// TODO: Should be `TryFrom`
 impl From<Word> for InstructionResult {
     fn from(val: Word) -> Self {
-        // NOTE: Safe to cast as we've shifted the 8 MSB.
+        // Safe to cast as we've shifted the 8 MSB.
         let reason_u8 = (val >> REASON_OFFSET) as u8;
-        // NOTE: Cast to truncate in order to remove the `reason` bits.
+        // Cast to truncate in order to remove the `reason` bits.
         let instruction = (val >> INSTR_OFFSET) as u32;
         let reason = PanicReason::from(reason_u8);
         Self { reason, instruction }

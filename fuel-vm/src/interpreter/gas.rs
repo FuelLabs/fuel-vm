@@ -10,7 +10,7 @@ use fuel_types::Word;
 pub mod consts;
 
 impl<S, Tx> Interpreter<S, Tx> {
-    pub(crate) const fn remaining_gas(&self) -> Word {
+    pub(crate) fn remaining_gas(&self) -> Word {
         self.registers[REG_GGAS]
     }
 

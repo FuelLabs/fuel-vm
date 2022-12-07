@@ -185,7 +185,7 @@ impl CallFrame {
     }
 
     /// Gas context prior to the called execution.
-    pub const fn context_gas(&self) -> Word {
+    pub fn context_gas(&self) -> Word {
         self.registers[REG_CGAS]
     }
 

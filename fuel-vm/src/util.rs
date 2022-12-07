@@ -109,7 +109,7 @@ pub mod test_helpers {
 
     impl TestBuilder {
         pub fn new(seed: u64) -> Self {
-            let bytecode = core::iter::once(op::ret(REG_ONE as u8)).collect();
+            let bytecode = core::iter::once(op::ret(REG_ONE.into())).collect();
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
@@ -240,8 +240,8 @@ pub mod test_helpers {
                     op::movi(0x11, data_offset),
                     op::addi(0x12, 0x11, AssetId::LEN as Immediate12),
                     op::bal(0x10, 0x11, 0x12),
-                    op::log(0x10, REG_ZERO as u8, REG_ZERO as u8, REG_ZERO as u8),
-                    op::ret(REG_ONE as u8)
+                    op::log(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_ZERO.into()),
+                    op::ret(REG_ONE.into()),
                 ],
                 params.tx_offset()
             );

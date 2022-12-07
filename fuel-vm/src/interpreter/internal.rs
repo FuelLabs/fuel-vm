@@ -129,8 +129,9 @@ impl<S, Tx> Interpreter<S, Tx> {
         matches!(self.context, Context::Predicate { .. })
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
-        if ra >= REG_WRITABLE {
+    // TODO: We should take a `RegId` as an argument.
+    pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
+        if ra >= REG_WRITABLE.into() {
             Ok(())
         } else {
             Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))

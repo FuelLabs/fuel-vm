@@ -69,8 +69,9 @@ where
         }
 
         // Short-hand for retrieving the value from the register with the given ID.
+        // We use a macro to "close over" `self.registers` without taking ownership of it.
         macro_rules! r {
-            ($id:expr) => { self.registers[usize::from($id)] };
+            ($id:expr) => { self.registers[$id] };
         }
 
         match instruction {

@@ -157,7 +157,6 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::FLAG => false,
         Opcode::GM => true,
         Opcode::GTF => true,
-        Opcode::Undefined => false,
         Opcode::TIME => true,
     }
 }
@@ -243,7 +242,6 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::FLAG => false,
         Opcode::GM => false,
         Opcode::GTF => false,
-        Opcode::Undefined => false,
         Opcode::TIME => false,
     }
 }

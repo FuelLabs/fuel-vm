@@ -74,7 +74,7 @@ impl MemoryRange {
     /// Return the boundaries of the slice with exclusive end `[a, b[`
     ///
     /// Remap the unbound boundaries to stack or heap when applicable.
-    pub const fn boundaries<S, Tx>(&self, vm: &Interpreter<S, Tx>) -> (Word, Word)
+    pub fn boundaries<S, Tx>(&self, vm: &Interpreter<S, Tx>) -> (Word, Word)
     where
         Tx: ExecutableTransaction,
     {
@@ -105,7 +105,7 @@ impl MemoryRange {
 
     /// Return an owned memory slice with a relative address to the heap space
     /// defined in `r[$hp]`
-    pub const fn to_heap<S, Tx>(mut self, vm: &Interpreter<S, Tx>) -> Self
+    pub fn to_heap<S, Tx>(mut self, vm: &Interpreter<S, Tx>) -> Self
     where
         Tx: ExecutableTransaction,
     {
@@ -252,11 +252,11 @@ where
                 || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
     }
 
-    pub(crate) const fn has_ownership_stack(&self, a: Word) -> bool {
+    pub(crate) fn has_ownership_stack(&self, a: Word) -> bool {
         a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a < self.registers[REG_SP]
     }
 
-    pub(crate) const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
+    pub(crate) fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
         a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a <= self.registers[REG_SP]
     }
 
@@ -282,7 +282,7 @@ where
                 || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0) + 1)
     }
 
-    pub(crate) const fn is_stack_address(&self, a: Word) -> bool {
+    pub(crate) fn is_stack_address(&self, a: Word) -> bool {
         a < self.registers[REG_SP]
     }
 

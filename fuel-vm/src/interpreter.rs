@@ -106,11 +106,11 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
-    pub(crate) const fn is_unsafe_math(&self) -> bool {
+    pub(crate) fn is_unsafe_math(&self) -> bool {
         self.registers[REG_FLAG] & 0x01 == 0x01
     }
 
-    pub(crate) const fn is_wrapping(&self) -> bool {
+    pub(crate) fn is_wrapping(&self) -> bool {
         self.registers[REG_FLAG] & 0x02 == 0x02
     }
 

@@ -46,4 +46,16 @@ assert_eq!(program, restored.unwrap());
 // We can also reconstruct the instructions individually
 let restored: Result<Vec<Instruction>, _> = fuel_asm::from_u32s(halfwords).collect();
 assert_eq!(program, restored.unwrap());
+
+// An instruction is composed by the opcode representation, register IDs and immediate value.
+let instruction = program[1];
+assert_eq!(instruction.opcode(), Opcode::SLLI);
+let slli = match instruction {
+    Instruction::SLLI(slli) => slli,
+    _ => panic!("unexpected instruction"),
+};
+let (ra, rb, imm) = slli.unpack();
+assert_eq!(u8::from(ra), 0x20);
+assert_eq!(u8::from(rb), 0x10);
+assert_eq!(u32::from(imm), 5);
 ```

@@ -19,12 +19,12 @@ fn profile_gas() {
 
     let case_out_of_gas = 1_000;
     let mut rounds = [2, 12, 22, case_out_of_gas].into_iter().map(|count| {
-        let script_code: Vec<Opcode> = vec![
-            Opcode::XOR(reg_a, reg_a, reg_a), // r[a] := 0
-            Opcode::ORI(reg_a, reg_a, count), // r[a] := count
-            Opcode::SUBI(reg_a, reg_a, 1),    // r[a] -= count  <-|
-            Opcode::JNEI(REG_ZERO, reg_a, 2), // Jump to ---------|
-            Opcode::RET(REG_ONE),
+        let script_code = vec![
+            op::xor(reg_a, reg_a, reg_a),        // r[a] := 0
+            op::ori(reg_a, reg_a, count),        // r[a] := count
+            op::subi(reg_a, reg_a, 1),           // r[a] -= count  <-|
+            op::jnei(REG_ZERO.into(), reg_a, 2), // Jump to ---------|
+            op::ret(REG_ONE.into()),
         ];
 
         let tx_deploy = TransactionBuilder::script(script_code.into_iter().collect(), vec![])

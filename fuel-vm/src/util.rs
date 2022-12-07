@@ -8,6 +8,7 @@
 /// # Example
 ///
 /// ```
+/// use fuel_asm::op;
 /// use fuel_types::{Immediate18, Word};
 /// use fuel_vm::consts::{REG_ONE, REG_ZERO};
 /// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
@@ -19,7 +20,7 @@
 /// let call = Call::new(contract_id, 0, 0).to_bytes();
 /// let asset_id = [0x00; 32];
 /// let transfer_amount: Word = 100;
-/// let gas_to_forward = 1_000_000;
+/// let gas_to_forward = 100_000;
 /// let script_data = [call.as_ref(), asset_id.as_ref()]
 ///     .into_iter()
 ///     .flatten()
@@ -31,13 +32,13 @@
 ///     data_offset,
 ///     vec![
 ///         // use data_offset to reference the location of the call bytes inside script_data
-///         Opcode::MOVI(0x10, data_offset),
-///         Opcode::MOVI(0x11, transfer_amount as Immediate18),
+///         op::movi(0x10, data_offset),
+///         op::movi(0x11, transfer_amount as Immediate18),
 ///         // use data_offset again to reference the location of the asset id inside of script data
-///         Opcode::MOVI(0x12, data_offset + call.len() as Immediate18),
-///         Opcode::MOVI(0x13, gas_to_forward as Immediate18),
-///         Opcode::CALL(0x10, 0x11, 0x12, 0x13),
-///         Opcode::RET(REG_ONE),
+///         op::movi(0x12, data_offset + call.len() as Immediate18),
+///         op::movi(0x13, gas_to_forward as Immediate18),
+///         op::call(0x10, 0x11, 0x12, 0x13),
+///         op::ret(REG_ONE.into()),
 ///     ],
 ///     ConsensusParameters::DEFAULT.tx_offset()
 /// );

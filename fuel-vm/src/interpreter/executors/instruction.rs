@@ -52,13 +52,13 @@ where
         }
 
         self._instruction(raw)
-            .map_err(|e| InterpreterError::from(e))
+            .map_err(|e| InterpreterError::from_runtime(e, raw))
     }
 
     #[tracing::instrument(name = "instruction", skip(self))]
     fn _instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
         let instruction = Instruction::try_from(raw)
-            .map_err(|_| RuntimeError::InvalidInstruction(raw))?;
+            .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
         tracing::trace!("Instruction: {:?}", instruction);
 

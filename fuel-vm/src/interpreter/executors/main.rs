@@ -214,7 +214,7 @@ where
 
                 Err(e) => match e.instruction_result() {
                     Some(result) => {
-                        self.append_panic_receipt(*result);
+                        self.append_panic_receipt(result);
 
                         (ScriptExecutionResult::Panic, ProgramState::Revert(0))
                     }

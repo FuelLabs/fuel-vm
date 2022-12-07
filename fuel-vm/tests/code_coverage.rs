@@ -1,3 +1,4 @@
+use fuel_asm::op;
 use fuel_tx::{ScriptExecutionResult, TransactionBuilder};
 
 use fuel_vm::consts::*;
@@ -22,12 +23,12 @@ fn code_coverage() {
     // Deploy contract with loops
     let reg_a = 0x20;
 
-    let script_code: Vec<Opcode> = vec![
-        Opcode::JNEI(REG_ZERO, REG_ONE, 2),  // Skip next
-        Opcode::XOR(reg_a, reg_a, reg_a),    // Skipped
-        Opcode::JNEI(REG_ZERO, REG_ZERO, 2), // Do not skip
-        Opcode::XOR(reg_a, reg_a, reg_a),    // Executed
-        Opcode::RET(REG_ONE),
+    let script_code = vec![
+        op::jnei(REG_ZERO.into(), REG_ONE.into(), 2),  // Skip next
+        op::xor(reg_a, reg_a, reg_a),                  // Skipped
+        op::jnei(REG_ZERO.into(), REG_ZERO.into(), 2), // Do not skip
+        op::xor(reg_a, reg_a, reg_a),                  // Executed
+        op::ret(REG_ONE.into()),
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])

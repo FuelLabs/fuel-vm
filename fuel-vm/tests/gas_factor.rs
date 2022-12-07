@@ -1,3 +1,4 @@
+use fuel_asm::op;
 use fuel_vm::prelude::*;
 
 use fuel_tx::field::Outputs;
@@ -15,9 +16,9 @@ fn gas_factor_rounds_correctly() {
     let params = ConsensusParameters::default().with_gas_price_factor(factor as Word);
 
     // Random script to consume some gas
-    let script = iter::repeat(Opcode::ADD(0x10, 0x00, 0x01))
+    let script = iter::repeat(op::add(0x10, 0x00, 0x01))
         .take(6688)
-        .chain(iter::once(Opcode::RET(0x01)))
+        .chain(iter::once(op::ret(0x01)))
         .collect();
 
     let transaction = TestBuilder::new(2322u64)

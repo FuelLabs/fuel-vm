@@ -209,6 +209,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
+    use fuel_asm::op;
     use fuel_tx::field::Outputs;
     use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
@@ -226,7 +227,7 @@ mod tests {
         let maturity = 0;
         let height = 0;
 
-        let script = Opcode::RET(0x01).to_bytes().to_vec();
+        let script = <[u8; 4]>::from(op::ret(0x01)).to_vec();
         let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
         let mut tx = TransactionBuilder::script(script, Default::default());

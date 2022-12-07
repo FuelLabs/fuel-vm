@@ -1,3 +1,4 @@
+use fuel_asm::{op, GMArgs, GTFArgs, Instruction};
 use fuel_tx::TransactionBuilder;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
@@ -7,7 +8,7 @@ use core::iter;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
-    P: IntoIterator<Item = Opcode>,
+    P: IntoIterator<Item = Instruction>,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -57,7 +58,7 @@ where
 
 #[test]
 fn predicate_minimal() {
-    let predicate = iter::once(Opcode::RET(0x01));
+    let predicate = iter::once(op::ret(0x01));
     let data = vec![];
 
     assert!(execute_predicate(predicate, data, 7));
@@ -73,16 +74,16 @@ fn predicate() {
 
     // A script that will succeed only if the argument is 0x23
     let predicate = vec![
-        Opcode::MOVI(0x10, 0x11),
-        Opcode::ADDI(0x11, 0x10, 0x12),
-        Opcode::MOVI(0x12, 0x08),
-        Opcode::ALOC(0x12),
-        Opcode::ADDI(0x12, REG_HP, 0x01),
-        Opcode::SW(0x12, 0x11, 0),
-        Opcode::MOVI(0x10, 0x08),
-        Opcode::gtf(0x11, 0, GTFArgs::InputCoinPredicateData),
-        Opcode::MEQ(0x10, 0x11, 0x12, 0x10),
-        Opcode::RET(0x10),
+        op::movi(0x10, 0x11),
+        op::addi(0x11, 0x10, 0x12),
+        op::movi(0x12, 0x08),
+        op::aloc(0x12),
+        op::addi(0x12, REG_HP.into(), 0x01),
+        op::sw(0x12, 0x11, 0),
+        op::movi(0x10, 0x08),
+        op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
+        op::meq(0x10, 0x11, 0x12, 0x10),
+        op::ret(0x10),
     ];
 
     assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
@@ -96,10 +97,10 @@ fn get_verifying_predicate() {
     for idx in indices {
         #[rustfmt::skip]
         let predicate = vec![
-            Opcode::gm(0x10, GMArgs::GetVerifyingPredicate),
-            Opcode::MOVI(0x11, idx),
-            Opcode::EQ(0x10, 0x10, 0x11),
-            Opcode::RET(0x10),
+            op::gm_args(0x10, GMArgs::GetVerifyingPredicate),
+            op::movi(0x11, idx),
+            op::eq(0x10, 0x10, 0x11),
+            op::ret(0x10),
         ];
 
         assert!(execute_predicate(predicate, vec![], idx as usize));

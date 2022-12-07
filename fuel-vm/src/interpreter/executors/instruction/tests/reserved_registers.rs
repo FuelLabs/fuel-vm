@@ -7,15 +7,18 @@ use quickcheck_macros::quickcheck;
 // Ensure none of the opcodes can write to reserved registers
 #[quickcheck]
 fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
-    let instruction = match Instruction::try_from(new_random_instruction) {
+    let random_instruction = match Instruction::try_from(raw_random_instruction) {
         Ok(inst) => inst,
         Err(_) => return TestResult::discard(),
     };
+    let opcode = random_instruction.opcode();
+
     // ignore if rA/rB isn't set to writeable register and the opcode should write to that register
-    if (writes_to_ra(opcode) && random_instruction.ra() >= REG_WRITABLE)
-        || (writes_to_rb(opcode) && random_instruction.rb() >= REG_WRITABLE)
-    {
-        return TestResult::discard();
+    let [ra, rb, _, _] = random_instruction.reg_ids();
+    match (ra, rb) {
+        (Some(r), _) if writes_to_ra(opcode) && r >= REG_WRITABLE => return TestResult::discard(),
+        (_, Some(r)) if writes_to_rb(opcode) && r >= REG_WRITABLE => return TestResult::discard(),
+        _ => (),
     }
 
     let mut vm = Interpreter::with_memory_storage();
@@ -27,21 +30,18 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let tx = tx.into_checked(block_height, &params).expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");
-    let res = vm.instruction(random_instruction);
+    let res = vm.instruction(raw_random_instruction);
 
     if writes_to_ra(opcode) || writes_to_rb(opcode) {
         // if this opcode writes to $rA or $rB, expect an error since we're attempting to use a reserved register
         // This assumes that writeable register is validated before other properties of the instruction.
-        match res {
-            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable => {
-                // expected failure
-            }
-            Err(InterpreterError::PanicInstruction(r)) if r.reason() == &OutOfGas => {
-                // Some opcodes may run out of gas if they access too much data.
-                // Simply discard these results as an alternative to structural fuzzing that avoids
-                // out of gas errors.
-                return TestResult::discard();
-            }
+        match res.as_ref().map_err(|e| e.panic_reason()) {
+            // expected failure
+            Err(Some(ReservedRegisterNotWritable)) => {}
+            // Some opcodes may run out of gas if they access too much data.
+            // Simply discard these results as an alternative to structural fuzzing that avoids
+            // out of gas errors.
+            Err(Some(OutOfGas)) => return TestResult::discard(),
             _ => {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",

@@ -5,14 +5,15 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 
-mod conv;
 mod gm_args;
 mod instruction_result;
 // This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
 #[macro_use]
 pub mod macros;
 pub mod op;
+mod pack;
 mod panic_reason;
+mod unpack;
 
 pub use fuel_types::{RegisterId, Word};
 #[doc(no_inline)]

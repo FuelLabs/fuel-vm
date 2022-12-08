@@ -824,6 +824,24 @@ fn scwq_clears_status() {
 }
 
 #[test]
+fn scwq_clears_status_for_range() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::SWW(0x30, SET_STATUS_REG, REG_ZERO),
+        Opcode::ADDI(0x31, 0x30, 1),
+        Opcode::SWW(0x31,  SET_STATUS_REG, REG_ZERO),
+        Opcode::ADDI(0x32, REG_ONE, 1),
+        Opcode::SCWQ(0x30, SET_STATUS_REG + 1, 0x32),
+        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
+        Opcode::SRW(0x31, SET_STATUS_REG + 3, REG_ZERO),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, SET_STATUS_REG + 3),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
+}
+
+#[test]
 fn srw_reads_status() {
     #[rustfmt::skip]
     let program: Vec<Opcode> = vec![

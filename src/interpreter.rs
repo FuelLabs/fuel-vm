@@ -34,6 +34,7 @@ mod log;
 mod memory;
 mod metadata;
 mod post_execution;
+pub mod diff;
 
 #[cfg(feature = "debug")]
 mod debug;
@@ -80,7 +81,7 @@ pub struct Interpreter<S, Tx = ()> {
 /// regarding panic reasons to simplify debugging.
 // TODO: Move this enum into `fuel-tx` and use it inside of the `Receipt::Panic` as meta
 //  information. Maybe better to have `Vec<PanicContext>` to provide more information.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PanicContext {
     /// No additional information.
     None,

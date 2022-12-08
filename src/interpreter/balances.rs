@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct Balance {
+pub(crate) struct Balance {
     value: Word,
     offset: usize,
 }
@@ -149,6 +149,18 @@ impl Index<&AssetId> for RuntimeBalances {
 
     fn index(&self, index: &AssetId) -> &Self::Output {
         &self.state[index].value
+    }
+}
+
+impl AsMut<HashMap<AssetId, Balance>> for RuntimeBalances {
+    fn as_mut(&mut self) -> &mut HashMap<AssetId, Balance> {
+        &mut self.state
+    }
+}
+
+impl AsRef<HashMap<AssetId, Balance>> for RuntimeBalances {
+    fn as_ref(&self) -> &HashMap<AssetId, Balance> {
+        &self.state
     }
 }
 

@@ -21,6 +21,8 @@ where
 
             ProgramState::Revert(w) => Ok(ProgramState::Revert(w)),
 
+            ProgramState::Skipped => Ok(ProgramState::Skipped),
+
             ProgramState::RunProgram(_) => self.run_program(),
 
             ProgramState::VerifyPredicate(_) => unimplemented!(),

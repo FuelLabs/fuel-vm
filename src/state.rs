@@ -74,6 +74,8 @@ pub enum ProgramState {
     ReturnData(Bytes32),
     /// The transaction execution resulted in a `RVRT` instruction.
     Revert(Word),
+    /// The transaction execution was skipped because of `Create` or empty `Script` transaction.
+    Skipped,
 
     #[cfg(feature = "debug")]
     /// A debug event was reached for the transaction. The VM is suspended.

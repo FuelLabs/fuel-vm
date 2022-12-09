@@ -172,7 +172,7 @@ where
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::_deploy(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
             self.update_transaction_outputs()?;
-            ProgramState::Return(1)
+            ProgramState::Skipped
         } else {
             if self.transaction().inputs().iter().any(|input| {
                 if let Input::Contract { contract_id, .. } = input {
@@ -193,7 +193,20 @@ where
 
             // TODO set tree balance
 
-            let program = self.run_program();
+            // `Interpreter` supports only `Create` and `Script` transactions. It is not `Create` ->
+            // it is `Script`.
+            let program = if !self
+                .transaction()
+                .as_script()
+                .expect("It should be `Script` transaction")
+                .script()
+                .is_empty()
+            {
+                self.run_program()
+            } else {
+                Ok(ProgramState::Skipped)
+            };
+
             let gas_used = self
                 .transaction()
                 .limit()

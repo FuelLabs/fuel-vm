@@ -38,9 +38,10 @@ fn can_execute_empty_script_transaction() {
     let receipts = client.transact(tx);
 
     // Expect the correct receipt
-    assert_eq!(receipts.len(), 1);
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Return { val: 1, .. }));
     assert!(matches!(
-        receipts[0],
+        receipts[1],
         Receipt::ScriptResult {
             result: ScriptExecutionResult::Success,
             ..

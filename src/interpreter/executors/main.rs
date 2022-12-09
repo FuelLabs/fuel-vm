@@ -172,7 +172,7 @@ where
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::_deploy(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
             self.update_transaction_outputs()?;
-            ProgramState::Skipped
+            ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
                 if let Input::Contract { contract_id, .. } = input {
@@ -204,7 +204,10 @@ where
             {
                 self.run_program()
             } else {
-                Ok(ProgramState::Skipped)
+                // Return `1` as successful execution.
+                let return_val = 1;
+                self.ret(return_val)?;
+                Ok(ProgramState::Return(return_val))
             };
 
             let gas_used = self

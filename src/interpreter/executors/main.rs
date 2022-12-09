@@ -193,7 +193,23 @@ where
 
             // TODO set tree balance
 
-            let program = self.run_program();
+            // `Interpreter` supports only `Create` and `Script` transactions. It is not `Create` ->
+            // it is `Script`.
+            let program = if !self
+                .transaction()
+                .as_script()
+                .expect("It should be `Script` transaction")
+                .script()
+                .is_empty()
+            {
+                self.run_program()
+            } else {
+                // Return `1` as successful execution.
+                let return_val = 1;
+                self.ret(return_val)?;
+                Ok(ProgramState::Return(return_val))
+            };
+
             let gas_used = self
                 .transaction()
                 .limit()

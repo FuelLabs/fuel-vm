@@ -337,8 +337,15 @@ where
         let state: Vec<Option<Cow<Bytes32>>> = result.unwrap_or_default();
         let mut mem_address = a;
 
+        let mut checked_val;
+
         for value in state {
-            self.try_mem_write(mem_address, value.unwrap().as_ref())?;
+            if value.is_none() {
+                checked_val = Bytes32::zeroed();
+            } else {
+                checked_val = *value.unwrap().as_ref();
+            }
+            self.try_mem_write(mem_address, checked_val.as_ref())?;
             mem_address = checked_add_usize(mem_address, Bytes32::LEN)?;
         }
 

@@ -12,6 +12,7 @@ use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::interpreter::PanicContext;
 use core::slice;
+use std::borrow::Cow;
 use std::ops::Deref;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -333,10 +334,13 @@ where
 
         self.registers[rb] = result.is_some() as Word;
 
-        let state = result.unwrap_or_default();
+        let state: Vec<Option<Cow<Bytes32>>> = result.unwrap_or_default();
+        let mut mem_address = a;
 
-        //write multiword
-        self.try_mem_write(a, state.as_ref())?;
+        for value in state {
+            self.try_mem_write(a, value.unwrap().as_ref())?;
+            mem_address = checked_add_usize(mem_address, Bytes32::LEN)?;
+        }
 
         self.inc_pc()
     }
@@ -393,15 +397,15 @@ where
         let mut values = vec![];
 
         for i in 0..range {
-            let val_beg = checked_add_word(c, Bytes32::LEN.saturating_mul(i as usize) as Word)?;
-            let val_end = checked_add_word(val_beg, Bytes32::LEN as Word)?;
+            let val_beg = checked_add_usize(c, Bytes32::LEN.saturating_mul(i as usize))?;
+            let val_end = checked_add_usize(val_beg, Bytes32::LEN)?;
             let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[val_beg..val_end]) };
             values.push(value);
         }
 
         let result = self
             .storage
-            .merkle_contract_state_insert_range(contract, key, values)
+            .merkle_contract_state_insert_range(contract, key, values.as_ref())
             .map_err(RuntimeError::from_io)?;
 
         self.registers[rb] = result.is_some() as Word;

@@ -466,7 +466,7 @@ impl Deref for GasCosts {
     type Target = GasCostsValues;
 
     fn deref(&self) -> &Self::Target {
-        &*(self.0)
+        &(self.0)
     }
 }
 

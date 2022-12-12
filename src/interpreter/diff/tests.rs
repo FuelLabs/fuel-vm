@@ -20,15 +20,15 @@ fn identity() {
 }
 
 #[test]
-fn inverse() {
+fn reset_vm_state() {
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
     b.registers[REG_CGAS] = 1_000_000;
     b.registers[REG_GGAS] = 1_000_000;
     b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
-    let diff: Diff<Beginning> = a.diff(&b).into();
+    let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);
-    b.inverse(&diff);
+    b.reset_vm_state(&diff);
     assert_eq!(a, b);
 }
 
@@ -55,12 +55,12 @@ fn record_and_invert_storage() {
     b.registers[REG_GGAS] = 1_000_000;
     b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
 
-    let storage_diff: Diff<Beginning> = b.storage_diff().into();
-    let mut diff: Diff<Beginning> = a.diff(&b).into();
+    let storage_diff: Diff<InitialVmState> = b.storage_diff().into();
+    let mut diff: Diff<InitialVmState> = a.diff(&b).into();
     diff.changes.extend(storage_diff.changes);
 
     assert_ne!(a, b);
-    b.inverse(&diff);
+    b.reset_vm_state(&diff);
     assert_eq!(a, b);
 
     let c = Interpreter::<_, Script>::with_memory_storage();
@@ -78,12 +78,12 @@ fn record_and_invert_storage() {
 
     assert_ne!(c, d);
     dbg!(&diff);
-    d.inverse(&diff);
+    d.reset_vm_state(&diff);
     assert_eq!(c, d);
 }
 
 #[test]
-fn inverse_frame() {
+fn reset_vm_state_frame() {
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
     let frame = CallFrame::new(
@@ -96,9 +96,31 @@ fn inverse_frame() {
     );
     b.frames.push(frame);
     assert_ne!(a.frames, b.frames);
-    let diff: Diff<Beginning> = a.diff(&b).into();
-    b.inverse(&diff);
+    let diff: Diff<InitialVmState> = a.diff(&b).into();
+    b.reset_vm_state(&diff);
     assert_eq!(a.frames, b.frames);
+}
+
+#[test]
+fn reset_vm_state_receipts() {
+    let a = Interpreter::<_, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let receipt = Receipt::call(
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+    );
+    b.receipts.push(receipt);
+    assert_ne!(a.receipts, b.receipts);
+    let diff: Diff<InitialVmState> = a.diff(&b).into();
+    b.reset_vm_state(&diff);
+    assert_eq!(a.receipts, b.receipts);
 }
 
 #[test_case(&[], &[] => it empty)]
@@ -147,7 +169,7 @@ fn test_capture_map_state(a: &[(u32, u32)], b: &[(u32, u32)]) -> Vec<(u32, Optio
 #[test_case(&[12, 13, 14], 1, None => vec![12])]
 
 fn test_invert_vec(v: &[u32], index: usize, value: Option<u32>) -> Vec<u32> {
-    let mut v = v.iter().copied().collect();
+    let mut v = v.to_vec();
     invert_vec(&mut v, &VecState { index, value });
     v
 }

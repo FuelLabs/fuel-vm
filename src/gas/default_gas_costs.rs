@@ -1,6 +1,6 @@
 use super::*;
 
-pub const GIT: &'static str = "191107574449225ea7a176a6e6b7ffaeea627dc4";
+pub const GIT: &str = "191107574449225ea7a176a6e6b7ffaeea627dc4";
 pub fn default_gas_costs() -> GasCostsValues {
     GasCostsValues {
         add: 1,

@@ -122,7 +122,7 @@ fn single_stepping() {
     let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
-    let script = vec![
+    let script: Vec<u8> = vec![
         Opcode::ADDI(0x10, REG_ZERO, 5),
         Opcode::ADDI(0x11, 0x11, 1),
         Opcode::JNEI(0x10, 0x11, 1),

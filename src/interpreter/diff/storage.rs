@@ -12,26 +12,49 @@ use super::Interpreter;
 use super::*;
 
 #[derive(Debug)]
+/// The set of state changes that are recorded.
+pub(super) enum StorageDelta {
+    State(MappableDelta<(ContractId, Bytes32), Bytes32>),
+    Assets(MappableDelta<(ContractId, AssetId), u64>),
+    Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
+    RawCode(MappableDelta<ContractId, Vec<u8>>),
+}
+
+/// The set of states that are recorded.
+#[derive(Debug, Clone)]
+pub(super) enum StorageState {
+    State(MappableState<(ContractId, Bytes32), Bytes32>),
+    Assets(MappableState<(ContractId, AssetId), u64>),
+    Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
+    RawCode(MappableState<ContractId, Vec<u8>>),
+}
+
+#[derive(Debug)]
+/// A [`Mappable`] type that has changed.
 pub(super) enum MappableDelta<Key, Value> {
     Insert(Key, Value, Option<Value>),
     Remove(Key, Value),
 }
 
+/// The state of a [`Mappable`] type.
 #[derive(Debug, Clone)]
 pub(super) struct MappableState<Key, Value> {
     pub key: Key,
     pub value: Option<Value>,
 }
 
+/// Records state changes of any [`Mappable`] type.
 pub(super) trait StorageType<Key, SetValue, GetValue>
 where
     Key: ToOwnedKey,
     SetValue: ToOwned + ?Sized,
     GetValue: ToSetValue<<SetValue as ToOwned>::Owned>,
 {
-    fn insert(key: &Key, value: &SetValue, existing: Option<GetValue>) -> StorageDelta;
+    /// Records an insert state change.
+    fn record_insert(key: &Key, value: &SetValue, existing: Option<GetValue>) -> StorageDelta;
 
-    fn remove(key: &Key, value: GetValue) -> StorageDelta;
+    /// Records a remove state change.
+    fn record_remove(key: &Key, value: GetValue) -> StorageDelta;
 
     fn to_insert(
         key: &Key,
@@ -40,6 +63,7 @@ where
     ) -> MappableDelta<<Key as ToOwnedKey>::OwnedKey, <SetValue as ToOwned>::Owned> {
         MappableDelta::Insert(key.to_owned_key(), value.to_owned(), existing.map(|v| v.to_set_value()))
     }
+
     fn to_remove(
         key: &Key,
         value: GetValue,
@@ -68,22 +92,6 @@ where
 }
 
 #[derive(Debug)]
-pub(super) enum StorageDelta {
-    ContractsState(MappableDelta<(ContractId, Bytes32), Bytes32>),
-    ContractsAssets(MappableDelta<(ContractId, AssetId), u64>),
-    ContractsInfo(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
-    ContractsRawCode(MappableDelta<ContractId, Vec<u8>>),
-}
-
-#[derive(Debug, Clone)]
-pub(super) enum StorageState {
-    ContractsState(MappableState<(ContractId, Bytes32), Bytes32>),
-    ContractsAssets(MappableState<(ContractId, AssetId), u64>),
-    ContractsInfo(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
-    ContractsRawCode(MappableState<ContractId, Vec<u8>>),
-}
-
-#[derive(Debug)]
 pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where
     S: InterpreterStorage;
@@ -93,6 +101,9 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
+    /// Remove the [`Recording`] wrapper from the storage.
+    /// Recording storage changes has an overhead so it's
+    /// useful to be able to remove it once the diff is generated.
     pub fn remove_recording(self) -> Interpreter<S, Tx> {
         Interpreter {
             registers: self.registers,
@@ -108,8 +119,12 @@ where
             gas_costs: self.gas_costs,
             params: self.params,
             panic_context: self.panic_context,
+            #[cfg(feature = "profile-any")]
+            profiler: self.profiler,
         }
     }
+
+    /// Get the diff of changes to this VMs storage.
     pub fn storage_diff(&self) -> Diff<Deltas> {
         let mut diff = Diff { changes: Vec::new() };
         let mut contracts_state = Delta {
@@ -131,16 +146,16 @@ where
 
         for delta in self.storage.1.iter() {
             match delta {
-                StorageDelta::ContractsState(delta) => mappable_delta_to_hashmap(&mut contracts_state, delta),
-                StorageDelta::ContractsAssets(delta) => mappable_delta_to_hashmap(&mut contracts_assets, delta),
-                StorageDelta::ContractsInfo(delta) => mappable_delta_to_hashmap(&mut contracts_info, delta),
-                StorageDelta::ContractsRawCode(delta) => mappable_delta_to_hashmap(&mut contracts_raw_code, delta),
+                StorageDelta::State(delta) => mappable_delta_to_hashmap(&mut contracts_state, delta),
+                StorageDelta::Assets(delta) => mappable_delta_to_hashmap(&mut contracts_assets, delta),
+                StorageDelta::Info(delta) => mappable_delta_to_hashmap(&mut contracts_info, delta),
+                StorageDelta::RawCode(delta) => mappable_delta_to_hashmap(&mut contracts_raw_code, delta),
             }
         }
-        storage_state_to_changes(&mut diff, contracts_state, StorageState::ContractsState);
-        storage_state_to_changes(&mut diff, contracts_info, StorageState::ContractsInfo);
-        storage_state_to_changes(&mut diff, contracts_assets, StorageState::ContractsAssets);
-        storage_state_to_changes(&mut diff, contracts_raw_code, StorageState::ContractsRawCode);
+        storage_state_to_changes(&mut diff, contracts_state, StorageState::State);
+        storage_state_to_changes(&mut diff, contracts_info, StorageState::Info);
+        storage_state_to_changes(&mut diff, contracts_assets, StorageState::Assets);
+        storage_state_to_changes(&mut diff, contracts_raw_code, StorageState::RawCode);
         diff
     }
 }
@@ -150,6 +165,10 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
+    /// Add a [`Recording`] wrapper around the storage to
+    /// record any changes this VM makes to it's storage.
+    /// Recording storage changes has an overhead so should
+    /// be used in production.
     pub fn add_recording(self) -> Interpreter<Record<S>, Tx> {
         Interpreter {
             registers: self.registers,
@@ -165,41 +184,40 @@ where
             gas_costs: self.gas_costs,
             params: self.params,
             panic_context: self.panic_context,
+            #[cfg(feature = "profile-any")]
+            profiler: self.profiler,
         }
     }
-    pub fn inverse(&mut self, diff: &Diff<Beginning>) {
-        self.inverse_inner(diff);
+
+    /// Change this VMs internal state to match the initial state from this diff.
+    pub fn reset_vm_state(&mut self, diff: &Diff<InitialVmState>) {
         for change in &diff.changes {
-            match change {
-                Change::Storage(Previous(from)) => match from {
-                    StorageState::ContractsState(MappableState { key, value }) => match value {
-                        Some(value) => {
+            self.inverse_inner(change);
+            if let Change::Storage(Previous(from)) = change {
+                match from {
+                    StorageState::State(MappableState { key, value }) => {
+                        if let Some(value) = value {
                             StorageMutate::<ContractsState>::insert(&mut self.storage, &(&key.0, &key.1), value)
                                 .unwrap();
                         }
-                        None => (),
-                    },
-                    StorageState::ContractsAssets(MappableState { key, value }) => match value {
-                        Some(value) => {
+                    }
+                    StorageState::Assets(MappableState { key, value }) => {
+                        if let Some(value) = value {
                             StorageMutate::<ContractsAssets>::insert(&mut self.storage, &(&key.0, &key.1), value)
                                 .unwrap();
                         }
-                        None => (),
-                    },
-                    StorageState::ContractsInfo(MappableState { key, value }) => match value {
-                        Some(value) => {
+                    }
+                    StorageState::Info(MappableState { key, value }) => {
+                        if let Some(value) = value {
                             StorageMutate::<ContractsInfo>::insert(&mut self.storage, key, value).unwrap();
                         }
-                        None => (),
-                    },
-                    StorageState::ContractsRawCode(MappableState { key, value }) => match value {
-                        Some(value) => {
+                    }
+                    StorageState::RawCode(MappableState { key, value }) => {
+                        if let Some(value) = value {
                             StorageMutate::<ContractsRawCode>::insert(&mut self.storage, key, value).unwrap();
                         }
-                        None => (),
-                    },
-                },
-                _ => (),
+                    }
+                }
             }
         }
     }
@@ -212,15 +230,15 @@ where
 {
     match delta {
         MappableDelta::Insert(key, value, Some(existing)) => {
-            state.from.entry(key.clone()).or_insert(existing);
-            state.to.insert(key.clone(), value);
+            state.from.entry(*key).or_insert(existing);
+            state.to.insert(*key, value);
         }
         MappableDelta::Insert(key, value, None) => {
-            state.to.insert(key.clone(), value);
+            state.to.insert(*key, value);
         }
         MappableDelta::Remove(key, existing) => {
-            state.from.entry(key.clone()).or_insert(existing);
-            state.to.remove(&key);
+            state.from.entry(*key).or_insert(existing);
+            state.to.remove(key);
         }
     }
 }
@@ -237,7 +255,7 @@ fn storage_state_to_changes<K, V>(
     let iter = to.into_iter().map(|(k, v)| {
         Change::Storage(Delta {
             from: f(MappableState {
-                key: k.clone(),
+                key: k,
                 value: from.remove(&k).cloned(),
             }),
             to: f(MappableState {
@@ -250,7 +268,7 @@ fn storage_state_to_changes<K, V>(
     let iter = from.into_iter().map(|(k, v)| {
         Change::Storage(Delta {
             from: f(MappableState {
-                key: k.clone(),
+                key: k,
                 value: Some(v.clone()),
             }),
             to: f(MappableState { key: k, value: None }),
@@ -298,7 +316,7 @@ where
             <Type as Mappable>::Key,
             <Type as Mappable>::SetValue,
             <Type as Mappable>::GetValue,
-        >>::insert(key, value, existing.clone()));
+        >>::record_insert(key, value, existing.clone()));
         Ok(existing)
     }
 
@@ -309,7 +327,7 @@ where
                 <Type as Mappable>::Key,
                 <Type as Mappable>::SetValue,
                 <Type as Mappable>::GetValue,
-            >>::remove(key, existing.clone()));
+            >>::record_remove(key, existing.clone()));
         }
         Ok(existing)
     }
@@ -382,7 +400,7 @@ impl ToOwnedKey for (&ContractId, &Bytes32) {
     type OwnedKey = (ContractId, Bytes32);
 
     fn to_owned_key(&self) -> Self::OwnedKey {
-        (self.0.clone(), self.1.clone())
+        (*self.0, *self.1)
     }
 }
 
@@ -390,7 +408,7 @@ impl ToOwnedKey for ContractId {
     type OwnedKey = ContractId;
 
     fn to_owned_key(&self) -> Self::OwnedKey {
-        self.clone()
+        *self
     }
 }
 
@@ -403,43 +421,43 @@ impl ToOwnedKey for (&ContractId, &AssetId) {
 }
 
 impl StorageType<(&ContractId, &Bytes32), Bytes32, Bytes32> for ContractsState<'_> {
-    fn insert(key: &(&ContractId, &Bytes32), value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
-        StorageDelta::ContractsState(Self::to_insert(key, value, existing))
+    fn record_insert(key: &(&ContractId, &Bytes32), value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
+        StorageDelta::State(Self::to_insert(key, value, existing))
     }
 
-    fn remove(key: &(&ContractId, &Bytes32), value: Bytes32) -> StorageDelta {
-        StorageDelta::ContractsState(Self::to_remove(key, value))
+    fn record_remove(key: &(&ContractId, &Bytes32), value: Bytes32) -> StorageDelta {
+        StorageDelta::State(Self::to_remove(key, value))
     }
 }
 impl StorageType<(&ContractId, &AssetId), u64, u64> for ContractsAssets<'_> {
-    fn insert(key: &(&ContractId, &AssetId), value: &u64, existing: Option<u64>) -> StorageDelta {
-        StorageDelta::ContractsAssets(Self::to_insert(key, value, existing))
+    fn record_insert(key: &(&ContractId, &AssetId), value: &u64, existing: Option<u64>) -> StorageDelta {
+        StorageDelta::Assets(Self::to_insert(key, value, existing))
     }
 
-    fn remove(key: &(&ContractId, &AssetId), value: u64) -> StorageDelta {
-        StorageDelta::ContractsAssets(Self::to_remove(key, value))
+    fn record_remove(key: &(&ContractId, &AssetId), value: u64) -> StorageDelta {
+        StorageDelta::Assets(Self::to_remove(key, value))
     }
 }
 impl StorageType<ContractId, (fuel_types::Salt, Bytes32), (fuel_types::Salt, Bytes32)> for ContractsInfo {
-    fn insert(
+    fn record_insert(
         key: &ContractId,
         value: &(fuel_types::Salt, Bytes32),
         existing: Option<(fuel_types::Salt, Bytes32)>,
     ) -> StorageDelta {
-        StorageDelta::ContractsInfo(Self::to_insert(key, value, existing))
+        StorageDelta::Info(Self::to_insert(key, value, existing))
     }
 
-    fn remove(key: &ContractId, value: (fuel_types::Salt, Bytes32)) -> StorageDelta {
-        StorageDelta::ContractsInfo(Self::to_remove(key, value))
+    fn record_remove(key: &ContractId, value: (fuel_types::Salt, Bytes32)) -> StorageDelta {
+        StorageDelta::Info(Self::to_remove(key, value))
     }
 }
 impl StorageType<ContractId, [u8], Contract> for ContractsRawCode {
-    fn insert(key: &ContractId, value: &[u8], existing: Option<Contract>) -> StorageDelta {
-        StorageDelta::ContractsRawCode(Self::to_insert(key, value, existing))
+    fn record_insert(key: &ContractId, value: &[u8], existing: Option<Contract>) -> StorageDelta {
+        StorageDelta::RawCode(Self::to_insert(key, value, existing))
     }
 
-    fn remove(key: &ContractId, value: Contract) -> StorageDelta {
-        StorageDelta::ContractsRawCode(Self::to_remove(key, value))
+    fn record_remove(key: &ContractId, value: Contract) -> StorageDelta {
+        StorageDelta::RawCode(Self::to_remove(key, value))
     }
 }
 

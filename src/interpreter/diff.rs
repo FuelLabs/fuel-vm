@@ -1,3 +1,9 @@
+//! # VM State Differences
+//! This module provides the ability to generate diffs between two VMs internal states.
+//! The diff can then be used to invert a VM to the original state.
+//! This module is experimental work in progress and currently only used in testing
+//! although it could potentially stabilize to be used in production.
+
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -20,10 +26,10 @@ use crate::storage::ContractsInfo;
 use crate::storage::ContractsRawCode;
 use crate::storage::ContractsState;
 
-use super::PanicContext;
 use super::balances::Balance;
 use super::ExecutableTransaction;
 use super::Interpreter;
+use super::PanicContext;
 use storage::*;
 
 mod storage;
@@ -32,12 +38,13 @@ mod storage;
 mod tests;
 
 #[derive(Debug, Clone)]
-pub struct Diff<T: Capture + Clone> {
+/// A diff of VM state
+pub struct Diff<T: VmStateCapture + Clone> {
     changes: Vec<Change<T>>,
 }
 
 #[derive(Debug, Clone)]
-enum Change<T: Capture + Clone> {
+enum Change<T: VmStateCapture + Clone> {
     Register(T::State<VecState<Word>>),
     Memory(T::State<Memory>),
     Storage(T::State<StorageState>),
@@ -48,33 +55,44 @@ enum Change<T: Capture + Clone> {
     PanicContext(T::State<PanicContext>),
 }
 
-pub trait Capture {
+/// A mapping between the kind of state that is being capture
+/// and the concrete data that is collected.
+pub trait VmStateCapture {
+    /// The actual type is defined by the implementations of
+    /// the Capture trait.
     type State<S: std::fmt::Debug + Clone>: std::fmt::Debug + Clone;
 }
 
 #[derive(Debug, Clone)]
-pub struct Delta<S> {
-    from: S,
-    to: S,
-}
-
-#[derive(Debug, Clone)]
+/// Family of state data that are implemented with the [`Delta`]
+/// struct. Captures the difference between the current and previous
+/// state of the VM.
 pub struct Deltas;
-impl Capture for Deltas {
+
+impl VmStateCapture for Deltas {
     type State<S: std::fmt::Debug + Clone> = Delta<S>;
 }
 
 #[derive(Debug, Clone)]
-pub struct Previous<S>(S);
-
-#[derive(Debug, Clone)]
-pub struct Beginning;
-impl Capture for Beginning {
-    type State<S: std::fmt::Debug + Clone> = Previous<S>;
+/// The Delta struct represents the difference between two states of the VM.
+pub struct Delta<S> {
+    // Represents the state of the VM before a change.
+    from: S,
+    // Represents the state of the VM after a change.
+    to: S,
 }
 
 #[derive(Debug, Clone)]
-struct Next<S>(S);
+/// Family of state data that are implemented with the [`Previous`]
+/// struct. Captures the initial state of the VM.
+pub struct InitialVmState;
+
+impl VmStateCapture for InitialVmState {
+    type State<S: std::fmt::Debug + Clone> = Previous<S>;
+}
+#[derive(Debug, Clone)]
+/// The State type when capturing the initial state of the VM.
+pub struct Previous<S>(S);
 
 #[derive(Debug, Clone)]
 struct VecState<T> {
@@ -123,10 +141,12 @@ where
     })
 }
 
+type ChangeDeltaVariant<S> = fn(Delta<S>) -> Change<Deltas>;
+
 fn capture_map_state<'iter, K, V>(
     a: &'iter HashMap<K, V>,
     b: &'iter HashMap<K, V>,
-    change: fn(Delta<MapState<K, Option<V>>>) -> Change<Deltas>,
+    change: ChangeDeltaVariant<MapState<K, Option<V>>>,
 ) -> Vec<Change<Deltas>>
 where
     K: 'static + std::cmp::PartialEq + Eq + Clone + Hash + Debug,
@@ -147,7 +167,7 @@ where
     K: 'static + std::cmp::PartialEq + Eq + Clone + Hash + Debug,
     V: 'static + std::cmp::PartialEq + Clone + Debug,
 {
-    let a_diff = a_keys.difference(&b_keys).map(|k| Delta {
+    let a_diff = a_keys.difference(b_keys).map(|k| Delta {
         from: MapState {
             key: (*k).clone(),
             value: Some(a[k].clone()),
@@ -157,7 +177,7 @@ where
             value: None,
         },
     });
-    let b_diff = b_keys.difference(&a_keys).map(|k| Delta {
+    let b_diff = b_keys.difference(a_keys).map(|k| Delta {
         from: MapState {
             key: (*k).clone(),
             value: None,
@@ -167,7 +187,7 @@ where
             value: Some(b[k].clone()),
         },
     });
-    let intersection = a_keys.intersection(&b_keys).filter_map(|k| {
+    let intersection = a_keys.intersection(b_keys).filter_map(|k| {
         let value_a = &a[k];
         let value_b = &a[k];
         (value_a != value_b).then(|| Delta {
@@ -188,7 +208,7 @@ where
 fn capture_vec_state<'iter, I, T>(
     a: I,
     b: I,
-    change: fn(Delta<VecState<Option<T>>>) -> Change<Deltas>,
+    change: ChangeDeltaVariant<VecState<Option<T>>>,
 ) -> impl Iterator<Item = Change<Deltas>> + 'iter
 where
     T: 'static + std::cmp::PartialEq + Clone,
@@ -218,6 +238,7 @@ where
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
+    /// The diff function generates a diff of VM state, represented by the Diff struct, between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas> {
         let mut diff = Diff { changes: Vec::new() };
         let registers = capture_buffer_state(self.registers.iter(), other.registers.iter(), Change::Register);
@@ -251,7 +272,7 @@ impl<S, Tx> Interpreter<S, Tx> {
                 to: other.context.clone(),
             }))
         }
-        
+
         if self.panic_context != other.panic_context {
             diff.changes.push(Change::PanicContext(Delta {
                 from: self.panic_context.clone(),
@@ -262,20 +283,18 @@ impl<S, Tx> Interpreter<S, Tx> {
         diff
     }
 
-    fn inverse_inner(&mut self, diff: &Diff<Beginning>) {
-        for change in &diff.changes {
-            match change {
-                Change::Register(Previous(VecState { index, value })) => self.registers[*index] = *value,
-                Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
-                Change::Receipt(Previous(value)) => invert_vec(&mut self.receipts, value),
-                Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-                Change::Memory(Previous(Memory { start, bytes })) => {
-                    self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
-                }
-                Change::Context(Previous(value)) => self.context = value.clone(),
-                Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
-                Change::Storage(_) => (),
+    fn inverse_inner(&mut self, change: &Change<InitialVmState>) {
+        match change {
+            Change::Register(Previous(VecState { index, value })) => self.registers[*index] = *value,
+            Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
+            Change::Receipt(Previous(value)) => invert_vec(&mut self.receipts, value),
+            Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
+            Change::Memory(Previous(Memory { start, bytes })) => {
+                self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
             }
+            Change::Context(Previous(value)) => self.context = value.clone(),
+            Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
+            Change::Storage(_) => (),
         }
     }
 }
@@ -341,7 +360,7 @@ impl<S, Tx> PartialEq for Interpreter<S, Tx> {
     }
 }
 
-impl From<Diff<Deltas>> for Diff<Beginning> {
+impl From<Diff<Deltas>> for Diff<InitialVmState> {
     fn from(d: Diff<Deltas>) -> Self {
         Self {
             changes: d
@@ -368,7 +387,7 @@ impl<T> From<Delta<T>> for Previous<T> {
     }
 }
 
-impl<T: Capture + Clone> AddAssign for Diff<T> {
+impl<T: VmStateCapture + Clone> AddAssign for Diff<T> {
     fn add_assign(&mut self, rhs: Self) {
         self.changes.extend(rhs.changes);
     }

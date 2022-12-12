@@ -24,6 +24,7 @@ mod blockchain;
 mod constructors;
 mod contract;
 mod crypto;
+pub mod diff;
 mod executors;
 mod flow;
 mod frame;
@@ -34,7 +35,6 @@ mod log;
 mod memory;
 mod metadata;
 mod post_execution;
-pub mod diff;
 
 #[cfg(feature = "debug")]
 mod debug;

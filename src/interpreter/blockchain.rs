@@ -12,6 +12,7 @@ use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::interpreter::PanicContext;
 use core::slice;
+use std::ops::Deref;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -263,10 +264,11 @@ where
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[d..dx]) };
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
+        let range = c;
 
         let result = self
             .storage
-            .merkle_contract_state_remove(contract, key)
+            .merkle_contract_state_remove_range(contract, key, range)
             .map_err(RuntimeError::from_io)?;
 
         self.registers[rb] = result.is_some() as Word;
@@ -321,10 +323,11 @@ where
 
         // Safety: Memory bounds are checked by the interpreter
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
+        let range = d;
 
         let result = self
             .storage
-            .merkle_contract_state(contract, key)
+            .merkle_contract_state_range(contract, key, range)
             .map_err(RuntimeError::from_io)?
             .map(|s| s.into_owned());
 
@@ -332,6 +335,7 @@ where
 
         let state = result.unwrap_or_default();
 
+        //write multiword
         self.try_mem_write(a, state.as_ref())?;
 
         self.inc_pc()
@@ -384,11 +388,20 @@ where
         // Safety: Memory bounds logically verified by the interpreter
         let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[e..ex]) };
         let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
-        let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
+
+        let range = d;
+        let mut values = vec![];
+
+        for i in 0..range {
+            let val_beg = checked_add_word(c, Bytes32::LEN.saturating_mul(i as usize) as Word)?;
+            let val_end = checked_add_word(val_beg, Bytes32::LEN as Word)?;
+            let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[val_beg..val_end]) };
+            values.push(value);
+        }
 
         let result = self
             .storage
-            .merkle_contract_state_insert(contract, key, value)
+            .merkle_contract_state_insert_range(contract, key, values)
             .map_err(RuntimeError::from_io)?;
 
         self.registers[rb] = result.is_some() as Word;

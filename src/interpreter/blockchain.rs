@@ -338,7 +338,7 @@ where
         let mut mem_address = a;
 
         for value in state {
-            self.try_mem_write(a, value.unwrap().as_ref())?;
+            self.try_mem_write(mem_address, value.unwrap().as_ref())?;
             mem_address = checked_add_usize(mem_address, Bytes32::LEN)?;
         }
 

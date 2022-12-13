@@ -108,40 +108,40 @@ struct SWWQInput {
     storage_slots: Vec<([u8; 32], [u8; 32])>,
     memory: Vec<u8>,
 }
-
-#[test_case(
-    SWWQInput{
-        input: StateWriteQWord::new(34, 2, 1).unwrap(),
-        storage_slots: vec![],
-        memory: mem(&[&[0; 2], &key(27), &1u64.to_be_bytes()]),
-    } => (mem(&[&[0], &[5; 32], &[27], &1u64.to_be_bytes()]), true)
-)]
-fn test_state_write_qword(input: SWWQInput) -> (Vec<u8>, bool) {
-    let SWWQInput {
-        input,
-        storage_slots,
-        memory,
-    } = input;
-    let mut storage = MemoryStorage::new(0, Default::default());
-
-    for (k, v) in storage_slots {
-        storage
-            .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
-            .unwrap();
-    }
-
-    let mut result_register = 0u64;
-    state_write_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
-    let mut results = vec![];
-    for _ in 0..input.num_slots {
-        results.push(
-            *storage
-                .storage::<ContractsState>()
-                .get(&(&ContractId::default(), &k))?
-                .unwrap()
-                .as_ref(),
-        );
-    }
-    (results, result_register != 0)
-}
+//
+// #[test_case(
+//     SWWQInput{
+//         input: StateWriteQWord::new(34, 2, 1).unwrap(),
+//         storage_slots: vec![],
+//         memory: mem(&[&[0; 2], &key(27), &1u64.to_be_bytes()]),
+//     } => (mem(&[&[0], &[5; 32], &[27], &1u64.to_be_bytes()]), true)
+// )]
+// fn test_state_write_qword(input: SWWQInput) -> (Vec<u8>, bool) {
+//     let SWWQInput {
+//         input,
+//         storage_slots,
+//         memory,
+//     } = input;
+//     let mut storage = MemoryStorage::new(0, Default::default());
+//
+//     for (k, v) in storage_slots {
+//         storage
+//             .storage::<ContractsState>()
+//             .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
+//             .unwrap();
+//     }
+//
+//     let mut result_register = 0u64;
+//     state_write_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
+//     let mut results = vec![];
+//     for _ in 0..input.num_slots {
+//         results.push(
+//             *storage
+//                 .storage::<ContractsState>()
+//                 .get(&(&ContractId::default(), &k))?
+//                 .unwrap()
+//                 .as_ref(),
+//         );
+//     }
+//     (results, result_register != 0)
+// }

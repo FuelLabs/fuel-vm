@@ -10,14 +10,14 @@ use itertools::Itertools;
 use tai64::Tai64;
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
-    contracts: HashMap<ContractId, Contract>,
-    balances: HashMap<(ContractId, AssetId), Word>,
-    contract_state: HashMap<(ContractId, Bytes32), Bytes32>,
-    contract_code_root: HashMap<ContractId, (Salt, Bytes32)>,
+    contracts: BTreeMap<ContractId, Contract>,
+    balances: BTreeMap<(ContractId, AssetId), Word>,
+    contract_state: BTreeMap<(ContractId, Bytes32), Bytes32>,
+    contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -241,28 +241,136 @@ impl InterpreterStorage for MemoryStorage {
 
     fn merkle_contract_state_range(
         &self,
-        _id: &ContractId,
-        _start_key: &Bytes32,
-        _range: Word,
+        id: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
-        unimplemented!()
+        let mut iter = self
+            .memory
+            .contract_state
+            .range((*id, *start_key)..(*id, Bytes32::new([u8::MAX; 32])));
+
+        let mut next_item = iter.next();
+        Ok(std::iter::successors(Some(**start_key), |n| {
+            let mut n = *n;
+            if add_one(&mut n) {
+                None
+            } else {
+                Some(n)
+            }
+        })
+        .map(|next_key: [u8; 32]| match next_item.take() {
+            Some((k, v)) => {
+                if next_key == *(k.1) {
+                    next_item = iter.next();
+                    Some(Cow::Borrowed(v))
+                } else if next_key < *(k.1) {
+                    next_item = Some((k, v));
+                    None
+                } else {
+                    None
+                }
+            }
+            None => None,
+        })
+        .take(range as usize)
+        .collect())
     }
 
     fn merkle_contract_state_insert_range(
         &mut self,
-        _contract: &ContractId,
-        _start_key: &Bytes32,
-        _values: &[Bytes32],
+        contract: &ContractId,
+        start_key: &Bytes32,
+        values: &[Bytes32],
     ) -> Result<Option<()>, Self::DataError> {
-        unimplemented!()
+        let mut any_key = false;
+        let values: Vec<_> = std::iter::successors(Some(**start_key), |n| {
+            let mut n = *n;
+            if add_one(&mut n) {
+                None
+            } else {
+                Some(n)
+            }
+        })
+        .zip(values)
+        .map(|(key, value)| {
+            let key = (*contract, Bytes32::from(key));
+            any_key |= self.memory.contract_state.contains_key(&key);
+            (key, *value)
+        })
+        .collect();
+        self.memory.contract_state.extend(values);
+        Ok(any_key.then_some(()))
     }
 
     fn merkle_contract_state_remove_range(
         &mut self,
-        _contract: &ContractId,
-        _start_key: &Bytes32,
-        _range: Word,
+        contract: &ContractId,
+        start_key: &Bytes32,
+        range: Word,
     ) -> Result<Option<()>, Self::DataError> {
-        unimplemented!()
+        let mut any_key = true;
+        let mut values: std::collections::HashSet<_> = std::iter::successors(Some(**start_key), |n| {
+            let mut n = *n;
+            if add_one(&mut n) {
+                None
+            } else {
+                Some(n)
+            }
+        })
+        .take(range as usize)
+        .collect();
+        self.memory.contract_state.retain(|(c, k), _| {
+            let r = values.remove(&**k);
+            any_key &= c == contract && !r;
+            c != contract && !r
+        });
+        Ok((any_key && values.is_empty()).then_some(()))
+    }
+}
+
+fn add_one(a: &mut [u8; 32]) -> bool {
+    let right = u128::from_be_bytes(a[16..].try_into().unwrap());
+    let (right, of) = right.overflowing_add(1);
+    a[16..].copy_from_slice(&right.to_be_bytes()[..]);
+    if of {
+        let left = u128::from_be_bytes(a[..16].try_into().unwrap());
+        let (left, of) = left.overflowing_add(1);
+        a[..16].copy_from_slice(&left.to_be_bytes()[..]);
+        return of;
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+
+    const fn key(k: u8) -> [u8; 32] {
+        [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, k,
+        ]
+    }
+
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Bytes32::zeroed())])]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<Bytes32>>::with_capacity(0))]
+    #[test_case(&[], &[0u8; 32], 1 => vec![None])]
+    #[test_case(&[], &[1u8; 32], 1 => vec![None])]
+    #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
+    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Bytes32::zeroed()), None, Some(Bytes32::zeroed())])]
+    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Bytes32::zeroed())])]
+    fn test_contract_state_range(store: &[&[u8; 32]], start: &[u8; 32], range: Word) -> Vec<Option<Bytes32>> {
+        let mut mem = MemoryStorage::default();
+        for k in store {
+            mem.memory
+                .contract_state
+                .insert((ContractId::default(), (**k).into()), Bytes32::zeroed());
+        }
+        mem.merkle_contract_state_range(&ContractId::default(), &(*start).into(), range)
+            .unwrap()
+            .into_iter()
+            .map(|v| v.map(|v| v.into_owned()))
+            .collect()
     }
 }

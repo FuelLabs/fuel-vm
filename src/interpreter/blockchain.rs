@@ -12,8 +12,10 @@ use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::interpreter::PanicContext;
 use core::slice;
-use std::borrow::Cow;
-use std::ops::Deref;
+use std::ops::Range;
+
+#[cfg(test)]
+mod test;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -252,27 +254,17 @@ where
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
-        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
 
-        if ax > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
+        let contract_id = self.internal_contract()?.clone();
+        let input = StateClearQWord::new(a, c)?;
+        let Self {
+            ref mut storage,
+            ref memory,
+            ref mut registers,
+            ..
+        } = self;
 
-        let a = a as usize;
-        let ax = ax as usize;
-        let (d, dx) = self.internal_contract_bounds()?;
-
-        // Safety: Memory bounds logically verified by the interpreter
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[d..dx]) };
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
-        let range = c;
-
-        let result = self
-            .storage
-            .merkle_contract_state_remove_range(contract, key, range)
-            .map_err(RuntimeError::from_io)?;
-
-        self.registers[rb] = result.is_some() as Word;
+        state_clear_qword(&contract_id, storage, memory, &mut registers[rb], input)?;
 
         self.inc_pc()
     }
@@ -309,46 +301,16 @@ where
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
+        let contract_id = self.internal_contract()?.clone();
+        let input = StateReadQWord::new(a, c, d)?;
+        let Self {
+            ref storage,
+            ref mut memory,
+            ref mut registers,
+            ..
+        } = self;
 
-        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
-
-        if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let (a, c) = (a as usize, c as usize);
-        let cx = cx as usize;
-
-        let contract = self.internal_contract()?;
-
-        // Safety: Memory bounds are checked by the interpreter
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[c..cx]) };
-        let range = d;
-
-        let result = self
-            .storage
-            .merkle_contract_state_range(contract, key, range)
-            .map_err(RuntimeError::from_io)?
-            .map(|s| s.into_owned());
-
-        self.registers[rb] = result.is_some() as Word;
-
-        let state: Vec<Option<Cow<Bytes32>>> = result.unwrap_or_default();
-        let mut mem_address = a;
-
-        let mut checked_val;
-
-        for value in state {
-            if value.is_none() {
-                checked_val = Bytes32::zeroed();
-            } else {
-                checked_val = *value.unwrap().as_ref();
-            }
-            self.try_mem_write(mem_address, checked_val.as_ref())?;
-            mem_address = checked_add_usize(mem_address, Bytes32::LEN)?;
-        }
-
+        state_read_qword(&contract_id, storage, memory, &mut registers[rb], input)?;
         self.inc_pc()
     }
 
@@ -384,39 +346,16 @@ where
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
+        let contract_id = self.internal_contract()?.clone();
+        let input = StateWriteQWord::new(a, c, d)?;
+        let Self {
+            ref mut storage,
+            ref mut memory,
+            ref mut registers,
+            ..
+        } = self;
 
-        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-        let cx = checked_add_word(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
-
-        if ax > VM_MAX_RAM || cx > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let (a, c) = (a as usize, c as usize);
-        let (ax, cx) = (ax as usize, cx as usize);
-        let (e, ex) = self.internal_contract_bounds()?;
-
-        // Safety: Memory bounds logically verified by the interpreter
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[e..ex]) };
-        let key = unsafe { Bytes32::as_ref_unchecked(&self.memory[a..ax]) };
-
-        let range = d;
-        let mut values = vec![];
-
-        for i in 0..range {
-            let val_beg = checked_add_usize(c, Bytes32::LEN.saturating_mul(i as usize))?;
-            let val_end = checked_add_usize(val_beg, Bytes32::LEN)?;
-            let value = unsafe { Bytes32::as_ref_unchecked(&self.memory[val_beg..val_end]) };
-            values.push(value);
-        }
-
-        let result = self
-            .storage
-            .merkle_contract_state_insert_range(contract, key, values.as_ref())
-            .map_err(RuntimeError::from_io)?;
-
-        self.registers[rb] = result.is_some() as Word;
-
+        state_write_qword(&contract_id, storage, memory, &mut registers[rb], input)?;
         self.inc_pc()
     }
 
@@ -490,4 +429,163 @@ where
 
         self.inc_pc()
     }
+}
+
+struct StateReadQWord {
+    /// The destination memory address is
+    /// stored in this range of memory.
+    destination_address_memory_range: Range<usize>,
+    /// The starting storage key location is stored
+    /// in this range of memory.
+    origin_key_memory_range: Range<usize>,
+    /// Number of bytes to read.
+    num_bytes: Word,
+}
+
+impl StateReadQWord {
+    fn new(
+        destination_memory_address: Word,
+        origin_key_memory_address: Word,
+        num_bytes: Word,
+    ) -> Result<Self, RuntimeError> {
+        let dest_end = checked_add_word(destination_memory_address, WORD_SIZE as Word)?;
+        let origin_end = checked_add_word(origin_key_memory_address, Bytes32::LEN as Word)?;
+        if dest_end > VM_MAX_RAM || origin_end > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+        Ok(Self {
+            destination_address_memory_range: (destination_memory_address as usize)..(dest_end as usize),
+            origin_key_memory_range: (origin_key_memory_address as usize)..(origin_end as usize),
+            num_bytes,
+        })
+    }
+}
+
+fn state_read_qword(
+    contract_id: &ContractId,
+    storage: &impl InterpreterStorage,
+    memory: &mut Vec<u8>,
+    result_register: &mut Word,
+    input: StateReadQWord,
+) -> Result<(), RuntimeError> {
+    // Safety: Memory bounds are checked by the interpreter
+    let origin_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.origin_key_memory_range]) };
+
+    let mut any_none = false;
+    let result: Vec<u8> = storage
+        .merkle_contract_state_range(contract_id, origin_key, input.num_bytes)
+        .map_err(RuntimeError::from_io)?
+        .into_iter()
+        .flat_map(|bytes| match bytes {
+            Some(bytes) => **bytes,
+            None => {
+                any_none |= true;
+                *Bytes32::zeroed()
+            }
+        })
+        .collect();
+
+    *result_register = any_none as Word;
+
+    let memory_address =
+        Word::from_be_bytes(memory[input.destination_address_memory_range].try_into().unwrap()) as usize;
+    memory[memory_address..(memory_address + (Bytes32::LEN * input.num_bytes as usize))].copy_from_slice(&result);
+
+    Ok(())
+}
+
+struct StateWriteQWord {
+    /// The destination memory address is
+    /// stored in this range of memory.
+    origin_address_memory_range: Range<usize>,
+    /// The starting storage key location is stored
+    /// in this range of memory.
+    destination_key_memory_range: Range<usize>,
+    /// Number of bytes to read.
+    num_bytes: Word,
+}
+
+impl StateWriteQWord {
+    fn new(
+        origin_memory_address: Word,
+        destination_key_memory_address: Word,
+        num_bytes: Word,
+    ) -> Result<Self, RuntimeError> {
+        let origin_end = checked_add_word(origin_memory_address, WORD_SIZE as Word)?;
+        let dest_end = checked_add_word(destination_key_memory_address, Bytes32::LEN as Word)?;
+        if dest_end > VM_MAX_RAM || origin_end > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+        Ok(Self {
+            origin_address_memory_range: (origin_memory_address as usize)..(origin_end as usize),
+            destination_key_memory_range: (destination_key_memory_address as usize)..(dest_end as usize),
+            num_bytes,
+        })
+    }
+}
+
+fn state_write_qword(
+    contract_id: &ContractId,
+    storage: &mut impl InterpreterStorage,
+    memory: &mut Vec<u8>,
+    result_register: &mut Word,
+    input: StateWriteQWord,
+) -> Result<(), RuntimeError> {
+    // Safety: Memory bounds are checked by the interpreter
+    let destination_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.destination_key_memory_range]) };
+    let origin_address = Word::from_be_bytes(memory[input.origin_address_memory_range].try_into().unwrap()) as usize;
+
+    let values: Vec<_> = memory[origin_address..(origin_address + (Bytes32::LEN * input.num_bytes as usize))]
+        .chunks_exact(Bytes32::LEN)
+        .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
+        .collect();
+
+    let any_none = storage
+        .merkle_contract_state_insert_range(contract_id, destination_key, &values)
+        .map_err(RuntimeError::from_io)?
+        .is_none();
+    *result_register = any_none as Word;
+
+    Ok(())
+}
+
+struct StateClearQWord {
+    /// The starting storage key location is stored
+    /// in this range of memory.
+    destination_key_memory_range: Range<usize>,
+    /// Number of bytes to read.
+    num_bytes: Word,
+}
+
+impl StateClearQWord {
+    fn new(destination_key_memory_address: Word, num_bytes: Word) -> Result<Self, RuntimeError> {
+        let dest_end = checked_add_word(destination_key_memory_address, Bytes32::LEN as Word)?;
+        if dest_end > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+        Ok(Self {
+            destination_key_memory_range: (destination_key_memory_address as usize)..(dest_end as usize),
+            num_bytes,
+        })
+    }
+}
+
+fn state_clear_qword(
+    contract_id: &ContractId,
+    storage: &mut impl InterpreterStorage,
+    memory: &Vec<u8>,
+    result_register: &mut Word,
+    input: StateClearQWord,
+) -> Result<(), RuntimeError> {
+    // Safety: Memory bounds are checked by the interpreter
+    let destination_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.destination_key_memory_range]) };
+
+    let any_none = storage
+        .merkle_contract_state_remove_range(contract_id, destination_key, input.num_bytes)
+        .map_err(RuntimeError::from_io)?
+        .is_none();
+
+    *result_register = any_none as Word;
+
+    Ok(())
 }

@@ -28,7 +28,7 @@ where
     }
 
     pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        if d > MEM_MAX_ACCESS_SIZE || c >= VM_MAX_RAM - d {
+        if d > MEM_MAX_ACCESS_SIZE || c > VM_MAX_RAM - d {
             return Err(PanicReason::MemoryOverflow.into());
         }
 

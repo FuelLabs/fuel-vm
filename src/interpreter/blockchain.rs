@@ -438,17 +438,20 @@ struct StateReadQWord {
     /// The starting storage key location is stored
     /// in this range of memory.
     origin_key_memory_range: Range<usize>,
-    /// Number of bytes to read.
-    num_bytes: Word,
+    /// Number of slots to read.
+    num_slots: Word,
 }
 
 impl StateReadQWord {
     fn new(
         destination_memory_address: Word,
         origin_key_memory_address: Word,
-        num_bytes: Word,
+        num_slots: Word,
     ) -> Result<Self, RuntimeError> {
-        let dest_end = checked_add_word(destination_memory_address, WORD_SIZE as Word)?;
+        let dest_end = checked_add_word(
+            destination_memory_address,
+            Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
+        )?;
         let origin_end = checked_add_word(origin_key_memory_address, Bytes32::LEN as Word)?;
         if dest_end > VM_MAX_RAM || origin_end > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
@@ -456,7 +459,7 @@ impl StateReadQWord {
         Ok(Self {
             destination_address_memory_range: (destination_memory_address as usize)..(dest_end as usize),
             origin_key_memory_range: (origin_key_memory_address as usize)..(origin_end as usize),
-            num_bytes,
+            num_slots,
         })
     }
 }
@@ -464,7 +467,7 @@ impl StateReadQWord {
 fn state_read_qword(
     contract_id: &ContractId,
     storage: &impl InterpreterStorage,
-    memory: &mut Vec<u8>,
+    memory: &mut [u8],
     result_register: &mut Word,
     input: StateReadQWord,
 ) -> Result<(), RuntimeError> {
@@ -473,7 +476,7 @@ fn state_read_qword(
 
     let mut any_none = false;
     let result: Vec<u8> = storage
-        .merkle_contract_state_range(contract_id, origin_key, input.num_bytes)
+        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
         .into_iter()
         .flat_map(|bytes| match bytes {
@@ -487,39 +490,38 @@ fn state_read_qword(
 
     *result_register = any_none as Word;
 
-    let memory_address =
-        Word::from_be_bytes(memory[input.destination_address_memory_range].try_into().unwrap()) as usize;
-    memory[memory_address..(memory_address + (Bytes32::LEN * input.num_bytes as usize))].copy_from_slice(&result);
+    memory[input.destination_address_memory_range].copy_from_slice(&result);
 
     Ok(())
 }
 
 struct StateWriteQWord {
-    /// The destination memory address is
-    /// stored in this range of memory.
-    origin_address_memory_range: Range<usize>,
     /// The starting storage key location is stored
     /// in this range of memory.
-    destination_key_memory_range: Range<usize>,
-    /// Number of bytes to read.
-    num_bytes: Word,
+    starting_storage_key_memory_range: Range<usize>,
+    /// The source data memory address is
+    /// stored in this range of memory.
+    source_address_memory_range: Range<usize>,
 }
 
 impl StateWriteQWord {
     fn new(
-        origin_memory_address: Word,
-        destination_key_memory_address: Word,
-        num_bytes: Word,
+        starting_storage_key_memory_address: Word,
+        source_memory_address: Word,
+        num_slots: Word,
     ) -> Result<Self, RuntimeError> {
-        let origin_end = checked_add_word(origin_memory_address, WORD_SIZE as Word)?;
-        let dest_end = checked_add_word(destination_key_memory_address, Bytes32::LEN as Word)?;
-        if dest_end > VM_MAX_RAM || origin_end > VM_MAX_RAM {
+        let source_end = checked_add_word(
+            source_memory_address,
+            Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
+        )?;
+        let starting_key_end = checked_add_word(starting_storage_key_memory_address, Bytes32::LEN as Word)?;
+        if starting_key_end > VM_MAX_RAM || source_end > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self {
-            origin_address_memory_range: (origin_memory_address as usize)..(origin_end as usize),
-            destination_key_memory_range: (destination_key_memory_address as usize)..(dest_end as usize),
-            num_bytes,
+            source_address_memory_range: (source_memory_address as usize)..(source_end as usize),
+            starting_storage_key_memory_range: (starting_storage_key_memory_address as usize)
+                ..(starting_key_end as usize),
         })
     }
 }
@@ -527,15 +529,14 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &mut Vec<u8>,
+    memory: &[u8],
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
     // Safety: Memory bounds are checked by the interpreter
-    let destination_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.destination_key_memory_range]) };
-    let origin_address = Word::from_be_bytes(memory[input.origin_address_memory_range].try_into().unwrap()) as usize;
+    let destination_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.starting_storage_key_memory_range]) };
 
-    let values: Vec<_> = memory[origin_address..(origin_address + (Bytes32::LEN * input.num_bytes as usize))]
+    let values: Vec<_> = memory[input.source_address_memory_range]
         .chunks_exact(Bytes32::LEN)
         .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
         .collect();
@@ -552,20 +553,20 @@ fn state_write_qword(
 struct StateClearQWord {
     /// The starting storage key location is stored
     /// in this range of memory.
-    destination_key_memory_range: Range<usize>,
-    /// Number of bytes to read.
-    num_bytes: Word,
+    start_storage_key_memory_range: Range<usize>,
+    /// Number of slots to read.
+    num_slots: Word,
 }
 
 impl StateClearQWord {
-    fn new(destination_key_memory_address: Word, num_bytes: Word) -> Result<Self, RuntimeError> {
-        let dest_end = checked_add_word(destination_key_memory_address, Bytes32::LEN as Word)?;
-        if dest_end > VM_MAX_RAM {
+    fn new(start_storage_key_memory_address: Word, num_slots: Word) -> Result<Self, RuntimeError> {
+        let start_key_end = checked_add_word(start_storage_key_memory_address, Bytes32::LEN as Word)?;
+        if start_key_end > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self {
-            destination_key_memory_range: (destination_key_memory_address as usize)..(dest_end as usize),
-            num_bytes,
+            start_storage_key_memory_range: (start_storage_key_memory_address as usize)..(start_key_end as usize),
+            num_slots,
         })
     }
 }
@@ -578,10 +579,10 @@ fn state_clear_qword(
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {
     // Safety: Memory bounds are checked by the interpreter
-    let destination_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.destination_key_memory_range]) };
+    let start_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.start_storage_key_memory_range]) };
 
     let any_none = storage
-        .merkle_contract_state_remove_range(contract_id, destination_key, input.num_bytes)
+        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
         .is_none();
 

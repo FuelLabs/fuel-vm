@@ -1,6 +1,6 @@
 [package]
 name = "fuel-vm"
-version = "0.22.7"
+version = "0.22.6"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
 edition = "2021"
@@ -38,7 +38,6 @@ quickcheck_macros = "1.0"
 rayon = "1.5.3"
 regex = "1.6"
 serde_json = "1.0"
-test-case = "2.2"
 
 [features]
 default = ["optimized"]

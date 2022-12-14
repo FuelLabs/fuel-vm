@@ -132,8 +132,33 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
 }
 
 #[test_case(
-    0, 0, 1, OwnershipRegisters::test(0..100, 100..200, Context::Call{block_height: 0}) 
+    0, 0, 1, OwnershipRegisters::test(0..100, 100..200, Context::Call{block_height: 0})
     => matches Ok(())
+    ; "Ownership check passes when destination is within allocated stack"
+)]
+#[test_case(
+    2, 0, 1, OwnershipRegisters::test(0..1, 3..4, Context::Call{block_height: 0})
+    => matches Err(_)
+    ; "Ownership check fails when destination is in-between stack and heap"
+)]
+#[test_case(
+    2, 0, 1, OwnershipRegisters::test(0..4, 5..6, Context::Call{block_height: 0})
+    => matches Err(_)
+    ; "Ownership check fails when stack is too small"
+)]
+#[test_case(
+    3, 0, 1, OwnershipRegisters::test(0..1, 2..35, Context::Call{block_height: 0})
+    => matches Ok(_)
+    ; "Ownership check passes when heap is large enough"
+)]
+#[test_case(
+    VM_MAX_RAM, 0, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{block_height: 0})
+    => matches Err(_)
+    ; "Ownership check fails "
+)]
+#[test_case(
+    3, 0, 1, OwnershipRegisters::test(0..1, 2..4, Context::Call{block_height: 0})
+    => matches Err(_)
 )]
 fn test_state_read_qword_input(
     destination_memory_address: Word,
@@ -146,7 +171,8 @@ fn test_state_read_qword_input(
         origin_key_memory_address,
         num_slots,
         ownership_registers,
-    ).map(|_| ())
+    )
+    .map(|_| ())
 }
 
 struct SWWQInput {

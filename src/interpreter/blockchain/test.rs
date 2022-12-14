@@ -1,3 +1,4 @@
+use crate::context::Context;
 use crate::storage::ContractsState;
 use crate::storage::MemoryStorage;
 
@@ -21,59 +22,86 @@ const fn key(k: u8) -> [u8; 32] {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, k,
     ]
 }
+impl StateReadQWord {
+    fn test(
+        destination_memory_address: Word,
+        origin_key_memory_address: Word,
+        num_slots: Word,
+    ) -> Result<Self, RuntimeError> {
+        let r = OwnershipRegisters {
+            sp: u64::MAX / 2,
+            ssp: 0,
+            hp: u64::MAX / 2 + 1,
+            prev_hp: u64::MAX,
+            context: crate::context::Context::Call { block_height: 0 },
+        };
+        Self::new(destination_memory_address, origin_key_memory_address, num_slots, r)
+    }
+}
 
+impl OwnershipRegisters {
+    fn test(stack: Range<u64>, heap: Range<u64>, context: Context) -> Self {
+        Self {
+            sp: stack.end,
+            ssp: stack.start,
+            hp: heap.start,
+            prev_hp: heap.end,
+            context,
+        }
+    }
+}
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(1, 2, 1).unwrap(),
+        input: StateReadQWord::test(1, 2, 1).unwrap(),
         storage_slots: vec![(key(27), [5; 32])],
         memory: mem(&[&[0; 2], &key(27)]),
     } => (mem(&[&[0], &[5; 32], &[27]]), false)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 2).unwrap(),
+        input: StateReadQWord::test(0, 0, 2).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 3).unwrap(),
+        input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32], &[7; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 2).unwrap(),
+        input: StateReadQWord::test(0, 0, 2).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 3).unwrap(),
+        input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(30), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[0; 32], &[7; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 3).unwrap(),
+        input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[7; 32], &[0; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 3).unwrap(),
+        input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(26), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
-        input: StateReadQWord::new(0, 0, 3).unwrap(),
+        input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), true)
@@ -101,6 +129,24 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
     )
     .unwrap();
     (memory, result_register != 0)
+}
+
+#[test_case(
+    0, 0, 1, OwnershipRegisters::test(0..100, 100..200, Context::Call{block_height: 0}) 
+    => matches Ok(())
+)]
+fn test_state_read_qword_input(
+    destination_memory_address: Word,
+    origin_key_memory_address: Word,
+    num_slots: Word,
+    ownership_registers: OwnershipRegisters,
+) -> Result<(), RuntimeError> {
+    StateReadQWord::new(
+        destination_memory_address,
+        origin_key_memory_address,
+        num_slots,
+        ownership_registers,
+    ).map(|_| ())
 }
 
 struct SWWQInput {
@@ -219,6 +265,14 @@ struct SCWQInput {
 )]
 #[test_case(
     SCWQInput{
+        input: StateClearQWord::new(0, 2).unwrap(),
+        storage_slots: vec![(key(27), [8; 32]), (key(28), [9; 32])],
+        memory: mem(&[&key(27)]),
+    } => (vec![], true)
+    ; "Clear multiple existing storage slots"
+)]
+#[test_case(
+    SCWQInput{
         input: StateClearQWord::new(0, 1).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27)]),
@@ -227,11 +281,27 @@ struct SCWQInput {
 )]
 #[test_case(
     SCWQInput{
+        input: StateClearQWord::new(0, 2000).unwrap(),
+        storage_slots: vec![],
+        memory: mem(&[&key(27)]),
+    } => (vec![], false)
+    ; "Clear u64::MAX storage slot that was never set"
+)]
+#[test_case(
+    SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
         storage_slots: vec![(key(27), [8; 32]), (key(29), [8; 32])],
         memory: mem(&[&key(27)]),
     } => (vec![(key(29), [8; 32])], false)
     ; "Clear storage slots with some previously set"
+)]
+#[test_case(
+    SCWQInput{
+        input: StateClearQWord::new(0, 2).unwrap(),
+        storage_slots: vec![(key(27), [8; 32]), (key(26), [8; 32])],
+        memory: mem(&[&key(27)]),
+    } => (vec![(key(26), [8; 32])], false)
+    ; "Clear storage slots with some previously set before the key"
 )]
 fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool) {
     let SCWQInput {

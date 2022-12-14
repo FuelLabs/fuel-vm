@@ -1,4 +1,5 @@
-use super::{ExecutableTransaction, Interpreter};
+use super::memory::OwnershipRegisters;
+use super::{ExecutableTransaction, Interpreter, MemoryRange};
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
@@ -302,7 +303,7 @@ where
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
         let contract_id = self.internal_contract()?.clone();
-        let input = StateReadQWord::new(a, c, d)?;
+        let input = StateReadQWord::new(a, c, d, OwnershipRegisters::new(self))?;
         let Self {
             ref storage,
             ref mut memory,
@@ -447,7 +448,15 @@ impl StateReadQWord {
         destination_memory_address: Word,
         origin_key_memory_address: Word,
         num_slots: Word,
+        ownership_registers: OwnershipRegisters,
     ) -> Result<Self, RuntimeError> {
+        let mem_range = MemoryRange::new(
+            destination_memory_address,
+            (Bytes32::LEN as Word).saturating_mul(num_slots),
+        );
+        if !ownership_registers.has_ownership_range(&mem_range) {
+            return Err(PanicReason::MemoryOwnership.into());
+        }
         let dest_end = checked_add_word(
             destination_memory_address,
             Bytes32::LEN.saturating_mul(num_slots as usize) as Word,

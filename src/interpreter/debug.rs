@@ -121,14 +121,13 @@ fn single_stepping() {
     let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
-    let script = vec![
+    let script = [
         Opcode::ADDI(0x10, REG_ZERO, 5),
         Opcode::ADDI(0x11, 0x11, 1),
         Opcode::JNEI(0x10, 0x11, 1),
         Opcode::RET(0x10),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])

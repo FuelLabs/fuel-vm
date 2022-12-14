@@ -56,7 +56,7 @@ fn breakpoint_script() {
     let height = 0;
     let params = ConsensusParameters::default();
 
-    let script = vec![
+    let script = [
         Opcode::ADDI(0x10, REG_ZERO, 8),
         Opcode::ADDI(0x11, REG_ZERO, 16),
         Opcode::ADDI(0x12, REG_ZERO, 32),
@@ -64,8 +64,7 @@ fn breakpoint_script() {
         Opcode::ADDI(0x14, REG_ZERO, 128),
         Opcode::RET(0x10),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])

@@ -8,7 +8,7 @@ use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
 use fuel_asm::PanicReason::{
-    ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow,
+    ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership,
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::check_expected_reason_for_opcodes;
@@ -827,18 +827,20 @@ fn scwq_clears_status() {
 fn scwq_clears_status_for_range() {
     #[rustfmt::skip]
     let program: Vec<Opcode> = vec![
-        Opcode::SWW(0x30, SET_STATUS_REG, REG_ZERO),
-        Opcode::ADDI(0x31, 0x30, 1),
-        Opcode::SWW(0x31,  SET_STATUS_REG, REG_ZERO),
-        Opcode::ADDI(0x32, REG_ONE, 1),
-        Opcode::SCWQ(0x30, SET_STATUS_REG + 1, 0x32),
-        Opcode::SRW(0x30, SET_STATUS_REG + 2, REG_ZERO),
-        Opcode::SRW(0x31, SET_STATUS_REG + 3, REG_ZERO),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, SET_STATUS_REG + 3),
+        Opcode::MOVI(0x11, 100),
+        Opcode::ALOC(0x11),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::ADDI(0x32, REG_ONE, 2),
+        Opcode::SCWQ(0x31, SET_STATUS_REG, 0x32),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::SCWQ(0x31, SET_STATUS_REG + 2, 0x32),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
         Opcode::RET(REG_ONE),
     ];
 
-    check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
+    check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
 }
 
 #[test]
@@ -876,6 +878,26 @@ fn srwq_reads_status() {
 }
 
 #[test]
+fn srwq_reads_status_with_range() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::MOVI(0x11, 100),
+        Opcode::ALOC(0x11),
+        Opcode::ADDI(0x31, REG_HP, 0x5),
+        Opcode::MOVI(0x32, 0x2),
+        Opcode::SRWQ(0x31, SET_STATUS_REG, 0x31, 0x32),
+        Opcode::MOVI(0x32, 0x2),
+        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        Opcode::MOVI(0x32, 0x2),
+        Opcode::SRWQ(0x31, SET_STATUS_REG + 2, 0x31, 0x32),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
+}
+
+#[test]
 fn swwq_sets_status() {
     #[rustfmt::skip]
     let program: Vec<Opcode> = vec![
@@ -889,6 +911,24 @@ fn swwq_sets_status() {
     ];
 
     check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
+}
+
+#[test]
+fn swwq_sets_status_with_range() {
+    #[rustfmt::skip]
+    let program: Vec<Opcode> = vec![
+        Opcode::MOVI(0x11, 100),
+        Opcode::ALOC(0x11),
+        Opcode::ADDI(0x31, REG_HP, 0x01),
+        Opcode::MOVI(0x32, 0x2),
+        Opcode::SWWQ(0x31, SET_STATUS_REG, 0x31, 0x32),
+        Opcode::ADDI(0x31, REG_HP, 0x01),
+        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
+        Opcode::RET(REG_ONE),
+    ];
+
+    check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
 }
 
 fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Word>) -> bool {
@@ -1007,53 +1047,6 @@ fn check_receipts_for_program_call(program: Vec<Opcode>, expected_values: Vec<Wo
 }
 
 #[test]
-fn scwq_wrong_size() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        // Opcode::NOT(reg_a, reg_a),
-        // Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SCWQ(reg_a, SET_STATUS_REG, REG_ZERO),
-    ];
-
-    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
-}
-
-#[test]
-fn srwq_wrong_size() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
-    ];
-
-    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
-}
-
-#[test]
-fn swwq_wrong_size() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let state_read_word: Vec<Opcode> = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::ADDI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SWWQ(reg_a, SET_STATUS_REG, reg_a, REG_ZERO),
-    ];
-
-    check_expected_reason_for_opcodes(state_read_word, ErrorFlag);
-}
-
-#[test]
 fn state_r_word_b_plus_32_over() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -1099,20 +1092,23 @@ fn state_r_qword_a_plus_32_over() {
         Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
-    check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
+    check_expected_reason_for_opcodes(state_read_qword, MemoryOwnership);
 }
 
 #[test]
-fn state_r_qword_b_plus_32_over() {
+fn state_r_qword_c_plus_32_over() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
     let state_read_qword: Vec<Opcode> = vec![
+        Opcode::MOVI(0x11, 100),
+        Opcode::ALOC(0x11),
+        Opcode::ADDI(0x31, REG_HP, 0x01),
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::NOT(reg_a, reg_a),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(reg_a, SET_STATUS_REG, reg_a, REG_ONE),
+        Opcode::SRWQ(0x31, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, ArithmeticOverflow);
@@ -1132,21 +1128,24 @@ fn state_r_qword_a_over_max_ram() {
         Opcode::SRWQ(reg_a, SET_STATUS_REG, REG_ZERO, REG_ONE),
     ];
 
-    check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_opcodes(state_read_qword, MemoryOwnership);
 }
 
 #[test]
-fn state_r_qword_b_over_max_ram() {
+fn state_r_qword_c_over_max_ram() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
     let state_read_qword: Vec<Opcode> = vec![
+        Opcode::MOVI(0x11, 100),
+        Opcode::ALOC(0x11),
+        Opcode::ADDI(0x31, REG_HP, 0x01),
         Opcode::XOR(reg_a, reg_a, reg_a),
         Opcode::ORI(reg_a, reg_a, 1),
         Opcode::SLLI(reg_a, reg_a, MAX_MEM_SHL),
         Opcode::SUBI(reg_a, reg_a, 31 as Immediate12),
-        Opcode::SRWQ(REG_ZERO, SET_STATUS_REG, reg_a, REG_ONE),
+        Opcode::SRWQ(0x31, SET_STATUS_REG, reg_a, REG_ONE),
     ];
 
     check_expected_reason_for_opcodes(state_read_qword, MemoryOverflow);

@@ -1,4 +1,5 @@
-use crate::context::Context;
+#![allow(clippy::type_complexity)]
+
 use crate::storage::ContractsState;
 use crate::storage::MemoryStorage;
 

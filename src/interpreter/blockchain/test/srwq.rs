@@ -34,56 +34,56 @@ impl StateReadQWord {
         input: StateReadQWord::test(1, 2, 1).unwrap(),
         storage_slots: vec![(key(27), [5; 32])],
         memory: mem(&[&[0; 2], &key(27)]),
-    } => (mem(&[&[0], &[5; 32], &[27]]), false)
+    } => (mem(&[&[0], &[5; 32], &[27]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 2).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[5; 32], &[6; 32]]), false)
+    } => (mem(&[&[5; 32], &[6; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[5; 32], &[6; 32], &[7; 32]]), false)
+    } => (mem(&[&[5; 32], &[6; 32], &[7; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 2).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[5; 32], &[6; 32]]), false)
+    } => (mem(&[&[5; 32], &[6; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(30), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[5; 32], &[0; 32], &[7; 32]]), true)
+    } => (mem(&[&[5; 32], &[0; 32], &[7; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(27), [5; 32]), (key(28), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[5; 32], &[7; 32], &[0; 32]]), true)
+    } => (mem(&[&[5; 32], &[7; 32], &[0; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(26), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), true)
+    } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
         storage_slots: vec![(key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27)]),
-    } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), true)
+    } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), false)
 )]
 fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
     let SRWQInput {
@@ -99,14 +99,7 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
             .unwrap();
     }
     let mut result_register = 0u64;
-    state_read_qword(
-        &Default::default(),
-        &mut storage,
-        &mut memory,
-        &mut result_register,
-        input,
-    )
-    .unwrap();
+    state_read_qword(&Default::default(), &storage, &mut memory, &mut result_register, input).unwrap();
     (memory, result_register != 0)
 }
 

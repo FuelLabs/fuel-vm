@@ -1,10 +1,6 @@
 use crate::context::Context;
-use crate::storage::ContractsState;
-use crate::storage::MemoryStorage;
 
 use super::*;
-use fuel_storage::StorageAsMut;
-use test_case::test_case;
 
 mod scwq;
 mod srwq;

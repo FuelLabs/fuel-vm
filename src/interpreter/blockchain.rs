@@ -256,7 +256,7 @@ where
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
 
-        let contract_id = self.internal_contract()?.clone();
+        let contract_id = *self.internal_contract()?;
         let input = StateClearQWord::new(a, c)?;
         let Self {
             ref mut storage,
@@ -302,7 +302,7 @@ where
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
-        let contract_id = self.internal_contract()?.clone();
+        let contract_id = *self.internal_contract()?;
         let input = StateReadQWord::new(a, c, d, OwnershipRegisters::new(self))?;
         let Self {
             ref storage,
@@ -347,7 +347,7 @@ where
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
-        let contract_id = self.internal_contract()?.clone();
+        let contract_id = *self.internal_contract()?;
         let input = StateWriteQWord::new(a, c, d)?;
         let Self {
             ref mut storage,
@@ -486,7 +486,7 @@ fn state_read_qword(
     // Safety: Memory bounds are checked by the interpreter
     let origin_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.origin_key_memory_range]) };
 
-    let mut any_none = false;
+    let mut all_set = true;
     let result: Vec<u8> = storage
         .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
@@ -494,13 +494,13 @@ fn state_read_qword(
         .flat_map(|bytes| match bytes {
             Some(bytes) => **bytes,
             None => {
-                any_none |= true;
+                all_set = false;
                 *Bytes32::zeroed()
             }
         })
         .collect();
 
-    *result_register = any_none as Word;
+    *result_register = all_set as Word;
 
     memory[input.destination_address_memory_range].copy_from_slice(&result);
 
@@ -586,7 +586,7 @@ impl StateClearQWord {
 fn state_clear_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &Vec<u8>,
+    memory: &[u8],
     result_register: &mut Word,
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {

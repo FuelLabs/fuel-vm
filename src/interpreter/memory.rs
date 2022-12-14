@@ -122,7 +122,7 @@ impl MemoryRange {
             Unbounded => Excluded(VM_MAX_RAM),
         };
 
-        let (start, end) = self.boundaries(&OwnershipRegisters::new(&vm));
+        let (start, end) = self.boundaries(&OwnershipRegisters::new(vm));
         self.len = end.saturating_sub(start);
 
         self
@@ -424,7 +424,7 @@ impl OwnershipRegisters {
         }
     }
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (a, ab) = range.boundaries(&self);
+        let (a, ab) = range.boundaries(self);
 
         let a_is_stack = a < self.sp;
         let a_is_heap = a > self.hp;
@@ -469,7 +469,6 @@ mod tests {
     use std::ops::Range;
 
     use super::*;
-    use crate::consts::*;
     use crate::prelude::*;
     use fuel_tx::Script;
     use test_case::test_case;

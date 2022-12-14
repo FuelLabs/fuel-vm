@@ -406,15 +406,14 @@ pub mod test_helpers {
         client.deploy(contract_deployer).expect("valid contract deployment");
 
         // call deployed contract
-        let script = vec![
+        let script = [
             // load call data to 0x10
             Opcode::GTF(0x10, 0x0, Immediate12::from(GTFArgs::ScriptData)),
             // call the transfer contract
             Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
             Opcode::RET(REG_ONE),
         ]
-        .iter()
-        .copied()
+        .into_iter()
         .collect();
         let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
             .into_iter()

@@ -265,17 +265,17 @@ impl InterpreterStorage for MemoryStorage {
             }
         })
         .map(|next_key: [u8; 32]| match next_item.take() {
-            Some((k, v)) => {
-                if next_key == *(k.1) {
-                    next_item = iter.next();
-                    Some(Cow::Borrowed(v))
-                } else if next_key < *(k.1) {
+            Some((k, v)) => match next_key.cmp(&*k.1) {
+                std::cmp::Ordering::Less => {
                     next_item = Some((k, v));
                     None
-                } else {
-                    None
                 }
-            }
+                std::cmp::Ordering::Equal => {
+                    next_item = iter.next();
+                    Some(Cow::Borrowed(v))
+                }
+                std::cmp::Ordering::Greater => None,
+            },
             None => None,
         })
         .take(range as usize)
@@ -328,7 +328,7 @@ impl InterpreterStorage for MemoryStorage {
         self.memory.contract_state.retain(|(c, k), _| {
             let r = values.remove(&**k);
             all_set_key &= c == contract && r;
-            c != contract || (c == contract && !r)
+            c != contract || !r
         });
         Ok((all_set_key && values.is_empty()).then_some(()))
     }

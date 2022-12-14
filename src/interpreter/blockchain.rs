@@ -457,6 +457,9 @@ impl StateReadQWord {
         if !ownership_registers.has_ownership_range(&mem_range) {
             return Err(PanicReason::MemoryOwnership.into());
         }
+        if ownership_registers.context.is_external() {
+            return Err(PanicReason::ExpectedInternalContext.into());
+        }
         let dest_end = checked_add_word(
             destination_memory_address,
             Bytes32::LEN.saturating_mul(num_slots as usize) as Word,

@@ -48,7 +48,8 @@ impl MemoryStorage {
         }
     }
 
-    pub(crate) fn all_contract_state(&self) -> impl Iterator<Item = (&(ContractId, Bytes32), &Bytes32)> {
+    /// Iterate over all contract state in storage
+    pub fn all_contract_state(&self) -> impl Iterator<Item = (&(ContractId, Bytes32), &Bytes32)> {
         self.memory.contract_state.iter()
     }
 

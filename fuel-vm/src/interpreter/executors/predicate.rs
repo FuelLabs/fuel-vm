@@ -1,5 +1,6 @@
 use crate::consts::*;
 use crate::error::InterpreterError;
+use crate::interpreter::memory::OwnershipRegisters;
 use crate::prelude::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::PredicateStorage;
@@ -14,7 +15,7 @@ where
         let (start, end) = self
             .context
             .predicate()
-            .map(|p| p.program().boundaries(self))
+            .map(|p| p.program().boundaries(&OwnershipRegisters::new(self)))
             .ok_or(InterpreterError::PredicateFailure)?;
 
         self.registers[REG_PC] = start;

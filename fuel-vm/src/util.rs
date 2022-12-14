@@ -79,13 +79,14 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use crate::interpreter::{CheckedMetadata, ExecutableTransaction};
-    use fuel_asm::{Opcode, PanicReason};
+    use crate::prelude::Call;
+    use fuel_asm::{GTFArgs, Opcode, PanicReason};
     use fuel_tx::field::Outputs;
     use fuel_tx::{
         Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt, Script, StorageSlot,
         Transaction, TransactionBuilder, Witness,
     };
-    use fuel_types::bytes::{Deserializable, SizedBytes};
+    use fuel_types::bytes::{Deserializable, SerializableVec, SizedBytes};
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
@@ -380,7 +381,7 @@ pub mod test_helpers {
     }
 
     fn check_expected_reason_for_opcodes_with_client(
-        client: MemoryClient,
+        mut client: MemoryClient,
         opcodes: Vec<Opcode>,
         expected_reason: PanicReason,
     ) {
@@ -390,18 +391,49 @@ pub mod test_helpers {
         let maturity = 0;
         let height = 0;
 
-        let tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            opcodes.into_iter().collect(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
-        .into_checked(height, &params)
-        .expect("failed to check tx");
+        // setup contract with state tests
+        let contract: Witness = opcodes.into_iter().collect::<Vec<u8>>().into();
+        let salt = Default::default();
+        let code_root = Contract::root_from_code(contract.as_ref());
+        let storage_slots = vec![];
+        let state_root = Contract::initial_state_root(storage_slots.iter());
+        let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+
+        let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .add_output(Output::contract_created(contract_id, state_root))
+            .finalize_checked(height, &params);
+
+        client.deploy(contract_deployer).expect("valid contract deployment");
+
+        // call deployed contract
+        let script = [
+            // load call data to 0x10
+            Opcode::GTF(0x10, 0x0, Immediate12::from(GTFArgs::ScriptData)),
+            // call the transfer contract
+            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            Opcode::RET(REG_ONE),
+        ]
+        .into_iter()
+        .collect();
+        let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect();
+
+        let tx_deploy_loader = TransactionBuilder::script(script, script_data)
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_input(Input::contract(
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                contract_id,
+            ))
+            .add_output(Output::contract(0, Default::default(), Default::default()))
+            .finalize_checked(height, &params);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
@@ -413,15 +445,22 @@ pub mod test_helpers {
     ) {
         let receipts = client.transact(checked_tx);
 
-        if let Receipt::Panic { id: _, reason, .. } = receipts.get(0).expect("No receipt") {
-            assert_eq!(
-                &expected_reason,
-                reason.reason(),
-                "Expected {}, found {}",
-                expected_reason,
-                reason.reason()
-            );
-        } else {
+        let panic_found = receipts.iter().any(|receipt| {
+            if let Receipt::Panic { id: _, reason, .. } = receipt {
+                assert_eq!(
+                    &expected_reason,
+                    reason.reason(),
+                    "Expected {}, found {}",
+                    expected_reason,
+                    reason.reason()
+                );
+                true
+            } else {
+                false
+            }
+        });
+
+        if !panic_found {
             panic!("Script should have panicked");
         }
     }

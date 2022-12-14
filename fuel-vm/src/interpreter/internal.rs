@@ -130,11 +130,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
-        if ra >= REG_WRITABLE {
-            Ok(())
-        } else {
-            Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
-        }
+        is_register_writable(ra)
     }
 
     pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
@@ -202,6 +198,14 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
         self.context().block_height().ok_or(PanicReason::TransactionValidity)
+    }
+}
+
+pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
+    if ra >= REG_WRITABLE {
+        Ok(())
+    } else {
+        Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
     }
 }
 

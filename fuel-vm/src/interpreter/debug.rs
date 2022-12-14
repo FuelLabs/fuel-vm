@@ -56,7 +56,7 @@ fn breakpoint_script() {
     let height = 0;
     let params = ConsensusParameters::default();
 
-    let script = vec![
+    let script = [
         Opcode::ADDI(0x10, REG_ZERO, 8),
         Opcode::ADDI(0x11, REG_ZERO, 16),
         Opcode::ADDI(0x12, REG_ZERO, 32),
@@ -121,7 +121,7 @@ fn single_stepping() {
     let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
-    let script = vec![
+    let script = [
         Opcode::ADDI(0x10, REG_ZERO, 5),
         Opcode::ADDI(0x11, 0x11, 1),
         Opcode::JNEI(0x10, 0x11, 1),

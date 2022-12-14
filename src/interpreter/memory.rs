@@ -466,9 +466,13 @@ impl OwnershipRegisters {
 }
 #[cfg(test)]
 mod tests {
+    use std::ops::Range;
+
+    use super::*;
     use crate::consts::*;
     use crate::prelude::*;
     use fuel_tx::Script;
+    use test_case::test_case;
 
     #[test]
     fn memcopy() {
@@ -578,5 +582,54 @@ mod tests {
 
         // Assert allocated stack is writable
         vm.instruction(Opcode::MCLI(0x10, 2).into()).unwrap();
+    }
+
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: 0}), 0..0
+        => false ; "empty mem range"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 0..0
+        => false ; "empty mem range (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: 0}), 0..1
+        => false ; "empty stack and heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 0..1
+        => false ; "empty stack and heap (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: 0}), 0..1
+        => true ; "in range for stack"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: 0}), 0..2
+        => false; "above stack range"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: 0}), 1..2
+        => true ; "in range for heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: 0}), 0..2
+        => true ; "crosses stack and heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 1..2
+        => true ; "in heap range (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0}), 20..30
+        => false; "between ranges (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0}), 0..1
+        => true; "in stack range (external)"
+    )]
+    fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
+        let range = MemoryRange::new(range.start, range.end - range.start);
+        reg.has_ownership_range(&range)
     }
 }

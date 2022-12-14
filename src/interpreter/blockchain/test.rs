@@ -22,7 +22,7 @@ const fn key(k: u8) -> [u8; 32] {
 }
 
 impl OwnershipRegisters {
-    fn test(stack: Range<u64>, heap: Range<u64>, context: Context) -> Self {
+    pub fn test(stack: Range<u64>, heap: Range<u64>, context: Context) -> Self {
         Self {
             sp: stack.end,
             ssp: stack.start,

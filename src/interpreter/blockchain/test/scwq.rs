@@ -81,3 +81,27 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     let results = storage.all_contract_state().map(|((_, k), v)| (**k, **v)).collect();
     (results, result_register != 0)
 }
+
+#[test_case(
+    0, 1
+    => matches Ok(_)
+    ; "Pass when values are in a valid range"
+)]
+#[test_case(
+    u64::MAX, 1
+    => matches Err(_)
+    ; "Fail when $rA + 32 overflows"
+)]
+#[test_case(
+    VM_MAX_RAM-1, 1
+    => matches Err(_)
+    ; "Fail when $rA + 32 > VM_MAX_RAM"
+)]
+#[test_case(
+    VM_MAX_RAM-32, 1
+    => matches Ok(_)
+    ; "Pass when $rA + 32 == VM_MAX_RAM"
+)]
+fn test_state_clear_qword_input(start_key_memory_address: Word, num_slots: Word) -> Result<(), RuntimeError> {
+    StateClearQWord::new(start_key_memory_address, num_slots).map(|_| ())
+}

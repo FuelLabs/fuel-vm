@@ -105,3 +105,56 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     let results = storage.all_contract_state().map(|((_, k), v)| (**k, **v)).collect();
     (results, result_register != 0)
 }
+
+#[test_case(
+    0, 0, 1
+    => matches Ok(_)
+    ; "Pass when values are within valid ranges"
+)]
+#[test_case(
+    u64::MAX, 0, 1
+    => matches Err(_)
+    ; "Fail when rA + 32 overflows"
+)]
+#[test_case(
+    0, u64::MAX, 1
+    => matches Err(_)
+    ; "Fail when rC + 32 * d overflows (rC too high)"
+)]
+#[test_case(
+    0, 0, u64::MAX
+    => matches Err(_)
+    ; "Fail when rC + 32 * d overflows (rD too high)"
+)]
+#[test_case(
+    VM_MAX_RAM - 1, 0, 1
+    => matches Err(_)
+    ; "Fail when rA + 32 > VM_MAX_RAM"
+)]
+#[test_case(
+    VM_MAX_RAM - 32, 0, 1
+    => matches Ok(_)
+    ; "Pass when rA + 32 == VM_MAX_RAM"
+)]
+#[test_case(
+    0, VM_MAX_RAM - 1, 1
+    => matches Err(_)
+    ; "Fail when rC + 32 * rD > VM_MAX_RAM"
+)]
+#[test_case(
+    0, VM_MAX_RAM - 32, 1
+    => matches Ok(_)
+    ; "Pass when rC + 32 * rD == VM_MAX_RAM"
+)]
+#[test_case(
+    0, VM_MAX_RAM - 63, 2
+    => matches Err(_)
+    ; "Fail when rC + 32 * rD == VM_MAX_RAM (rD too high)"
+)]
+fn test_state_write_qword_input(
+    start_key_memory_address: Word,
+    source_memory_address: Word,
+    num_slots: Word,
+) -> Result<(), RuntimeError> {
+    StateWriteQWord::new(start_key_memory_address, source_memory_address, num_slots).map(|_| ())
+}

@@ -460,7 +460,8 @@ impl OwnershipRegisters {
         // TODO reflect the pending changes from `has_ownership_heap`
         let external = self.context.is_external();
 
-        self.hp < a && (external && a <= VM_MAX_RAM || !external && a <= self.prev_hp + 1)
+        self.hp < a
+            && (external && a <= VM_MAX_RAM || !external && self.prev_hp.checked_add(1).map_or(false, |f| a <= f))
     }
 }
 #[cfg(test)]

@@ -239,34 +239,12 @@ where
         OwnershipRegisters::new(self).has_ownership_range(range)
     }
 
-    pub(crate) const fn has_ownership_stack(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a < self.registers[REG_SP]
-    }
-
-    pub(crate) const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a <= self.registers[REG_SP]
+    pub(crate) fn has_ownership_stack(&self, a: Word) -> bool {
+        OwnershipRegisters::new(self).has_ownership_stack(a)
     }
 
     pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
-        let external = self.is_external_context();
-
-        self.registers[REG_HP] < a
-            && (external && a < VM_MAX_RAM
-                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0))
-    }
-
-    pub(crate) fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
-        // TODO reflect the pending changes from `has_ownership_heap`
-        let external = self.is_external_context();
-
-        self.registers[REG_HP] < a
-            && (external && a <= VM_MAX_RAM
-                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0) + 1)
+        OwnershipRegisters::new(self).has_ownership_heap(a)
     }
 
     pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>

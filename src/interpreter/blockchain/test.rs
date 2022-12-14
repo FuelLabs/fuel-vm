@@ -115,6 +115,7 @@ struct SWWQInput {
         storage_slots: vec![],
         memory: mem(&[&[0; 2], &key(27), &[5; 32]]),
     } => (vec![(key(27), [5; 32])], false)
+    ; "Single slot write w/ offset key in memory"
 )]
 #[test_case(
     SWWQInput{
@@ -122,6 +123,7 @@ struct SWWQInput {
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+    ; "Two slot write"
 )]
 #[test_case(
     SWWQInput{
@@ -129,6 +131,7 @@ struct SWWQInput {
         storage_slots: vec![(key(27), [2; 32])],
         memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+    ; "Two slot writes with one pre-existing slot set"
 )]
 #[test_case(
     SWWQInput{
@@ -136,6 +139,7 @@ struct SWWQInput {
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+    ; "Only writes two slots when memory has more data available"
 )]
 #[test_case(
     SWWQInput{
@@ -143,6 +147,7 @@ struct SWWQInput {
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], false)
+    ; "Three slot write"
 )]
 #[test_case(
     SWWQInput{
@@ -150,6 +155,7 @@ struct SWWQInput {
         storage_slots: vec![(key(29), [8; 32])],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], false)
+    ; "Three slot write with one pre-existing slot set"
 )]
 #[test_case(
     SWWQInput{
@@ -157,6 +163,7 @@ struct SWWQInput {
         storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], true)
+    ; "Three slot write with all slots previously set"
 )]
 #[test_case(
     SWWQInput{
@@ -164,6 +171,7 @@ struct SWWQInput {
         storage_slots: vec![(key(29), [8; 32])],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [8; 32])], false)
+    ; "Does not override slots that aren't being written to (adjacent)"
 )]
 #[test_case(
     SWWQInput{
@@ -171,6 +179,7 @@ struct SWWQInput {
         storage_slots: vec![(key(100), [8; 32])],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
     } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32]), (key(100), [8; 32])], false)
+    ; "Does not override slots that aren't being written to (non-adjacent)"
 )]
 fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool) {
     let SWWQInput {

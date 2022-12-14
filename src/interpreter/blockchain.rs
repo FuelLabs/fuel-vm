@@ -581,12 +581,12 @@ fn state_clear_qword(
     // Safety: Memory bounds are checked by the interpreter
     let start_key = unsafe { Bytes32::as_ref_unchecked(&memory[input.start_storage_key_memory_range]) };
 
-    let any_none = storage
+    let all_previously_set = storage
         .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
-        .is_none();
+        .is_some();
 
-    *result_register = any_none as Word;
+    *result_register = all_previously_set as Word;
 
     Ok(())
 }

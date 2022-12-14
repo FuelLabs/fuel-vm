@@ -314,7 +314,7 @@ impl InterpreterStorage for MemoryStorage {
         start_key: &Bytes32,
         range: Word,
     ) -> Result<Option<()>, Self::DataError> {
-        let mut any_key = true;
+        let mut all_set_key = true;
         let mut values: std::collections::HashSet<_> = std::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
@@ -327,10 +327,10 @@ impl InterpreterStorage for MemoryStorage {
         .collect();
         self.memory.contract_state.retain(|(c, k), _| {
             let r = values.remove(&**k);
-            any_key &= c == contract && !r;
-            c != contract && !r
+            all_set_key &= c == contract && r;
+            c != contract || (c == contract && !r)
         });
-        Ok((any_key && values.is_empty()).then_some(()))
+        Ok((all_set_key && values.is_empty()).then_some(()))
     }
 }
 

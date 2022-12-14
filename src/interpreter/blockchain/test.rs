@@ -103,48 +103,93 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
     (memory, result_register != 0)
 }
 
-// struct SWWQInput {
-//     input: StateWriteQWord,
-//     storage_slots: Vec<([u8; 32], [u8; 32])>,
-//     memory: Vec<u8>,
-// }
+struct SWWQInput {
+    input: StateWriteQWord,
+    storage_slots: Vec<([u8; 32], [u8; 32])>,
+    memory: Vec<u8>,
+}
 
-// #[test_case(
-//     SWWQInput{
-//         input: StateWriteQWord::new(34, 2, 1).unwrap(),
-//         storage_slots: vec![],
-//         memory: mem(&[&[0; 2], &key(27), &1u64.to_be_bytes()]),
-//     } => (mem(&[&[0], &[5; 32], &[27], &1u64.to_be_bytes()]), true)
-// )]
-// fn test_state_write_qword(input: SWWQInput) -> (Vec<u8>, bool) {
-//     let SWWQInput {
-//         input,
-//         storage_slots,
-//         memory,
-//     } = input;
-//     let start_key = input.starting_storage_key_memory_range.start;
-//     let mut storage = MemoryStorage::new(0, Default::default());
-//
-//     for (k, v) in storage_slots {
-//         storage
-//             .storage::<ContractsState>()
-//             .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
-//             .unwrap();
-//     }
-//
-//     let mut result_register = 0u64;
-//     state_write_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
-//     let mut results: Vec<u8> = vec![];
-//
-//     for _ in 0..input.num_slots {
-//         results.extend_from_slice(
-//             storage
-//                 .storage::<ContractsState>()
-//                 .get(&(&ContractId::default(), &k))?
-//                 .unwrap()
-//                 .iter()
-//                 .as_slice(),
-//         );
-//     }
-//     (results, result_register != 0)
-// }
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(2, 34, 1).unwrap(),
+        storage_slots: vec![],
+        memory: mem(&[&[0; 2], &key(27), &[5; 32]]),
+    } => (vec![(key(27), [5; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 2).unwrap(),
+        storage_slots: vec![],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 2).unwrap(),
+        storage_slots: vec![(key(27), [2; 32])],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 2).unwrap(),
+        storage_slots: vec![],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 3).unwrap(),
+        storage_slots: vec![],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 3).unwrap(),
+        storage_slots: vec![(key(29), [8; 32])],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 3).unwrap(),
+        storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], true)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 2).unwrap(),
+        storage_slots: vec![(key(29), [8; 32])],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [8; 32])], false)
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord::new(0, 32, 3).unwrap(),
+        storage_slots: vec![(key(100), [8; 32])],
+        memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
+    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32]), (key(100), [8; 32])], false)
+)]
+fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool) {
+    let SWWQInput {
+        input,
+        storage_slots,
+        memory,
+    } = input;
+    let mut storage = MemoryStorage::new(0, Default::default());
+
+    for (k, v) in storage_slots {
+        storage
+            .storage::<ContractsState>()
+            .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
+            .unwrap();
+    }
+
+    let mut result_register = 0u64;
+    state_write_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
+
+    let results = storage.all_contract_state().map(|((_, k), v)| (**k, **v)).collect();
+    (results, result_register != 0)
+}

@@ -544,7 +544,7 @@ fn state_write_qword(
     let any_none = storage
         .merkle_contract_state_insert_range(contract_id, destination_key, &values)
         .map_err(RuntimeError::from_io)?
-        .is_none();
+        .is_some();
     *result_register = any_none as Word;
 
     Ok(())

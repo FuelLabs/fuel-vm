@@ -48,6 +48,10 @@ impl MemoryStorage {
         }
     }
 
+    pub(crate) fn all_contract_state(&self) -> impl Iterator<Item = (&(ContractId, Bytes32), &Bytes32)> {
+        self.memory.contract_state.iter()
+    }
+
     /// Fetch a mapping from the contract state.
     pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
         const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
@@ -283,7 +287,7 @@ impl InterpreterStorage for MemoryStorage {
         start_key: &Bytes32,
         values: &[Bytes32],
     ) -> Result<Option<()>, Self::DataError> {
-        let mut any_key = false;
+        let mut any_unset_key = false;
         let values: Vec<_> = std::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
@@ -295,12 +299,12 @@ impl InterpreterStorage for MemoryStorage {
         .zip(values)
         .map(|(key, value)| {
             let key = (*contract, Bytes32::from(key));
-            any_key |= self.memory.contract_state.contains_key(&key);
+            any_unset_key |= !self.memory.contract_state.contains_key(&key);
             (key, *value)
         })
         .collect();
         self.memory.contract_state.extend(values);
-        Ok(any_key.then_some(()))
+        Ok((!any_unset_key).then_some(()))
     }
 
     fn merkle_contract_state_remove_range(

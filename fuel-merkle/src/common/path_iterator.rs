@@ -1,4 +1,7 @@
-use crate::common::{ChildResult, Msb, ParentNode};
+use crate::common::{
+    path::{Instruction, Path},
+    ChildResult, ParentNode,
+};
 
 /// # Path Iterator
 ///
@@ -142,7 +145,7 @@ impl<T> Iterator for PathIter<T>
 where
     T: ParentNode + Clone,
     T::Error: Clone,
-    T::Key: Msb + Clone,
+    T::Key: Path + Clone,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
@@ -153,16 +156,11 @@ where
             match path_node {
                 Ok(path_node) if path_node.is_node() => {
                     let path = self.leaf.leaf_key();
-                    let instruction = path
-                        .get_bit_at_index_from_msb(self.current_offset)
-                        .expect("Unable to perform path iteration due to invalid indexing!");
-                    if instruction == 0 {
-                        let next = (path_node.left_child(), path_node.right_child());
-                        self.current = Some(next);
-                    } else {
-                        let next = (path_node.right_child(), path_node.left_child());
-                        self.current = Some(next);
-                    }
+                    let instruction = path.get_instruction(self.current_offset);
+                    self.current = instruction.map(|instruction| match instruction {
+                        Instruction::Left => (path_node.left_child(), path_node.right_child()),
+                        Instruction::Right => (path_node.right_child(), path_node.left_child()),
+                    });
                     self.current_offset += 1;
                 }
                 // Terminate the iterator if any of the following are true:

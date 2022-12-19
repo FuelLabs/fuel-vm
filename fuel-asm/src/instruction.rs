@@ -204,8 +204,8 @@ impl From<Instruction> for u32 {
         let d = parsed.rd as u32;
 
         let imm12 = parsed.imm12 as u32;
-        let imm18 = parsed.imm18 as u32;
-        let imm24 = parsed.imm24 as u32;
+        let imm18 = parsed.imm18;
+        let imm24 = parsed.imm24;
 
         let repr = OpcodeRepr::from_u8(parsed.op);
 

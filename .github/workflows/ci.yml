@@ -14,6 +14,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.66.0
 
 jobs:
   cargo:
@@ -34,6 +35,8 @@ jobs:
             args: --all-targets --all-features
           - command: check
             args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage --no-default-features
+          - command: check
+            args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: test
             args: --all-targets --all-features
           - command: test
@@ -50,40 +53,20 @@ jobs:
             args: --all-targets --features random,profile-gas,profile-coverage,serde
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-          target: thumbv6m-none-eabi
-      - name: ${{ matrix.command }} ${{ matrix.args }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: ${{ matrix.command }}
-          args: ${{ matrix.args }}
-
-  # We include this in its own job as we are unable to specify multiple targets
-  # using `actions-rs/toolchain@v1`. See this issue:
-  # https://github.com/actions-rs/toolchain/issues/165
-  cargo-check-wasm32:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: wasm32-unknown-unknown
-      - name: cargo check wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
+          components: "clippy, rustfmt"
+      - run: cargo ${{ matrix.command }} ${{ matrix.args }}
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
       - name: Install Cargo.toml linter
         uses: baptiste0928/cargo-install@v1
         with:
@@ -96,21 +79,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
-          default: true
       - uses: Swatinem/rust-cache@v1
       - name: Install cargo-udeps
-        uses: actions-rs/cargo@v1
+        uses: baptiste0928/cargo-install@v1
         with:
-          command: install
-          args: cargo-udeps
-      - name: Check Unused Deps
-        uses: actions-rs/cargo@v1
-        with:
-          command: udeps
-          args: --all-targets --all-features
+          crate: cargo-udeps
+      - run: cargo udeps --all-targets --all-features
 
   verifications-complete:
     needs:
@@ -129,10 +106,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-          override: true
+          toolchain: ${{ env.RUST_VERSION }}
 
       - name: Verify tag version
         run: |

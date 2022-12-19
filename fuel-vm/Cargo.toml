@@ -1,25 +1,26 @@
 [package]
 name = "fuel-vm"
-version = "0.22.7"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
-edition = "2021"
-homepage = "https://fuel.network/"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+version = { workspace = true }
+authors = { workspace = true }
+categories = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = ["blockchain", "cryptocurrencies", "fuel", "fuel-vm"]
 license = "BUSL-1.1"
-repository = "https://github.com/FuelLabs/fuel-vm"
+repository = { workspace = true }
 description = "FuelVM interpreter."
+
 
 [dependencies]
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 dyn-clone = { version = "1.0", optional = true }
-fuel-asm = { version = "0.10", path = "../fuel-asm" }
-fuel-crypto = { version = "0.6", path = "../fuel-crypto" }
+fuel-asm = { workspace = true, path = "../fuel-asm" }
+fuel-crypto = { workspace = true, path = "../fuel-crypto" }
 fuel-merkle = "0.4"
-fuel-storage = { version = "0.3", path = "../fuel-storage" }
-fuel-tx = { version = "0.23", path = "../fuel-tx" }
-fuel-types = { version = "0.5", path = "../fuel-types" }
+fuel-storage = { workspace = true, path = "../fuel-storage" }
+fuel-tx = { workspace = true, path = "../fuel-tx" }
+fuel-types = { workspace = true, path = "../fuel-types" }
 itertools = "0.10"
 rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
@@ -30,7 +31,7 @@ thiserror = "1.0"
 tracing = "0.1"
 
 [dev-dependencies]
-fuel-tx = { version = "0.23", path = "../fuel-tx", features = ["builder"] }
+fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
 num-integer = "0.1.45"
 quickcheck = "1.0"

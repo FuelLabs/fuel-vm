@@ -349,7 +349,7 @@ impl TryFrom<Immediate12> for GTFArgs {
     type Error = PanicReason;
 
     fn try_from(value: Immediate12) -> Result<Self, Self::Error> {
-        match value as u16 {
+        match value {
             GTF_TYPE => Ok(Self::Type),
             GTF_SCRIPT_GAS_PRICE => Ok(Self::ScriptGasPrice),
             GTF_SCRIPT_GAS_LIMIT => Ok(Self::ScriptGasLimit),

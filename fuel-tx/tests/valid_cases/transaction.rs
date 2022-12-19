@@ -588,7 +588,7 @@ fn create() {
     let mut slot_data = [0u8; 64];
     let mut slot = StorageSlot::default();
 
-    let storage_slots = (0..PARAMS.max_storage_slots as u64)
+    let storage_slots = (0..PARAMS.max_storage_slots)
         .map(|i| {
             slot_data[..8].copy_from_slice(&i.to_be_bytes());
             let _ = slot.write(&slot_data).unwrap();

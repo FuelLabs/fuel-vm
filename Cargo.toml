@@ -1,119 +1,27 @@
-[package]
-name = "fuel-vm"
-version = "0.22.7"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-categories = ["concurrency", "cryptography::cryptocurrencies", "emulators"]
+[workspace]
+members = [
+    "fuel-asm",
+    "fuel-crypto",
+    "fuel-storage",
+    "fuel-types",
+    "fuel-tx",
+    "fuel-tx/test-helpers",
+    "fuel-types",
+    "fuel-vm",
+]
+
+[workspace.package]
 edition = "2021"
+version = "0.24.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
 homepage = "https://fuel.network/"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
-description = "FuelVM interpreter."
 
-[dependencies]
-anyhow = { version = "1.0", optional = true }
-backtrace = { version = "0.3", optional = true } # requires debug symbols to work
-dyn-clone = { version = "1.0", optional = true }
-fuel-asm = "0.10"
-fuel-crypto = "0.6"
-fuel-merkle = "0.4"
-fuel-storage = "0.3"
-fuel-tx = "0.23"
-fuel-types = "0.5"
-itertools = "0.10"
-serde = { version = "1.0", features = ["derive"], optional = true }
-sha3 = "0.10"
-strum = { version = "0.24", features = ["derive"], optional = true }
-thiserror = "1.0"
-tracing = "0.1"
-rand = { version = "0.8", optional = true }
-tai64 = "4.0"
-
-[dev-dependencies]
-fuel-tx = { version = "0.23", features = ["builder"] }
-fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
-glob = "0.3"
-num-integer = "0.1.45"
-quickcheck = "1.0"
-quickcheck_macros = "1.0"
-rayon = "1.5.3"
-regex = "1.6"
-serde_json = "1.0"
-test-case = "2.2"
-
-[features]
-default = ["optimized"]
-arbitrary = ["fuel-asm/arbitrary"]
-debug = []
-optimized = []
-profile-gas = ["profile-any"]
-profile-coverage = ["profile-any"]
-profile-any = ["dyn-clone"] # All profiling features should depend on this
-random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
-serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
-
-[[test]]
-name = "test-backtrace"
-path = "tests/backtrace.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-blockchain"
-path = "tests/blockchain.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-contract"
-path = "tests/contract.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-crypto"
-path = "tests/crypto.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-gas-factor"
-path = "tests/gas_factor.rs"
-required-features = ["profile-gas"]
-
-[[test]]
-name = "test-profile-gas"
-path = "tests/profile_gas.rs"
-required-features = ["random", "profile-gas"]
-
-[[test]]
-name = "test-code-coverage"
-path = "tests/code_coverage.rs"
-required-features = ["random", "profile-coverage"]
-
-[[test]]
-name = "test-serde-profile"
-path = "tests/serde_profile.rs"
-required-features = ["random", "profile-coverage", "profile-gas", "serde"]
-
-[[test]]
-name = "test-encoding"
-path = "tests/encoding.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-flow"
-path = "tests/flow.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-metadata"
-path = "tests/metadata.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-predicate"
-path = "tests/predicate.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-memory"
-path = "tests/memory.rs"
-required-features = ["random"]
+[workspace.dependencies]
+fuel-asm = { version = "0.24.0", path = "./fuel-asm", default-features = false }
+fuel-crypto = { version = "0.24.0", path = "./fuel-crypto", default-features = false }
+fuel-storage = { version = "0.24.0", path = "./fuel-storage", default-features = false }
+fuel-types = { version = "0.24.0", path = "./fuel-types", default-features = false }
+fuel-tx = { version = "0.24.0", path = "./fuel-tx", default-features = false }

@@ -1,0 +1,37 @@
+[package]
+name = "fuel-asm"
+version = { workspace = true }
+authors = { workspace = true }
+categories = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "primitives"]
+license = "Apache-2.0"
+repository = { workspace = true }
+description = "Atomic types of the FuelVM."
+
+[dependencies]
+arbitrary = { version = "1.1", features = ["derive"], optional = true }
+fuel-types = { workspace = true, default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+[dev-dependencies]
+bincode = { version = "1.3", default-features = false }
+
+[features]
+default = ["fuel-types/default", "std"]
+std = ["fuel-types/std", "serde?/default"]
+serde = ["dep:serde", "fuel-types/serde"]
+
+[[test]]
+name = "test-encoding"
+path = "tests/encoding.rs"
+required-features = ["std"]
+
+# docs.rs-specific configuration
+# preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+# defines the configuration attribute `docsrs`
+rustdoc-args = ["--cfg", "docsrs"]

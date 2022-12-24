@@ -1,6 +1,6 @@
 use super::{ExecutableTransaction, Interpreter};
-use crate::consts::*;
 use crate::error::RuntimeError;
+use crate::{consts::*, context::Context};
 
 use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
@@ -74,14 +74,11 @@ impl MemoryRange {
     /// Return the boundaries of the slice with exclusive end `[a, b[`
     ///
     /// Remap the unbound boundaries to stack or heap when applicable.
-    pub fn boundaries<S, Tx>(&self, vm: &Interpreter<S, Tx>) -> (Word, Word)
-    where
-        Tx: ExecutableTransaction,
-    {
+    pub fn boundaries(&self, registers: &OwnershipRegisters) -> (Word, Word) {
         use ops::Bound::*;
 
-        let stack = vm.registers()[REG_SP];
-        let heap = vm.registers()[REG_HP].saturating_add(1);
+        let stack = registers.sp;
+        let heap = registers.hp.saturating_add(1);
         match (self.start, self.end) {
             (Included(start), Included(end)) => (start, end.saturating_add(1)),
             (Included(start), Excluded(end)) => (start, end),
@@ -89,16 +86,16 @@ impl MemoryRange {
             (Excluded(start), Excluded(end)) => (start.saturating_add(1), end),
             (Unbounded, Unbounded) => (0, VM_MAX_RAM),
 
-            (Included(start), Unbounded) if vm.is_stack_address(start) => (start, stack),
+            (Included(start), Unbounded) if is_stack_address(&registers.sp, start) => (start, stack),
             (Included(start), Unbounded) => (start, VM_MAX_RAM),
 
-            (Excluded(start), Unbounded) if vm.is_stack_address(start) => (start.saturating_add(1), stack),
+            (Excluded(start), Unbounded) if is_stack_address(&registers.sp, start) => (start.saturating_add(1), stack),
             (Excluded(start), Unbounded) => (start.saturating_add(1), VM_MAX_RAM),
 
-            (Unbounded, Included(end)) if vm.is_stack_address(end) => (0, end.saturating_add(1)),
+            (Unbounded, Included(end)) if is_stack_address(&registers.sp, end) => (0, end.saturating_add(1)),
             (Unbounded, Included(end)) => (heap, end),
 
-            (Unbounded, Excluded(end)) if vm.is_stack_address(end) => (0, end),
+            (Unbounded, Excluded(end)) if is_stack_address(&registers.sp, end) => (0, end),
             (Unbounded, Excluded(end)) => (heap, end),
         }
     }
@@ -125,7 +122,7 @@ impl MemoryRange {
             Unbounded => Excluded(VM_MAX_RAM),
         };
 
-        let (start, end) = self.boundaries(vm);
+        let (start, end) = self.boundaries(&OwnershipRegisters::new(vm));
         self.len = end.saturating_sub(start);
 
         self
@@ -239,51 +236,15 @@ where
 
     /// Grant ownership of the range `[a..ab[`
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (a, ab) = range.boundaries(self);
-
-        let a_is_stack = a < self.registers[REG_SP];
-        let a_is_heap = a > self.registers[REG_HP];
-
-        let ab_is_stack = ab <= self.registers[REG_SP];
-        let ab_is_heap = ab >= self.registers[REG_HP];
-
-        a < ab
-            && (a_is_stack && ab_is_stack && self.has_ownership_stack(a) && self.has_ownership_stack_exclusive(ab)
-                || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
+        OwnershipRegisters::new(self).has_ownership_range(range)
     }
 
     pub(crate) fn has_ownership_stack(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a < self.registers[REG_SP]
-    }
-
-    pub(crate) fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.registers[REG_SSP] <= a && a <= self.registers[REG_SP]
+        OwnershipRegisters::new(self).has_ownership_stack(a)
     }
 
     pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
-        let external = self.is_external_context();
-
-        self.registers[REG_HP] < a
-            && (external && a < VM_MAX_RAM
-                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0))
-    }
-
-    pub(crate) fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
-        // TODO reflect the pending changes from `has_ownership_heap`
-        let external = self.is_external_context();
-
-        self.registers[REG_HP] < a
-            && (external && a <= VM_MAX_RAM
-                || !external && a <= self.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0) + 1)
-    }
-
-    pub(crate) fn is_stack_address(&self, a: Word) -> bool {
-        a < self.registers[REG_SP]
+        OwnershipRegisters::new(self).has_ownership_heap(a)
     }
 
     pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>
@@ -440,12 +401,78 @@ where
     }
 }
 
+pub(crate) const fn is_stack_address(sp: &u64, a: Word) -> bool {
+    a < *sp
+}
+
+pub struct OwnershipRegisters {
+    pub(crate) sp: u64,
+    pub(crate) ssp: u64,
+    pub(crate) hp: u64,
+    pub(crate) prev_hp: u64,
+    pub(crate) context: Context,
+}
+
+impl OwnershipRegisters {
+    pub(crate) fn new<S, Tx>(vm: &Interpreter<S, Tx>) -> Self {
+        OwnershipRegisters {
+            sp: vm.registers[REG_SP],
+            ssp: vm.registers[REG_SSP],
+            hp: vm.registers[REG_HP],
+            prev_hp: vm.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0),
+            context: vm.context.clone(),
+        }
+    }
+    pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
+        let (a, ab) = range.boundaries(self);
+
+        let a_is_stack = a < self.sp;
+        let a_is_heap = a > self.hp;
+
+        let ab_is_stack = ab <= self.sp;
+        let ab_is_heap = ab >= self.hp;
+
+        a < ab
+            && (a_is_stack && ab_is_stack && self.has_ownership_stack(a) && self.has_ownership_stack_exclusive(ab)
+                || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
+    }
+
+    pub(crate) const fn has_ownership_stack(&self, a: Word) -> bool {
+        a <= VM_MAX_RAM && self.ssp <= a && a < self.sp
+    }
+
+    pub(crate) const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
+        a <= VM_MAX_RAM && self.ssp <= a && a <= self.sp
+    }
+
+    pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
+        // TODO implement fp->hp and (addr, size) validations
+        // fp->hp
+        // it means $hp from the previous context, i.e. what's saved in the
+        // "Saved registers from previous context" of the call frame at
+        // $fp`
+        let external = self.context.is_external();
+
+        self.hp < a && (external && a < VM_MAX_RAM || !external && a <= self.prev_hp)
+    }
+
+    pub(crate) fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
+        // TODO reflect the pending changes from `has_ownership_heap`
+        let external = self.context.is_external();
+
+        self.hp < a
+            && (external && a <= VM_MAX_RAM || !external && self.prev_hp.checked_add(1).map_or(false, |f| a <= f))
+    }
+}
 #[cfg(test)]
 mod tests {
-    use crate::consts::*;
+    use std::ops::Range;
+
+    use super::*;
     use crate::prelude::*;
     use fuel_asm::op;
     use fuel_tx::Script;
+    use test_case::test_case;
 
     #[test]
     fn memcopy() {
@@ -556,5 +583,54 @@ mod tests {
 
         // Assert allocated stack is writable
         vm.instruction(op::mcli(0x10, 2).into()).unwrap();
+    }
+
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: 0}), 0..0
+        => false ; "empty mem range"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 0..0
+        => false ; "empty mem range (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: 0}), 0..1
+        => false ; "empty stack and heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 0..1
+        => false ; "empty stack and heap (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: 0}), 0..1
+        => true ; "in range for stack"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: 0}), 0..2
+        => false; "above stack range"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: 0}), 1..2
+        => true ; "in range for heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: 0}), 0..2
+        => true ; "crosses stack and heap"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 1..2
+        => true ; "in heap range (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0}), 20..30
+        => false; "between ranges (external)"
+    )]
+    #[test_case(
+        OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0}), 0..1
+        => true; "in stack range (external)"
+    )]
+    fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
+        let range = MemoryRange::new(range.start, range.end - range.start);
+        reg.has_ownership_range(&range)
     }
 }

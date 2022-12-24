@@ -12,6 +12,45 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 const SET_STATUS_REG: u8 = 0x29;
 
 #[test]
+fn can_execute_empty_script_transaction() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
+
+    let empty_script = vec![];
+
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        empty_script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    )
+    .into_checked(height, &params)
+    .expect("failed to generate a checked tx");
+
+    let receipts = client.transact(tx);
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 2);
+    assert!(matches!(receipts[0], Receipt::Return { val: 1, .. }));
+    assert!(matches!(
+        receipts[1],
+        Receipt::ScriptResult {
+            result: ScriptExecutionResult::Success,
+            ..
+        }
+    ));
+}
+
+#[test]
 fn code_copy() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -771,4 +810,40 @@ fn retd_from_top_of_heap() {
     // Expect the correct receipt
     assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::ReturnData { .. }));
+}
+
+#[test]
+fn logd_from_top_of_heap() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = 0;
+    let height = 0;
+    let params = ConsensusParameters::DEFAULT;
+
+    const REG_SIZE: usize = REG_WRITABLE;
+    const REG_PTR: usize = REG_WRITABLE + 1;
+
+    #[rustfmt::skip]
+    let script = vec![
+        Opcode::MOVI(REG_SIZE, 32),                           // Allocate 32 bytes.
+        Opcode::ALOC(REG_SIZE),                               // $hp -= 32.
+        Opcode::ADDI(REG_PTR, REG_HP, 1),                     // Pointer is $hp + 1, first byte in allocated buffer.
+        Opcode::LOGD(REG_ZERO, REG_ZERO, REG_PTR, REG_SIZE),  // Log the whole buffer
+        Opcode::RET(REG_ONE),                                 // Return 
+    ].into_iter()
+    .collect::<Vec<u8>>();
+
+    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+        .into_checked(height, &params)
+        .expect("failed to generate a checked tx");
+
+    client.transact(tx);
+
+    let receipts = client.receipts().expect("Expected receipts");
+
+    // Expect the correct receipt
+    assert_eq!(receipts.len(), 3);
+    assert!(matches!(receipts[0], Receipt::LogData { .. }));
 }

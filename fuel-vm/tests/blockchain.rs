@@ -9,7 +9,7 @@ use fuel_vm::prelude::*;
 
 use fuel_asm::{
     op, Instruction,
-    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ErrorFlag, ExpectedUnallocatedStack, MemoryOverflow},
+    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership},
 };
 use fuel_tx::field::{Outputs, Script as ScriptField};
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -828,18 +828,18 @@ fn scwq_clears_status() {
 #[test]
 fn scwq_clears_status_for_range() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::MOVI(0x11, 100),
-        Opcode::ALOC(0x11),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::ADDI(0x32, REG_ONE, 2),
-        Opcode::SCWQ(0x31, SET_STATUS_REG, 0x32),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::SCWQ(0x31, SET_STATUS_REG + 2, 0x32),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::movi(0x11, 100),
+        op::aloc(0x11),
+        op::addi(0x31, REG_HP.into(), 0x5),
+        op::addi(0x32, REG_ONE.into(), 2),
+        op::scwq(0x31, SET_STATUS_REG, 0x32),
+        op::addi(0x31, REG_HP.into(), 0x5),
+        op::swwq(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        op::addi(0x31, REG_HP.into(), 0x5),
+        op::scwq(0x31, SET_STATUS_REG + 2, 0x32),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        op::ret(REG_ONE.into()),
     ];
 
     check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
@@ -882,18 +882,18 @@ fn srwq_reads_status() {
 #[test]
 fn srwq_reads_status_with_range() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::MOVI(0x11, 100),
-        Opcode::ALOC(0x11),
-        Opcode::ADDI(0x31, REG_HP, 0x5),
-        Opcode::MOVI(0x32, 0x2),
-        Opcode::SRWQ(0x31, SET_STATUS_REG, 0x31, 0x32),
-        Opcode::MOVI(0x32, 0x2),
-        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
-        Opcode::MOVI(0x32, 0x2),
-        Opcode::SRWQ(0x31, SET_STATUS_REG + 2, 0x31, 0x32),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::movi(0x11, 100),
+        op::aloc(0x11),
+        op::addi(0x31, REG_HP.into(), 0x5),
+        op::movi(0x32, 0x2),
+        op::srwq(0x31, SET_STATUS_REG, 0x31, 0x32),
+        op::movi(0x32, 0x2),
+        op::swwq(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        op::movi(0x32, 0x2),
+        op::srwq(0x31, SET_STATUS_REG + 2, 0x31, 0x32),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
+        op::ret(REG_ONE.into()),
     ];
 
     check_receipts_for_program_call(program, vec![0, 0, 1, 0]);
@@ -918,16 +918,16 @@ fn swwq_sets_status() {
 #[test]
 fn swwq_sets_status_with_range() {
     #[rustfmt::skip]
-    let program: Vec<Opcode> = vec![
-        Opcode::MOVI(0x11, 100),
-        Opcode::ALOC(0x11),
-        Opcode::ADDI(0x31, REG_HP, 0x01),
-        Opcode::MOVI(0x32, 0x2),
-        Opcode::SWWQ(0x31, SET_STATUS_REG, 0x31, 0x32),
-        Opcode::ADDI(0x31, REG_HP, 0x01),
-        Opcode::SWWQ(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
-        Opcode::LOG(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+    let program = vec![
+        op::movi(0x11, 100),
+        op::aloc(0x11),
+        op::addi(0x31, REG_HP.into(), 0x01),
+        op::movi(0x32, 0x2),
+        op::swwq(0x31, SET_STATUS_REG, 0x31, 0x32),
+        op::addi(0x31, REG_HP.into(), 0x01),
+        op::swwq(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
+        op::ret(REG_ONE.into()),
     ];
 
     check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
@@ -1094,7 +1094,7 @@ fn state_r_qword_a_plus_32_over() {
         op::srwq(reg_a, SET_STATUS_REG, REG_ZERO.into(), REG_ONE.into()),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOwnership);
 }
 
 #[test]
@@ -1142,7 +1142,7 @@ fn state_r_qword_c_over_max_ram() {
     let state_read_qword = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::addi(0x31, REG_HP, 0x01),
+        op::addi(0x31, REG_HP.into(), 0x01),
         op::xor(reg_a, reg_a, reg_a),
         op::ori(reg_a, reg_a, 1),
         op::slli(reg_a, reg_a, MAX_MEM_SHL),

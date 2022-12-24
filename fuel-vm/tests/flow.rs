@@ -1,4 +1,4 @@
-use fuel_asm::op;
+use fuel_asm::{op, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
     field::{Script as ScriptField, ScriptData},
@@ -822,16 +822,16 @@ fn logd_from_top_of_heap() {
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
 
-    const REG_SIZE: usize = REG_WRITABLE;
-    const REG_PTR: usize = REG_WRITABLE + 1;
+    const REG_SIZE: RegId = REG_WRITABLE;
+    let reg_ptr: RegId = RegId::new(u8::from(REG_WRITABLE) + 1);
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::MOVI(REG_SIZE, 32),                           // Allocate 32 bytes.
-        Opcode::ALOC(REG_SIZE),                               // $hp -= 32.
-        Opcode::ADDI(REG_PTR, REG_HP, 1),                     // Pointer is $hp + 1, first byte in allocated buffer.
-        Opcode::LOGD(REG_ZERO, REG_ZERO, REG_PTR, REG_SIZE),  // Log the whole buffer
-        Opcode::RET(REG_ONE),                                 // Return 
+        op::movi(REG_SIZE.into(), 32),                                               // Allocate 32 bytes.
+        op::aloc(REG_SIZE.into()),                                                   // $hp -= 32.
+        op::addi(reg_ptr.into(), REG_HP.into(), 1),                                  // Pointer is $hp + 1, first byte in allocated buffer.
+        op::logd(REG_ZERO.into(), REG_ZERO.into(), reg_ptr.into(), REG_SIZE.into()), // Log the whole buffer
+        op::ret(REG_ONE.into()),                                                     // Return
     ].into_iter()
     .collect::<Vec<u8>>();
 

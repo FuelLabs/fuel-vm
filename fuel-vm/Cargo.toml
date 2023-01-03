@@ -19,7 +19,7 @@ fuel-asm = { workspace = true, path = "../fuel-asm" }
 fuel-crypto = { workspace = true, path = "../fuel-crypto" }
 fuel-merkle = "0.4"
 fuel-storage = { workspace = true, path = "../fuel-storage" }
-fuel-tx = { workspace = true, path = "../fuel-tx" }
+fuel-tx = { workspace = true, features = ["builder", "std"], path = "../fuel-tx" }
 fuel-types = { workspace = true, path = "../fuel-types" }
 itertools = "0.10"
 rand = { version = "0.8", optional = true }

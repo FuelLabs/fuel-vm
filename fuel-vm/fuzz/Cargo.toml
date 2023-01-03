@@ -1,0 +1,24 @@
+[package]
+name = "fuel-vm-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1.0", features = ["derive"] }
+fuel-vm = { path = "..", features = ["arbitrary"] }
+libfuzzer-sys = "0.4"
+
+# Prevent this from interfering with workspaces as this crate requires unstable features.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "grammar_aware"
+path = "fuzz_targets/grammar_aware.rs"
+test = false
+doc = false

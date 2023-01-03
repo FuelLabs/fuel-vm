@@ -1,28 +1,40 @@
 use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
-use crate::transaction::{field, Chargeable, Create, Executable, Script, Signable};
-use crate::{
-    Cacheable, Checked, ConsensusParameters, Input, IntoChecked, Mint, Output, StorageSlot, Transaction, TxPointer,
-    Witness,
-};
+use crate::transaction::{field, Chargeable, Create, Executable, Script};
+use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+
+#[cfg(feature = "std")]
+use crate::{Checked, IntoChecked, Signable};
 
 use fuel_crypto::SecretKey;
 use fuel_types::{Salt, Word};
 
 use alloc::vec::Vec;
 
-pub trait Buildable
+pub trait BuildableAloc
 where
     Self: Default
         + Clone
-        + Cacheable
         + Executable
         + Chargeable
-        + Signable
         + field::GasLimit
         + field::GasPrice
         + field::Maturity
-        + IntoChecked
         + Into<Transaction>,
+{
+}
+
+#[cfg(feature = "std")]
+pub trait BuildableStd: Signable + IntoChecked + Cacheable {}
+
+#[cfg(not(feature = "std"))]
+pub trait BuildableSet: BuildableAloc {}
+
+#[cfg(feature = "std")]
+pub trait BuildableSet: BuildableAloc + BuildableStd {}
+
+pub trait Buildable
+where
+    Self: BuildableSet,
 {
     /// Append an input to the transaction
     fn add_input(&mut self, input: Input) {
@@ -50,20 +62,25 @@ where
     }
 }
 
-impl<T> Buildable for T where
+impl<T> BuildableAloc for T where
     Self: Default
         + Clone
-        + Cacheable
         + Executable
         + Chargeable
-        + Signable
-        + field::GasPrice
         + field::GasLimit
+        + field::GasPrice
         + field::Maturity
-        + IntoChecked
         + Into<Transaction>
 {
 }
+
+#[cfg(feature = "std")]
+impl<T> BuildableStd for T where T: Signable + IntoChecked + Cacheable {}
+#[cfg(feature = "std")]
+impl<T> BuildableSet for T where T: BuildableAloc + BuildableStd {}
+#[cfg(not(feature = "std"))]
+impl<T> BuildableSet for T where T: BuildableAloc {}
+impl<T> Buildable for T where T: BuildableSet {}
 
 #[derive(Debug, Clone)]
 pub struct TransactionBuilder<Tx> {
@@ -247,6 +264,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self
     }
+    #[cfg(feature = "std")]
     fn prepare_finalize(&mut self) {
         if self.should_prepare_predicate {
             self.tx.prepare_init_predicate();

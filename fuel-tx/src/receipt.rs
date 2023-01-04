@@ -15,7 +15,6 @@ use receipt_repr::ReceiptRepr;
 pub use script_result::ScriptExecutionResult;
 
 use crate::Output;
-use crate::Receipt::Panic;
 
 #[derive(Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -180,7 +179,7 @@ impl Receipt {
     }
 
     pub const fn panic(id: ContractId, reason: InstructionResult, pc: Word, is: Word) -> Self {
-        Panic {
+        Self::Panic {
             id,
             reason,
             pc,
@@ -338,8 +337,9 @@ impl Receipt {
         }
     }
 
-    pub const fn id(&self) -> Option<&ContractId> {
-        match self {
+    #[inline(always)]
+    pub fn id(&self) -> Option<&ContractId> {
+        trim_contract_id(match self {
             Self::Call { id, .. } => Some(id),
             Self::Return { id, .. } => Some(id),
             Self::ReturnData { id, .. } => Some(id),
@@ -351,7 +351,7 @@ impl Receipt {
             Self::TransferOut { id, .. } => Some(id),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
-        }
+        })
     }
 
     pub const fn pc(&self) -> Option<Word> {
@@ -386,12 +386,13 @@ impl Receipt {
         }
     }
 
-    pub const fn to(&self) -> Option<&ContractId> {
-        match self {
+    #[inline(always)]
+    pub fn to(&self) -> Option<&ContractId> {
+        trim_contract_id(match self {
             Self::Call { to, .. } => Some(to),
             Self::Transfer { to, .. } => Some(to),
             _ => None,
-        }
+        })
     }
 
     pub const fn to_address(&self) -> Option<&Address> {
@@ -648,6 +649,10 @@ impl Receipt {
     }
 }
 
+fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
+    id.and_then(|id| if id != &ContractId::zeroed() { Some(id) } else { None })
+}
+
 impl SizedBytes for Receipt {
     fn serialized_size(&self) -> usize {
         let data_len = self
@@ -656,5 +661,108 @@ impl SizedBytes for Receipt {
             .unwrap_or(0);
 
         Self::variant_len_without_data(ReceiptRepr::from(self)) + WORD_SIZE + data_len
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Receipt;
+    use fuel_types::ContractId;
+
+    // TODO: Rewrite the test cases when `Receipt` will have its struct for
+    //  each variant. It will allow to use `Default` trait.
+    #[rstest::rstest]
+    #[case(
+        Receipt::Call {
+            id: ContractId::from([1; 32]),
+            to: Default::default(),
+            amount: 0,
+            asset_id: Default::default(),
+            gas: 0,
+            param1: 0,
+            param2: 0,
+            pc: 0,
+            is: 0,
+        },
+        Some(ContractId::from([1; 32]))
+    )]
+    #[case(
+        Receipt::Call {
+            id: ContractId::from([0; 32]),
+            to: Default::default(),
+            amount: 0,
+            asset_id: Default::default(),
+            gas: 0,
+            param1: 0,
+            param2: 0,
+            pc: 0,
+            is: 0,
+        },
+        None
+    )]
+    #[case(
+        Receipt::Return {
+            id: ContractId::from([2; 32]),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+        Some(ContractId::from([2; 32]))
+    )]
+    #[case(
+        Receipt::Return {
+            id: ContractId::from([0; 32]),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+        None
+    )]
+    fn receipt_id(#[case] receipt: Receipt, #[case] expected_id: Option<ContractId>) {
+        assert_eq!(receipt.id(), expected_id.as_ref());
+    }
+
+    // TODO: Rewrite the test cases when `Receipt` will have its struct for
+    //  each variant. It will allow to use `Default` trait.
+    #[rstest::rstest]
+    #[case(
+        Receipt::Call {
+            id: Default::default(),
+            to: ContractId::from([1; 32]),
+            amount: 0,
+            asset_id: Default::default(),
+            gas: 0,
+            param1: 0,
+            param2: 0,
+            pc: 0,
+            is: 0,
+        },
+        Some(ContractId::from([1; 32]))
+    )]
+    #[case(
+        Receipt::Call {
+            id: Default::default(),
+            to: ContractId::from([0; 32]),
+            amount: 0,
+            asset_id: Default::default(),
+            gas: 0,
+            param1: 0,
+            param2: 0,
+            pc: 0,
+            is: 0,
+        },
+        None
+    )]
+    #[case(
+        Receipt::Return {
+            id: Default::default(),
+            val: 0,
+            pc: 0,
+            is: 0,
+        },
+        None
+    )]
+    fn receipt_to(#[case] receipt: Receipt, #[case] expected_to: Option<ContractId>) {
+        assert_eq!(receipt.to(), expected_to.as_ref());
     }
 }

@@ -30,6 +30,18 @@ jobs:
           - command: check
             args: --all-targets
           - command: check
+            args: --all-targets -p fuel-asm
+          - command: check
+            args: --all-targets -p fuel-crypto
+          - command: check
+            args: --all-targets -p fuel-storage
+          - command: check
+            args: --all-targets -p fuel-tx
+          - command: check
+            args: --all-targets -p fuel-types
+          - command: check
+            args: --all-targets -p fuel-vm
+          - command: check
             args: --all-targets --no-default-features
           - command: check
             args: --all-targets --all-features

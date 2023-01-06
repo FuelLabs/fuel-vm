@@ -40,7 +40,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         jmp: 1,
         jne: 1,
         ret: 12,
-        retd: 1,
         rvrt: 1,
         smo: 1,
         aloc: 1,
@@ -57,9 +56,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         cb: 1,
         croo: 1,
         csiz: 1,
-        ldc: 1,
         log: 1,
-        logd: 1,
         mint: 1,
         scwq: 1,
         srw: 1,
@@ -87,10 +84,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 1,
             dep_per_unit: 1114,
         },
-        mcpi: DependantCost {
-            base: 1,
-            dep_per_unit: 0,
-        },
         ccp: DependantCost {
             base: 1,
             dep_per_unit: 0,
@@ -102,6 +95,19 @@ pub fn default_gas_costs() -> GasCostsValues {
         call: DependantCost {
             base: 363,
             dep_per_unit: 11,
+        },
+        mcpi: 1,
+        logd: DependantCost {
+            base: 44,
+            dep_per_unit: 20,
+        },
+        ldc: DependantCost {
+            base: 160,
+            dep_per_unit: 14,
+        },
+        retd: DependantCost {
+            base: 60,
+            dep_per_unit: 20,
         },
     }
 }

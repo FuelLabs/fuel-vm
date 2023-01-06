@@ -55,7 +55,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         burn: 1,
         cb: 1,
         croo: 1,
-        csiz: 1,
         log: 1,
         mint: 1,
         scwq: 1,
@@ -108,6 +107,10 @@ pub fn default_gas_costs() -> GasCostsValues {
         retd: DependantCost {
             base: 60,
             dep_per_unit: 20,
+        },
+        csiz: DependantCost {
+            base: 160,
+            dep_per_unit: 15,
         },
     }
 }

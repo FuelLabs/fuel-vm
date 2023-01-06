@@ -394,7 +394,6 @@ where
             }
 
             OpcodeRepr::CSIZ => {
-                self.gas_charge(self.gas_costs.csiz)?;
                 self.code_size(ra, self.registers[rb])?;
             }
 

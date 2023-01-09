@@ -40,22 +40,53 @@ mod storage;
 mod tests;
 
 #[derive(Debug, Clone)]
-/// A diff of VM state
+/// A diff of VM state.
+/// 
+/// By default this does not print out the 
+/// memory bytes but you can supply the `#` flag
+/// to get them like:
+/// ```ignore
+/// println!("{:#}", diff);
+/// ```
 pub struct Diff<T: VmStateCapture + Clone> {
     changes: Vec<Change<T>>,
 }
 
 #[derive(Debug, Clone)]
 enum Change<T: VmStateCapture + Clone> {
+    /// Holds a snapshot of register state.
     Register(T::State<VecState<Word>>),
+    /// Holds a snapshot of memory state.
     Memory(T::State<Memory>),
+    /// Holds a snapshot of storage state.
     Storage(T::State<StorageState>),
+    /// Holds a snapshot of the call stack.
     Frame(T::State<VecState<Option<CallFrame>>>),
+    /// Holds a snapshot of receipt state.
     Receipt(T::State<VecState<Option<Receipt>>>),
+    /// Holds a snapshot of balance state.
     Balance(T::State<MapState<AssetId, Option<Balance>>>),
+    /// Holds a snapshot of context state.
     Context(T::State<Context>),
+    /// Holds a snapshot of the panic context state.
     PanicContext(T::State<PanicContext>),
-    Txn(T::State<Arc<dyn Any>>),
+    /// Holds a snapshot of the transaction state.
+    Txn(T::State<Arc<dyn AnyDebug>>),
+}
+
+/// A trait that combines the [`Debug`] and [`Any`] traits.
+pub trait AnyDebug: Any + Debug {
+    /// Returns a reference to the underlying type as `Any`.
+    fn as_any_ref(&self) -> &dyn Any;
+}
+
+impl<T> AnyDebug for T
+where
+    T: Any + Debug,
+{
+    fn as_any_ref(&self) -> &dyn Any {
+        self
+    }
 }
 
 /// A mapping between the kind of state that is being capture
@@ -98,25 +129,50 @@ impl VmStateCapture for InitialVmState {
 pub struct Previous<S>(S);
 
 #[derive(Debug, Clone)]
+/// The state of a vector at an index.
 struct VecState<T> {
+    /// Index of the value.
     index: usize,
+    /// Value at the index.
     value: T,
 }
 
 #[derive(Debug, Clone)]
+/// The state of a map at a key.
 struct MapState<K, V>
 where
     K: Hash,
     V: PartialEq,
 {
+    /// Key of the value.
     key: K,
+    /// Value at the key.
     value: V,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+/// The state of a memory region.
 struct Memory {
+    /// The start of the memory region.
     start: usize,
+    /// The region of bytes.
     bytes: Vec<u8>,
+}
+
+impl Debug for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            f.debug_struct("Memory")
+                .field("start", &self.start)
+                .field("bytes", &self.bytes)
+                .finish()
+        } else {
+            f.debug_struct("Memory")
+                .field("start", &self.start)
+                .field("bytes", &self.bytes.len())
+                .finish()
+        }
+    }
 }
 
 fn capture_buffer_state<'iter, I, T>(
@@ -244,7 +300,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     /// The diff function generates a diff of VM state, represented by the Diff struct, between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
     where
-        Tx: PartialEq + Clone + 'static,
+        Tx: PartialEq + Clone + Debug + 'static,
     {
         let mut diff = Diff { changes: Vec::new() };
         let registers = capture_buffer_state(self.registers.iter(), other.registers.iter(), Change::Register);
@@ -291,8 +347,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         }
 
         if self.tx != other.tx {
-            let from: Arc<dyn Any> = Arc::new(self.tx.clone());
-            let to: Arc<dyn Any> = Arc::new(other.tx.clone());
+            let from: Arc<dyn AnyDebug> = Arc::new(self.tx.clone());
+            let to: Arc<dyn AnyDebug> = Arc::new(other.tx.clone());
             diff.changes.push(Change::Txn(Delta { from, to }))
         }
 
@@ -313,7 +369,9 @@ impl<S, Tx> Interpreter<S, Tx> {
             }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
-            Change::Txn(Previous(tx)) => self.tx = tx.downcast_ref::<Tx>().unwrap().clone(),
+            Change::Txn(Previous(tx)) => {
+                self.tx = tx.as_any_ref().downcast_ref::<Tx>().unwrap().clone();
+            }
             Change::Storage(_) => (),
         }
     }

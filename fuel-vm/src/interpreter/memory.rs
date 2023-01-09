@@ -194,6 +194,11 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
+    /// Return the registers used to determine ownership.
+    pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
+        OwnershipRegisters::new(self)
+    }
+
     /// Copy `data` into `addr[..|data|[`
     ///
     /// Check for overflow and memory ownership
@@ -202,26 +207,26 @@ where
     ///
     /// Will panic if data overlaps with `addr[..|data|[`
     pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
-        let registers = OwnershipRegisters::new(self);
+        let registers = self.ownership_registers();
         try_mem_write(addr, data, registers, &mut self.memory)
     }
 
     pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
-        let registers = OwnershipRegisters::new(self);
+        let registers = self.ownership_registers();
         try_zeroize(addr, len, registers, &mut self.memory)
     }
 
     /// Grant ownership of the range `[a..ab[`
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        OwnershipRegisters::new(self).has_ownership_range(range)
+        self.ownership_registers().has_ownership_range(range)
     }
 
     pub(crate) fn has_ownership_stack(&self, a: Word) -> bool {
-        OwnershipRegisters::new(self).has_ownership_stack(a)
+        self.ownership_registers().has_ownership_stack(a)
     }
 
     pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
-        OwnershipRegisters::new(self).has_ownership_heap(a)
+        self.ownership_registers().has_ownership_heap(a)
     }
 
     pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>

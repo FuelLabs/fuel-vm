@@ -41,8 +41,8 @@ mod tests;
 
 #[derive(Debug, Clone)]
 /// A diff of VM state.
-/// 
-/// By default this does not print out the 
+///
+/// By default this does not print out the
 /// memory bytes but you can supply the `#` flag
 /// to get them like:
 /// ```ignore

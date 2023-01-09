@@ -208,7 +208,9 @@ pub struct GasCostsValues {
     pub jnzi: Word,
     pub jmp: Word,
     pub jne: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
     pub ret: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
     pub rvrt: Word,
     pub smo: Word,
     pub aloc: Word,
@@ -249,6 +251,7 @@ pub struct GasCostsValues {
     pub meq: DependantCost,
     pub call: DependantCost,
     pub csiz: DependantCost,
+    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
     pub retd: DependantCost,
     pub logd: DependantCost,
     pub ldc: DependantCost,

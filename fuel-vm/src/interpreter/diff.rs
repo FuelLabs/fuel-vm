@@ -4,11 +4,13 @@
 //! This module is experimental work in progress and currently only used in testing
 //! although it could potentially stabilize to be used in production.
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::AddAssign;
+use std::sync::Arc;
 
 use fuel_asm::Word;
 use fuel_storage::Mappable;
@@ -53,6 +55,7 @@ enum Change<T: VmStateCapture + Clone> {
     Balance(T::State<MapState<AssetId, Option<Balance>>>),
     Context(T::State<Context>),
     PanicContext(T::State<PanicContext>),
+    Txn(T::State<Arc<dyn Any>>),
 }
 
 /// A mapping between the kind of state that is being capture
@@ -239,7 +242,10 @@ where
 
 impl<S, Tx> Interpreter<S, Tx> {
     /// The diff function generates a diff of VM state, represented by the Diff struct, between two VMs internal states.
-    pub fn diff(&self, other: &Self) -> Diff<Deltas> {
+    pub fn diff(&self, other: &Self) -> Diff<Deltas>
+    where
+        Tx: PartialEq + Clone + 'static,
+    {
         let mut diff = Diff { changes: Vec::new() };
         let registers = capture_buffer_state(self.registers.iter(), other.registers.iter(), Change::Register);
         diff.changes.extend(registers);
@@ -250,20 +256,24 @@ impl<S, Tx> Interpreter<S, Tx> {
         let balances = capture_map_state(self.balances.as_ref(), other.balances.as_ref(), Change::Balance);
         diff.changes.extend(balances);
 
-        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter()).peekable();
+        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
 
-        memory.by_ref().take_while(|((_, a), b)| a == b).for_each(|_| ());
-        while let Some(((start, _), _)) = memory.peek().cloned() {
-            let (from, to) = memory
+        while let Some(((start, s_from), s_to)) = memory
+            .by_ref()
+            .find(|((_, a), b)| a != b)
+            .map(|((n, a), b)| ((n, *a), *b))
+        {
+            let (mut from, mut to): (Vec<_>, Vec<_>) = memory
                 .by_ref()
                 .take_while(|((_, a), b)| a != b)
                 .map(|((_, a), b)| (*a, *b))
                 .unzip();
+            from.splice(..0, std::iter::once(s_from)).next();
+            to.splice(..0, std::iter::once(s_to)).next();
             diff.changes.push(Change::Memory(Delta {
                 from: Memory { start, bytes: from },
                 to: Memory { start, bytes: to },
             }));
-            memory.by_ref().take_while(|((_, a), b)| a == b).for_each(|_| ());
         }
 
         if self.context != other.context {
@@ -280,10 +290,19 @@ impl<S, Tx> Interpreter<S, Tx> {
             }))
         }
 
+        if self.tx != other.tx {
+            let from: Arc<dyn Any> = Arc::new(self.tx.clone());
+            let to: Arc<dyn Any> = Arc::new(other.tx.clone());
+            diff.changes.push(Change::Txn(Delta { from, to }))
+        }
+
         diff
     }
 
-    fn inverse_inner(&mut self, change: &Change<InitialVmState>) {
+    fn inverse_inner(&mut self, change: &Change<InitialVmState>)
+    where
+        Tx: Clone + 'static,
+    {
         match change {
             Change::Register(Previous(VecState { index, value })) => self.registers[*index] = *value,
             Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
@@ -294,6 +313,7 @@ impl<S, Tx> Interpreter<S, Tx> {
             }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
+            Change::Txn(Previous(tx)) => self.tx = tx.downcast_ref::<Tx>().unwrap().clone(),
             Change::Storage(_) => (),
         }
     }
@@ -341,13 +361,16 @@ fn invert_map<K: Hash + PartialEq + Eq + Clone, V: Clone + PartialEq>(
     }
 }
 
-impl<S, Tx> PartialEq for Interpreter<S, Tx> {
+impl<S, Tx> PartialEq for Interpreter<S, Tx>
+where
+    Tx: PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
             && self.memory == other.memory
             && self.frames == other.frames
             && self.receipts == other.receipts
-            // && self.tx == other.tx
+            && self.tx == other.tx
             && self.initial_balances == other.initial_balances
             // && self.storage == other.storage
             // && self.debugger == other.debugger
@@ -375,6 +398,7 @@ impl From<Diff<Deltas>> for Diff<InitialVmState> {
                     Change::Balance(v) => Change::Balance(v.into()),
                     Change::Context(v) => Change::Context(v.into()),
                     Change::PanicContext(v) => Change::PanicContext(v.into()),
+                    Change::Txn(v) => Change::Txn(v.into()),
                 })
                 .collect(),
         }

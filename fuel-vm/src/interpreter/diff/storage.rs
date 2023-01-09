@@ -190,7 +190,10 @@ where
     }
 
     /// Change this VMs internal state to match the initial state from this diff.
-    pub fn reset_vm_state(&mut self, diff: &Diff<InitialVmState>) {
+    pub fn reset_vm_state(&mut self, diff: &Diff<InitialVmState>)
+    where
+        Tx: Clone + 'static,
+    {
         for change in &diff.changes {
             self.inverse_inner(change);
             if let Change::Storage(Previous(from)) = change {

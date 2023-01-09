@@ -1,6 +1,8 @@
 use fuel_asm::Instruction;
 use fuel_asm::Opcode;
+use fuel_tx::field::Outputs;
 use fuel_tx::Script;
+use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::ContractId;
 use test_case::test_case;
@@ -77,7 +79,6 @@ fn record_and_invert_storage() {
     d.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
 
     assert_ne!(c, d);
-    dbg!(&diff);
     d.reset_vm_state(&diff);
     assert_eq!(c, d);
 }
@@ -192,4 +193,33 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
     let mut v: Vec<_> = v.into_iter().collect();
     v.sort_unstable_by_key(|(k, _)| *k);
     v
+}
+
+#[test]
+fn reset_vm_memory() {
+    let mut a = Interpreter::<_, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    a.memory.resize(200, 0);
+    b.memory.resize(200, 0);
+    b.memory[100..132].copy_from_slice(&[1u8; 32]);
+    let diff: Diff<InitialVmState> = a.diff(&b).into();
+    assert_ne!(a, b);
+    b.reset_vm_state(&diff);
+    assert_eq!(a, b);
+}
+
+#[test]
+fn reset_vm_txns() {
+    let mut a = Interpreter::<_, Script>::with_memory_storage();
+    a.memory.resize(1, 0);
+    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    b.memory.resize(1, 0);
+    b.tx.outputs_mut().push(fuel_tx::Output::Message {
+        recipient: Address::zeroed(),
+        amount: 1,
+    });
+    let diff: Diff<InitialVmState> = a.diff(&b).into();
+    assert_ne!(a, b);
+    b.reset_vm_state(&diff);
+    assert_eq!(a, b);
 }

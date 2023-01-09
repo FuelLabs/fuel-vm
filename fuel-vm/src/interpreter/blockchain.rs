@@ -408,7 +408,7 @@ where
         let output = Output::from_bytes(&self.memory[offset..])?;
 
         // amount isn't checked because we are allowed to send zero balances with a message
-        if !matches!(output, Output::Message { recipient, .. } if recipient == Address::zeroed()) {
+        if !matches!(output, Output::Message { recipient: r, .. } if r == Address::zeroed()) {
             return Err(PanicReason::NonZeroMessageOutputRecipient.into());
         }
 

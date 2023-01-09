@@ -151,12 +151,6 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
-
-    #[cfg(feature = "bench-helpers")]
-    /// Clear any receipts in memory
-    pub fn clear_receipts(&mut self) {
-        self.receipts.clear()
-    }
 }
 
 impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {

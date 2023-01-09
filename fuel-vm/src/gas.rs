@@ -168,6 +168,7 @@ impl Default for GasCostsValues {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default = "GasCostsValues::unit"))]
+/// Gas costs for every op.
 pub struct GasCostsValues {
     pub add: Word,
     pub addi: Word,
@@ -257,11 +258,18 @@ pub struct GasCostsValues {
     pub srwq: DependantCost,
 }
 
-#[allow(missing_docs)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Dependant cost is a cost that depends on the number of units.
+/// The cost starts at the base and grows by `dep_per_unit` for every unit.
+///
+/// For example, if the base is 10 and the `dep_per_unit` is 2,
+/// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
 pub struct DependantCost {
+    /// The minimum that this operation can cost.
     pub base: Word,
+    /// The amount that this operation costs per
+    /// increase in unit.
     pub dep_per_unit: Word,
 }
 

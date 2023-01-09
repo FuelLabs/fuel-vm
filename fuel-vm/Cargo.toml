@@ -44,7 +44,6 @@ test-case = "2.2"
 [features]
 default = ["optimized"]
 arbitrary = ["fuel-asm/arbitrary"]
-bench-helpers = []
 debug = []
 optimized = []
 profile-gas = ["profile-any"]

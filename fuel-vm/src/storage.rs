@@ -1,6 +1,5 @@
 //! Storage backend implementations.
 
-use core::marker::PhantomData;
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
 use fuel_types::{AssetId, Bytes32, ContractId, Salt, Word};
@@ -17,7 +16,7 @@ pub use predicate::PredicateStorage;
 pub struct ContractsRawCode;
 
 impl Mappable for ContractsRawCode {
-    type Key = ContractId;
+    type Key<'a> = ContractId;
     type SetValue = [u8];
     type GetValue = Contract;
 }
@@ -26,7 +25,7 @@ impl Mappable for ContractsRawCode {
 pub struct ContractsInfo;
 
 impl Mappable for ContractsInfo {
-    type Key = ContractId;
+    type Key<'a> = ContractId;
     /// `Salt` - is the salt used during creation of the contract for uniques.
     /// `Bytes32` - is the root hash of the contract's code.
     type SetValue = (Salt, Bytes32);
@@ -36,10 +35,10 @@ impl Mappable for ContractsInfo {
 /// The storage table for contract's assets balances.
 ///
 /// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsAssets<'a>(PhantomData<&'a ()>);
+pub struct ContractsAssets;
 
-impl<'a> Mappable for ContractsAssets<'a> {
-    type Key = (&'a ContractId, &'a AssetId);
+impl Mappable for ContractsAssets {
+    type Key<'a> = (&'a ContractId, &'a AssetId);
     type SetValue = Word;
     type GetValue = Self::SetValue;
 }
@@ -47,11 +46,11 @@ impl<'a> Mappable for ContractsAssets<'a> {
 /// The storage table for contract's hashed key-value state.
 ///
 /// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsState<'a>(PhantomData<&'a ()>);
+pub struct ContractsState;
 
-impl<'a> Mappable for ContractsState<'a> {
+impl Mappable for ContractsState {
     /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's key.
-    type Key = (&'a ContractId, &'a Bytes32);
+    type Key<'a> = (&'a ContractId, &'a Bytes32);
     /// The table value is hash of the value.
     type SetValue = Bytes32;
     type GetValue = Self::SetValue;

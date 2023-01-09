@@ -192,7 +192,7 @@ where
     });
     let intersection = a_keys.intersection(b_keys).filter_map(|k| {
         let value_a = &a[k];
-        let value_b = &a[k];
+        let value_b = &b[k];
         (value_a != value_b).then(|| Delta {
             from: MapState {
                 key: (*k).clone(),

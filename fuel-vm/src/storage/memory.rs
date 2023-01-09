@@ -146,7 +146,7 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
 }
 
 // TODO: Optimize `balances` to work with `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
-impl StorageInspect<ContractsAssets<'_>> for MemoryStorage {
+impl StorageInspect<ContractsAssets> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &AssetId)) -> Result<Option<Cow<'_, Word>>, Infallible> {
@@ -158,7 +158,7 @@ impl StorageInspect<ContractsAssets<'_>> for MemoryStorage {
     }
 }
 
-impl StorageMutate<ContractsAssets<'_>> for MemoryStorage {
+impl StorageMutate<ContractsAssets> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &AssetId), value: &Word) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.insert((*key.0, *key.1), *value))
     }
@@ -169,7 +169,7 @@ impl StorageMutate<ContractsAssets<'_>> for MemoryStorage {
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
+impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory
@@ -185,7 +185,7 @@ impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
 }
 
 // TODO: Optimize `contract_state` to work with `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
-impl StorageInspect<ContractsState<'_>> for MemoryStorage {
+impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &Bytes32)) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
@@ -197,7 +197,7 @@ impl StorageInspect<ContractsState<'_>> for MemoryStorage {
     }
 }
 
-impl StorageMutate<ContractsState<'_>> for MemoryStorage {
+impl StorageMutate<ContractsState> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &Bytes32), value: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.memory.contract_state.insert((*key.0, *key.1), *value))
     }
@@ -208,7 +208,7 @@ impl StorageMutate<ContractsState<'_>> for MemoryStorage {
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsState<'_>> for MemoryStorage {
+impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory

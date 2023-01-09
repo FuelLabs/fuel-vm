@@ -286,7 +286,7 @@ where
             }
 
             OpcodeRepr::SMO => {
-                self.gas_charge(self.gas_costs.smo)?;
+                self.dependant_gas_charge(self.gas_costs.smo, b)?;
                 self.message_output(a, b, c, d)?;
             }
 
@@ -428,7 +428,7 @@ where
             }
 
             OpcodeRepr::SRWQ => {
-                self.gas_charge(self.gas_costs.srwq)?;
+                self.dependant_gas_charge(self.gas_costs.srwq, d)?;
                 self.state_read_qword(a, rb, c, d)?;
             }
 

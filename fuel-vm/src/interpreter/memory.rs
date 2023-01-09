@@ -456,7 +456,7 @@ fn try_mem_write(
     let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
 
     let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, 32))
+        .then(|| MemoryRange::new(addr as Word, data.len() as Word))
         .ok_or(PanicReason::MemoryOverflow)?;
 
     registers
@@ -476,7 +476,7 @@ fn try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters, memory: &
     let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
 
     let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, 32))
+        .then(|| MemoryRange::new(addr as Word, len as Word))
         .ok_or(PanicReason::MemoryOverflow)?;
 
     registers

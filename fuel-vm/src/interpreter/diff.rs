@@ -427,6 +427,7 @@ impl<S, Tx> PartialEq for Interpreter<S, Tx>
 where
     Tx: PartialEq,
 {
+    /// Does not compare storage, debugger or profiler
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
             && self.memory == other.memory
@@ -434,14 +435,11 @@ where
             && self.receipts == other.receipts
             && self.tx == other.tx
             && self.initial_balances == other.initial_balances
-            // && self.storage == other.storage
-            // && self.debugger == other.debugger
             && self.context == other.context
-            // && self.balances == other.balances
+            && self.balances == other.balances
             && self.gas_costs == other.gas_costs
-            // && self.profiler == other.profiler
             && self.params == other.params
-        // && self.panic_context == other.panic_context
+            && self.panic_context == other.panic_context
     }
 }
 

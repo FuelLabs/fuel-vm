@@ -70,51 +70,51 @@ pub fn default_gas_costs() -> GasCostsValues {
         tro: 94,
         xor: 1,
         xori: 1,
-        call: DependantCost {
+        call: DependentCost {
             base: 311,
             dep_per_unit: 14,
         },
-        ccp: DependantCost {
+        ccp: DependentCost {
             base: 155,
             dep_per_unit: 15,
         },
-        csiz: DependantCost {
+        csiz: DependentCost {
             base: 148,
             dep_per_unit: 16,
         },
-        ldc: DependantCost {
+        ldc: DependentCost {
             base: 156,
             dep_per_unit: 14,
         },
-        logd: DependantCost {
+        logd: DependentCost {
             base: 47,
             dep_per_unit: 21,
         },
-        mcl: DependantCost {
+        mcl: DependentCost {
             base: 1,
             dep_per_unit: 2539,
         },
-        mcli: DependantCost {
+        mcli: DependentCost {
             base: 1,
             dep_per_unit: 2610,
         },
-        mcp: DependantCost {
+        mcp: DependentCost {
             base: 1,
             dep_per_unit: 1377,
         },
-        meq: DependantCost {
+        meq: DependentCost {
             base: 1,
             dep_per_unit: 2802,
         },
-        retd: DependantCost {
+        retd: DependentCost {
             base: 64,
             dep_per_unit: 21,
         },
-        smo: DependantCost {
+        smo: DependentCost {
             base: 79,
             dep_per_unit: 14,
         },
-        srwq: DependantCost {
+        srwq: DependentCost {
             base: 424,
             dep_per_unit: 6,
         },

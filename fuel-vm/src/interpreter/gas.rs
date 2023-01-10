@@ -2,7 +2,7 @@ use super::Interpreter;
 use crate::arith;
 use crate::consts::*;
 use crate::error::RuntimeError;
-use crate::gas::DependantCost;
+use crate::gas::DependentCost;
 
 use fuel_asm::PanicReason;
 use fuel_types::Word;
@@ -12,7 +12,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.registers[REG_GGAS]
     }
 
-    pub(crate) fn dependant_gas_charge(&mut self, gas_cost: DependantCost, arg: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn dependant_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
         if gas_cost.dep_per_unit == 0 {
             self.gas_charge(gas_cost.base)
         } else {

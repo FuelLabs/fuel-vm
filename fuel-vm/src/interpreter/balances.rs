@@ -164,6 +164,12 @@ impl AsRef<HashMap<AssetId, Balance>> for RuntimeBalances {
     }
 }
 
+impl PartialEq for RuntimeBalances {
+    fn eq(&self, other: &Self) -> bool {
+        self.state == other.state
+    }
+}
+
 #[test]
 fn writes_to_memory_correctly() {
     use crate::prelude::*;

@@ -242,30 +242,30 @@ pub struct GasCostsValues {
     pub xor: Word,
     pub xori: Word,
 
-    // Dependant
-    pub call: DependantCost,
-    pub ccp: DependantCost,
-    pub csiz: DependantCost,
-    pub ldc: DependantCost,
-    pub logd: DependantCost,
-    pub mcl: DependantCost,
-    pub mcli: DependantCost,
-    pub mcp: DependantCost,
-    pub meq: DependantCost,
+    // Dependent
+    pub call: DependentCost,
+    pub ccp: DependentCost,
+    pub csiz: DependentCost,
+    pub ldc: DependentCost,
+    pub logd: DependentCost,
+    pub mcl: DependentCost,
+    pub mcli: DependentCost,
+    pub mcp: DependentCost,
+    pub meq: DependentCost,
     #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
-    pub retd: DependantCost,
-    pub smo: DependantCost,
-    pub srwq: DependantCost,
+    pub retd: DependentCost,
+    pub smo: DependentCost,
+    pub srwq: DependentCost,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// Dependant cost is a cost that depends on the number of units.
+/// Dependent cost is a cost that depends on the number of units.
 /// The cost starts at the base and grows by `dep_per_unit` for every unit.
 ///
 /// For example, if the base is 10 and the `dep_per_unit` is 2,
 /// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
-pub struct DependantCost {
+pub struct DependentCost {
     /// The minimum that this operation can cost.
     pub base: Word,
     /// The amount that this operation costs per
@@ -356,18 +356,18 @@ impl GasCostsValues {
             tro: 0,
             xor: 0,
             xori: 0,
-            call: DependantCost::free(),
-            ccp: DependantCost::free(),
-            csiz: DependantCost::free(),
-            ldc: DependantCost::free(),
-            logd: DependantCost::free(),
-            mcl: DependantCost::free(),
-            mcli: DependantCost::free(),
-            mcp: DependantCost::free(),
-            meq: DependantCost::free(),
-            retd: DependantCost::free(),
-            smo: DependantCost::free(),
-            srwq: DependantCost::free(),
+            call: DependentCost::free(),
+            ccp: DependentCost::free(),
+            csiz: DependentCost::free(),
+            ldc: DependentCost::free(),
+            logd: DependentCost::free(),
+            mcl: DependentCost::free(),
+            mcli: DependentCost::free(),
+            mcp: DependentCost::free(),
+            meq: DependentCost::free(),
+            retd: DependentCost::free(),
+            smo: DependentCost::free(),
+            srwq: DependentCost::free(),
         }
     }
 
@@ -441,23 +441,23 @@ impl GasCostsValues {
             tro: 1,
             xor: 1,
             xori: 1,
-            call: DependantCost::unit(),
-            ccp: DependantCost::unit(),
-            csiz: DependantCost::unit(),
-            ldc: DependantCost::unit(),
-            logd: DependantCost::unit(),
-            mcl: DependantCost::unit(),
-            mcli: DependantCost::unit(),
-            mcp: DependantCost::unit(),
-            meq: DependantCost::unit(),
-            retd: DependantCost::unit(),
-            smo: DependantCost::unit(),
-            srwq: DependantCost::unit(),
+            call: DependentCost::unit(),
+            ccp: DependentCost::unit(),
+            csiz: DependentCost::unit(),
+            ldc: DependentCost::unit(),
+            logd: DependentCost::unit(),
+            mcl: DependentCost::unit(),
+            mcli: DependentCost::unit(),
+            mcp: DependentCost::unit(),
+            meq: DependentCost::unit(),
+            retd: DependentCost::unit(),
+            smo: DependentCost::unit(),
+            srwq: DependentCost::unit(),
         }
     }
 }
 
-impl DependantCost {
+impl DependentCost {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
         Self {

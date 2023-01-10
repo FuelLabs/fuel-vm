@@ -370,7 +370,11 @@ impl<S, Tx> Interpreter<S, Tx> {
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {
-                self.tx = tx.as_any_ref().downcast_ref::<Tx>().unwrap().clone();
+                self.tx = AsRef::<dyn AnyDebug>::as_ref(tx)
+                    .as_any_ref()
+                    .downcast_ref::<Tx>()
+                    .unwrap()
+                    .clone();
             }
             Change::Storage(_) => (),
         }

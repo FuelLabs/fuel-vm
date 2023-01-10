@@ -303,7 +303,7 @@ where
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
         let contract_id = *self.internal_contract()?;
-        let input = StateReadQWord::new(a, c, d, OwnershipRegisters::new(self))?;
+        let input = StateReadQWord::new(a, c, d, self.ownership_registers())?;
         let Self {
             ref storage,
             ref mut memory,

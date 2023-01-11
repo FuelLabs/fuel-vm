@@ -1,9 +1,9 @@
 //! In-memory client implementation
 
-use crate::backtrace::Backtrace;
 use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
+use crate::{backtrace::Backtrace, gas::GasCosts};
 
 use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script};
 
@@ -27,9 +27,9 @@ impl AsMut<MemoryStorage> for MemoryClient {
 
 impl MemoryClient {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn new(storage: MemoryStorage, params: ConsensusParameters) -> Self {
+    pub fn new(storage: MemoryStorage, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
-            transactor: Transactor::new(storage, params),
+            transactor: Transactor::new(storage, params, gas_costs),
         }
     }
 
@@ -103,7 +103,7 @@ impl MemoryClient {
 
 impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
-        Self::new(s, Default::default())
+        Self::new(s, Default::default(), Default::default())
     }
 }
 

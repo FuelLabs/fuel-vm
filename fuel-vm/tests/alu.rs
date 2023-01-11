@@ -31,7 +31,7 @@ fn alu(registers_init: &[(RegisterId, Word)], op: Opcode, reg: RegisterId, expec
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -62,7 +62,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage.clone(), Default::default())
+    let receipts = Transactor::new(storage.clone(), Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -90,7 +90,7 @@ fn alu_overflow(program: &[Opcode], reg: RegisterId, expected: u128, boolean: bo
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -140,7 +140,7 @@ fn alu_wrapping(registers_init: &[(RegisterId, Word)], op: Opcode, reg: Register
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -173,7 +173,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage.clone(), Default::default())
+    let receipts = Transactor::new(storage.clone(), Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -201,7 +201,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], op: Opcode, reg: Regist
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -232,7 +232,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], op: Opcode) {
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")

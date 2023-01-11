@@ -52,7 +52,7 @@ where
     builder.add_input(input);
 
     let tx = builder.finalize_checked_basic(height, &params);
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default())
+    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
 }
 
 #[test]

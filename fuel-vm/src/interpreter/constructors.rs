@@ -1,11 +1,11 @@
 //! Exposed constructors API for the [`Interpreter`]
 
 use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
-use crate::consts::*;
 use crate::context::Context;
 use crate::interpreter::PanicContext;
 use crate::state::Debugger;
 use crate::storage::MemoryStorage;
+use crate::{consts::*, gas::GasCosts};
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::{ProfileReceiver, Profiler};
@@ -21,7 +21,7 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(storage: S, params: ConsensusParameters) -> Self {
+    pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; VM_MAX_RAM as usize],
@@ -33,6 +33,7 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
+            gas_costs,
             #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             params,
@@ -74,7 +75,7 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default(), Default::default())
+        Self::with_storage(Default::default(), Default::default(), Default::default())
     }
 }
 

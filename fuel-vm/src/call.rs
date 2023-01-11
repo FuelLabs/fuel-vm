@@ -193,6 +193,16 @@ impl CallFrame {
     pub const fn asset_id(&self) -> &AssetId {
         &self.asset_id
     }
+
+    /// Set the value of the context gas for this call frame.
+    pub fn set_context_gas(&mut self) -> &mut Word {
+        &mut self.registers[REG_CGAS]
+    }
+
+    /// Set the value of the global gas for this call frame.
+    pub fn set_global_gas(&mut self) -> &mut Word {
+        &mut self.registers[REG_GGAS]
+    }
 }
 
 impl SizedBytes for CallFrame {

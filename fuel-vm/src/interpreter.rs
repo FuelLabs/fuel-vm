@@ -3,6 +3,7 @@
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::context::Context;
+use crate::gas::GasCosts;
 use crate::state::Debugger;
 use fuel_asm::PanicReason;
 use std::collections::BTreeMap;
@@ -23,6 +24,7 @@ mod blockchain;
 mod constructors;
 mod contract;
 mod crypto;
+pub mod diff;
 mod executors;
 mod flow;
 mod frame;
@@ -66,6 +68,7 @@ pub struct Interpreter<S, Tx = ()> {
     debugger: Debugger,
     context: Context,
     balances: RuntimeBalances,
+    gas_costs: GasCosts,
     #[cfg(feature = "profile-any")]
     profiler: Profiler,
     params: ConsensusParameters,
@@ -78,7 +81,7 @@ pub struct Interpreter<S, Tx = ()> {
 /// regarding panic reasons to simplify debugging.
 // TODO: Move this enum into `fuel-tx` and use it inside of the `Receipt::Panic` as meta
 //  information. Maybe better to have `Vec<PanicContext>` to provide more information.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PanicContext {
     /// No additional information.
     None,

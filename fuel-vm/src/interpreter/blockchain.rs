@@ -248,7 +248,12 @@ where
         // Safety: Memory bounds are checked by the interpreter
         let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
-        self.registers[ra] = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
+        // FIXME: This is checking the cost after the db call has happened.
+        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
+        // should happen on the pinned slice before reading it.
+        let len = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
+        self.dependent_gas_charge(self.gas_costs.csiz, len)?;
+        self.registers[ra] = len;
 
         self.inc_pc()
     }

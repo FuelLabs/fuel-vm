@@ -16,7 +16,7 @@ fn setup(ops: Vec<Opcode>) -> Transactor<MemoryStorage, Script> {
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let mut vm = Transactor::new(storage, Default::default());
+    let mut vm = Transactor::new(storage, Default::default(), Default::default());
     vm.transact(tx);
     vm
 }

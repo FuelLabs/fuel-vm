@@ -60,7 +60,7 @@ fn metadata() {
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), Default::default())
         .transact(tx)
         .is_success());
 
@@ -106,7 +106,7 @@ fn metadata() {
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), Default::default())
         .transact(tx)
         .is_success());
 
@@ -152,7 +152,7 @@ fn metadata() {
         .into_checked(height, &params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(&mut storage, Default::default())
+    let receipts = Transactor::new(&mut storage, Default::default(), Default::default())
         .transact(tx)
         .receipts()
         .expect("Failed to transact")

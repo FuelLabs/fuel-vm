@@ -2,6 +2,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
+use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
@@ -42,12 +43,12 @@ impl<T> Interpreter<PredicateStorage, T> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates<Tx>(checked: Checked<Tx>, params: ConsensusParameters) -> bool
+    pub fn check_predicates<Tx>(checked: Checked<Tx>, params: ConsensusParameters, gas_costs: GasCosts) -> bool
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
-        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params);
+        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
 
         if !checked.transaction().check_predicate_owners() {
             return false;
@@ -326,8 +327,9 @@ where
         storage: S,
         tx: Checked<Tx>,
         params: ConsensusParameters,
+        gas_costs: GasCosts,
     ) -> Result<StateTransition<Tx>, InterpreterError> {
-        let mut interpreter = Interpreter::with_storage(storage, params);
+        let mut interpreter = Interpreter::with_storage(storage, params, gas_costs);
         interpreter
             .transact(tx)
             .map(ProgramState::from)

@@ -174,7 +174,7 @@ pub trait Checkable {
     fn check_signatures(&self) -> Result<(), CheckError>;
 
     /// Validates the transactions according to rules from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
+    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
     fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError>;
 }
 

@@ -36,7 +36,7 @@ pub use types::{CreateCheckedMetadata, ScriptCheckedMetadata};
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
 
-/// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction.
+/// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Transaction {

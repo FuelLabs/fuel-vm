@@ -151,11 +151,11 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &AssetId)) -> Result<Option<Cow<'_, Word>>, Infallible> {
-        Ok(self.memory.balances.get(&key.clone().cloned()).copied().map(Cow::Owned))
+        Ok(self.memory.balances.get(&(*key).cloned()).copied().map(Cow::Owned))
     }
 
     fn contains_key(&self, key: &(&ContractId, &AssetId)) -> Result<bool, Infallible> {
-        Ok(self.memory.balances.contains_key(&key.clone().cloned()))
+        Ok(self.memory.balances.contains_key(&(*key).cloned()))
     }
 }
 
@@ -166,7 +166,7 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
 
     // TODO: Optimize `balances` to remove by `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
     fn remove(&mut self, key: &(&ContractId, &AssetId)) -> Result<Option<Word>, Infallible> {
-        Ok(self.memory.balances.remove(&key.clone().cloned()))
+        Ok(self.memory.balances.remove(&(*key).cloned()))
     }
 }
 
@@ -190,11 +190,11 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &Bytes32)) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
-        Ok(self.memory.contract_state.get(&key.clone().cloned()).map(Cow::Borrowed))
+        Ok(self.memory.contract_state.get(&(*key).cloned()).map(Cow::Borrowed))
     }
 
     fn contains_key(&self, key: &(&ContractId, &Bytes32)) -> Result<bool, Infallible> {
-        Ok(self.memory.contract_state.contains_key(&key.clone().cloned()))
+        Ok(self.memory.contract_state.contains_key(&(*key).cloned()))
     }
 }
 
@@ -205,7 +205,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
 
     // TODO: Optimize `contract_state` to remove by `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
     fn remove(&mut self, key: &(&ContractId, &Bytes32)) -> Result<Option<Bytes32>, Infallible> {
-        Ok(self.memory.contract_state.remove(&key.clone().cloned()))
+        Ok(self.memory.contract_state.remove(&(*key).cloned()))
     }
 }
 

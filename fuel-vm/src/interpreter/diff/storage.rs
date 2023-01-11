@@ -232,7 +232,7 @@ fn storage_state_to_changes<K, V>(
     state: Delta<HashMap<K, &V>>,
     f: fn(MappableState<K, V>) -> StorageState,
 ) where
-    K: Copy + PartialEq + Eq + std::hash::Hash + 'static,
+    K: Copy + PartialEq + Eq + Hash + 'static,
     V: Clone + 'static,
 {
     let Delta { mut from, to } = state;
@@ -333,7 +333,7 @@ where
         self.0.timestamp(height)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<fuel_types::Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError> {
         self.0.block_hash(block_height)
     }
 
@@ -343,26 +343,26 @@ where
 
     fn merkle_contract_state_range(
         &self,
-        id: &fuel_types::ContractId,
-        start_key: &fuel_types::Bytes32,
+        id: &ContractId,
+        start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<std::borrow::Cow<fuel_types::Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
     fn merkle_contract_state_insert_range(
         &mut self,
-        contract: &fuel_types::ContractId,
-        start_key: &fuel_types::Bytes32,
-        values: &[fuel_types::Bytes32],
+        contract: &ContractId,
+        start_key: &Bytes32,
+        values: &[Bytes32],
     ) -> Result<Option<()>, Self::DataError> {
         self.0.merkle_contract_state_insert_range(contract, start_key, values)
     }
 
     fn merkle_contract_state_remove_range(
         &mut self,
-        contract: &fuel_types::ContractId,
-        start_key: &fuel_types::Bytes32,
+        contract: &ContractId,
+        start_key: &Bytes32,
         range: Word,
     ) -> Result<Option<()>, Self::DataError> {
         self.0.merkle_contract_state_remove_range(contract, start_key, range)
@@ -371,21 +371,21 @@ where
 
 impl StorageType for ContractsState {
     fn record_insert(key: &Self::Key<'_>, value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert(key.clone().cloned(), value.clone(), existing))
+        StorageDelta::State(MappableDelta::Insert((*key).cloned(), *value, existing))
     }
 
     fn record_remove(key: &Self::Key<'_>, value: Bytes32) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Remove(key.clone().cloned(), value))
+        StorageDelta::State(MappableDelta::Remove((*key).cloned(), value))
     }
 }
 
 impl StorageType for ContractsAssets {
     fn record_insert(key: &Self::Key<'_>, value: &u64, existing: Option<u64>) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Insert(key.clone().cloned(), *value, existing))
+        StorageDelta::Assets(MappableDelta::Insert((*key).cloned(), *value, existing))
     }
 
     fn record_remove(key: &Self::Key<'_>, value: u64) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Remove(key.clone().cloned(), value))
+        StorageDelta::Assets(MappableDelta::Remove((*key).cloned(), value))
     }
 }
 
@@ -395,21 +395,21 @@ impl StorageType for ContractsInfo {
         value: &(fuel_types::Salt, Bytes32),
         existing: Option<(fuel_types::Salt, Bytes32)>,
     ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Insert(key.clone(), value.clone(), existing))
+        StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
     }
 
     fn record_remove(key: &ContractId, value: (fuel_types::Salt, Bytes32)) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Remove(key.clone(), value))
+        StorageDelta::Info(MappableDelta::Remove(*key, value))
     }
 }
 
 impl StorageType for ContractsRawCode {
     fn record_insert(key: &ContractId, value: &[u8], existing: Option<Contract>) -> StorageDelta {
-        StorageDelta::RawCode(MappableDelta::Insert(key.clone(), value.into(), existing))
+        StorageDelta::RawCode(MappableDelta::Insert(*key, value.into(), existing))
     }
 
     fn record_remove(key: &ContractId, value: Contract) -> StorageDelta {
-        StorageDelta::RawCode(MappableDelta::Remove(key.clone(), value))
+        StorageDelta::RawCode(MappableDelta::Remove(*key, value))
     }
 }
 

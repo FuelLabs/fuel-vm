@@ -15,7 +15,7 @@ use std::io::{self, Write};
 /// Call structure representation, composed of a called contract `to` and two
 /// word arguments.
 ///
-/// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#call-call-contract>
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract>
 pub struct Call {
     to: ContractId,
     a: Word,
@@ -109,7 +109,7 @@ impl TryFrom<&[u8]> for Call {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Call frame representation in the VM stack.
 ///
-/// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#call-frames>
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#call-frames>
 pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,

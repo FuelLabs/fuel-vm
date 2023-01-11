@@ -21,7 +21,7 @@ impl Contract {
 
     /// Calculate the code root from a contract.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id>
     pub fn root_from_code<B>(bytes: B) -> Bytes32
     where
         B: AsRef<[u8]>,
@@ -70,7 +70,7 @@ impl Contract {
 
     /// Calculate and return the contract id, provided a salt, code root and state root.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id>
     pub fn id(&self, salt: &Salt, root: &Bytes32, state_root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 

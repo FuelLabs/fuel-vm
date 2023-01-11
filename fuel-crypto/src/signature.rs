@@ -184,7 +184,7 @@ mod use_std {
         /// Sign a given message and compress the `v` to the signature
         ///
         /// The compression scheme is described in
-        /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/cryptographic_primitives.md#public-key-cryptography>
+        /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md>
         pub fn sign(secret: &SecretKey, message: &Message) -> Self {
             let secret = secret.borrow();
             let message = message.to_secp();

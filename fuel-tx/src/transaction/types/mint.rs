@@ -60,7 +60,7 @@ impl MintMetadata {
 }
 
 /// The definition of the `Mint` transaction from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transactionmint
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transactionmint
 ///
 /// This transaction can be created by the block producer and included in the block only by it.
 #[derive(Default, Debug, Clone, Derivative)]

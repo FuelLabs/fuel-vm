@@ -166,7 +166,7 @@ where
         // FIXME: This is checking the cost after the db call has happened.
         // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
         // should happen on the pinned slice before reading it.
-        self.dependant_gas_charge(self.gas_costs.call, frame.code().len() as u64)?;
+        self.dependent_gas_charge(self.gas_costs.call, frame.code().len() as u64)?;
 
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;

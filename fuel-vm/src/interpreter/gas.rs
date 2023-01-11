@@ -12,7 +12,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.registers[REG_GGAS]
     }
 
-    pub(crate) fn dependant_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
         if gas_cost.dep_per_unit == 0 {
             self.gas_charge(gas_cost.base)
         } else {

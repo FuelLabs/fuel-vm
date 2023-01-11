@@ -273,7 +273,7 @@ where
             }
 
             OpcodeRepr::RETD => {
-                self.dependant_gas_charge(self.gas_costs.retd, b)?;
+                self.dependent_gas_charge(self.gas_costs.retd, b)?;
 
                 return self.ret_data(a, b).map(ExecuteState::ReturnData);
             }
@@ -286,7 +286,7 @@ where
             }
 
             OpcodeRepr::SMO => {
-                self.dependant_gas_charge(self.gas_costs.smo, b)?;
+                self.dependent_gas_charge(self.gas_costs.smo, b)?;
                 self.message_output(a, b, c, d)?;
             }
 
@@ -316,17 +316,17 @@ where
             }
 
             OpcodeRepr::MCL => {
-                self.dependant_gas_charge(self.gas_costs.mcl, b)?;
+                self.dependent_gas_charge(self.gas_costs.mcl, b)?;
                 self.memclear(a, b)?;
             }
 
             OpcodeRepr::MCLI => {
-                self.dependant_gas_charge(self.gas_costs.mcli, b)?;
+                self.dependent_gas_charge(self.gas_costs.mcli, b)?;
                 self.memclear(a, imm)?;
             }
 
             OpcodeRepr::MCP => {
-                self.dependant_gas_charge(self.gas_costs.mcp, c)?;
+                self.dependent_gas_charge(self.gas_costs.mcp, c)?;
                 self.memcopy(a, b, c)?;
             }
 
@@ -336,7 +336,7 @@ where
             }
 
             OpcodeRepr::MEQ => {
-                self.dependant_gas_charge(self.gas_costs.meq, d)?;
+                self.dependent_gas_charge(self.gas_costs.meq, d)?;
                 self.memeq(ra, b, c, d)?;
             }
 
@@ -384,7 +384,7 @@ where
             }
 
             OpcodeRepr::CCP => {
-                self.dependant_gas_charge(self.gas_costs.ccp, d)?;
+                self.dependent_gas_charge(self.gas_costs.ccp, d)?;
                 self.code_copy(a, b, c, d)?;
             }
 
@@ -398,7 +398,7 @@ where
             }
 
             OpcodeRepr::LDC => {
-                self.dependant_gas_charge(self.gas_costs.ldc, c)?;
+                self.dependent_gas_charge(self.gas_costs.ldc, c)?;
                 self.load_contract_code(a, b, c)?;
             }
 
@@ -408,7 +408,7 @@ where
             }
 
             OpcodeRepr::LOGD => {
-                self.dependant_gas_charge(self.gas_costs.logd, d)?;
+                self.dependent_gas_charge(self.gas_costs.logd, d)?;
                 self.log_data(a, b, c, d)?;
             }
 
@@ -428,7 +428,7 @@ where
             }
 
             OpcodeRepr::SRWQ => {
-                self.dependant_gas_charge(self.gas_costs.srwq, d)?;
+                self.dependent_gas_charge(self.gas_costs.srwq, d)?;
                 self.state_read_qword(a, rb, c, d)?;
             }
 

@@ -53,25 +53,6 @@ pub(super) trait StorageType: Mappable {
     fn record_remove(key: &Self::Key<'_>, value: Self::GetValue) -> StorageDelta;
 }
 
-pub(super) trait ToOwnedKey {
-    type OwnedKey;
-    fn to_owned_key(&self) -> Self::OwnedKey;
-}
-
-pub(super) trait ToSetValue<T> {
-    fn to_set_value(&self) -> T;
-}
-
-impl<T, U> ToSetValue<T> for U
-where
-    U: ToOwned,
-    <U as ToOwned>::Owned: Into<T>,
-{
-    fn to_set_value(&self) -> T {
-        self.to_owned().into()
-    }
-}
-
 #[derive(Debug)]
 pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where

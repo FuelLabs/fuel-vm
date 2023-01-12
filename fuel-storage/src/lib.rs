@@ -12,7 +12,7 @@ pub type MerkleRoot = [u8; 32];
 /// Mappable type with `Key` and `Value`.
 pub trait Mappable {
     /// The type of the value's key.
-    type Key;
+    type Key<'a>;
     /// The value type is used while setting the value to the storage. In most cases, it is the same
     /// as `Self::GetValue`, but it is without restriction and can be used for performance
     /// optimizations.
@@ -22,10 +22,10 @@ pub trait Mappable {
     /// ```rust
     /// use core::marker::PhantomData;
     /// use fuel_storage::Mappable;
-    /// pub struct Contract<'a>(PhantomData<&'a ()>);
+    /// pub struct Contract;
     ///
-    /// impl<'a> Mappable for Contract<'a> {
-    ///     type Key = &'a [u8; 32];
+    /// impl Mappable for Contract {
+    ///     type Key<'a> = &'a [u8; 32];
     ///     /// It is optimized to use slice instead of vector.
     ///     type SetValue = [u8];
     ///     type GetValue = Vec<u8>;
@@ -43,10 +43,10 @@ pub trait StorageInspect<Type: Mappable> {
     type Error;
 
     /// Retrieve `Cow<Value>` such as `Key->Value`.
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::GetValue>>, Self::Error>;
+    fn get(&self, key: &Type::Key<'_>) -> Result<Option<Cow<Type::GetValue>>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
-    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
+    fn contains_key(&self, key: &Type::Key<'_>) -> Result<bool, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -57,13 +57,13 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     ///
     /// If `Key` was already mappped to a value, return the replaced value as `Ok(Some(Value))`. Return
     /// `Ok(None)` otherwise.
-    fn insert(&mut self, key: &Type::Key, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error>;
+    fn insert(&mut self, key: &Type::Key<'_>, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error>;
 
     /// Remove `Key->Value` mapping from the storage.
     ///
     /// Return `Ok(Some(Value))` if the value was present. If the key wasn't found, return
     /// `Ok(None)`.
-    fn remove(&mut self, key: &Type::Key) -> Result<Option<Type::GetValue>, Self::Error>;
+    fn remove(&mut self, key: &Type::Key<'_>) -> Result<Option<Type::GetValue>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. The type should implement the
@@ -93,7 +93,7 @@ pub struct StorageRef<'a, T: 'a + ?Sized, Type: Mappable>(&'a T, core::marker::P
 /// pub struct Contracts;
 ///
 /// impl Mappable for Contracts {
-///     type Key = [u8; 32];
+///     type Key<'a> = [u8; 32];
 ///     type SetValue = [u8];
 ///     type GetValue = Vec<u8>;
 /// }
@@ -101,7 +101,7 @@ pub struct StorageRef<'a, T: 'a + ?Sized, Type: Mappable>(&'a T, core::marker::P
 /// pub struct Balances;
 ///
 /// impl Mappable for Balances {
-///     type Key = u128;
+///     type Key<'a> = u128;
 ///     type SetValue = u64;
 ///     type GetValue = u64;
 /// }
@@ -140,7 +140,7 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marke
 /// pub struct Contracts;
 ///
 /// impl Mappable for Contracts {
-///     type Key = [u8; 32];
+///     type Key<'a> = [u8; 32];
 ///     type SetValue = [u8];
 ///     type GetValue = Vec<u8>;
 /// }
@@ -148,7 +148,7 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marke
 /// pub struct Balances;
 ///
 /// impl Mappable for Balances {
-///     type Key = u128;
+///     type Key<'a> = u128;
 ///     type SetValue = u64;
 ///     type GetValue = u64;
 /// }

@@ -8,6 +8,7 @@ use fuel_tx::Contract;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
 use tai64::Tai64;
+use tuples::TupleCloned;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -146,30 +147,30 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
 }
 
 // TODO: Optimize `balances` to work with `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
-impl StorageInspect<ContractsAssets<'_>> for MemoryStorage {
+impl StorageInspect<ContractsAssets> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &AssetId)) -> Result<Option<Cow<'_, Word>>, Infallible> {
-        Ok(self.memory.balances.get(&(*key.0, *key.1)).copied().map(Cow::Owned))
+        Ok(self.memory.balances.get(&(*key).cloned()).copied().map(Cow::Owned))
     }
 
     fn contains_key(&self, key: &(&ContractId, &AssetId)) -> Result<bool, Infallible> {
-        Ok(self.memory.balances.contains_key(&(*key.0, *key.1)))
+        Ok(self.memory.balances.contains_key(&(*key).cloned()))
     }
 }
 
-impl StorageMutate<ContractsAssets<'_>> for MemoryStorage {
+impl StorageMutate<ContractsAssets> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &AssetId), value: &Word) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.insert((*key.0, *key.1), *value))
     }
 
     // TODO: Optimize `balances` to remove by `&(&ContractId, &AssetId)` instead of `&(ContractId, AssetId)`
     fn remove(&mut self, key: &(&ContractId, &AssetId)) -> Result<Option<Word>, Infallible> {
-        Ok(self.memory.balances.remove(&(*key.0, *key.1)))
+        Ok(self.memory.balances.remove(&(*key).cloned()))
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
+impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory
@@ -185,30 +186,30 @@ impl MerkleRootStorage<ContractId, ContractsAssets<'_>> for MemoryStorage {
 }
 
 // TODO: Optimize `contract_state` to work with `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
-impl StorageInspect<ContractsState<'_>> for MemoryStorage {
+impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
     fn get(&self, key: &(&ContractId, &Bytes32)) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
-        Ok(self.memory.contract_state.get(&(*key.0, *key.1)).map(Cow::Borrowed))
+        Ok(self.memory.contract_state.get(&(*key).cloned()).map(Cow::Borrowed))
     }
 
     fn contains_key(&self, key: &(&ContractId, &Bytes32)) -> Result<bool, Infallible> {
-        Ok(self.memory.contract_state.contains_key(&(*key.0, *key.1)))
+        Ok(self.memory.contract_state.contains_key(&(*key).cloned()))
     }
 }
 
-impl StorageMutate<ContractsState<'_>> for MemoryStorage {
+impl StorageMutate<ContractsState> for MemoryStorage {
     fn insert(&mut self, key: &(&ContractId, &Bytes32), value: &Bytes32) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.memory.contract_state.insert((*key.0, *key.1), *value))
     }
 
     // TODO: Optimize `contract_state` to remove by `&(&ContractId, &Bytes32)` instead of `&(ContractId, Bytes32)`
     fn remove(&mut self, key: &(&ContractId, &Bytes32)) -> Result<Option<Bytes32>, Infallible> {
-        Ok(self.memory.contract_state.remove(&(*key.0, *key.1)))
+        Ok(self.memory.contract_state.remove(&(*key).cloned()))
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsState<'_>> for MemoryStorage {
+impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
     fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory

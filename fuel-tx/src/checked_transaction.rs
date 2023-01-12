@@ -21,9 +21,12 @@ bitflags::bitflags! {
         const Basic         = 0b00000001;
         /// Check that signature in the transactions are valid.
         const Signatures    = 0b00000010;
+        /// Check that predicate in the transactions are valid.
+        const Predicates    = 0b00000100;
         /// All possible checks.
         const All           = Self::Basic.bits
-                            | Self::Signatures.bits;
+                            | Self::Signatures.bits
+                            | Self::Predicates.bits;
     }
 }
 

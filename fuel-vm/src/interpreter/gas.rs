@@ -21,8 +21,6 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
-        let gas = !self.is_predicate() as Word * gas;
-
         #[cfg(feature = "profile-coverage")]
         {
             let location = self.current_location();

@@ -536,8 +536,8 @@ pub enum OpcodeRepr {
 impl OpcodeRepr {
     /// Check if the opcode representation is allowed for predicates
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#predicate-verification>
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#contract-opcodes>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#predicate-verification>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#contract-instructions>
     #[allow(clippy::match_like_matches_macro)]
     // Not following clippy conventions because rustfmt formats macros into bloated code
     pub const fn is_predicate_allowed(&self) -> bool {

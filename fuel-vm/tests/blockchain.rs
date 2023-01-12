@@ -417,7 +417,7 @@ fn ldc_reason_helper(cmd: Vec<Opcode>, expected_reason: PanicReason, should_patc
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
-    let mut client = MemoryClient::default();
+    let mut client = MemoryClient::new(MemoryStorage::default(), Default::default(), GasCosts::free());
 
     let gas_price = 0;
     let gas_limit = 1_000_000;

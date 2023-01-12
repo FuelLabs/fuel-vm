@@ -279,7 +279,7 @@ key_with_big_array!(Bytes64, 64);
 impl ContractId {
     /// Seed for the calculation of the contract id from its code.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/identifiers.md#contract-id>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md>
     pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 }
 

@@ -1,6 +1,7 @@
 //! State machine of the interpreter.
 
 use crate::error::InterpreterError;
+use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
 use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
@@ -27,8 +28,8 @@ where
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
-    pub fn new(storage: S, params: ConsensusParameters) -> Self {
-        Interpreter::with_storage(storage, params).into()
+    pub fn new(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
+        Interpreter::with_storage(storage, params, gas_costs).into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -220,6 +221,6 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::new(Default::default(), Default::default())
+        Self::new(Default::default(), Default::default(), Default::default())
     }
 }

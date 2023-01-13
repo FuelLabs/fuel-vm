@@ -48,28 +48,24 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
-        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
-
         if !checked.transaction().check_predicate_owners() {
             return false;
         }
 
-        #[allow(clippy::needless_collect)]
+        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+
         // Needed for now because checked is only freed once the value is collected into a Vec
-        let predicates: Vec<RuntimePredicate> = checked
-            .transaction()
-            .inputs()
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, _)| RuntimePredicate::from_tx(&params, checked.transaction(), idx))
+        #[allow(clippy::needless_collect)]
+        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
+            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
             .collect();
+
+        vm.init_predicate(checked);
 
         predicates
             .into_iter()
-            .fold(vm.init_predicate(checked), |result, predicate| -> bool {
-                // VM is cloned because the state should be reset for every predicate verification
-                result && vm.clone()._check_predicate(predicate)
-            })
+            // VM is cloned because the state should be reset for every predicate verification
+            .all(|predicate| vm.clone()._check_predicate(predicate))
     }
 }
 

@@ -157,11 +157,13 @@ where
                 Ok(path_node) if path_node.is_node() => {
                     let path = self.leaf.leaf_key();
                     let instruction = path.get_instruction(self.current_offset);
-                    self.current = instruction.map(|instruction| match instruction {
-                        Instruction::Left => (path_node.left_child(), path_node.right_child()),
-                        Instruction::Right => (path_node.right_child(), path_node.left_child()),
+                    self.current = instruction.map(|instruction| {
+                        self.current_offset += 1;
+                        match instruction {
+                            Instruction::Left => (path_node.left_child(), path_node.right_child()),
+                            Instruction::Right => (path_node.right_child(), path_node.left_child()),
+                        }
                     });
-                    self.current_offset += 1;
                 }
                 // Terminate the iterator if any of the following are true:
                 //    - The path node is a leaf (traversal is complete)

@@ -1,12 +1,11 @@
 use crate::{
-    binary::{empty_sum, Node},
+    binary::{empty_sum, Node, Primitive},
     common::{Bytes32, Position, ProofSet, Subtree},
 };
 
 use fuel_storage::{Mappable, StorageMutate};
 
 use alloc::{boxed::Box, vec::Vec};
-use core::fmt;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -44,16 +43,15 @@ pub struct MerkleTree<StorageType> {
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
-    /// The index of the node in the array.
     type Key = u64;
-    type SetValue = Node;
+    type SetValue = Primitive;
     type GetValue = Self::SetValue;
 }
 
 impl<StorageType, StorageError> MerkleTree<StorageType>
 where
     StorageType: StorageMutate<NodesTable, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
+    StorageError: Clone + 'static,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -101,10 +99,12 @@ where
         let root_node = self.root_node()?.unwrap();
         let root_position = root_node.position();
         let leaf_position = Position::from_leaf_index(proof_index);
-        let leaf_node = self
+        let primitive = self
             .storage
             .get(&leaf_position.in_order_index())?
-            .ok_or(MerkleTreeError::LoadError(proof_index))?;
+            .ok_or(MerkleTreeError::LoadError(proof_index))?
+            .into_owned();
+        let leaf_node = Node::from(primitive);
         proof_set.push(*leaf_node.hash());
 
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
@@ -116,10 +116,12 @@ where
 
         for side_position in side_positions {
             let key = side_position.in_order_index();
-            let node = self
+            let primitive = self
                 .storage
                 .get(&key)?
-                .ok_or(MerkleTreeError::LoadError(key))?;
+                .ok_or(MerkleTreeError::LoadError(key))?
+                .into_owned();
+            let node = Node::from(primitive);
             proof_set.push(*node.hash());
         }
 
@@ -129,7 +131,7 @@ where
 
     pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         let node = Node::create_leaf(self.leaves_count, data);
-        self.storage.insert(&node.key(), &node)?;
+        self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
         let head = Box::new(Subtree::<Node>::new(node, next));
         self.head = Some(head);
@@ -234,7 +236,7 @@ where
         let leaf_position = Position::from_leaf_index(leaves_count - 1);
 
         // The root position of a tree will always have an in-order index equal
-        // to N' - 1, where N is the leaves count and N` is N rounded (or equal)
+        // to N' - 1, where N is the leaves count and N' is N rounded (or equal)
         // to the next power of 2.
         let root_index = leaves_count.next_power_of_two() - 1;
         let root_position = Position::from_in_order_index(root_index);
@@ -252,7 +254,8 @@ where
                 .storage
                 .get(&key)?
                 .ok_or(MerkleTreeError::LoadError(key))?
-                .into_owned();
+                .into_owned()
+                .into();
             let next = Box::new(Subtree::<Node>::new(node, current_head));
             current_head = Some(next);
         }
@@ -307,7 +310,8 @@ where
         rhs: &mut Subtree<Node>,
     ) -> Result<Box<Subtree<Node>>, StorageError> {
         let joined_node = Node::create_node(lhs.node(), rhs.node());
-        self.storage.insert(&joined_node.key(), &joined_node)?;
+        self.storage
+            .insert(&joined_node.key(), &joined_node.as_ref().into())?;
         let joined_head = Subtree::new(joined_node, lhs.take_next());
         Ok(Box::new(joined_head))
     }
@@ -317,7 +321,7 @@ where
 mod test {
     use super::{MerkleTree, MerkleTreeError, NodesTable};
     use crate::{
-        binary::{empty_sum, leaf_sum, node_sum},
+        binary::{empty_sum, leaf_sum, node_sum, Node},
         common::StorageMap,
     };
     use fuel_merkle_test_helpers::TEST_DATA;
@@ -374,17 +378,17 @@ mod test {
         let s_node_9 = storage_map.get(&9).unwrap().unwrap();
         let s_node_3 = storage_map.get(&3).unwrap().unwrap();
 
-        assert_eq!(s_leaf_0.hash(), &leaf_0);
-        assert_eq!(s_leaf_1.hash(), &leaf_1);
-        assert_eq!(s_leaf_2.hash(), &leaf_2);
-        assert_eq!(s_leaf_3.hash(), &leaf_3);
-        assert_eq!(s_leaf_4.hash(), &leaf_4);
-        assert_eq!(s_leaf_5.hash(), &leaf_5);
-        assert_eq!(s_leaf_6.hash(), &leaf_6);
-        assert_eq!(s_node_1.hash(), &node_1);
-        assert_eq!(s_node_5.hash(), &node_5);
-        assert_eq!(s_node_9.hash(), &node_9);
-        assert_eq!(s_node_3.hash(), &node_3);
+        assert_eq!(*Node::from(s_leaf_0.into_owned()).hash(), leaf_0);
+        assert_eq!(*Node::from(s_leaf_1.into_owned()).hash(), leaf_1);
+        assert_eq!(*Node::from(s_leaf_2.into_owned()).hash(), leaf_2);
+        assert_eq!(*Node::from(s_leaf_3.into_owned()).hash(), leaf_3);
+        assert_eq!(*Node::from(s_leaf_4.into_owned()).hash(), leaf_4);
+        assert_eq!(*Node::from(s_leaf_5.into_owned()).hash(), leaf_5);
+        assert_eq!(*Node::from(s_leaf_6.into_owned()).hash(), leaf_6);
+        assert_eq!(*Node::from(s_node_1.into_owned()).hash(), node_1);
+        assert_eq!(*Node::from(s_node_5.into_owned()).hash(), node_5);
+        assert_eq!(*Node::from(s_node_9.into_owned()).hash(), node_9);
+        assert_eq!(*Node::from(s_node_3.into_owned()).hash(), node_3);
     }
 
     #[test]

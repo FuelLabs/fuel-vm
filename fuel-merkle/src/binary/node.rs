@@ -1,5 +1,7 @@
-use crate::binary::{leaf_sum, node_sum};
-use crate::common::{Bytes32, Position};
+use crate::{
+    binary::{leaf_sum, node_sum},
+    common::{Bytes32, Position},
+};
 
 use core::fmt::Debug;
 
@@ -10,6 +12,10 @@ pub struct Node {
 }
 
 impl Node {
+    pub fn new(position: Position, hash: Bytes32) -> Self {
+        Self { position, hash }
+    }
+
     pub fn create_leaf(index: u64, data: &[u8]) -> Self {
         let position = Position::from_leaf_index(index);
         let hash = leaf_sum(data);
@@ -32,5 +38,11 @@ impl Node {
 
     pub fn hash(&self) -> &Bytes32 {
         &self.hash
+    }
+}
+
+impl AsRef<Node> for Node {
+    fn as_ref(&self) -> &Node {
+        self
     }
 }

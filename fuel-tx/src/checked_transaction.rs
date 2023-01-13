@@ -42,12 +42,18 @@ impl core::fmt::Display for Checks {
 /// of `Checked` outside the `fuel-tx` crate.
 ///
 /// The inner data is immutable to prevent modification to invalidate the checking.
+/// A single exception to this is provided so that extension traits can set the flags
+/// after they have checked some properties. For instance fuel-vm is required to check
+/// the predicates of a transaction. This function is hidden from the docs, and must
+/// not be used for anything else.
 ///
 /// If you need to modify an inner state, you need to get inner values
 /// (via the `Into<(Tx, Tx ::Metadata)>` trait), modify them and check again.
 ///
-/// # Dev note: Avoid serde serialization of this type. Since checked tx would need to be
-/// re-validated on deserialization anyways, it's cleaner to redo the tx check.
+/// # Dev note: Avoid serde serialization of this type.
+///
+/// Since checked tx would need to be re-validated on deserialization anyways,
+/// it's cleaner to redo the tx check.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Checked<Tx: IntoChecked> {
     transaction: Tx,
@@ -83,7 +89,16 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.checks_bitmask
     }
 
-    /// Performs check of signatures, if not yet.
+    /// Allows mutating the check flags without actually performing the checks.
+    /// This is to be used only by another crate that performs the check and
+    /// sets the appropriate flags after that, e.g. fuel-vm checking predicates.
+    #[allow(non_snake_case)]
+    #[doc(hidden)]
+    pub fn DANGEROUS_checks_mut(&mut self) -> &mut Checks {
+        &mut self.checks_bitmask
+    }
+
+    /// Performs check of signatures, if not yet done.
     pub fn check_signatures(mut self) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
             self.transaction.check_signatures()?;

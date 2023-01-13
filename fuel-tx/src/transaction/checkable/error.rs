@@ -73,6 +73,7 @@ pub enum CheckError {
     /// The block height of the checking doesn't match the transaction's block height.
     /// `Mint` transaction only exists in the scope of the block.
     TransactionMintIncorrectBlockHeight,
+    /// Max gas per tx exceeded
     TransactionGasLimit,
     TransactionMaturity,
     TransactionInputsMax,
@@ -105,6 +106,8 @@ pub enum CheckError {
     /// The user provided amounts for coins or gas prices that caused an arithmetic
     /// overflow.
     ArithmeticOverflow,
+    /// Predicate verification failed
+    PredicateVerification,
 }
 
 impl fmt::Display for CheckError {

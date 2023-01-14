@@ -1,6 +1,6 @@
 use crate::{
     common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
-    sparse::{zero_sum, Buffer, Node, StorageNode, StorageNodeError},
+    sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
 };
 use fuel_storage::{Mappable, StorageMutate};
 
@@ -49,7 +49,7 @@ impl Mappable for NodesTable {
     type Key = Bytes32;
     /// The merkle node data with information to iterate over the tree.
     // TODO: Use directly [`Node`](crate::sparse::Node) because it will not add overhead.
-    type SetValue = Buffer;
+    type SetValue = Primitive;
     type GetValue = Self::SetValue;
 }
 
@@ -69,12 +69,12 @@ where
         storage: StorageType,
         root: &Bytes32,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
-        let buffer = storage
+        let primitive = storage
             .get(root)?
             .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
             .into_owned();
         let tree = Self {
-            root_node: buffer
+            root_node: primitive
                 .try_into()
                 .map_err(MerkleTreeError::DeserializeError)?,
             storage,
@@ -96,9 +96,9 @@ where
 
         let leaf_node = Node::create_leaf(key, data);
         self.storage
-            .insert(&leaf_node.hash(), leaf_node.as_buffer())?;
+            .insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
         self.storage
-            .insert(leaf_node.leaf_key(), leaf_node.as_buffer())?;
+            .insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -117,9 +117,9 @@ where
             return Ok(());
         }
 
-        if let Some(buffer) = self.storage.get(key)? {
-            let buffer = buffer.into_owned();
-            let leaf_node: Node = buffer
+        if let Some(primitive) = self.storage.get(key)? {
+            let primitive = primitive.into_owned();
+            let leaf_node: Node = primitive
                 .try_into()
                 .map_err(MerkleTreeError::DeserializeError)?;
             let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
@@ -208,7 +208,7 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node = Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
-                    .insert(&current_node.hash(), current_node.as_buffer())?;
+                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
 
             // Merge placeholders
@@ -219,7 +219,7 @@ where
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
-                    .insert(&current_node.hash(), current_node.as_buffer())?;
+                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
         }
 
@@ -227,7 +227,7 @@ where
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), current_node.as_buffer())?;
+                .insert(&current_node.hash(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -283,7 +283,7 @@ where
                 {
                     current_node = Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
-                        .insert(&current_node.hash(), current_node.as_buffer())?;
+                        .insert(&current_node.hash(), &current_node.as_ref().into())?;
                 }
             }
         }
@@ -292,7 +292,7 @@ where
         for side_node in side_nodes_iter {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), current_node.as_buffer())?;
+                .insert(&current_node.hash(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -378,7 +378,7 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
@@ -393,7 +393,7 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..100 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
@@ -434,17 +434,17 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..5 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 10_u32..15 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 20_u32..25 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
@@ -527,12 +527,12 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 5_u32..10 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.delete(&key).unwrap();
         }
 
@@ -564,32 +564,32 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 5_u32..15 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.delete(&key).unwrap();
         }
 
         for i in 10_u32..20 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 15_u32..25 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.delete(&key).unwrap();
         }
 
         for i in 20_u32..30 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 25_u32..35 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.delete(&key).unwrap();
         }
 
@@ -604,12 +604,12 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
-            let key = sum(&i.to_be_bytes());
+            let key = sum(i.to_be_bytes());
             tree.update(&key, b"DATA").unwrap();
         }
 
         for i in 0_u32..5 {
-            let key = sum(&(i * 2 + 1).to_be_bytes());
+            let key = sum((i * 2 + 1).to_be_bytes());
             tree.delete(&key).unwrap();
         }
 
@@ -708,9 +708,10 @@ mod test {
         tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
         let root = tree.root();
 
-        // Overwrite the root key-value with an invalid buffer to create a
+        // Overwrite the root key-value with an invalid primitive to create a
         // DeserializeError.
-        storage.insert(&root, &[255; 69]).unwrap();
+        let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
+        storage.insert(&root, &primitive).unwrap();
 
         let err = MerkleTree::load(&mut storage, &root)
             .expect_err("Expected load() to return Error; got Ok");

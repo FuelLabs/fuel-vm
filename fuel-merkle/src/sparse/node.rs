@@ -2,42 +2,33 @@ use crate::{
     common::{
         error::DeserializeError,
         path::{ComparablePath, Instruction, Path},
-        Bytes1, Bytes32, Bytes4, ChildError, ChildResult, Node as NodeTrait,
-        ParentNode as ParentNodeTrait, Prefix,
+        Bytes32, ChildError, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait, Prefix,
     },
     sparse::{hash::sum, merkle_tree::NodesTable, zero_sum},
 };
 
-// TODO: Return errors instead of `unwrap` during work with storage.
 use fuel_storage::StorageInspect;
 
-use core::{cmp, fmt, mem::size_of, ops::Range};
-
-/// **Leaf buffer:**
-///
-/// | Allocation | Data                       |
-/// |------------|----------------------------|
-/// | `00 - 04`  | Height (4 bytes)           |
-/// | `04 - 05`  | Prefix (1 byte, `0x00`)    |
-/// | `05 - 37`  | hash(Key) (32 bytes)       |
-/// | `37 - 69`  | hash(Data) (32 bytes)      |
-///
-/// **Node buffer:**
-///
-/// | Allocation | Data                       |
-/// |------------|----------------------------|
-/// | `00 - 04`  | Height (4 bytes)           |
-/// | `04 - 05`  | Prefix (1 byte, `0x01`)    |
-/// | `05 - 37`  | Left child key (32 bytes)  |
-/// | `37 - 69`  | Right child key (32 bytes) |
-///
-const BUFFER_SIZE: usize =
-    size_of::<Bytes4>() + size_of::<Bytes1>() + size_of::<Bytes32>() + size_of::<Bytes32>();
-pub type Buffer = [u8; BUFFER_SIZE];
+use crate::sparse::hash::sum_all;
+use core::{cmp, fmt};
 
 #[derive(Clone)]
 pub(crate) struct Node {
-    buffer: Buffer,
+    height: u32,
+    prefix: Prefix,
+    bytes_lo: Bytes32,
+    bytes_hi: Bytes32,
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self {
+            height: Default::default(),
+            prefix: Default::default(),
+            bytes_lo: *zero_sum(),
+            bytes_hi: *zero_sum(),
+        }
+    }
 }
 
 impl Node {
@@ -45,24 +36,31 @@ impl Node {
         Node::key_size_in_bits()
     }
 
+    pub fn new(height: u32, prefix: Prefix, bytes_lo: Bytes32, bytes_hi: Bytes32) -> Self {
+        Self {
+            height,
+            prefix,
+            bytes_lo,
+            bytes_hi,
+        }
+    }
+
     pub fn create_leaf(key: &Bytes32, data: &[u8]) -> Self {
-        let buffer = Self::default_buffer();
-        let mut node = Self { buffer };
-        node.set_height(0);
-        node.set_prefix(Prefix::Leaf);
-        node.set_bytes_lo(key);
-        node.set_bytes_hi(&sum(data));
-        node
+        Self {
+            height: 0u32,
+            prefix: Prefix::Leaf,
+            bytes_lo: *key,
+            bytes_hi: sum(data),
+        }
     }
 
     pub fn create_node(left_child: &Node, right_child: &Node, height: u32) -> Self {
-        let buffer = Self::default_buffer();
-        let mut node = Self { buffer };
-        node.set_height(height);
-        node.set_prefix(Prefix::Node);
-        node.set_bytes_lo(&left_child.hash());
-        node.set_bytes_hi(&right_child.hash());
-        node
+        Self {
+            height,
+            prefix: Prefix::Node,
+            bytes_lo: left_child.hash(),
+            bytes_hi: right_child.hash(),
+        }
     }
 
     pub fn create_node_on_path(path: &dyn Path, path_node: &Node, side_node: &Node) -> Self {
@@ -93,8 +91,7 @@ impl Node {
     }
 
     pub fn create_placeholder() -> Self {
-        let buffer = Self::default_buffer();
-        Self { buffer }
+        Default::default()
     }
 
     pub fn common_path_length(&self, other: &Node) -> usize {
@@ -113,34 +110,19 @@ impl Node {
     }
 
     pub fn height(&self) -> u32 {
-        let bytes = self.bytes_height();
-        u32::from_be_bytes(bytes.try_into().unwrap())
+        self.height
     }
 
     pub fn prefix(&self) -> Prefix {
-        // Safety: By the time a Node is created, it will always have a valid
-        // prefix.
-        self.bytes_prefix()[0].try_into().unwrap()
+        self.prefix
     }
 
-    pub fn leaf_key(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
-        self.bytes_lo().try_into().unwrap()
+    pub fn bytes_lo(&self) -> &Bytes32 {
+        &self.bytes_lo
     }
 
-    pub fn leaf_data(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
-        self.bytes_hi().try_into().unwrap()
-    }
-
-    pub fn left_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
-        self.bytes_lo().try_into().unwrap()
-    }
-
-    pub fn right_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
-        self.bytes_hi().try_into().unwrap()
+    pub fn bytes_hi(&self) -> &Bytes32 {
+        &self.bytes_hi
     }
 
     pub fn is_leaf(&self) -> bool {
@@ -151,191 +133,47 @@ impl Node {
         self.prefix() == Prefix::Node
     }
 
-    pub fn is_placeholder(&self) -> bool {
-        self.bytes_lo() == zero_sum() && self.bytes_hi() == zero_sum()
+    pub fn leaf_key(&self) -> &Bytes32 {
+        assert!(self.is_leaf());
+        self.bytes_lo()
     }
 
-    pub fn as_buffer(&self) -> &Buffer {
-        self.buffer().try_into().unwrap()
+    pub fn leaf_data(&self) -> &Bytes32 {
+        assert!(self.is_leaf());
+        self.bytes_hi()
+    }
+
+    pub fn left_child_key(&self) -> &Bytes32 {
+        assert!(self.is_node());
+        self.bytes_lo()
+    }
+
+    pub fn right_child_key(&self) -> &Bytes32 {
+        assert!(self.is_node());
+        self.bytes_hi()
+    }
+
+    pub fn is_placeholder(&self) -> bool {
+        *self.bytes_lo() == *zero_sum() && *self.bytes_hi() == *zero_sum()
     }
 
     pub fn hash(&self) -> Bytes32 {
         if self.is_placeholder() {
             *zero_sum()
         } else {
-            let range = Self::hash_range();
-            sum(&self.buffer()[range])
+            let data = [
+                self.prefix.as_ref(),
+                self.bytes_lo.as_ref(),
+                self.bytes_hi.as_ref(),
+            ];
+            sum_all(data)
         }
-    }
-
-    // PRIVATE
-
-    const fn default_buffer() -> Buffer {
-        [0; Self::buffer_size()]
-    }
-
-    // HEIGHT
-
-    const fn height_offset() -> usize {
-        0
-    }
-
-    const fn height_size() -> usize {
-        size_of::<Bytes4>()
-    }
-
-    const fn height_range() -> Range<usize> {
-        Self::height_offset()..(Self::height_offset() + Self::height_size())
-    }
-
-    // PREFIX
-
-    const fn prefix_offset() -> usize {
-        Self::height_offset() + Self::height_size()
-    }
-
-    const fn prefix_size() -> usize {
-        size_of::<Bytes1>()
-    }
-
-    const fn prefix_range() -> Range<usize> {
-        Self::prefix_offset()..(Self::prefix_offset() + Self::prefix_size())
-    }
-
-    // BYTES LO
-
-    const fn bytes_lo_offset() -> usize {
-        Self::prefix_offset() + Self::prefix_size()
-    }
-
-    const fn bytes_lo_size() -> usize {
-        size_of::<Bytes32>()
-    }
-
-    const fn bytes_lo_range() -> Range<usize> {
-        Self::bytes_lo_offset()..(Self::bytes_lo_offset() + Self::bytes_lo_size())
-    }
-
-    // BYTES HI
-
-    const fn bytes_hi_offset() -> usize {
-        Self::bytes_lo_offset() + Self::bytes_lo_size()
-    }
-
-    const fn bytes_hi_size() -> usize {
-        size_of::<Bytes32>()
-    }
-
-    const fn bytes_hi_range() -> Range<usize> {
-        Self::bytes_hi_offset()..(Self::bytes_hi_offset() + Self::bytes_hi_size())
-    }
-
-    // HASH
-
-    const fn hash_range() -> Range<usize> {
-        Self::prefix_offset()..Self::buffer_size()
-    }
-
-    // BUFFER
-
-    const fn buffer_size() -> usize {
-        BUFFER_SIZE
-    }
-
-    // PRIVATE
-
-    fn buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.buffer
-    }
-
-    fn buffer(&self) -> &[u8] {
-        &self.buffer
-    }
-
-    // Height
-
-    fn set_height(&mut self, height: u32) {
-        let bytes = height.to_be_bytes();
-        self.set_bytes_height(&bytes)
-    }
-
-    fn bytes_height_mut(&mut self) -> &mut [u8] {
-        let range = Self::height_range();
-        &mut self.buffer_mut()[range]
-    }
-
-    fn bytes_height(&self) -> &[u8] {
-        let range = Self::height_range();
-        &self.buffer()[range]
-    }
-
-    fn set_bytes_height(&mut self, bytes: &Bytes4) {
-        self.bytes_height_mut().clone_from_slice(bytes)
-    }
-
-    // Prefix
-
-    fn set_prefix(&mut self, prefix: Prefix) {
-        self.set_bytes_prefix(prefix.as_ref());
-    }
-
-    fn bytes_prefix_mut(&mut self) -> &mut [u8] {
-        let range = Self::prefix_range();
-        &mut self.buffer_mut()[range]
-    }
-
-    fn bytes_prefix(&self) -> &[u8] {
-        let range = Self::prefix_range();
-        &self.buffer()[range]
-    }
-
-    fn set_bytes_prefix(&mut self, bytes: &Bytes1) {
-        self.bytes_prefix_mut().clone_from_slice(bytes);
-    }
-
-    // Bytes lo
-
-    fn bytes_lo_mut(&mut self) -> &mut [u8] {
-        let range = Self::bytes_lo_range();
-        &mut self.buffer_mut()[range]
-    }
-
-    fn bytes_lo(&self) -> &[u8] {
-        let range = Self::bytes_lo_range();
-        &self.buffer()[range]
-    }
-
-    fn set_bytes_lo(&mut self, bytes: &Bytes32) {
-        self.bytes_lo_mut().clone_from_slice(bytes);
-    }
-
-    // Bytes hi
-
-    fn bytes_hi_mut(&mut self) -> &mut [u8] {
-        let range = Self::bytes_hi_range();
-        &mut self.buffer_mut()[range]
-    }
-
-    fn bytes_hi(&self) -> &[u8] {
-        let range = Self::bytes_hi_range();
-        &self.buffer()[range]
-    }
-
-    fn set_bytes_hi(&mut self, bytes: &Bytes32) {
-        self.bytes_hi_mut().clone_from_slice(bytes);
     }
 }
 
-impl TryFrom<Buffer> for Node {
-    type Error = DeserializeError;
-
-    fn try_from(value: Buffer) -> Result<Self, Self::Error> {
-        let node = Self { buffer: value };
-
-        // Validate the node created from the buffer
-        Prefix::try_from(node.bytes_prefix()[0])?;
-
-        Ok(node)
+impl AsRef<Node> for Node {
+    fn as_ref(&self) -> &Node {
+        self
     }
 }
 
@@ -452,12 +290,12 @@ where
         if key == zero_sum() {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
-        let buffer = self
+        let primitive = self
             .storage
             .get(key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
-        Ok(buffer
+        Ok(primitive
             .into_owned()
             .try_into()
             .map(|node| Self::new(self.storage, node))
@@ -472,12 +310,12 @@ where
         if key == zero_sum() {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
-        let buffer = self
+        let primitive = self
             .storage
             .get(key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
-        Ok(buffer
+        Ok(primitive
             .into_owned()
             .try_into()
             .map(|node| Self::new(self.storage, node))
@@ -513,7 +351,7 @@ where
 mod test_node {
     use crate::{
         common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
-        sparse::{hash::sum, zero_sum, Node},
+        sparse::{hash::sum, zero_sum, Node, Primitive},
     };
 
     fn leaf_hash(key: &Bytes32, data: &[u8]) -> Bytes32 {
@@ -521,7 +359,7 @@ mod test_node {
         buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
         buffer[1..33].clone_from_slice(key);
         buffer[33..65].clone_from_slice(&sum(data));
-        sum(&buffer)
+        sum(buffer)
     }
 
     #[test]
@@ -531,23 +369,26 @@ mod test_node {
         assert_eq!(leaf.is_node(), false);
         assert_eq!(leaf.height(), 0);
         assert_eq!(leaf.prefix(), Prefix::Leaf);
-        assert_eq!(leaf.leaf_key(), &sum(b"LEAF"));
-        assert_eq!(leaf.leaf_data(), &sum(&[1u8; 32]));
+        assert_eq!(*leaf.leaf_key(), sum(b"LEAF"));
+        assert_eq!(*leaf.leaf_data(), sum([1u8; 32]));
     }
 
     #[test]
     fn test_create_node_returns_a_valid_node() {
-        let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
-        let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
+        let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), &[1u8; 32]);
+        let right_child = Node::create_leaf(&sum(b"RIGHT CHILD"), &[1u8; 32]);
         let node = Node::create_node(&left_child, &right_child, 1);
         assert_eq!(node.is_leaf(), false);
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 1);
         assert_eq!(node.prefix(), Prefix::Node);
-        assert_eq!(node.left_child_key(), &leaf_hash(&sum(b"LEFT"), &[1u8; 32]));
         assert_eq!(
-            node.right_child_key(),
-            &leaf_hash(&sum(b"RIGHT"), &[1u8; 32])
+            *node.left_child_key(),
+            leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32])
+        );
+        assert_eq!(
+            *node.right_child_key(),
+            leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32])
         );
     }
 
@@ -559,87 +400,72 @@ mod test_node {
     }
 
     #[test]
-    fn test_create_leaf_from_buffer_returns_a_valid_leaf() {
-        let mut buffer = [0u8; 69];
-        buffer[0..4].clone_from_slice(&0_u32.to_be_bytes());
-        buffer[4..5].clone_from_slice(Prefix::Leaf.as_ref());
-        buffer[5..37].clone_from_slice(&[1u8; 32]);
-        buffer[37..69].clone_from_slice(&[1u8; 32]);
+    fn test_create_leaf_from_primitive_returns_a_valid_leaf() {
+        let primitive = (0, Prefix::Leaf as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = buffer.try_into().unwrap();
+        let node: Node = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), true);
         assert_eq!(node.is_node(), false);
         assert_eq!(node.height(), 0);
         assert_eq!(node.prefix(), Prefix::Leaf);
-        assert_eq!(node.leaf_key(), &[1u8; 32]);
-        assert_eq!(node.leaf_data(), &[1u8; 32]);
+        assert_eq!(*node.leaf_key(), [255u8; 32]);
+        assert_eq!(*node.leaf_data(), [255u8; 32]);
     }
 
     #[test]
-    fn test_create_node_from_buffer_returns_a_valid_node() {
-        let mut buffer = [0u8; 69];
-        buffer[0..4].clone_from_slice(&256_u32.to_be_bytes());
-        buffer[4..5].clone_from_slice(Prefix::Node.as_ref());
-        buffer[5..37].clone_from_slice(&[1u8; 32]);
-        buffer[37..69].clone_from_slice(&[1u8; 32]);
+    fn test_create_node_from_primitive_returns_a_valid_node() {
+        let primitive = (255, Prefix::Node as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = buffer.try_into().unwrap();
+        let node: Node = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), false);
         assert_eq!(node.is_node(), true);
-        assert_eq!(node.height(), 256);
+        assert_eq!(node.height(), 255);
         assert_eq!(node.prefix(), Prefix::Node);
-        assert_eq!(node.left_child_key(), &[1u8; 32]);
-        assert_eq!(node.right_child_key(), &[1u8; 32]);
+        assert_eq!(*node.left_child_key(), [255u8; 32]);
+        assert_eq!(*node.right_child_key(), [255u8; 32]);
     }
 
     #[test]
-    fn test_create_from_buffer_returns_deserialize_error_if_invalid_prefix() {
-        let mut buffer = [0u8; 69];
-        buffer[0..4].clone_from_slice(&0_u32.to_be_bytes());
-        buffer[4..5].clone_from_slice(&[0x02]);
-        buffer[5..37].clone_from_slice(&[1u8; 32]);
-        buffer[37..69].clone_from_slice(&[1u8; 32]);
+    fn test_create_from_primitive_returns_deserialize_error_if_invalid_prefix() {
+        let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
 
-        // Should return Error; prefix 0x02 is does not represent a node or leaf
-        let err = Node::try_from(buffer).expect_err("Expected try_from() to be Error; got OK");
+        // Should return Error; prefix 0xff is does not represent a node or leaf
+        let err = Node::try_from(primitive).expect_err("Expected try_from() to be Error; got OK");
         assert!(matches!(
             err,
-            DeserializeError::PrefixError(PrefixError::InvalidPrefix(0x02))
+            DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
         ));
     }
 
     /// For leaf node `node` of leaf data `d` with key `k`:
-    /// ```node.buffer = (0x00, k, h(serialize(d)))```
+    /// ```node = (0x00, k, h(serialize(d)))```
     #[test]
-    fn test_leaf_buffer_returns_expected_buffer() {
-        let mut expected_buffer = [0u8; 69];
-        expected_buffer[0..4].clone_from_slice(&0_u32.to_be_bytes());
-        expected_buffer[4..5].clone_from_slice(Prefix::Leaf.as_ref());
-        expected_buffer[5..37].clone_from_slice(&sum(b"LEAF"));
-        expected_buffer[37..69].clone_from_slice(&sum(&[1u8; 32]));
+    fn test_leaf_primitive_returns_expected_primitive() {
+        let expected_primitive = (0_u32, Prefix::Leaf as u8, sum(b"LEAF"), sum([1u8; 32]));
 
         let leaf = Node::create_leaf(&sum(b"LEAF"), &[1u8; 32]);
-        let buffer = leaf.buffer();
+        let primitive = Primitive::from(&leaf);
 
-        assert_eq!(buffer, expected_buffer);
+        assert_eq!(primitive, expected_primitive);
     }
 
     /// For internal node `node` with children `l` and `r`:
-    /// ```node.buffer = (0x01, l.v, r.v)```
+    /// ```node = (0x01, l.v, r.v)```
     #[test]
-    fn test_node_buffer_returns_expected_buffer() {
-        let mut expected_buffer = [0u8; 69];
-        expected_buffer[0..4].clone_from_slice(&1_u32.to_be_bytes());
-        expected_buffer[4..5].clone_from_slice(Prefix::Node.as_ref());
-        expected_buffer[5..37].clone_from_slice(&leaf_hash(&sum(b"LEFT"), &[1u8; 32]));
-        expected_buffer[37..69].clone_from_slice(&leaf_hash(&sum(b"RIGHT"), &[1u8; 32]));
+    fn test_node_primitive_returns_expected_primitive() {
+        let expected_primitive = (
+            1_u32,
+            Prefix::Node as u8,
+            leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]),
+            leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]),
+        );
 
-        let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
-        let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
+        let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), &[1u8; 32]);
+        let right_child = Node::create_leaf(&sum(b"RIGHT CHILD"), &[1u8; 32]);
         let node = Node::create_node(&left_child, &right_child, 1);
-        let buffer = node.buffer();
+        let primitive = Primitive::from(&node);
 
-        assert_eq!(buffer, expected_buffer);
+        assert_eq!(primitive, expected_primitive);
     }
 
     /// For leaf node `node` of leaf data `d` with key `k`:
@@ -649,8 +475,8 @@ mod test_node {
         let mut expected_buffer = [0u8; 65];
         expected_buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
         expected_buffer[1..33].clone_from_slice(&sum(b"LEAF"));
-        expected_buffer[33..65].clone_from_slice(&sum(&[1u8; 32]));
-        let expected_value = sum(&expected_buffer);
+        expected_buffer[33..65].clone_from_slice(&sum([1u8; 32]));
+        let expected_value = sum(expected_buffer);
 
         let node = Node::create_leaf(&sum(b"LEAF"), &[1u8; 32]);
         let value = node.hash();
@@ -664,12 +490,12 @@ mod test_node {
     fn test_node_hash_returns_expected_hash_value() {
         let mut expected_buffer = [0u8; 65];
         expected_buffer[0..1].clone_from_slice(Prefix::Node.as_ref());
-        expected_buffer[1..33].clone_from_slice(&leaf_hash(&sum(b"LEFT"), &[1u8; 32]));
-        expected_buffer[33..65].clone_from_slice(&leaf_hash(&sum(b"RIGHT"), &[1u8; 32]));
-        let expected_value = sum(&expected_buffer);
+        expected_buffer[1..33].clone_from_slice(&leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
+        expected_buffer[33..65].clone_from_slice(&leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
+        let expected_value = sum(expected_buffer);
 
-        let left_child = Node::create_leaf(&sum(b"LEFT"), &[1u8; 32]);
-        let right_child = Node::create_leaf(&sum(b"RIGHT"), &[1u8; 32]);
+        let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), &[1u8; 32]);
+        let right_child = Node::create_leaf(&sum(b"RIGHT CHILD"), &[1u8; 32]);
         let node = Node::create_node(&left_child, &right_child, 1);
         let value = node.hash();
 
@@ -681,10 +507,7 @@ mod test_node {
 mod test_storage_node {
     use crate::{
         common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap},
-        sparse::{
-            hash::sum, merkle_tree::NodesTable, node::StorageNodeError, node::BUFFER_SIZE, Node,
-            StorageNode,
-        },
+        sparse::{hash::sum, merkle_tree::NodesTable, node::StorageNodeError, Node, StorageNode},
     };
     use fuel_storage::StorageMutate;
 
@@ -693,13 +516,13 @@ mod test_storage_node {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), leaf_0.as_buffer());
+        let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
 
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), leaf_1.as_buffer());
+        let _ = s.insert(&leaf_1.hash(), &leaf_1.as_ref().into());
 
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
-        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
@@ -712,13 +535,13 @@ mod test_storage_node {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), leaf_0.as_buffer());
+        let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
 
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), leaf_1.as_buffer());
+        let _ = s.insert(&leaf_1.hash(), &leaf_1.as_ref().into());
 
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
-        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
@@ -731,10 +554,10 @@ mod test_storage_node {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(&leaf.hash(), leaf.as_buffer());
+        let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
 
         let node_0 = Node::create_node(&Node::create_placeholder(), &leaf, 1);
-        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
@@ -747,10 +570,10 @@ mod test_storage_node {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(&leaf.hash(), leaf.as_buffer());
+        let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
 
         let node_0 = Node::create_node(&leaf, &Node::create_placeholder(), 1);
-        let _ = s.insert(&node_0.hash(), node_0.as_buffer());
+        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
@@ -825,11 +648,11 @@ mod test_storage_node {
     }
 
     #[test]
-    fn test_node_left_child_returns_deserialize_error_when_buffer_is_invalid() {
+    fn test_node_left_child_returns_deserialize_error_when_primitive_is_invalid() {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), &[255; BUFFER_SIZE]);
+        let _ = s.insert(&leaf_0.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
@@ -841,18 +664,18 @@ mod test_storage_node {
         assert!(matches!(
             err,
             ChildError::Error(StorageNodeError::DeserializeError(
-                DeserializeError::PrefixError(PrefixError::InvalidPrefix(255))
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
             ))
         ));
     }
 
     #[test]
-    fn test_node_right_child_returns_deserialize_error_when_buffer_is_invalid() {
+    fn test_node_right_child_returns_deserialize_error_when_primitive_is_invalid() {
         let mut s = StorageMap::<NodesTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), &[255; BUFFER_SIZE]);
+        let _ = s.insert(&leaf_1.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
         let storage_node = StorageNode::new(&s, node_0);
@@ -863,7 +686,7 @@ mod test_storage_node {
         assert!(matches!(
             err,
             ChildError::Error(StorageNodeError::DeserializeError(
-                DeserializeError::PrefixError(PrefixError::InvalidPrefix(255))
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
             ))
         ));
     }

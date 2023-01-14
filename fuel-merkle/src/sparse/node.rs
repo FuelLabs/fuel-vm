@@ -4,12 +4,16 @@ use crate::{
         path::{ComparablePath, Instruction, Path},
         Bytes32, ChildError, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait, Prefix,
     },
-    sparse::{hash::sum, merkle_tree::NodesTable, zero_sum},
+    sparse::{
+        hash::{sum, sum_all},
+        zero_sum, Primitive,
+    },
 };
 
+use fuel_storage::Mappable;
 use fuel_storage::StorageInspect;
 
-use crate::sparse::hash::sum_all;
+use core::marker::PhantomData;
 use core::{cmp, fmt};
 
 #[derive(Clone)]
@@ -217,27 +221,33 @@ impl fmt::Debug for Node {
     }
 }
 
-pub(crate) struct StorageNode<'storage, StorageType> {
+pub(crate) struct StorageNode<'storage, TableType, StorageType> {
     storage: &'storage StorageType,
     node: Node,
+    phantom_table: PhantomData<TableType>,
 }
 
-impl<StorageType> Clone for StorageNode<'_, StorageType> {
+impl<TableType, StorageType> Clone for StorageNode<'_, TableType, StorageType> {
     fn clone(&self) -> Self {
         Self {
             storage: self.storage,
             node: self.node.clone(),
+            phantom_table: Default::default(),
         }
     }
 }
 
-impl<'s, StorageType> StorageNode<'s, StorageType> {
+impl<'s, TableType, StorageType> StorageNode<'s, TableType, StorageType> {
     pub fn new(storage: &'s StorageType, node: Node) -> Self {
-        Self { node, storage }
+        Self {
+            node,
+            storage,
+            phantom_table: Default::default(),
+        }
     }
 }
 
-impl<StorageType> StorageNode<'_, StorageType> {
+impl<TableType, StorageType> StorageNode<'_, TableType, StorageType> {
     pub fn hash(&self) -> Bytes32 {
         self.node.hash()
     }
@@ -247,7 +257,7 @@ impl<StorageType> StorageNode<'_, StorageType> {
     }
 }
 
-impl<StorageType> NodeTrait for StorageNode<'_, StorageType> {
+impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageType> {
     type Key = Bytes32;
 
     fn height(&self) -> u32 {
@@ -276,9 +286,11 @@ pub enum StorageNodeError<StorageError> {
     DeserializeError(DeserializeError),
 }
 
-impl<StorageType> ParentNodeTrait for StorageNode<'_, StorageType>
+impl<TableType, StorageType> ParentNodeTrait for StorageNode<'_, TableType, StorageType>
 where
-    StorageType: StorageInspect<NodesTable>,
+    StorageType: StorageInspect<TableType>,
+    TableType: Mappable<Key = Bytes32, SetValue = Primitive, GetValue = Primitive>,
+    StorageType::Error: fmt::Debug,
 {
     type Error = StorageNodeError<StorageType::Error>;
 
@@ -323,9 +335,10 @@ where
     }
 }
 
-impl<StorageType> fmt::Debug for StorageNode<'_, StorageType>
+impl<TableType, StorageType> fmt::Debug for StorageNode<'_, TableType, StorageType>
 where
-    StorageType: StorageInspect<NodesTable>,
+    StorageType: StorageInspect<TableType>,
+    TableType: Mappable<Key = Bytes32, SetValue = Primitive, GetValue = Primitive>,
     StorageType::Error: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -408,8 +421,8 @@ mod test_node {
         assert_eq!(node.is_node(), false);
         assert_eq!(node.height(), 0);
         assert_eq!(node.prefix(), Prefix::Leaf);
-        assert_eq!(*node.leaf_key(), [255u8; 32]);
-        assert_eq!(*node.leaf_data(), [255u8; 32]);
+        assert_eq!(*node.leaf_key(), [0xff; 32]);
+        assert_eq!(*node.leaf_data(), [0xff; 32]);
     }
 
     #[test]
@@ -421,8 +434,8 @@ mod test_node {
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 255);
         assert_eq!(node.prefix(), Prefix::Node);
-        assert_eq!(*node.left_child_key(), [255u8; 32]);
-        assert_eq!(*node.right_child_key(), [255u8; 32]);
+        assert_eq!(*node.left_child_key(), [0xff; 32]);
+        assert_eq!(*node.right_child_key(), [0xff; 32]);
     }
 
     #[test]
@@ -506,14 +519,25 @@ mod test_node {
 #[cfg(test)]
 mod test_storage_node {
     use crate::{
-        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap},
-        sparse::{hash::sum, merkle_tree::NodesTable, node::StorageNodeError, Node, StorageNode},
+        common::{
+            error::DeserializeError, Bytes32, ChildError, ParentNode, PrefixError, StorageMap,
+        },
+        sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
     };
-    use fuel_storage::StorageMutate;
+
+    use fuel_storage::{Mappable, StorageMutate};
+
+    pub struct TestTable;
+
+    impl Mappable for TestTable {
+        type Key = Bytes32;
+        type SetValue = Primitive;
+        type GetValue = Self::SetValue;
+    }
 
     #[test]
     fn test_node_left_child_returns_the_left_child() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
@@ -532,7 +556,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_the_right_child() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
@@ -551,7 +575,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_left_child_returns_placeholder_when_key_is_zero_sum() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
@@ -567,7 +591,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_placeholder_when_key_is_zero_sum() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
@@ -583,7 +607,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_left_child_returns_error_when_node_is_leaf() {
-        let s = StorageMap::<NodesTable>::new();
+        let s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let storage_node = StorageNode::new(&s, leaf_0);
@@ -596,7 +620,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_error_when_node_is_leaf() {
-        let s = StorageMap::<NodesTable>::new();
+        let s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let storage_node = StorageNode::new(&s, leaf_0);
@@ -609,7 +633,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_left_child_returns_error_when_key_is_not_found() {
-        let s = StorageMap::<NodesTable>::new();
+        let s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[0u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
@@ -629,7 +653,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_error_when_key_is_not_found() {
-        let s = StorageMap::<NodesTable>::new();
+        let s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
@@ -649,7 +673,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_left_child_returns_deserialize_error_when_primitive_is_invalid() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(&leaf_0.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
@@ -671,7 +695,7 @@ mod test_storage_node {
 
     #[test]
     fn test_node_right_child_returns_deserialize_error_when_primitive_is_invalid() {
-        let mut s = StorageMap::<NodesTable>::new();
+        let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);

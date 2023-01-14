@@ -1,6 +1,4 @@
-use fuel_merkle::binary::MerkleTree;
-use fuel_merkle::common::{Bytes32, StorageMap};
-
+use fuel_merkle::{binary::in_memory::MerkleTree, common::Bytes32};
 use fuel_merkle_test_helpers::data::{binary::ProofTest, EncodedValue, Encoding};
 
 use digest::Digest;
@@ -27,10 +25,9 @@ fn generate_test(
     proof_index: u64,
 ) -> ProofTest {
     let (root, proof_set) = {
-        let storage = StorageMap::new();
-        let mut test_tree = MerkleTree::new(storage);
+        let mut test_tree = MerkleTree::new();
         for datum in sample_data.iter() {
-            test_tree.push(datum).unwrap();
+            test_tree.push(datum);
         }
         // SAFETY: prove(i) is guaranteed to return a valid proof if the proof
         // index is within the range of valid leaves. proof_index will always

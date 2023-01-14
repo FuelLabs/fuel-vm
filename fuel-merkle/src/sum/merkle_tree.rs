@@ -1,10 +1,12 @@
-use crate::common::{Bytes32, Subtree};
-use crate::sum::{empty_sum, Node};
+use crate::{
+    common::{Bytes32, Subtree},
+    sum::{empty_sum, Node},
+};
 
 use fuel_storage::{Mappable, StorageMutate};
 
 use alloc::boxed::Box;
-use core::fmt;
+use core::{fmt, marker::PhantomData};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -36,32 +38,23 @@ pub enum MerkleTreeError {
 /// data: node_sum(a.fee, a.data, b.fee, b.data)
 ///
 /// where `node_sum` is defined as the hash function described in the data pair description above.
-pub struct MerkleTree<StorageType> {
+pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
     head: Option<Box<Subtree<Node>>>,
+    phantom_table: PhantomData<TableType>,
 }
 
-/// The table of the Binary Merkle Sum Tree's nodes. The storage key is the `Byte32` hash
-/// (see description of [`MerkleTree`]) and value is the [`Node`](crate::sum::Node).
-pub struct NodesTable;
-
-impl Mappable for NodesTable {
-    /// The 32 bytes unique key of the merkle node.
-    type Key = Bytes32;
-    /// The merkle sum node data with information to iterate over the tree.
-    type SetValue = Node;
-    type GetValue = Self::SetValue;
-}
-
-impl<StorageType, StorageError> MerkleTree<StorageType>
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
-    StorageType: StorageMutate<NodesTable, Error = StorageError>,
+    TableType: Mappable<Key = Bytes32, SetValue = Node, GetValue = Node>,
+    StorageType: StorageMutate<TableType, Error = StorageError>,
     StorageError: fmt::Debug + Clone + 'static,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
             storage,
             head: None,
+            phantom_table: Default::default(),
         }
     }
 
@@ -152,19 +145,27 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::NodesTable;
+    use crate::{
+        common::{Bytes32, StorageMap},
+        sum::{empty_sum, leaf_sum, node_sum, MerkleTree, Node},
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
+    use fuel_storage::Mappable;
 
-    use crate::common::StorageMap;
-    use crate::sum::{empty_sum, leaf_sum, node_sum, MerkleTree};
+    pub struct TestTable;
 
-    type MT<'storage> = MerkleTree<&'storage mut StorageMap<NodesTable>>;
+    impl Mappable for TestTable {
+        type Key = Bytes32;
+        type SetValue = Node;
+        type GetValue = Self::SetValue;
+    }
+
     const FEE: u64 = 100;
 
     #[test]
     fn root_returns_the_hash_of_the_empty_string_when_no_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
-        let mut tree = MT::new(&mut storage_map);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let root = tree.root().unwrap();
         assert_eq!(root, (0, *empty_sum()));
@@ -172,8 +173,8 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_leaf_when_one_leaf_is_pushed() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
-        let mut tree = MT::new(&mut storage_map);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0];
         let _ = tree.push(FEE, data);
@@ -185,8 +186,8 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_4_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
-        let mut tree = MT::new(&mut storage_map);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..4]; // 4 leaves
         for datum in data.iter() {
@@ -216,8 +217,8 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_5_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
-        let mut tree = MT::new(&mut storage_map);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
         for datum in data.iter() {
@@ -251,8 +252,8 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_7_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<NodesTable>::new();
-        let mut tree = MT::new(&mut storage_map);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves
         for datum in data.iter() {

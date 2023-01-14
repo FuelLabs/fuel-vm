@@ -4,10 +4,19 @@ use rand::{seq::IteratorRandom, thread_rng, Rng};
 use sha2::{Digest, Sha256};
 
 use fuel_merkle::{
-    binary::MerkleTree,
+    binary::{MerkleTree, Primitive},
     common::{Bytes32, StorageMap},
 };
 use fuel_merkle_test_helpers::binary::MerkleTree as ReferenceMerkleTree;
+use fuel_storage::Mappable;
+
+struct TestTable;
+
+impl Mappable for TestTable {
+    type Key = u64;
+    type SetValue = Primitive;
+    type GetValue = Self::SetValue;
+}
 
 // During test setup, we randomly sample the pool of test data to generate the
 // leaf set for the test and reference Merkle trees. Each test consists of a
@@ -45,7 +54,7 @@ fn test_roots() {
         };
 
         let root = {
-            let storage = StorageMap::new();
+            let storage = StorageMap::<TestTable>::new();
             let mut test_tree = MerkleTree::new(storage);
             for datum in sample_data.iter() {
                 test_tree.push(datum).unwrap();
@@ -82,7 +91,7 @@ fn test_prove() {
         };
 
         let proof = {
-            let storage = StorageMap::new();
+            let storage = StorageMap::<TestTable>::new();
             let mut test_tree = MerkleTree::new(storage);
             for datum in sample_data.iter() {
                 test_tree.push(datum).unwrap();
@@ -108,7 +117,7 @@ fn test_load() {
             .cloned()
             .choose_multiple(&mut rng, *samples);
 
-        let mut storage = StorageMap::new();
+        let mut storage = StorageMap::<TestTable>::new();
 
         let expected_root = {
             let mut reference_tree = MerkleTree::new(&mut storage);

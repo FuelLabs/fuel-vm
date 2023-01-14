@@ -1,8 +1,22 @@
-use crate::common::Bytes32;
-use crate::{common, sparse};
+use crate::{
+    common::{Bytes32, StorageMap},
+    sparse::{self, Primitive},
+};
+use fuel_storage::Mappable;
 
-type StorageMap = common::StorageMap<sparse::merkle_tree::NodesTable>;
-type SparseMerkleTree = sparse::MerkleTree<StorageMap>;
+/// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle
+/// tree, where the storage key is `Bytes32` and the value is the [`Buffer`](crate::sparse::Buffer)
+/// (raw presentation of the [`Node`](crate::sparse::Node)).
+pub struct NodesTable;
+
+impl Mappable for NodesTable {
+    type Key = Bytes32;
+    type SetValue = Primitive;
+    type GetValue = Self::SetValue;
+}
+
+type Storage = StorageMap<NodesTable>;
+type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
 pub struct MerkleTree {
     tree: SparseMerkleTree,
@@ -11,7 +25,7 @@ pub struct MerkleTree {
 impl MerkleTree {
     pub fn new() -> Self {
         Self {
-            tree: SparseMerkleTree::new(StorageMap::new()),
+            tree: SparseMerkleTree::new(Storage::new()),
         }
     }
 

@@ -1,8 +1,22 @@
-use crate::common::{Bytes32, ProofSet};
-use crate::{binary, common};
+use crate::{
+    binary::{self, Primitive},
+    common::{Bytes32, ProofSet, StorageMap},
+};
+use fuel_storage::Mappable;
 
-type StorageMap = common::StorageMap<binary::merkle_tree::NodesTable>;
-type BinaryMerkleTree = binary::MerkleTree<StorageMap>;
+/// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
+/// a binary array, where the storage key of the node is the `u64` index and
+/// value is the [`Node`](crate::binary::Node).
+struct NodesTable;
+
+impl Mappable for NodesTable {
+    type Key = u64;
+    type SetValue = Primitive;
+    type GetValue = Self::SetValue;
+}
+
+type Storage = StorageMap<NodesTable>;
+type BinaryMerkleTree = binary::MerkleTree<NodesTable, Storage>;
 
 pub struct MerkleTree {
     tree: BinaryMerkleTree,
@@ -11,7 +25,7 @@ pub struct MerkleTree {
 impl MerkleTree {
     pub fn new() -> Self {
         Self {
-            tree: BinaryMerkleTree::new(StorageMap::new()),
+            tree: BinaryMerkleTree::new(Storage::new()),
         }
     }
 

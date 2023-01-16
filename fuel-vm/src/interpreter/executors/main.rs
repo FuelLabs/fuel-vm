@@ -18,15 +18,13 @@ use fuel_tx::{
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
-impl<Tx> Interpreter<PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
-    /// Validate the predicate, assuming the interpreter is initialized
-    fn _check_predicate(&mut self, predicate: RuntimePredicate) -> bool {
-        self.context = Context::Predicate { program: predicate };
-
-        matches!(self.verify_predicate(), Ok(ProgramState::Return(0x01)))
+#[derive(Debug, Clone, Copy)]
+pub struct PredicatesChecked {
+    gas_used: Word,
+}
+impl PredicatesChecked {
+    pub fn gas_used(&self) -> Word {
+        self.gas_used
     }
 }
 
@@ -43,13 +41,18 @@ impl<T> Interpreter<PredicateStorage, T> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates<Tx>(checked: Checked<Tx>, params: ConsensusParameters, gas_costs: GasCosts) -> bool
+    #[must_use]
+    pub fn check_predicates<Tx>(
+        checked: Checked<Tx>,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<PredicatesChecked, ()>
     where
-        Tx: ExecutableTransaction,
+        Tx: ExecutableTransaction + fuel_tx::field::GasLimit,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners() {
-            return false;
+            return Err(());
         }
 
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
@@ -60,12 +63,32 @@ impl<T> Interpreter<PredicateStorage, T> {
             .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
             .collect();
 
+        // Since we reuse the vm objects otherwise, we need to keep the actual gas here
+        let tx_gas_limit = *checked.transaction().gas_limit();
+        let mut gas_left = tx_gas_limit;
+
         vm.init_predicate(checked);
 
-        predicates
-            .into_iter()
+        for predicate in predicates {
             // VM is cloned because the state should be reset for every predicate verification
-            .all(|predicate| vm.clone()._check_predicate(predicate))
+            let mut vm = vm.clone();
+
+            vm.context = Context::Predicate { program: predicate };
+            vm.registers[REG_GGAS] = gas_left;
+            vm.registers[REG_CGAS] = gas_left;
+
+            if !matches!(vm.verify_predicate(), Ok(ProgramState::Return(0x01))) {
+                return Err(());
+            }
+
+            gas_left = vm.registers[REG_GGAS];
+        }
+
+        Ok(PredicatesChecked {
+            gas_used: tx_gas_limit
+                .checked_sub(gas_left)
+                .expect("Bug! Execution increased available gas"),
+        })
     }
 }
 

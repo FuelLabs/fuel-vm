@@ -138,7 +138,7 @@ where
     fn check_predicates(self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 
-impl<Tx: IntoChecked + ExecutableTransaction + CheckedMetadata> CheckedTxExt for Checked<Tx>
+impl<Tx: IntoChecked + ExecutableTransaction + CheckedMetadata + fuel_tx::field::GasLimit> CheckedTxExt for Checked<Tx>
 where
     Self: Clone,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
@@ -146,11 +146,12 @@ where
     /// Check predicates, if not yet done.
     fn check_predicates(mut self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         if !self.checks().contains(Checks::Predicates) {
-            if Interpreter::<PredicateStorage>::check_predicates(self.clone(), params, gas_costs) {
+            if let Ok(checked) = Interpreter::<PredicateStorage>::check_predicates(self.clone(), params, gas_costs) {
+                // This is ok because we do check the predicates above
+                self.DANGEROUS_mark_predicates_checked(checked.gas_used());
+            } else {
                 return Err(CheckError::PredicateVerification);
             }
-            // This is ok because we do check the predicates above
-            self.DANGEROUS_checks_mut().insert(Checks::Predicates);
         }
         Ok(self)
     }

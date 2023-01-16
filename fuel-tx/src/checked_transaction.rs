@@ -42,9 +42,9 @@ impl core::fmt::Display for Checks {
 /// of `Checked` outside the `fuel-tx` crate.
 ///
 /// The inner data is immutable to prevent modification to invalidate the checking.
-/// A single exception to this is provided so that extension traits can set the flags
+/// Exceptions to this is provided so that extension traits can set the flags
 /// after they have checked some properties. For instance fuel-vm is required to check
-/// the predicates of a transaction. This function is hidden from the docs, and must
+/// the predicates of a transaction. These functions are hidden from the docs, and must
 /// not be used for anything else.
 ///
 /// If you need to modify an inner state, you need to get inner values
@@ -59,19 +59,20 @@ pub struct Checked<Tx: IntoChecked> {
     transaction: Tx,
     metadata: Tx::Metadata,
     checks_bitmask: Checks,
+    /// If predicates have been checked, this is how much gas checking them used.
+    /// This must be zero if the predicates have not been checked yet.
+    /// Note that the checkedness of predicates is marked in checks_bitmask.
+    predicates_gas_used: Word,
 }
 
 impl<Tx: IntoChecked> Checked<Tx> {
-    fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
-        Checked {
+    pub(crate) fn basic(transaction: Tx, metadata: Tx::Metadata) -> Self {
+        Self {
             transaction,
             metadata,
-            checks_bitmask,
+            checks_bitmask: Checks::Basic,
+            predicates_gas_used: 0,
         }
-    }
-
-    pub(crate) fn basic(transaction: Tx, metadata: Tx::Metadata) -> Self {
-        Checked::new(transaction, metadata, Checks::Basic)
     }
 
     /// Returns reference on inner transaction.
@@ -89,13 +90,14 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.checks_bitmask
     }
 
-    /// Allows mutating the check flags without actually performing the checks.
-    /// This is to be used only by another crate that performs the check and
-    /// sets the appropriate flags after that, e.g. fuel-vm checking predicates.
+    /// Allows mutating the marking predicates checked without actualy
+    /// performing the checks. This is to be used only by fuel-vm or
+    /// some other executor crate that performs the checks.
     #[allow(non_snake_case)]
     #[doc(hidden)]
-    pub fn DANGEROUS_checks_mut(&mut self) -> &mut Checks {
-        &mut self.checks_bitmask
+    pub fn DANGEROUS_mark_predicates_checked(&mut self, gas_used: Word) {
+        self.checks_bitmask.insert(Checks::Predicates);
+        self.predicates_gas_used = gas_used;
     }
 
     /// Performs check of signatures, if not yet done.
@@ -177,19 +179,29 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             transaction,
             metadata,
             checks_bitmask,
+            predicates_gas_used,
         } = checked;
 
         // # Dev note: Avoid wildcard pattern to be sure that all variants are covered.
         match (transaction, metadata) {
-            (Transaction::Script(transaction), CheckedMetadata::Script(metadata)) => {
-                Self::Script(Checked::new(transaction, metadata, checks_bitmask))
-            }
-            (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => {
-                Self::Create(Checked::new(transaction, metadata, checks_bitmask))
-            }
-            (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => {
-                Self::Mint(Checked::new(transaction, metadata, checks_bitmask))
-            }
+            (Transaction::Script(transaction), CheckedMetadata::Script(metadata)) => Self::Script(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+                predicates_gas_used,
+            }),
+            (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => Self::Create(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+                predicates_gas_used,
+            }),
+            (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => Self::Mint(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+                predicates_gas_used,
+            }),
             // The code should produce the `CheckedMetadata` for the corresponding transaction
             // variant. It is done in the implementation of the `IntoChecked` trait for
             // `Transaction`. With the current implementation, the patterns below are unreachable.
@@ -225,17 +237,35 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                predicates_gas_used,
+            }) => Checked {
+                transaction: transaction.into(),
+                metadata: metadata.into(),
+                checks_bitmask,
+                predicates_gas_used,
+            },
             CheckedTransaction::Create(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                predicates_gas_used,
+            }) => Checked {
+                transaction: transaction.into(),
+                metadata: metadata.into(),
+                checks_bitmask,
+                predicates_gas_used,
+            },
             CheckedTransaction::Mint(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                predicates_gas_used,
+            }) => Checked {
+                transaction: transaction.into(),
+                metadata: metadata.into(),
+                checks_bitmask,
+                predicates_gas_used,
+            },
         }
     }
 }

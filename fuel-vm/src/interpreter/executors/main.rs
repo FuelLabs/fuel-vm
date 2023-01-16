@@ -33,8 +33,8 @@ impl PredicatesChecked {
 #[derive(Debug, Clone, Copy)]
 pub struct PredicateVerificationFailed;
 
-impl Into<fuel_tx::CheckError> for PredicateVerificationFailed {
-    fn into(self) -> fuel_tx::CheckError {
+impl From<PredicateVerificationFailed> for fuel_tx::CheckError {
+    fn from(_: PredicateVerificationFailed) -> Self {
         fuel_tx::CheckError::PredicateVerificationFailed
     }
 }

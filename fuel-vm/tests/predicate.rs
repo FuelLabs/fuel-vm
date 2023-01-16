@@ -141,6 +141,44 @@ fn execute_gas_metered_predicate(predicate: Vec<Opcode>) -> bool {
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
 }
 
+fn execute_gas_metered_predicates(predicates: Vec<Vec<Opcode>>) -> bool {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let gas_price = 1_000;
+    let gas_limit = 1_000_000;
+    let script = vec![];
+    let script_data = vec![];
+
+    let mut builder = TransactionBuilder::script(script, script_data);
+    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+
+    for predicate in predicates {
+        let predicate: Vec<u8> = predicate
+            .into_iter()
+            .flat_map(|op| u32::from(op).to_be_bytes())
+            .collect();
+
+        let amount = 10_000_000;
+
+        let owner = Input::predicate_owner(&predicate);
+        let input = Input::coin_predicate(
+            rng.gen(),
+            owner,
+            amount,
+            AssetId::default(),
+            rng.gen(),
+            0,
+            predicate,
+            vec![],
+        );
+
+        builder.add_input(input);
+    }
+
+    let tx = builder.finalize_checked_basic(0, &ConsensusParameters::default());
+    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
+}
+
 #[test]
 fn predicate_gas_metering() {
     // This just succeeds
@@ -149,5 +187,11 @@ fn predicate_gas_metering() {
     // This runs out of gas
     assert!(!execute_gas_metered_predicate(vec![
         Opcode::JI(0), // Infinite loop
+    ]));
+
+    // Multiple Predicate Success
+    assert!(execute_gas_metered_predicates(vec![
+        vec![Opcode::RET(REG_ONE)],
+        vec![Opcode::MOVI(0x10, 0x11), Opcode::MOVI(0x10, 0x11), Opcode::RET(REG_ONE)],
     ]));
 }

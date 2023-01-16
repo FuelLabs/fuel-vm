@@ -42,7 +42,6 @@ impl<T> Interpreter<PredicateStorage, T> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    #[must_use]
     pub fn check_predicates<Tx>(
         checked: Checked<Tx>,
         params: ConsensusParameters,

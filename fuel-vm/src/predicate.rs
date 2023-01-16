@@ -135,7 +135,6 @@ where
     Self: Sized,
 {
     /// Check predicates, if not yet done.
-    #[must_use]
     fn check_predicates(self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 

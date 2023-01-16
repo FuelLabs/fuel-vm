@@ -31,6 +31,10 @@ impl TransactionFee {
         self.bytes
     }
 
+    pub const fn bytes(&self) -> Word {
+        self.bytes
+    }
+
     /// Maximum fee value composed of metered bytes cost + tx gas limit, with price factor
     /// correction
     pub const fn total(&self) -> Word {

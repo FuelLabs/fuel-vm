@@ -1,14 +1,9 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use crate::{
-    gas::GasCosts,
-    interpreter::{CheckedMetadata, MemoryRange},
-    prelude::{ExecutableTransaction, Interpreter},
-    storage::PredicateStorage,
-};
+use crate::interpreter::MemoryRange;
 
 use fuel_asm::Word;
-use fuel_tx::{field, CheckError, Checked, Checks, ConsensusParameters, IntoChecked};
+use fuel_tx::{field, ConsensusParameters};
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -126,30 +121,5 @@ fn from_tx_works() {
 
         // assert the program in the vm memory is the same of the input
         assert_eq!(program, &padded_predicate);
-    }
-}
-
-/// Extension trait that allows checking predicates of [`Checked<Tx>`]
-pub trait CheckedTxExt
-where
-    Self: Sized,
-{
-    /// Check predicates, if not yet done.
-    fn check_predicates(self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
-}
-
-impl<Tx: IntoChecked + ExecutableTransaction + fuel_tx::field::GasLimit> CheckedTxExt for Checked<Tx>
-where
-    Self: Clone,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
-{
-    /// Check predicates, if not yet done.
-    fn check_predicates(mut self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
-        if !self.checks().contains(Checks::Predicates) {
-            let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), params, gas_costs)?;
-            // This is ok because we do check the predicates above
-            self.DANGEROUS_mark_predicates_checked(checked.gas_used());
-        }
-        Ok(self)
     }
 }

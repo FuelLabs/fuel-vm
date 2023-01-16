@@ -137,27 +137,6 @@ impl SizedBytes for Mint {
     }
 }
 
-#[cfg(feature = "std")]
-pub mod checked {
-    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Mint};
-    use fuel_types::Word;
-
-    impl IntoChecked for Mint {
-        type Metadata = ();
-
-        fn into_checked_basic(
-            mut self,
-            block_height: Word,
-            params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
-            self.check_without_signatures(block_height, params)?;
-
-            Ok(Checked::basic(self, ()))
-        }
-    }
-}
-
 mod field {
     use super::*;
 

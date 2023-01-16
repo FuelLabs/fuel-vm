@@ -12,8 +12,8 @@ use std::ops::Index;
 use std::{io, mem};
 
 use fuel_tx::{
-    field, Chargeable, CheckError, ConsensusParameters, Create, CreateCheckedMetadata, Executable, IntoChecked, Output,
-    Receipt, Script, ScriptCheckedMetadata, Transaction, TransactionFee, TransactionRepr, UniqueIdentifier,
+    field, Chargeable, CheckError, ConsensusParameters, Create, Executable, Output, Receipt, Script, Transaction,
+    TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::bytes::{SerializableVec, SizedBytes};
 use fuel_types::{Address, AssetId, ContractId, Word};
@@ -47,6 +47,8 @@ use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
+
+use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
 
 /// VM interpreter.
 ///

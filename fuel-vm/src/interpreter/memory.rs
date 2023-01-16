@@ -492,6 +492,7 @@ mod tests {
     use std::ops::Range;
 
     use super::*;
+    use crate::checked_transaction::Checked;
     use crate::prelude::*;
     use fuel_tx::Script;
     use test_case::test_case;

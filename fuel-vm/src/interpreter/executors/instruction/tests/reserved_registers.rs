@@ -1,6 +1,7 @@
 use super::*;
+use crate::checked_transaction::IntoChecked;
 use fuel_asm::PanicReason::OutOfGas;
-use fuel_tx::{ConsensusParameters, IntoChecked, Transaction};
+use fuel_tx::{ConsensusParameters, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 

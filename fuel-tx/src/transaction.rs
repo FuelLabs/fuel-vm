@@ -30,8 +30,6 @@ use crate::TxPointer;
 
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
-#[cfg(feature = "std")]
-pub use types::{CreateCheckedMetadata, ScriptCheckedMetadata};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;

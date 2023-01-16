@@ -146,12 +146,10 @@ where
     /// Check predicates, if not yet done.
     fn check_predicates(mut self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         if !self.checks().contains(Checks::Predicates) {
-            if let Ok(checked) = Interpreter::<PredicateStorage>::check_predicates(self.clone(), params, gas_costs) {
-                // This is ok because we do check the predicates above
-                self.DANGEROUS_mark_predicates_checked(checked.gas_used());
-            } else {
-                return Err(CheckError::PredicateVerification);
-            }
+            let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), params, gas_costs)
+                .map_err(|err| err.into())?;
+            // This is ok because we do check the predicates above
+            self.DANGEROUS_mark_predicates_checked(checked.gas_used());
         }
         Ok(self)
     }

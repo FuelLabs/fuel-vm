@@ -107,7 +107,7 @@ pub enum CheckError {
     /// overflow.
     ArithmeticOverflow,
     /// Predicate verification failed
-    PredicateVerification,
+    PredicateVerificationFailed,
 }
 
 impl fmt::Display for CheckError {

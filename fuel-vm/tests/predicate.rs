@@ -146,7 +146,9 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Opcode>>) -> Result<u64, (
     }
 
     let tx = builder.finalize_checked_basic(0, &ConsensusParameters::default());
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default()).map(|r| r.gas_used())
+    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
+        .map(|r| r.gas_used())
+        .map_err(|_| ())
 }
 
 #[test]

@@ -29,6 +29,16 @@ impl PredicatesChecked {
     }
 }
 
+/// Predicates checking failed
+#[derive(Debug, Clone, Copy)]
+pub struct PredicateVerificationFailed;
+
+impl Into<fuel_tx::CheckError> for PredicateVerificationFailed {
+    fn into(self) -> fuel_tx::CheckError {
+        fuel_tx::CheckError::PredicateVerificationFailed
+    }
+}
+
 // FIXME replace for a type-safe transaction
 impl<T> Interpreter<PredicateStorage, T> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
@@ -46,13 +56,13 @@ impl<T> Interpreter<PredicateStorage, T> {
         checked: Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
-    ) -> Result<PredicatesChecked, ()>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + fuel_tx::field::GasLimit,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners() {
-            return Err(());
+            return Err(PredicateVerificationFailed);
         }
 
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
@@ -78,7 +88,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             vm.registers[REG_CGAS] = remaining_gas;
 
             if !matches!(vm.verify_predicate(), Ok(ProgramState::Return(0x01))) {
-                return Err(());
+                return Err(PredicateVerificationFailed);
             }
 
             remaining_gas = vm.registers[REG_GGAS];

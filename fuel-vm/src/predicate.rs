@@ -135,10 +135,11 @@ where
     Self: Sized,
 {
     /// Check predicates, if not yet done.
+    #[must_use]
     fn check_predicates(self, params: ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 
-impl<Tx: IntoChecked + ExecutableTransaction + CheckedMetadata + fuel_tx::field::GasLimit> CheckedTxExt for Checked<Tx>
+impl<Tx: IntoChecked + ExecutableTransaction + fuel_tx::field::GasLimit> CheckedTxExt for Checked<Tx>
 where
     Self: Clone,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,

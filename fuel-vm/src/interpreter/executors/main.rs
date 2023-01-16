@@ -18,6 +18,7 @@ use fuel_tx::{
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
+/// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]
 pub struct PredicatesChecked {
     gas_used: Word,
@@ -65,7 +66,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
         let tx_gas_limit = *checked.transaction().gas_limit();
-        let mut gas_left = tx_gas_limit;
+        let mut remaining_gas = tx_gas_limit;
 
         vm.init_predicate(checked);
 
@@ -74,19 +75,19 @@ impl<T> Interpreter<PredicateStorage, T> {
             let mut vm = vm.clone();
 
             vm.context = Context::Predicate { program: predicate };
-            vm.registers[REG_GGAS] = gas_left;
-            vm.registers[REG_CGAS] = gas_left;
+            vm.registers[REG_GGAS] = remaining_gas;
+            vm.registers[REG_CGAS] = remaining_gas;
 
             if !matches!(vm.verify_predicate(), Ok(ProgramState::Return(0x01))) {
                 return Err(());
             }
 
-            gas_left = vm.registers[REG_GGAS];
+            remaining_gas = vm.registers[REG_GGAS];
         }
 
         Ok(PredicatesChecked {
             gas_used: tx_gas_limit
-                .checked_sub(gas_left)
+                .checked_sub(remaining_gas)
                 .expect("Bug! Execution increased available gas"),
         })
     }

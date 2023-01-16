@@ -176,3 +176,65 @@ fn predicate_gas_metering() {
     assert_eq!(gas_used_by[1] * 2, gas_used_by[2]);
     assert_eq!(gas_used_by[1] * 3, gas_used_by[3]);
 }
+
+#[test]
+fn gas_used_by_predicates_is_deducted_from_script_gas() {
+    use fuel_vm::predicate::CheckedTxExt;
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let gas_price = 1_000;
+    let gas_limit = 1_000_000;
+    let script = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
+    let script_data = vec![];
+
+    let mut builder = TransactionBuilder::script(script, script_data);
+    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+
+    let coin_amount = 10_000_000;
+
+    builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
+
+    let tx_without_predicate = builder
+        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .expect("Predicate check failed even if we don't have any predicates");
+
+    let predicate: Vec<u8> = vec![
+        Opcode::ADDI(0x20, 0x20, 1),
+        Opcode::ADDI(0x20, 0x20, 1),
+        Opcode::ADDI(0x20, 0x20, 1),
+        Opcode::ADDI(0x20, 0x20, 1),
+        Opcode::ADDI(0x20, 0x20, 1),
+        Opcode::RET(REG_ONE),
+    ]
+    .into_iter()
+    .flat_map(|op| u32::from(op).to_be_bytes())
+    .collect();
+    let owner = Input::predicate_owner(&predicate);
+    let input = Input::coin_predicate(
+        rng.gen(),
+        owner,
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        0,
+        predicate,
+        vec![],
+    );
+
+    builder.add_input(input);
+
+    let tx_with_predicate = builder
+        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .expect("Predicate check failed");
+
+    let mut client = MemoryClient::default();
+    client.transact(tx_with_predicate);
+    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
+    client.transact(tx_without_predicate);
+    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+
+    assert!(receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used());
+}

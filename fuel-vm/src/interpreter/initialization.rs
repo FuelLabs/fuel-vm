@@ -14,7 +14,12 @@ where
     Tx: ExecutableTransaction,
 {
     /// Initialize the VM with a given transaction
-    fn _init(&mut self, tx: Tx, initial_balances: InitialBalances) -> Result<(), InterpreterError> {
+    fn _init(
+        &mut self,
+        tx: Tx,
+        initial_balances: InitialBalances,
+        gas_used_by_predicates: Word,
+    ) -> Result<(), InterpreterError> {
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -38,8 +43,13 @@ where
 
         let tx_size = self.transaction().serialized_size() as Word;
 
-        self.registers[REG_GGAS] = self.transaction().limit();
-        self.registers[REG_CGAS] = self.transaction().limit();
+        let gas = self
+            .transaction()
+            .limit()
+            .checked_sub(gas_used_by_predicates)
+            .expect("Bug! Predicates have used more gas than allowed");
+        self.registers[REG_GGAS] = gas;
+        self.registers[REG_CGAS] = gas;
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -69,7 +79,7 @@ where
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
-        self._init(tx, metadata.balances()).is_ok()
+        self._init(tx, metadata.balances(), 0).is_ok()
     }
 }
 
@@ -88,9 +98,10 @@ where
 
         self.context = Context::Script { block_height };
 
+        let gas_used_by_predicates = checked.gas_used_by_predicates();
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 
-        self._init(tx, metadata.balances())
+        self._init(tx, metadata.balances(), gas_used_by_predicates)
     }
 }

@@ -62,7 +62,7 @@ pub struct Checked<Tx: IntoChecked> {
     /// If predicates have been checked, this is how much gas checking them used.
     /// This must be zero if the predicates have not been checked yet.
     /// Note that the checkedness of predicates is marked in checks_bitmask.
-    predicates_gas_used: Word,
+    gas_used_by_predicates: Word,
 }
 
 impl<Tx: IntoChecked> Checked<Tx> {
@@ -71,7 +71,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
             transaction,
             metadata,
             checks_bitmask: Checks::Basic,
-            predicates_gas_used: 0,
+            gas_used_by_predicates: 0,
         }
     }
 
@@ -90,6 +90,12 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.checks_bitmask
     }
 
+    /// Gas used by predicate checking. If the predicates have not
+    /// been checked, returns zero.
+    pub fn gas_used_by_predicates(&self) -> Word {
+        self.gas_used_by_predicates
+    }
+
     /// Allows mutating the marking predicates checked without actualy
     /// performing the checks. This is to be used only by fuel-vm or
     /// some other executor crate that performs the checks.
@@ -97,7 +103,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     #[doc(hidden)]
     pub fn DANGEROUS_mark_predicates_checked(&mut self, gas_used: Word) {
         self.checks_bitmask.insert(Checks::Predicates);
-        self.predicates_gas_used = gas_used;
+        self.gas_used_by_predicates = gas_used;
     }
 
     /// Performs check of signatures, if not yet done.
@@ -179,7 +185,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             transaction,
             metadata,
             checks_bitmask,
-            predicates_gas_used,
+            gas_used_by_predicates,
         } = checked;
 
         // # Dev note: Avoid wildcard pattern to be sure that all variants are covered.
@@ -188,19 +194,19 @@ impl From<Checked<Transaction>> for CheckedTransaction {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }),
             (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => Self::Create(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }),
             (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => Self::Mint(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }),
             // The code should produce the `CheckedMetadata` for the corresponding transaction
             // variant. It is done in the implementation of the `IntoChecked` trait for
@@ -237,34 +243,34 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             },
             CheckedTransaction::Create(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             },
             CheckedTransaction::Mint(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                predicates_gas_used,
+                gas_used_by_predicates,
             },
         }
     }

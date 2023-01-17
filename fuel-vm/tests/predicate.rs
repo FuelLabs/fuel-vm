@@ -242,8 +242,6 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
 #[test]
 fn gas_used_by_predicates_causes_out_of_gas() {
-    use fuel_vm::predicate::CheckedTxExt;
-
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;

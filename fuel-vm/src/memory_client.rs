@@ -1,11 +1,12 @@
 //! In-memory client implementation
 
+use crate::checked_transaction::Checked;
 use crate::state::StateTransitionRef;
 use crate::storage::MemoryStorage;
 use crate::transactor::Transactor;
 use crate::{backtrace::Backtrace, gas::GasCosts};
 
-use fuel_tx::{Checked, ConsensusParameters, Create, Receipt, Script};
+use fuel_tx::{ConsensusParameters, Create, Receipt, Script};
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.

@@ -167,51 +167,6 @@ impl SizedBytes for Script {
     }
 }
 
-#[cfg(feature = "std")]
-pub mod checked {
-    use crate::checked_transaction::{initial_free_balances, AvailableBalances};
-    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Script, TransactionFee};
-    use fuel_types::{AssetId, Word};
-    use std::collections::BTreeMap;
-
-    #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-    pub struct CheckedMetadata {
-        /// The mapping of initial free balances
-        pub initial_free_balances: BTreeMap<AssetId, Word>,
-        /// The block height this tx was verified with
-        pub block_height: Word,
-        /// The fees and gas usage
-        pub fee: TransactionFee,
-    }
-
-    impl IntoChecked for Script {
-        type Metadata = CheckedMetadata;
-
-        fn into_checked_basic(
-            mut self,
-            block_height: Word,
-            params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
-            self.check_without_signatures(block_height, params)?;
-
-            // validate fees and compute free balances
-            let AvailableBalances {
-                initial_free_balances,
-                fee,
-            } = initial_free_balances(&self, params)?;
-
-            let metadata = CheckedMetadata {
-                initial_free_balances,
-                block_height,
-                fee,
-            };
-
-            Ok(Checked::basic(self, metadata))
-        }
-    }
-}
-
 mod field {
     use super::*;
 

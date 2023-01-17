@@ -11,7 +11,6 @@ repository = { workspace = true }
 description = "FuelVM transaction."
 
 [dependencies]
-bitflags = "1"
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
 fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }

@@ -71,6 +71,7 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
+    use crate::checked_transaction::{builder::TransactionBuilderExt, Checked, IntoChecked};
     use crate::consts::*;
     use crate::gas::GasCosts;
     use crate::memory_client::MemoryClient;
@@ -84,8 +85,8 @@ pub mod test_helpers {
     use fuel_asm::{GTFArgs, Opcode, PanicReason};
     use fuel_tx::field::Outputs;
     use fuel_tx::{
-        Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt, Script, StorageSlot,
-        Transaction, TransactionBuilder, Witness,
+        ConsensusParameters, Contract, Create, Input, Output, Receipt, Script, StorageSlot, Transaction,
+        TransactionBuilder, Witness,
     };
     use fuel_types::bytes::{Deserializable, SerializableVec, SizedBytes};
     use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};

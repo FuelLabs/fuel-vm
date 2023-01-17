@@ -1,10 +1,10 @@
 use super::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{Checked, IntoChecked};
 use fuel_types::Word;
 
 use std::io;

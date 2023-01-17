@@ -30,7 +30,7 @@ mod receipt;
 mod transaction;
 
 #[cfg(feature = "std")]
-mod checked_transaction;
+pub mod checked_transaction;
 
 #[cfg(feature = "builder")]
 pub use builder::{Buildable, TransactionBuilder};
@@ -45,14 +45,11 @@ pub use transaction::{
 };
 
 #[cfg(feature = "std")]
-pub use transaction::{CreateCheckedMetadata, ScriptCheckedMetadata, Signable, UniqueIdentifier};
+pub use transaction::{Signable, UniqueIdentifier};
 
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]
 pub use transaction::consensus_parameters::default_parameters;
-
-#[cfg(feature = "std")]
-pub use checked_transaction::{Checked, CheckedMetadata, CheckedTransaction, Checks, IntoChecked};
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

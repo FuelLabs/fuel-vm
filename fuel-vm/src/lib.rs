@@ -5,6 +5,7 @@
 pub mod arith;
 pub mod backtrace;
 pub mod call;
+pub mod checked_transaction;
 pub mod consts;
 pub mod context;
 pub mod crypto;
@@ -70,6 +71,9 @@ pub mod prelude {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub use crate::util::test_helpers::TestBuilder;
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub use crate::checked_transaction::{builder::TransactionBuilderExt, IntoChecked};
 
     #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
     pub use crate::util::gas_profiling::GasProfiler;

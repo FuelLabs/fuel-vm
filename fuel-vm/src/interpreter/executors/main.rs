@@ -1,3 +1,4 @@
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
@@ -12,8 +13,7 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Chargeable, Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt,
-    ScriptExecutionResult,
+    Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;

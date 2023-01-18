@@ -739,6 +739,53 @@ mod tests {
         );
     }
 
+    #[test]
+    fn basic_check_marks_basic_flag() {
+        let block_height = 1;
+        let params = ConsensusParameters::default();
+
+        let tx = Transaction::default();
+        // Sets Checks::Basic
+        let checked = tx.into_checked_basic(block_height, &params).unwrap();
+        assert_eq!(*checked.checks(), Checks::Basic)
+    }
+
+    #[test]
+    fn signatures_check_marks_signatures_flag() {
+        let mut rng = StdRng::seed_from_u64(1);
+        let block_height = 1;
+        let params = ConsensusParameters::default();
+
+        let tx = valid_coin_tx(&mut rng, 1, 100000, 1000000, 10);
+        let checked = tx
+            // Sets Checks::Basic
+            .into_checked_basic(block_height, &params)
+            .unwrap()
+            // Sets Checks::Signatures
+            .check_signatures()
+            .unwrap();
+
+        assert_eq!(*checked.checks(), Checks::Basic | Checks::Signatures);
+    }
+
+    #[test]
+    fn predicates_check_marks_predicate_flag() {
+        let mut rng = StdRng::seed_from_u64(1);
+        let block_height = 1;
+        let params = ConsensusParameters::default();
+        let gas_costs = GasCosts::default();
+
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
+        let checked = tx
+            // Sets Checks::Basic
+            .into_checked_basic(block_height, &params)
+            .unwrap()
+            // Sets Checks::Predicates
+            .check_predicates(&params, gas_costs)
+            .unwrap();
+        assert_eq!(*checked.checks(), Checks::Basic | Checks::Predicates)
+    }
+
     fn is_valid_max_fee<Tx>(tx: &Tx, params: &ConsensusParameters) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
@@ -793,17 +840,19 @@ mod tests {
     // used when proptesting to avoid expensive crypto signatures
     fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
         let asset = AssetId::default();
+        let predicate = vec![Opcode::RET(1)].into_iter().collect::<Vec<u8>>();
+        let owner = Input::predicate_owner(&predicate);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_input(Input::coin_predicate(
                 rng.gen(),
-                rng.gen(),
+                owner,
                 fee_input_amount,
                 asset,
                 rng.gen(),
                 0,
-                vec![],
+                predicate,
                 vec![],
             ))
             .add_output(Output::change(rng.gen(), 0, asset))

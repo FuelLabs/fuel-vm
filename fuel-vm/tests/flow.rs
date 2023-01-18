@@ -234,7 +234,7 @@ fn call() {
         .as_mut_slice()
         .copy_from_slice(script_mem.as_slice());
 
-    let receipts = Transactor::new(&mut storage, params, gas_costs.clone())
+    let receipts = Transactor::new(&mut storage, params, gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute script")
@@ -336,7 +336,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, gas_costs.clone())
+    .into_checked(height, &params, gas_costs)
     .expect("failed to generate a checked tx");
 
     let mut vm = Interpreter::with_storage(storage, params, Default::default());

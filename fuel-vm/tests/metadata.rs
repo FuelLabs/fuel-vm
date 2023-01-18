@@ -153,7 +153,7 @@ fn metadata() {
         .into_checked(height, &params, gas_costs.clone())
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(&mut storage, Default::default(), gas_costs.clone())
+    let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to transact")

@@ -157,7 +157,8 @@ impl Output {
     }
 }
 
-/// Means that the transaction can be validated.
+/// Contains logic for stateless validations that don't result in any reusable metadata such
+/// as spendable input balances or remaining gas.
 pub trait Checkable {
     #[cfg(feature = "std")]
     /// Partially validates the transaction. It checks the validity of fields according to rules in

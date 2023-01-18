@@ -158,16 +158,13 @@ impl Output {
 }
 
 /// Contains logic for stateless validations that don't result in any reusable metadata such
-/// as spendable input balances or remaining gas.
-pub trait Checkable {
+/// as spendable input balances or remaining gas. Primarily involves validating that transaction
+/// fields are correctly formatted and signed.
+pub trait FormatValidityChecks {
     #[cfg(feature = "std")]
-    /// Partially validates the transaction. It checks the validity of fields according to rules in
-    /// the specification and validity of signatures.
-    fn check_basic_and_signatures(
-        &self,
-        block_height: Word,
-        parameters: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    /// Performs all stateless transaction validity checks. This includes the validity
+    /// of fields according to rules in the specification and validity of signatures.
+    fn check(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
         self.check_signatures()?;
 
@@ -183,7 +180,7 @@ pub trait Checkable {
     fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError>;
 }
 
-impl Checkable for Transaction {
+impl FormatValidityChecks for Transaction {
     #[cfg(feature = "std")]
     fn check_signatures(&self) -> Result<(), CheckError> {
         match self {

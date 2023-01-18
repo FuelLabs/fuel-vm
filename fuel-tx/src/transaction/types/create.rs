@@ -1,10 +1,10 @@
 use crate::transaction::{
-    checkable::{check_common_part, Checkable},
     field::{
         BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs, Salt as SaltField,
         StorageSlots, Witnesses,
     },
     metadata::CommonMetadata,
+    validity::{check_common_part, FormatValidityChecks},
 };
 use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness};
 use derivative::Derivative;
@@ -75,7 +75,7 @@ impl Chargeable for Create {
     }
 }
 
-impl Checkable for Create {
+impl FormatValidityChecks for Create {
     #[cfg(feature = "std")]
     fn check_signatures(&self) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;

@@ -165,7 +165,7 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
 }
 
 /// Performs checks for a transaction
-pub trait IntoChecked: Checkable + Sized {
+pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
     type Metadata: Sized;
 
@@ -355,7 +355,7 @@ mod tests {
 
         Checked::<Transaction>::default()
             .transaction()
-            .check_basic_and_signatures(height, &Default::default())
+            .check(height, &Default::default())
             .expect("default checked tx should be valid");
     }
 

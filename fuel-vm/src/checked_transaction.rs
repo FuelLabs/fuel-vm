@@ -110,7 +110,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 }
 
-// #[cfg(feature = "internals")]
+#[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked + Default> Default for Checked<Tx>
 where
     Checked<Tx>: CheckPredicates,
@@ -138,7 +138,7 @@ impl<Tx: IntoChecked> AsRef<Tx> for Checked<Tx> {
     }
 }
 
-// #[cfg(feature = "internals")]
+#[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked> AsMut<Tx> for Checked<Tx> {
     fn as_mut(&mut self) -> &mut Tx {
         &mut self.transaction

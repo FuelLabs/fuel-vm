@@ -10,16 +10,16 @@ where
     Tx: IntoChecked,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
-    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Tx>;
+    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters, gas_costs: GasCosts) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks only
     fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Tx>;
 }
 
 impl TransactionBuilderExt<Create> for TransactionBuilder<Create> {
-    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Create> {
+    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters, gas_costs: GasCosts) -> Checked<Create> {
         self.finalize()
-            .into_checked(height, params)
+            .into_checked(height, params, gas_costs)
             .expect("failed to check tx")
     }
 
@@ -31,9 +31,9 @@ impl TransactionBuilderExt<Create> for TransactionBuilder<Create> {
 }
 
 impl TransactionBuilderExt<Mint> for TransactionBuilder<Mint> {
-    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Mint> {
+    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters, gas_costs: GasCosts) -> Checked<Mint> {
         self.finalize()
-            .into_checked(height, params)
+            .into_checked(height, params, gas_costs)
             .expect("failed to check tx")
     }
 
@@ -45,9 +45,9 @@ impl TransactionBuilderExt<Mint> for TransactionBuilder<Mint> {
 }
 
 impl TransactionBuilderExt<Script> for TransactionBuilder<Script> {
-    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Script> {
+    fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters, gas_costs: GasCosts) -> Checked<Script> {
         self.finalize()
-            .into_checked(height, params)
+            .into_checked(height, params, gas_costs)
             .expect("failed to check tx")
     }
 

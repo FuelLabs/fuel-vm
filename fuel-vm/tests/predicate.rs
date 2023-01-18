@@ -5,6 +5,7 @@ use fuel_vm::{consts::*, prelude::*};
 
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
+use fuel_vm::checked_transaction::CheckPredicates;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
@@ -188,6 +189,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let gas_limit = 1_000_000;
     let script = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let script_data = vec![];
+    let params = ConsensusParameters::default();
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
@@ -197,8 +199,8 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
-        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .finalize_checked_basic(0, &params)
+        .check_predicates(&params, GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let predicate: Vec<u8> = vec![
@@ -228,7 +230,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(0, &ConsensusParameters::default())
-        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .check_predicates(&params, GasCosts::default())
         .expect("Predicate check failed");
 
     let mut client = MemoryClient::default();
@@ -243,6 +245,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 #[test]
 fn gas_used_by_predicates_causes_out_of_gas() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
+    let params = ConsensusParameters::default();
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
@@ -264,7 +267,7 @@ fn gas_used_by_predicates_causes_out_of_gas() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(0, &ConsensusParameters::default())
-        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .check_predicates(&params, GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -297,7 +300,7 @@ fn gas_used_by_predicates_causes_out_of_gas() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(0, &ConsensusParameters::default())
-        .check_predicates(ConsensusParameters::default(), GasCosts::default())
+        .check_predicates(&params, GasCosts::default())
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);

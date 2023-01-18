@@ -513,7 +513,7 @@ mod tests {
         );
 
         let tx = tx
-            .into_checked(Default::default(), &params)
+            .into_checked(Default::default(), &params, vm.gas_costs())
             .expect("default tx should produce a valid checked transaction");
 
         vm.init_script(tx).expect("Failed to init VM");

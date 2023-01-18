@@ -100,6 +100,11 @@ impl MemoryClient {
     pub const fn tx_offset(&self) -> usize {
         self.transactor.tx_offset()
     }
+
+    /// Gas costs for opcodes
+    pub fn gas_costs(&self) -> GasCosts {
+        self.transactor.gas_costs()
+    }
 }
 
 impl From<MemoryStorage> for MemoryClient {

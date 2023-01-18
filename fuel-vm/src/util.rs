@@ -229,7 +229,8 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
-            self.builder.finalize_checked(self.block_height as Word, &self.params)
+            self.builder
+                .finalize_checked(self.block_height as Word, &self.params, self.gas_costs.clone())
         }
 
         pub fn build_get_balance_tx(
@@ -298,7 +299,7 @@ pub mod test_helpers {
                 vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
             )
-            .into_checked(self.block_height as Word, &self.params)
+            .into_checked(self.block_height as Word, &self.params, self.gas_costs.clone())
             .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -405,7 +406,7 @@ pub mod test_helpers {
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .add_output(Output::contract_created(contract_id, state_root))
-            .finalize_checked(height, &params);
+            .finalize_checked(height, &params, client.gas_costs());
 
         client.deploy(contract_deployer).expect("valid contract deployment");
 
@@ -437,7 +438,7 @@ pub mod test_helpers {
                 contract_id,
             ))
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, &params);
+            .finalize_checked(height, &params, client.gas_costs());
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

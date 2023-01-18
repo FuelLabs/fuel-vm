@@ -355,7 +355,7 @@ mod tests {
 
         Checked::<Transaction>::default()
             .transaction()
-            .check(height, &Default::default())
+            .check_basic_and_signatures(height, &Default::default())
             .expect("default checked tx should be valid");
     }
 

@@ -95,7 +95,7 @@ fn coin_signed() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &Default::default())
+        .check_basic_and_signatures(block_height, &Default::default())
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err);
@@ -251,7 +251,7 @@ fn message() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &Default::default())
+        .check_basic_and_signatures(block_height, &Default::default())
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);

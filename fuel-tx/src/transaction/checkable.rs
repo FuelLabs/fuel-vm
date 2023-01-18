@@ -160,9 +160,13 @@ impl Output {
 /// Means that the transaction can be validated.
 pub trait Checkable {
     #[cfg(feature = "std")]
-    /// Fully validates the transaction. It checks the validity of fields according to rules in
+    /// Partially validates the transaction. It checks the validity of fields according to rules in
     /// the specification and validity of signatures.
-    fn check(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_basic_and_signatures(
+        &self,
+        block_height: Word,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
         self.check_signatures()?;
 

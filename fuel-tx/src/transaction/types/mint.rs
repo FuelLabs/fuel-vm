@@ -1,6 +1,6 @@
 use crate::transaction::{
-    checkable::Checkable,
     field::{Outputs, TxPointer as TxPointerField},
+    validity::FormatValidityChecks,
 };
 use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
@@ -88,7 +88,7 @@ impl crate::UniqueIdentifier for Mint {
     }
 }
 
-impl Checkable for Mint {
+impl FormatValidityChecks for Mint {
     #[cfg(feature = "std")]
     fn check_signatures(&self) -> Result<(), CheckError> {
         Ok(())

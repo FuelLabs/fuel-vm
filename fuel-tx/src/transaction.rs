@@ -5,11 +5,11 @@ use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
 
-mod checkable;
 mod fee;
 mod metadata;
 mod repr;
 mod types;
+mod validity;
 
 #[cfg(feature = "std")]
 mod id;
@@ -19,12 +19,12 @@ mod txio;
 
 pub mod consensus_parameters;
 
-pub use checkable::{CheckError, Checkable};
 pub use consensus_parameters::ConsensusParameters;
 pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::{Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness};
+pub use validity::{CheckError, FormatValidityChecks};
 
 use crate::TxPointer;
 

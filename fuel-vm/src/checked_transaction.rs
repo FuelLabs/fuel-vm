@@ -165,7 +165,7 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
 }
 
 /// Performs checks for a transaction
-pub trait IntoChecked: Checkable + Sized {
+pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
     type Metadata: Sized;
 

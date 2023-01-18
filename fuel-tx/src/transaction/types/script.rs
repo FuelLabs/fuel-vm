@@ -1,9 +1,9 @@
 use crate::transaction::{
-    checkable::{check_common_part, Checkable},
     field::{
         GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
     },
     metadata::CommonMetadata,
+    validity::{check_common_part, FormatValidityChecks},
     Chargeable,
 };
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
@@ -108,7 +108,7 @@ impl Chargeable for Script {
     }
 }
 
-impl Checkable for Script {
+impl FormatValidityChecks for Script {
     #[cfg(feature = "std")]
     fn check_signatures(&self) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;

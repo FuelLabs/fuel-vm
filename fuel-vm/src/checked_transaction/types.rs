@@ -5,7 +5,7 @@ pub use self::script::CheckedMetadata as ScriptCheckedMetadata;
 
 pub mod create {
     use super::super::{initial_free_balances, AvailableBalances, Checked, IntoChecked};
-    use fuel_tx::{Cacheable, CheckError, Checkable, ConsensusParameters, Create, TransactionFee};
+    use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 
@@ -49,7 +49,7 @@ pub mod create {
 
 pub mod mint {
     use super::super::{Checked, IntoChecked};
-    use fuel_tx::{Cacheable, CheckError, Checkable, ConsensusParameters, Mint};
+    use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::Word;
 
     impl IntoChecked for Mint {
@@ -70,7 +70,7 @@ pub mod mint {
 
 pub mod script {
     use super::super::{initial_free_balances, AvailableBalances, Checked, IntoChecked};
-    use fuel_tx::{Cacheable, CheckError, Checkable, ConsensusParameters, Script, TransactionFee};
+    use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 

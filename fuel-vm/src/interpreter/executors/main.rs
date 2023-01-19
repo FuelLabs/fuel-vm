@@ -140,6 +140,14 @@ where
             return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
         }
 
+        // Prevent redeployment of contracts
+        if storage
+            .storage_contract_exists(&id)
+            .map_err(InterpreterError::from_io)?
+        {
+            return Err(InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed));
+        }
+
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;

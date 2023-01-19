@@ -158,7 +158,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     {
         self.into_checked_basic(block_height, params)?
             .check_signatures()?
-            .check_predicates(params, &gas_costs)
+            .check_predicates(params, gas_costs)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.

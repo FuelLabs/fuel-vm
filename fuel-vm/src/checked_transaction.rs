@@ -174,10 +174,7 @@ where
     Self: Clone,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,
 {
-    fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
+    fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
             let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), *params, gas_costs)?;

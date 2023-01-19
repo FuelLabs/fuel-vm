@@ -49,8 +49,8 @@ where
             .limit()
             .checked_sub(gas_used_by_predicates)
             .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
-        self.registers[REG_GGAS] = gas;
-        self.registers[REG_CGAS] = gas;
+
+        self.set_remaining_gas(gas);
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -99,7 +99,7 @@ where
 
         self.context = Context::Script { block_height };
 
-        let gas_used_by_predicates = checked.gas_used_by_predicates();
+        let gas_used_by_predicates = checked.metadata().gas_used_by_predicates();
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 

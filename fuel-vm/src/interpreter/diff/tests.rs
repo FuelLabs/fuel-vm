@@ -25,8 +25,7 @@ fn identity() {
 fn reset_vm_state() {
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
-    b.registers[REG_CGAS] = 1_000_000;
-    b.registers[REG_GGAS] = 1_000_000;
+    b.set_remaining_gas(1_000_000);
     b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);
@@ -53,8 +52,7 @@ fn record_and_invert_storage() {
         &1u64,
     )
     .unwrap();
-    b.registers[REG_CGAS] = 1_000_000;
-    b.registers[REG_GGAS] = 1_000_000;
+    b.set_remaining_gas(1_000_000);
     b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
 
     let storage_diff: Diff<InitialVmState> = b.storage_diff().into();
@@ -74,8 +72,7 @@ fn record_and_invert_storage() {
         &1u64,
     )
     .unwrap();
-    d.registers[REG_CGAS] = 1_000_000;
-    d.registers[REG_GGAS] = 1_000_000;
+    d.set_remaining_gas(1_000_000);
     d.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
 
     assert_ne!(c, d);

@@ -374,3 +374,28 @@ impl TransactionBuilder<Mint> {
         self.finalize_without_signature().into()
     }
 }
+
+pub trait Finalizable<Tx> {
+    fn finalize(&mut self) -> Tx;
+}
+
+#[cfg(feature = "std")]
+impl Finalizable<Mint> for TransactionBuilder<Mint> {
+    fn finalize(&mut self) -> Mint {
+        Self::finalize(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl Finalizable<Create> for TransactionBuilder<Create> {
+    fn finalize(&mut self) -> Create {
+        Self::finalize(self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl Finalizable<Script> for TransactionBuilder<Script> {
+    fn finalize(&mut self) -> Script {
+        Self::finalize(self)
+    }
+}

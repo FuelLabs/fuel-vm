@@ -5,21 +5,18 @@
 
 #![allow(non_upper_case_globals)]
 
-use fuel_tx::{
-    field, Chargeable, CheckError, ConsensusParameters, Create, Input, Mint, Output, Script, Transaction,
-    TransactionFee,
-};
-use fuel_types::{AssetId, Word};
+use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
+use fuel_types::Word;
 
 use core::borrow::Borrow;
-use std::collections::BTreeMap;
 
+mod balances;
 pub mod builder;
 pub mod types;
 
 pub use types::*;
 
-use crate::{gas::GasCosts, prelude::*};
+use crate::{gas::GasCosts, interpreter::CheckedMetadata as CheckedMetadataAccessTrait, prelude::*};
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -63,10 +60,6 @@ pub struct Checked<Tx: IntoChecked> {
     transaction: Tx,
     metadata: Tx::Metadata,
     checks_bitmask: Checks,
-    /// If predicates have been checked, this is how much gas checking them used.
-    /// This must be zero if the predicates have not been checked yet.
-    /// Note that the checkedness of predicates is marked in checks_bitmask.
-    gas_used_by_predicates: Word,
 }
 
 impl<Tx: IntoChecked> Checked<Tx> {
@@ -75,7 +68,6 @@ impl<Tx: IntoChecked> Checked<Tx> {
             transaction,
             metadata,
             checks_bitmask: Checks::Basic,
-            gas_used_by_predicates: 0,
         }
     }
 
@@ -92,12 +84,6 @@ impl<Tx: IntoChecked> Checked<Tx> {
     /// Returns the bitmask of all passed checks.
     pub fn checks(&self) -> &Checks {
         &self.checks_bitmask
-    }
-
-    /// Gas used by predicate checking. If the predicates have not
-    /// been checked, returns zero.
-    pub fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
     }
 
     /// Performs check of signatures, if not yet done.
@@ -176,48 +162,36 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
 }
 
 /// Performs predicate verification for a transaction
-pub trait CheckPredicates {
+pub trait CheckPredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized;
+    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 
-impl<Tx: IntoChecked + ExecutableTransaction + fuel_tx::field::GasLimit> CheckPredicates for Checked<Tx>
+impl<Tx: IntoChecked + ExecutableTransaction> CheckPredicates for Checked<Tx>
 where
     Self: Clone,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,
 {
-    fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
+    fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
+            // TODO: Optimize predicate verification to work with references where it is possible.
             let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), *params, gas_costs)?;
             self.checks_bitmask.insert(Checks::Predicates);
-            self.gas_used_by_predicates = checked.gas_used();
+            self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
         Ok(self)
     }
 }
 
 impl CheckPredicates for Checked<Mint> {
-    fn check_predicates(mut self, _params: &ConsensusParameters, _gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
-        if !self.checks_bitmask.contains(Checks::Predicates) {
-            self.checks_bitmask.insert(Checks::Predicates);
-        }
+    fn check_predicates(mut self, _params: &ConsensusParameters, _gas_costs: GasCosts) -> Result<Self, CheckError> {
+        self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
     }
 }
 
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
+    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => CheckPredicates::check_predicates(tx, params, gas_costs)?.into(),
@@ -247,7 +221,6 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             transaction,
             metadata,
             checks_bitmask,
-            gas_used_by_predicates,
         } = checked;
 
         // # Dev note: Avoid wildcard pattern to be sure that all variants are covered.
@@ -256,19 +229,16 @@ impl From<Checked<Transaction>> for CheckedTransaction {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }),
             (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => Self::Create(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }),
             (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => Self::Mint(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }),
             // The code should produce the `CheckedMetadata` for the corresponding transaction
             // variant. It is done in the implementation of the `IntoChecked` trait for
@@ -305,34 +275,28 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                gas_used_by_predicates,
             },
             CheckedTransaction::Create(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                gas_used_by_predicates,
             },
             CheckedTransaction::Mint(Checked {
                 transaction,
                 metadata,
                 checks_bitmask,
-                gas_used_by_predicates,
             }) => Checked {
                 transaction: transaction.into(),
                 metadata: metadata.into(),
                 checks_bitmask,
-                gas_used_by_predicates,
             },
         }
     }
@@ -747,7 +711,7 @@ mod tests {
         let tx = Transaction::default();
         // Sets Checks::Basic
         let checked = tx.into_checked_basic(block_height, &params).unwrap();
-        assert_eq!(*checked.checks(), Checks::Basic)
+        assert!(checked.checks().contains(Checks::Basic));
     }
 
     #[test]
@@ -765,7 +729,7 @@ mod tests {
             .check_signatures()
             .unwrap();
 
-        assert_eq!(*checked.checks(), Checks::Basic | Checks::Signatures);
+        assert!(checked.checks().contains(Checks::Basic | Checks::Signatures));
     }
 
     #[test]
@@ -783,14 +747,14 @@ mod tests {
             // Sets Checks::Predicates
             .check_predicates(&params, gas_costs)
             .unwrap();
-        assert_eq!(*checked.checks(), Checks::Basic | Checks::Predicates)
+        assert!(checked.checks().contains(Checks::Basic | Checks::Predicates));
     }
 
     fn is_valid_max_fee<Tx>(tx: &Tx, params: &ConsensusParameters) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = initial_free_balances(tx, params)?;
+        let available_balances = balances::initial_free_balances(tx, params)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
         let gas = tx.limit() as u128 * tx.price() as u128;
@@ -807,7 +771,7 @@ mod tests {
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = initial_free_balances(tx, params)?;
+        let available_balances = balances::initial_free_balances(tx, params)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
         // use different division mechanism than impl
@@ -907,66 +871,4 @@ mod tests {
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
     }
-}
-
-pub(crate) fn initial_free_balances<T>(
-    transaction: &T,
-    params: &ConsensusParameters,
-) -> Result<AvailableBalances, CheckError>
-where
-    T: Chargeable + field::Inputs + field::Outputs,
-{
-    let mut balances = BTreeMap::<AssetId, Word>::new();
-
-    // Add up all the inputs for each asset ID
-    for (asset_id, amount) in transaction.inputs().iter().filter_map(|input| match input {
-        // Sum coin inputs
-        Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
-            Some((*asset_id, amount))
-        }
-        // Sum message inputs
-        Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => Some((AssetId::BASE, amount)),
-        _ => None,
-    }) {
-        *balances.entry(asset_id).or_default() += amount;
-    }
-
-    // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(params, transaction).ok_or(CheckError::ArithmeticOverflow)?;
-
-    let base_asset_balance = balances.entry(AssetId::BASE).or_default();
-
-    *base_asset_balance = fee
-        .checked_deduct_total(*base_asset_balance)
-        .ok_or(CheckError::InsufficientFeeAmount {
-            expected: fee.total(),
-            provided: *base_asset_balance,
-        })?;
-
-    // reduce free balances by coin outputs
-    for (asset_id, amount) in transaction.outputs().iter().filter_map(|output| match output {
-        Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
-        _ => None,
-    }) {
-        let balance = balances
-            .get_mut(asset_id)
-            .ok_or(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
-        *balance = balance
-            .checked_sub(*amount)
-            .ok_or(CheckError::InsufficientInputAmount {
-                asset: *asset_id,
-                expected: *amount,
-                provided: *balance,
-            })?;
-    }
-
-    Ok(AvailableBalances {
-        initial_free_balances: balances,
-        fee,
-    })
-}
-
-pub(crate) struct AvailableBalances {
-    pub(crate) initial_free_balances: BTreeMap<AssetId, Word>,
-    pub(crate) fee: TransactionFee,
 }

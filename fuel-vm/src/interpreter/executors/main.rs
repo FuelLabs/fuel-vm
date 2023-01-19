@@ -49,7 +49,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         gas_costs: GasCosts,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: ExecutableTransaction + fuel_tx::field::GasLimit,
+        Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners() {
@@ -65,7 +65,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             .collect();
 
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
-        let tx_gas_limit = *checked.transaction().gas_limit();
+        let tx_gas_limit = checked.transaction().limit();
         let mut remaining_gas = tx_gas_limit;
 
         vm.init_predicate(checked);
@@ -75,8 +75,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             let mut vm = vm.clone();
 
             vm.context = Context::Predicate { program: predicate };
-            vm.registers[REG_GGAS] = remaining_gas;
-            vm.registers[REG_CGAS] = remaining_gas;
+            vm.set_remaining_gas(remaining_gas);
 
             if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                 return Err(PredicateVerificationFailed::False);

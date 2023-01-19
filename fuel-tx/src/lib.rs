@@ -30,7 +30,7 @@ mod receipt;
 mod transaction;
 
 #[cfg(feature = "builder")]
-pub use builder::{Buildable, TransactionBuilder};
+pub use builder::{Buildable, Finalizable, TransactionBuilder};
 
 #[cfg(feature = "alloc")]
 pub use receipt::{Receipt, ScriptExecutionResult};

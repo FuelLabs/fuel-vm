@@ -4,7 +4,10 @@ pub use self::create::CheckedMetadata as CreateCheckedMetadata;
 pub use self::script::CheckedMetadata as ScriptCheckedMetadata;
 
 pub mod create {
-    use super::super::{initial_free_balances, AvailableBalances, Checked, IntoChecked};
+    use super::super::{
+        balances::{initial_free_balances, AvailableBalances},
+        Checked, IntoChecked,
+    };
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
@@ -17,6 +20,9 @@ pub mod create {
         pub block_height: Word,
         /// The fees and gas usage
         pub fee: TransactionFee,
+        /// If predicates have been checked, this is how much gas checking them used.
+        /// This must be zero if the predicates have not been checked yet.
+        pub gas_used_by_predicates: Word,
     }
 
     impl IntoChecked for Create {
@@ -40,6 +46,7 @@ pub mod create {
                 initial_free_balances,
                 block_height,
                 fee,
+                gas_used_by_predicates: 0,
             };
 
             Ok(Checked::basic(self, metadata))
@@ -69,7 +76,10 @@ pub mod mint {
 }
 
 pub mod script {
-    use super::super::{initial_free_balances, AvailableBalances, Checked, IntoChecked};
+    use super::super::{
+        balances::{initial_free_balances, AvailableBalances},
+        Checked, IntoChecked,
+    };
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
@@ -82,6 +92,9 @@ pub mod script {
         pub block_height: Word,
         /// The fees and gas usage
         pub fee: TransactionFee,
+        /// If predicates have been checked, this is how much gas checking them used.
+        /// This must be zero if the predicates have not been checked yet.
+        pub gas_used_by_predicates: Word,
     }
 
     impl IntoChecked for Script {
@@ -105,6 +118,7 @@ pub mod script {
                 initial_free_balances,
                 block_height,
                 fee,
+                gas_used_by_predicates: 0,
             };
 
             Ok(Checked::basic(self, metadata))

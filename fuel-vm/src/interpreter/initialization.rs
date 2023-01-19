@@ -99,7 +99,7 @@ where
 
         self.context = Context::Script { block_height };
 
-        let gas_used_by_predicates = checked.gas_used_by_predicates();
+        let gas_used_by_predicates = checked.metadata().gas_used_by_predicates();
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 

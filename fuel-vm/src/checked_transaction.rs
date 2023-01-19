@@ -723,7 +723,7 @@ mod tests {
         let tx = Transaction::default();
         // Sets Checks::Basic
         let checked = tx.into_checked_basic(block_height, &params).unwrap();
-        assert_eq!(*checked.checks(), Checks::Basic)
+        assert!(checked.checks().contains(Checks::Basic));
     }
 
     #[test]
@@ -741,7 +741,7 @@ mod tests {
             .check_signatures()
             .unwrap();
 
-        assert_eq!(*checked.checks(), Checks::Basic | Checks::Signatures);
+        assert!(checked.checks().contains(Checks::Basic | Checks::Signatures));
     }
 
     #[test]
@@ -759,7 +759,7 @@ mod tests {
             // Sets Checks::Predicates
             .check_predicates(&params, gas_costs)
             .unwrap();
-        assert_eq!(*checked.checks(), Checks::Basic | Checks::Predicates)
+        assert!(checked.checks().contains(Checks::Basic | Checks::Predicates));
     }
 
     fn is_valid_max_fee<Tx>(tx: &Tx, params: &ConsensusParameters) -> Result<bool, CheckError>

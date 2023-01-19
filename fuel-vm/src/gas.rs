@@ -138,6 +138,7 @@ impl GasUnit {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Gas costings for every op.
 /// The inner values are wrapped in an [`Arc`]
 /// so this is cheap to clone.

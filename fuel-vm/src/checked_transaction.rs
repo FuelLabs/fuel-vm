@@ -162,11 +162,9 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
 }
 
 /// Performs predicate verification for a transaction
-pub trait CheckPredicates {
+pub trait CheckPredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized;
+    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 
 impl<Tx: IntoChecked + ExecutableTransaction + fuel_tx::field::GasLimit> CheckPredicates for Checked<Tx>

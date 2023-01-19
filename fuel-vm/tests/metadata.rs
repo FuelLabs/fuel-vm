@@ -185,7 +185,6 @@ fn get_transaction_fields() {
     let maturity = 50;
     let height = 122;
     let input = 10_000_000;
-    let predicate_base = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
 
     let params = ConsensusParameters::default();
 
@@ -202,12 +201,9 @@ fn get_transaction_fields() {
 
     client.deploy(tx);
 
-    let mut predicate = vec![0u8; 128];
+    let predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
 
-    rng.fill(predicate.as_mut_slice());
-    // make predicate valid by replacing first bytes with RET(1)
-    predicate.as_mut_slice()[..4].copy_from_slice(&predicate_base);
     rng.fill(predicate_data.as_mut_slice());
 
     let owner = (*Contract::root_from_code(&predicate)).into();
@@ -230,13 +226,10 @@ fn get_transaction_fields() {
     rng.fill(message_data.as_mut_slice());
 
     let mut m_data = vec![0u8; 64];
-    let mut m_predicate = vec![0u8; 128];
+    let m_predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut m_predicate_data = vec![0u8; 512];
 
     rng.fill(m_data.as_mut_slice());
-    rng.fill(m_predicate.as_mut_slice());
-    // make predicate valid by replacing first bytes with RET(1)
-    m_predicate.as_mut_slice()[..4].copy_from_slice(&predicate_base);
     rng.fill(m_predicate_data.as_mut_slice());
 
     let owner = Input::predicate_owner(&m_predicate);

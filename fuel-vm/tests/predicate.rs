@@ -314,7 +314,6 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
 #[test]
 fn gas_used_by_predicates_more_than_limit() {
-
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = ConsensusParameters::default();
 
@@ -325,8 +324,8 @@ fn gas_used_by_predicates_more_than_limit() {
         Opcode::ADDI(0x20, 0x20, 1),
         Opcode::RET(REG_ONE),
     ]
-        .into_iter()
-        .collect::<Vec<u8>>();
+    .into_iter()
+    .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -358,9 +357,9 @@ fn gas_used_by_predicates_more_than_limit() {
         Opcode::ADDI(0x20, 0x20, 1),
         Opcode::RET(REG_ONE),
     ]
-        .into_iter()
-        .flat_map(|op| u32::from(op).to_be_bytes())
-        .collect();
+    .into_iter()
+    .flat_map(|op| u32::from(op).to_be_bytes())
+    .collect();
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
@@ -381,4 +380,3 @@ fn gas_used_by_predicates_more_than_limit() {
 
     assert!(tx_with_predicate.is_err());
 }
-

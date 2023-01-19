@@ -243,7 +243,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 }
 
 #[test]
-fn gas_used_by_predicates_causes_out_of_gas() {
+fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = ConsensusParameters::default();
 

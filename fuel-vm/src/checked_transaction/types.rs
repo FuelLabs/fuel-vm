@@ -1,8 +1,9 @@
-#![allow(missing_docs)]
+//! Implementation for different transaction types, groupd in submodules.
 
 pub use self::create::CheckedMetadata as CreateCheckedMetadata;
 pub use self::script::CheckedMetadata as ScriptCheckedMetadata;
 
+/// For [`fuel_tx::Create`]
 pub mod create {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
@@ -12,6 +13,7 @@ pub mod create {
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 
+    /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
         /// The mapping of initial free balances
@@ -54,6 +56,7 @@ pub mod create {
     }
 }
 
+/// For [`fuel_tx::Mint`]
 pub mod mint {
     use super::super::{Checked, IntoChecked};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
@@ -75,6 +78,7 @@ pub mod mint {
     }
 }
 
+/// For [`fuel_tx::Script`]
 pub mod script {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
@@ -84,6 +88,7 @@ pub mod script {
     use fuel_types::{AssetId, Word};
     use std::collections::BTreeMap;
 
+    /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
         /// The mapping of initial free balances

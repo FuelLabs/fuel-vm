@@ -79,8 +79,8 @@ pub enum PanicReason {
     NonZeroMessageOutputRecipient = 0x20,
     /// The destination recipient for a message output is zero.
     ZeroedMessageOutputRecipient = 0x21,
-    /// RESERV22
-    RESERV22 = 0x22,
+    /// The contract ID is already deployed and can't be overwritten.
+    ContractIdAlreadyDeployed = 0x22,
     /// RESERV23
     RESERV23 = 0x23,
     /// RESERV24

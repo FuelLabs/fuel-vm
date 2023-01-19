@@ -27,10 +27,6 @@ impl TransactionFee {
     }
 
     /// Minimum fee value to pay for the metered bytes
-    pub const fn min(&self) -> Word {
-        self.bytes
-    }
-
     pub const fn bytes(&self) -> Word {
         self.bytes
     }

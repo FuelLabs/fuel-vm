@@ -2,7 +2,7 @@ use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
-use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed, RuntimeError};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
@@ -10,6 +10,7 @@ use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
+use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
@@ -26,16 +27,6 @@ pub struct PredicatesChecked {
 impl PredicatesChecked {
     pub fn gas_used(&self) -> Word {
         self.gas_used
-    }
-}
-
-/// Predicates checking failed
-#[derive(Debug, Clone, Copy)]
-pub struct PredicateVerificationFailed;
-
-impl From<PredicateVerificationFailed> for fuel_tx::CheckError {
-    fn from(_: PredicateVerificationFailed) -> Self {
-        fuel_tx::CheckError::PredicateVerificationFailed
     }
 }
 
@@ -62,7 +53,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners() {
-            return Err(PredicateVerificationFailed);
+            return Err(PredicateVerificationFailed::InvalidOwner);
         }
 
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
@@ -87,15 +78,17 @@ impl<T> Interpreter<PredicateStorage, T> {
             vm.registers[REG_GGAS] = remaining_gas;
             vm.registers[REG_CGAS] = remaining_gas;
 
-            if !matches!(vm.verify_predicate(), Ok(ProgramState::Return(0x01))) {
-                return Err(PredicateVerificationFailed);
+            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                return Err(PredicateVerificationFailed::False);
             }
 
             remaining_gas = vm.registers[REG_GGAS];
         }
 
         Ok(PredicatesChecked {
-            gas_used: tx_gas_limit.checked_sub(remaining_gas).ok_or_else(|| Bug::new()),
+            gas_used: tx_gas_limit
+                .checked_sub(remaining_gas)
+                .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?,
         })
     }
 }

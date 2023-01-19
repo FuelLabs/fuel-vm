@@ -223,6 +223,39 @@ impl From<Infallible> for io::Error {
     }
 }
 
+/// Predicates checking failed
+#[derive(Debug, Error)]
+pub enum PredicateVerificationFailed {
+    /// The transaction doesn't contain enough gas to evaluate the predicate
+    #[error("Insufficient gas available for predicates")]
+    OutOfGas,
+    /// The predicate owner does not correspond to the predicate code
+    #[error("Predicate owner invalid, doesn't match code root")]
+    InvalidOwner,
+    /// The predicate wasn't successfully evaluated to true
+    #[error("Predicate failed to evaluate")]
+    False,
+    /// An unexpected error occurred.
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
+
+impl From<PredicateVerificationFailed> for CheckError {
+    fn from(_: PredicateVerificationFailed) -> Self {
+        CheckError::PredicateVerificationFailed
+    }
+}
+
+impl From<InterpreterError> for PredicateVerificationFailed {
+    fn from(error: InterpreterError) -> Self {
+        match error {
+            InterpreterError::Panic(PanicReason::OutOfGas) => PredicateVerificationFailed::OutOfGas,
+            InterpreterError::Io(e) => PredicateVerificationFailed::Io(e),
+            _ => PredicateVerificationFailed::False,
+        }
+    }
+}
+
 /// Unique bug identifier
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -369,5 +402,12 @@ impl From<Bug> for RuntimeError {
 impl From<Bug> for InterpreterError {
     fn from(bug: Bug) -> Self {
         RuntimeError::from(bug).into()
+    }
+}
+
+impl From<Bug> for PredicateVerificationFailed {
+    fn from(bug: Bug) -> Self {
+        let e: InterpreterError = bug.into();
+        e.into()
     }
 }

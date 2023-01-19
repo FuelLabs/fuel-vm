@@ -192,9 +192,7 @@ impl CheckPredicates for Checked<Mint> {
     where
         Self: Sized,
     {
-        if !self.checks_bitmask.contains(Checks::Predicates) {
-            self.checks_bitmask.insert(Checks::Predicates);
-        }
+        self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
     }
 }

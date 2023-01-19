@@ -184,20 +184,14 @@ where
 }
 
 impl CheckPredicates for Checked<Mint> {
-    fn check_predicates(mut self, _params: &ConsensusParameters, _gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
+    fn check_predicates(mut self, _params: &ConsensusParameters, _gas_costs: GasCosts) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
     }
 }
 
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>
-    where
-        Self: Sized,
-    {
+    fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => CheckPredicates::check_predicates(tx, params, gas_costs)?.into(),

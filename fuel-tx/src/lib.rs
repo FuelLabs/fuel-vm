@@ -29,9 +29,6 @@ mod receipt;
 #[cfg(feature = "alloc")]
 mod transaction;
 
-#[cfg(feature = "std")]
-pub mod checked_transaction;
-
 #[cfg(feature = "builder")]
 pub use builder::{Buildable, TransactionBuilder};
 

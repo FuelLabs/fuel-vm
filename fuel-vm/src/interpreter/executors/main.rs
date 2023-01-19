@@ -95,9 +95,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         }
 
         Ok(PredicatesChecked {
-            gas_used: tx_gas_limit
-                .checked_sub(remaining_gas)
-                .expect("Bug! Execution increased available gas"),
+            gas_used: tx_gas_limit.checked_sub(remaining_gas).ok_or_else(|| Bug::new()),
         })
     }
 }
@@ -252,7 +250,7 @@ where
                 .transaction()
                 .limit()
                 .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugId::ID006, BugVariant::GlobalGasUnderflow))?;
+                .ok_or_else(|| Bug::new(BugId::ID002, BugVariant::GlobalGasUnderflow))?;
 
             // Catch VM panic and don't propagate, generating a receipt
             let (status, program) = match program {

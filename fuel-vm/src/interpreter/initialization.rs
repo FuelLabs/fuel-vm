@@ -2,11 +2,12 @@ use super::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
-use crate::error::InterpreterError;
+use crate::error::{Bug, BugId, InterpreterError};
 use crate::storage::InterpreterStorage;
 
 use fuel_types::Word;
 
+use crate::error::BugVariant::GlobalGasUnderflow;
 use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -47,7 +48,7 @@ where
             .transaction()
             .limit()
             .checked_sub(gas_used_by_predicates)
-            .expect("Bug! Predicates have used more gas than allowed");
+            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
         self.registers[REG_GGAS] = gas;
         self.registers[REG_CGAS] = gas;
 

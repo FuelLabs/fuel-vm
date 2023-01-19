@@ -167,7 +167,7 @@ pub trait CheckPredicates: Sized {
     fn check_predicates(self, params: &ConsensusParameters, gas_costs: GasCosts) -> Result<Self, CheckError>;
 }
 
-impl<Tx: IntoChecked + ExecutableTransaction + fuel_tx::field::GasLimit> CheckPredicates for Checked<Tx>
+impl<Tx: IntoChecked + ExecutableTransaction> CheckPredicates for Checked<Tx>
 where
     Self: Clone,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,

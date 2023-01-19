@@ -243,7 +243,7 @@ mod tests {
             .gas_limit(gas_limit)
             .gas_limit(100)
             .maturity(maturity)
-            .finalize_checked(height as Word, &Default::default(), Default::default());
+            .finalize_checked(height as Word, &Default::default(), &Default::default());
 
         vm.init_script(tx).expect("Failed to init VM!");
 

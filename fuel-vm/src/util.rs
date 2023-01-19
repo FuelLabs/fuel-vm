@@ -230,7 +230,7 @@ pub mod test_helpers {
 
         pub fn build(&mut self) -> Checked<Script> {
             self.builder
-                .finalize_checked(self.block_height as Word, &self.params, self.gas_costs.clone())
+                .finalize_checked(self.block_height as Word, &self.params, &self.gas_costs)
         }
 
         pub fn build_get_balance_tx(
@@ -299,7 +299,7 @@ pub mod test_helpers {
                 vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
             )
-            .into_checked(self.block_height as Word, &self.params, self.gas_costs.clone())
+            .into_checked(self.block_height as Word, &self.params, &self.gas_costs)
             .expect("failed to check tx");
 
             // setup a contract in current test state

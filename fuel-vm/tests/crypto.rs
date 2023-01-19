@@ -56,7 +56,7 @@ fn ecrecover() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, &params, gas_costs);
+        .finalize_checked(height, &params, &gas_costs);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -173,7 +173,7 @@ fn sha256() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, &params, gas_costs);
+        .finalize_checked(height, &params, &gas_costs);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));

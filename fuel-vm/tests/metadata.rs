@@ -57,7 +57,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, gas_costs.clone())
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -103,7 +103,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, gas_costs.clone())
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -150,7 +150,7 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .into_checked(height, &params, gas_costs.clone())
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)

@@ -190,7 +190,7 @@ fn call() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, gas_costs.clone())
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
@@ -220,7 +220,7 @@ fn call() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, gas_costs.clone())
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
     let params = ConsensusParameters::default();
@@ -336,7 +336,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, gas_costs)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
     let mut vm = Interpreter::with_storage(storage, params, Default::default());

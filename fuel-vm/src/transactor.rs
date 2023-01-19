@@ -107,7 +107,7 @@ where
     }
 
     /// Gas costs of opcodes
-    pub fn gas_costs(&self) -> GasCosts {
+    pub fn gas_costs(&self) -> &GasCosts {
         self.interpreter.gas_costs()
     }
 

@@ -307,95 +307,59 @@ impl<Tx: field::Outputs> TransactionBuilder<Tx> {
     }
 }
 
-impl TransactionBuilder<Script> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Script {
-        self._finalize()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Script {
-        self._finalize_without_signature()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
-    }
-}
-
-impl TransactionBuilder<Create> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Create {
-        self._finalize()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Create {
-        self._finalize_without_signature()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
-    }
-}
-
-impl TransactionBuilder<Mint> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Mint {
-        let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute();
-        tx
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Mint {
-        self.finalize()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
-    }
-}
-
 pub trait Finalizable<Tx> {
     fn finalize(&mut self) -> Tx;
+
+    fn finalize_without_signature(&mut self) -> Tx;
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
-        Self::finalize(self)
+        let mut tx = core::mem::take(&mut self.tx);
+        tx.precompute();
+        tx
+    }
+
+    fn finalize_without_signature(&mut self) -> Mint {
+        self.finalize()
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Create> for TransactionBuilder<Create> {
     fn finalize(&mut self) -> Create {
-        Self::finalize(self)
+        self._finalize()
+    }
+
+    fn finalize_without_signature(&mut self) -> Create {
+        self._finalize_without_signature()
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Script> for TransactionBuilder<Script> {
     fn finalize(&mut self) -> Script {
-        Self::finalize(self)
+        self._finalize()
+    }
+
+    fn finalize_without_signature(&mut self) -> Script {
+        self._finalize_without_signature()
+    }
+}
+
+impl<Tx> TransactionBuilder<Tx>
+where
+    Self: Finalizable<Tx>,
+    Transaction: From<Tx>,
+{
+    #[cfg(feature = "std")]
+    pub fn finalize_as_transaction(&mut self) -> Transaction {
+        self.finalize().into()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
+        self.finalize_without_signature().into()
     }
 }

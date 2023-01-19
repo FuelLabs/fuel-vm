@@ -102,7 +102,7 @@ impl MemoryClient {
     }
 
     /// Gas costs for opcodes
-    pub fn gas_costs(&self) -> GasCosts {
+    pub fn gas_costs(&self) -> &GasCosts {
         self.transactor.gas_costs()
     }
 }

@@ -1,8 +1,8 @@
 use crate::{
     common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
     sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
+    storage::{Mappable, StorageMutate},
 };
-use fuel_storage::{Mappable, StorageMutate};
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp, fmt, iter, marker::PhantomData};

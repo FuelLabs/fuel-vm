@@ -1,4 +1,4 @@
-use fuel_storage::{Mappable, StorageInspect, StorageMutate};
+use crate::storage::{Mappable, StorageInspect, StorageMutate};
 
 use alloc::borrow::Cow;
 use hashbrown::HashMap;

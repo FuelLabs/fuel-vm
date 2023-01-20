@@ -8,10 +8,8 @@ use crate::{
         hash::{sum, sum_all},
         zero_sum, Primitive,
     },
+    storage::{Mappable, StorageInspect},
 };
-
-use fuel_storage::Mappable;
-use fuel_storage::StorageInspect;
 
 use core::marker::PhantomData;
 use core::{cmp, fmt};
@@ -523,9 +521,8 @@ mod test_storage_node {
             error::DeserializeError, Bytes32, ChildError, ParentNode, PrefixError, StorageMap,
         },
         sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
+        storage::{Mappable, StorageMutate},
     };
-
-    use fuel_storage::{Mappable, StorageMutate};
 
     pub struct TestTable;
 

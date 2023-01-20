@@ -7,4 +7,5 @@ extern crate alloc;
 pub mod binary;
 pub mod common;
 pub mod sparse;
+pub mod storage;
 pub mod sum;

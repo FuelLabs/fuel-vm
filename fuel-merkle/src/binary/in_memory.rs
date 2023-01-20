@@ -7,7 +7,7 @@ use fuel_storage::Mappable;
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
 /// value is the [`Node`](crate::binary::Node).
-struct NodesTable;
+pub struct NodesTable;
 
 impl Mappable for NodesTable {
     type Key = u64;
@@ -34,7 +34,7 @@ impl MerkleTree {
     }
 
     pub fn root(&mut self) -> Bytes32 {
-        self.tree.root().unwrap()
+        self.tree.root()
     }
 
     pub fn prove(&mut self, proof_index: u64) -> Option<(Bytes32, ProofSet)> {

@@ -7,6 +7,7 @@ use thiserror::Error;
 use std::convert::Infallible as StdInfallible;
 use std::error::Error as StdError;
 use std::{fmt, io};
+use fuel_asm::PanicReason::OutOfGas;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -241,15 +242,18 @@ pub enum PredicateVerificationFailed {
 }
 
 impl From<PredicateVerificationFailed> for CheckError {
-    fn from(_: PredicateVerificationFailed) -> Self {
-        CheckError::PredicateVerificationFailed
+    fn from(error: PredicateVerificationFailed) -> Self {
+        match error {
+            PredicateVerificationFailed::OutOfGas => CheckError::PredicateExhaustedGas,
+            _ => CheckError::PredicateVerificationFailed,
+        }
     }
 }
 
 impl From<InterpreterError> for PredicateVerificationFailed {
     fn from(error: InterpreterError) -> Self {
         match error {
-            InterpreterError::Panic(PanicReason::OutOfGas) => PredicateVerificationFailed::OutOfGas,
+            error if error.panic_reason() == Some(OutOfGas) => PredicateVerificationFailed::OutOfGas,
             InterpreterError::Io(e) => PredicateVerificationFailed::Io(e),
             _ => PredicateVerificationFailed::False,
         }

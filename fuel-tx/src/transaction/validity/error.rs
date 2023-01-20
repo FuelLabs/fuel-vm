@@ -108,6 +108,8 @@ pub enum CheckError {
     ArithmeticOverflow,
     /// Predicate verification failed
     PredicateVerificationFailed,
+    /// Predicate used all available gas
+    PredicateExhaustedGas,
 }
 
 impl fmt::Display for CheckError {

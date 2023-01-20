@@ -378,5 +378,5 @@ fn gas_used_by_predicates_more_than_limit() {
         .finalize_checked_basic(0, &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default());
 
-    assert!(tx_with_predicate.is_err());
+    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);
 }

@@ -1,6 +1,6 @@
 use crate::transaction::{
-    checkable::Checkable,
     field::{Outputs, TxPointer as TxPointerField},
+    validity::FormatValidityChecks,
 };
 use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
@@ -88,7 +88,7 @@ impl crate::UniqueIdentifier for Mint {
     }
 }
 
-impl Checkable for Mint {
+impl FormatValidityChecks for Mint {
     #[cfg(feature = "std")]
     fn check_signatures(&self) -> Result<(), CheckError> {
         Ok(())
@@ -134,27 +134,6 @@ impl crate::Cacheable for Mint {
 impl SizedBytes for Mint {
     fn serialized_size(&self) -> usize {
         self.outputs_offset() + self.outputs().iter().map(|w| w.serialized_size()).sum::<usize>()
-    }
-}
-
-#[cfg(feature = "std")]
-pub mod checked {
-    use crate::{Cacheable, CheckError, Checkable, Checked, ConsensusParameters, IntoChecked, Mint};
-    use fuel_types::Word;
-
-    impl IntoChecked for Mint {
-        type Metadata = ();
-
-        fn into_checked_basic(
-            mut self,
-            block_height: Word,
-            params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
-            self.check_without_signatures(block_height, params)?;
-
-            Ok(Checked::basic(self, ()))
-        }
     }
 }
 

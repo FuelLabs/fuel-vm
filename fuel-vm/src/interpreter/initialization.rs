@@ -1,12 +1,13 @@
 use super::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
-use crate::error::InterpreterError;
+use crate::error::{Bug, BugId, InterpreterError};
 use crate::storage::InterpreterStorage;
 
-use fuel_tx::{Checked, IntoChecked};
 use fuel_types::Word;
 
+use crate::error::BugVariant::GlobalGasUnderflow;
 use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -14,7 +15,12 @@ where
     Tx: ExecutableTransaction,
 {
     /// Initialize the VM with a given transaction
-    fn _init(&mut self, tx: Tx, initial_balances: InitialBalances) -> Result<(), InterpreterError> {
+    fn _init(
+        &mut self,
+        tx: Tx,
+        initial_balances: InitialBalances,
+        gas_used_by_predicates: Word,
+    ) -> Result<(), InterpreterError> {
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -38,8 +44,13 @@ where
 
         let tx_size = self.transaction().serialized_size() as Word;
 
-        self.registers[REG_GGAS] = self.transaction().limit();
-        self.registers[REG_CGAS] = self.transaction().limit();
+        let gas = self
+            .transaction()
+            .limit()
+            .checked_sub(gas_used_by_predicates)
+            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
+
+        self.set_remaining_gas(gas);
 
         self.push_stack(&tx_size.to_be_bytes())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -69,7 +80,7 @@ where
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
-        self._init(tx, metadata.balances()).is_ok()
+        self._init(tx, metadata.balances(), 0).is_ok()
     }
 }
 
@@ -88,9 +99,10 @@ where
 
         self.context = Context::Script { block_height };
 
+        let gas_used_by_predicates = checked.metadata().gas_used_by_predicates();
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 
-        self._init(tx, metadata.balances())
+        self._init(tx, metadata.balances(), gas_used_by_predicates)
     }
 }

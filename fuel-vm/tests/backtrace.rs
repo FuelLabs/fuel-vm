@@ -14,6 +14,7 @@ fn backtrace() {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     #[rustfmt::skip]
     let function_undefined: Vec<Opcode> = vec![
@@ -42,7 +43,7 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate checked tx");
 
     client.deploy(tx_deploy);
@@ -84,7 +85,7 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate checked tx");
 
     client.deploy(tx_deploy);
@@ -120,7 +121,7 @@ fn backtrace() {
         vec![output_undefined, output_call],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate checked tx");
 
     client.transact(tx_script);

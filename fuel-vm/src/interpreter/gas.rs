@@ -12,6 +12,14 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.registers[REG_GGAS]
     }
 
+    /// Sets the remaining amout of gas to both CGAS and GGAS.
+    /// Only useful in contexts where CGAS and GGAS are the same,
+    /// i.e. predicates and testing.
+    pub(crate) fn set_remaining_gas(&mut self, gas: Word) {
+        self.registers[REG_GGAS] = gas;
+        self.registers[REG_CGAS] = gas;
+    }
+
     pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
         if gas_cost.dep_per_unit == 0 {
             self.gas_charge(gas_cost.base)
@@ -21,8 +29,6 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
-        let gas = !self.is_predicate() as Word * gas;
-
         #[cfg(feature = "profile-coverage")]
         {
             let location = self.current_location();

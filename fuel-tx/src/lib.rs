@@ -29,30 +29,25 @@ mod receipt;
 #[cfg(feature = "alloc")]
 mod transaction;
 
-#[cfg(feature = "std")]
-mod checked_transaction;
-
 #[cfg(feature = "builder")]
-pub use builder::{Buildable, TransactionBuilder};
+pub use builder::{Buildable, Finalizable, TransactionBuilder};
 
 #[cfg(feature = "alloc")]
 pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    field, Cacheable, Chargeable, CheckError, Checkable, ConsensusParameters, Create, Executable, Input, InputRepr,
-    Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee, TransactionRepr, TxId, UtxoId, Witness,
+    field, Cacheable, Chargeable, CheckError, ConsensusParameters, Create, Executable, FormatValidityChecks, Input,
+    InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee, TransactionRepr, TxId,
+    UtxoId, Witness,
 };
 
 #[cfg(feature = "std")]
-pub use transaction::{CreateCheckedMetadata, ScriptCheckedMetadata, Signable, UniqueIdentifier};
+pub use transaction::{Signable, UniqueIdentifier};
 
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]
 pub use transaction::consensus_parameters::default_parameters;
-
-#[cfg(feature = "std")]
-pub use checked_transaction::{Checked, CheckedMetadata, CheckedTransaction, IntoChecked};
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

@@ -1,5 +1,6 @@
 //! State machine of the interpreter.
 
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::error::InterpreterError;
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
@@ -7,7 +8,7 @@ use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::InterpreterStorage;
 use crate::{backtrace::Backtrace, state::ProgramState};
 
-use fuel_tx::{Checked, ConsensusParameters, Create, IntoChecked, Receipt, Script};
+use fuel_tx::{ConsensusParameters, Create, Receipt, Script};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -103,6 +104,11 @@ where
     /// Consensus parameters
     pub const fn params(&self) -> &ConsensusParameters {
         self.interpreter.params()
+    }
+
+    /// Gas costs of opcodes
+    pub fn gas_costs(&self) -> &GasCosts {
+        self.interpreter.gas_costs()
     }
 
     /// Tx memory offset

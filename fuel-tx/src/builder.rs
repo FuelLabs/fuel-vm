@@ -1,9 +1,9 @@
 use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
 use crate::transaction::{field, Chargeable, Create, Executable, Script};
-use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+use crate::{Cacheable, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
 
 #[cfg(feature = "std")]
-use crate::{Checked, IntoChecked, Signable};
+use crate::Signable;
 
 use fuel_crypto::SecretKey;
 use fuel_types::{Salt, Word};
@@ -24,7 +24,7 @@ where
 }
 
 #[cfg(feature = "std")]
-pub trait BuildableStd: Signable + IntoChecked + Cacheable {}
+pub trait BuildableStd: Signable + Cacheable {}
 
 #[cfg(not(feature = "std"))]
 pub trait BuildableSet: BuildableAloc {}
@@ -75,7 +75,7 @@ impl<T> BuildableAloc for T where
 }
 
 #[cfg(feature = "std")]
-impl<T> BuildableStd for T where T: Signable + IntoChecked + Cacheable {}
+impl<T> BuildableStd for T where T: Signable + Cacheable {}
 #[cfg(feature = "std")]
 impl<T> BuildableSet for T where T: BuildableAloc + BuildableStd {}
 #[cfg(not(feature = "std"))]
@@ -307,112 +307,59 @@ impl<Tx: field::Outputs> TransactionBuilder<Tx> {
     }
 }
 
-impl TransactionBuilder<Script> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Script {
-        self._finalize()
-    }
+pub trait Finalizable<Tx> {
+    fn finalize(&mut self) -> Tx;
 
-    #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Script {
-        self._finalize_without_signature()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Script> {
-        self.finalize()
-            .into_checked(height, params)
-            .expect("failed to check tx")
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Script> {
-        self.finalize()
-            .into_checked_basic(height, params)
-            .expect("failed to check tx")
-    }
+    fn finalize_without_signature(&mut self) -> Tx;
 }
 
-impl TransactionBuilder<Create> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Create {
-        self._finalize()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Create {
-        self._finalize_without_signature()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Create> {
-        self.finalize()
-            .into_checked(height, params)
-            .expect("failed to check tx")
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Create> {
-        self.finalize()
-            .into_checked_basic(height, params)
-            .expect("failed to check tx")
-    }
-}
-
-impl TransactionBuilder<Mint> {
-    #[cfg(feature = "std")]
-    pub fn finalize(&mut self) -> Mint {
+#[cfg(feature = "std")]
+impl Finalizable<Mint> for TransactionBuilder<Mint> {
+    fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
         tx.precompute();
         tx
     }
 
+    fn finalize_without_signature(&mut self) -> Mint {
+        self.finalize()
+    }
+}
+
+#[cfg(feature = "std")]
+impl Finalizable<Create> for TransactionBuilder<Create> {
+    fn finalize(&mut self) -> Create {
+        self._finalize()
+    }
+
+    fn finalize_without_signature(&mut self) -> Create {
+        self._finalize_without_signature()
+    }
+}
+
+#[cfg(feature = "std")]
+impl Finalizable<Script> for TransactionBuilder<Script> {
+    fn finalize(&mut self) -> Script {
+        self._finalize()
+    }
+
+    fn finalize_without_signature(&mut self) -> Script {
+        self._finalize_without_signature()
+    }
+}
+
+impl<Tx> TransactionBuilder<Tx>
+where
+    Self: Finalizable<Tx>,
+    Transaction: From<Tx>,
+{
     #[cfg(feature = "std")]
     pub fn finalize_as_transaction(&mut self) -> Transaction {
         self.finalize().into()
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_without_signature(&mut self) -> Mint {
-        self.finalize()
-    }
-
-    #[cfg(feature = "std")]
     pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
         self.finalize_without_signature().into()
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Mint> {
-        self.finalize()
-            .into_checked(height, params)
-            .expect("failed to check tx")
-    }
-
-    #[cfg(feature = "std")]
-    pub fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Mint> {
-        self.finalize()
-            .into_checked_basic(height, params)
-            .expect("failed to check tx")
     }
 }

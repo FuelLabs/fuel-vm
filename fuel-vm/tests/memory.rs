@@ -9,11 +9,12 @@ fn setup(ops: Vec<Opcode>) -> Transactor<MemoryStorage, Script> {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let script = ops.into_iter().collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
     let mut vm = Transactor::new(storage, Default::default(), Default::default());

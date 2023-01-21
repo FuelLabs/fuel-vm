@@ -1,7 +1,8 @@
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
-use crate::error::{Bug, BugId, BugVariant, InterpreterError, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed, RuntimeError};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
@@ -9,24 +10,23 @@ use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
+use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::PanicReason;
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Chargeable, Checked, ConsensusParameters, Contract, Create, Input, IntoChecked, Output, Receipt,
-    ScriptExecutionResult,
+    Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
 use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
-impl<Tx> Interpreter<PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
-    /// Validate the predicate, assuming the interpreter is initialized
-    fn _check_predicate(&mut self, predicate: RuntimePredicate) -> bool {
-        self.context = Context::Predicate { program: predicate };
-
-        matches!(self.verify_predicate(), Ok(ProgramState::Return(0x01)))
+/// Predicates were checked succesfully
+#[derive(Debug, Clone, Copy)]
+pub struct PredicatesChecked {
+    gas_used: Word,
+}
+impl PredicatesChecked {
+    pub fn gas_used(&self) -> Word {
+        self.gas_used
     }
 }
 
@@ -43,33 +43,52 @@ impl<T> Interpreter<PredicateStorage, T> {
     ///
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
-    pub fn check_predicates<Tx>(checked: Checked<Tx>, params: ConsensusParameters, gas_costs: GasCosts) -> bool
+    pub fn check_predicates<Tx>(
+        checked: Checked<Tx>,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
-        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
-
         if !checked.transaction().check_predicate_owners() {
-            return false;
+            return Err(PredicateVerificationFailed::InvalidOwner);
         }
 
-        #[allow(clippy::needless_collect)]
+        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+
         // Needed for now because checked is only freed once the value is collected into a Vec
-        let predicates: Vec<RuntimePredicate> = checked
-            .transaction()
-            .inputs()
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, _)| RuntimePredicate::from_tx(&params, checked.transaction(), idx))
+        #[allow(clippy::needless_collect)]
+        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
+            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
             .collect();
 
-        predicates
-            .into_iter()
-            .fold(vm.init_predicate(checked), |result, predicate| -> bool {
-                // VM is cloned because the state should be reset for every predicate verification
-                result && vm.clone()._check_predicate(predicate)
-            })
+        // Since we reuse the vm objects otherwise, we need to keep the actual gas here
+        let tx_gas_limit = checked.transaction().limit();
+        let mut remaining_gas = tx_gas_limit;
+
+        vm.init_predicate(checked);
+
+        for predicate in predicates {
+            // VM is cloned because the state should be reset for every predicate verification
+            let mut vm = vm.clone();
+
+            vm.context = Context::Predicate { program: predicate };
+            vm.set_remaining_gas(remaining_gas);
+
+            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                return Err(PredicateVerificationFailed::False);
+            }
+
+            remaining_gas = vm.registers[REG_GGAS];
+        }
+
+        Ok(PredicatesChecked {
+            gas_used: tx_gas_limit
+                .checked_sub(remaining_gas)
+                .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?,
+        })
     }
 }
 
@@ -223,7 +242,7 @@ where
                 .transaction()
                 .limit()
                 .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugId::ID006, BugVariant::GlobalGasUnderflow))?;
+                .ok_or_else(|| Bug::new(BugId::ID002, BugVariant::GlobalGasUnderflow))?;
 
             // Catch VM panic and don't propagate, generating a receipt
             let (status, program) = match program {

@@ -24,6 +24,6 @@ version = "0.24.0"
 fuel-asm = { version = "0.24.0", path = "./fuel-asm", default-features = false }
 fuel-crypto = { version = "0.24.0", path = "./fuel-crypto", default-features = false }
 fuel-merkle = { version = "0.24.0", path = "./fuel-merkle", default-features = false }
-fuel-storage = { version = "0.24.0", path = "./fuel-storage", default-features = false }
+fuel-storage = { version = "0.3", path = "./fuel-storage", default-features = false }
 fuel-tx = { version = "0.24.0", path = "./fuel-tx", default-features = false }
 fuel-types = { version = "0.24.0", path = "./fuel-types", default-features = false }

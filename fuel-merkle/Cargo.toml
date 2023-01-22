@@ -31,15 +31,15 @@ default = ["std"]
 std = ["dep:thiserror", "digest/default", "hex/default", "sha2/default"]
 
 [[test]]
+name = "tests-binary"
+path = "./tests/binary.rs"
+harness = true
+
+[[test]]
 name = "tests-data"
 path = "./tests-data/tests-data.rs"
 harness = false
 required-features = ["std"]
-
-[[test]]
-name = "tests-binary"
-path = "./tests/binary.rs"
-harness = true
 
 [[test]]
 name = "tests-data-binary"

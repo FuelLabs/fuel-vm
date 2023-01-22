@@ -37,12 +37,12 @@ harness = false
 required-features = ["std"]
 
 [[test]]
+name = "tests-binary"
+path = "./tests/binary.rs"
+harness = true
+
+[[test]]
 name = "tests-data-binary"
 path = "./tests-data-binary/tests-data-binary.rs"
 harness = false
 required-features = ["std"]
-
-[[test]]
-name = "tests-binary"
-path = "./tests/binary.rs"
-harness = true

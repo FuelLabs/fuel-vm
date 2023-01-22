@@ -34,6 +34,8 @@ jobs:
           - command: check
             args: --all-targets -p fuel-crypto
           - command: check
+            args: --all-targets -p fuel-merkle          
+          - command: check
             args: --all-targets -p fuel-storage
           - command: check
             args: --all-targets -p fuel-tx
@@ -46,7 +48,7 @@ jobs:
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage --no-default-features
+            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: test

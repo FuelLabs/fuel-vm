@@ -1,0 +1,12 @@
+name: Test 0 Leaves
+function_name: generate_test_0_leaves
+description: Build a proof from a binary Merkle tree and manual set the number of leaves to 0. Setting the number of leaves to 0 implies that the source tree is empty. This proof is invalid because empty trees cannot produce a proof. Verification is expected to fail.
+root:
+  value: ce04537ec4b4b84cf02fa5c50c7810e2f6592e3b00de7423d7c3e7e7d8689a67
+  encoding: hex
+proof_set:
+- value: ce04537ec4b4b84cf02fa5c50c7810e2f6592e3b00de7423d7c3e7e7d8689a67
+  encoding: hex
+proof_index: 0
+num_leaves: 0
+expected_verification: false

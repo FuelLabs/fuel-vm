@@ -53,29 +53,20 @@ where
         }
     }
 
-    pub fn load(
-        storage: StorageType,
-        root: &Bytes32,
-    ) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
         let primitive = storage
             .get(root)?
             .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
             .into_owned();
         let tree = Self {
-            root_node: primitive
-                .try_into()
-                .map_err(MerkleTreeError::DeserializeError)?,
+            root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
             storage,
             phantom_table: Default::default(),
         };
         Ok(tree)
     }
 
-    pub fn update(
-        &mut self,
-        key: &Bytes32,
-        data: &[u8],
-    ) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -84,10 +75,8 @@ where
         }
 
         let leaf_node = Node::create_leaf(key, data);
-        self.storage
-            .insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
-        self.storage
-            .insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
+        self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
+        self.storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -108,11 +97,8 @@ where
 
         if let Some(primitive) = self.storage.get(key)? {
             let primitive = primitive.into_owned();
-            let leaf_node: Node = primitive
-                .try_into()
-                .map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
-                self.path_set(leaf_node.clone())?;
+            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
+            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
             self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -134,10 +120,7 @@ where
         self.root_node = node;
     }
 
-    fn path_set(
-        &self,
-        leaf_node: Node,
-    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
@@ -267,9 +250,7 @@ where
                 // node will be an internal node, and not a leaf, by the time we
                 // start merging the remaining side nodes.
                 // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
-                if let Some(side_node) =
-                    side_nodes_iter.find(|side_node| !side_node.is_placeholder())
-                {
+                if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
                     current_node = Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
                         .insert(&current_node.hash(), &current_node.as_ref().into())?;
@@ -689,8 +670,7 @@ mod test {
         }
 
         let root = &sum(b"\xff\xff\xff\xff");
-        let err = MerkleTree::load(&mut storage, root)
-            .expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage, root).expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::LoadError(_)));
     }
 
@@ -713,8 +693,7 @@ mod test {
         let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
         storage.insert(&root, &primitive).unwrap();
 
-        let err = MerkleTree::load(&mut storage, &root)
-            .expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage, &root).expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::DeserializeError(_)));
     }
 }

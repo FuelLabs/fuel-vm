@@ -57,11 +57,7 @@ fn generate_test(
 
 fn write_test(test: &ProofTest) {
     let yaml = serde_yaml::to_string(test).expect("Unable to serialize test!");
-    std::fs::write(
-        format!("../tests-data-binary/fixtures/{}.yaml", test.name),
-        yaml,
-    )
-    .expect("Unable to write file!");
+    std::fs::write(format!("../tests-data-binary/fixtures/{}.yaml", test.name), yaml).expect("Unable to write file!");
 }
 
 #[named]

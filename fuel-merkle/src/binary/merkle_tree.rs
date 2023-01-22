@@ -1,9 +1,7 @@
 use crate::{
     binary::{empty_sum, in_memory::NodesTable, Node, Primitive},
     common::{Bytes32, Position, ProofSet, StorageMap, Subtree},
-    storage::{
-        Mappable, StorageInspect, StorageInspectInfallible, StorageMutate, StorageMutateInfallible,
-    },
+    storage::{Mappable, StorageInspect, StorageInspectInfallible, StorageMutate, StorageMutateInfallible},
 };
 
 use alloc::{boxed::Box, vec::Vec};
@@ -53,10 +51,7 @@ where
         }
     }
 
-    pub fn load(
-        storage: StorageType,
-        leaves_count: u64,
-    ) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(storage: StorageType, leaves_count: u64) -> Result<Self, MerkleTreeError<StorageError>> {
         let mut tree = Self {
             storage,
             head: None,
@@ -78,10 +73,7 @@ where
         }
     }
 
-    pub fn prove(
-        &self,
-        proof_index: u64,
-    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
+    pub fn prove(&self, proof_index: u64) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
         if proof_index + 1 > self.leaves_count {
             return Err(MerkleTreeError::InvalidProofIndex(proof_index));
         }
@@ -98,19 +90,15 @@ where
         let leaf_node = Node::from(primitive);
         proof_set.push(*leaf_node.hash());
 
-        let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
-            .path(&leaf_position, self.leaves_count)
-            .iter()
-            .unzip();
+        let (_, mut side_positions): (Vec<_>, Vec<_>) =
+            root_position.path(&leaf_position, self.leaves_count).iter().unzip();
         side_positions.reverse(); // Reorder side positions from leaf to root.
         side_positions.pop(); // The last side position is the root; remove it.
 
         // Allocate scratch storage to store temporary nodes when building the
         // root.
         let mut scratch_storage = StorageMap::<NodesTable>::new();
-        let root_node = self
-            .root_node(&mut scratch_storage)
-            .expect("Root node must be present");
+        let root_node = self.root_node(&mut scratch_storage).expect("Root node must be present");
 
         // Get side nodes. First, we check the scratch storage. If the side node
         // is not found in scratch storage, we then check main storage. Finally,
@@ -281,9 +269,7 @@ where
     /// callee.
     ///
     fn root_node(&self, scratch_storage: &mut StorageMap<NodesTable>) -> Option<Node> {
-        self.head
-            .as_ref()
-            .map(|head| build_root_node(head, scratch_storage))
+        self.head.as_ref().map(|head| build_root_node(head, scratch_storage))
     }
 }
 
@@ -313,8 +299,7 @@ where
         loop {
             let current = self.head.as_ref().unwrap();
             if !(current.next().is_some()
-                && current.node().position().height()
-                    == current.next_node().unwrap().position().height())
+                && current.node().position().height() == current.next_node().unwrap().position().height())
             {
                 break;
             }
@@ -324,10 +309,8 @@ where
                 let mut head = self.head.take().unwrap();
                 let mut head_next = head.take_next().unwrap();
                 let joined_head = join_subtrees(&mut head_next, &mut head);
-                self.storage.insert(
-                    &joined_head.node().key(),
-                    &joined_head.node().as_ref().into(),
-                )?;
+                self.storage
+                    .insert(&joined_head.node().key(), &joined_head.node().as_ref().into())?;
                 joined_head
             };
             self.head = Some(Box::new(joined_head));
@@ -448,9 +431,7 @@ mod test {
 
         let expected_root = {
             let mut tree = MerkleTree::new(&mut storage_map);
-            let data = (0u64..LEAVES_COUNT)
-                .map(|i| i.to_be_bytes())
-                .collect::<Vec<_>>();
+            let data = (0u64..LEAVES_COUNT).map(|i| i.to_be_bytes()).collect::<Vec<_>>();
             for datum in data.iter() {
                 let _ = tree.push(datum);
             }
@@ -487,15 +468,13 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
 
         let mut tree = MerkleTree::new(&mut storage_map);
-        let data = (0u64..LEAVES_COUNT)
-            .map(|i| i.to_be_bytes())
-            .collect::<Vec<_>>();
+        let data = (0u64..LEAVES_COUNT).map(|i| i.to_be_bytes()).collect::<Vec<_>>();
         for datum in data.iter() {
             let _ = tree.push(datum);
         }
 
-        let err = MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2)
-            .expect_err("Expected load() to return Error; got Ok");
+        let err =
+            MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2).expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::LoadError(_)));
     }
 
@@ -573,9 +552,7 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
         let tree = MerkleTree::new(&mut storage_map);
 
-        let err = tree
-            .prove(0)
-            .expect_err("Expected prove() to return Error; got Ok");
+        let err = tree.prove(0).expect_err("Expected prove() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::InvalidProofIndex(0)));
     }
 
@@ -589,9 +566,7 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let err = tree
-            .prove(10)
-            .expect_err("Expected prove() to return Error; got Ok");
+        let err = tree.prove(10).expect_err("Expected prove() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::InvalidProofIndex(10)))
     }
 

@@ -22,13 +22,7 @@ impl Node {
         }
     }
 
-    pub fn create_node(
-        height: u32,
-        lhs_fee: u64,
-        lhs_key: &Bytes32,
-        rhs_fee: u64,
-        rhs_key: &Bytes32,
-    ) -> Self {
+    pub fn create_node(height: u32, lhs_fee: u64, lhs_key: &Bytes32, rhs_fee: u64, rhs_key: &Bytes32) -> Self {
         Self {
             height,
             hash: node_sum(lhs_fee, lhs_key, rhs_fee, rhs_key),
@@ -73,14 +67,8 @@ impl fmt::Debug for Node {
             f.debug_struct("Node (Internal)")
                 .field("Hash", &hex::encode(self.hash()))
                 .field("Fee", &self.fee)
-                .field(
-                    "Left child key",
-                    &hex::encode(self.left_child_key().unwrap()),
-                )
-                .field(
-                    "Right child key",
-                    &hex::encode(self.right_child_key().unwrap()),
-                )
+                .field("Left child key", &hex::encode(self.left_child_key().unwrap()))
+                .field("Right child key", &hex::encode(self.right_child_key().unwrap()))
                 .finish()
         } else {
             f.debug_struct("Node (Leaf)")

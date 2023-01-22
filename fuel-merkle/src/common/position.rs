@@ -293,10 +293,7 @@ mod test {
     fn test_from_leaf_index() {
         assert_eq!(Position::from_leaf_index(0).in_order_index(), 0);
         assert_eq!(Position::from_leaf_index(1).in_order_index(), 2);
-        assert_eq!(
-            Position::from_leaf_index((!0u64) >> 1).in_order_index(),
-            !0u64 - 1
-        );
+        assert_eq!(Position::from_leaf_index((!0u64) >> 1).in_order_index(), !0u64 - 1);
     }
 
     #[test]

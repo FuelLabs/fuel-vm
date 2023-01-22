@@ -104,9 +104,7 @@ where
     fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
         loop {
             let current = self.head.as_ref().unwrap();
-            if !(current.next().is_some()
-                && current.node().height() == current.next_node().unwrap().height())
-            {
+            if !(current.next().is_some() && current.node().height() == current.next_node().unwrap().height()) {
                 break;
             }
 

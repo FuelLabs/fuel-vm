@@ -50,12 +50,7 @@ impl PrimitiveView for Primitive {
 
 impl From<&Node> for Primitive {
     fn from(node: &Node) -> Self {
-        (
-            node.height(),
-            node.prefix() as u8,
-            *node.bytes_lo(),
-            *node.bytes_hi(),
-        )
+        (node.height(), node.prefix() as u8, *node.bytes_lo(), *node.bytes_hi())
     }
 }
 

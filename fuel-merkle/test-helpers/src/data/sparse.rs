@@ -53,10 +53,7 @@ impl Step {
     fn action_type(&self) -> Result<Action, TestError> {
         match self.action.as_str() {
             // An Update has a key and data
-            ACTION_UPDATE => Ok(Action::Update(
-                self.key.clone().unwrap(),
-                self.data.clone().unwrap(),
-            )),
+            ACTION_UPDATE => Ok(Action::Update(self.key.clone().unwrap(), self.data.clone().unwrap())),
 
             // A Delete has a key
             ACTION_DELETE => Ok(Action::Delete(self.key.clone().unwrap())),

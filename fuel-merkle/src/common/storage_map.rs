@@ -49,11 +49,7 @@ where
     Type::SetValue: Clone,
     Type::GetValue: Clone + From<Type::SetValue>,
 {
-    fn insert(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, Self::Error> {
+    fn insert(&mut self, key: &Type::Key, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error> {
         let previous = self.map.remove(key);
 
         self.map.insert(key.clone(), value.clone().into());

@@ -163,11 +163,7 @@ impl Node {
         if self.is_placeholder() {
             *zero_sum()
         } else {
-            let data = [
-                self.prefix.as_ref(),
-                self.bytes_lo.as_ref(),
-                self.bytes_hi.as_ref(),
-            ];
+            let data = [self.prefix.as_ref(), self.bytes_lo.as_ref(), self.bytes_hi.as_ref()];
             sum_all(data)
         }
     }
@@ -393,14 +389,8 @@ mod test_node {
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 1);
         assert_eq!(node.prefix(), Prefix::Node);
-        assert_eq!(
-            *node.left_child_key(),
-            leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32])
-        );
-        assert_eq!(
-            *node.right_child_key(),
-            leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32])
-        );
+        assert_eq!(*node.left_child_key(), leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
+        assert_eq!(*node.right_child_key(), leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
     }
 
     #[test]
@@ -517,9 +507,7 @@ mod test_node {
 #[cfg(test)]
 mod test_storage_node {
     use crate::{
-        common::{
-            error::DeserializeError, Bytes32, ChildError, ParentNode, PrefixError, StorageMap,
-        },
+        common::{error::DeserializeError, Bytes32, ChildError, ParentNode, PrefixError, StorageMap},
         sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
         storage::{Mappable, StorageMutate},
     };
@@ -684,9 +672,9 @@ mod test_storage_node {
 
         assert!(matches!(
             err,
-            ChildError::Error(StorageNodeError::DeserializeError(
-                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
-            ))
+            ChildError::Error(StorageNodeError::DeserializeError(DeserializeError::PrefixError(
+                PrefixError::InvalidPrefix(0xff)
+            )))
         ));
     }
 
@@ -706,9 +694,9 @@ mod test_storage_node {
 
         assert!(matches!(
             err,
-            ChildError::Error(StorageNodeError::DeserializeError(
-                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
-            ))
+            ChildError::Error(StorageNodeError::DeserializeError(DeserializeError::PrefixError(
+                PrefixError::InvalidPrefix(0xff)
+            )))
         ));
     }
 }

@@ -24,8 +24,7 @@ where
     }
 
     fn contains_key(&self, key: &Type::Key) -> bool {
-        <Self as StorageInspect<Type>>::contains_key(self, key)
-            .expect("Expected contains_key() to be infallible")
+        <Self as StorageInspect<Type>>::contains_key(self, key).expect("Expected contains_key() to be infallible")
     }
 }
 
@@ -35,12 +34,10 @@ where
     Type: Mappable,
 {
     fn insert(&mut self, key: &Type::Key, value: &Type::SetValue) -> Option<Type::GetValue> {
-        <Self as StorageMutate<Type>>::insert(self, key, value)
-            .expect("Expected insert() to be infallible")
+        <Self as StorageMutate<Type>>::insert(self, key, value).expect("Expected insert() to be infallible")
     }
 
     fn remove(&mut self, key: &Type::Key) -> Option<Type::GetValue> {
-        <Self as StorageMutate<Type>>::remove(self, key)
-            .expect("Expected remove() to be infallible")
+        <Self as StorageMutate<Type>>::remove(self, key).expect("Expected remove() to be infallible")
     }
 }

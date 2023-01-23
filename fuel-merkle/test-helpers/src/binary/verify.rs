@@ -109,7 +109,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 2, 5);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 
     #[test]
@@ -122,7 +122,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 0, 0);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 
     #[test]
@@ -140,6 +140,6 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 15, 5);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 }

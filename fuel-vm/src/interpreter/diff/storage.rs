@@ -345,21 +345,21 @@ where
 
 impl StorageType for ContractsState {
     fn record_insert(key: &Self::Key, value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert(key.clone(), *value, existing))
+        StorageDelta::State(MappableDelta::Insert(*key, *value, existing))
     }
 
     fn record_remove(key: &Self::Key, value: Bytes32) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Remove(key.clone(), value))
+        StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }
 
 impl StorageType for ContractsAssets {
     fn record_insert(key: &Self::Key, value: &u64, existing: Option<u64>) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Insert(key.clone(), *value, existing))
+        StorageDelta::Assets(MappableDelta::Insert(*key, *value, existing))
     }
 
     fn record_remove(key: &Self::Key, value: u64) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Remove(key.clone(), value))
+        StorageDelta::Assets(MappableDelta::Remove(*key, value))
     }
 }
 

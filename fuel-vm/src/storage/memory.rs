@@ -162,7 +162,7 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
 
 impl StorageMutate<ContractsAssets> for MemoryStorage {
     fn insert(&mut self, key: &<ContractsAssets as Mappable>::Key, value: &Word) -> Result<Option<Word>, Infallible> {
-        Ok(self.memory.balances.insert(key.clone(), *value))
+        Ok(self.memory.balances.insert(*key, *value))
     }
 
     fn remove(&mut self, key: &<ContractsAssets as Mappable>::Key) -> Result<Option<Word>, Infallible> {
@@ -203,7 +203,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         key: &<ContractsState as Mappable>::Key,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, Infallible> {
-        Ok(self.memory.contract_state.insert(key.clone(), *value))
+        Ok(self.memory.contract_state.insert(*key, *value))
     }
 
     fn remove(&mut self, key: &<ContractsState as Mappable>::Key) -> Result<Option<Bytes32>, Infallible> {

@@ -13,7 +13,7 @@ type Hash = Sha256;
 
 pub fn sum(data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
-    hash.update(&data);
+    hash.update(data);
     hash.finalize().try_into().unwrap()
 }
 
@@ -36,10 +36,10 @@ fn generate_test(
     };
 
     // SAFETY: All EncodedValues are specified with a valid encoding.
-    let encoded_root = EncodedValue::from_raw(&root, Encoding::Hex);
+    let encoded_root = EncodedValue::from_raw(root, Encoding::Hex);
     let encoded_proof_set = proof_set
         .iter()
-        .map(|v| EncodedValue::from_raw(&v, Encoding::Hex))
+        .map(|v| EncodedValue::from_raw(v, Encoding::Hex))
         .collect::<Vec<_>>();
     let num_leaves = sample_data.len() as u64;
 

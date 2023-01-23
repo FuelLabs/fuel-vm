@@ -13,7 +13,7 @@ use fuel_storage::Mappable;
 struct TestTable;
 
 impl Mappable for TestTable {
-    type Key = u64;
+    type Key<'a> = u64;
     type SetValue = Primitive;
     type GetValue = Self::SetValue;
 }

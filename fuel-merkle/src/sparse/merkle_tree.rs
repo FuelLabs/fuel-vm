@@ -41,7 +41,7 @@ pub struct MerkleTree<TableType, StorageType> {
 
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, SetValue = Primitive, GetValue = Primitive>,
+    TableType: Mappable<Key<'static> = Bytes32, SetValue = Primitive, GetValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
     StorageError: fmt::Debug + Clone + 'static,
 {
@@ -284,14 +284,14 @@ mod test {
     struct TestTable;
 
     impl Mappable for TestTable {
-        type Key = Bytes32;
+        type Key<'a> = Bytes32;
         type SetValue = Primitive;
         type GetValue = Self::SetValue;
     }
 
     #[test]
     fn test_empty_root() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let tree = MerkleTree::new(&mut storage);
         let root = tree.root();
         let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -300,7 +300,7 @@ mod test {
 
     #[test]
     fn test_update_1() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -312,7 +312,7 @@ mod test {
 
     #[test]
     fn test_update_2() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn test_update_3() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -339,7 +339,7 @@ mod test {
 
     #[test]
     fn test_update_5() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -355,7 +355,7 @@ mod test {
 
     #[test]
     fn test_update_10() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
@@ -370,7 +370,7 @@ mod test {
 
     #[test]
     fn test_update_100() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..100 {
@@ -385,7 +385,7 @@ mod test {
 
     #[test]
     fn test_update_with_repeated_inputs() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -398,7 +398,7 @@ mod test {
 
     #[test]
     fn test_update_overwrite_key() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -411,7 +411,7 @@ mod test {
 
     #[test]
     fn test_update_union() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..5 {
@@ -436,7 +436,7 @@ mod test {
 
     #[test]
     fn test_update_sparse_union() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -452,7 +452,7 @@ mod test {
 
     #[test]
     fn test_update_with_empty_data() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"").unwrap();
@@ -464,7 +464,7 @@ mod test {
 
     #[test]
     fn test_update_with_empty_performs_delete() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -477,7 +477,7 @@ mod test {
 
     #[test]
     fn test_update_1_delete_1() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -490,7 +490,7 @@ mod test {
 
     #[test]
     fn test_update_2_delete_1() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -504,7 +504,7 @@ mod test {
 
     #[test]
     fn test_update_10_delete_5() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
@@ -524,7 +524,7 @@ mod test {
 
     #[test]
     fn test_delete_non_existent_key() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
@@ -541,7 +541,7 @@ mod test {
 
     #[test]
     fn test_interleaved_update_delete() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
@@ -581,7 +581,7 @@ mod test {
 
     #[test]
     fn test_delete_sparse_union() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
@@ -608,7 +608,7 @@ mod test {
         // look up the buffer of the root node. We will later use this storage backing
         // and root to load a Merkle tree.
         let (mut storage_to_load, root_to_load) = {
-            let mut storage = StorageMap::<TestTable>::new();
+            let mut storage = StorageMap::<TestTable, Bytes32>::new();
             let mut tree = MerkleTree::new(&mut storage);
             tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
             tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
@@ -623,7 +623,7 @@ mod test {
         // data used when generating the loadable storage above and an additional set of
         // `update` data.
         let expected_root = {
-            let mut storage = StorageMap::<TestTable>::new();
+            let mut storage = StorageMap::<TestTable, Bytes32>::new();
             let mut tree = MerkleTree::new(&mut storage);
             tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
             tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
@@ -658,7 +658,7 @@ mod test {
 
     #[test]
     fn test_load_returns_a_load_error_if_the_storage_is_not_valid_for_the_root() {
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
 
         {
             let mut tree = MerkleTree::new(&mut storage);
@@ -678,7 +678,7 @@ mod test {
     fn test_load_returns_a_deserialize_error_if_the_storage_is_corrupted() {
         use fuel_storage::StorageMutate;
 
-        let mut storage = StorageMap::<TestTable>::new();
+        let mut storage = StorageMap::<TestTable, Bytes32>::new();
 
         let mut tree = MerkleTree::new(&mut storage);
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();

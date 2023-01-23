@@ -46,7 +46,7 @@ pub struct MerkleTree<TableType, StorageType> {
 
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, SetValue = Node, GetValue = Node>,
+    TableType: Mappable<Key<'static> = Bytes32, SetValue = Node, GetValue = Node>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
     StorageError: fmt::Debug + Clone + 'static,
 {
@@ -153,7 +153,7 @@ mod test {
     pub struct TestTable;
 
     impl Mappable for TestTable {
-        type Key = Bytes32;
+        type Key<'a> = Bytes32;
         type SetValue = Node;
         type GetValue = Self::SetValue;
     }
@@ -162,7 +162,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_empty_string_when_no_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut storage_map = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let root = tree.root().unwrap();
@@ -171,7 +171,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_leaf_when_one_leaf_is_pushed() {
-        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut storage_map = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0];
@@ -184,7 +184,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_4_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut storage_map = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..4]; // 4 leaves
@@ -215,7 +215,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_5_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut storage_map = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..5]; // 5 leaves
@@ -250,7 +250,7 @@ mod test {
 
     #[test]
     fn root_returns_the_hash_of_the_head_when_7_leaves_are_pushed() {
-        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut storage_map = StorageMap::<TestTable, Bytes32>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[0..7]; // 7 leaves

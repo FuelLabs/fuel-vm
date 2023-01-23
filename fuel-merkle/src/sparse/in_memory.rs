@@ -10,12 +10,12 @@ use fuel_storage::Mappable;
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
-    type Key = Bytes32;
+    type Key<'a> = Bytes32;
     type SetValue = Primitive;
     type GetValue = Self::SetValue;
 }
 
-type Storage = StorageMap<NodesTable>;
+type Storage = StorageMap<NodesTable, Bytes32>;
 type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
 pub struct MerkleTree {

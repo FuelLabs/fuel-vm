@@ -1,18 +1,18 @@
 [package]
 name = "fuel-merkle"
-version = "0.4.1"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-edition = "2021"
-homepage = "https://fuel.network/"
-keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+version = { workspace = true }
+authors = { workspace = true }
+categories = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "merkle"]
 license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/fuel-merkle"
+repository = { workspace = true }
 description = "Fuel Merkle tree libraries."
 
 [dependencies]
 digest = { version = "0.10", default-features = false }
-# fuel-storage = "0.3"
-fuel-storage = { path = "../fuel-storage" }
+fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 sha2 = { version = "0.10", default-features = false }

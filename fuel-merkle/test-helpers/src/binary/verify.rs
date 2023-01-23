@@ -77,7 +77,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 2, 5);
-        assert_eq!(verification, true);
+        assert!(verification);
     }
 
     #[test]

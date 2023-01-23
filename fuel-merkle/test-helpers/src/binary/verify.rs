@@ -5,7 +5,7 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
         return false;
     }
 
-    if proof_set.len() == 0 {
+    if proof_set.is_empty() {
         return false;
     }
 
@@ -53,7 +53,7 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
         height += 1;
     }
 
-    return sum == *root;
+    sum == *root
 }
 
 #[cfg(test)]
@@ -77,7 +77,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 2, 5);
-        assert_eq!(verification, true);
+        assert!(verification);
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 2, 5);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 
     #[test]
@@ -122,7 +122,7 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 0, 0);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 
     #[test]
@@ -140,6 +140,6 @@ mod test {
         let set = proof.1;
 
         let verification = verify(&root, &set, 15, 5);
-        assert_eq!(verification, false);
+        assert!(!verification);
     }
 }

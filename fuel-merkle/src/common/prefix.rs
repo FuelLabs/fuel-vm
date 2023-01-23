@@ -1,17 +1,12 @@
 const NODE: u8 = 0x01;
 const LEAF: u8 = 0x00;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Prefix {
     Node = NODE,
+    #[default]
     Leaf = LEAF,
-}
-
-impl Default for Prefix {
-    fn default() -> Self {
-        Prefix::Leaf
-    }
 }
 
 impl From<Prefix> for u8 {

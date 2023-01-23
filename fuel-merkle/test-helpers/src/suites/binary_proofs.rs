@@ -61,7 +61,7 @@ fn write_test(test: &ProofTest) {
 }
 
 #[named]
-fn generate_test_10_leaves_index_4(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_10_leaves_index_4(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 10 Leaves Index 4".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -76,7 +76,7 @@ fn generate_test_10_leaves_index_4(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_1_leaf_index_0(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_1_leaf_index_0(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 1 Leaf Index 0".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -91,7 +91,7 @@ fn generate_test_1_leaf_index_0(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_100_leaves_index_10(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_100_leaves_index_10(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 100 Leaves Index 10".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -106,7 +106,7 @@ fn generate_test_100_leaves_index_10(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_1024_leaves_index_512(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_1024_leaves_index_512(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 1024 Leaves Index 512".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -121,7 +121,7 @@ fn generate_test_1024_leaves_index_512(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_0_leaves(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_0_leaves(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 0 Leaves".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -141,7 +141,7 @@ fn generate_test_0_leaves(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_1_leaf_invalid_proof_index(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_1_leaf_invalid_proof_index(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 1 Leaf Invalid Proof Index".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -161,7 +161,7 @@ fn generate_test_1_leaf_invalid_proof_index(test_data: &[Bytes32]) -> ProofTest 
 }
 
 #[named]
-fn generate_test_1_leaf_invalid_root(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_1_leaf_invalid_root(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 1 Leaf Invalid Root".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();
@@ -181,7 +181,7 @@ fn generate_test_1_leaf_invalid_root(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_1024_leaves_invalid_root(test_data: &[Bytes32]) -> ProofTest {
+fn generate_test_1024_leaves_invalid_root(test_data: &Vec<Bytes32>) -> ProofTest {
     let name = "Test 1024 Leaves Invalid Root".to_string();
     let function_name = function_name!().to_string();
     let mut rng: Pcg64 = Seeder::from(&function_name).make_rng();

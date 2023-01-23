@@ -10,12 +10,6 @@ pub struct MerkleTree {
     proof_set: ProofSet,
 }
 
-impl Default for MerkleTree {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MerkleTree {
     pub fn new() -> Self {
         Self {
@@ -35,7 +29,7 @@ impl MerkleTree {
 
     pub fn root(&self) -> Data {
         match self.head() {
-            None => *empty_sum(),
+            None => empty_sum().clone(),
             Some(ref head) => {
                 let mut current = head.clone();
                 while current.next().is_some() {
@@ -43,7 +37,7 @@ impl MerkleTree {
                     let mut next_node = node.take_next().unwrap();
                     current = Self::join_subtrees(&mut next_node, &node)
                 }
-                *current.data()
+                current.data().clone()
             }
         }
     }
@@ -158,7 +152,7 @@ mod test {
         let mut mt = MerkleTree::new();
 
         let data = &TEST_DATA[0];
-        mt.push(data);
+        mt.push(&data);
         let root = mt.root();
 
         let expected = leaf_sum(data);

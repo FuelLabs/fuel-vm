@@ -72,14 +72,17 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
+            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &Bytes32::new(v))
             .unwrap();
     }
 
     let mut result_register = 0u64;
     state_clear_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
 
-    let results = storage.all_contract_state().map(|((_, k), v)| (**k, **v)).collect();
+    let results = storage
+        .all_contract_state()
+        .map(|(key, v)| (**key.state_key(), **v))
+        .collect();
     (results, result_register != 0)
 }
 

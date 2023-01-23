@@ -10,9 +10,10 @@ use fuel_storage::Mappable;
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
-    type Key<'a> = u64;
-    type SetValue = Primitive;
-    type GetValue = Self::SetValue;
+    type Key = Self::OwnedKey;
+    type OwnedKey = u64;
+    type Value = Self::OwnedValue;
+    type OwnedValue = Primitive;
 }
 
 type Storage = StorageMap<NodesTable>;

@@ -16,20 +16,22 @@ pub use predicate::PredicateStorage;
 pub struct ContractsRawCode;
 
 impl Mappable for ContractsRawCode {
-    type Key<'a> = ContractId;
-    type SetValue = [u8];
-    type GetValue = Contract;
+    type Key = Self::OwnedKey;
+    type OwnedKey = ContractId;
+    type Value = [u8];
+    type OwnedValue = Contract;
 }
 
 /// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 
 impl Mappable for ContractsInfo {
-    type Key<'a> = ContractId;
+    type Key = Self::OwnedKey;
+    type OwnedKey = ContractId;
     /// `Salt` - is the salt used during creation of the contract for uniques.
     /// `Bytes32` - is the root hash of the contract's code.
-    type SetValue = (Salt, Bytes32);
-    type GetValue = Self::SetValue;
+    type Value = (Salt, Bytes32);
+    type OwnedValue = Self::Value;
 }
 
 /// The storage table for contract's assets balances.
@@ -38,9 +40,10 @@ impl Mappable for ContractsInfo {
 pub struct ContractsAssets;
 
 impl Mappable for ContractsAssets {
-    type Key<'a> = (&'a ContractId, &'a AssetId);
-    type SetValue = Word;
-    type GetValue = Self::SetValue;
+    type Key = Self::OwnedKey;
+    type OwnedKey = ContractsAssetKey;
+    type Value = Word;
+    type OwnedValue = Self::Value;
 }
 
 /// The storage table for contract's hashed key-value state.
@@ -49,9 +52,109 @@ impl Mappable for ContractsAssets {
 pub struct ContractsState;
 
 impl Mappable for ContractsState {
+    type Key = Self::OwnedKey;
     /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's key.
-    type Key<'a> = (&'a ContractId, &'a Bytes32);
+    type OwnedKey = ContractsStateKey;
     /// The table value is hash of the value.
-    type SetValue = Bytes32;
-    type GetValue = Self::SetValue;
+    type Value = Bytes32;
+    type OwnedValue = Self::Value;
 }
+
+/// The macro defines a new type of double storage key. It is a merge of the two types into one
+/// general type that represents the storage key of some entity.
+///
+/// Both types are represented by one big array. It is done from the performance perspective
+/// to minimize the number of copies. The current code doesn't use consumed values and uses
+/// it in most cases as on big key(except tests, which require access to sub-keys).
+/// But in the future, we may change the layout of the fields based on
+/// the performance measurements/new business logic.
+macro_rules! double_key {
+    ($i:ident, $first:ident, $first_getter:ident, $second:ident, $second_getter:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        /// The FuelVM storage double key.
+        pub struct $i([u8; { $first::LEN + $second::LEN }]);
+
+        impl Default for $i {
+            fn default() -> Self {
+                Self([0; { Self::second_end() }])
+            }
+        }
+
+        impl $i {
+            /// Create a new instance of the double storage key from references.
+            pub fn new(first: &$first, second: &$second) -> Self {
+                let mut default = Self::default();
+                default.0[0..Self::first_end()].copy_from_slice(first.as_ref());
+                default.0[Self::first_end()..Self::second_end()].copy_from_slice(second.as_ref());
+                default
+            }
+
+            /// Returns the reference to the first sub-key.
+            pub fn $first_getter(&self) -> &$first {
+                unsafe { $first::as_ref_unchecked(&self.0[0..Self::first_end()]) }
+            }
+
+            /// Returns the reference to the second sub-key.
+            pub fn $second_getter(&self) -> &$second {
+                unsafe { $second::as_ref_unchecked(&self.0[Self::first_end()..Self::second_end()]) }
+            }
+
+            const fn first_end() -> usize {
+                $first::LEN
+            }
+
+            const fn second_end() -> usize {
+                $first::LEN + $second::LEN
+            }
+        }
+
+        impl From<(&$first, &$second)> for $i {
+            fn from(pair: (&$first, &$second)) -> Self {
+                Self::new(pair.0, pair.1)
+            }
+        }
+
+        impl AsRef<[u8]> for $i {
+            fn as_ref(&self) -> &[u8] {
+                self.0.as_ref()
+            }
+        }
+
+        impl AsRef<$first> for $i {
+            fn as_ref(&self) -> &$first {
+                self.$first_getter()
+            }
+        }
+
+        impl AsRef<$second> for $i {
+            fn as_ref(&self) -> &$second {
+                self.$second_getter()
+            }
+        }
+
+        impl From<$i> for ($first, $second) {
+            fn from(key: $i) -> ($first, $second) {
+                let first = &key.0[0..$i::first_end()];
+                let second = &key.0[$i::first_end()..$i::second_end()];
+                let first = first.try_into().unwrap();
+                let second = second.try_into().unwrap();
+                (first, second)
+            }
+        }
+
+        impl From<$i> for $first {
+            fn from(key: $i) -> $first {
+                *key.$first_getter()
+            }
+        }
+
+        impl From<$i> for $second {
+            fn from(key: $i) -> $second {
+                *key.$second_getter()
+            }
+        }
+    };
+}
+
+double_key!(ContractsAssetKey, ContractId, contract_id, AssetId, asset_id);
+double_key!(ContractsStateKey, ContractId, contract_id, Bytes32, state_key);

@@ -18,25 +18,21 @@ pub struct PredicateStorage;
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
     type Error = InterpreterError;
 
-    fn get(&self, _key: &Type::Key<'_>) -> Result<Option<Cow<'_, Type::GetValue>>, InterpreterError> {
+    fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::OwnedValue>>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn contains_key(&self, _key: &Type::Key<'_>) -> Result<bool, InterpreterError> {
+    fn contains_key(&self, _key: &Type::Key) -> Result<bool, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }
 
 impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
-    fn insert(
-        &mut self,
-        _key: &Type::Key<'_>,
-        _value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, InterpreterError> {
+    fn insert(&mut self, _key: &Type::Key, _value: &Type::Value) -> Result<Option<Type::OwnedValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn remove(&mut self, _key: &Type::Key<'_>) -> Result<Option<Type::GetValue>, InterpreterError> {
+    fn remove(&mut self, _key: &Type::Key) -> Result<Option<Type::OwnedValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }

@@ -13,9 +13,10 @@ use fuel_storage::Mappable;
 struct TestTable;
 
 impl Mappable for TestTable {
-    type Key<'a> = u64;
-    type SetValue = Primitive;
-    type GetValue = Self::SetValue;
+    type Key = Self::OwnedKey;
+    type OwnedKey = u64;
+    type Value = Self::OwnedValue;
+    type OwnedValue = Primitive;
 }
 
 // During test setup, we randomly sample the pool of test data to generate the

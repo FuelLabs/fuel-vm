@@ -95,7 +95,7 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)), &Bytes32::new(v))
+            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &Bytes32::new(v))
             .unwrap();
     }
     let mut result_register = 0u64;

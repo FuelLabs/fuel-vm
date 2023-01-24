@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use fuel_types::AssetId;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
-use tuples::cloned::TupleCloned;
 
-use crate::storage::InterpreterStorage;
+use crate::storage::{ContractsAssetKey, ContractsStateKey, InterpreterStorage};
 
 use super::ExecutableTransaction;
 use super::Interpreter;
@@ -15,8 +13,8 @@ use super::*;
 #[derive(Debug)]
 /// The set of state changes that are recorded.
 pub(super) enum StorageDelta {
-    State(MappableDelta<(ContractId, Bytes32), Bytes32>),
-    Assets(MappableDelta<(ContractId, AssetId), u64>),
+    State(MappableDelta<ContractsStateKey, Bytes32>),
+    Assets(MappableDelta<ContractsAssetKey, u64>),
     Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
@@ -24,8 +22,8 @@ pub(super) enum StorageDelta {
 /// The set of states that are recorded.
 #[derive(Debug, Clone)]
 pub(super) enum StorageState {
-    State(MappableState<(ContractId, Bytes32), Bytes32>),
-    Assets(MappableState<(ContractId, AssetId), u64>),
+    State(MappableState<ContractsStateKey, Bytes32>),
+    Assets(MappableState<ContractsAssetKey, u64>),
     Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableState<ContractId, Contract>),
 }
@@ -47,10 +45,10 @@ pub(super) struct MappableState<Key, Value> {
 /// Records state changes of any [`Mappable`] type.
 pub(super) trait StorageType: Mappable {
     /// Records an insert state change.
-    fn record_insert(key: &Self::Key<'_>, value: &Self::SetValue, existing: Option<Self::GetValue>) -> StorageDelta;
+    fn record_insert(key: &Self::Key, value: &Self::Value, existing: Option<Self::OwnedValue>) -> StorageDelta;
 
     /// Records a remove state change.
-    fn record_remove(key: &Self::Key<'_>, value: Self::GetValue) -> StorageDelta;
+    fn record_remove(key: &Self::Key, value: Self::OwnedValue) -> StorageDelta;
 }
 
 #[derive(Debug)]
@@ -162,14 +160,12 @@ where
                 match from {
                     StorageState::State(MappableState { key, value }) => {
                         if let Some(value) = value {
-                            StorageMutate::<ContractsState>::insert(&mut self.storage, &(&key.0, &key.1), value)
-                                .unwrap();
+                            StorageMutate::<ContractsState>::insert(&mut self.storage, key, value).unwrap();
                         }
                     }
                     StorageState::Assets(MappableState { key, value }) => {
                         if let Some(value) = value {
-                            StorageMutate::<ContractsAssets>::insert(&mut self.storage, &(&key.0, &key.1), value)
-                                .unwrap();
+                            StorageMutate::<ContractsAssets>::insert(&mut self.storage, key, value).unwrap();
                         }
                     }
                     StorageState::Info(MappableState { key, value }) => {
@@ -251,12 +247,12 @@ where
 
     fn get(
         &self,
-        key: &<Type as Mappable>::Key<'_>,
-    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::GetValue>>, Self::Error> {
+        key: &<Type as Mappable>::Key,
+    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error> {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
 
-    fn contains_key(&self, key: &<Type as Mappable>::Key<'_>) -> Result<bool, Self::Error> {
+    fn contains_key(&self, key: &<Type as Mappable>::Key) -> Result<bool, Self::Error> {
         <S as StorageInspect<Type>>::contains_key(&self.0, key)
     }
 }
@@ -269,19 +265,16 @@ where
 {
     fn insert(
         &mut self,
-        key: &<Type as Mappable>::Key<'_>,
-        value: &<Type as Mappable>::SetValue,
-    ) -> Result<Option<<Type as Mappable>::GetValue>, Self::Error> {
+        key: &<Type as Mappable>::Key,
+        value: &<Type as Mappable>::Value,
+    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
         let existing = <S as StorageMutate<Type>>::insert(&mut self.0, key, value)?;
         self.1
             .push(<Type as StorageType>::record_insert(key, value, existing.clone()));
         Ok(existing)
     }
 
-    fn remove(
-        &mut self,
-        key: &<Type as Mappable>::Key<'_>,
-    ) -> Result<Option<<Type as Mappable>::GetValue>, Self::Error> {
+    fn remove(&mut self, key: &<Type as Mappable>::Key) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
         let existing = <S as StorageMutate<Type>>::remove(&mut self.0, key)?;
         if let Some(existing) = &existing {
             self.1.push(<Type as StorageType>::record_remove(key, existing.clone()));
@@ -351,22 +344,22 @@ where
 }
 
 impl StorageType for ContractsState {
-    fn record_insert(key: &Self::Key<'_>, value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert((*key).cloned(), *value, existing))
+    fn record_insert(key: &Self::Key, value: &Bytes32, existing: Option<Bytes32>) -> StorageDelta {
+        StorageDelta::State(MappableDelta::Insert(*key, *value, existing))
     }
 
-    fn record_remove(key: &Self::Key<'_>, value: Bytes32) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Remove((*key).cloned(), value))
+    fn record_remove(key: &Self::Key, value: Bytes32) -> StorageDelta {
+        StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }
 
 impl StorageType for ContractsAssets {
-    fn record_insert(key: &Self::Key<'_>, value: &u64, existing: Option<u64>) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Insert((*key).cloned(), *value, existing))
+    fn record_insert(key: &Self::Key, value: &u64, existing: Option<u64>) -> StorageDelta {
+        StorageDelta::Assets(MappableDelta::Insert(*key, *value, existing))
     }
 
-    fn record_remove(key: &Self::Key<'_>, value: u64) -> StorageDelta {
-        StorageDelta::Assets(MappableDelta::Remove((*key).cloned(), value))
+    fn record_remove(key: &Self::Key, value: u64) -> StorageDelta {
+        StorageDelta::Assets(MappableDelta::Remove(*key, value))
     }
 }
 

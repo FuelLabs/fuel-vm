@@ -3,6 +3,7 @@ use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
 type DataNode = Node<Data>;
 type ProofSet = Vec<Data>;
 
+#[derive(Default)]
 pub struct MerkleTree {
     head: Option<Box<DataNode>>,
     leaves_count: u64,
@@ -12,12 +13,7 @@ pub struct MerkleTree {
 
 impl MerkleTree {
     pub fn new() -> Self {
-        Self {
-            head: None,
-            leaves_count: 0,
-            proof_index: 0,
-            proof_set: ProofSet::new(),
-        }
+        Self::default()
     }
 
     pub fn set_proof_index(&mut self, proof_index: u64) {
@@ -29,7 +25,7 @@ impl MerkleTree {
 
     pub fn root(&self) -> Data {
         match self.head() {
-            None => empty_sum().clone(),
+            None => *empty_sum(),
             Some(ref head) => {
                 let mut current = head.clone();
                 while current.next().is_some() {
@@ -37,7 +33,7 @@ impl MerkleTree {
                     let mut next_node = node.take_next().unwrap();
                     current = Self::join_subtrees(&mut next_node, &node)
                 }
-                current.data().clone()
+                *current.data()
             }
         }
     }
@@ -152,7 +148,7 @@ mod test {
         let mut mt = MerkleTree::new();
 
         let data = &TEST_DATA[0];
-        mt.push(&data);
+        mt.push(data);
         let root = mt.root();
 
         let expected = leaf_sum(data);

@@ -4,36 +4,40 @@ mod impls;
 
 extern crate alloc;
 
-use alloc::borrow::Cow;
+use alloc::borrow::{Cow, ToOwned};
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
 
 /// Mappable type with `Key` and `Value`.
+///
+/// # Example
+///
+/// ```rust
+/// use fuel_storage::Mappable;
+/// pub struct Contract;
+///
+/// impl Mappable for Contract {
+///     /// The `[u8; 32]` is a primitive type, so we can't optimize it more.
+///     type Key = Self::OwnedKey;
+///     type OwnedKey = [u8; 32];
+///     /// It is optimized to use slice instead of vector.
+///     type Value = [u8];
+///     type OwnedValue = Vec<u8>;
+/// }
+/// ```
 pub trait Mappable {
-    /// The type of the value's key.
-    type Key<'a>;
+    /// The key type is used during interaction with the storage. In most cases, it is the same
+    /// as `Self::OwnedKey`.
+    type Key: ?Sized + ToOwned;
+    /// The owned type of the `Key` retrieving from the storage.
+    type OwnedKey: From<<Self::Key as ToOwned>::Owned> + Clone;
     /// The value type is used while setting the value to the storage. In most cases, it is the same
-    /// as `Self::GetValue`, but it is without restriction and can be used for performance
+    /// as `Self::OwnedValue`, but it is without restriction and can be used for performance
     /// optimizations.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use core::marker::PhantomData;
-    /// use fuel_storage::Mappable;
-    /// pub struct Contract;
-    ///
-    /// impl Mappable for Contract {
-    ///     type Key<'a> = &'a [u8; 32];
-    ///     /// It is optimized to use slice instead of vector.
-    ///     type SetValue = [u8];
-    ///     type GetValue = Vec<u8>;
-    /// }
-    /// ```
-    type SetValue: ?Sized;
-    /// The value type is used while getting the value from the storage.
-    type GetValue: Clone;
+    type Value: ?Sized + ToOwned;
+    /// The owned type of the `Value` retrieving from the storage.
+    type OwnedValue: From<<Self::Value as ToOwned>::Owned> + Clone;
 }
 
 /// Base read storage trait for Fuel infrastructure.
@@ -43,10 +47,10 @@ pub trait StorageInspect<Type: Mappable> {
     type Error;
 
     /// Retrieve `Cow<Value>` such as `Key->Value`.
-    fn get(&self, key: &Type::Key<'_>) -> Result<Option<Cow<Type::GetValue>>, Self::Error>;
+    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
-    fn contains_key(&self, key: &Type::Key<'_>) -> Result<bool, Self::Error>;
+    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -57,13 +61,13 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     ///
     /// If `Key` was already mappped to a value, return the replaced value as `Ok(Some(Value))`. Return
     /// `Ok(None)` otherwise.
-    fn insert(&mut self, key: &Type::Key<'_>, value: &Type::SetValue) -> Result<Option<Type::GetValue>, Self::Error>;
+    fn insert(&mut self, key: &Type::Key, value: &Type::Value) -> Result<Option<Type::OwnedValue>, Self::Error>;
 
     /// Remove `Key->Value` mapping from the storage.
     ///
     /// Return `Ok(Some(Value))` if the value was present. If the key wasn't found, return
     /// `Ok(None)`.
-    fn remove(&mut self, key: &Type::Key<'_>) -> Result<Option<Type::GetValue>, Self::Error>;
+    fn remove(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. The type should implement the
@@ -93,17 +97,19 @@ pub struct StorageRef<'a, T: 'a + ?Sized, Type: Mappable>(&'a T, core::marker::P
 /// pub struct Contracts;
 ///
 /// impl Mappable for Contracts {
-///     type Key<'a> = [u8; 32];
-///     type SetValue = [u8];
-///     type GetValue = Vec<u8>;
+///     type Key = Self::OwnedKey;
+///     type OwnedKey = [u8; 32];
+///     type Value = [u8];
+///     type OwnedValue = Vec<u8>;
 /// }
 ///
 /// pub struct Balances;
 ///
 /// impl Mappable for Balances {
-///     type Key<'a> = u128;
-///     type SetValue = u64;
-///     type GetValue = u64;
+///     type Key = Self::OwnedKey;
+///     type OwnedKey = u128;
+///     type Value = Self::OwnedValue;
+///     type OwnedValue = u64;
 /// }
 ///
 /// pub trait Logic: StorageInspect<Contracts> + StorageInspect<Balances> {
@@ -140,17 +146,19 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marke
 /// pub struct Contracts;
 ///
 /// impl Mappable for Contracts {
-///     type Key<'a> = [u8; 32];
-///     type SetValue = [u8];
-///     type GetValue = Vec<u8>;
+///     type Key = Self::OwnedKey;
+///     type OwnedKey = [u8; 32];
+///     type Value = [u8];
+///     type OwnedValue = Vec<u8>;
 /// }
 ///
 /// pub struct Balances;
 ///
 /// impl Mappable for Balances {
-///     type Key<'a> = u128;
-///     type SetValue = u64;
-///     type GetValue = u64;
+///     type Key = Self::OwnedKey;
+///     type OwnedKey = u128;
+///     type Value = Self::OwnedValue;
+///     type OwnedValue = u64;
 /// }
 ///
 /// pub trait Logic: StorageInspect<Contracts> + StorageMutate<Balances> {

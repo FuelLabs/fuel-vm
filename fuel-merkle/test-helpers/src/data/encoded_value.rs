@@ -30,7 +30,7 @@ impl EncodedValue {
         };
         Self {
             value: encoded_value,
-            encoding: encoding,
+            encoding,
         }
     }
 

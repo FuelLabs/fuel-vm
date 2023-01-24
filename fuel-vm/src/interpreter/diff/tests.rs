@@ -48,7 +48,7 @@ fn record_and_invert_storage() {
 
     <Record<_> as StorageMutate<ContractsAssets>>::insert(
         &mut b.storage,
-        &(&ContractId::default(), &AssetId::default()),
+        &(&ContractId::default(), &AssetId::default()).into(),
         &1u64,
     )
     .unwrap();
@@ -68,7 +68,7 @@ fn record_and_invert_storage() {
 
     <MemoryStorage as StorageMutate<ContractsAssets>>::insert(
         &mut d.storage,
-        &(&ContractId::default(), &AssetId::default()),
+        &(&ContractId::default(), &AssetId::default()).into(),
         &1u64,
     )
     .unwrap();

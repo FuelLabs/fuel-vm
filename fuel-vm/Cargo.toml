@@ -30,7 +30,6 @@ strum = { version = "0.24", features = ["derive"], optional = true }
 tai64 = "4.0"
 thiserror = "1.0"
 tracing = "0.1"
-tuples = "1"
 
 [dev-dependencies]
 fuel-tx = { workspace = true, features = ["builder"] }

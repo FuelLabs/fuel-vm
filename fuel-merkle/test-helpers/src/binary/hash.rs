@@ -22,9 +22,9 @@ pub fn empty_sum() -> &'static Data {
 // MTH(D[n]) = Hash(0x01 || MTH(D[0:k]) || MTH(D[k:n])
 pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Data {
     let mut hash = Hash::new();
-    hash.update(&[NODE]);
-    hash.update(&lhs_data);
-    hash.update(&rhs_data);
+    hash.update([NODE]);
+    hash.update(lhs_data);
+    hash.update(rhs_data);
     hash.finalize().try_into().unwrap()
 }
 
@@ -32,7 +32,7 @@ pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Data {
 // MTH({d(0)}) = Hash(0x00 || d(0))
 pub fn leaf_sum(data: &[u8]) -> Data {
     let mut hash = Hash::new();
-    hash.update(&[LEAF]);
-    hash.update(&data);
+    hash.update([LEAF]);
+    hash.update(data);
     hash.finalize().try_into().unwrap()
 }

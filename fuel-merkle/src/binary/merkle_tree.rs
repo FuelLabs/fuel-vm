@@ -39,7 +39,7 @@ pub struct MerkleTree<TableType, StorageType> {
 
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key<'static> = u64, SetValue = Primitive, GetValue = Primitive>,
+    TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn new(storage: StorageType) -> Self {
@@ -275,7 +275,7 @@ where
 
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key<'static> = u64, SetValue = Primitive, GetValue = Primitive>,
+    TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
     pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
@@ -327,7 +327,7 @@ fn join_subtrees(lhs: &mut Subtree<Node>, rhs: &mut Subtree<Node>) -> Subtree<No
 
 fn build_root_node<Table, Storage>(subtree: &Subtree<Node>, storage: &mut Storage) -> Node
 where
-    Table: Mappable<Key<'static> = u64, GetValue = Primitive, SetValue = Primitive>,
+    Table: Mappable<Key = u64, OwnedValue = Primitive, Value = Primitive>,
     Storage: StorageMutateInfallible<Table>,
 {
     let mut current = subtree.clone();
@@ -356,9 +356,10 @@ mod test {
     struct TestTable;
 
     impl Mappable for TestTable {
-        type Key<'a> = u64;
-        type SetValue = Primitive;
-        type GetValue = Self::SetValue;
+        type Key = Self::OwnedKey;
+        type OwnedKey = u64;
+        type Value = Self::OwnedValue;
+        type OwnedValue = Primitive;
     }
 
     #[test]

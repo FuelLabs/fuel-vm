@@ -284,7 +284,6 @@ impl<TableType, StorageType> ParentNodeTrait for StorageNode<'_, TableType, Stor
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType::Error: fmt::Debug,
 {
     type Error = StorageNodeError<StorageType::Error>;
 
@@ -333,7 +332,6 @@ impl<TableType, StorageType> fmt::Debug for StorageNode<'_, TableType, StorageTy
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType::Error: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {

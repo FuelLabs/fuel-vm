@@ -5,7 +5,8 @@ use crate::{
 };
 
 use alloc::{string::String, vec::Vec};
-use core::{cmp, fmt, iter, marker::PhantomData};
+use core::{cmp, iter, marker::PhantomData};
+use fuel_storage::StorageInspect;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -42,8 +43,8 @@ pub struct MerkleTree<TableType, StorageType> {
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageMutate<TableType, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
+    StorageType: StorageInspect<TableType, Error = StorageError>,
+    StorageType::Error: Clone
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -64,45 +65,6 @@ where
             phantom_table: Default::default(),
         };
         Ok(tree)
-    }
-
-    pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
-        if data.is_empty() {
-            // If the data is empty, this signifies a delete operation for the
-            // given key.
-            self.delete(key)?;
-            return Ok(());
-        }
-
-        let leaf_node = Node::create_leaf(key, data);
-        self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
-        self.storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
-
-        if self.root_node().is_placeholder() {
-            self.set_root_node(leaf_node);
-        } else {
-            let (path_nodes, side_nodes) = self.path_set(leaf_node.clone())?;
-            self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
-        }
-
-        Ok(())
-    }
-
-    pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
-        if self.root() == *zero_sum() {
-            // The zero root signifies that all leaves are empty, including the
-            // given key.
-            return Ok(());
-        }
-
-        if let Some(primitive) = self.storage.get(key)? {
-            let primitive = primitive.into_owned();
-            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
-            self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
-        }
-
-        Ok(())
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -142,6 +104,54 @@ where
 
         Ok((path_nodes, side_nodes))
     }
+}
+
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+    where
+        TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+        StorageType: StorageMutate<TableType, Error = StorageError>,
+        StorageType::Error: Clone
+{
+    pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
+        if data.is_empty() {
+            // If the data is empty, this signifies a delete operation for the
+            // given key.
+            self.delete(key)?;
+            return Ok(());
+        }
+
+        let leaf_node = Node::create_leaf(key, data);
+        self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
+        self.storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
+
+        if self.root_node().is_placeholder() {
+            self.set_root_node(leaf_node);
+        } else {
+            let (path_nodes, side_nodes) = self.path_set(leaf_node.clone())?;
+            self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
+        if self.root() == *zero_sum() {
+            // The zero root signifies that all leaves are empty, including the
+            // given key.
+            return Ok(());
+        }
+
+        if let Some(primitive) = self.storage.get(key)? {
+            let primitive = primitive.into_owned();
+            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
+            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
+            self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
+        }
+
+        Ok(())
+    }
+
+    // PRIVATE
 
     fn update_with_path_set(
         &mut self,

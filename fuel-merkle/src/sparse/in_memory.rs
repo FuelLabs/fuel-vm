@@ -1,7 +1,7 @@
 use crate::{
     common::{Bytes32, StorageMap},
     sparse::{self, Primitive},
-    storage::Mappable
+    storage::Mappable,
 };
 
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle

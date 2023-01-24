@@ -1,7 +1,7 @@
 use crate::{
     binary::{self, Primitive},
     common::{Bytes32, ProofSet, StorageMap},
-    storage::Mappable
+    storage::Mappable,
 };
 
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as

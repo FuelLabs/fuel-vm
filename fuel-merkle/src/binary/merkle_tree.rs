@@ -47,6 +47,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         }
     }
 
+    pub fn leaves_count(&self) -> u64 {
+        self.leaves_count
+    }
+
     //
     // PRIVATE
     //

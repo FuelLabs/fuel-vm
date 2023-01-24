@@ -114,7 +114,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
-        StorageInspect::<ContractsState>::get(self, &(id, key))
+        StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
     /// Insert a key-value mapping in a contract storage.
@@ -124,7 +124,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        StorageMutate::<ContractsState>::insert(self, &(contract, key), value)
+        StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
     }
 
     /// Remove a key-value mapping from a contract storage.
@@ -133,7 +133,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        StorageMutate::<ContractsState>::remove(self, &(contract, key))
+        StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
@@ -172,7 +172,7 @@ pub trait InterpreterStorage:
     ) -> Result<Option<Word>, Self::DataError> {
         let balance = self
             .storage::<ContractsAssets>()
-            .get(&(id, asset_id))?
+            .get(&(id, asset_id).into())?
             .map(Cow::into_owned);
 
         Ok(balance)
@@ -185,7 +185,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        StorageMutate::<ContractsAssets>::insert(self, &(contract, asset_id), &value)
+        StorageMutate::<ContractsAssets>::insert(self, &(contract, asset_id).into(), &value)
     }
 }
 

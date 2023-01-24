@@ -1,0 +1,23 @@
+[package]
+name = "fuel-merkle-test-helpers"
+version = "0.1.0"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2021"
+
+[dependencies]
+base64 = "0.13"
+digest = "0.10"
+fuel-merkle = { path = "../" }
+function_name = "0.3"
+hex = "0.4"
+rand = "0.8"
+rand_pcg = "0.3"
+rand_seeder = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+sha2 = "0.10"
+thiserror = "1.0"
+
+[[bin]]
+name = "write-bmt-test-suite"
+path = "src/suites/binary_proofs.rs"

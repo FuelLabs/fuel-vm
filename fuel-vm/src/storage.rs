@@ -120,18 +120,6 @@ macro_rules! double_key {
             }
         }
 
-        impl AsRef<$first> for $i {
-            fn as_ref(&self) -> &$first {
-                self.$first_getter()
-            }
-        }
-
-        impl AsRef<$second> for $i {
-            fn as_ref(&self) -> &$second {
-                self.$second_getter()
-            }
-        }
-
         impl From<$i> for ($first, $second) {
             fn from(key: $i) -> ($first, $second) {
                 let first = &key.0[0..$i::first_end()];
@@ -139,18 +127,6 @@ macro_rules! double_key {
                 let first = first.try_into().unwrap();
                 let second = second.try_into().unwrap();
                 (first, second)
-            }
-        }
-
-        impl From<$i> for $first {
-            fn from(key: $i) -> $first {
-                *key.$first_getter()
-            }
-        }
-
-        impl From<$i> for $second {
-            fn from(key: $i) -> $second {
-                *key.$second_getter()
             }
         }
     };

@@ -1,12 +1,11 @@
 use crate::{
     common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
     sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
-    storage::{Mappable, StorageMutate},
+    storage::{Mappable, StorageInspect, StorageMutate},
 };
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp, iter, marker::PhantomData};
-use fuel_storage::StorageInspect;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]

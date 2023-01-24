@@ -40,11 +40,28 @@ pub struct MerkleTree<TableType, StorageType> {
     phantom_table: PhantomData<TableType>,
 }
 
+impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
+    pub fn root(&self) -> Bytes32 {
+        self.root_node().hash()
+    }
+
+    // PRIVATE
+
+    fn root_node(&self) -> &Node {
+        &self.root_node
+    }
+
+    fn set_root_node(&mut self, node: Node) {
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+        self.root_node = node;
+    }
+}
+
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageInspect<TableType, Error = StorageError>,
-    StorageType::Error: Clone
+    StorageType::Error: Clone,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -67,20 +84,7 @@ where
         Ok(tree)
     }
 
-    pub fn root(&self) -> Bytes32 {
-        self.root_node().hash()
-    }
-
     // PRIVATE
-
-    fn root_node(&self) -> &Node {
-        &self.root_node
-    }
-
-    fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
-        self.root_node = node;
-    }
 
     fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
@@ -107,10 +111,10 @@ where
 }
 
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
-    where
-        TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-        StorageType: StorageMutate<TableType, Error = StorageError>,
-        StorageType::Error: Clone
+where
+    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    StorageType: StorageMutate<TableType, Error = StorageError>,
+    StorageType::Error: Clone,
 {
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {

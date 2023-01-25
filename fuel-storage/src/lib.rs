@@ -81,7 +81,7 @@ where
     ///
     /// The cryptographic primitive is an arbitrary choice of the implementor and this trait won't
     /// impose any restrictions to that.
-    fn root(&mut self, key: &Key) -> Result<MerkleRoot, Self::Error>;
+    fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error>;
 }
 
 /// The wrapper around the storage that supports only methods from `StorageInspect`.

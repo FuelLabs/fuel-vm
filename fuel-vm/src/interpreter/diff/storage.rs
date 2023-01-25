@@ -288,8 +288,8 @@ where
     S: InterpreterStorage,
     S: MerkleRootStorage<Key, Type>,
 {
-    fn root(&mut self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
-        <S as MerkleRootStorage<Key, Type>>::root(&mut self.0, key)
+    fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
+        <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
     }
 }
 

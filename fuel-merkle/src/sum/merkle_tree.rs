@@ -44,6 +44,12 @@ pub struct MerkleTree<TableType, StorageType> {
     phantom_table: PhantomData<TableType>,
 }
 
+impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
+    pub const fn empty_root() -> (u64, Bytes32) {
+        (0, *empty_sum())
+    }
+}
+
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Node, OwnedValue = Node>,
@@ -61,7 +67,7 @@ where
     pub fn root(&mut self) -> Result<(u64, Bytes32), StorageError> {
         let root_node = self.root_node()?;
         let root_pair = match root_node {
-            None => (0, *empty_sum()),
+            None => Self::empty_root(),
             Some(ref node) => (node.fee(), *node.hash()),
         };
 
@@ -145,7 +151,7 @@ where
 mod test {
     use crate::{
         common::{Bytes32, StorageMap},
-        sum::{empty_sum, leaf_sum, node_sum, MerkleTree, Node},
+        sum::{leaf_sum, node_sum, MerkleTree, Node},
     };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::Mappable;
@@ -167,7 +173,7 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage_map);
 
         let root = tree.root().unwrap();
-        assert_eq!(root, (0, *empty_sum()));
+        assert_eq!(root, MerkleTree::<(), ()>::empty_root());
     }
 
     #[test]

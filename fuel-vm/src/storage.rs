@@ -81,12 +81,25 @@ macro_rules! double_key {
         }
 
         impl $i {
+            /// The length of the underlying array.
+            pub const LEN: usize = $first::LEN + $second::LEN;
+
             /// Create a new instance of the double storage key from references.
             pub fn new(first: &$first, second: &$second) -> Self {
                 let mut default = Self::default();
                 default.0[0..Self::first_end()].copy_from_slice(first.as_ref());
                 default.0[Self::first_end()..Self::second_end()].copy_from_slice(second.as_ref());
                 default
+            }
+
+            /// Creates a new instance of double storage key from the array.
+            pub fn from_array(array: [u8; { $first::LEN + $second::LEN }]) -> Self {
+                Self(array)
+            }
+
+            /// Creates a new instance of double storage key from the slice.
+            pub fn from_slice(slice: &[u8]) -> Result<Self, core::array::TryFromSliceError> {
+                Ok(Self(slice.try_into()?))
             }
 
             /// Returns the reference to the first sub-key.
@@ -127,6 +140,12 @@ macro_rules! double_key {
                 let first = first.try_into().unwrap();
                 let second = second.try_into().unwrap();
                 (first, second)
+            }
+        }
+
+        impl From<$i> for [u8; { $first::LEN + $second::LEN }] {
+            fn from(key: $i) -> [u8; { $first::LEN + $second::LEN }] {
+                key.0
             }
         }
     };

@@ -292,7 +292,7 @@ where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn push(&mut self, data: &[u8]) -> Result<(), StorageError> {
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();

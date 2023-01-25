@@ -40,6 +40,10 @@ pub struct MerkleTree<TableType, StorageType> {
 }
 
 impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
+    pub const fn empty_root() -> Bytes32 {
+        *zero_sum()
+    }
+
     pub fn root(&self) -> Bytes32 {
         self.root_node().hash()
     }
@@ -138,7 +142,7 @@ where
     }
 
     pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
-        if self.root() == *zero_sum() {
+        if self.root() == Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
             return Ok(());

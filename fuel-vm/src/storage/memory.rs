@@ -171,7 +171,7 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
 }
 
 impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
-    fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
+    fn root(&self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory
             .balances
@@ -212,7 +212,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
 }
 
 impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
-    fn root(&mut self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
+    fn root(&self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
         let root = self
             .memory
             .contract_state

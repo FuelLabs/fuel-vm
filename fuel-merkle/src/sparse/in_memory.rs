@@ -1,8 +1,8 @@
 use crate::{
     common::{Bytes32, StorageMap},
     sparse::{self, Primitive},
+    storage::Mappable,
 };
-use fuel_storage::Mappable;
 
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle
 /// tree, where the storage key is `Bytes32` and the value is the [`Buffer`](crate::sparse::Buffer)

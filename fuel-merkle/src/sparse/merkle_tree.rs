@@ -1,11 +1,11 @@
 use crate::{
     common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
     sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
-    storage::{Mappable, StorageMutate},
+    storage::{Mappable, StorageInspect, StorageMutate},
 };
 
 use alloc::{string::String, vec::Vec};
-use core::{cmp, fmt, iter, marker::PhantomData};
+use core::{cmp, iter, marker::PhantomData};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -39,11 +39,28 @@ pub struct MerkleTree<TableType, StorageType> {
     phantom_table: PhantomData<TableType>,
 }
 
+impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
+    pub fn root(&self) -> Bytes32 {
+        self.root_node().hash()
+    }
+
+    // PRIVATE
+
+    fn root_node(&self) -> &Node {
+        &self.root_node
+    }
+
+    fn set_root_node(&mut self, node: Node) {
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+        self.root_node = node;
+    }
+}
+
 impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageMutate<TableType, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
+    StorageType: StorageInspect<TableType, Error = StorageError>,
+    StorageType::Error: Clone,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -66,6 +83,38 @@ where
         Ok(tree)
     }
 
+    // PRIVATE
+
+    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+        let root_node = self.root_node().clone();
+        let root_storage_node = StorageNode::new(&self.storage, root_node);
+        let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
+        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
+            .as_path_iter(&leaf_storage_node)
+            .map(|(path_node, side_node)| {
+                Ok((
+                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                ))
+            })
+            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+            .into_iter()
+            .unzip();
+        path_nodes.reverse();
+        side_nodes.reverse();
+        side_nodes.pop(); // The last element in the side nodes list is the
+                          // root; remove it.
+
+        Ok((path_nodes, side_nodes))
+    }
+}
+
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+where
+    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    StorageType: StorageMutate<TableType, Error = StorageError>,
+    StorageType::Error: Clone,
+{
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
@@ -105,43 +154,7 @@ where
         Ok(())
     }
 
-    pub fn root(&self) -> Bytes32 {
-        self.root_node().hash()
-    }
-
     // PRIVATE
-
-    fn root_node(&self) -> &Node {
-        &self.root_node
-    }
-
-    fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
-        self.root_node = node;
-    }
-
-    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
-        let root_node = self.root_node().clone();
-        let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(&leaf_storage_node)
-            .map(|(path_node, side_node)| {
-                Ok((
-                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                ))
-            })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
-            .into_iter()
-            .unzip();
-        path_nodes.reverse();
-        side_nodes.reverse();
-        side_nodes.pop(); // The last element in the side nodes list is the
-                          // root; remove it.
-
-        Ok((path_nodes, side_nodes))
-    }
 
     fn update_with_path_set(
         &mut self,

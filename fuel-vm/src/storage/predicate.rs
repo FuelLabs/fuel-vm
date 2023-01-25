@@ -38,7 +38,7 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
 }
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
-    fn root(&mut self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
+    fn root(&self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }

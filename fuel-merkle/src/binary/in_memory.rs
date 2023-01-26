@@ -34,11 +34,11 @@ impl MerkleTree {
         let _ = self.tree.push(data);
     }
 
-    pub fn root(&mut self) -> Bytes32 {
+    pub fn root(&self) -> Bytes32 {
         self.tree.root()
     }
 
-    pub fn prove(&mut self, proof_index: u64) -> Option<(Bytes32, ProofSet)> {
+    pub fn prove(&self, proof_index: u64) -> Option<(Bytes32, ProofSet)> {
         self.tree.prove(proof_index).ok()
     }
 }
@@ -57,7 +57,7 @@ mod test {
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
-        let mut tree = MerkleTree::new();
+        let tree = MerkleTree::new();
 
         let root = tree.root();
         assert_eq!(root, empty_sum().clone());
@@ -123,7 +123,7 @@ mod test {
 
     #[test]
     fn prove_returns_none_for_0_leaves() {
-        let mut tree = MerkleTree::new();
+        let tree = MerkleTree::new();
 
         let proof = tree.prove(0);
         assert!(proof.is_none());

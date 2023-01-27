@@ -114,6 +114,7 @@ jobs:
 
   publish-check:
     runs-on: ubuntu-latest
+    if: github.event_name == 'release'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

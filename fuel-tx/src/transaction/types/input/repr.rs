@@ -127,7 +127,7 @@ impl TryFrom<Word> for InputRepr {
             0x02 => Ok(Self::Message),
             id => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("The provided input identifier ({}) is invalid!", id),
+                format!("The provided input identifier ({id}) is invalid!"),
             )),
         }
     }

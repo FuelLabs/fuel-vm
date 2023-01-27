@@ -63,7 +63,7 @@ fn corrupted_signature() {
             match s.recover(&message) {
                 Ok(pk) => assert_ne!(public, pk),
                 Err(Error::InvalidSignature) => (),
-                Err(e) => panic!("Unexpected error: {}", e),
+                Err(e) => panic!("Unexpected error: {e}"),
             }
 
             m << 1

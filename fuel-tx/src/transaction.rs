@@ -130,7 +130,7 @@ impl Transaction {
     /// If an error happens, a JSON string with the error description will be returned
     #[cfg(all(feature = "serde", feature = "alloc"))]
     pub fn to_json(&self) -> alloc::string::String {
-        serde_json::to_string(self).unwrap_or_else(|e| alloc::format!(r#"{{"error": "{}"}}"#, e))
+        serde_json::to_string(self).unwrap_or_else(|e| alloc::format!(r#"{{"error": "{e}"}}"#))
     }
 
     /// Attempt to deserialize a transaction from a JSON string, returning `None` if it fails

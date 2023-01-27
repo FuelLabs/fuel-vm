@@ -98,7 +98,7 @@ impl fmt::Display for InstructionLocation {
             self.context
                 .map(|contract_id| format!(
                     "contract_id={}",
-                    contract_id.iter().map(|b| format!("{:02x?}", b)).collect::<String>()
+                    contract_id.iter().map(|b| format!("{b:02x?}")).collect::<String>()
                 ),)
                 .unwrap_or_else(|| "script".to_string()),
             self.offset
@@ -152,7 +152,7 @@ pub struct StderrReceiver;
 
 impl ProfileReceiver for StderrReceiver {
     fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
-        eprintln!("PROFILER: {:?} {:?}", state, data);
+        eprintln!("PROFILER: {state:?} {data:?}");
     }
 }
 
@@ -268,7 +268,7 @@ impl fmt::Display for CoverageProfilingData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut items: Vec<_> = self.iter().collect();
         items.sort();
-        writeln!(f, "{:?}", items)
+        writeln!(f, "{items:?}")
     }
 }
 
@@ -312,7 +312,7 @@ impl fmt::Display for GasProfilingData {
         let mut items: Vec<(_, _)> = self.iter().collect();
         items.sort();
         for (addr, count) in items {
-            writeln!(f, "{}: {}", addr, count)?;
+            writeln!(f, "{addr}: {count}")?;
         }
         Ok(())
     }

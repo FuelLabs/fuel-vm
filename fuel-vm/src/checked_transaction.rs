@@ -592,7 +592,7 @@ mod tests {
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
-            _ => panic!("expected insufficient fee amount; found {:?}", err),
+            _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
         assert_eq!(provided, input_amount);
@@ -617,7 +617,7 @@ mod tests {
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
-            _ => panic!("expected insufficient fee amount; found {:?}", err),
+            _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
         assert_eq!(provided, input_amount);

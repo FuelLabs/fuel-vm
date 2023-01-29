@@ -128,11 +128,11 @@ fn fmt_encode_decode() {
     for (block_height, tx_index) in cases {
         let tx_pointer = TxPointer::new(block_height, tx_index);
 
-        let lower = format!("{:x}", tx_pointer);
-        let upper = format!("{:X}", tx_pointer);
+        let lower = format!("{tx_pointer:x}");
+        let upper = format!("{tx_pointer:X}");
 
-        assert_eq!(lower, format!("{:08x}{:04x}", block_height, tx_index));
-        assert_eq!(upper, format!("{:08X}{:04X}", block_height, tx_index));
+        assert_eq!(lower, format!("{block_height:08x}{tx_index:04x}"));
+        assert_eq!(upper, format!("{block_height:08X}{tx_index:04X}"));
 
         let x = TxPointer::from_str(&lower).expect("failed to decode from str");
         assert_eq!(tx_pointer, x);

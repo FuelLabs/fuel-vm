@@ -1,14 +1,14 @@
 use num_integer::Roots;
 use rayon::prelude::*;
 
-use super::{checked_ilog, checked_nth_root};
+use super::checked_nth_root;
 
 /// Check for https://github.com/FuelLabs/fuel-vm/issues/150
 #[test]
 fn mlog_rounding_issues() {
-    assert_eq!(checked_ilog(999, 10), Some(2));
-    assert_eq!(checked_ilog(1000, 10), Some(3));
-    assert_eq!(checked_ilog(1001, 10), Some(3));
+    assert_eq!(999u32.checked_ilog(10), Some(2));
+    assert_eq!(1000u32.checked_ilog(10), Some(3));
+    assert_eq!(1001u32.checked_ilog(10), Some(3));
 }
 
 /// Verify some subsets of possible inputs against a known-good implementation.

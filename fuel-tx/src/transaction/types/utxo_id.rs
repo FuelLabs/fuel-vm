@@ -155,11 +155,11 @@ mod tests {
             output_index: 26,
         };
         assert_eq!(
-            format!("{:#x}", utxo_id),
+            format!("{utxo_id:#x}"),
             "0x0c0000000000000000000000000000000000000000000000000000000000000b1a"
         );
         assert_eq!(
-            format!("{:x}", utxo_id),
+            format!("{utxo_id:x}"),
             "0c0000000000000000000000000000000000000000000000000000000000000b1a"
         );
     }

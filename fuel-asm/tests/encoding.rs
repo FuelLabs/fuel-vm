@@ -184,7 +184,7 @@ fn opcode() {
     assert_eq!(data, data_p);
     assert_eq!(data, data_q);
 
-    let pairs = bytes.chunks(8).into_iter().map(|chunk| {
+    let pairs = bytes.chunks(8).map(|chunk| {
         let mut arr = [0; core::mem::size_of::<Word>()];
         arr.copy_from_slice(chunk);
         Instruction::parse_word(Word::from_be_bytes(arr))

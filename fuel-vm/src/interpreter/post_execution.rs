@@ -34,7 +34,7 @@ where
         tx.update_outputs(params, revert, remaining_gas, initial_balances, balances)
             .map_err(|e| io::Error::new(
                 io::ErrorKind::Other,
-                format!("a valid VM execution shouldn't result in a state where it can't compute its refund. This is a bug! {}", e)
+                format!("a valid VM execution shouldn't result in a state where it can't compute its refund. This is a bug! {e}")
             ))?;
 
         Ok(())

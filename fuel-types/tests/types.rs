@@ -73,14 +73,14 @@ fn hex_encoding() {
         T: fmt::LowerHex + fmt::UpperHex + str::FromStr + Eq + fmt::Debug + AsRef<[u8]>,
         <T as str::FromStr>::Err: fmt::Debug,
     {
-        let lower = format!("{:x}", t);
-        let lower_w0 = format!("{:0x}", t);
-        let lower_alternate = format!("{:#x}", t);
-        let lower_alternate_w0 = format!("{:#0x}", t);
-        let upper = format!("{:X}", t);
-        let upper_w0 = format!("{:0X}", t);
-        let upper_alternate = format!("{:#X}", t);
-        let upper_alternate_w0 = format!("{:#X}", t);
+        let lower = format!("{t:x}");
+        let lower_w0 = format!("{t:0x}");
+        let lower_alternate = format!("{t:#x}");
+        let lower_alternate_w0 = format!("{t:#0x}");
+        let upper = format!("{t:X}");
+        let upper_w0 = format!("{t:0X}");
+        let upper_alternate = format!("{t:#X}");
+        let upper_alternate_w0 = format!("{t:#X}");
 
         assert_ne!(lower, lower_alternate);
         assert_ne!(lower, upper);
@@ -107,13 +107,13 @@ fn hex_encoding() {
         let reduced = t.as_ref().iter().fold(0u8, |acc, x| acc ^ x);
 
         let x = hex::encode([reduced]);
-        let y = format!("{:2x}", t);
+        let y = format!("{t:2x}");
 
         assert_eq!(x, y);
 
-        let x = format!("{:0x}", t).len();
-        let y = format!("{:2x}", t).len();
-        let z = format!("{:4x}", t).len();
+        let x = format!("{t:0x}").len();
+        let y = format!("{t:2x}").len();
+        let z = format!("{t:4x}").len();
 
         assert_eq!(t.as_ref().len() * 2, x);
         assert_eq!(2, y);
@@ -197,42 +197,42 @@ fn test_key_types_hex_serialization() {
 
     let adr: Address = rng.gen();
     let adr_to_string = serde_json::to_string(&adr).expect("serde_json::to_string failed on Address");
-    assert_eq!(format!("\"{}\"", adr), adr_to_string);
+    assert_eq!(format!("\"{adr}\""), adr_to_string);
 
     let ast_id: AssetId = rng.gen();
     let ast_id_to_string = serde_json::to_string(&ast_id).expect("serde_json::to_string failed on AssetId");
-    assert_eq!(format!("\"{}\"", ast_id), ast_id_to_string);
+    assert_eq!(format!("\"{ast_id}\""), ast_id_to_string);
 
     let contract_id: ContractId = rng.gen();
     let contract_id_to_string =
         serde_json::to_string(&contract_id).expect("serde_json::to_string failed on ContractId");
-    assert_eq!(format!("\"{}\"", contract_id), contract_id_to_string);
+    assert_eq!(format!("\"{contract_id}\""), contract_id_to_string);
 
     let bytes4: Bytes4 = rng.gen();
     let bytes4_to_string = serde_json::to_string(&bytes4).expect("serde_json::to_string failed on Bytes4");
-    assert_eq!(format!("\"{}\"", bytes4), bytes4_to_string);
+    assert_eq!(format!("\"{bytes4}\""), bytes4_to_string);
 
     let bytes8: Bytes8 = rng.gen();
     let bytes8_to_string = serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
-    assert_eq!(format!("\"{}\"", bytes8), bytes8_to_string);
+    assert_eq!(format!("\"{bytes8}\""), bytes8_to_string);
 
     let bytes20: Bytes20 = rng.gen();
     let bytes20_to_string = serde_json::to_string(&bytes20).expect("serde_json::to_string failed on Bytes20");
-    assert_eq!(format!("\"{}\"", bytes20), bytes20_to_string);
+    assert_eq!(format!("\"{bytes20}\""), bytes20_to_string);
 
     let bytes32: Bytes32 = rng.gen();
     let bytes32_to_string = serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
-    assert_eq!(format!("\"{}\"", bytes32), bytes32_to_string);
+    assert_eq!(format!("\"{bytes32}\""), bytes32_to_string);
 
     let message_id: MessageId = rng.gen();
     let message_id_to_string = serde_json::to_string(&message_id).expect("serde_json::to_string failed on MessageId");
-    assert_eq!(format!("\"{}\"", message_id), message_id_to_string);
+    assert_eq!(format!("\"{message_id}\""), message_id_to_string);
 
     let salt: Salt = rng.gen();
     let salt_to_string = serde_json::to_string(&salt).expect("serde_json::to_string failed on Salt");
-    assert_eq!(format!("\"{}\"", salt), salt_to_string);
+    assert_eq!(format!("\"{salt}\""), salt_to_string);
 
     let bytes64: Bytes64 = rng.gen();
     let bytes64_to_string = serde_json::to_string(&bytes64).expect("Failed to serialize Bytes64");
-    assert_eq!(format!("\"{}\"", bytes64), bytes64_to_string);
+    assert_eq!(format!("\"{bytes64}\""), bytes64_to_string);
 }

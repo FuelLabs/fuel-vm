@@ -93,7 +93,7 @@ impl TryFrom<Word> for OutputRepr {
             0x05 => Ok(Self::ContractCreated),
             i => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("The provided output identifier ({}) is invalid!", i),
+                format!("The provided output identifier ({i}) is invalid!"),
             )),
         }
     }

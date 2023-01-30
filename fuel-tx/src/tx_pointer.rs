@@ -47,6 +47,12 @@ impl Distribution<TxPointer> for Standard {
     }
 }
 
+impl fmt::Display for TxPointer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+
 impl fmt::LowerHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:08x}{:04x}", self.block_height, self.tx_index)

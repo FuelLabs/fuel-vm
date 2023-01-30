@@ -126,6 +126,14 @@ pub trait StorageAsRef {
     where
         Type: Mappable,
     {
+        self.storage_as_ref()
+    }
+
+    #[inline(always)]
+    fn storage_as_ref<Type>(&self) -> StorageRef<Self, Type>
+    where
+        Type: Mappable,
+    {
         StorageRef(self, Default::default())
     }
 }
@@ -173,6 +181,14 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marke
 pub trait StorageAsMut {
     #[inline(always)]
     fn storage<Type>(&mut self) -> StorageMut<Self, Type>
+    where
+        Type: Mappable,
+    {
+        self.storage_as_mut()
+    }
+
+    #[inline(always)]
+    fn storage_as_mut<Type>(&mut self) -> StorageMut<Self, Type>
     where
         Type: Mappable,
     {

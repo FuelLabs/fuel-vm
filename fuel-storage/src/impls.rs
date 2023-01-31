@@ -53,6 +53,16 @@ impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     }
 }
 
+impl<'a, T, Type: Mappable> StorageRef<'a, T, Type> {
+    #[inline(always)]
+    pub fn root<Key>(self, key: &Key) -> Result<MerkleRoot, T::Error>
+    where
+        T: MerkleRootStorage<Key, Type>,
+    {
+        self.0.root(key)
+    }
+}
+
 impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
     pub fn get(self, key: &Type::Key) -> Result<Option<Cow<'a, Type::OwnedValue>>, T::Error> {
@@ -79,7 +89,7 @@ impl<'a, T: StorageMutate<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     }
 }
 
-impl<'a, T: StorageMutate<Type>, Type: Mappable> StorageRef<'a, T, Type> {
+impl<'a, T, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
     pub fn root<Key>(self, key: &Key) -> Result<MerkleRoot, T::Error>
     where

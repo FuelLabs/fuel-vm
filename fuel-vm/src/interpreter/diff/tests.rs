@@ -1,4 +1,4 @@
-use fuel_asm::{op, Instruction, Opcode};
+use fuel_asm::op;
 use fuel_tx::field::Outputs;
 use fuel_tx::Script;
 use fuel_types::Address;

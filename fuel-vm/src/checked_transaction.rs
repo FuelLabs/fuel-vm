@@ -5,7 +5,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use fuel_asm::op;
 use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
 use fuel_types::Word;
 
@@ -342,6 +341,7 @@ impl IntoChecked for Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{CheckError, Script, TransactionBuilder};
     use quickcheck::TestResult;
@@ -593,7 +593,7 @@ mod tests {
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
-            _ => panic!("expected insufficient fee amount; found {:?}", err),
+            _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
         assert_eq!(provided, input_amount);
@@ -618,7 +618,7 @@ mod tests {
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
-            _ => panic!("expected insufficient fee amount; found {:?}", err),
+            _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
         assert_eq!(provided, input_amount);

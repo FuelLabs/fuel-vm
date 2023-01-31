@@ -518,19 +518,19 @@ where
 // Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
 
 fn check_reg_id(u: u8) -> RegId {
-    RegId::new_checked(u).unwrap_or_else(|| panic!("Value `{:X}` out of range for 6-bit register ID", u))
+    RegId::new_checked(u).unwrap_or_else(|| panic!("Value `{u:X}` out of range for 6-bit register ID"))
 }
 
 fn check_imm12(u: u16) -> Imm12 {
-    Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 12-bit immediate", u))
+    Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
 }
 
 fn check_imm18(u: u32) -> Imm18 {
-    Imm18::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 18-bit immediate", u))
+    Imm18::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 18-bit immediate"))
 }
 
 fn check_imm24(u: u32) -> Imm24 {
-    Imm24::new_checked(u).unwrap_or_else(|| panic!("Value `{}` out of range for 24-bit immediate", u))
+    Imm24::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 24-bit immediate"))
 }
 
 // --------------------------------------------------------

@@ -59,8 +59,7 @@ fn profile_gas() {
                     .expect("Expected a panic reason.");
                 assert!(
                     matches!(panic_reason, PanicReason::OutOfGas),
-                    "Expected out-of-gas error, got {:?}",
-                    panic_reason
+                    "Expected out-of-gas error, got {panic_reason:?}"
                 );
             } else {
                 matches!(result, &ScriptExecutionResult::Success);

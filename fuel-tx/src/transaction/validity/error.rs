@@ -115,7 +115,7 @@ pub enum CheckError {
 impl fmt::Display for CheckError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO better describe the error variants
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

@@ -153,7 +153,7 @@ mod tests {
 
         // take root snapshot
         insta::with_settings!(
-            {snapshot_suffix => format!("instructions-{}", instructions)},
+            {snapshot_suffix => format!("instructions-{instructions}")},
             {
                 insta::assert_debug_snapshot!(root);
             }

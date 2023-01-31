@@ -2,26 +2,28 @@
 members = [
     "fuel-asm",
     "fuel-crypto",
+    "fuel-merkle",
     "fuel-storage",
-    "fuel-types",
     "fuel-tx",
     "fuel-tx/test-helpers",
     "fuel-types",
     "fuel-vm",
 ]
+resolver = "2"
 
 [workspace.package]
-edition = "2021"
-version = "0.24.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
+edition = "2021"
 homepage = "https://fuel.network/"
 license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
+version = "0.25.2"
 
 [workspace.dependencies]
-fuel-asm = { version = "0.24.0", path = "./fuel-asm", default-features = false }
-fuel-crypto = { version = "0.24.0", path = "./fuel-crypto", default-features = false }
-fuel-storage = { version = "0.24.0", path = "./fuel-storage", default-features = false }
-fuel-types = { version = "0.24.0", path = "./fuel-types", default-features = false }
-fuel-tx = { version = "0.24.0", path = "./fuel-tx", default-features = false }
+fuel-asm = { version = "0.25.2", path = "./fuel-asm", default-features = false }
+fuel-crypto = { version = "0.25.2", path = "./fuel-crypto", default-features = false }
+fuel-merkle = { version = "0.25.2", path = "./fuel-merkle", default-features = false }
+fuel-storage = { version = "0.25.2", path = "./fuel-storage", default-features = false }
+fuel-tx = { version = "0.25.2", path = "./fuel-tx", default-features = false }
+fuel-types = { version = "0.25.2", path = "./fuel-types", default-features = false }

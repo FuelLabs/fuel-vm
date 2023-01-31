@@ -18,7 +18,7 @@ pub struct PredicateStorage;
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
     type Error = InterpreterError;
 
-    fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::GetValue>>, InterpreterError> {
+    fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::OwnedValue>>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
@@ -28,21 +28,17 @@ impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
 }
 
 impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
-    fn insert(
-        &mut self,
-        _key: &Type::Key,
-        _value: &Type::SetValue,
-    ) -> Result<Option<Type::GetValue>, InterpreterError> {
+    fn insert(&mut self, _key: &Type::Key, _value: &Type::Value) -> Result<Option<Type::OwnedValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn remove(&mut self, _key: &Type::Key) -> Result<Option<Type::GetValue>, InterpreterError> {
+    fn remove(&mut self, _key: &Type::Key) -> Result<Option<Type::OwnedValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
-    fn root(&mut self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
+    fn root(&self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 }

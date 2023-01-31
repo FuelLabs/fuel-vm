@@ -1,6 +1,6 @@
 //! Trait definitions for storage backend
 
-use fuel_storage::{MerkleRootStorage, StorageAsMut, StorageAsRef, StorageMutate};
+use fuel_storage::{MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate};
 use fuel_tx::{Contract, StorageSlot};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
@@ -15,9 +15,8 @@ use std::ops::{Deref, DerefMut};
 pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
     + StorageMutate<ContractsInfo, Error = Self::DataError>
-    + for<'a> MerkleRootStorage<ContractId, ContractsAssets<'a>, Error = Self::DataError>
-    + for<'a> MerkleRootStorage<ContractId, ContractsState<'a>, Error = Self::DataError>
-    + Sized
+    + MerkleRootStorage<ContractId, ContractsAssets, Error = Self::DataError>
+    + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
     type DataError: StdError + Into<io::Error>;
@@ -74,7 +73,7 @@ pub trait InterpreterStorage:
     /// Fetch a previously inserted contract code from the chain state for a
     /// given contract.
     fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
-        self.storage::<ContractsRawCode>().get(id)
+        StorageInspect::<ContractsRawCode>::get(self, id)
     }
 
     /// Append a contract to the chain, provided its identifier.
@@ -85,7 +84,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         contract: &Contract,
     ) -> Result<Option<Contract>, Self::DataError> {
-        self.storage::<ContractsRawCode>().insert(id, contract.as_ref())
+        StorageMutate::<ContractsRawCode>::insert(self, id, contract.as_ref())
     }
 
     /// Check if a provided contract exists in the chain.
@@ -96,7 +95,7 @@ pub trait InterpreterStorage:
     /// Fetch a previously inserted salt+root tuple from the chain state for a
     /// given contract.
     fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
-        self.storage::<ContractsInfo>().get(id)
+        StorageInspect::<ContractsInfo>::get(self, id)
     }
 
     /// Append the salt+root of a contract that was appended to the chain.
@@ -106,7 +105,7 @@ pub trait InterpreterStorage:
         salt: &Salt,
         root: &Bytes32,
     ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        self.storage::<ContractsInfo>().insert(id, &(*salt, *root))
+        StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.
@@ -115,7 +114,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
-        self.storage::<ContractsState>().get(&(id, key))
+        StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
     /// Insert a key-value mapping in a contract storage.
@@ -125,7 +124,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        self.storage::<ContractsState>().insert(&(contract, key), value)
+        StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
     }
 
     /// Remove a key-value mapping from a contract storage.
@@ -134,7 +133,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<Bytes32>, Self::DataError> {
-        self.storage::<ContractsState>().remove(&(contract, key))
+        StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
@@ -173,7 +172,7 @@ pub trait InterpreterStorage:
     ) -> Result<Option<Word>, Self::DataError> {
         let balance = self
             .storage::<ContractsAssets>()
-            .get(&(id, asset_id))?
+            .get(&(id, asset_id).into())?
             .map(Cow::into_owned);
 
         Ok(balance)
@@ -186,7 +185,7 @@ pub trait InterpreterStorage:
         asset_id: &AssetId,
         value: Word,
     ) -> Result<Option<Word>, Self::DataError> {
-        self.storage::<ContractsAssets>().insert(&(contract, asset_id), &value)
+        StorageMutate::<ContractsAssets>::insert(self, &(contract, asset_id).into(), &value)
     }
 }
 

@@ -23,6 +23,7 @@ fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId,
     let height = 0;
     let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
+    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
@@ -31,10 +32,10 @@ fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId,
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -54,6 +55,7 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let script = program
         .iter()
@@ -62,10 +64,10 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage.clone(), Default::default())
+    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -97,10 +99,10 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -133,6 +135,7 @@ fn alu_wrapping(
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let set_regs = registers_init.iter().flat_map(|(r, v)| set_full_word(*r, *v));
 
@@ -157,10 +160,10 @@ fn alu_wrapping(
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -183,6 +186,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
     let height = 0;
     let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
+    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
@@ -191,10 +195,10 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage.clone(), Default::default())
+    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -223,10 +227,10 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")
@@ -246,6 +250,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
@@ -254,10 +259,10 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(storage, Default::default())
+    let receipts = Transactor::new(storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute ALU script!")

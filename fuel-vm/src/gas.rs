@@ -1,6 +1,18 @@
 //! Tools for gas instrumentalization
 
+use std::ops::Deref;
+use std::sync::Arc;
+
 use fuel_types::Word;
+
+#[allow(dead_code)]
+/// Default gas costs are generated from the
+/// `fuel-core` repo using the `collect` bin
+/// in the `fuel-core-benches` crate.
+/// The git sha is included in the file to
+/// show what version of `fuel-core` was used
+/// to generate the costs.
+mod default_gas_costs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Gas unit cost that embeds a unit price and operations count.
@@ -122,5 +134,364 @@ impl GasUnit {
     /// Combine two gas computations, accumulating their cost.
     pub const fn join(self, other: Self) -> Self {
         Self::Accumulated(self.cost() + other.cost())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Gas costings for every op.
+/// The inner values are wrapped in an [`Arc`]
+/// so this is cheap to clone.
+pub struct GasCosts(Arc<GasCostsValues>);
+
+impl GasCosts {
+    /// Create new cost values wrapped in an [`Arc`].
+    pub fn new(costs: GasCostsValues) -> Self {
+        Self(Arc::new(costs))
+    }
+}
+
+impl Default for GasCosts {
+    fn default() -> Self {
+        Self(Arc::new(GasCostsValues::default()))
+    }
+}
+
+impl Default for GasCostsValues {
+    fn default() -> Self {
+        // The default values for gas costs
+        // are generated from fuel-core-benches.
+        default_gas_costs::default_gas_costs()
+    }
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default = "GasCostsValues::unit"))]
+/// Gas costs for every op.
+pub struct GasCostsValues {
+    pub add: Word,
+    pub addi: Word,
+    pub aloc: Word,
+    pub and: Word,
+    pub andi: Word,
+    pub bal: Word,
+    pub bhei: Word,
+    pub bhsh: Word,
+    pub burn: Word,
+    pub cb: Word,
+    pub cfei: Word,
+    pub cfsi: Word,
+    pub croo: Word,
+    pub div: Word,
+    pub divi: Word,
+    pub ecr: Word,
+    pub eq: Word,
+    pub exp: Word,
+    pub expi: Word,
+    pub flag: Word,
+    pub gm: Word,
+    pub gt: Word,
+    pub gtf: Word,
+    pub ji: Word,
+    pub jmp: Word,
+    pub jne: Word,
+    pub jnei: Word,
+    pub jnzi: Word,
+    pub k256: Word,
+    pub lb: Word,
+    pub log: Word,
+    pub lt: Word,
+    pub lw: Word,
+    pub mcpi: Word,
+    pub mint: Word,
+    pub mlog: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "mod"))]
+    pub mod_op: Word,
+    pub modi: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "move"))]
+    pub move_op: Word,
+    pub movi: Word,
+    pub mroo: Word,
+    pub mul: Word,
+    pub muli: Word,
+    pub noop: Word,
+    pub not: Word,
+    pub or: Word,
+    pub ori: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
+    pub ret: Word,
+    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
+    pub rvrt: Word,
+    pub s256: Word,
+    pub sb: Word,
+    pub scwq: Word,
+    pub sll: Word,
+    pub slli: Word,
+    pub srl: Word,
+    pub srli: Word,
+    pub srw: Word,
+    pub sub: Word,
+    pub subi: Word,
+    pub sw: Word,
+    pub sww: Word,
+    pub swwq: Word,
+    pub time: Word,
+    pub tr: Word,
+    pub tro: Word,
+    pub xor: Word,
+    pub xori: Word,
+
+    // Dependent
+    pub call: DependentCost,
+    pub ccp: DependentCost,
+    pub csiz: DependentCost,
+    pub ldc: DependentCost,
+    pub logd: DependentCost,
+    pub mcl: DependentCost,
+    pub mcli: DependentCost,
+    pub mcp: DependentCost,
+    pub meq: DependentCost,
+    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
+    pub retd: DependentCost,
+    pub smo: DependentCost,
+    pub srwq: DependentCost,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Dependent cost is a cost that depends on the number of units.
+/// The cost starts at the base and grows by `dep_per_unit` for every unit.
+///
+/// For example, if the base is 10 and the `dep_per_unit` is 2,
+/// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
+pub struct DependentCost {
+    /// The minimum that this operation can cost.
+    pub base: Word,
+    /// The amount that this operation costs per
+    /// increase in unit.
+    pub dep_per_unit: Word,
+}
+
+impl GasCosts {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        Self(Arc::new(GasCostsValues::free()))
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        Self(Arc::new(GasCostsValues::unit()))
+    }
+}
+
+impl GasCostsValues {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        Self {
+            add: 0,
+            addi: 0,
+            aloc: 0,
+            and: 0,
+            andi: 0,
+            bal: 0,
+            bhei: 0,
+            bhsh: 0,
+            burn: 0,
+            cb: 0,
+            cfei: 0,
+            cfsi: 0,
+            croo: 0,
+            div: 0,
+            divi: 0,
+            ecr: 0,
+            eq: 0,
+            exp: 0,
+            expi: 0,
+            flag: 0,
+            gm: 0,
+            gt: 0,
+            gtf: 0,
+            ji: 0,
+            jmp: 0,
+            jne: 0,
+            jnei: 0,
+            jnzi: 0,
+            k256: 0,
+            lb: 0,
+            log: 0,
+            lt: 0,
+            lw: 0,
+            mcpi: 0,
+            mint: 0,
+            mlog: 0,
+            mod_op: 0,
+            modi: 0,
+            move_op: 0,
+            movi: 0,
+            mroo: 0,
+            mul: 0,
+            muli: 0,
+            noop: 0,
+            not: 0,
+            or: 0,
+            ori: 0,
+            ret: 0,
+            rvrt: 0,
+            s256: 0,
+            sb: 0,
+            scwq: 0,
+            sll: 0,
+            slli: 0,
+            srl: 0,
+            srli: 0,
+            srw: 0,
+            sub: 0,
+            subi: 0,
+            sw: 0,
+            sww: 0,
+            swwq: 0,
+            time: 0,
+            tr: 0,
+            tro: 0,
+            xor: 0,
+            xori: 0,
+            call: DependentCost::free(),
+            ccp: DependentCost::free(),
+            csiz: DependentCost::free(),
+            ldc: DependentCost::free(),
+            logd: DependentCost::free(),
+            mcl: DependentCost::free(),
+            mcli: DependentCost::free(),
+            mcp: DependentCost::free(),
+            meq: DependentCost::free(),
+            retd: DependentCost::free(),
+            smo: DependentCost::free(),
+            srwq: DependentCost::free(),
+        }
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        Self {
+            add: 1,
+            addi: 1,
+            aloc: 1,
+            and: 1,
+            andi: 1,
+            bal: 1,
+            bhei: 1,
+            bhsh: 1,
+            burn: 1,
+            cb: 1,
+            cfei: 1,
+            cfsi: 1,
+            croo: 1,
+            div: 1,
+            divi: 1,
+            ecr: 1,
+            eq: 1,
+            exp: 1,
+            expi: 1,
+            flag: 1,
+            gm: 1,
+            gt: 1,
+            gtf: 1,
+            ji: 1,
+            jmp: 1,
+            jne: 1,
+            jnei: 1,
+            jnzi: 1,
+            k256: 1,
+            lb: 1,
+            log: 1,
+            lt: 1,
+            lw: 1,
+            mcpi: 1,
+            mint: 1,
+            mlog: 1,
+            mod_op: 1,
+            modi: 1,
+            move_op: 1,
+            movi: 1,
+            mroo: 1,
+            mul: 1,
+            muli: 1,
+            noop: 1,
+            not: 1,
+            or: 1,
+            ori: 1,
+            ret: 1,
+            rvrt: 1,
+            s256: 1,
+            sb: 1,
+            scwq: 1,
+            sll: 1,
+            slli: 1,
+            srl: 1,
+            srli: 1,
+            srw: 1,
+            sub: 1,
+            subi: 1,
+            sw: 1,
+            sww: 1,
+            swwq: 1,
+            time: 1,
+            tr: 1,
+            tro: 1,
+            xor: 1,
+            xori: 1,
+            call: DependentCost::unit(),
+            ccp: DependentCost::unit(),
+            csiz: DependentCost::unit(),
+            ldc: DependentCost::unit(),
+            logd: DependentCost::unit(),
+            mcl: DependentCost::unit(),
+            mcli: DependentCost::unit(),
+            mcp: DependentCost::unit(),
+            meq: DependentCost::unit(),
+            retd: DependentCost::unit(),
+            smo: DependentCost::unit(),
+            srwq: DependentCost::unit(),
+        }
+    }
+}
+
+impl DependentCost {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        Self {
+            base: 0,
+            dep_per_unit: 0,
+        }
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        Self {
+            base: 1,
+            dep_per_unit: 0,
+        }
+    }
+}
+
+impl Deref for GasCosts {
+    type Target = GasCostsValues;
+
+    fn deref(&self) -> &Self::Target {
+        &(self.0)
+    }
+}
+
+impl From<GasCostsValues> for GasCosts {
+    fn from(i: GasCostsValues) -> Self {
+        Self(Arc::new(i))
+    }
+}
+
+impl From<GasCosts> for GasCostsValues {
+    fn from(i: GasCosts) -> Self {
+        (*i.0).clone()
     }
 }

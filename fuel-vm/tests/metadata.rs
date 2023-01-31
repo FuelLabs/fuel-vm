@@ -21,6 +21,7 @@ fn metadata() {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -57,11 +58,11 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
         .transact(tx)
         .is_success());
 
@@ -103,11 +104,11 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
         .transact(tx)
         .is_success());
 
@@ -150,10 +151,10 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(&mut storage, Default::default())
+    let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to transact")
@@ -197,14 +198,13 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_checked(height, &params);
+        .finalize_checked(height, &params, client.gas_costs());
 
     client.deploy(tx);
 
-    let mut predicate = vec![0u8; 128];
+    let predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
 
-    rng.fill(predicate.as_mut_slice());
     rng.fill(predicate_data.as_mut_slice());
 
     let owner = (*Contract::root_from_code(&predicate)).into();
@@ -227,11 +227,10 @@ fn get_transaction_fields() {
     rng.fill(message_data.as_mut_slice());
 
     let mut m_data = vec![0u8; 64];
-    let mut m_predicate = vec![0u8; 128];
+    let m_predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut m_predicate_data = vec![0u8; 512];
 
     rng.fill(m_data.as_mut_slice());
-    rng.fill(m_predicate.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
     let owner = Input::predicate_owner(&m_predicate);
@@ -279,7 +278,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .add_output(Output::message(rng.gen(), output_message_amt))
-        .finalize_checked(height, &params);
+        .finalize_checked(height, &params, client.gas_costs());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

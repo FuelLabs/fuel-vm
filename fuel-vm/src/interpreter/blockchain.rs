@@ -248,7 +248,12 @@ where
         // Safety: Memory bounds are checked by the interpreter
         let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
-        self.registers[ra] = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
+        // FIXME: This is checking the cost after the db call has happened.
+        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
+        // should happen on the pinned slice before reading it.
+        let len = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
+        self.dependent_gas_charge(self.gas_costs.csiz, len)?;
+        self.registers[ra] = len;
 
         self.inc_pc()
     }
@@ -303,7 +308,7 @@ where
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(rb)?;
         let contract_id = *self.internal_contract()?;
-        let input = StateReadQWord::new(a, c, d, OwnershipRegisters::new(self))?;
+        let input = StateReadQWord::new(a, c, d, self.ownership_registers())?;
         let Self {
             ref storage,
             ref mut memory,

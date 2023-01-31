@@ -11,11 +11,10 @@ repository = { workspace = true }
 description = "FuelVM transaction."
 
 [dependencies]
-bitflags = "1"
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
 fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }
-fuel-merkle = { version = "0.4", default-features = false }
+fuel-merkle = { workspace = true, default-features = false }
 fuel-types = { workspace = true, default-features = false }
 itertools = { version = "0.10", default-features = false }
 num-integer = { version = "0.1", default-features = false }

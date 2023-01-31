@@ -5,11 +5,11 @@ use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
 
-mod checkable;
 mod fee;
 mod metadata;
 mod repr;
 mod types;
+mod validity;
 
 #[cfg(feature = "std")]
 mod id;
@@ -19,24 +19,22 @@ mod txio;
 
 pub mod consensus_parameters;
 
-pub use checkable::{CheckError, Checkable};
 pub use consensus_parameters::ConsensusParameters;
 pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::{Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness};
+pub use validity::{CheckError, FormatValidityChecks};
 
 use crate::TxPointer;
 
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
-#[cfg(feature = "std")]
-pub use types::{CreateCheckedMetadata, ScriptCheckedMetadata};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
 
-/// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction.
+/// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Transaction {

@@ -21,6 +21,7 @@ fn ecrecover() {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -56,7 +57,7 @@ fn ecrecover() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, &params);
+        .finalize_checked(height, &params, &gas_costs);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -148,6 +149,7 @@ fn sha256() {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let hash = Hasher::hash(message);
@@ -172,7 +174,7 @@ fn sha256() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, &params);
+        .finalize_checked(height, &params, &gas_costs);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -264,7 +266,7 @@ fn keccak256() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, &params);
+        .finalize_checked(height, &params, client.gas_costs());
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));

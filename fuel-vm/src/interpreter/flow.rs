@@ -161,6 +161,13 @@ where
         let asset_id =
             AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
 
+        let mut frame = self.call_frame(call, asset_id)?;
+
+        // FIXME: This is checking the cost after the db call has happened.
+        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
+        // should happen on the pinned slice before reading it.
+        self.dependent_gas_charge(self.gas_costs.call, frame.code().len() as u64)?;
+
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;
         } else {
@@ -185,7 +192,8 @@ where
         // subtract gas
         self.registers[REG_CGAS] = arith::sub_word(self.registers[REG_CGAS], forward_gas_amount)?;
 
-        let mut frame = self.call_frame(call, asset_id)?;
+        *frame.set_context_gas() = self.registers[REG_CGAS];
+        *frame.set_global_gas() = self.registers[REG_GGAS];
 
         let stack = frame.to_bytes();
         let len = stack.len() as Word;

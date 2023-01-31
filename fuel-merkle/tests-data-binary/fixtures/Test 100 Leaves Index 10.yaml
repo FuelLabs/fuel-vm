@@ -1,0 +1,26 @@
+name: Test 100 Leaves Index 10
+function_name: generate_test_100_leaves_index_10
+description: Build a proof from a binary Merkle tree consisting of 100 leaves and leaf index 10. This proof is valid and verification is expected to pass.
+root:
+  value: a9b6d97f45ed55e2242fa995c5d412a46a2e57a5a3f676aa9e60d973479c2446
+  encoding: hex
+proof_set:
+- value: d1b2f3f5c5a9e0b1d31e9c7060682c161cfd429abc6dc709588a0f7a8b989e6e
+  encoding: hex
+- value: 51159906d4d62672664766ed8757915c7c925cfee778b8b3359df37a73ebeca7
+  encoding: hex
+- value: 2b4f180744f30b41daad98a0d9f80fd8302de65ef33487e75b3eec6122c8e3f3
+  encoding: hex
+- value: 59c518c8c13721afd212b11680680ed64270e79b503f5e7e342b9b201e7fa4f2
+  encoding: hex
+- value: 4175b79f36911a6c629de2e70b03ff9cbfc51867ad71ef6462a8999c65783ef1
+  encoding: hex
+- value: 8cdc18e4cb221ba071cd4804726794719e9202b8b95d8148e4492d3d76a4e9aa
+  encoding: hex
+- value: 2434ae470b4d9f05943e65b63236ae7888281d06f9412068f602ca2662e73471
+  encoding: hex
+- value: 1b7cc44323e578aa1380f7b5012ede68663732413625a0028c1c0d3e7652baa9
+  encoding: hex
+proof_index: 10
+num_leaves: 100
+expected_verification: true

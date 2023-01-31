@@ -1,6 +1,7 @@
 use super::*;
+use crate::checked_transaction::IntoChecked;
 use fuel_asm::PanicReason::OutOfGas;
-use fuel_tx::{ConsensusParameters, IntoChecked, Transaction};
+use fuel_tx::{ConsensusParameters, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -27,7 +28,9 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let script = <[u8; 4]>::from(op::ret(0x10)).to_vec();
     let block_height = 0;
     let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
-    let tx = tx.into_checked(block_height, &params).expect("failed to check tx");
+    let tx = tx
+        .into_checked(block_height, &params, vm.gas_costs())
+        .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");
     let res = vm.instruction(raw_random_instruction);

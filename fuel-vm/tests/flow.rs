@@ -33,7 +33,7 @@ fn can_execute_empty_script_transaction() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     let receipts = client.transact(tx);
@@ -95,7 +95,7 @@ fn code_copy() {
         vec![output],
         vec![program.clone()],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     client.deploy(tx);
@@ -129,7 +129,7 @@ fn code_copy() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset();
@@ -159,6 +159,7 @@ fn call() {
     let salt: Salt = rng.gen();
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
+    let gas_costs = GasCosts::default();
 
     let program: Vec<u8> = vec![
         op::movi(0x10, 0x11),
@@ -190,10 +191,10 @@ fn call() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
         .transact(tx)
         .is_success());
 
@@ -220,7 +221,7 @@ fn call() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
     let params = ConsensusParameters::default();
@@ -234,16 +235,13 @@ fn call() {
         .as_mut_slice()
         .copy_from_slice(script_mem.as_slice());
 
-    let receipts = Transactor::new(&mut storage, params)
+    let receipts = Transactor::new(&mut storage, params, gas_costs)
         .transact(tx)
         .receipts()
         .expect("Failed to execute script")
         .to_owned();
 
-    assert_eq!(
-        receipts[0].id().expect("Receipt value failed").to_owned(),
-        ContractId::default()
-    );
+    assert_eq!(receipts[0].id(), None);
     assert_eq!(receipts[0].to().expect("Receipt value failed").to_owned(), contract);
     assert_eq!(receipts[1].ra().expect("Receipt value failed"), 0x11);
     assert_eq!(receipts[1].rb().expect("Receipt value failed"), 0x2a);
@@ -261,6 +259,7 @@ fn call_frame_code_offset() {
     let maturity = 0;
     let height = 0;
     let params = ConsensusParameters::DEFAULT;
+    let gas_costs = GasCosts::default();
 
     let salt: Salt = rng.gen();
     let bytecode_witness_index = 0;
@@ -298,7 +297,7 @@ fn call_frame_code_offset() {
     .into_checked_basic(height, &params)
     .expect("failed to generate a checked tx");
 
-    assert!(Transactor::new(&mut storage, Default::default())
+    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
         .transact(deploy)
         .is_success());
 
@@ -338,10 +337,10 @@ fn call_frame_code_offset() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to generate a checked tx");
 
-    let mut vm = Interpreter::with_storage(storage, params);
+    let mut vm = Interpreter::with_storage(storage, params, Default::default());
 
     vm.transact(script).expect("Failed to call deployed contract");
 
@@ -438,7 +437,7 @@ fn jump_if_not_zero_immediate_jump() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -478,7 +477,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -510,7 +509,7 @@ fn jump_dynamic() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -542,7 +541,7 @@ fn jump_dynamic_condition_true() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -574,7 +573,7 @@ fn jump_dynamic_condition_false() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -644,7 +643,7 @@ fn revert() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     // Deploy the contract into the blockchain
@@ -707,7 +706,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     // Assert the initial state of `key` is empty
@@ -757,7 +756,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     // Assert the state of `key` is reverted to `val`
@@ -800,7 +799,7 @@ fn retd_from_top_of_heap() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -836,7 +835,7 @@ fn logd_from_top_of_heap() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);

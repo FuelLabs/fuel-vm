@@ -1,0 +1,32 @@
+name: Test 1024 Leaves Invalid Root
+function_name: generate_test_1024_leaves_invalid_root
+description: Build a proof from a binary Merkle tree consisting of 1024 leaves and manually set the root. The root is manually set to the SHA256 hash of the string "invalid". This proof is invalid because root is not generated from canonical Merkle tree construction. Verification is expected to fail.
+root:
+  value: f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4
+  encoding: hex
+proof_set:
+- value: 0fd57bb7146938576395aa785eef8970dc33f294fa2d9a77fc1598e9084be008
+  encoding: hex
+- value: bc6abd3c380c4d69085c2f879e784f096fcd0a9e921b359fecf87ef76ca4bc67
+  encoding: hex
+- value: c82561818abd7843b694824f21024c134158ce89445e7dc4a4aebebdb5a7dd5e
+  encoding: hex
+- value: f94219552c116bad634d8f9c98157ee414741ec053ea7f1ff3412df4a7b2899f
+  encoding: hex
+- value: 617e973c2ac3dd9adfeb944ca1ee4d54053e2520c7d7d435872dd60f6c45c1bb
+  encoding: hex
+- value: 3fe1e227f51971bff35c83338f48282c81f94edb7577cce7bb56661e14aab740
+  encoding: hex
+- value: cbabcf9e2f7ef7a85eb98e49380236c767ec32cfac1c878a03b22492f84916a6
+  encoding: hex
+- value: 2689ef456cd69c7af07084ab16922331127544f038627bfa04f8d95effd1150c
+  encoding: hex
+- value: 8007f304566161b05a29f4380dee1b5f4178b1e0a5dfadcf6613f6e15a0ec761
+  encoding: hex
+- value: 6d8b4dd3156d16df1883acf6d6eb22f27635b44459b09a5a77a7bda6fb919d13
+  encoding: hex
+- value: c2a27c22ec6bfd35c83dcdf5379539c0865c23341ef8abba1248aa44fe36d23f
+  encoding: hex
+proof_index: 512
+num_leaves: 1024
+expected_verification: false

@@ -8,6 +8,59 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 #[test]
+fn prevent_contract_id_redeployment() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let mut client = MemoryClient::default();
+
+    let input_amount = 1000;
+    let gas_price = 0;
+    let spend_amount = 600;
+    let asset_id = AssetId::BASE;
+
+    #[rustfmt::skip]
+        let function_undefined: Vec<Opcode> = vec![
+        Opcode::Undefined,
+    ];
+
+    let salt: Salt = rng.gen();
+    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+
+    let output = Output::contract_created(contract_undefined, state_root);
+
+    let mut create = Transaction::create(
+        gas_price,
+        0,
+        0,
+        0,
+        salt,
+        vec![],
+        vec![],
+        vec![
+            output,
+            Output::change(rng.gen(), 0, asset_id),
+            Output::coin(rng.gen(), spend_amount, asset_id),
+        ],
+        vec![program],
+    );
+    create.add_unsigned_coin_input(rng.gen(), &Default::default(), input_amount, asset_id, rng.gen(), 0);
+    let create = create
+        .into_checked_basic(1, &ConsensusParameters::default())
+        .expect("failed to generate checked tx");
+
+    // deploy contract
+    client.deploy(create.clone()).expect("First create should be executed");
+    let mut txtor: Transactor<_, _> = client.into();
+    // second deployment should fail
+    let result = txtor.deploy(create).unwrap_err();
+    assert_eq!(result, InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed));
+}
+
+#[test]
 fn mint_burn() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -57,7 +110,7 @@ fn mint_burn() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.deploy(tx);
@@ -82,7 +135,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset();
@@ -100,7 +153,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_check_balance: Vec<u8> = asset_id
@@ -128,7 +181,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_offset = client.tx_offset() + tx_check_balance.transaction().script_data_offset();
@@ -144,7 +197,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
@@ -172,7 +225,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
@@ -203,7 +256,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.transact(tx);
@@ -227,7 +280,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.transact(tx);

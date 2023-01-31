@@ -1,0 +1,32 @@
+name: Test 1024 Leaves Index 512
+function_name: generate_test_1024_leaves_index_512
+description: Build a proof from a binary Merkle tree consisting of 1024 leaves and leaf index 512. This proof is valid and verification is expected to pass.
+root:
+  value: 1a57447fae64c1b78d02a05ac5255b2d1b350b8ce10c1180002288a9a49cf6fb
+  encoding: hex
+proof_set:
+- value: c00574a947cb3031d10fce0980c3711c70824c191e29c913f8da8b0d42da3c2e
+  encoding: hex
+- value: 5f7a260b5b5dc663ef6a338ba673c71ef611e4a5e52dc41e9bd82dd9a9507c30
+  encoding: hex
+- value: 51dbb7b62080c64fbc976425d0032933d1126df6f223420b332297c8ca133cee
+  encoding: hex
+- value: 52c32361aabbcdb8a2d7fa6ede781716cfcb7e2708a7d1cae69b242154ba4d65
+  encoding: hex
+- value: ef41093d90dd8ece225c19f2073dfea48890f10087dcc6451c21d76a91feecfb
+  encoding: hex
+- value: d306531e7c69cb02b7b4008281007360d00af0f640d80d44ac9730a263582967
+  encoding: hex
+- value: 200bf4ae7f3d12cfa374d72d8d73cf320b3f38bfb3dde85793a8d06f040da181
+  encoding: hex
+- value: c9b8de8d214f5cf0ca3aeae52def4456268f3c1f06e905ed741bc18b10844f8f
+  encoding: hex
+- value: a09d8a561023e032a8b560f1e85d300a3122b0cdf83b47798802d25d4db1083c
+  encoding: hex
+- value: 782b6c333967ceb052cc479f83da4cd6d9e3b75c963cd4f4c4e8f1d7dbcb3436
+  encoding: hex
+- value: 854f3ff8757852014af53efa1e8b88622281141ea5ad8f1bd21a133f467af2c4
+  encoding: hex
+proof_index: 512
+num_leaves: 1024
+expected_verification: true

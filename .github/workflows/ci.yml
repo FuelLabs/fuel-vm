@@ -30,11 +30,25 @@ jobs:
           - command: check
             args: --all-targets
           - command: check
+            args: --all-targets -p fuel-asm
+          - command: check
+            args: --all-targets -p fuel-crypto
+          - command: check
+            args: --all-targets -p fuel-merkle          
+          - command: check
+            args: --all-targets -p fuel-storage
+          - command: check
+            args: --all-targets -p fuel-tx
+          - command: check
+            args: --all-targets -p fuel-types
+          - command: check
+            args: --all-targets -p fuel-vm
+          - command: check
             args: --all-targets --no-default-features
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage --no-default-features
+            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: test
@@ -117,6 +131,6 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate
-        uses: katyo/publish-crates@v1
+        uses: xgreenx/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}

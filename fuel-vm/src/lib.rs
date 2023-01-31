@@ -5,6 +5,7 @@
 pub mod arith;
 pub mod backtrace;
 pub mod call;
+pub mod checked_transaction;
 pub mod consts;
 pub mod context;
 pub mod crypto;
@@ -56,6 +57,8 @@ pub mod prelude {
     pub use crate::call::{Call, CallFrame};
     pub use crate::context::Context;
     pub use crate::error::{Bug, BugId, BugVariant, Infallible, InterpreterError, RuntimeError};
+    pub use crate::gas::GasCosts;
+    pub use crate::gas::GasCostsValues;
     pub use crate::interpreter::{ExecutableTransaction, Interpreter, MemoryRange};
     pub use crate::memory_client::MemoryClient;
     pub use crate::predicate::RuntimePredicate;
@@ -68,6 +71,9 @@ pub mod prelude {
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub use crate::util::test_helpers::TestBuilder;
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub use crate::checked_transaction::{builder::TransactionBuilderExt, IntoChecked};
 
     #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
     pub use crate::util::gas_profiling::GasProfiler;

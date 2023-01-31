@@ -194,6 +194,11 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
+    /// Return the registers used to determine ownership.
+    pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
+        OwnershipRegisters::new(self)
+    }
+
     /// Copy `data` into `addr[..|data|[`
     ///
     /// Check for overflow and memory ownership
@@ -202,49 +207,26 @@ where
     ///
     /// Will panic if data overlaps with `addr[..|data|[`
     pub(crate) fn try_mem_write(&mut self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
-        let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let range = (ax <= VM_MAX_RAM as usize)
-            .then(|| MemoryRange::new(addr as Word, 32))
-            .ok_or(PanicReason::MemoryOverflow)?;
-
-        self.has_ownership_range(&range)
-            .then(|| {
-                let src = data.as_ptr();
-                let dst = &mut self.memory[addr] as *mut u8;
-
-                unsafe {
-                    ptr::copy_nonoverlapping(src, dst, data.len());
-                }
-            })
-            .ok_or_else(|| PanicReason::MemoryOwnership.into())
+        let registers = self.ownership_registers();
+        try_mem_write(addr, data, registers, &mut self.memory)
     }
 
     pub(crate) fn try_zeroize(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
-        let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let range = (ax <= VM_MAX_RAM as usize)
-            .then(|| MemoryRange::new(addr as Word, 32))
-            .ok_or(PanicReason::MemoryOverflow)?;
-
-        self.has_ownership_range(&range)
-            .then(|| {
-                self.memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
-            })
-            .ok_or_else(|| PanicReason::MemoryOwnership.into())
+        let registers = self.ownership_registers();
+        try_zeroize(addr, len, registers, &mut self.memory)
     }
 
     /// Grant ownership of the range `[a..ab[`
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        OwnershipRegisters::new(self).has_ownership_range(range)
+        self.ownership_registers().has_ownership_range(range)
     }
 
     pub(crate) fn has_ownership_stack(&self, a: Word) -> bool {
-        OwnershipRegisters::new(self).has_ownership_stack(a)
+        self.ownership_registers().has_ownership_stack(a)
     }
 
     pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
-        OwnershipRegisters::new(self).has_ownership_heap(a)
+        self.ownership_registers().has_ownership_heap(a)
     }
 
     pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>
@@ -464,11 +446,53 @@ impl OwnershipRegisters {
             && (external && a <= VM_MAX_RAM || !external && self.prev_hp.checked_add(1).map_or(false, |f| a <= f))
     }
 }
+
+fn try_mem_write(
+    addr: usize,
+    data: &[u8],
+    registers: OwnershipRegisters,
+    memory: &mut [u8],
+) -> Result<(), RuntimeError> {
+    let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
+
+    let range = (ax <= VM_MAX_RAM as usize)
+        .then(|| MemoryRange::new(addr as Word, data.len() as Word))
+        .ok_or(PanicReason::MemoryOverflow)?;
+
+    registers
+        .has_ownership_range(&range)
+        .then(|| {
+            let src = data.as_ptr();
+            let dst = &mut memory[addr] as *mut u8;
+
+            unsafe {
+                ptr::copy_nonoverlapping(src, dst, data.len());
+            }
+        })
+        .ok_or_else(|| PanicReason::MemoryOwnership.into())
+}
+
+fn try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters, memory: &mut [u8]) -> Result<(), RuntimeError> {
+    let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
+
+    let range = (ax <= VM_MAX_RAM as usize)
+        .then(|| MemoryRange::new(addr as Word, len as Word))
+        .ok_or(PanicReason::MemoryOverflow)?;
+
+    registers
+        .has_ownership_range(&range)
+        .then(|| {
+            memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
+        })
+        .ok_or_else(|| PanicReason::MemoryOwnership.into())
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Range;
 
     use super::*;
+    use crate::checked_transaction::Checked;
     use crate::prelude::*;
     use fuel_asm::op;
     use fuel_tx::Script;
@@ -490,7 +514,7 @@ mod tests {
         );
 
         let tx = tx
-            .into_checked(Default::default(), &params)
+            .into_checked(Default::default(), &params, vm.gas_costs())
             .expect("default tx should produce a valid checked transaction");
 
         vm.init_script(tx).expect("Failed to init VM");
@@ -632,5 +656,112 @@ mod tests {
     fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
         let range = MemoryRange::new(range.start, range.end - range.start);
         reg.has_ownership_range(&range)
+    }
+
+    fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
+        array[index] = val;
+        array
+    }
+
+    #[test_case(
+        1, &[],
+        OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: 0})
+        => (false, [0u8; 100]); "External errors when write is empty"
+    )]
+    #[test_case(
+        1, &[],
+        OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: 0})
+        => (false, [0u8; 100]); "Internal errors when write is empty"
+    )]
+    #[test_case(
+        1, &[2],
+        OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: 0})
+        => (true, set_index(1, 2, [0u8; 100])); "External writes to stack"
+    )]
+    #[test_case(
+        98, &[2],
+        OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: 0})
+        => (true, set_index(98, 2, [0u8; 100])); "External writes to heap"
+    )]
+    #[test_case(
+        1, &[2],
+        OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: 0})
+        => (true, set_index(1, 2, [0u8; 100])); "Internal writes to stack"
+    )]
+    #[test_case(
+        98, &[2],
+        OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: 0})
+        => (true, set_index(98, 2, [0u8; 100])); "Internal writes to heap"
+    )]
+    #[test_case(
+        1, &[2; 50],
+        OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: 0})
+        => (false, [0u8; 100]); "External too large for stack"
+    )]
+    #[test_case(
+        1, &[2; 50],
+        OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: 0})
+        => (false, [0u8; 100]); "Internal too large for stack"
+    )]
+    #[test_case(
+        61, &[2; 50],
+        OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: 0})
+        => (false, [0u8; 100]); "Internal too large for heap"
+    )]
+    fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (bool, [u8; 100]) {
+        let mut memory = [0u8; 100];
+        let r = try_mem_write(addr, data, registers, &mut memory[..]).is_ok();
+        (r, memory)
+    }
+
+    #[test_case(
+        1, 0,
+        OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: 0})
+        => (false, [1u8; 100]); "External errors when write is empty"
+    )]
+    #[test_case(
+        1, 0,
+        OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: 0})
+        => (false, [1u8; 100]); "Internal errors when write is empty"
+    )]
+    #[test_case(
+        1, 1,
+        OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: 0})
+        => (true, set_index(1, 0, [1u8; 100])); "External writes to stack"
+    )]
+    #[test_case(
+        98, 1,
+        OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: 0})
+        => (true, set_index(98, 0, [1u8; 100])); "External writes to heap"
+    )]
+    #[test_case(
+        1, 1,
+        OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: 0})
+        => (true, set_index(1, 0, [1u8; 100])); "Internal writes to stack"
+    )]
+    #[test_case(
+        98, 1,
+        OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: 0})
+        => (true, set_index(98, 0, [1u8; 100])); "Internal writes to heap"
+    )]
+    #[test_case(
+        1, 50,
+        OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: 0})
+        => (false, [1u8; 100]); "External too large for stack"
+    )]
+    #[test_case(
+        1, 50,
+        OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: 0})
+        => (false, [1u8; 100]); "Internal too large for stack"
+    )]
+    #[test_case(
+        61, 50,
+        OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: 0})
+        => (false, [1u8; 100]); "Internal too large for heap"
+    )]
+    fn test_try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters) -> (bool, [u8; 100]) {
+        let mut memory = [1u8; 100];
+        let r = try_zeroize(addr, len, registers, &mut memory[..]).is_ok();
+        (r, memory)
     }
 }

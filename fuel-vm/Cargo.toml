@@ -14,16 +14,17 @@ description = "FuelVM interpreter."
 [dependencies]
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
+bitflags = "1"
 dyn-clone = { version = "1.0", optional = true }
 fuel-asm = { workspace = true, path = "../fuel-asm" }
 fuel-crypto = { workspace = true, path = "../fuel-crypto" }
-fuel-merkle = "0.4"
+fuel-merkle = { workspace = true }
 fuel-storage = { workspace = true, path = "../fuel-storage" }
-fuel-tx = { workspace = true, path = "../fuel-tx" }
+fuel-tx = { workspace = true, features = ["builder", "std"], path = "../fuel-tx" }
 fuel-types = { workspace = true, path = "../fuel-types" }
 itertools = "0.10"
 rand = { version = "0.8", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = "0.10"
 strum = { version = "0.24", features = ["derive"], optional = true }
 tai64 = "4.0"

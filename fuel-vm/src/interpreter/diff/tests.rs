@@ -1,5 +1,4 @@
-use fuel_asm::Instruction;
-use fuel_asm::Opcode;
+use fuel_asm::{op, Instruction, Opcode};
 use fuel_tx::field::Outputs;
 use fuel_tx::Script;
 use fuel_types::Address;
@@ -26,7 +25,7 @@ fn reset_vm_state() {
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
     b.set_remaining_gas(1_000_000);
-    b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
+    b.instruction(op::addi(0x10, 0x11, 1).into()).unwrap();
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);
     b.reset_vm_state(&diff);
@@ -53,7 +52,7 @@ fn record_and_invert_storage() {
     )
     .unwrap();
     b.set_remaining_gas(1_000_000);
-    b.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
+    b.instruction(op::addi(0x10, 0x11, 1).into()).unwrap();
 
     let storage_diff: Diff<InitialVmState> = b.storage_diff().into();
     let mut diff: Diff<InitialVmState> = a.diff(&b).into();
@@ -73,7 +72,7 @@ fn record_and_invert_storage() {
     )
     .unwrap();
     d.set_remaining_gas(1_000_000);
-    d.instruction(Instruction::from(Opcode::ADDI(0x10, 0x11, 1))).unwrap();
+    d.instruction(op::addi(0x10, 0x11, 1).into()).unwrap();
 
     assert_ne!(c, d);
     d.reset_vm_state(&diff);

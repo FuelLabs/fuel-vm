@@ -202,7 +202,7 @@ fn get_transaction_fields() {
 
     client.deploy(tx);
 
-    let predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
+    let predicate = vec![op::ret(REG_ONE.into())].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
 
     rng.fill(predicate_data.as_mut_slice());
@@ -227,7 +227,7 @@ fn get_transaction_fields() {
     rng.fill(message_data.as_mut_slice());
 
     let mut m_data = vec![0u8; 64];
-    let m_predicate = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
+    let m_predicate = vec![op::ret(REG_ONE.into())].into_iter().collect::<Vec<u8>>();
     let mut m_predicate_data = vec![0u8; 512];
 
     rng.fill(m_data.as_mut_slice());

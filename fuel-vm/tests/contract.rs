@@ -18,12 +18,12 @@ fn prevent_contract_id_redeployment() {
     let asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
-        let function_undefined: Vec<Opcode> = vec![
-        Opcode::Undefined,
+    let function_rvrt: Vec<Instruction> = vec![
+        op::rvrt(0),
     ];
 
     let salt: Salt = rng.gen();
-    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+    let program: Witness = function_rvrt.into_iter().collect::<Vec<u8>>().into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();

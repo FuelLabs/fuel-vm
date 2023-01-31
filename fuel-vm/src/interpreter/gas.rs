@@ -4,7 +4,7 @@ use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
 
-use fuel_asm::{Opcode, PanicReason};
+use fuel_asm::PanicReason;
 use fuel_types::Word;
 
 impl<S, Tx> Interpreter<S, Tx> {

@@ -110,7 +110,7 @@ fn get_verifying_predicate() {
 }
 
 /// Returns the amount of gas used if verification succeeds
-fn execute_gas_metered_predicates(predicates: Vec<Vec<Opcode>>) -> Result<u64, ()> {
+fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u64, ()> {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;
@@ -157,24 +157,24 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Opcode>>) -> Result<u64, (
 #[test]
 fn predicate_gas_metering() {
     // This just succeeds
-    assert!(execute_gas_metered_predicates(vec![vec![Opcode::RET(REG_ONE)]]).is_ok());
+    assert!(execute_gas_metered_predicates(vec![vec![op::ret(REG_ONE.into())]]).is_ok());
 
     // This runs out of gas
     assert!(execute_gas_metered_predicates(vec![vec![
-        Opcode::JI(0), // Infinite loop
+        op::ji(0), // Infinite loop
     ]])
     .is_err());
 
     // Multiple Predicate Success
     assert!(execute_gas_metered_predicates(vec![
-        vec![Opcode::RET(REG_ONE)],
-        vec![Opcode::MOVI(0x10, 0x11), Opcode::MOVI(0x10, 0x11), Opcode::RET(REG_ONE)],
+        vec![op::ret(REG_ONE.into())],
+        vec![op::movi(0x10, 0x11), op::movi(0x10, 0x11), op::ret(REG_ONE.into())],
     ])
     .is_ok());
 
     // Running predicate gas used is combined properly
     let gas_used_by: Vec<_> = (0..4)
-        .map(|n| execute_gas_metered_predicates(vec![vec![Opcode::RET(REG_ONE)]; n]).unwrap())
+        .map(|n| execute_gas_metered_predicates(vec![vec![op::ret(REG_ONE.into())]; n]).unwrap())
         .collect();
     assert_eq!(gas_used_by[0], 0);
     assert_ne!(gas_used_by[1], 0);
@@ -188,7 +188,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![Opcode::RET(REG_ONE)].into_iter().collect::<Vec<u8>>();
+    let script = vec![op::ret(REG_ONE.into())].into_iter().collect::<Vec<u8>>();
     let script_data = vec![];
     let params = ConsensusParameters::default();
 
@@ -205,12 +205,12 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         .expect("Predicate check failed even if we don't have any predicates");
 
     let predicate: Vec<u8> = vec![
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::RET(REG_ONE),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(REG_ONE.into()),
     ]
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
@@ -251,9 +251,9 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
     let script = vec![
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::RET(REG_ONE),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(REG_ONE.into()),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -281,7 +281,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.gas_limit(gas_without_predicate);
 
-    let predicate: Vec<u8> = vec![Opcode::ADDI(0x20, 0x20, 1), Opcode::RET(REG_ONE)]
+    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(REG_ONE.into())]
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
@@ -321,9 +321,9 @@ fn gas_used_by_predicates_more_than_limit() {
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
     let script = vec![
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::RET(REG_ONE),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(REG_ONE.into()),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -352,11 +352,11 @@ fn gas_used_by_predicates_more_than_limit() {
     builder.gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::ADDI(0x20, 0x20, 1),
-        Opcode::RET(REG_ONE),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(REG_ONE.into()),
     ]
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())

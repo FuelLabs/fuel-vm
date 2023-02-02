@@ -64,7 +64,6 @@ impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageInspect<TableType, Error = StorageError>,
-    StorageType::Error: Clone,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -117,7 +116,6 @@ impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
-    StorageType::Error: Clone,
 {
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {

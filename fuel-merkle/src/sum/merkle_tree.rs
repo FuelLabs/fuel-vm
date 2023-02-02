@@ -6,7 +6,7 @@ use crate::{
 use fuel_storage::{Mappable, StorageMutate};
 
 use alloc::boxed::Box;
-use core::{fmt, marker::PhantomData};
+use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -54,7 +54,6 @@ impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Node, OwnedValue = Node>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {

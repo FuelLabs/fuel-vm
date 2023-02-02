@@ -296,7 +296,7 @@ impl Imm12 {
         Self(u & 0b_0000_1111_1111_1111)
     }
 
-    /// Construct a register ID from the given value.
+    /// Construct an immediate value.
     ///
     /// Returns `None` if the value is outside the 12-bit value range.
     pub fn new_checked(u: u16) -> Option<Self> {
@@ -318,7 +318,7 @@ impl Imm18 {
         Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
     }
 
-    /// Construct a register ID from the given value.
+    /// Construct an immediate value.
     ///
     /// Returns `None` if the value is outside the 18-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {
@@ -340,7 +340,7 @@ impl Imm24 {
         Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
     }
 
-    /// Construct a register ID from the given value.
+    /// Construct an immediate value.
     ///
     /// Returns `None` if the value is outside the 24-bit value range.
     pub fn new_checked(u: u32) -> Option<Self> {

@@ -89,12 +89,9 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
         .into_iter()
         .chain(program.iter().copied())
         .chain(
-            [
-                op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0),
-                op::ret(REG_ONE),
-            ]
-            .iter()
-            .copied(),
+            [op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0), op::ret(REG_ONE)]
+                .iter()
+                .copied(),
         )
         .collect();
 
@@ -149,13 +146,9 @@ fn alu_wrapping(
     .copied()
     .chain(set_regs)
     .chain(
-        [
-            ins,
-            op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0),
-            op::ret(REG_ONE),
-        ]
-        .iter()
-        .copied(),
+        [ins, op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0), op::ret(REG_ONE)]
+            .iter()
+            .copied(),
     )
     .collect();
 
@@ -317,11 +310,7 @@ fn add() {
 fn addi() {
     alu(&[(0x10, 128)], op::addi(0x11, 0x10, 25), 0x11, 153);
     alu_overflow(
-        &[
-            op::move_(0x10, REG_ZERO),
-            op::not(0x10, 0x10),
-            op::addi(0x10, 0x10, 10),
-        ],
+        &[op::move_(0x10, REG_ZERO), op::not(0x10, 0x10), op::addi(0x10, 0x10, 10)],
         0x10,
         Word::MAX as u128 + 10,
         false,
@@ -348,11 +337,7 @@ fn mul() {
 fn muli() {
     alu(&[(0x10, 128)], op::muli(0x11, 0x10, 25), 0x11, 3200);
     alu_overflow(
-        &[
-            op::move_(0x10, REG_ZERO),
-            op::not(0x10, 0x10),
-            op::muli(0x10, 0x10, 2),
-        ],
+        &[op::move_(0x10, REG_ZERO), op::not(0x10, 0x10), op::muli(0x10, 0x10, 2)],
         0x10,
         Word::MAX as u128 * 2,
         false,
@@ -399,11 +384,7 @@ fn srli() {
 fn sub() {
     alu(&[(0x10, 128), (0x11, 25)], op::sub(0x12, 0x10, 0x11), 0x12, 103);
     alu_overflow(
-        &[
-            op::move_(0x10, REG_ZERO),
-            op::movi(0x11, 10),
-            op::sub(0x10, 0x10, 0x11),
-        ],
+        &[op::move_(0x10, REG_ZERO), op::movi(0x11, 10), op::sub(0x10, 0x10, 0x11)],
         0x10,
         (0_u128).wrapping_sub(10),
         false,

@@ -236,13 +236,7 @@ where
     }
 
     /// Prepare a call instruction for execution
-    pub fn prepare_call(
-        &mut self,
-        ra: RegId,
-        rb: RegId,
-        rc: RegId,
-        rd: RegId,
-    ) -> Result<(), RuntimeError> {
+    pub fn prepare_call(&mut self, ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> Result<(), RuntimeError> {
         const M: &str = "the provided id is not a valid register";
 
         let a = self

@@ -44,7 +44,6 @@ pub type RawInstruction = u32;
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidOpcode;
 
-
 /// Type is convertible to a [`RegId`]
 pub trait CheckRegId {
     /// Convert to a [`RegId`], or panic
@@ -62,7 +61,6 @@ impl CheckRegId for u8 {
         RegId::new_checked(self).expect("CheckRegId was given invalid RegId")
     }
 }
-
 
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a unique type
 // for each opcode's instruction variant. For a detailed explanation of how this works, see the

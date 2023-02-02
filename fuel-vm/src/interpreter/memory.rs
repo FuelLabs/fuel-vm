@@ -544,8 +544,7 @@ mod tests {
         vm.instruction(op::add(0x12, REG_ONE, 0x12).into()).unwrap();
 
         // Test ownership
-        vm.instruction(op::add(0x30, REG_HP, REG_ONE).into())
-            .unwrap();
+        vm.instruction(op::add(0x30, REG_HP, REG_ONE).into()).unwrap();
         vm.instruction(op::mcp(0x30, 0x12, 0x20).into()).unwrap();
 
         // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]

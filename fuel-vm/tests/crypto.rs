@@ -38,11 +38,11 @@ fn ecrecover() {
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP.into(), 1),
+        op::addi(0x11, REG_HP, 1),
         op::ecr(0x11, 0x20, 0x21),
         op::meq(0x12, 0x22, 0x11, 0x10),
         op::log(0x12, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ].into_iter().collect();
 
     let script_data = signature
@@ -82,7 +82,7 @@ fn ecrecover_error() {
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP.into(), 1),
+        op::addi(0x11, REG_HP, 1),
         op::ecr(0x11, 0x20, 0x21),
     ];
 
@@ -160,12 +160,12 @@ fn sha256() {
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP.into(), 1),
+        op::addi(0x11, REG_HP, 1),
         op::movi(0x12, message.len() as Immediate18),
         op::s256(0x11, 0x20, 0x12),
         op::meq(0x13, 0x11, 0x21, 0x10),
         op::log(0x13, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.as_ref().iter().copied()).collect();
@@ -252,12 +252,12 @@ fn keccak256() {
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP.into(), 1),
+        op::addi(0x11, REG_HP, 1),
         op::movi(0x12, message.len() as Immediate18),
         op::k256(0x11, 0x20, 0x12),
         op::meq(0x13, 0x11, 0x21, 0x10),
         op::log(0x13, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.iter().copied()).collect();

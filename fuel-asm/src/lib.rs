@@ -44,6 +44,26 @@ pub type RawInstruction = u32;
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidOpcode;
 
+
+/// Type is convertible to a [`RegId`]
+pub trait CheckRegId {
+    /// Convert to a [`RegId`], or panic
+    fn check(self) -> RegId;
+}
+
+impl CheckRegId for RegId {
+    fn check(self) -> RegId {
+        self
+    }
+}
+
+impl CheckRegId for u8 {
+    fn check(self) -> RegId {
+        RegId::new_checked(self).expect("CheckRegId was given invalid RegId")
+    }
+}
+
+
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a unique type
 // for each opcode's instruction variant. For a detailed explanation of how this works, see the
 // `fuel_asm::macros` module level documentation.
@@ -516,10 +536,6 @@ where
 }
 
 // Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
-
-fn check_reg_id(u: u8) -> RegId {
-    RegId::new_checked(u).unwrap_or_else(|| panic!("Value `{u:X}` out of range for 6-bit register ID"))
-}
 
 fn check_imm12(u: u16) -> Imm12 {
     Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))

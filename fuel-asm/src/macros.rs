@@ -384,38 +384,38 @@ macro_rules! impl_instructions {
     // Generate a shorthand free function named after the $op for constructing an `Instruction`.
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8) -> Instruction {
-            $Op::new(check_reg_id(ra)).into()
+        pub fn $op<A: CheckRegId>(ra: A) -> Instruction {
+            $Op::new(ra.check()).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8, rb: u8) -> Instruction {
-            $Op::new(check_reg_id(ra), check_reg_id(rb)).into()
+        pub fn $op<A: CheckRegId, B: CheckRegId>(ra: A, rb: B) -> Instruction {
+            $Op::new(ra.check(), rb.check()).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId RegId]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8, rb: u8, rc: u8) -> Instruction {
-            $Op::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc)).into()
+        pub fn $op<A: CheckRegId, B: CheckRegId, C: CheckRegId>(ra: A, rb: B, rc: C) -> Instruction {
+            $Op::new(ra.check(), rb.check(), rc.check()).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId RegId RegId]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8, rb: u8, rc: u8, rd: u8) -> Instruction {
-            $Op::new(check_reg_id(ra), check_reg_id(rb), check_reg_id(rc), check_reg_id(rd)).into()
+        pub fn $op<A: CheckRegId, B: CheckRegId, C: CheckRegId, D: CheckRegId>(ra: A, rb: B, rc: C, rd: D) -> Instruction {
+            $Op::new(ra.check(), rb.check(), rc.check(), rd.check()).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId Imm12]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8, rb: u8, imm: u16) -> Instruction {
-            $Op::new(check_reg_id(ra), check_reg_id(rb), check_imm12(imm)).into()
+        pub fn $op<A: CheckRegId, B: CheckRegId>(ra: A, rb: B, imm: u16) -> Instruction {
+            $Op::new(ra.check(), rb.check(), check_imm12(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId Imm18]) => {
         #[doc = $doc]
-        pub fn $op(ra: u8, imm: u32) -> Instruction {
-            $Op::new(check_reg_id(ra), check_imm18(imm)).into()
+        pub fn $op<A: CheckRegId>(ra: A, imm: u32) -> Instruction {
+            $Op::new(ra.check(), check_imm18(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [Imm24]) => {

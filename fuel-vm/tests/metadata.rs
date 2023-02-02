@@ -30,7 +30,7 @@ fn metadata() {
         op::log(0x10, 0x00, 0x00, 0x00),
         op::movi(0x20,  ContractId::LEN as Immediate18),
         op::logd(0x00, 0x00, 0x11, 0x20),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
 
     let salt: Salt = rng.gen();
@@ -71,7 +71,7 @@ fn metadata() {
         op::log(0x10, 0x00, 0x00, 0x00),
         op::movi(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         op::aloc(0x10),
-        op::addi(0x10, REG_HP.into(), 1),
+        op::addi(0x10, REG_HP, 1),
     ];
 
     contract_metadata.as_ref().iter().enumerate().for_each(|(i, b)| {
@@ -79,8 +79,8 @@ fn metadata() {
         routine_call_metadata_contract.push(op::sb(0x10, 0x11, i as Immediate12));
     });
 
-    routine_call_metadata_contract.push(op::call(0x10, REG_ZERO.into(), 0x10, REG_CGAS.into()));
-    routine_call_metadata_contract.push(op::ret(REG_ONE.into()));
+    routine_call_metadata_contract.push(op::call(0x10, REG_ZERO, 0x10, REG_CGAS));
+    routine_call_metadata_contract.push(op::ret(REG_ONE));
 
     let salt: Salt = rng.gen();
     let program: Witness = routine_call_metadata_contract.into_iter().collect::<Vec<u8>>().into();
@@ -136,7 +136,7 @@ fn metadata() {
     let mut script = vec![
         op::movi(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         op::aloc(0x10),
-        op::addi(0x10, REG_HP.into(), 1),
+        op::addi(0x10, REG_HP, 1),
     ];
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
@@ -144,8 +144,8 @@ fn metadata() {
         script.push(op::sb(0x10, 0x11, i as Immediate12));
     });
 
-    script.push(op::call(0x10, REG_ZERO.into(), 0x10, REG_CGAS.into()));
-    script.push(op::ret(REG_ONE.into()));
+    script.push(op::call(0x10, REG_ZERO, 0x10, REG_CGAS));
+    script.push(op::ret(REG_ONE));
 
     #[allow(clippy::iter_cloned_collect)] // collection is also perfomring a type conversion
     let script = script.iter().copied().collect::<Vec<u8>>();
@@ -202,7 +202,7 @@ fn get_transaction_fields() {
 
     client.deploy(tx);
 
-    let predicate = vec![op::ret(REG_ONE.into())].into_iter().collect::<Vec<u8>>();
+    let predicate = vec![op::ret(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
 
     rng.fill(predicate_data.as_mut_slice());
@@ -227,7 +227,7 @@ fn get_transaction_fields() {
     rng.fill(message_data.as_mut_slice());
 
     let mut m_data = vec![0u8; 64];
-    let m_predicate = vec![op::ret(REG_ONE.into())].into_iter().collect::<Vec<u8>>();
+    let m_predicate = vec![op::ret(REG_ONE)].into_iter().collect::<Vec<u8>>();
     let mut m_predicate_data = vec![0u8; 512];
 
     rng.fill(m_data.as_mut_slice());

@@ -47,9 +47,9 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
         .start_script(
             vec![
                 // Log some dummy data to burn extra gas
-                op::log(REG_ONE.into(), REG_ONE.into(), REG_ONE.into(), REG_ONE.into()),
+                op::log(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
                 // Revert transaction
-                op::rvrt(REG_ONE.into()),
+                op::rvrt(REG_ONE),
             ]
             .into_iter()
             .collect(),
@@ -138,7 +138,7 @@ fn change_is_reduced_by_external_transfer() {
     let asset_id = AssetId::default();
 
     // simple dummy contract for transferring value to
-    let contract_code = vec![op::ret(REG_ONE.into())];
+    let contract_code = vec![op::ret(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
@@ -155,7 +155,7 @@ fn change_is_reduced_by_external_transfer() {
             op::movi(0x12, (data_offset + 32) as Immediate18),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             op::tr(0x10, 0x11, 0x12),
-            op::ret(REG_ONE.into()),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );
@@ -191,7 +191,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
 
     // setup state for test
     // simple dummy contract for transferring value to
-    let contract_code = vec![op::ret(REG_ONE.into())];
+    let contract_code = vec![op::ret(REG_ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
@@ -208,7 +208,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             op::movi(0x12, data_offset + 32),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
             op::tr(0x10, 0x11, 0x12),
-            op::ret(REG_ONE.into()),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );
@@ -259,10 +259,10 @@ fn variable_output_set_by_external_transfer_out() {
             // load address to 0x12
             op::movi(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            op::move_(0x13, REG_ZERO.into()),
+            op::move_(0x13, REG_ZERO),
             // call contract without any tokens to transfer in
             op::tro(0x12, 0x13, 0x10, 0x11),
-            op::ret(REG_ONE.into()),
+            op::ret(REG_ONE),
         ],
         params.tx_offset()
     );
@@ -334,10 +334,10 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             // load address to 0x12
             op::movi(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            op::move_(0x13, REG_ZERO.into()),
+            op::move_(0x13, REG_ZERO),
             // call contract without any tokens to transfer in
             op::tro(0x12, 0x13, 0x10, 0x11),
-            op::ret(REG_ONE.into()),
+            op::ret(REG_ONE),
         ],
         params.tx_offset()
     );
@@ -399,17 +399,17 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     // setup state for test
     let contract_code = vec![
         // load amount of coins to 0x10
-        op::addi(0x10, REG_FP.into(), CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id to 0x11
-        op::addi(0x11, REG_FP.into(), CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load address to 0x12
         op::addi(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        op::move_(0x13, REG_ZERO.into()),
+        op::move_(0x13, REG_ZERO),
         op::tro(0x12, 0x13, 0x10, 0x11),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context
@@ -422,10 +422,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             // set reg 0x10 to call data
             op::movi(0x10, (data_offset + 64) as Immediate18),
             // set reg 0x11 to transfer amount
-            op::move_(0x11, REG_CGAS.into()),
+            op::move_(0x11, REG_CGAS),
             // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), 0x11),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, 0x11),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );
@@ -477,17 +477,17 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     // setup state for test
     let contract_code = vec![
         // load amount of coins to 0x10
-        op::addi(0x10, REG_FP.into(), CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id to 0x11
-        op::addi(0x11, REG_FP.into(), CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load to address to 0x12
         op::addi(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        op::move_(0x13, REG_ZERO.into()),
+        op::move_(0x13, REG_ZERO),
         op::tro(0x12, 0x13, 0x10, 0x11),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
 
     let mut test_context = TestBuilder::new(2322u64);
@@ -501,8 +501,8 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             // set reg 0x10 to call data
             op::movi(0x10, data_offset + 64),
             // call contract without any tokens to transfer in
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );

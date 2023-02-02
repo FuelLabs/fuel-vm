@@ -24,11 +24,11 @@ fn code_coverage() {
     let reg_a = 0x20;
 
     let script_code = vec![
-        op::jnei(REG_ZERO.into(), REG_ONE.into(), 2),  // Skip next
+        op::jnei(REG_ZERO, REG_ONE, 2),  // Skip next
         op::xor(reg_a, reg_a, reg_a),                  // Skipped
-        op::jnei(REG_ZERO.into(), REG_ZERO.into(), 2), // Do not skip
+        op::jnei(REG_ZERO, REG_ZERO, 2), // Do not skip
         op::xor(reg_a, reg_a, reg_a),                  // Executed
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])

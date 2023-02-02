@@ -29,10 +29,10 @@ fn test_lw() {
         op::movi(0x10, 8),
         op::movi(0x11, 1),
         op::aloc(0x10),
-        op::addi(0x10, REG_HP.into(), 1),
+        op::addi(0x10, REG_HP, 1),
         op::sw(0x10, 0x11, 0),
         op::lw(0x13, 0x10, 0),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
@@ -46,10 +46,10 @@ fn test_lb() {
         op::movi(0x10, 8),
         op::movi(0x11, 1),
         op::aloc(0x10),
-        op::addi(0x10, REG_HP.into(), 1),
+        op::addi(0x10, REG_HP, 1),
         op::sb(0x10, 0x11, 0),
         op::lb(0x13, 0x10, 0),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();

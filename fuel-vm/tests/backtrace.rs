@@ -55,12 +55,12 @@ fn backtrace() {
 
     contract_undefined.as_ref().iter().enumerate().for_each(|(i, b)| {
         function_call.push(op::movi(0x10, *b as Immediate18));
-        function_call.push(op::sb(REG_HP.into(), 0x10, 1 + i as Immediate12));
+        function_call.push(op::sb(REG_HP, 0x10, 1 + i as Immediate12));
     });
 
-    function_call.push(op::addi(0x10, REG_HP.into(), 1));
-    function_call.push(op::call(0x10, REG_ZERO.into(), 0x10, REG_CGAS.into()));
-    function_call.push(op::ret(REG_ONE.into()));
+    function_call.push(op::addi(0x10, REG_HP, 1));
+    function_call.push(op::call(0x10, REG_ZERO, 0x10, REG_CGAS));
+    function_call.push(op::ret(REG_ONE));
 
     let salt: Salt = rng.gen();
     let program: Witness = function_call.into_iter().collect::<Vec<u8>>().into();
@@ -97,12 +97,12 @@ fn backtrace() {
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
         script.push(op::movi(0x10, *b as Immediate18));
-        script.push(op::sb(REG_HP.into(), 0x10, 1 + i as Immediate12));
+        script.push(op::sb(REG_HP, 0x10, 1 + i as Immediate12));
     });
 
-    script.push(op::addi(0x10, REG_HP.into(), 1));
-    script.push(op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()));
-    script.push(op::ret(REG_ONE.into()));
+    script.push(op::addi(0x10, REG_HP, 1));
+    script.push(op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS));
+    script.push(op::ret(REG_ONE));
 
     let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_undefined);
     let output_undefined = Output::contract(0, rng.gen(), rng.gen());

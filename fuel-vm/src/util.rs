@@ -38,7 +38,7 @@
 ///         op::movi(0x12, data_offset + call.len() as Immediate18),
 ///         op::movi(0x13, gas_to_forward as Immediate18),
 ///         op::call(0x10, 0x11, 0x12, 0x13),
-///         op::ret(REG_ONE.into()),
+///         op::ret(REG_ONE),
 ///     ],
 ///     ConsensusParameters::DEFAULT.tx_offset()
 /// );
@@ -114,7 +114,7 @@ pub mod test_helpers {
 
     impl TestBuilder {
         pub fn new(seed: u64) -> Self {
-            let bytecode = core::iter::once(op::ret(REG_ONE.into())).collect();
+            let bytecode = core::iter::once(op::ret(REG_ONE)).collect();
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
@@ -247,8 +247,8 @@ pub mod test_helpers {
                     op::movi(0x11, data_offset),
                     op::addi(0x12, 0x11, AssetId::LEN as Immediate12),
                     op::bal(0x10, 0x11, 0x12),
-                    op::log(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_ZERO.into()),
-                    op::ret(REG_ONE.into()),
+                    op::log(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
+                    op::ret(REG_ONE),
                 ],
                 params.tx_offset()
             );
@@ -418,8 +418,8 @@ pub mod test_helpers {
             // load call data to 0x10
             op::gtf(0x10, 0x0, Immediate12::from(GTFArgs::ScriptData)),
             // call the transfer contract
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            op::ret(REG_ONE),
         ]
         .into_iter()
         .collect();

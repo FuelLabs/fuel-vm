@@ -19,7 +19,7 @@ fn cgas_overflow_bug() {
         .setup_contract(
             vec![
                 // log the balance register
-                op::ret(REG_BAL.into()),
+                op::ret(REG_BAL),
             ],
             None,
             None,
@@ -28,25 +28,25 @@ fn cgas_overflow_bug() {
 
     let program = vec![
         // load amount of tokens
-        op::addi(0x10, REG_FP.into(), CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id
-        op::addi(0x11, REG_FP.into(), CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load contract id
         op::addi(0x12, 0x11, 32 as Immediate12),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::call(0x12, 0x10, 0x11, REG_CGAS.into()),
-        op::log(REG_CGAS.into(), REG_GGAS.into(), REG_ZERO.into(), REG_ZERO.into()),
-        op::ret(REG_BAL.into()),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::call(0x12, 0x10, 0x11, REG_CGAS),
+        op::log(REG_CGAS, REG_GGAS, REG_ZERO, REG_ZERO),
+        op::ret(REG_BAL),
     ];
     let sender_contract_id = test_context
         .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
@@ -58,8 +58,8 @@ fn cgas_overflow_bug() {
             // load call data to 0x10
             op::movi(0x10, data_offset + 64),
             // call the transfer contract
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );
@@ -120,17 +120,17 @@ fn cgas_uses_min_available_gas() {
         .setup_contract(
             vec![
                 // jump to return if we hit end of call depth
-                op::eq(reg_max_call_depth_eq, reg_max_call_depth, REG_ZERO.into()),
+                op::eq(reg_max_call_depth_eq, reg_max_call_depth, REG_ZERO),
                 op::jnzi(reg_max_call_depth_eq, 6),
                 // log cgas before call
-                op::log(REG_CGAS.into(), REG_GGAS.into(), reg_max_call_depth, REG_ZERO.into()),
+                op::log(REG_CGAS, REG_GGAS, reg_max_call_depth, REG_ZERO),
                 // decrement depth
                 op::subi(reg_max_call_depth, reg_max_call_depth, 1),
                 // make call to contract again
                 op::call(reg_contract_id, reg_call_a, reg_call_b, reg_forward_gas),
                 // log cgas after call
-                op::log(REG_CGAS.into(), REG_GGAS.into(), reg_max_call_depth, REG_ZERO.into()),
-                op::ret(REG_ZERO.into()),
+                op::log(REG_CGAS, REG_GGAS, reg_max_call_depth, REG_ZERO),
+                op::ret(REG_ZERO),
             ],
             None,
             None,
@@ -139,10 +139,10 @@ fn cgas_uses_min_available_gas() {
 
     let program = vec![
         // load amount of tokens
-        op::addi(reg_call_a, REG_FP.into(), CallFrame::a_offset() as Immediate12),
+        op::addi(reg_call_a, REG_FP, CallFrame::a_offset() as Immediate12),
         op::lw(reg_call_a, reg_call_a, 0),
         // load asset id
-        op::addi(reg_call_b, REG_FP.into(), CallFrame::b_offset() as Immediate12),
+        op::addi(reg_call_b, REG_FP, CallFrame::b_offset() as Immediate12),
         op::lw(reg_call_b, reg_call_b, 0),
         // load contract id
         op::addi(reg_contract_id, reg_call_b, 32 as Immediate12),
@@ -150,9 +150,9 @@ fn cgas_uses_min_available_gas() {
         op::movi(reg_max_call_depth, call_depth as Immediate18),
         // set inner call cgas limit
         op::movi(reg_forward_gas, gas_forward_amount),
-        op::call(reg_contract_id, reg_call_a, reg_call_b, REG_CGAS.into()),
-        op::log(REG_CGAS.into(), REG_GGAS.into(), REG_ZERO.into(), REG_ZERO.into()),
-        op::ret(REG_BAL.into()),
+        op::call(reg_contract_id, reg_call_a, reg_call_b, REG_CGAS),
+        op::log(REG_CGAS, REG_GGAS, REG_ZERO, REG_ZERO),
+        op::ret(REG_BAL),
     ];
     let sender_contract_id = test_context
         .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
@@ -164,8 +164,8 @@ fn cgas_uses_min_available_gas() {
             // load call data to 0x10
             op::movi(0x10, data_offset + 64),
             // call the transfer contract
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );

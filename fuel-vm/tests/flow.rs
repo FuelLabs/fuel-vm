@@ -103,11 +103,11 @@ fn code_copy() {
     let mut script_ops = vec![
         op::movi(0x10, 2048),
         op::aloc(0x10),
-        op::addi(0x10, REG_HP.into(), 0x01),
+        op::addi(0x10, REG_HP, 0x01),
         op::movi(0x20, 0x00),
-        op::add(0x11, REG_ZERO.into(), 0x20),
+        op::add(0x11, REG_ZERO, 0x20),
         op::movi(0x12, contract_size as Immediate18),
-        op::ccp(0x10, 0x11, REG_ZERO.into(), 0x12),
+        op::ccp(0x10, 0x11, REG_ZERO, 0x12),
         op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
         op::meq(0x30, 0x21, 0x10, 0x12),
         op::ret(0x30),
@@ -201,7 +201,7 @@ fn call() {
     let mut script_ops = vec![
         op::movi(0x10, 0x00),
         op::addi(0x11, 0x10, ContractId::LEN as Immediate12),
-        op::call(0x10, REG_ZERO.into(), 0x10, 0x10),
+        op::call(0x10, REG_ZERO, 0x10, 0x10),
         op::ret(0x30),
     ];
 
@@ -264,13 +264,13 @@ fn call_frame_code_offset() {
     let salt: Salt = rng.gen();
     let bytecode_witness_index = 0;
     let program: Vec<u8> = vec![
-        op::log(REG_PC.into(), REG_FP.into(), REG_SSP.into(), REG_SP.into()),
+        op::log(REG_PC, REG_FP, REG_SSP, REG_SP),
         op::noop(),
         op::noop(),
         op::noop(),
         op::noop(),
         op::movi(0x10, 1),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ]
     .into_iter()
     .collect();
@@ -314,9 +314,9 @@ fn call_frame_code_offset() {
 
     let script = vec![
         op::movi(0x10, script_data_offset),
-        op::log(REG_SP.into(), 0, 0, 0),
-        op::call(0x10, REG_ZERO.into(), 0x10, REG_CGAS.into()),
-        op::ret(REG_ONE.into()),
+        op::log(REG_SP, 0, 0, 0),
+        op::call(0x10, REG_ZERO, 0x10, REG_CGAS),
+        op::ret(REG_ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -371,7 +371,7 @@ fn revert_from_call_immediately_ends_execution() {
 
     // setup a contract which immediately reverts
     let contract_id = test_context
-        .setup_contract(vec![op::rvrt(REG_ONE.into())], None, None)
+        .setup_contract(vec![op::rvrt(REG_ONE)], None, None)
         .contract_id;
 
     // setup a script to call the contract
@@ -380,8 +380,8 @@ fn revert_from_call_immediately_ends_execution() {
         vec![
             // load call data to 0x10
             op::movi(0x10, data_offset),
-            op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-            op::ret(REG_ONE.into()),
+            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+            op::ret(REG_ONE),
         ],
         test_context.tx_offset()
     );
@@ -421,9 +421,9 @@ fn jump_if_not_zero_immediate_jump() {
 
     #[rustfmt::skip]
     let script_jnzi_does_jump = vec![
-        op::jnzi(REG_ONE.into(), 2), // Jump to last instr if reg one is zero
-        op::rvrt(REG_ONE.into()),    // Revert
-        op::ret(REG_ONE.into()),     // Return successfully
+        op::jnzi(REG_ONE, 2), // Jump to last instr if reg one is zero
+        op::rvrt(REG_ONE),    // Revert
+        op::ret(REG_ONE),     // Return successfully
     ].into_iter()
     .collect::<Vec<u8>>();
 
@@ -461,9 +461,9 @@ fn jump_if_not_zero_immediate_no_jump() {
 
     #[rustfmt::skip]
     let script_jnzi_does_not_jump = vec![
-        op::jnzi(REG_ZERO.into(), 2), // Jump to last instr if reg zero is zero
-        op::rvrt(REG_ONE.into()),     // Revert
-        op::ret(REG_ONE.into()),      // Return successfully
+        op::jnzi(REG_ZERO, 2), // Jump to last instr if reg zero is zero
+        op::rvrt(REG_ONE),     // Revert
+        op::ret(REG_ONE),      // Return successfully
     ].into_iter()
     .collect::<Vec<u8>>();
 
@@ -501,10 +501,10 @@ fn jump_dynamic() {
 
     #[rustfmt::skip]
     let script = vec![
-        op::movi(REG_WRITABLE.into(), 3), // Jump target: last instr
-        op::jmp(REG_WRITABLE.into()),     // Jump
-        op::rvrt(REG_ONE.into()),         // Revert
-        op::ret(REG_ONE.into()),          // Return successfully
+        op::movi(REG_WRITABLE, 3), // Jump target: last instr
+        op::jmp(REG_WRITABLE),     // Jump
+        op::rvrt(REG_ONE),         // Revert
+        op::ret(REG_ONE),          // Return successfully
     ].into_iter()
     .collect::<Vec<u8>>();
 
@@ -533,10 +533,10 @@ fn jump_dynamic_condition_true() {
 
     #[rustfmt::skip]
     let script = vec![
-        op::movi(REG_WRITABLE.into(), 3),                              // Jump target: last instr
-        op::jne(REG_ZERO.into(), REG_ONE.into(), REG_WRITABLE.into()), // Conditional jump (yes, because 0 != 1)
-        op::rvrt(REG_ONE.into()),                                      // Revert
-        op::ret(REG_ONE.into()),                                       // Return successfully
+        op::movi(REG_WRITABLE, 3),                              // Jump target: last instr
+        op::jne(REG_ZERO, REG_ONE, REG_WRITABLE), // Conditional jump (yes, because 0 != 1)
+        op::rvrt(REG_ONE),                                      // Revert
+        op::ret(REG_ONE),                                       // Return successfully
     ].into_iter()
     .collect::<Vec<u8>>();
 
@@ -565,10 +565,10 @@ fn jump_dynamic_condition_false() {
 
     #[rustfmt::skip]
     let script = vec![
-        op::movi(REG_WRITABLE.into(), 3),                               // Jump target: last instr
-        op::jne(REG_ZERO.into(), REG_ZERO.into(), REG_WRITABLE.into()), // Conditional jump (no, because 0 != 0)
-        op::rvrt(REG_ONE.into()),                                       // Revert
-        op::ret(REG_ONE.into()),                                        // Return successfully
+        op::movi(REG_WRITABLE, 3),                               // Jump target: last instr
+        op::jne(REG_ZERO, REG_ZERO, REG_WRITABLE), // Conditional jump (no, because 0 != 0)
+        op::rvrt(REG_ONE),                                       // Revert
+        op::ret(REG_ONE),                                        // Return successfully
     ].into_iter()
     .collect::<Vec<u8>>();
 
@@ -601,9 +601,9 @@ fn revert() {
 
     #[rustfmt::skip]
     let call_arguments_parser = vec![
-        op::addi(0x10, REG_FP.into(), CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
-        op::addi(0x11, REG_FP.into(), CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
     ];
 
@@ -615,7 +615,7 @@ fn revert() {
         op::add(0x20, 0x20, 0x21),           // r[0x20]      += r[0x21]
         op::sww(0x11, SET_STATUS_REG, 0x20), // s[m[b,32]]   := r[0x20]
         op::log(0x20, 0x21, 0x00, 0x00),
-        op::ret(REG_ONE.into()),
+        op::ret(REG_ONE),
     ];
 
     let program: Witness = call_arguments_parser
@@ -666,8 +666,8 @@ fn revert() {
 
     let script = vec![
         op::movi(0x10, script_data_offset),
-        op::call(0x10, REG_ZERO.into(), REG_ZERO.into(), REG_CGAS.into()),
-        op::ret(REG_ONE.into()),
+        op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
+        op::ret(REG_ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -728,8 +728,8 @@ fn revert() {
     // Create a script with revert instruction
     let script = vec![
         op::movi(0x10, script_data_offset),
-        op::call(0x10, REG_ZERO.into(), 0x10, REG_CGAS.into()),
-        op::rvrt(REG_ONE.into()),
+        op::call(0x10, REG_ZERO, 0x10, REG_CGAS),
+        op::rvrt(REG_ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>();
@@ -793,7 +793,7 @@ fn retd_from_top_of_heap() {
     let script = vec![
         op::movi(REG_SIZE, 32),              // Allocate 32 bytes.
         op::aloc(REG_SIZE),                  // $hp -= 32.
-        op::addi(REG_PTR, REG_HP.into(), 1), // Pointer is $hp + 1, first byte in allocated buffer.
+        op::addi(REG_PTR, REG_HP, 1), // Pointer is $hp + 1, first byte in allocated buffer.
         op::retd(REG_PTR, REG_SIZE),         // Return the allocated buffer.
     ].into_iter()
     .collect::<Vec<u8>>();
@@ -826,11 +826,11 @@ fn logd_from_top_of_heap() {
 
     #[rustfmt::skip]
     let script = vec![
-        op::movi(REG_SIZE.into(), 32),                                               // Allocate 32 bytes.
-        op::aloc(REG_SIZE.into()),                                                   // $hp -= 32.
-        op::addi(reg_ptr.into(), REG_HP.into(), 1),                                  // Pointer is $hp + 1, first byte in allocated buffer.
-        op::logd(REG_ZERO.into(), REG_ZERO.into(), reg_ptr.into(), REG_SIZE.into()), // Log the whole buffer
-        op::ret(REG_ONE.into()),                                                     // Return
+        op::movi(REG_SIZE, 32),                                               // Allocate 32 bytes.
+        op::aloc(REG_SIZE),                                                   // $hp -= 32.
+        op::addi(reg_ptr, REG_HP, 1),                                  // Pointer is $hp + 1, first byte in allocated buffer.
+        op::logd(REG_ZERO, REG_ZERO, reg_ptr, REG_SIZE), // Log the whole buffer
+        op::ret(REG_ONE),                                                     // Return
     ].into_iter()
     .collect::<Vec<u8>>();
 

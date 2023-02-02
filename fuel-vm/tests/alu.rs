@@ -28,7 +28,7 @@ fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId,
     let script = registers_init
         .iter()
         .flat_map(|(r, v)| set_full_word(*r, *v))
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(REG_ONE.into())].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -60,7 +60,7 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     let script = program
         .iter()
         .copied()
-        .chain([op::ret(REG_ONE.into())].iter().copied())
+        .chain([op::ret(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -90,8 +90,8 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
         .chain(program.iter().copied())
         .chain(
             [
-                op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0),
-                op::ret(REG_ONE.into()),
+                op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0),
+                op::ret(REG_ONE),
             ]
             .iter()
             .copied(),
@@ -142,8 +142,8 @@ fn alu_wrapping(
     let script = [
         // TODO avoid magic constants
         // https://github.com/FuelLabs/fuel-asm/issues/60
-        op::movi(REG_WRITABLE.into(), 0x2),
-        op::flag(REG_WRITABLE.into()),
+        op::movi(REG_WRITABLE, 0x2),
+        op::flag(REG_WRITABLE),
     ]
     .iter()
     .copied()
@@ -151,8 +151,8 @@ fn alu_wrapping(
     .chain(
         [
             ins,
-            op::log(u8::try_from(reg).unwrap(), REG_OF.into(), 0, 0),
-            op::ret(REG_ONE.into()),
+            op::log(u8::try_from(reg).unwrap(), REG_OF, 0, 0),
+            op::ret(REG_ONE),
         ]
         .iter()
         .copied(),
@@ -191,7 +191,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
     let script = registers_init
         .iter()
         .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v))
-        .chain([ins, op::ret(REG_ONE.into())].iter().copied())
+        .chain([ins, op::ret(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -223,7 +223,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
                 .iter()
                 .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
         )
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(REG_ONE.into())].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -255,7 +255,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
     let script = registers_init
         .iter()
         .flat_map(|(r, v)| set_full_word(*r, *v))
-        .chain([ins, op::ret(REG_ONE.into())].iter().copied())
+        .chain([ins, op::ret(REG_ONE)].iter().copied())
         .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
@@ -279,22 +279,22 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
 
 #[test]
 fn reserved_register() {
-    alu_reserved(&[(0x10, 128)], op::add(REG_ZERO.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_ONE.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_OF.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_PC.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_SSP.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_SP.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_FP.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_HP.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_ERR.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_GGAS.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_CGAS.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_BAL.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_IS.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_RET.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_RETL.into(), 0x10, 0x11));
-    alu_reserved(&[(0x10, 128)], op::add(REG_FLAG.into(), 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_ZERO, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_ONE, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_OF, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_PC, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_SSP, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_SP, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_FP, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_HP, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_ERR, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_GGAS, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_CGAS, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_BAL, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_IS, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_RET, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_RETL, 0x10, 0x11));
+    alu_reserved(&[(0x10, 128)], op::add(REG_FLAG, 0x10, 0x11));
 }
 
 #[test]
@@ -302,7 +302,7 @@ fn add() {
     alu(&[(0x10, 128), (0x11, 25)], op::add(0x12, 0x10, 0x11), 0x12, 153);
     alu_overflow(
         &[
-            op::move_(0x10, REG_ZERO.into()),
+            op::move_(0x10, REG_ZERO),
             op::movi(0x11, 10),
             op::not(0x10, 0x10),
             op::add(0x10, 0x10, 0x11),
@@ -318,7 +318,7 @@ fn addi() {
     alu(&[(0x10, 128)], op::addi(0x11, 0x10, 25), 0x11, 153);
     alu_overflow(
         &[
-            op::move_(0x10, REG_ZERO.into()),
+            op::move_(0x10, REG_ZERO),
             op::not(0x10, 0x10),
             op::addi(0x10, 0x10, 10),
         ],
@@ -333,7 +333,7 @@ fn mul() {
     alu(&[(0x10, 128), (0x11, 25)], op::mul(0x12, 0x10, 0x11), 0x12, 3200);
     alu_overflow(
         &[
-            op::move_(0x10, REG_ZERO.into()),
+            op::move_(0x10, REG_ZERO),
             op::movi(0x11, 2),
             op::not(0x10, 0x10),
             op::mul(0x10, 0x10, 0x11),
@@ -349,7 +349,7 @@ fn muli() {
     alu(&[(0x10, 128)], op::muli(0x11, 0x10, 25), 0x11, 3200);
     alu_overflow(
         &[
-            op::move_(0x10, REG_ZERO.into()),
+            op::move_(0x10, REG_ZERO),
             op::not(0x10, 0x10),
             op::muli(0x10, 0x10, 2),
         ],
@@ -400,7 +400,7 @@ fn sub() {
     alu(&[(0x10, 128), (0x11, 25)], op::sub(0x12, 0x10, 0x11), 0x12, 103);
     alu_overflow(
         &[
-            op::move_(0x10, REG_ZERO.into()),
+            op::move_(0x10, REG_ZERO),
             op::movi(0x11, 10),
             op::sub(0x10, 0x10, 0x11),
         ],
@@ -414,7 +414,7 @@ fn sub() {
 fn subi() {
     alu(&[(0x10, 128)], op::subi(0x11, 0x10, 25), 0x11, 103);
     alu_overflow(
-        &[op::move_(0x10, REG_ZERO.into()), op::subi(0x10, 0x10, 10)],
+        &[op::move_(0x10, REG_ZERO), op::subi(0x10, 0x10, 10)],
         0x10,
         (0_u128).wrapping_sub(10),
         false,
@@ -431,7 +431,7 @@ fn and() {
 fn div() {
     alu(&[(0x10, 59), (0x11, 10)], op::div(0x12, 0x10, 0x11), 0x12, 5);
     alu(&[(0x10, 59)], op::divi(0x12, 0x10, 10), 0x12, 5);
-    alu_err(&[], op::divi(0x10, REG_ONE.into(), 0), 0x10, 0x00);
+    alu_err(&[], op::divi(0x10, REG_ONE, 0), 0x10, 0x00);
 }
 
 #[test]

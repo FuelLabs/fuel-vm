@@ -24,8 +24,8 @@ fn profile_gas() {
             op::xor(reg_a, reg_a, reg_a),        // r[a] := 0
             op::ori(reg_a, reg_a, count),        // r[a] := count
             op::subi(reg_a, reg_a, 1),           // r[a] -= count  <-|
-            op::jnei(REG_ZERO.into(), reg_a, 2), // Jump to ---------|
-            op::ret(REG_ONE.into()),
+            op::jnei(REG_ZERO, reg_a, 2), // Jump to ---------|
+            op::ret(REG_ONE),
         ];
 
         let tx_deploy = TransactionBuilder::script(script_code.into_iter().collect(), vec![])

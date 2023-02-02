@@ -58,11 +58,11 @@ fn breakpoint_script() {
     let params = ConsensusParameters::default();
 
     let script = [
-        op::addi(0x10, REG_ZERO.into(), 8),
-        op::addi(0x11, REG_ZERO.into(), 16),
-        op::addi(0x12, REG_ZERO.into(), 32),
-        op::addi(0x13, REG_ZERO.into(), 64),
-        op::addi(0x14, REG_ZERO.into(), 128),
+        op::addi(0x10, REG_ZERO, 8),
+        op::addi(0x11, REG_ZERO, 16),
+        op::addi(0x12, REG_ZERO, 32),
+        op::addi(0x13, REG_ZERO, 64),
+        op::addi(0x14, REG_ZERO, 128),
         op::ret(0x10),
     ]
     .into_iter()
@@ -124,7 +124,7 @@ fn single_stepping() {
 
     // Repeats the middle two instructions five times
     let script = [
-        op::addi(0x10, REG_ZERO.into(), 5),
+        op::addi(0x10, REG_ZERO, 5),
         op::addi(0x11, 0x11, 1),
         op::jnei(0x10, 0x11, 1),
         op::ret(0x10),

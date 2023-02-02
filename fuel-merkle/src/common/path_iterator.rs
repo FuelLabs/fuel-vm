@@ -145,14 +145,13 @@ impl<T> Iterator for PathIter<T>
 where
     T: ParentNode + Clone,
     T::Key: Path + Clone,
-    T::Error: Clone,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let value = self.current.clone();
+        let value = self.current.take();
 
-        if let Some((ref path_node, _)) = self.current {
+        if let Some((ref path_node, _)) = value {
             match path_node {
                 Ok(path_node) if path_node.is_node() => {
                     let path = self.leaf.leaf_key();

@@ -54,7 +54,6 @@ impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Node, OwnedValue = Node>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
-    StorageError: fmt::Debug + Clone + 'static,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {

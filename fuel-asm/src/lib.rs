@@ -232,6 +232,41 @@ impl_instructions! {
 }
 
 impl RegId {
+    /// Contains zero (0), for convenience.
+    pub const ZERO: Self = Self(0x00);
+    /// Contains one (1), for convenience.
+    pub const ONE: Self = Self(0x01);
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    pub const OF: Self = Self(0x02);
+    /// The program counter. Memory address of the current instruction.
+    pub const PC: Self = Self(0x03);
+    /// Stack start pointer. Memory address of bottom of current writable stack area.
+    pub const SSP: Self = Self(0x04);
+    /// Stack pointer. Memory address on top of current writable stack area (points to free memory).
+    pub const SP: Self = Self(0x05);
+    /// Frame pointer. Memory address of beginning of current call frame.
+    pub const FP: Self = Self(0x06);
+    /// Heap pointer. Memory address below the current bottom of the heap (points to free memory).
+    pub const HP: Self = Self(0x07);
+    /// Error codes for particular operations.
+    pub const ERR: Self = Self(0x08);
+    /// Remaining gas globally.
+    pub const GGAS: Self = Self(0x09);
+    /// Remaining gas in the context.
+    pub const CGAS: Self = Self(0x0A);
+    /// Received balance for this context.
+    pub const BAL: Self = Self(0x0B);
+    /// Instructions start. Pointer to the start of the currently-executing code.
+    pub const IS: Self = Self(0x0C);
+    /// Return value or pointer.
+    pub const RET: Self = Self(0x0D);
+    /// Return value length in bytes.
+    pub const RETL: Self = Self(0x0E);
+    /// Flags register.
+    pub const FLAG: Self = Self(0x0F);
+    /// Smallest writable register.
+    pub const WRITABLE: Self = Self(0x10);
+
     /// Construct a register ID from the given value.
     ///
     /// The given value will be masked to 6 bits.

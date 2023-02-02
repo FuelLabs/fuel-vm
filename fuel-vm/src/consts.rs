@@ -11,56 +11,56 @@ use std::mem;
 pub const VM_REGISTER_COUNT: usize = 64;
 
 /// Contains zero (0), for convenience.
-pub const REG_ZERO: RegId = RegId::new(0x00);
+pub const REG_ZERO: RegId = RegId::ZERO;
 
 /// Contains one (1), for convenience.
-pub const REG_ONE: RegId = RegId::new(0x01);
+pub const REG_ONE: RegId = RegId::ONE;
 
 /// Contains overflow/underflow of addition, subtraction, and multiplication.
-pub const REG_OF: RegId = RegId::new(0x02);
+pub const REG_OF: RegId = RegId::OF;
 
 /// The program counter. Memory address of the current instruction.
-pub const REG_PC: RegId = RegId::new(0x03);
+pub const REG_PC: RegId = RegId::PC;
 
 /// Memory address of bottom of current writable stack area.
-pub const REG_SSP: RegId = RegId::new(0x04);
+pub const REG_SSP: RegId = RegId::SSP;
 
 /// Memory address on top of current writable stack area (points to free
 /// memory).
-pub const REG_SP: RegId = RegId::new(0x05);
+pub const REG_SP: RegId = RegId::SP;
 
 /// Memory address of beginning of current call frame.
-pub const REG_FP: RegId = RegId::new(0x06);
+pub const REG_FP: RegId = RegId::FP;
 
 /// Memory address below the current bottom of the heap (points to free memory).
-pub const REG_HP: RegId = RegId::new(0x07);
+pub const REG_HP: RegId = RegId::HP;
 
 /// Error codes for particular operations.
-pub const REG_ERR: RegId = RegId::new(0x08);
+pub const REG_ERR: RegId = RegId::ERR;
 
 /// Remaining gas globally.
-pub const REG_GGAS: RegId = RegId::new(0x09);
+pub const REG_GGAS: RegId = RegId::GGAS;
 
 /// Remaining gas in the context.
-pub const REG_CGAS: RegId = RegId::new(0x0a);
+pub const REG_CGAS: RegId = RegId::CGAS;
 
 /// Received balance for this context.
-pub const REG_BAL: RegId = RegId::new(0x0b);
+pub const REG_BAL: RegId = RegId::BAL;
 
 /// Pointer to the start of the currently-executing code.
-pub const REG_IS: RegId = RegId::new(0x0c);
+pub const REG_IS: RegId = RegId::IS;
 
 /// Return value or pointer.
-pub const REG_RET: RegId = RegId::new(0x0d);
+pub const REG_RET: RegId = RegId::RET;
 
 /// Return value length in bytes.
-pub const REG_RETL: RegId = RegId::new(0x0e);
+pub const REG_RETL: RegId = RegId::RETL;
 
 /// Flags register.
-pub const REG_FLAG: RegId = RegId::new(0x0f);
+pub const REG_FLAG: RegId = RegId::FLAG;
 
 /// Smallest writable register
-pub const REG_WRITABLE: RegId = RegId::new(0x10);
+pub const REG_WRITABLE: RegId = RegId::WRITABLE;
 
 /* END */
 

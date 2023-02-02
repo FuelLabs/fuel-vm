@@ -7,7 +7,7 @@ use crate::interpreter::PanicContext;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{InstructionResult, RawInstruction, RegisterId};
+use fuel_asm::{InstructionResult, RawInstruction, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -238,34 +238,34 @@ where
     /// Prepare a call instruction for execution
     pub fn prepare_call(
         &mut self,
-        ra: RegisterId,
-        rb: RegisterId,
-        rc: RegisterId,
-        rd: RegisterId,
+        ra: RegId,
+        rb: RegId,
+        rc: RegId,
+        rd: RegId,
     ) -> Result<(), RuntimeError> {
         const M: &str = "the provided id is not a valid register";
 
         let a = self
             .registers
-            .get(ra)
+            .get(ra.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let b = self
             .registers
-            .get(rb)
+            .get(rb.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let c = self
             .registers
-            .get(rc)
+            .get(rc.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let d = self
             .registers
-            .get(rd)
+            .get(rd.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 

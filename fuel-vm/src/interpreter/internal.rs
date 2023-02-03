@@ -231,7 +231,7 @@ mod tests {
         let maturity = 0;
         let height = 0;
 
-        let script = <[u8; 4]>::from(op::ret(0x01)).to_vec();
+        let script = op::ret(0x01).to_bytes().to_vec();
         let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
         let mut tx = TransactionBuilder::script(script, Default::default());

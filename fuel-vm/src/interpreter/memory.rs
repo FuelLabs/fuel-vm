@@ -506,7 +506,7 @@ mod tests {
             0,
             params.max_gas_per_tx,
             0,
-            <[u8; 4]>::from(op::ret(0x10)).to_vec(),
+            op::ret(0x10).to_bytes().to_vec(),
             vec![],
             vec![],
             vec![],

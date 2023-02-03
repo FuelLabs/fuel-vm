@@ -517,7 +517,7 @@ where
 #[cfg(feature = "std")]
 impl core::iter::FromIterator<Instruction> for Vec<u8> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
-        iter.into_iter().flat_map(<[u8; 4]>::from).collect()
+        iter.into_iter().flat_map(Instruction::to_bytes).collect()
     }
 }
 

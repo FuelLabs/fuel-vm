@@ -25,7 +25,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let mut vm = Interpreter::with_memory_storage();
 
     let params = ConsensusParameters::default();
-    let script = <[u8; 4]>::from(op::ret(0x10)).to_vec();
+    let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = 0;
     let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
     let tx = tx

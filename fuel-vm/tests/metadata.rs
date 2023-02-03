@@ -733,7 +733,7 @@ fn get_transaction_fields() {
     ].into_iter().collect();
 
     while script.len() < script_reserved_words {
-        script.extend(<[u8; 4]>::from(op::noop()));
+        script.extend(op::noop().to_bytes());
     }
 
     assert_eq!(script.len(), script_reserved_words);

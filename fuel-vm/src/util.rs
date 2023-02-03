@@ -283,7 +283,7 @@ pub mod test_helpers {
             let salt: Salt = self.rng.gen();
             let program: Witness = contract
                 .into_iter()
-                .flat_map(<[u8; 4]>::from)
+                .flat_map(Instruction::to_bytes)
                 .collect::<Vec<u8>>()
                 .into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());

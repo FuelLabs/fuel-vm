@@ -234,6 +234,11 @@ impl_instructions! {
 impl Instruction {
     /// Size of an instruction in bytes
     pub const SIZE: usize = core::mem::size_of::<Instruction>();
+
+    /// Convenience method for converting to bytes
+    pub fn to_bytes(self) -> [u8; 4] {
+        self.into()
+    }
 }
 
 impl RegId {

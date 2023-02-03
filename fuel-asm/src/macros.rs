@@ -620,11 +620,6 @@ macro_rules! impl_instructions {
                 }
             }
 
-            /// Convenience method for converting to bytes
-            pub fn to_bytes(self) -> [u8; 4] {
-                self.into()
-            }
-
             /// Unpacks all register IDs into a slice of options.
             pub fn reg_ids(&self) -> [Option<RegId>; 4] {
                 match self {

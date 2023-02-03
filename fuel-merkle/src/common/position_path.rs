@@ -93,7 +93,7 @@ impl Iterator for PositionPathIter {
                 // the rightmost leaf position is invalid and does not exist in
                 // the context of this tree. The invalid side node will always
                 // be the ancestor of the correct side node. Furthermore, the
-                // correct side node will always be a leftward descendent of
+                // correct side node will always be a leftward descendant of
                 // this invalid side node.
                 while side.in_order_index() > self.rightmost_position.in_order_index() {
                     side = side.left_child()

@@ -7,7 +7,7 @@ use crate::interpreter::PanicContext;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{InstructionResult, RawInstruction, RegId};
+use fuel_asm::{Instruction, InstructionResult, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -20,7 +20,7 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
-        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(core::mem::size_of::<RawInstruction>() as Word));
+        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::SIZE as Word));
 
         if j > VM_MAX_RAM - 1 {
             Err(PanicReason::MemoryOverflow.into())

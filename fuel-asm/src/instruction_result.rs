@@ -1,4 +1,4 @@
-use crate::{PanicReason, RawInstruction, Word};
+use crate::{Instruction, PanicReason, RawInstruction, Word};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -38,7 +38,7 @@ impl InstructionResult {
 
 const WORD_SIZE: usize = core::mem::size_of::<Word>();
 const REASON_OFFSET: Word = (WORD_SIZE * 8 - 8) as Word;
-const INSTR_OFFSET: Word = REASON_OFFSET - (core::mem::size_of::<RawInstruction>() * 8) as Word;
+const INSTR_OFFSET: Word = REASON_OFFSET - (Instruction::SIZE * 8) as Word;
 
 impl From<InstructionResult> for Word {
     fn from(r: InstructionResult) -> Word {

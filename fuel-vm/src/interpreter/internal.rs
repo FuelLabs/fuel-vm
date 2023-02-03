@@ -4,7 +4,7 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
-use fuel_asm::{PanicReason, RawInstruction};
+use fuel_asm::{Instruction, PanicReason};
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -108,7 +108,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
         self.registers[REG_PC]
-            .checked_add(core::mem::size_of::<RawInstruction>() as Word)
+            .checked_add(Instruction::SIZE as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
             .map(|pc| self.registers[REG_PC] = pc)
     }

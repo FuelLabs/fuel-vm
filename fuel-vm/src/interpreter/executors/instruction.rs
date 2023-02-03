@@ -26,7 +26,7 @@ where
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[REG_PC] + core::mem::size_of::<RawInstruction>() as Word;
+        let pc = self.registers[REG_PC] + Instruction::SIZE as Word;
         let state = self.instruction(hi)?;
 
         // TODO optimize

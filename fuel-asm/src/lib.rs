@@ -231,6 +231,11 @@ impl_instructions! {
     0x92 CFSI cfsi [Imm24]
 }
 
+impl Instruction {
+    /// Size of an instruction in bytes
+    pub const SIZE: usize = core::mem::size_of::<Instruction>();
+}
+
 impl RegId {
     /// Contains zero (0), for convenience.
     pub const ZERO: Self = Self(0x00);
@@ -592,6 +597,8 @@ fn test_instruction_size() {
         core::mem::size_of::<Instruction>(),
         core::mem::size_of::<RawInstruction>()
     );
+
+    assert_eq!(core::mem::size_of::<Instruction>(), Instruction::SIZE);
 }
 
 // The size of the opcode is exactly one byte.

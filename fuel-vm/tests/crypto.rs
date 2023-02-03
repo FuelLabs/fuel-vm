@@ -1,12 +1,11 @@
 use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
-use fuel_asm::{op, GTFArgs};
+use fuel_asm::{op, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha3::{Digest, Keccak256};
 
-use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
@@ -38,11 +37,11 @@ fn ecrecover() {
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP, 1),
+        op::addi(0x11, RegId::HP, 1),
         op::ecr(0x11, 0x20, 0x21),
         op::meq(0x12, 0x22, 0x11, 0x10),
         op::log(0x12, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = signature
@@ -82,7 +81,7 @@ fn ecrecover_error() {
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP, 1),
+        op::addi(0x11, RegId::HP, 1),
         op::ecr(0x11, 0x20, 0x21),
     ];
 
@@ -160,12 +159,12 @@ fn sha256() {
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP, 1),
+        op::addi(0x11, RegId::HP, 1),
         op::movi(0x12, message.len() as Immediate18),
         op::s256(0x11, 0x20, 0x12),
         op::meq(0x13, 0x11, 0x21, 0x10),
         op::log(0x13, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.as_ref().iter().copied()).collect();
@@ -252,12 +251,12 @@ fn keccak256() {
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
         op::aloc(0x10),
-        op::addi(0x11, REG_HP, 1),
+        op::addi(0x11, RegId::HP, 1),
         op::movi(0x12, message.len() as Immediate18),
         op::k256(0x11, 0x20, 0x12),
         op::meq(0x13, 0x11, 0x21, 0x10),
         op::log(0x13, 0x00, 0x00, 0x00),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.iter().copied()).collect();

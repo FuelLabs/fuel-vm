@@ -17,8 +17,8 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     // ignore if rA/rB isn't set to writeable register and the opcode should write to that register
     let [ra, rb, _, _] = random_instruction.reg_ids();
     match (ra, rb) {
-        (Some(r), _) if writes_to_ra(opcode) && r >= REG_WRITABLE => return TestResult::discard(),
-        (_, Some(r)) if writes_to_rb(opcode) && r >= REG_WRITABLE => return TestResult::discard(),
+        (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
+        (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
         _ => (),
     }
 
@@ -64,15 +64,15 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         ));
     }
 
-    // Ensure REG_ZERO and REG_ONE were not changed.
+    // Ensure RegId::ZERO and RegId::ONE were not changed.
     // While not a perfect guarantee against the opcode writing a value
     // to an invalid register, this increases the likelihood of detecting
     // erroneous register access. This is not a comprehensive set of all possible
     // writeable violations but more can be added.
-    if vm.registers[REG_ZERO] != 0 {
+    if vm.registers[RegId::ZERO] != 0 {
         return TestResult::error("reserved register was modified!");
     }
-    if vm.registers[REG_ONE] != 1 {
+    if vm.registers[RegId::ONE] != 1 {
         return TestResult::error("reserved register was modified!");
     }
 

@@ -4,7 +4,7 @@ use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{PanicReason, RegisterId, Word};
+use fuel_asm::{PanicReason, RegisterId, Word, RegId};
 use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
@@ -115,8 +115,8 @@ where
             destination,
             amount,
             asset_id,
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);
@@ -172,8 +172,8 @@ where
             to,
             amount,
             asset_id,
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);

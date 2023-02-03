@@ -1,3 +1,4 @@
+use fuel_asm::RegId;
 use fuel_asm::op;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
@@ -55,12 +56,12 @@ fn backtrace() {
 
     contract_undefined.as_ref().iter().enumerate().for_each(|(i, b)| {
         function_call.push(op::movi(0x10, *b as Immediate18));
-        function_call.push(op::sb(REG_HP, 0x10, 1 + i as Immediate12));
+        function_call.push(op::sb(RegId::HP, 0x10, 1 + i as Immediate12));
     });
 
-    function_call.push(op::addi(0x10, REG_HP, 1));
-    function_call.push(op::call(0x10, REG_ZERO, 0x10, REG_CGAS));
-    function_call.push(op::ret(REG_ONE));
+    function_call.push(op::addi(0x10, RegId::HP, 1));
+    function_call.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
+    function_call.push(op::ret(RegId::ONE));
 
     let salt: Salt = rng.gen();
     let program: Witness = function_call.into_iter().collect::<Vec<u8>>().into();
@@ -97,12 +98,12 @@ fn backtrace() {
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
         script.push(op::movi(0x10, *b as Immediate18));
-        script.push(op::sb(REG_HP, 0x10, 1 + i as Immediate12));
+        script.push(op::sb(RegId::HP, 0x10, 1 + i as Immediate12));
     });
 
-    script.push(op::addi(0x10, REG_HP, 1));
-    script.push(op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS));
-    script.push(op::ret(REG_ONE));
+    script.push(op::addi(0x10, RegId::HP, 1));
+    script.push(op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS));
+    script.push(op::ret(RegId::ONE));
 
     let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_undefined);
     let output_undefined = Output::contract(0, rng.gen(), rng.gen());

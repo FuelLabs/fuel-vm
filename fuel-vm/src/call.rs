@@ -1,12 +1,11 @@
 //! Inter-contract call supporting structures
 
-use crate::consts::*;
-
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
+use crate::consts::*;
 use crate::{arith::checked_add_usize, consts::WORD_SIZE};
 use std::io::{self, Write};
 
@@ -186,7 +185,7 @@ impl CallFrame {
 
     /// Gas context prior to the called execution.
     pub fn context_gas(&self) -> Word {
-        self.registers[REG_CGAS]
+        self.registers[RegId::CGAS]
     }
 
     /// Asset ID of forwarded coins.
@@ -196,12 +195,12 @@ impl CallFrame {
 
     /// Set the value of the context gas for this call frame.
     pub fn set_context_gas(&mut self) -> &mut Word {
-        &mut self.registers[REG_CGAS]
+        &mut self.registers[RegId::CGAS]
     }
 
     /// Set the value of the global gas for this call frame.
     pub fn set_global_gas(&mut self) -> &mut Word {
-        &mut self.registers[REG_GGAS]
+        &mut self.registers[RegId::GGAS]
     }
 }
 

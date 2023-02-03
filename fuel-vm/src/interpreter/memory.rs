@@ -2,7 +2,7 @@ use super::{ExecutableTransaction, Interpreter};
 use crate::error::RuntimeError;
 use crate::{consts::*, context::Context};
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
 use std::{ops, ptr};
@@ -108,7 +108,7 @@ impl MemoryRange {
     {
         use ops::Bound::*;
 
-        let heap = vm.registers()[REG_HP].saturating_add(1);
+        let heap = vm.registers()[RegId::HP].saturating_add(1);
 
         self.start = match self.start {
             Included(start) => Included(heap.saturating_add(start)),
@@ -233,12 +233,12 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (result, overflow) = f(self.registers[REG_SP], v);
+        let (result, overflow) = f(self.registers[RegId::SP], v);
 
-        if overflow || result > self.registers[REG_HP] {
+        if overflow || result > self.registers[RegId::HP] {
             Err(PanicReason::MemoryOverflow.into())
         } else {
-            self.registers[REG_SP] = result;
+            self.registers[RegId::SP] = result;
 
             self.inc_pc()
         }
@@ -310,12 +310,12 @@ where
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (result, overflow) = self.registers[REG_HP].overflowing_sub(a);
+        let (result, overflow) = self.registers[RegId::HP].overflowing_sub(a);
 
-        if overflow || result < self.registers[REG_SP] {
+        if overflow || result < self.registers[RegId::SP] {
             Err(PanicReason::MemoryOverflow.into())
         } else {
-            self.registers[REG_HP] = result;
+            self.registers[RegId::HP] = result;
 
             self.inc_pc()
         }
@@ -398,10 +398,10 @@ pub struct OwnershipRegisters {
 impl OwnershipRegisters {
     pub(crate) fn new<S, Tx>(vm: &Interpreter<S, Tx>) -> Self {
         OwnershipRegisters {
-            sp: vm.registers[REG_SP],
-            ssp: vm.registers[REG_SSP],
-            hp: vm.registers[REG_HP],
-            prev_hp: vm.frames.last().map(|frame| frame.registers()[REG_HP]).unwrap_or(0),
+            sp: vm.registers[RegId::SP],
+            ssp: vm.registers[RegId::SSP],
+            hp: vm.registers[RegId::HP],
+            prev_hp: vm.frames.last().map(|frame| frame.registers()[RegId::HP]).unwrap_or(0),
             context: vm.context.clone(),
         }
     }
@@ -522,29 +522,29 @@ mod tests {
         let alloc = 1024;
 
         // r[0x10] := 1024
-        vm.instruction(op::addi(0x10, REG_ZERO, alloc).into()).unwrap();
+        vm.instruction(op::addi(0x10, RegId::ZERO, alloc).into()).unwrap();
         vm.instruction(op::aloc(0x10).into()).unwrap();
 
         // r[0x20] := 128
         vm.instruction(op::addi(0x20, 0x20, 128).into()).unwrap();
 
         for i in 0..alloc {
-            vm.instruction(op::addi(0x21, REG_ZERO, i).into()).unwrap();
-            vm.instruction(op::sb(REG_HP, 0x21, (i + 1) as Immediate12).into())
+            vm.instruction(op::addi(0x21, RegId::ZERO, i).into()).unwrap();
+            vm.instruction(op::sb(RegId::HP, 0x21, (i + 1) as Immediate12).into())
                 .unwrap();
         }
 
         // r[0x23] := m[$hp, 0x20] == m[0x12, 0x20]
-        vm.instruction(op::meq(0x23, REG_HP, 0x12, 0x20).into()).unwrap();
+        vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20).into()).unwrap();
 
         assert_eq!(0, vm.registers()[0x23]);
 
         // r[0x12] := $hp + r[0x20]
-        vm.instruction(op::add(0x12, REG_HP, 0x20).into()).unwrap();
-        vm.instruction(op::add(0x12, REG_ONE, 0x12).into()).unwrap();
+        vm.instruction(op::add(0x12, RegId::HP, 0x20).into()).unwrap();
+        vm.instruction(op::add(0x12, RegId::ONE, 0x12).into()).unwrap();
 
         // Test ownership
-        vm.instruction(op::add(0x30, REG_HP, REG_ONE).into()).unwrap();
+        vm.instruction(op::add(0x30, RegId::HP, RegId::ONE).into()).unwrap();
         vm.instruction(op::mcp(0x30, 0x12, 0x20).into()).unwrap();
 
         // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
@@ -553,14 +553,14 @@ mod tests {
         assert_eq!(1, vm.registers()[0x23]);
 
         // Assert ownership
-        vm.instruction(op::subi(0x24, REG_HP, 1).into()).unwrap();
+        vm.instruction(op::subi(0x24, RegId::HP, 1).into()).unwrap();
         let ownership_violated = vm.instruction(op::mcp(0x24, 0x12, 0x20).into());
 
         assert!(ownership_violated.is_err());
 
         // Assert no panic on overlapping
         vm.instruction(op::subi(0x25, 0x12, 1).into()).unwrap();
-        let overlapping = vm.instruction(op::mcp(REG_HP, 0x25, 0x20).into());
+        let overlapping = vm.instruction(op::mcp(RegId::HP, 0x25, 0x20).into());
 
         assert!(overlapping.is_err());
     }
@@ -575,17 +575,17 @@ mod tests {
         vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
         let bytes = 1024;
-        vm.instruction(op::addi(0x10, REG_ZERO, bytes as Immediate12).into())
+        vm.instruction(op::addi(0x10, RegId::ZERO, bytes as Immediate12).into())
             .unwrap();
         vm.instruction(op::aloc(0x10).into()).unwrap();
 
-        let m = MemoryRange::new(vm.registers()[REG_HP], bytes);
+        let m = MemoryRange::new(vm.registers()[RegId::HP], bytes);
         assert!(!vm.has_ownership_range(&m));
 
-        let m = MemoryRange::new(vm.registers()[REG_HP] + 1, bytes);
+        let m = MemoryRange::new(vm.registers()[RegId::HP] + 1, bytes);
         assert!(vm.has_ownership_range(&m));
 
-        let m = MemoryRange::new(vm.registers()[REG_HP] + 1, bytes + 1);
+        let m = MemoryRange::new(vm.registers()[RegId::HP] + 1, bytes + 1);
         assert!(!vm.has_ownership_range(&m));
 
         let m = MemoryRange::new(0, bytes).to_heap(&vm);
@@ -601,7 +601,7 @@ mod tests {
 
         vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
 
-        vm.instruction(op::move_(0x10, REG_SP).into()).unwrap();
+        vm.instruction(op::move_(0x10, RegId::SP).into()).unwrap();
         vm.instruction(op::cfei(2).into()).unwrap();
 
         // Assert allocated stack is writable

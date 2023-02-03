@@ -1,15 +1,14 @@
 use super::{ExecutableTransaction, Interpreter};
-use crate::consts::*;
 use crate::error::RuntimeError;
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    /// Stores the overflowed wrapped value into REG_OF
+    /// Stores the overflowed wrapped value into RegId::OF
     pub(crate) fn alu_capture_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
     where
         F: FnOnce(B, C) -> (u128, bool),
@@ -23,8 +22,8 @@ where
         }
 
         // set the OF register to high bits of the u128 result
-        self.registers[REG_OF] = (result >> 64) as u64;
-        self.registers[REG_ERR] = 0;
+        self.registers[RegId::OF] = (result >> 64) as u64;
+        self.registers[RegId::ERR] = 0;
 
         // set the return value to the low bits of the u128 result
         self.registers[ra] = (result & Word::MAX as u128) as u64;
@@ -32,7 +31,7 @@ where
         self.inc_pc()
     }
 
-    /// Set REG_OF to true and zero the result register if overflow occurred.
+    /// Set RegId::OF to true and zero the result register if overflow occurred.
     pub(crate) fn alu_boolean_overflow<F, B, C>(&mut self, ra: RegisterId, f: F, b: B, c: C) -> Result<(), RuntimeError>
     where
         F: FnOnce(B, C) -> (Word, bool),
@@ -46,8 +45,8 @@ where
         }
 
         // set the OF register to 1 if an overflow occurred
-        self.registers[REG_OF] = overflow as Word;
-        self.registers[REG_ERR] = 0;
+        self.registers[RegId::OF] = overflow as Word;
+        self.registers[RegId::ERR] = 0;
 
         self.registers[ra] = if overflow { 0 } else { result };
 
@@ -64,8 +63,8 @@ where
             return Err(PanicReason::ErrorFlag.into());
         }
 
-        self.registers[REG_OF] = 0;
-        self.registers[REG_ERR] = err as Word;
+        self.registers[RegId::OF] = 0;
+        self.registers[RegId::ERR] = err as Word;
 
         self.registers[ra] = if err { 0 } else { f(b, c) };
 
@@ -75,8 +74,8 @@ where
     pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 
-        self.registers[REG_OF] = 0;
-        self.registers[REG_ERR] = 0;
+        self.registers[RegId::OF] = 0;
+        self.registers[RegId::ERR] = 0;
 
         self.registers[ra] = b;
 
@@ -84,8 +83,8 @@ where
     }
 
     pub(crate) fn alu_clear(&mut self) -> Result<(), RuntimeError> {
-        self.registers[REG_OF] = 0;
-        self.registers[REG_ERR] = 0;
+        self.registers[RegId::OF] = 0;
+        self.registers[RegId::ERR] = 0;
 
         self.inc_pc()
     }

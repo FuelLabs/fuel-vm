@@ -1,6 +1,6 @@
+use fuel_asm::RegId;
 use fuel_asm::op;
 use fuel_tx::field::ScriptData;
-use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use fuel_vm::script_with_data_offset;
 use fuel_vm::util::test_helpers::TestBuilder;
@@ -76,15 +76,15 @@ fn mint_burn() {
 
     let salt: Salt = rng.gen();
     let program: Witness = [
-        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
-        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
-        op::jnei(0x10, REG_ZERO, 7),
+        op::jnei(0x10, RegId::ZERO, 7),
         op::mint(0x11),
         op::ji(8),
         op::burn(0x11),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ]
     .into_iter()
     .collect::<Vec<u8>>()
@@ -120,8 +120,8 @@ fn mint_burn() {
 
     let mut script_ops = vec![
         op::movi(0x10, 0),
-        op::call(0x10, REG_ZERO, 0x10, REG_CGAS),
-        op::ret(REG_ONE),
+        op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+        op::ret(RegId::ONE),
     ];
 
     let script: Vec<u8> = script_ops.clone().into_iter().collect();
@@ -167,8 +167,8 @@ fn mint_burn() {
         op::move_(0x11, 0x10),
         op::addi(0x12, 0x10, AssetId::LEN as Immediate12),
         op::bal(0x10, 0x11, 0x12),
-        op::log(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
-        op::ret(REG_ONE),
+        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
     ];
 
     let tx_check_balance = Transaction::script(
@@ -299,7 +299,7 @@ fn call_increases_contract_asset_balance_and_balance_register() {
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context
-        .setup_contract(vec![op::ret(REG_BAL)], None, None)
+        .setup_contract(vec![op::ret(RegId::BAL)], None, None)
         .contract_id;
 
     let (script_ops, offset) = script_with_data_offset!(
@@ -312,8 +312,8 @@ fn call_increases_contract_asset_balance_and_balance_register() {
             // load the asset id to use to 0x13
             op::movi(0x12, data_offset),
             // call the transfer contract
-            op::call(0x10, 0x11, 0x12, REG_CGAS),
-            op::ret(REG_ONE),
+            op::call(0x10, 0x11, 0x12, RegId::CGAS),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -366,7 +366,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
         .setup_contract(
             vec![
                 // log the balance register
-                op::ret(REG_BAL),
+                op::ret(RegId::BAL),
             ],
             None,
             None,
@@ -375,15 +375,15 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
 
     let program = vec![
         // load amount of tokens
-        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id
-        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load contract id
         op::addi(0x12, 0x11, 32 as Immediate12),
-        op::call(0x12, 0x10, 0x11, REG_CGAS),
-        op::ret(REG_BAL),
+        op::call(0x12, 0x10, 0x11, RegId::CGAS),
+        op::ret(RegId::BAL),
     ];
     let sender_contract_id = test_context
         .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
@@ -395,8 +395,8 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
             // load call data to 0x10
             op::movi(0x10, data_offset + 64),
             // call the transfer contract
-            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            op::ret(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -460,15 +460,15 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
 
     let program = vec![
         // load amount of tokens
-        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id
-        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load contract id
         op::addi(0x12, 0x11, 32 as Immediate12),
         op::tr(0x12, 0x10, 0x11),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ];
     let sender_contract_id = test_context
         .setup_contract(program, Some((asset_id, initial_internal_balance)), None)
@@ -480,8 +480,8 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
             // load call data to 0x10
             op::movi(0x10, data_offset + 64),
             // call the transfer contract
-            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            op::ret(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -539,15 +539,15 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
 
     let program = vec![
         // load amount of tokens
-        op::addi(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         // load asset id
-        op::addi(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
         // load contract id
         op::addi(0x12, 0x11, 32 as Immediate12),
         op::tr(0x12, 0x10, 0x11),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ];
 
     let sender_contract_id = test_context
@@ -560,8 +560,8 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
             // load call data to 0x10
             op::movi(0x10, data_offset + 64),
             // call the transfer contract
-            op::call(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            op::ret(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );

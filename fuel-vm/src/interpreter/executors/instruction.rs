@@ -4,7 +4,7 @@ use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, PanicReason, RawInstruction};
+use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
 use fuel_types::{bytes, Word};
 
 use std::ops::Div;
@@ -17,7 +17,7 @@ where
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
-        let [hi, lo] = self.memory[self.registers[REG_PC] as usize..]
+        let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
             .map(|b| unsafe { bytes::from_slice_unchecked(b) })
@@ -26,14 +26,14 @@ where
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[REG_PC] + Instruction::SIZE as Word;
+        let pc = self.registers[RegId::PC] + Instruction::SIZE as Word;
         let state = self.instruction(hi)?;
 
         // TODO optimize
         // Should execute `lo` only if there is no rupture in the flow - that means
         // either a breakpoint or some instruction that would skip `lo` such as
         // `RET`, `JI` or `CALL`
-        if self.registers[REG_PC] == pc && state.should_continue() {
+        if self.registers[RegId::PC] == pc && state.should_continue() {
             self.instruction(lo)
         } else {
             Ok(state)

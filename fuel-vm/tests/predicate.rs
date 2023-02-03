@@ -1,8 +1,8 @@
-use fuel_asm::{op, GMArgs, GTFArgs, Instruction};
+use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
 use fuel_tx::TransactionBuilder;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::{consts::*, prelude::*};
+use fuel_vm::{prelude::*};
 
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
@@ -80,7 +80,7 @@ fn predicate() {
         op::addi(0x11, 0x10, 0x12),
         op::movi(0x12, 0x08),
         op::aloc(0x12),
-        op::addi(0x12, REG_HP, 0x01),
+        op::addi(0x12, RegId::HP, 0x01),
         op::sw(0x12, 0x11, 0),
         op::movi(0x10, 0x08),
         op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
@@ -157,7 +157,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
 #[test]
 fn predicate_gas_metering() {
     // This just succeeds
-    assert!(execute_gas_metered_predicates(vec![vec![op::ret(REG_ONE)]]).is_ok());
+    assert!(execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]]).is_ok());
 
     // This runs out of gas
     assert!(execute_gas_metered_predicates(vec![vec![
@@ -167,14 +167,14 @@ fn predicate_gas_metering() {
 
     // Multiple Predicate Success
     assert!(execute_gas_metered_predicates(vec![
-        vec![op::ret(REG_ONE)],
-        vec![op::movi(0x10, 0x11), op::movi(0x10, 0x11), op::ret(REG_ONE)],
+        vec![op::ret(RegId::ONE)],
+        vec![op::movi(0x10, 0x11), op::movi(0x10, 0x11), op::ret(RegId::ONE)],
     ])
     .is_ok());
 
     // Running predicate gas used is combined properly
     let gas_used_by: Vec<_> = (0..4)
-        .map(|n| execute_gas_metered_predicates(vec![vec![op::ret(REG_ONE)]; n]).unwrap())
+        .map(|n| execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]; n]).unwrap())
         .collect();
     assert_eq!(gas_used_by[0], 0);
     assert_ne!(gas_used_by[1], 0);
@@ -188,7 +188,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::ret(REG_ONE)].into_iter().collect::<Vec<u8>>();
+    let script = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
     let script_data = vec![];
     let params = ConsensusParameters::default();
 
@@ -210,7 +210,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ]
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
@@ -250,7 +250,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(REG_ONE)]
+    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()
         .collect::<Vec<u8>>();
     let script_data = vec![];
@@ -277,7 +277,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.gas_limit(gas_without_predicate);
 
-    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(REG_ONE)]
+    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
@@ -316,7 +316,7 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(REG_ONE)]
+    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()
         .collect::<Vec<u8>>();
     let script_data = vec![];
@@ -348,7 +348,7 @@ fn gas_used_by_predicates_more_than_limit() {
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
-        op::ret(REG_ONE),
+        op::ret(RegId::ONE),
     ]
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())

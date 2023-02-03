@@ -1,6 +1,7 @@
 //! Definitions and implementations for each unique instruction type, one for each
 //! unique `Opcode` variant.
-use super::{GMArgs, GTFArgs, Imm12, Imm18, Instruction, RegId};
+
+use super::{CheckRegId, GMArgs, GTFArgs, Imm12, Imm18, Instruction, RegId};
 
 // Here we re-export the generated instruction types and constructors, but extend them with
 // `gm_args` and `gtf_args` short-hand constructors below to take their `GMArgs` and `GTFArgs`
@@ -23,11 +24,11 @@ impl GTF {
 }
 
 /// Construct a `GM` instruction from its arguments.
-pub fn gm_args(ra: u8, args: GMArgs) -> Instruction {
-    Instruction::GM(GM::from_args(RegId::from(ra), args))
+pub fn gm_args<A: CheckRegId>(ra: A, args: GMArgs) -> Instruction {
+    Instruction::GM(GM::from_args(ra.check(), args))
 }
 
 /// Construct a `GM` instruction from its arguments.
-pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> Instruction {
-    Instruction::GTF(GTF::from_args(RegId::from(ra), RegId::from(rb), args))
+pub fn gtf_args<A: CheckRegId, B: CheckRegId>(ra: A, rb: B, args: GTFArgs) -> Instruction {
+    Instruction::GTF(GTF::from_args(ra.check(), rb.check(), args))
 }

@@ -41,7 +41,7 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, InterpreterError> {
+    pub fn instruction<R: Into<RawInstruction> + Copy>(&mut self, raw: R) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
             let debug = self.eval_debugger_state();
@@ -50,8 +50,8 @@ where
             }
         }
 
-        self._instruction(raw)
-            .map_err(|e| InterpreterError::from_runtime(e, raw))
+        self._instruction(raw.into())
+            .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
     }
 
     #[tracing::instrument(name = "instruction", skip(self))]

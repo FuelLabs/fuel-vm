@@ -1,5 +1,5 @@
-use fuel_asm::RegId;
 use fuel_asm::op;
+use fuel_asm::RegId;
 use fuel_tx::TransactionBuilder;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -21,9 +21,9 @@ fn profile_gas() {
     let case_out_of_gas = 1_000;
     let mut rounds = [2, 12, 22, case_out_of_gas].into_iter().map(|count| {
         let script_code = vec![
-            op::xor(reg_a, reg_a, reg_a), // r[a] := 0
-            op::ori(reg_a, reg_a, count), // r[a] := count
-            op::subi(reg_a, reg_a, 1),    // r[a] -= count  <-|
+            op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
+            op::ori(reg_a, reg_a, count),    // r[a] := count
+            op::subi(reg_a, reg_a, 1),       // r[a] -= count  <-|
             op::jnei(RegId::ZERO, reg_a, 2), // Jump to ---------|
             op::ret(RegId::ONE),
         ];

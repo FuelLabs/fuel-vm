@@ -2,7 +2,7 @@ use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
 use fuel_tx::TransactionBuilder;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::{prelude::*};
+use fuel_vm::prelude::*;
 
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;

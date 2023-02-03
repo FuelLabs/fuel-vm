@@ -4,7 +4,7 @@ use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{PanicReason, RegisterId, Word, RegId};
+use fuel_asm::{PanicReason, RegId, RegisterId, Word};
 use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 

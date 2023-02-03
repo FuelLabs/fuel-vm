@@ -1,5 +1,5 @@
-use fuel_asm::RegId;
 use fuel_asm::op;
+use fuel_asm::RegId;
 use fuel_vm::prelude::*;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {

@@ -209,7 +209,8 @@ where
         self.registers[RegId::SP] += len;
         self.registers[RegId::SSP] = self.registers[RegId::SP];
 
-        self.memory[self.registers[RegId::FP] as usize..self.registers[RegId::SP] as usize].copy_from_slice(stack.as_slice());
+        self.memory[self.registers[RegId::FP] as usize..self.registers[RegId::SP] as usize]
+            .copy_from_slice(stack.as_slice());
 
         self.registers[RegId::BAL] = b;
         self.registers[RegId::PC] = self.registers[RegId::FP].saturating_add(CallFrame::code_offset() as Word);

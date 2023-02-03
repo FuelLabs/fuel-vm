@@ -25,9 +25,9 @@ fn code_coverage() {
 
     let script_code = vec![
         op::jnei(RegId::ZERO, RegId::ONE, 2),  // Skip next
-        op::xor(reg_a, reg_a, reg_a),    // Skipped
+        op::xor(reg_a, reg_a, reg_a),          // Skipped
         op::jnei(RegId::ZERO, RegId::ZERO, 2), // Do not skip
-        op::xor(reg_a, reg_a, reg_a),    // Executed
+        op::xor(reg_a, reg_a, reg_a),          // Executed
         op::ret(RegId::ONE),
     ];
 

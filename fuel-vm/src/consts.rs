@@ -4,7 +4,6 @@ use fuel_types::{Bytes32, Word};
 
 use std::mem;
 
-
 /// Register count for checking constraints
 pub const VM_REGISTER_COUNT: usize = 64;
 

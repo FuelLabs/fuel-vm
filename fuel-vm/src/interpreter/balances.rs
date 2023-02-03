@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 
-use fuel_asm::{Word, RegId};
+use fuel_asm::{RegId, Word};
 use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;

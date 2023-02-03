@@ -1,5 +1,5 @@
-use fuel_asm::RegId;
 use fuel_asm::op;
+use fuel_asm::RegId;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;

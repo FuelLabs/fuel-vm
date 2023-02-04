@@ -63,7 +63,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
 impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
-    TableType::Key: From<Bytes32> + AsRef<Bytes32> + Clone,
+    TableType::Key: From<Bytes32> + Clone,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn new(storage: StorageType) -> Self {

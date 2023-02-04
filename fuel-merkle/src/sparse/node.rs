@@ -280,11 +280,11 @@ pub enum StorageNodeError<StorageError> {
     DeserializeError(DeserializeError),
 }
 
-impl<TableType, StorageType, K> ParentNodeTrait for StorageNode<'_, TableType, StorageType>
+impl<TableType, StorageType, Key> ParentNodeTrait for StorageNode<'_, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = K, Value = Primitive, OwnedValue = Primitive>,
-    K: AsRef<Bytes32> + From<Bytes32>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
+    TableType::Key: From<Bytes32>,
 {
     type Error = StorageNodeError<StorageType::Error>;
 
@@ -292,15 +292,15 @@ where
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf);
         }
-        let key = self.node.left_child_key();
-        if key == zero_sum() {
+        let key = *self.node.left_child_key();
+        if key == *zero_sum() {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
         let primitive = self
             .storage
-            .get(&(*key).into())
+            .get(&key.into())
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(*key))?;
+            .ok_or(ChildError::ChildNotFound(key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -312,15 +312,15 @@ where
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf);
         }
-        let key = self.node.right_child_key();
-        if key == zero_sum() {
+        let key = *self.node.right_child_key();
+        if key == *zero_sum() {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
         let primitive = self
             .storage
-            .get(&(*key).into())
+            .get(&key.into())
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(*key))?;
+            .ok_or(ChildError::ChildNotFound(key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -503,17 +503,18 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
+    use crate::common::Bytes32;
     use crate::{
-        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap, WBytes32},
+        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap, Wrapped},
         sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
         storage::{Mappable, StorageMutate},
     };
 
-    pub struct TestTable;
+    struct TestTable;
 
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
-        type OwnedKey = WBytes32;
+        type OwnedKey = Wrapped<Bytes32>;
         type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
     }

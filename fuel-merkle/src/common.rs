@@ -29,25 +29,39 @@ pub type Bytes16 = [u8; 16];
 pub type Bytes32 = [u8; 32];
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct WBytes32(Bytes32);
+pub(crate) struct Wrapped<T> {
+    value: T,
+}
 
-impl AsRef<Bytes32> for WBytes32 {
+impl AsRef<Bytes32> for Wrapped<Bytes32> {
     fn as_ref(&self) -> &Bytes32 {
-        &self.0
+        &self.value
     }
 }
 
-impl AsRef<[u8]> for WBytes32 {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
+impl AsRef<Bytes32> for Wrapped<&Bytes32> {
+    fn as_ref(&self) -> &Bytes32 {
+        self.value
     }
 }
 
-impl From<Bytes32> for WBytes32 {
+impl From<Bytes32> for Wrapped<Bytes32> {
     fn from(value: Bytes32) -> Self {
-        Self(value)
+        Wrapped { value }
     }
 }
+
+impl<'a> From<&'a Bytes32> for Wrapped<Bytes32> {
+    fn from(value: &Bytes32) -> Self {
+        Wrapped { value: *value }
+    }
+}
+
+// impl<'a> From<&'a Bytes32> for &Wrapped<Bytes32> {
+//     fn from(value: &Bytes32) -> Self {
+//         Wrapped { value: *value }
+//     }
+// }
 
 use alloc::vec::Vec;
 

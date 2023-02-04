@@ -1,5 +1,5 @@
 use crate::{
-    common::{Bytes32, StorageMap, Wrapped},
+    common::{Bytes32, StorageMap, WrappedBytes32},
     sparse::{self, Primitive},
     storage::Mappable,
 };
@@ -11,7 +11,7 @@ pub(crate) struct NodesTable;
 
 impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
-    type OwnedKey = Wrapped<Bytes32>;
+    type OwnedKey = WrappedBytes32;
     type Value = Self::OwnedValue;
     type OwnedValue = Primitive;
 }

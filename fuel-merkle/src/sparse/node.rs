@@ -503,9 +503,8 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
-    use crate::common::Bytes32;
     use crate::{
-        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap, Wrapped},
+        common::{error::DeserializeError, ChildError, ParentNode, PrefixError, StorageMap, WrappedBytes32},
         sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
         storage::{Mappable, StorageMutate},
     };
@@ -514,7 +513,7 @@ mod test_storage_node {
 
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
-        type OwnedKey = Wrapped<Bytes32>;
+        type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
     }

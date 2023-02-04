@@ -292,9 +292,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::common::Bytes32;
     use crate::{
-        common::{StorageMap, Wrapped},
+        common::{StorageMap, WrappedBytes32},
         sparse::{hash::sum, MerkleTree, MerkleTreeError, Primitive},
     };
     use fuel_storage::Mappable;
@@ -305,7 +304,7 @@ mod test {
 
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
-        type OwnedKey = Wrapped<Bytes32>;
+        type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
     }

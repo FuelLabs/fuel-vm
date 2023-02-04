@@ -39,29 +39,11 @@ impl AsRef<Bytes32> for Wrapped<Bytes32> {
     }
 }
 
-impl AsRef<Bytes32> for Wrapped<&Bytes32> {
-    fn as_ref(&self) -> &Bytes32 {
-        self.value
-    }
-}
-
 impl From<Bytes32> for Wrapped<Bytes32> {
     fn from(value: Bytes32) -> Self {
         Wrapped { value }
     }
 }
-
-impl<'a> From<&'a Bytes32> for Wrapped<Bytes32> {
-    fn from(value: &Bytes32) -> Self {
-        Wrapped { value: *value }
-    }
-}
-
-// impl<'a> From<&'a Bytes32> for &Wrapped<Bytes32> {
-//     fn from(value: &Bytes32) -> Self {
-//         Wrapped { value: *value }
-//     }
-// }
 
 use alloc::vec::Vec;
 

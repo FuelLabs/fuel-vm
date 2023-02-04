@@ -31,11 +31,11 @@ impl MerkleTree {
     }
 
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) {
-        let _ = self.tree.update(&key.into(), data);
+        let _ = self.tree.update(&(*key).into(), data);
     }
 
     pub fn delete(&mut self, key: &Bytes32) {
-        let _ = self.tree.delete(&key.into());
+        let _ = self.tree.delete(&(*key).into());
     }
 
     pub fn root(&self) -> Bytes32 {

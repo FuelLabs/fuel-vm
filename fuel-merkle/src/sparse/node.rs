@@ -355,10 +355,12 @@ where
 
 #[cfg(test)]
 mod test_node {
-    use crate::sparse::hash::sum_all;
     use crate::{
         common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
-        sparse::{hash::sum, zero_sum, Node, Primitive},
+        sparse::{
+            hash::{sum, sum_all},
+            zero_sum, Node, Primitive,
+        },
     };
 
     fn leaf_hash(key: &Bytes32, data: &[u8]) -> Bytes32 {

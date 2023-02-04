@@ -329,10 +329,10 @@ where
     }
 }
 
-impl<TableType, StorageType, K> fmt::Debug for StorageNode<'_, TableType, StorageType>
+impl<TableType, StorageType, Key> fmt::Debug for StorageNode<'_, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = K, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {

@@ -233,7 +233,7 @@ where
         side_nodes: &[Node],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
-            self.storage.remove(&(node.hash().into()))?;
+            self.storage.remove(&node.hash().into())?;
         }
 
         let path = requested_leaf_node.leaf_key();

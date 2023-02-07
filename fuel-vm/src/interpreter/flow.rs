@@ -7,7 +7,7 @@ use crate::interpreter::PanicContext;
 use crate::state::ProgramState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, InstructionResult, RegisterId};
+use fuel_asm::{Instruction, InstructionResult, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{PanicReason, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -20,14 +20,14 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
-        let j = self.registers[REG_IS].saturating_add(j.saturating_mul(Instruction::LEN as Word));
+        let j = self.registers[RegId::IS].saturating_add(j.saturating_mul(Instruction::SIZE as Word));
 
         if j > VM_MAX_RAM - 1 {
             Err(PanicReason::MemoryOverflow.into())
-        } else if self.is_predicate() && j <= self.registers[REG_PC] {
+        } else if self.is_predicate() && j <= self.registers[RegId::PC] {
             Err(PanicReason::IllegalJump.into())
         } else {
-            self.registers[REG_PC] = j;
+            self.registers[RegId::PC] = j;
 
             Ok(())
         }
@@ -42,7 +42,7 @@ where
     }
 
     pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
-        if a != self.registers[REG_ZERO] {
+        if a != self.registers[RegId::ZERO] {
             self.jump(to)
         } else {
             self.inc_pc()
@@ -51,21 +51,21 @@ where
 
     pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
         if let Some(frame) = self.frames.pop() {
-            self.registers[REG_CGAS] = arith::add_word(self.registers[REG_CGAS], frame.context_gas())?;
+            self.registers[RegId::CGAS] = arith::add_word(self.registers[RegId::CGAS], frame.context_gas())?;
 
-            let cgas = self.registers[REG_CGAS];
-            let ggas = self.registers[REG_GGAS];
-            let ret = self.registers[REG_RET];
-            let retl = self.registers[REG_RETL];
+            let cgas = self.registers[RegId::CGAS];
+            let ggas = self.registers[RegId::GGAS];
+            let ret = self.registers[RegId::RET];
+            let retl = self.registers[RegId::RETL];
 
             self.registers.copy_from_slice(frame.registers());
 
-            self.registers[REG_CGAS] = cgas;
-            self.registers[REG_GGAS] = ggas;
-            self.registers[REG_RET] = ret;
-            self.registers[REG_RETL] = retl;
+            self.registers[RegId::CGAS] = cgas;
+            self.registers[RegId::GGAS] = ggas;
+            self.registers[RegId::RET] = ret;
+            self.registers[RegId::RETL] = retl;
 
-            self.set_frame_pointer(self.registers[REG_FP]);
+            self.set_frame_pointer(self.registers[RegId::FP]);
         }
 
         self.append_receipt(receipt);
@@ -77,12 +77,12 @@ where
         let receipt = Receipt::ret(
             self.internal_contract_or_default(),
             a,
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
-        self.registers[REG_RET] = a;
-        self.registers[REG_RETL] = 0;
+        self.registers[RegId::RET] = a;
+        self.registers[RegId::RETL] = 0;
 
         // TODO if ret instruction is in memory boundary, inc_pc shouldn't fail
         self.return_from_context(receipt)
@@ -102,12 +102,12 @@ where
             b,
             digest,
             self.memory[a as usize..ab].to_vec(),
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
-        self.registers[REG_RET] = a;
-        self.registers[REG_RETL] = b;
+        self.registers[RegId::RET] = a;
+        self.registers[RegId::RETL] = b;
 
         self.return_from_context(receipt)?;
 
@@ -118,16 +118,16 @@ where
         let receipt = Receipt::revert(
             self.internal_contract_or_default(),
             a,
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);
     }
 
     pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
-        let pc = self.registers[REG_PC];
-        let is = self.registers[REG_IS];
+        let pc = self.registers[RegId::PC];
+        let is = self.registers[RegId::IS];
 
         let mut receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
@@ -186,30 +186,30 @@ where
         // credit contract asset_id balance
         self.balance_increase(call.to(), &asset_id, b)?;
 
-        let forward_gas_amount = cmp::min(self.registers[REG_CGAS], d);
+        let forward_gas_amount = cmp::min(self.registers[RegId::CGAS], d);
 
         // subtract gas
-        self.registers[REG_CGAS] = arith::sub_word(self.registers[REG_CGAS], forward_gas_amount)?;
+        self.registers[RegId::CGAS] = arith::sub_word(self.registers[RegId::CGAS], forward_gas_amount)?;
 
-        *frame.set_context_gas() = self.registers[REG_CGAS];
-        *frame.set_global_gas() = self.registers[REG_GGAS];
+        *frame.set_context_gas() = self.registers[RegId::CGAS];
+        *frame.set_global_gas() = self.registers[RegId::GGAS];
 
         let frame_bytes = frame.to_bytes();
         let len = arith::add_word(frame_bytes.len() as Word, code_size)?;
 
-        if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
+        if len > self.registers[RegId::HP] || self.registers[RegId::SP] > self.registers[RegId::HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
         let id = self.internal_contract_or_default();
 
-        self.set_frame_pointer(self.registers[REG_SP]);
+        self.set_frame_pointer(self.registers[RegId::SP]);
 
-        self.registers[REG_SP] += len;
-        self.registers[REG_SSP] = self.registers[REG_SP];
+        self.registers[RegId::SP] += len;
+        self.registers[RegId::SSP] = self.registers[RegId::SP];
 
-        let fpx = arith::add_word(self.registers[REG_FP], frame_bytes.len() as Word)?;
-        self.memory[self.registers[REG_FP] as usize..fpx as usize].copy_from_slice(frame_bytes.as_slice());
+        let fpx = arith::add_word(self.registers[RegId::FP], frame_bytes.len() as Word)?;
+        self.memory[self.registers[RegId::FP] as usize..fpx as usize].copy_from_slice(frame_bytes.as_slice());
 
         let code_range = (fpx as usize)..arith::add_usize(fpx as usize, code_size as usize);
         let bytes_read = self
@@ -221,10 +221,10 @@ where
             return Err(PanicReason::ContractNotFound.into());
         }
 
-        self.registers[REG_BAL] = b;
-        self.registers[REG_PC] = fpx;
-        self.registers[REG_IS] = self.registers[REG_PC];
-        self.registers[REG_CGAS] = forward_gas_amount;
+        self.registers[RegId::BAL] = b;
+        self.registers[RegId::PC] = fpx;
+        self.registers[RegId::IS] = self.registers[RegId::PC];
+        self.registers[RegId::CGAS] = forward_gas_amount;
 
         let receipt = Receipt::call(
             id,
@@ -234,8 +234,8 @@ where
             d,
             frame.a(),
             frame.b(),
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);
@@ -246,36 +246,30 @@ where
     }
 
     /// Prepare a call instruction for execution
-    pub fn prepare_call(
-        &mut self,
-        ra: RegisterId,
-        rb: RegisterId,
-        rc: RegisterId,
-        rd: RegisterId,
-    ) -> Result<(), RuntimeError> {
+    pub fn prepare_call(&mut self, ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> Result<(), RuntimeError> {
         const M: &str = "the provided id is not a valid register";
 
         let a = self
             .registers
-            .get(ra)
+            .get(ra.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let b = self
             .registers
-            .get(rb)
+            .get(rb.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let c = self
             .registers
-            .get(rc)
+            .get(rc.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         let d = self
             .registers
-            .get(rd)
+            .get(rd.to_u8() as usize)
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 

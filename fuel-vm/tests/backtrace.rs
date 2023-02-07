@@ -1,3 +1,5 @@
+use fuel_asm::op;
+use fuel_asm::RegId;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -17,12 +19,10 @@ fn backtrace() {
     let gas_costs = GasCosts::default();
 
     #[rustfmt::skip]
-    let function_undefined: Vec<Opcode> = vec![
-        Opcode::Undefined,
-    ];
+    let invalid_instruction_bytecode = vec![0; 4];
 
     let salt: Salt = rng.gen();
-    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+    let program: Witness = invalid_instruction_bytecode.into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
@@ -49,19 +49,19 @@ fn backtrace() {
     client.deploy(tx_deploy);
 
     #[rustfmt::skip]
-    let mut function_call: Vec<Opcode> = vec![
-        Opcode::MOVI(0x10,  (contract_undefined.as_ref().len() + WORD_SIZE * 2) as Immediate18),
-        Opcode::ALOC(0x10),
+    let mut function_call = vec![
+        op::movi(0x10,  (contract_undefined.as_ref().len() + WORD_SIZE * 2) as Immediate18),
+        op::aloc(0x10),
     ];
 
     contract_undefined.as_ref().iter().enumerate().for_each(|(i, b)| {
-        function_call.push(Opcode::MOVI(0x10, *b as Immediate18));
-        function_call.push(Opcode::SB(REG_HP, 0x10, 1 + i as Immediate12));
+        function_call.push(op::movi(0x10, *b as Immediate18));
+        function_call.push(op::sb(RegId::HP, 0x10, 1 + i as Immediate12));
     });
 
-    function_call.push(Opcode::ADDI(0x10, REG_HP, 1));
-    function_call.push(Opcode::CALL(0x10, REG_ZERO, 0x10, REG_CGAS));
-    function_call.push(Opcode::RET(REG_ONE));
+    function_call.push(op::addi(0x10, RegId::HP, 1));
+    function_call.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
+    function_call.push(op::ret(RegId::ONE));
 
     let salt: Salt = rng.gen();
     let program: Witness = function_call.into_iter().collect::<Vec<u8>>().into();
@@ -91,19 +91,19 @@ fn backtrace() {
     client.deploy(tx_deploy);
 
     #[rustfmt::skip]
-    let mut script: Vec<Opcode> = vec![
-        Opcode::MOVI(0x10, (contract_call.as_ref().len() + WORD_SIZE * 2) as Immediate18),
-        Opcode::ALOC(0x10),
+    let mut script = vec![
+        op::movi(0x10, (contract_call.as_ref().len() + WORD_SIZE * 2) as Immediate18),
+        op::aloc(0x10),
     ];
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
-        script.push(Opcode::MOVI(0x10, *b as Immediate18));
-        script.push(Opcode::SB(REG_HP, 0x10, 1 + i as Immediate12));
+        script.push(op::movi(0x10, *b as Immediate18));
+        script.push(op::sb(RegId::HP, 0x10, 1 + i as Immediate12));
     });
 
-    script.push(Opcode::ADDI(0x10, REG_HP, 1));
-    script.push(Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS));
-    script.push(Opcode::RET(REG_ONE));
+    script.push(op::addi(0x10, RegId::HP, 1));
+    script.push(op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS));
+    script.push(op::ret(RegId::ONE));
 
     let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_undefined);
     let output_undefined = Output::contract(0, rng.gen(), rng.gen());

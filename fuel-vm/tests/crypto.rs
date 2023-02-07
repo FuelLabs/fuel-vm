@@ -1,13 +1,13 @@
 use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
+use fuel_asm::{op, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha3::{Digest, Keccak256};
 
-use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
-use fuel_vm::util::test_helpers::check_expected_reason_for_opcodes;
+use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 #[test]
 fn ecrecover() {
@@ -32,16 +32,16 @@ fn ecrecover() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
-        Opcode::ADDI(0x21, 0x20, signature.as_ref().len() as Immediate12),
-        Opcode::ADDI(0x22, 0x21, message.as_ref().len() as Immediate12),
-        Opcode::MOVI(0x10, PublicKey::LEN as Immediate18),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x11, REG_HP, 1),
-        Opcode::ECR(0x11, 0x20, 0x21),
-        Opcode::MEQ(0x12, 0x22, 0x11, 0x10),
-        Opcode::LOG(0x12, 0x00, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::addi(0x11, RegId::HP, 1),
+        op::ecr(0x11, 0x20, 0x21),
+        op::meq(0x12, 0x22, 0x11, 0x10),
+        op::log(0x12, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = signature
@@ -76,16 +76,16 @@ fn ecrecover_error() {
 
     #[rustfmt::skip]
     let script = vec![
-        // Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
-        Opcode::ADDI(0x21, 0x20, signature.as_ref().len() as Immediate12),
-        Opcode::ADDI(0x22, 0x21, message.as_ref().len() as Immediate12),
-        Opcode::MOVI(0x10, PublicKey::LEN as Immediate18),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x11, REG_HP, 1),
-        Opcode::ECR(0x11, 0x20, 0x21),
+        // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::addi(0x11, RegId::HP, 1),
+        op::ecr(0x11, 0x20, 0x21),
     ];
 
-    check_expected_reason_for_opcodes(script, ErrorFlag)
+    check_expected_reason_for_instructions(script, ErrorFlag)
 }
 
 #[test]
@@ -95,14 +95,14 @@ fn ecrecover_a_gt_vmaxram_sub_64() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 63),
-        Opcode::ECR(reg_a, reg_b, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ecr(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -112,14 +112,14 @@ fn ecrecover_b_gt_vmaxram_sub_64() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 63),
-        Opcode::ECR(reg_b, reg_a, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ecr(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
+    check_expected_reason_for_instructions(script, ArithmeticOverflow);
 }
 
 #[test]
@@ -129,14 +129,14 @@ fn ecrecover_c_gt_vmaxram_sub_32() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::SUBI(reg_a, reg_a, 31),
-        Opcode::ECR(reg_b, reg_b, reg_a),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31),
+        op::ecr(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(script, ArithmeticOverflow);
+    check_expected_reason_for_instructions(script, ArithmeticOverflow);
 }
 
 #[test]
@@ -155,16 +155,16 @@ fn sha256() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
-        Opcode::ADDI(0x21, 0x20, message.len() as Immediate12),
-        Opcode::MOVI(0x10, Bytes32::LEN as Immediate18),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x11, REG_HP, 1),
-        Opcode::MOVI(0x12, message.len() as Immediate18),
-        Opcode::S256(0x11, 0x20, 0x12),
-        Opcode::MEQ(0x13, 0x11, 0x21, 0x10),
-        Opcode::LOG(0x13, 0x00, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, message.len() as Immediate12),
+        op::movi(0x10, Bytes32::LEN as Immediate18),
+        op::aloc(0x10),
+        op::addi(0x11, RegId::HP, 1),
+        op::movi(0x12, message.len() as Immediate18),
+        op::s256(0x11, 0x20, 0x12),
+        op::meq(0x13, 0x11, 0x21, 0x10),
+        op::log(0x13, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.as_ref().iter().copied()).collect();
@@ -188,13 +188,13 @@ fn s256_a_gt_vmaxram_sub_32() {
 
     #[rustfmt::skip]
         let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::S256(reg_a, reg_b, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::s256(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -204,13 +204,13 @@ fn s256_c_gt_mem_max() {
 
     #[rustfmt::skip]
         let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::S256(reg_b, reg_b, reg_a),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::s256(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -220,13 +220,13 @@ fn s256_b_gt_vmaxram_sub_c() {
 
     #[rustfmt::skip]
         let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::S256(reg_b, reg_a, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::s256(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -247,16 +247,16 @@ fn keccak256() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::gtf(0x20, 0x00, GTFArgs::ScriptData),
-        Opcode::ADDI(0x21, 0x20, message.len() as Immediate12),
-        Opcode::MOVI(0x10, Bytes32::LEN as Immediate18),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x11, REG_HP, 1),
-        Opcode::MOVI(0x12, message.len() as Immediate18),
-        Opcode::K256(0x11, 0x20, 0x12),
-        Opcode::MEQ(0x13, 0x11, 0x21, 0x10),
-        Opcode::LOG(0x13, 0x00, 0x00, 0x00),
-        Opcode::RET(REG_ONE),
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, message.len() as Immediate12),
+        op::movi(0x10, Bytes32::LEN as Immediate18),
+        op::aloc(0x10),
+        op::addi(0x11, RegId::HP, 1),
+        op::movi(0x12, message.len() as Immediate18),
+        op::k256(0x11, 0x20, 0x12),
+        op::meq(0x13, 0x11, 0x21, 0x10),
+        op::log(0x13, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
     ].into_iter().collect();
 
     let script_data = message.iter().copied().chain(hash.iter().copied()).collect();
@@ -280,13 +280,13 @@ fn k256_a_gt_vmaxram_sub_32() {
 
     #[rustfmt::skip]
         let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::K256(reg_a, reg_b, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::k256(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -296,13 +296,13 @@ fn k256_c_gt_mem_max() {
 
     #[rustfmt::skip]
     let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::K256(reg_b, reg_b, reg_a),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::k256(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
@@ -312,11 +312,11 @@ fn k256_b_gt_vmaxram_sub_c() {
 
     #[rustfmt::skip]
         let script = vec![
-        Opcode::XOR(reg_a, reg_a, reg_a),
-        Opcode::XOR(reg_b, reg_b, reg_b),
-        Opcode::NOT(reg_a, reg_a),
-        Opcode::K256(reg_b, reg_a, reg_b),
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::k256(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_opcodes(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }

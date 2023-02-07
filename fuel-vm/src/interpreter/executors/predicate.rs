@@ -1,10 +1,9 @@
-use crate::consts::*;
 use crate::error::InterpreterError;
 use crate::prelude::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::PredicateStorage;
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 
 impl<Tx> Interpreter<PredicateStorage, Tx>
 where
@@ -17,11 +16,11 @@ where
             .map(|p| p.program().boundaries(&self.ownership_registers()))
             .ok_or(InterpreterError::PredicateFailure)?;
 
-        self.registers[REG_PC] = start;
-        self.registers[REG_IS] = start;
+        self.registers[RegId::PC] = start;
+        self.registers[RegId::IS] = start;
 
         loop {
-            if end <= self.registers[REG_PC] {
+            if end <= self.registers[RegId::PC] {
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 

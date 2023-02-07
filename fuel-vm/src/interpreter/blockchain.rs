@@ -5,7 +5,7 @@ use crate::consts::*;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::{self, Deserializable};
 use fuel_types::{Address, AssetId, Bytes32, Bytes8, ContractId, RegisterId, Word};
@@ -35,9 +35,9 @@ where
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
     pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let ssp = self.registers[REG_SSP];
-        let sp = self.registers[REG_SP];
-        let fp = self.registers[REG_FP] as usize;
+        let ssp = self.registers[RegId::SSP];
+        let sp = self.registers[RegId::SP];
+        let fp = self.registers[RegId::FP] as usize;
 
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into());
@@ -52,7 +52,7 @@ where
         let memory_offset_end = checked_add_usize(memory_offset, length)?;
 
         // Validate arguments
-        if memory_offset_end > self.registers[REG_HP] as usize
+        if memory_offset_end > self.registers[RegId::HP] as usize
             || contract_id_end as Word > VM_MAX_RAM
             || length > MEM_MAX_ACCESS_SIZE as usize
             || length > self.params.contract_max_size as usize
@@ -97,12 +97,12 @@ where
         // perform the code copy
         memory.copy_from_slice(code);
 
-        self.registers[REG_SP]
-            //TODO this is looser than the compare against [REG_HP,REG_SSP+length]
+        self.registers[RegId::SP]
+            //TODO this is looser than the compare against [RegId::HP,RegId::SSP+length]
             .checked_add(length as Word)
             .map(|sp| {
-                self.registers[REG_SP] = sp;
-                self.registers[REG_SSP] = sp;
+                self.registers[RegId::SP] = sp;
+                self.registers[RegId::SSP] = sp;
             })
             .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
 
@@ -415,7 +415,7 @@ where
 
         self.base_asset_balance_sub(amount)?;
 
-        let fp = self.registers[REG_FP] as usize;
+        let fp = self.registers[RegId::FP] as usize;
         let txid = self.tx_id();
         let data = ax;
         let data = &self.memory[data..bx];

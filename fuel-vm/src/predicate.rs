@@ -40,6 +40,7 @@ impl RuntimePredicate {
 
 #[test]
 fn from_tx_works() {
+    use fuel_asm::op;
     use fuel_tx::TransactionBuilder;
     use fuel_types::bytes;
     use fuel_vm::prelude::*;
@@ -55,9 +56,9 @@ fn from_tx_works() {
 
     #[rustfmt::skip]
     let predicate: Vec<u8> = vec![
-        Opcode::ADDI(0x10, 0x00, 0x01),
-        Opcode::ADDI(0x10, 0x10, 0x01),
-        Opcode::RET(0x01),
+        op::addi(0x10, 0x00, 0x01),
+        op::addi(0x10, 0x10, 0x01),
+        op::ret(0x01),
     ].into_iter().collect();
 
     let predicate_data = b"If people do not believe that mathematics is simple, it is only because they do not realize how complicated life is.".to_vec();

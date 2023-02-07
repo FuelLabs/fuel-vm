@@ -1,4 +1,7 @@
-use crate::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRef};
+use crate::{
+    Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRead, StorageRef,
+    StorageSize,
+};
 use alloc::borrow::Cow;
 
 impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'a T {
@@ -32,6 +35,30 @@ impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type> fo
 
     fn remove(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
         <T as StorageMutate<Type>>::remove(self, key)
+    }
+}
+
+impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'a T {
+    fn size_of_value(&self, key: &<Type as Mappable>::Key) -> Result<Option<usize>, Self::Error> {
+        <T as StorageSize<Type>>::size_of_value(self, key)
+    }
+}
+
+impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'a mut T {
+    fn size_of_value(&self, key: &<Type as Mappable>::Key) -> Result<Option<usize>, Self::Error> {
+        <T as StorageSize<Type>>::size_of_value(self, key)
+    }
+}
+
+impl<'a, T: StorageRead<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a T {
+    fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        <T as StorageRead<Type>>::read(self, key, buf)
+    }
+}
+
+impl<'a, T: StorageRead<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a mut T {
+    fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        <T as StorageRead<Type>>::read(self, key, buf)
     }
 }
 

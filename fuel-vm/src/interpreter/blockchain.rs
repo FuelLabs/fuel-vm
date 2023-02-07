@@ -108,9 +108,11 @@ where
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
-            let fpx = add_usize(fp, CallFrame::code_size_offset());
+            let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
+            let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
-            self.memory[fp..fpx].copy_from_slice(&length.to_be_bytes());
+            let length = length as Word;
+            self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
         }
 
         self.inc_pc()
@@ -248,10 +250,7 @@ where
         // Safety: Memory bounds are checked by the interpreter
         let contract_id = unsafe { ContractId::as_ref_unchecked(&self.memory[b..bx]) };
 
-        // FIXME: This is checking the cost after the db call has happened.
-        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
-        // should happen on the pinned slice before reading it.
-        let len = self.contract(contract_id)?.as_ref().as_ref().len() as Word;
+        let len = self.contract_size(contract_id)?;
         self.dependent_gas_charge(self.gas_costs.csiz, len)?;
         self.registers[ra] = len;
 

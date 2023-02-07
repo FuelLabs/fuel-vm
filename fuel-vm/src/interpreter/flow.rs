@@ -1,6 +1,6 @@
 use super::{ExecutableTransaction, Interpreter};
 use crate::arith;
-use crate::call::{Call, CallFrame};
+use crate::call::Call;
 use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
@@ -163,10 +163,9 @@ where
 
         let mut frame = self.call_frame(call, asset_id)?;
 
-        // FIXME: This is checking the cost after the db call has happened.
-        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
-        // should happen on the pinned slice before reading it.
-        self.dependent_gas_charge(self.gas_costs.call, frame.code().len() as u64)?;
+        let code_size = frame.code_size();
+
+        self.dependent_gas_charge(self.gas_costs.call, code_size)?;
 
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;
@@ -195,8 +194,8 @@ where
         *frame.set_context_gas() = self.registers[REG_CGAS];
         *frame.set_global_gas() = self.registers[REG_GGAS];
 
-        let stack = frame.to_bytes();
-        let len = stack.len() as Word;
+        let frame_bytes = frame.to_bytes();
+        let len = arith::add_word(frame_bytes.len() as Word, code_size)?;
 
         if len > self.registers[REG_HP] || self.registers[REG_SP] > self.registers[REG_HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
@@ -209,10 +208,21 @@ where
         self.registers[REG_SP] += len;
         self.registers[REG_SSP] = self.registers[REG_SP];
 
-        self.memory[self.registers[REG_FP] as usize..self.registers[REG_SP] as usize].copy_from_slice(stack.as_slice());
+        let fpx = arith::add_word(self.registers[REG_FP], frame_bytes.len() as Word)?;
+        self.memory[self.registers[REG_FP] as usize..fpx as usize].copy_from_slice(frame_bytes.as_slice());
+
+        let code_range = (fpx as usize)..arith::add_usize(fpx as usize, code_size as usize);
+        let bytes_read = self
+            .storage
+            .read(frame.to(), &mut self.memory[code_range])
+            .map_err(RuntimeError::from_io)?
+            .ok_or(PanicReason::ContractNotFound)?;
+        if bytes_read as Word != code_size {
+            return Err(PanicReason::ContractNotFound.into());
+        }
 
         self.registers[REG_BAL] = b;
-        self.registers[REG_PC] = self.registers[REG_FP].saturating_add(CallFrame::code_offset() as Word);
+        self.registers[REG_PC] = fpx;
         self.registers[REG_IS] = self.registers[REG_PC];
         self.registers[REG_CGAS] = forward_gas_amount;
 

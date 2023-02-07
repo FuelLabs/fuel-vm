@@ -3,11 +3,10 @@
 use crate::consts::*;
 
 use fuel_asm::PanicReason;
-use fuel_tx::Contract;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{AssetId, ContractId, Word};
 
-use crate::{arith::checked_add_usize, consts::WORD_SIZE};
+use crate::consts::WORD_SIZE;
 use std::io::{self, Write};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -114,9 +113,9 @@ pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
+    code_size: Word,
     a: Word,
     b: Word,
-    code: Contract,
 }
 
 impl CallFrame {
@@ -125,43 +124,53 @@ impl CallFrame {
         to: ContractId,
         asset_id: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
+        code_size: Word,
         a: Word,
         b: Word,
-        code: Contract,
     ) -> Self {
         Self {
             to,
             asset_id,
             registers,
+            code_size,
             a,
             b,
-            code,
         }
     }
 
-    /// Contract code of the called (`to`) id.
-    pub fn code(&self) -> &[u8] {
-        self.code.as_ref()
+    /// Start of the contract id offset from the beginning of the call frame.
+    pub const fn contract_id_offset() -> usize {
+        0
     }
 
-    /// Contract code memory offset.
-    pub const fn code_offset() -> usize {
+    /// Start of the asset id offset from the beginning of the call frame.
+    pub const fn asset_id_offset() -> usize {
+        ContractId::LEN
+    }
+
+    /// Start of the registers offset from the beginning of the call frame.
+    pub const fn registers_offset() -> usize {
+        Self::asset_id_offset() + AssetId::LEN
+    }
+
+    /// Start of the code size offset from the beginning of the call frame.
+    pub const fn code_size_offset() -> usize {
+        Self::registers_offset() + WORD_SIZE * (VM_REGISTER_COUNT)
+    }
+
+    /// Start of the `a` argument offset from the beginning of the call frame.
+    pub const fn a_offset() -> usize {
         Self::code_size_offset() + WORD_SIZE
     }
 
-    /// Contract code size memory offset.
-    pub const fn code_size_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
-    }
-
-    /// `a` argument memory offset.
-    pub const fn a_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (1 + VM_REGISTER_COUNT)
-    }
-
-    /// `b` argument memory offset.
+    /// Start of the `b` argument offset from the beginning of the call frame.
     pub const fn b_offset() -> usize {
-        ContractId::LEN + AssetId::LEN + WORD_SIZE * (2 + VM_REGISTER_COUNT)
+        Self::a_offset() + WORD_SIZE
+    }
+
+    /// Size of the call frame in bytes.
+    pub const fn serialized_size() -> usize {
+        Self::b_offset() + WORD_SIZE
     }
 
     /// Registers prior to the called execution.
@@ -172,6 +181,11 @@ impl CallFrame {
     /// Called contract id.
     pub const fn to(&self) -> &ContractId {
         &self.to
+    }
+
+    /// Contract code length in bytes.
+    pub fn code_size(&self) -> Word {
+        self.code_size
     }
 
     /// `a` argument.
@@ -207,7 +221,7 @@ impl CallFrame {
 
 impl SizedBytes for CallFrame {
     fn serialized_size(&self) -> usize {
-        Self::code_offset() + bytes::padded_len(self.code.as_ref())
+        Self::serialized_size()
     }
 }
 
@@ -225,11 +239,9 @@ impl io::Read for CallFrame {
             .iter()
             .fold(buf, |buf, reg| bytes::store_number_unchecked(buf, *reg));
 
-        let buf = bytes::store_number_unchecked(buf, self.code.as_ref().len() as Word);
+        let buf = bytes::store_number_unchecked(buf, self.code_size);
         let buf = bytes::store_number_unchecked(buf, self.a);
-        let buf = bytes::store_number_unchecked(buf, self.b);
-
-        bytes::store_raw_bytes(buf, self.code.as_ref())?;
+        bytes::store_number_unchecked(buf, self.b);
 
         Ok(n)
     }
@@ -237,7 +249,7 @@ impl io::Read for CallFrame {
 
 impl io::Write for CallFrame {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut n = Self::code_offset();
+        let n = Self::serialized_size();
         if buf.len() < n {
             return Err(bytes::eof());
         }
@@ -252,19 +264,15 @@ impl io::Write for CallFrame {
             buf
         });
 
-        let (code_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+        let (code_size, buf) = unsafe { bytes::restore_word_unchecked(buf) };
         let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (b, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-
-        let (bytes, code, _) = bytes::restore_raw_bytes(buf, code_len)?;
-
-        n = checked_add_usize(n, bytes)?;
+        let (b, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
         self.to = to.into();
         self.asset_id = asset_id.into();
+        self.code_size = code_size;
         self.a = a;
         self.b = b;
-        self.code = code.into();
 
         Ok(n)
     }

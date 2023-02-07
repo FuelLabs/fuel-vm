@@ -195,7 +195,9 @@ where
         *frame.set_global_gas() = self.registers[RegId::GGAS];
 
         let frame_bytes = frame.to_bytes();
+        let pad_len = code_size % WORD_SIZE as Word;
         let len = arith::add_word(frame_bytes.len() as Word, code_size)?;
+        let len = arith::add_word(len, pad_len)?;
 
         if len > self.registers[RegId::HP] || self.registers[RegId::SP] > self.registers[RegId::HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
@@ -214,11 +216,15 @@ where
         let code_range = (fpx as usize)..arith::add_usize(fpx as usize, code_size as usize);
         let bytes_read = self
             .storage
-            .read(frame.to(), &mut self.memory[code_range])
+            .read(frame.to(), &mut self.memory[code_range.clone()])
             .map_err(RuntimeError::from_io)?
             .ok_or(PanicReason::ContractNotFound)?;
         if bytes_read as Word != code_size {
             return Err(PanicReason::ContractNotFound.into());
+        }
+        if pad_len > 0 {
+            self.memory[code_range.end..code_range.end + pad_len as usize]
+                .copy_from_slice(&[0; 32][..pad_len as usize]);
         }
 
         self.registers[RegId::BAL] = b;

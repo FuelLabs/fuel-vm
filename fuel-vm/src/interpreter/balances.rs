@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 
-use fuel_asm::Word;
+use fuel_asm::{RegId, Word};
 use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
@@ -128,7 +128,7 @@ impl RuntimeBalances {
     {
         let len = vm.params().max_inputs * (AssetId::LEN + WORD_SIZE) as Word;
 
-        vm.registers[REG_SP] += len;
+        vm.registers[RegId::SP] += len;
         vm.reserve_stack(len)
             .expect("consensus parameters won't allow stack overflow for VM initialization");
 

@@ -1,6 +1,6 @@
 //! Runtime interpreter error implementation
 
-use fuel_asm::{Instruction, InstructionResult, PanicReason};
+use fuel_asm::{InstructionResult, PanicReason, RawInstruction};
 use fuel_tx::CheckError;
 use thiserror::Error;
 
@@ -42,10 +42,10 @@ pub enum InterpreterError {
 
 impl InterpreterError {
     /// Describe the error as recoverable or halt.
-    pub fn from_runtime(error: RuntimeError, instruction: Instruction) -> Self {
+    pub fn from_runtime(error: RuntimeError, instruction: RawInstruction) -> Self {
         match error {
             RuntimeError::Recoverable(reason) => Self::PanicInstruction(InstructionResult::error(reason, instruction)),
-            RuntimeError::Halt(e) => Self::Io(e),
+            _ => Self::from(error),
         }
     }
 
@@ -59,7 +59,7 @@ impl InterpreterError {
     }
 
     /// Return the instruction that caused this error, if applicable.
-    pub const fn instruction(&self) -> Option<&Instruction> {
+    pub const fn instruction(&self) -> Option<&RawInstruction> {
         match self {
             Self::PanicInstruction(result) => Some(result.instruction()),
             _ => None,
@@ -68,9 +68,9 @@ impl InterpreterError {
 
     /// Return the underlying `InstructionResult` if this instance is
     /// `PanicInstruction`; returns `None` otherwise.
-    pub fn instruction_result(&self) -> Option<&InstructionResult> {
+    pub fn instruction_result(&self) -> Option<InstructionResult> {
         match self {
-            Self::PanicInstruction(r) => Some(r),
+            Self::PanicInstruction(r) => Some(*r),
             _ => None,
         }
     }
@@ -81,12 +81,6 @@ impl InterpreterError {
         E: Into<io::Error>,
     {
         Self::Io(e.into())
-    }
-}
-
-impl From<InstructionResult> for InterpreterError {
-    fn from(r: InstructionResult) -> InterpreterError {
-        Self::PanicInstruction(r)
     }
 }
 
@@ -168,7 +162,6 @@ impl PartialEq for RuntimeError {
         match (self, other) {
             (RuntimeError::Recoverable(s), RuntimeError::Recoverable(o)) => s == o,
             (RuntimeError::Halt(s), RuntimeError::Halt(o)) => s.kind() == o.kind(),
-
             _ => false,
         }
     }

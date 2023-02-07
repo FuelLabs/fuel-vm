@@ -8,8 +8,9 @@
 /// # Example
 ///
 /// ```
+/// use fuel_asm::op;
 /// use fuel_types::{Immediate18, Word};
-/// use fuel_vm::consts::{REG_ONE, REG_ZERO};
+/// use fuel_vm::consts::{RegId::ONE, RegId::ZERO};
 /// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
@@ -19,7 +20,7 @@
 /// let call = Call::new(contract_id, 0, 0).to_bytes();
 /// let asset_id = [0x00; 32];
 /// let transfer_amount: Word = 100;
-/// let gas_to_forward = 1_000_000;
+/// let gas_to_forward = 100_000;
 /// let script_data = [call.as_ref(), asset_id.as_ref()]
 ///     .into_iter()
 ///     .flatten()
@@ -31,13 +32,13 @@
 ///     data_offset,
 ///     vec![
 ///         // use data_offset to reference the location of the call bytes inside script_data
-///         Opcode::MOVI(0x10, data_offset),
-///         Opcode::MOVI(0x11, transfer_amount as Immediate18),
+///         op::movi(0x10, data_offset),
+///         op::movi(0x11, transfer_amount as Immediate18),
 ///         // use data_offset again to reference the location of the asset id inside of script data
-///         Opcode::MOVI(0x12, data_offset + call.len() as Immediate18),
-///         Opcode::MOVI(0x13, gas_to_forward as Immediate18),
-///         Opcode::CALL(0x10, 0x11, 0x12, 0x13),
-///         Opcode::RET(REG_ONE),
+///         op::movi(0x12, data_offset + call.len() as Immediate18),
+///         op::movi(0x13, gas_to_forward as Immediate18),
+///         op::call(0x10, 0x11, 0x12, 0x13),
+///         op::ret(RegId::ONE),
 ///     ],
 ///     ConsensusParameters::DEFAULT.tx_offset()
 /// );
@@ -72,7 +73,6 @@ macro_rules! script_with_data_offset {
 /// Testing utilities
 pub mod test_helpers {
     use crate::checked_transaction::{builder::TransactionBuilderExt, Checked, IntoChecked};
-    use crate::consts::*;
     use crate::gas::GasCosts;
     use crate::memory_client::MemoryClient;
     use crate::state::StateTransition;
@@ -82,7 +82,7 @@ pub mod test_helpers {
 
     use crate::interpreter::{CheckedMetadata, ExecutableTransaction};
     use crate::prelude::Call;
-    use fuel_asm::{GTFArgs, Opcode, PanicReason};
+    use fuel_asm::{op, GTFArgs, Instruction, PanicReason, RegId};
     use fuel_tx::field::Outputs;
     use fuel_tx::{
         ConsensusParameters, Contract, Create, Input, Output, Receipt, Script, StorageSlot, Transaction,
@@ -113,11 +113,12 @@ pub mod test_helpers {
 
     impl TestBuilder {
         pub fn new(seed: u64) -> Self {
+            let bytecode = core::iter::once(op::ret(RegId::ONE)).collect();
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
                 gas_limit: 100,
-                builder: TransactionBuilder::script(vec![Opcode::RET(REG_ONE)].into_iter().collect(), vec![]),
+                builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
                 gas_costs: Default::default(),
@@ -133,8 +134,9 @@ pub mod test_helpers {
             &self.params
         }
 
-        pub fn start_script(&mut self, script: Vec<Opcode>, script_data: Vec<u8>) -> &mut Self {
-            self.builder = TransactionBuilder::script(script.into_iter().collect(), script_data);
+        pub fn start_script(&mut self, script: Vec<Instruction>, script_data: Vec<u8>) -> &mut Self {
+            let bytecode = script.into_iter().collect();
+            self.builder = TransactionBuilder::script(bytecode, script_data);
             self.builder.gas_price(self.gas_price);
             self.builder.gas_limit(self.gas_limit);
             self
@@ -241,11 +243,11 @@ pub mod test_helpers {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
-                    Opcode::MOVI(0x11, data_offset),
-                    Opcode::ADDI(0x12, 0x11, AssetId::LEN as Immediate12),
-                    Opcode::BAL(0x10, 0x11, 0x12),
-                    Opcode::LOG(0x10, REG_ZERO, REG_ZERO, REG_ZERO),
-                    Opcode::RET(REG_ONE)
+                    op::movi(0x11, data_offset),
+                    op::addi(0x12, 0x11, AssetId::LEN as Immediate12),
+                    op::bal(0x10, 0x11, 0x12),
+                    op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+                    op::ret(RegId::ONE),
                 ],
                 params.tx_offset()
             );
@@ -267,7 +269,7 @@ pub mod test_helpers {
 
         pub fn setup_contract(
             &mut self,
-            contract: Vec<Opcode>,
+            contract: Vec<Instruction>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
@@ -280,7 +282,7 @@ pub mod test_helpers {
             let salt: Salt = self.rng.gen();
             let program: Witness = contract
                 .into_iter()
-                .flat_map(Opcode::to_bytes)
+                .flat_map(Instruction::to_bytes)
                 .collect::<Vec<u8>>()
                 .into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
@@ -379,15 +381,15 @@ pub mod test_helpers {
         }
     }
 
-    pub fn check_expected_reason_for_opcodes(opcodes: Vec<Opcode>, expected_reason: PanicReason) {
+    pub fn check_expected_reason_for_instructions(instructions: Vec<Instruction>, expected_reason: PanicReason) {
         let client = MemoryClient::default();
 
-        check_expected_reason_for_opcodes_with_client(client, opcodes, expected_reason);
+        check_expected_reason_for_instructions_with_client(client, instructions, expected_reason);
     }
 
-    fn check_expected_reason_for_opcodes_with_client(
+    fn check_expected_reason_for_instructions_with_client(
         mut client: MemoryClient,
-        opcodes: Vec<Opcode>,
+        instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
         let gas_price = 0;
@@ -397,7 +399,7 @@ pub mod test_helpers {
         let height = 0;
 
         // setup contract with state tests
-        let contract: Witness = opcodes.into_iter().collect::<Vec<u8>>().into();
+        let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
         let salt = Default::default();
         let code_root = Contract::root_from_code(contract.as_ref());
         let storage_slots = vec![];
@@ -413,10 +415,10 @@ pub mod test_helpers {
         // call deployed contract
         let script = [
             // load call data to 0x10
-            Opcode::GTF(0x10, 0x0, Immediate12::from(GTFArgs::ScriptData)),
+            op::gtf(0x10, 0x0, Immediate12::from(GTFArgs::ScriptData)),
             // call the transfer contract
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            Opcode::RET(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
         ]
         .into_iter()
         .collect();

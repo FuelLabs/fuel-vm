@@ -4,8 +4,8 @@ use crate::interpreter::{ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, OpcodeRepr, PanicReason};
-use fuel_types::{bytes, Immediate12, Immediate18, Word};
+use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
+use fuel_types::{bytes, Word};
 
 use std::ops::Div;
 
@@ -17,23 +17,23 @@ where
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         // Safety: `chunks_exact` is guaranteed to return a well-formed slice
-        let (hi, lo) = self.memory[self.registers[REG_PC] as usize..]
+        let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
             .map(|b| unsafe { bytes::from_slice_unchecked(b) })
             .map(Word::from_be_bytes)
-            .map(Instruction::parse_word)
+            .map(fuel_asm::raw_instructions_from_word)
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
 
         // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[REG_PC] + Instruction::LEN as Word;
+        let pc = self.registers[RegId::PC] + Instruction::SIZE as Word;
         let state = self.instruction(hi)?;
 
         // TODO optimize
         // Should execute `lo` only if there is no rupture in the flow - that means
         // either a breakpoint or some instruction that would skip `lo` such as
         // `RET`, `JI` or `CALL`
-        if self.registers[REG_PC] == pc && state.should_continue() {
+        if self.registers[RegId::PC] == pc && state.should_continue() {
             self.instruction(lo)
         } else {
             Ok(state)
@@ -41,7 +41,7 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, InterpreterError> {
+    pub fn instruction<R: Into<RawInstruction> + Copy>(&mut self, raw: R) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
             let debug = self.eval_debugger_state();
@@ -50,446 +50,539 @@ where
             }
         }
 
-        self._instruction(instruction)
-            .map_err(|e| InterpreterError::from_runtime(e, instruction))
+        self._instruction(raw.into())
+            .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
     }
 
     #[tracing::instrument(name = "instruction", skip(self))]
-    fn _instruction(&mut self, instruction: Instruction) -> Result<ExecuteState, RuntimeError> {
-        let (op, ra, rb, rc, rd, imm) = instruction.into_inner();
-        let (a, b, c, d) = (
-            self.registers[ra],
-            self.registers[rb],
-            self.registers[rc],
-            self.registers[rd],
-        );
+    fn _instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
+        let instruction = Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
-        tracing::trace!("Op code: {:?}, Registers: a {}, b, {}, c {}, d {}", op, a, b, c, d);
+        tracing::trace!("Instruction: {:?}", instruction);
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68
-        if self.is_predicate() && !op.is_predicate_allowed() {
+        if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
             return Err(PanicReason::TransactionValidity.into());
         }
 
-        match op {
-            OpcodeRepr::ADD => {
+        // Short-hand for retrieving the value from the register with the given ID.
+        // We use a macro to "close over" `self.registers` without taking ownership of it.
+        macro_rules! r {
+            ($id:expr) => {
+                self.registers[$id]
+            };
+        }
+
+        match instruction {
+            Instruction::ADD(add) => {
                 self.gas_charge(self.gas_costs.add)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), c.into())?;
+                let (a, b, c) = add.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::ADDI => {
+            Instruction::ADDI(addi) => {
                 self.gas_charge(self.gas_costs.addi)?;
-                self.alu_capture_overflow(ra, u128::overflowing_add, b.into(), imm.into())?;
+                let (a, b, imm) = addi.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::AND => {
+            Instruction::AND(and) => {
                 self.gas_charge(self.gas_costs.and)?;
-                self.alu_set(ra, b & c)?;
+                let (a, b, c) = and.unpack();
+                self.alu_set(a.into(), r!(b) & r!(c))?;
             }
 
-            OpcodeRepr::ANDI => {
+            Instruction::ANDI(andi) => {
                 self.gas_charge(self.gas_costs.andi)?;
-                self.alu_set(ra, b & imm)?;
+                let (a, b, imm) = andi.unpack();
+                self.alu_set(a.into(), r!(b) & Word::from(imm))?;
             }
 
-            OpcodeRepr::DIV => {
+            Instruction::DIV(div) => {
                 self.gas_charge(self.gas_costs.div)?;
-                self.alu_error(ra, Word::div, b, c, c == 0)?;
+                let (a, b, c) = div.unpack();
+                let c = r!(c);
+                self.alu_error(a.into(), Word::div, r!(b), c, c == 0)?;
             }
 
-            OpcodeRepr::DIVI => {
+            Instruction::DIVI(divi) => {
                 self.gas_charge(self.gas_costs.divi)?;
-                self.alu_error(ra, Word::div, b, imm, imm == 0)?;
+                let (a, b, imm) = divi.unpack();
+                let imm = Word::from(imm);
+                self.alu_error(a.into(), Word::div, r!(b), imm, imm == 0)?;
             }
 
-            OpcodeRepr::EQ => {
+            Instruction::EQ(eq) => {
                 self.gas_charge(self.gas_costs.eq)?;
-                self.alu_set(ra, (b == c) as Word)?;
+                let (a, b, c) = eq.unpack();
+                self.alu_set(a.into(), (r!(b) == r!(c)) as Word)?;
             }
 
-            OpcodeRepr::EXP => {
+            Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, c as u32)?;
+                let (a, b, c) = exp.unpack();
+                let expo = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
             }
 
-            OpcodeRepr::EXPI => {
+            Instruction::EXPI(expi) => {
                 self.gas_charge(self.gas_costs.expi)?;
-                self.alu_boolean_overflow(ra, Word::overflowing_pow, b, imm as u32)?;
+                let (a, b, imm) = expi.unpack();
+                let expo = u32::from(imm);
+                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
             }
 
-            OpcodeRepr::GT => {
+            Instruction::GT(gt) => {
                 self.gas_charge(self.gas_costs.gt)?;
-                self.alu_set(ra, (b > c) as Word)?;
+                let (a, b, c) = gt.unpack();
+                self.alu_set(a.into(), (r!(b) > r!(c)) as Word)?;
             }
 
-            OpcodeRepr::LT => {
+            Instruction::LT(lt) => {
                 self.gas_charge(self.gas_costs.lt)?;
-                self.alu_set(ra, (b < c) as Word)?;
+                let (a, b, c) = lt.unpack();
+                self.alu_set(a.into(), (r!(b) < r!(c)) as Word)?;
             }
 
-            OpcodeRepr::MLOG => {
+            Instruction::MLOG(mlog) => {
                 self.gas_charge(self.gas_costs.mlog)?;
+                let (a, b, c) = mlog.unpack();
+                let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
-                    ra,
-                    |b, c| b.checked_ilog(c).expect("checked_ilog returned None for valid values") as Word,
-                    b,
-                    c,
-                    b == 0 || c <= 1,
+                    a.into(),
+                    |l, r| l.checked_ilog(r).expect("checked_ilog returned None for valid values") as Word,
+                    lhs,
+                    rhs,
+                    lhs == 0 || rhs <= 1,
                 )?;
             }
 
-            OpcodeRepr::MOD => {
+            Instruction::MOD(mod_) => {
                 self.gas_charge(self.gas_costs.mod_op)?;
-                self.alu_error(ra, Word::wrapping_rem, b, c, c == 0)?;
+                let (a, b, c) = mod_.unpack();
+                let rhs = r!(c);
+                self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
-            OpcodeRepr::MODI => {
+            Instruction::MODI(modi) => {
                 self.gas_charge(self.gas_costs.modi)?;
-                self.alu_error(ra, Word::wrapping_rem, b, imm, imm == 0)?;
+                let (a, b, imm) = modi.unpack();
+                let rhs = Word::from(imm);
+                self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
-            OpcodeRepr::MOVE => {
+            Instruction::MOVE(move_) => {
                 self.gas_charge(self.gas_costs.move_op)?;
-                self.alu_set(ra, b)?;
+                let (a, b) = move_.unpack();
+                self.alu_set(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::MOVI => {
+            Instruction::MOVI(movi) => {
                 self.gas_charge(self.gas_costs.movi)?;
-                self.alu_set(ra, imm)?;
+                let (a, imm) = movi.unpack();
+                self.alu_set(a.into(), Word::from(imm))?;
             }
 
-            OpcodeRepr::MROO => {
+            Instruction::MROO(mroo) => {
                 self.gas_charge(self.gas_costs.mroo)?;
+                let (a, b, c) = mroo.unpack();
+                let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
-                    ra,
-                    |b, c| checked_nth_root(b, c).expect("checked_nth_root returned None for valid values") as Word,
-                    b,
-                    c,
-                    c == 0,
+                    a.into(),
+                    |l, r| checked_nth_root(l, r).expect("checked_nth_root returned None for valid values") as Word,
+                    lhs,
+                    rhs,
+                    rhs == 0,
                 )?;
             }
 
-            OpcodeRepr::MUL => {
+            Instruction::MUL(mul) => {
                 self.gas_charge(self.gas_costs.mul)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), c.into())?;
+                let (a, b, c) = mul.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::MULI => {
+            Instruction::MULI(muli) => {
                 self.gas_charge(self.gas_costs.muli)?;
-                self.alu_capture_overflow(ra, u128::overflowing_mul, b.into(), imm.into())?;
+                let (a, b, imm) = muli.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::NOOP => {
+            Instruction::NOOP(_noop) => {
                 self.gas_charge(self.gas_costs.noop)?;
                 self.alu_clear()?;
             }
 
-            OpcodeRepr::NOT => {
+            Instruction::NOT(not) => {
                 self.gas_charge(self.gas_costs.not)?;
-                self.alu_set(ra, !b)?;
+                let (a, b) = not.unpack();
+                self.alu_set(a.into(), !r!(b))?;
             }
 
-            OpcodeRepr::OR => {
+            Instruction::OR(or) => {
                 self.gas_charge(self.gas_costs.or)?;
-                self.alu_set(ra, b | c)?;
+                let (a, b, c) = or.unpack();
+                self.alu_set(a.into(), r!(b) | r!(c))?;
             }
 
-            OpcodeRepr::ORI => {
+            Instruction::ORI(ori) => {
                 self.gas_charge(self.gas_costs.ori)?;
-                self.alu_set(ra, b | imm)?;
+                let (a, b, imm) = ori.unpack();
+                self.alu_set(a.into(), r!(b) | Word::from(imm))?;
             }
 
-            OpcodeRepr::SLL => {
+            Instruction::SLL(sll) => {
                 self.gas_charge(self.gas_costs.sll)?;
-                self.alu_set(ra, b.checked_shl(c as u32).unwrap_or_default())?;
+                let (a, b, c) = sll.unpack();
+                let rhs = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SLLI => {
+            Instruction::SLLI(slli) => {
                 self.gas_charge(self.gas_costs.slli)?;
-                self.alu_set(ra, b.checked_shl(imm as u32).unwrap_or_default())?;
+                let (a, b, imm) = slli.unpack();
+                let rhs = u32::from(imm);
+                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SRL => {
+            Instruction::SRL(srl) => {
                 self.gas_charge(self.gas_costs.srl)?;
-                self.alu_set(ra, b.checked_shr(c as u32).unwrap_or_default())?;
+                let (a, b, c) = srl.unpack();
+                let rhs = u32::try_from(r!(c)).expect("value out of range");
+                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SRLI => {
+            Instruction::SRLI(srli) => {
                 self.gas_charge(self.gas_costs.srli)?;
-                self.alu_set(ra, b.checked_shr(imm as u32).unwrap_or_default())?;
+                let (a, b, imm) = srli.unpack();
+                let rhs = u32::from(imm);
+                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
             }
 
-            OpcodeRepr::SUB => {
+            Instruction::SUB(sub) => {
                 self.gas_charge(self.gas_costs.sub)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), c.into())?;
+                let (a, b, c) = sub.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), r!(c).into())?;
             }
 
-            OpcodeRepr::SUBI => {
+            Instruction::SUBI(subi) => {
                 self.gas_charge(self.gas_costs.subi)?;
-                self.alu_capture_overflow(ra, u128::overflowing_sub, b.into(), imm.into())?;
+                let (a, b, imm) = subi.unpack();
+                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), imm.into())?;
             }
 
-            OpcodeRepr::XOR => {
+            Instruction::XOR(xor) => {
                 self.gas_charge(self.gas_costs.xor)?;
-                self.alu_set(ra, b ^ c)?;
+                let (a, b, c) = xor.unpack();
+                self.alu_set(a.into(), r!(b) ^ r!(c))?;
             }
 
-            OpcodeRepr::XORI => {
+            Instruction::XORI(xori) => {
                 self.gas_charge(self.gas_costs.xori)?;
-                self.alu_set(ra, b ^ imm)?;
+                let (a, b, imm) = xori.unpack();
+                self.alu_set(a.into(), r!(b) ^ Word::from(imm))?;
             }
 
-            OpcodeRepr::JI => {
+            Instruction::JI(ji) => {
                 self.gas_charge(self.gas_costs.ji)?;
-                self.jump(imm)?;
+                let imm = ji.unpack();
+                self.jump(imm.into())?;
             }
 
-            OpcodeRepr::JNEI => {
+            Instruction::JNEI(jnei) => {
                 self.gas_charge(self.gas_costs.jnei)?;
-                self.jump_not_equal(a, b, imm)?;
+                let (a, b, imm) = jnei.unpack();
+                self.jump_not_equal(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::JNZI => {
+            Instruction::JNZI(jnzi) => {
                 self.gas_charge(self.gas_costs.jnzi)?;
-                self.jump_not_zero(a, imm)?;
+                let (a, imm) = jnzi.unpack();
+                self.jump_not_zero(r!(a), imm.into())?;
             }
 
-            OpcodeRepr::JMP => {
+            Instruction::JMP(jmp) => {
                 self.gas_charge(self.gas_costs.jmp)?;
-                self.jump(a)?;
+                let a = jmp.unpack();
+                self.jump(r!(a))?;
             }
 
-            OpcodeRepr::JNE => {
+            Instruction::JNE(jne) => {
                 self.gas_charge(self.gas_costs.jne)?;
-                self.jump_not_equal(a, b, c)?;
+                let (a, b, c) = jne.unpack();
+                self.jump_not_equal(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::RET => {
+            Instruction::RET(ret) => {
                 self.gas_charge(self.gas_costs.ret)?;
-                self.ret(a)?;
-
-                return Ok(ExecuteState::Return(a));
+                let a = ret.unpack();
+                let ra = r!(a);
+                self.ret(ra)?;
+                return Ok(ExecuteState::Return(ra));
             }
 
-            OpcodeRepr::RETD => {
-                self.dependent_gas_charge(self.gas_costs.retd, b)?;
-
-                return self.ret_data(a, b).map(ExecuteState::ReturnData);
+            Instruction::RETD(retd) => {
+                let (a, b) = retd.unpack();
+                let len = r!(b);
+                self.dependent_gas_charge(self.gas_costs.retd, len)?;
+                return self.ret_data(r!(a), len).map(ExecuteState::ReturnData);
             }
 
-            OpcodeRepr::RVRT => {
+            Instruction::RVRT(rvrt) => {
                 self.gas_charge(self.gas_costs.rvrt)?;
-                self.revert(a);
-
-                return Ok(ExecuteState::Revert(a));
+                let a = rvrt.unpack();
+                let ra = r!(a);
+                self.revert(ra);
+                return Ok(ExecuteState::Revert(ra));
             }
 
-            OpcodeRepr::SMO => {
-                self.dependent_gas_charge(self.gas_costs.smo, b)?;
-                self.message_output(a, b, c, d)?;
+            Instruction::SMO(smo) => {
+                let (a, b, c, d) = smo.unpack();
+                self.dependent_gas_charge(self.gas_costs.smo, r!(b))?;
+                self.message_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::ALOC => {
+            Instruction::ALOC(aloc) => {
                 self.gas_charge(self.gas_costs.aloc)?;
-                self.malloc(a)?;
+                let a = aloc.unpack();
+                self.malloc(r!(a))?;
             }
 
-            OpcodeRepr::CFEI => {
+            Instruction::CFEI(cfei) => {
                 self.gas_charge(self.gas_costs.cfei)?;
-                self.stack_pointer_overflow(Word::overflowing_add, imm)?;
+                let imm = cfei.unpack();
+                self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
             }
 
-            OpcodeRepr::CFSI => {
+            Instruction::CFSI(cfsi) => {
                 self.gas_charge(self.gas_costs.cfsi)?;
-                self.stack_pointer_overflow(Word::overflowing_sub, imm)?;
+                let imm = cfsi.unpack();
+                self.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
             }
 
-            OpcodeRepr::LB => {
+            Instruction::LB(lb) => {
                 self.gas_charge(self.gas_costs.lb)?;
-                self.load_byte(ra, b, imm)?;
+                let (a, b, imm) = lb.unpack();
+                self.load_byte(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::LW => {
+            Instruction::LW(lw) => {
                 self.gas_charge(self.gas_costs.lw)?;
-                self.load_word(ra, b, imm)?;
+                let (a, b, imm) = lw.unpack();
+                self.load_word(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::MCL => {
-                self.dependent_gas_charge(self.gas_costs.mcl, b)?;
-                self.memclear(a, b)?;
+            Instruction::MCL(mcl) => {
+                let (a, b) = mcl.unpack();
+                let len = r!(b);
+                self.dependent_gas_charge(self.gas_costs.mcl, len)?;
+                self.memclear(r!(a), len)?;
             }
 
-            OpcodeRepr::MCLI => {
-                self.dependent_gas_charge(self.gas_costs.mcli, b)?;
-                self.memclear(a, imm)?;
+            Instruction::MCLI(mcli) => {
+                let (a, imm) = mcli.unpack();
+                let len = Word::from(imm);
+                self.dependent_gas_charge(self.gas_costs.mcli, len)?;
+                self.memclear(r!(a), len)?;
             }
 
-            OpcodeRepr::MCP => {
-                self.dependent_gas_charge(self.gas_costs.mcp, c)?;
-                self.memcopy(a, b, c)?;
+            Instruction::MCP(mcp) => {
+                let (a, b, c) = mcp.unpack();
+                let len = r!(c);
+                self.dependent_gas_charge(self.gas_costs.mcp, len)?;
+                self.memcopy(r!(a), r!(b), len)?;
             }
 
-            OpcodeRepr::MCPI => {
+            Instruction::MCPI(mcpi) => {
                 self.gas_charge(self.gas_costs.mcpi)?;
-                self.memcopy(a, b, imm)?;
+                let (a, b, imm) = mcpi.unpack();
+                let len = imm.into();
+                self.memcopy(r!(a), r!(b), len)?;
             }
 
-            OpcodeRepr::MEQ => {
-                self.dependent_gas_charge(self.gas_costs.meq, d)?;
-                self.memeq(ra, b, c, d)?;
+            Instruction::MEQ(meq) => {
+                let (a, b, c, d) = meq.unpack();
+                let len = r!(d);
+                self.dependent_gas_charge(self.gas_costs.meq, len)?;
+                self.memeq(a.into(), r!(b), r!(c), len)?;
             }
 
-            OpcodeRepr::SB => {
+            Instruction::SB(sb) => {
                 self.gas_charge(self.gas_costs.sb)?;
-                self.store_byte(a, b, imm)?;
+                let (a, b, imm) = sb.unpack();
+                self.store_byte(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::SW => {
+            Instruction::SW(sw) => {
                 self.gas_charge(self.gas_costs.sw)?;
-                self.store_word(a, b, imm)?;
+                let (a, b, imm) = sw.unpack();
+                self.store_word(r!(a), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::BAL => {
+            Instruction::BAL(bal) => {
                 self.gas_charge(self.gas_costs.bal)?;
-                self.contract_balance(ra, b, c)?;
+                let (a, b, c) = bal.unpack();
+                self.contract_balance(a.into(), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::BHEI => {
+            Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs.bhei)?;
-                self.set_block_height(ra)?;
+                let a = bhei.unpack();
+                self.set_block_height(a.into())?;
             }
 
-            OpcodeRepr::BHSH => {
+            Instruction::BHSH(bhsh) => {
                 self.gas_charge(self.gas_costs.bhsh)?;
-                self.block_hash(a, b)?;
+                let (a, b) = bhsh.unpack();
+                self.block_hash(r!(a), r!(b))?;
             }
 
-            OpcodeRepr::BURN => {
+            Instruction::BURN(burn) => {
                 self.gas_charge(self.gas_costs.burn)?;
-                self.burn(a)?;
+                let a = burn.unpack();
+                self.burn(r!(a))?;
             }
 
-            OpcodeRepr::CALL => {
-                let state = self.call(a, b, c, d)?;
+            Instruction::CALL(call) => {
+                let (a, b, c, d) = call.unpack();
+                let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
                 // raise revert state to halt execution for the callee
                 if let ProgramState::Revert(ra) = state {
                     return Ok(ExecuteState::Revert(ra));
                 }
             }
 
-            OpcodeRepr::CB => {
+            Instruction::CB(cb) => {
                 self.gas_charge(self.gas_costs.cb)?;
-                self.block_proposer(a)?;
+                let a = cb.unpack();
+                self.block_proposer(r!(a))?;
             }
 
-            OpcodeRepr::CCP => {
-                self.dependent_gas_charge(self.gas_costs.ccp, d)?;
-                self.code_copy(a, b, c, d)?;
+            Instruction::CCP(ccp) => {
+                let (a, b, c, d) = ccp.unpack();
+                let len = r!(d);
+                self.dependent_gas_charge(self.gas_costs.ccp, len)?;
+                self.code_copy(r!(a), r!(b), r!(c), len)?;
             }
 
-            OpcodeRepr::CROO => {
+            Instruction::CROO(croo) => {
                 self.gas_charge(self.gas_costs.croo)?;
-                self.code_root(a, b)?;
+                let (a, b) = croo.unpack();
+                self.code_root(r!(a), r!(b))?;
             }
 
-            OpcodeRepr::CSIZ => {
-                self.code_size(ra, self.registers[rb])?;
+            Instruction::CSIZ(csiz) => {
+                let (a, b) = csiz.unpack();
+                self.code_size(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::LDC => {
-                self.dependent_gas_charge(self.gas_costs.ldc, c)?;
-                self.load_contract_code(a, b, c)?;
+            Instruction::LDC(ldc) => {
+                let (a, b, c) = ldc.unpack();
+                self.dependent_gas_charge(self.gas_costs.ldc, r!(c))?;
+                self.load_contract_code(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::LOG => {
+            Instruction::LOG(log) => {
                 self.gas_charge(self.gas_costs.log)?;
-                self.log(a, b, c, d)?;
+                let (a, b, c, d) = log.unpack();
+                self.log(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::LOGD => {
-                self.dependent_gas_charge(self.gas_costs.logd, d)?;
-                self.log_data(a, b, c, d)?;
+            Instruction::LOGD(logd) => {
+                let (a, b, c, d) = logd.unpack();
+                self.dependent_gas_charge(self.gas_costs.logd, r!(d))?;
+                self.log_data(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::MINT => {
+            Instruction::MINT(mint) => {
                 self.gas_charge(self.gas_costs.mint)?;
-                self.mint(a)?;
+                let a = mint.unpack();
+                self.mint(r!(a))?;
             }
 
-            OpcodeRepr::SCWQ => {
+            Instruction::SCWQ(scwq) => {
                 self.gas_charge(self.gas_costs.scwq)?;
-                self.state_clear_qword(a, rb, c)?;
+                let (a, b, c) = scwq.unpack();
+                self.state_clear_qword(r!(a), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SRW => {
+            Instruction::SRW(srw) => {
                 self.gas_charge(self.gas_costs.srw)?;
-                self.state_read_word(ra, rb, c)?;
+                let (a, b, c) = srw.unpack();
+                self.state_read_word(a.into(), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SRWQ => {
-                self.dependent_gas_charge(self.gas_costs.srwq, d)?;
-                self.state_read_qword(a, rb, c, d)?;
+            Instruction::SRWQ(srwq) => {
+                let (a, b, c, d) = srwq.unpack();
+                self.dependent_gas_charge(self.gas_costs.srwq, r!(d))?;
+                self.state_read_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::SWW => {
+            Instruction::SWW(sww) => {
                 self.gas_charge(self.gas_costs.sww)?;
-                self.state_write_word(a, rb, c)?;
+                let (a, b, c) = sww.unpack();
+                self.state_write_word(r!(a), b.into(), r!(c))?;
             }
 
-            OpcodeRepr::SWWQ => {
+            Instruction::SWWQ(swwq) => {
                 self.gas_charge(self.gas_costs.swwq)?;
-                self.state_write_qword(a, rb, c, d)?;
+                let (a, b, c, d) = swwq.unpack();
+                self.state_write_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
-            OpcodeRepr::TIME => {
+            Instruction::TIME(time) => {
                 self.gas_charge(self.gas_costs.time)?;
-                self.timestamp(ra, b)?;
+                let (a, b) = time.unpack();
+                self.timestamp(a.into(), r!(b))?;
             }
 
-            OpcodeRepr::ECR => {
+            Instruction::ECR(ecr) => {
                 self.gas_charge(self.gas_costs.ecr)?;
-                self.ecrecover(a, b, c)?;
+                let (a, b, c) = ecr.unpack();
+                self.ecrecover(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::K256 => {
+            Instruction::K256(k256) => {
                 self.gas_charge(self.gas_costs.k256)?;
-                self.keccak256(a, b, c)?;
+                let (a, b, c) = k256.unpack();
+                self.keccak256(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::S256 => {
+            Instruction::S256(s256) => {
                 self.gas_charge(self.gas_costs.s256)?;
-                self.sha256(a, b, c)?;
+                let (a, b, c) = s256.unpack();
+                self.sha256(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::FLAG => {
+            Instruction::FLAG(flag) => {
                 self.gas_charge(self.gas_costs.flag)?;
-                self.set_flag(a)?;
+                let a = flag.unpack();
+                self.set_flag(r!(a))?;
             }
 
-            OpcodeRepr::GM => {
+            Instruction::GM(gm) => {
                 self.gas_charge(self.gas_costs.gm)?;
-                self.metadata(ra, imm as Immediate18)?;
+                let (a, imm) = gm.unpack();
+                self.metadata(a.into(), imm.into())?;
             }
 
-            OpcodeRepr::GTF => {
+            Instruction::GTF(gtf) => {
                 self.gas_charge(self.gas_costs.gtf)?;
-                self.get_transaction_field(ra, b, imm as Immediate12)?;
+                let (a, b, imm) = gtf.unpack();
+                self.get_transaction_field(a.into(), r!(b), imm.into())?;
             }
 
-            OpcodeRepr::TR => {
+            Instruction::TR(tr) => {
                 self.gas_charge(self.gas_costs.tr)?;
-                self.transfer(a, b, c)?;
+                let (a, b, c) = tr.unpack();
+                self.transfer(r!(a), r!(b), r!(c))?;
             }
 
-            OpcodeRepr::TRO => {
+            Instruction::TRO(tro) => {
                 self.gas_charge(self.gas_costs.tro)?;
-                self.transfer_output(a, b, c, d)?;
-            }
-
-            // list of currently unimplemented opcodes
-            _ => {
-                return Err(PanicReason::ErrorFlag.into());
+                let (a, b, c, d) = tro.unpack();
+                self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
             }
         }
 

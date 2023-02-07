@@ -1,6 +1,6 @@
 use super::Interpreter;
-use crate::consts::*;
 use crate::prelude::*;
+use fuel_asm::RegId;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -30,7 +30,7 @@ where
         let debugger = &mut self.debugger;
 
         let contract = self.frames.last().map(CallFrame::to);
-        let pc = self.registers[REG_PC].saturating_sub(self.registers[REG_IS]);
+        let pc = self.registers[RegId::PC].saturating_sub(self.registers[RegId::IS]);
 
         debugger.eval_state(contract, pc)
     }
@@ -46,7 +46,7 @@ where
 
 #[test]
 fn breakpoint_script() {
-    use crate::consts::*;
+    use fuel_asm::op;
 
     let mut vm = Interpreter::with_memory_storage();
 
@@ -57,12 +57,12 @@ fn breakpoint_script() {
     let params = ConsensusParameters::default();
 
     let script = [
-        Opcode::ADDI(0x10, REG_ZERO, 8),
-        Opcode::ADDI(0x11, REG_ZERO, 16),
-        Opcode::ADDI(0x12, REG_ZERO, 32),
-        Opcode::ADDI(0x13, REG_ZERO, 64),
-        Opcode::ADDI(0x14, REG_ZERO, 128),
-        Opcode::RET(0x10),
+        op::addi(0x10, RegId::ZERO, 8),
+        op::addi(0x11, RegId::ZERO, 16),
+        op::addi(0x12, RegId::ZERO, 32),
+        op::addi(0x13, RegId::ZERO, 64),
+        op::addi(0x14, RegId::ZERO, 128),
+        op::ret(0x10),
     ]
     .into_iter()
     .collect();
@@ -112,6 +112,7 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
+    use fuel_asm::op;
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_price = 0;
@@ -122,10 +123,10 @@ fn single_stepping() {
 
     // Repeats the middle two instructions five times
     let script = [
-        Opcode::ADDI(0x10, REG_ZERO, 5),
-        Opcode::ADDI(0x11, 0x11, 1),
-        Opcode::JNEI(0x10, 0x11, 1),
-        Opcode::RET(0x10),
+        op::addi(0x10, RegId::ZERO, 5),
+        op::addi(0x11, 0x11, 1),
+        op::jnei(0x10, 0x11, 1),
+        op::ret(0x10),
     ]
     .into_iter()
     .collect();

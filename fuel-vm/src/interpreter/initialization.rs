@@ -5,6 +5,7 @@ use crate::context::Context;
 use crate::error::{Bug, BugId, InterpreterError};
 use crate::storage::InterpreterStorage;
 
+use fuel_asm::RegId;
 use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
@@ -31,11 +32,11 @@ where
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);
 
-        self.registers[REG_ONE] = 1;
-        self.registers[REG_SSP] = 0;
+        self.registers[RegId::ONE] = 1;
+        self.registers[RegId::SSP] = 0;
 
         // Set heap area
-        self.registers[REG_HP] = VM_MAX_RAM - 1;
+        self.registers[RegId::HP] = VM_MAX_RAM - 1;
 
         self.push_stack(self.transaction().id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -60,7 +61,7 @@ where
         self.push_stack(tx_bytes.as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.registers[REG_SP] = self.registers[REG_SSP];
+        self.registers[RegId::SP] = self.registers[RegId::SSP];
 
         Ok(())
     }

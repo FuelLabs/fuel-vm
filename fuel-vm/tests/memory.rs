@@ -1,7 +1,8 @@
-use fuel_vm::consts::*;
+use fuel_asm::op;
+use fuel_asm::RegId;
 use fuel_vm::prelude::*;
 
-fn setup(ops: Vec<Opcode>) -> Transactor<MemoryStorage, Script> {
+fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -11,7 +12,7 @@ fn setup(ops: Vec<Opcode>) -> Transactor<MemoryStorage, Script> {
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
-    let script = ops.into_iter().collect();
+    let script = program.into_iter().collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
         .into_checked(height, &params, &gas_costs)
@@ -25,13 +26,13 @@ fn setup(ops: Vec<Opcode>) -> Transactor<MemoryStorage, Script> {
 #[test]
 fn test_lw() {
     let ops = vec![
-        Opcode::MOVI(0x10, 8),
-        Opcode::MOVI(0x11, 1),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x10, REG_HP, 1),
-        Opcode::SW(0x10, 0x11, 0),
-        Opcode::LW(0x13, 0x10, 0),
-        Opcode::RET(REG_ONE),
+        op::movi(0x10, 8),
+        op::movi(0x11, 1),
+        op::aloc(0x10),
+        op::addi(0x10, RegId::HP, 1),
+        op::sw(0x10, 0x11, 0),
+        op::lw(0x13, 0x10, 0),
+        op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
@@ -42,13 +43,13 @@ fn test_lw() {
 #[test]
 fn test_lb() {
     let ops = vec![
-        Opcode::MOVI(0x10, 8),
-        Opcode::MOVI(0x11, 1),
-        Opcode::ALOC(0x10),
-        Opcode::ADDI(0x10, REG_HP, 1),
-        Opcode::SB(0x10, 0x11, 0),
-        Opcode::LB(0x13, 0x10, 0),
-        Opcode::RET(REG_ONE),
+        op::movi(0x10, 8),
+        op::movi(0x11, 1),
+        op::aloc(0x10),
+        op::addi(0x10, RegId::HP, 1),
+        op::sb(0x10, 0x11, 0),
+        op::lb(0x13, 0x10, 0),
+        op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();

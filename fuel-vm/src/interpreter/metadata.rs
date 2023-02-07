@@ -2,7 +2,7 @@ use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
 
-use fuel_asm::{GMArgs, GTFArgs, PanicReason};
+use fuel_asm::{GMArgs, GTFArgs, PanicReason, RegId};
 use fuel_tx::field::{
     BytecodeLength, BytecodeWitnessIndex, ReceiptsRoot, Salt, Script as ScriptField, ScriptData, StorageSlots,
 };
@@ -35,7 +35,7 @@ where
             let parent = self
                 .frames
                 .last()
-                .map(|f| f.registers()[REG_FP])
+                .map(|f| f.registers()[RegId::FP])
                 .expect("External context will always have a frame");
 
             match args {

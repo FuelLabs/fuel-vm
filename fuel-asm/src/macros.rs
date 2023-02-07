@@ -662,7 +662,6 @@ macro_rules! impl_instructions {
 
     // Implement functions for all opcode variants
     (impl_opcode $($doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*])*) => {
-        // Implement `TryFrom<u8>` for `Opcode`.
         impl core::convert::TryFrom<u8> for Opcode {
             type Error = InvalidOpcode;
             fn try_from(u: u8) -> Result<Self, Self::Error> {

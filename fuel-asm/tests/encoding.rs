@@ -54,6 +54,13 @@ fn opcode() {
         .map(|raw| Instruction::try_from(raw).unwrap())
         .collect();
 
+    #[cfg(feature = "serde")]
+    for ins in &instructions {
+        let ins_ser = bincode::serialize(ins).expect("Failed to serialize opcode");
+        let ins_de: Instruction = bincode::deserialize(&ins_ser).expect("Failed to serialize opcode");
+        assert_eq!(ins, &ins_de);
+    }
+
     assert_eq!(instructions, instructions_from_words);
 }
 

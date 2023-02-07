@@ -5,7 +5,7 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 
-mod gm_args;
+mod args;
 mod instruction_result;
 // This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
 #[macro_use]
@@ -15,9 +15,9 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
-pub use fuel_types::{RegisterId, Word};
 #[doc(no_inline)]
-pub use gm_args::{GMArgs, GTFArgs};
+pub use args::{GMArgs, GTFArgs};
+pub use fuel_types::{RegisterId, Word};
 pub use instruction_result::InstructionResult;
 pub use panic_reason::PanicReason;
 
@@ -598,6 +598,13 @@ fn check_imm24(u: u32) -> Imm24 {
 // 1 byte for the opcode, 3 bytes for registers and immediates.
 #[test]
 fn test_instruction_size() {
+    // NOTE: Throughout `fuel-vm`, we use the `Instruction::SIZE` associated
+    // const to refer to offsets within raw instruction data. As a result, it's
+    // *essential* that this equivalence remains the same. If you've added
+    // a new field or changed the size of `Instruction` somehow and have
+    // arrived at this assertion, ensure that you also revisit all sites where
+    // `Instruction::SIZE` is used and make sure we're using the right value
+    // (in most cases, the right value is `core::mem::size_of::<RawInstruction>()`).
     assert_eq!(
         core::mem::size_of::<Instruction>(),
         core::mem::size_of::<RawInstruction>()

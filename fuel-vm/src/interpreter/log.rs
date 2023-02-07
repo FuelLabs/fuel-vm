@@ -2,7 +2,7 @@ use super::{ExecutableTransaction, Interpreter};
 use crate::consts::*;
 use crate::error::RuntimeError;
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::Receipt;
 use fuel_types::Word;
@@ -18,8 +18,8 @@ where
             b,
             c,
             d,
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);
@@ -43,8 +43,8 @@ where
             d,
             digest,
             self.memory[c as usize..cd].to_vec(),
-            self.registers[REG_PC],
-            self.registers[REG_IS],
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
         self.append_receipt(receipt);

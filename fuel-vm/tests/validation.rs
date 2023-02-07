@@ -1,3 +1,4 @@
+use fuel_asm::op;
 use fuel_tx::TransactionBuilder;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
@@ -12,7 +13,7 @@ fn transaction_can_be_executed_after_maturity() {
     let gas_costs = GasCosts::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let tx = TransactionBuilder::script(vec![Opcode::RET(1)].into_iter().collect(), Default::default())
+    let tx = TransactionBuilder::script(Some(op::ret(1)).into_iter().collect(), Default::default())
         .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
         .gas_limit(100)
         .maturity(MATURITY)

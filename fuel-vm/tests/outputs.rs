@@ -1,6 +1,6 @@
+use fuel_asm::{op, RegId};
 use fuel_vm::util::test_helpers::find_change;
 use fuel_vm::{
-    consts::{REG_CGAS, REG_FP, REG_ONE, REG_ZERO},
     prelude::{field::Outputs, *},
     script_with_data_offset,
     util::test_helpers::TestBuilder,
@@ -46,9 +46,9 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
         .start_script(
             vec![
                 // Log some dummy data to burn extra gas
-                Opcode::LOG(REG_ONE, REG_ONE, REG_ONE, REG_ONE),
+                op::log(RegId::ONE, RegId::ONE, RegId::ONE, RegId::ONE),
                 // Revert transaction
-                Opcode::RVRT(REG_ONE),
+                op::rvrt(RegId::ONE),
             ]
             .into_iter()
             .collect(),
@@ -88,12 +88,10 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
-    let function_undefined: Vec<Opcode> = vec![
-        Opcode::Undefined,
-    ];
+    let invalid_instruction_bytecode = vec![0u8; 4];
 
     let salt: Salt = rng.gen();
-    let program: Witness = function_undefined.into_iter().collect::<Vec<u8>>().into();
+    let program: Witness = invalid_instruction_bytecode.into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
@@ -139,7 +137,7 @@ fn change_is_reduced_by_external_transfer() {
     let asset_id = AssetId::default();
 
     // simple dummy contract for transferring value to
-    let contract_code = vec![Opcode::RET(REG_ONE)];
+    let contract_code = vec![op::ret(RegId::ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
@@ -149,14 +147,14 @@ fn change_is_reduced_by_external_transfer() {
         data_offset,
         vec![
             // set reg 0x10 to contract id
-            Opcode::MOVI(0x10, data_offset as Immediate18),
+            op::movi(0x10, data_offset as Immediate18),
             // set reg 0x11 to transfer amount
-            Opcode::MOVI(0x11, transfer_amount as Immediate18),
+            op::movi(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
-            Opcode::MOVI(0x12, (data_offset + 32) as Immediate18),
+            op::movi(0x12, (data_offset + 32) as Immediate18),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
-            Opcode::TR(0x10, 0x11, 0x12),
-            Opcode::RET(REG_ONE),
+            op::tr(0x10, 0x11, 0x12),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -192,7 +190,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
 
     // setup state for test
     // simple dummy contract for transferring value to
-    let contract_code = vec![Opcode::RET(REG_ONE)];
+    let contract_code = vec![op::ret(RegId::ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
@@ -202,14 +200,14 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
         data_offset,
         vec![
             // set reg 0x10 to contract id
-            Opcode::MOVI(0x10, data_offset),
+            op::movi(0x10, data_offset),
             // set reg 0x11 to transfer amount
-            Opcode::MOVI(0x11, transfer_amount as Immediate18),
+            op::movi(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
-            Opcode::MOVI(0x12, data_offset + 32),
+            op::movi(0x12, data_offset + 32),
             // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
-            Opcode::TR(0x10, 0x11, 0x12),
-            Opcode::RET(REG_ONE),
+            op::tr(0x10, 0x11, 0x12),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -253,17 +251,17 @@ fn variable_output_set_by_external_transfer_out() {
         data_offset,
         vec![
             // load amount of coins to 0x10
-            Opcode::MOVI(0x10, data_offset),
-            Opcode::LW(0x10, 0x10, 0),
+            op::movi(0x10, data_offset),
+            op::lw(0x10, 0x10, 0),
             // load asset id to 0x11
-            Opcode::MOVI(0x11, data_offset + 8),
+            op::movi(0x11, data_offset + 8),
             // load address to 0x12
-            Opcode::MOVI(0x12, data_offset + 40),
+            op::movi(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            Opcode::MOVE(0x13, REG_ZERO),
+            op::move_(0x13, RegId::ZERO),
             // call contract without any tokens to transfer in
-            Opcode::TRO(0x12, 0x13, 0x10, 0x11),
-            Opcode::RET(REG_ONE),
+            op::tro(0x12, 0x13, 0x10, 0x11),
+            op::ret(RegId::ONE),
         ],
         params.tx_offset()
     );
@@ -328,17 +326,17 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         data_offset,
         vec![
             // load amount of coins to 0x10
-            Opcode::MOVI(0x10, data_offset),
-            Opcode::LW(0x10, 0x10, 0),
+            op::movi(0x10, data_offset),
+            op::lw(0x10, 0x10, 0),
             // load asset id to 0x11
-            Opcode::MOVI(0x11, data_offset + 8),
+            op::movi(0x11, data_offset + 8),
             // load address to 0x12
-            Opcode::MOVI(0x12, data_offset + 40),
+            op::movi(0x12, data_offset + 40),
             // load output index (0) to 0x13
-            Opcode::MOVE(0x13, REG_ZERO),
+            op::move_(0x13, RegId::ZERO),
             // call contract without any tokens to transfer in
-            Opcode::TRO(0x12, 0x13, 0x10, 0x11),
-            Opcode::RET(REG_ONE),
+            op::tro(0x12, 0x13, 0x10, 0x11),
+            op::ret(RegId::ONE),
         ],
         params.tx_offset()
     );
@@ -400,17 +398,17 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     // setup state for test
     let contract_code = vec![
         // load amount of coins to 0x10
-        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
-        Opcode::LW(0x10, 0x10, 0),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
+        op::lw(0x10, 0x10, 0),
         // load asset id to 0x11
-        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
-        Opcode::LW(0x11, 0x11, 0),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
+        op::lw(0x11, 0x11, 0),
         // load address to 0x12
-        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        op::addi(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        Opcode::MOVE(0x13, REG_ZERO),
-        Opcode::TRO(0x12, 0x13, 0x10, 0x11),
-        Opcode::RET(REG_ONE),
+        op::move_(0x13, RegId::ZERO),
+        op::tro(0x12, 0x13, 0x10, 0x11),
+        op::ret(RegId::ONE),
     ];
     let mut test_context = TestBuilder::new(2322u64);
     let contract_id = test_context
@@ -421,12 +419,12 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         data_offset,
         vec![
             // set reg 0x10 to call data
-            Opcode::MOVI(0x10, (data_offset + 64) as Immediate18),
+            op::movi(0x10, (data_offset + 64) as Immediate18),
             // set reg 0x11 to transfer amount
-            Opcode::MOVE(0x11, REG_CGAS),
+            op::move_(0x11, RegId::CGAS),
             // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, 0x11),
-            Opcode::RET(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, 0x11),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );
@@ -478,17 +476,17 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     // setup state for test
     let contract_code = vec![
         // load amount of coins to 0x10
-        Opcode::ADDI(0x10, REG_FP, CallFrame::a_offset() as Immediate12),
-        Opcode::LW(0x10, 0x10, 0),
+        op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
+        op::lw(0x10, 0x10, 0),
         // load asset id to 0x11
-        Opcode::ADDI(0x11, REG_FP, CallFrame::b_offset() as Immediate12),
-        Opcode::LW(0x11, 0x11, 0),
+        op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
+        op::lw(0x11, 0x11, 0),
         // load to address to 0x12
-        Opcode::ADDI(0x12, 0x11, 32 as Immediate12),
+        op::addi(0x12, 0x11, 32 as Immediate12),
         // load output index (0) to 0x13
-        Opcode::MOVE(0x13, REG_ZERO),
-        Opcode::TRO(0x12, 0x13, 0x10, 0x11),
-        Opcode::RET(REG_ONE),
+        op::move_(0x13, RegId::ZERO),
+        op::tro(0x12, 0x13, 0x10, 0x11),
+        op::ret(RegId::ONE),
     ];
 
     let mut test_context = TestBuilder::new(2322u64);
@@ -500,10 +498,10 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         data_offset,
         vec![
             // set reg 0x10 to call data
-            Opcode::MOVI(0x10, data_offset + 64),
+            op::movi(0x10, data_offset + 64),
             // call contract without any tokens to transfer in
-            Opcode::CALL(0x10, REG_ZERO, REG_ZERO, REG_CGAS),
-            Opcode::RET(REG_ONE),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
         ],
         test_context.tx_offset()
     );

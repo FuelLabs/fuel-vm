@@ -16,7 +16,6 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use fuel_asm::Opcode;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SerializableVec;
@@ -50,7 +49,7 @@ impl Default for Script {
         // Create a valid transaction with a single return instruction
         //
         // The Return op is mandatory for the execution of any context
-        let script = Opcode::RET(0x10).to_bytes().to_vec();
+        let script = fuel_asm::op::ret(0x10).to_bytes().to_vec();
 
         Self {
             gas_price: Default::default(),

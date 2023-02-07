@@ -5,7 +5,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -111,12 +111,12 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
-    pub(crate) const fn is_unsafe_math(&self) -> bool {
-        self.registers[REG_FLAG] & 0x01 == 0x01
+    pub(crate) fn is_unsafe_math(&self) -> bool {
+        self.registers[RegId::FLAG] & 0x01 == 0x01
     }
 
-    pub(crate) const fn is_wrapping(&self) -> bool {
-        self.registers[REG_FLAG] & 0x02 == 0x02
+    pub(crate) fn is_wrapping(&self) -> bool {
+        self.registers[RegId::FLAG] & 0x02 == 0x02
     }
 
     /// The current transaction.
@@ -146,10 +146,9 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     #[cfg(feature = "profile-gas")]
     fn current_location(&self) -> InstructionLocation {
-        use crate::consts::*;
         InstructionLocation::new(
             self.frames.last().map(|frame| *frame.to()),
-            self.registers[REG_PC] - self.registers[REG_IS],
+            self.registers[RegId::PC] - self.registers[RegId::IS],
         )
     }
 

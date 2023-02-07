@@ -341,6 +341,7 @@ impl IntoChecked for Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{CheckError, Script, TransactionBuilder};
     use quickcheck::TestResult;
@@ -790,7 +791,7 @@ mod tests {
     // used when proptesting to avoid expensive crypto signatures
     fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
         let asset = AssetId::default();
-        let predicate = vec![Opcode::RET(1)].into_iter().collect::<Vec<u8>>();
+        let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
         let owner = Input::predicate_owner(&predicate);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)

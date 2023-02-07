@@ -4,7 +4,7 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
-use fuel_asm::{Instruction, PanicReason};
+use fuel_asm::{Instruction, PanicReason, RegId};
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SerializableVec;
@@ -75,42 +75,42 @@ where
 
 impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
-        let (ssp, overflow) = self.registers[REG_SSP].overflowing_add(len);
+        let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 
-        if overflow || !self.is_external_context() && ssp > self.registers[REG_SP] {
+        if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
             Err(PanicReason::MemoryOverflow.into())
         } else {
-            Ok(mem::replace(&mut self.registers[REG_SSP], ssp))
+            Ok(mem::replace(&mut self.registers[RegId::SSP], ssp))
         }
     }
 
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
-        self.memory[ssp as usize..self.registers[REG_SSP] as usize].copy_from_slice(data);
+        self.memory[ssp as usize..self.registers[RegId::SSP] as usize].copy_from_slice(data);
 
         Ok(())
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
-        self.registers[REG_FLAG] = a;
+        self.registers[RegId::FLAG] = a;
 
         self.inc_pc()
     }
 
     pub(crate) fn clear_err(&mut self) {
-        self.registers[REG_ERR] = 0;
+        self.registers[RegId::ERR] = 0;
     }
 
     pub(crate) fn set_err(&mut self) {
-        self.registers[REG_ERR] = 1;
+        self.registers[RegId::ERR] = 1;
     }
 
     pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
-        self.registers[REG_PC]
-            .checked_add(Instruction::LEN as Word)
+        self.registers[RegId::PC]
+            .checked_add(Instruction::SIZE as Word)
             .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
-            .map(|pc| self.registers[REG_PC] = pc)
+            .map(|pc| self.registers[RegId::PC] = pc)
     }
 
     pub(crate) const fn context(&self) -> &Context {
@@ -129,7 +129,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         matches!(self.context, Context::Predicate { .. })
     }
 
-    pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
+    // TODO: We should take a `RegId` as an argument.
+    pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
         is_register_writable(ra)
     }
 
@@ -152,7 +153,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), RuntimeError> {
         self.is_internal_context()
             .then(|| {
-                let c = self.registers[REG_FP] as usize;
+                let c = self.registers[RegId::FP] as usize;
                 let cx = c + ContractId::LEN;
 
                 (c, cx)
@@ -193,7 +194,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
         self.context.update_from_frame_pointer(fp);
 
-        self.registers[REG_FP] = fp;
+        self.registers[RegId::FP] = fp;
     }
 
     pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
@@ -201,8 +202,8 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 }
 
-pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
-    if ra >= REG_WRITABLE {
+pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
+    if ra >= RegId::WRITABLE.into() {
         Ok(())
     } else {
         Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
@@ -212,6 +213,7 @@ pub(crate) const fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeEr
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::prelude::*;
+    use fuel_asm::op;
     use fuel_tx::field::Outputs;
     use fuel_tx::TransactionBuilder;
     use rand::rngs::StdRng;
@@ -229,7 +231,7 @@ mod tests {
         let maturity = 0;
         let height = 0;
 
-        let script = Opcode::RET(0x01).to_bytes().to_vec();
+        let script = op::ret(0x01).to_bytes().to_vec();
         let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
         let mut tx = TransactionBuilder::script(script, Default::default());

@@ -1,4 +1,4 @@
-use fuel_asm::Opcode;
+use fuel_asm::Instruction;
 use fuel_types::{ContractId, Word};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -25,7 +25,7 @@ impl Breakpoint {
     /// size. Also, the op count is always relative to `$is` so it should
     /// consider only the bytecode of the contract.
     pub const fn new(contract: ContractId, pc: Word) -> Self {
-        let pc = pc * (Opcode::LEN as Word);
+        let pc = pc * (Instruction::SIZE as Word);
 
         Self::raw(contract, pc)
     }

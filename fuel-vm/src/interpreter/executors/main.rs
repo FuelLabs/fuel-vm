@@ -11,7 +11,7 @@ use crate::state::{StateTransition, StateTransitionRef};
 use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
@@ -81,7 +81,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                 return Err(PredicateVerificationFailed::False);
             }
 
-            remaining_gas = vm.registers[REG_GGAS];
+            remaining_gas = vm.registers[RegId::GGAS];
         }
 
         Ok(PredicatesChecked {
@@ -99,7 +99,7 @@ where
 {
     pub(crate) fn run_call(&mut self) -> Result<ProgramState, RuntimeError> {
         loop {
-            if self.registers[REG_PC] >= VM_MAX_RAM {
+            if self.registers[RegId::PC] >= VM_MAX_RAM {
                 return Err(PanicReason::MemoryOverflow.into());
             }
 
@@ -215,8 +215,8 @@ where
             if let Some(script) = self.transaction().as_script() {
                 let offset = (self.tx_offset() + script.script_offset()) as Word;
 
-                self.registers[REG_PC] = offset;
-                self.registers[REG_IS] = offset;
+                self.registers[RegId::PC] = offset;
+                self.registers[RegId::IS] = offset;
             }
 
             // TODO set tree balance
@@ -258,7 +258,7 @@ where
 
                 Err(e) => match e.instruction_result() {
                     Some(result) => {
-                        self.append_panic_receipt(*result);
+                        self.append_panic_receipt(result);
 
                         (ScriptExecutionResult::Panic, ProgramState::Revert(0))
                     }
@@ -313,7 +313,7 @@ where
 
     pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
-            if self.registers[REG_PC] >= VM_MAX_RAM {
+            if self.registers[RegId::PC] >= VM_MAX_RAM {
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 

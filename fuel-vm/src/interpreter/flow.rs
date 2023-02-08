@@ -163,9 +163,7 @@ where
 
         let mut frame = self.call_frame(call, asset_id)?;
 
-        let code_size = frame.code_size();
-
-        self.dependent_gas_charge(self.gas_costs.call, code_size)?;
+        self.dependent_gas_charge(self.gas_costs.call, frame.total_code_size())?;
 
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;
@@ -195,9 +193,7 @@ where
         *frame.set_global_gas() = self.registers[RegId::GGAS];
 
         let frame_bytes = frame.to_bytes();
-        let pad_len = code_size % WORD_SIZE as Word;
-        let len = arith::add_word(frame_bytes.len() as Word, code_size)?;
-        let len = arith::add_word(len, pad_len)?;
+        let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
 
         if len > self.registers[RegId::HP] || self.registers[RegId::SP] > self.registers[RegId::HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
@@ -213,15 +209,16 @@ where
         let fpx = arith::add_word(self.registers[RegId::FP], frame_bytes.len() as Word)?;
         self.memory[self.registers[RegId::FP] as usize..fpx as usize].copy_from_slice(frame_bytes.as_slice());
 
-        let code_range = (fpx as usize)..arith::add_usize(fpx as usize, code_size as usize);
+        let code_range = (fpx as usize)..arith::add_usize(fpx as usize, frame.code_size() as usize);
         let bytes_read = self
             .storage
             .read(frame.to(), &mut self.memory[code_range.clone()])
             .map_err(RuntimeError::from_io)?
             .ok_or(PanicReason::ContractNotFound)?;
-        if bytes_read as Word != code_size {
+        if bytes_read as Word != frame.code_size() {
             return Err(PanicReason::ContractNotFound.into());
         }
+        let pad_len = frame.code_size_padding();
         if pad_len > 0 {
             self.memory[code_range.end..code_range.end + pad_len as usize]
                 .copy_from_slice(&[0; 32][..pad_len as usize]);

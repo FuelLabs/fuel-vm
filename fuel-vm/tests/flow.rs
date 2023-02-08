@@ -355,7 +355,7 @@ fn call_frame_code_offset() {
         0,
         0,
     );
-    let stack = frame.to_bytes().len() as Word;
+    let stack = frame.to_bytes().len() as Word + frame.total_code_size();
 
     let receipts = vm.receipts();
 

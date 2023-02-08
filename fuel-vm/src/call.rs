@@ -187,6 +187,16 @@ impl CallFrame {
         self.code_size
     }
 
+    /// Padding to the next word boundary.
+    pub fn code_size_padding(&self) -> Word {
+        self.code_size() % WORD_SIZE as Word
+    }
+
+    /// Total code size including padding.
+    pub fn total_code_size(&self) -> Word {
+        self.code_size() + self.code_size_padding()
+    }
+
     /// `a` argument.
     pub const fn a(&self) -> Word {
         self.a

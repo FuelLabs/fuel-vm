@@ -15,6 +15,9 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
+#[cfg(all(test, feature = "std"))]
+mod encoding_tests;
+
 #[doc(no_inline)]
 pub use args::{GMArgs, GTFArgs};
 pub use fuel_types::{RegisterId, Word};

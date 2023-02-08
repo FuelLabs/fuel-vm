@@ -1,6 +1,6 @@
 #![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
 
-use fuel_asm::*;
+use crate::*;
 use strum::IntoEnumIterator;
 
 #[test]
@@ -38,7 +38,7 @@ fn opcode() {
 
     let bytes: Vec<u8> = instructions.iter().copied().collect();
 
-    let instructions_from_bytes: Result<Vec<Instruction>, _> = fuel_asm::from_bytes(bytes.iter().copied()).collect();
+    let instructions_from_bytes: Result<Vec<Instruction>, _> = from_bytes(bytes.iter().copied()).collect();
 
     assert_eq!(instructions, instructions_from_bytes.unwrap());
 

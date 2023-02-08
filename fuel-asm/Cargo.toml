@@ -24,11 +24,6 @@ default = ["fuel-types/default", "std"]
 std = ["fuel-types/std", "serde?/default"]
 serde = ["dep:serde", "fuel-types/serde"]
 
-[[test]]
-name = "test-encoding"
-path = "tests/encoding.rs"
-required-features = ["std"]
-
 # docs.rs-specific configuration
 # preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`
 [package.metadata.docs.rs]

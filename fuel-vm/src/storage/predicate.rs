@@ -49,6 +49,10 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
     fn read(&self, _key: &<ContractsRawCode as Mappable>::Key, _buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         Err(InterpreterError::PredicateFailure)
     }
+
+    fn read_alloc(&self, _key: &<ContractsRawCode as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        Err(InterpreterError::PredicateFailure)
+    }
 }
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {

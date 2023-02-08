@@ -4,7 +4,10 @@ mod impls;
 
 extern crate alloc;
 
-use alloc::borrow::{Cow, ToOwned};
+use alloc::{
+    borrow::{Cow, ToOwned},
+    vec::Vec,
+};
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -86,7 +89,7 @@ pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
 /// into a provided buffer.
 ///
 /// This trait should skip any deserialization and simply copy the raw bytes.
-pub trait StorageRead<Type: Mappable>: StorageInspect<Type> {
+pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> {
     /// Read the value stored at the given key into the provided buffer if the value exists.
     ///
     /// Does not perform any deserialization.
@@ -94,6 +97,11 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> {
     /// Returns None if the value does not exist.
     /// Otherwise, returns the number of bytes read.
     fn read(&self, key: &Type::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
+
+    /// Same as `read` but allocates a new buffer and returns it.
+    ///
+    /// Checks the size of the value and allocates a buffer of that size.
+    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -109,7 +117,20 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     /// Does not perform any serialization.
     ///
     /// Returns the number of bytes written.
-    fn write(&self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error>;
+    fn write(&self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, Self::Error>;
+
+    /// Write the value to the given key from the provided buffer and
+    /// return the previous value if it existed.
+    ///
+    /// Does not perform any serialization.
+    ///
+    /// Returns the number of bytes written and the previous value if it existed.
+    fn replace(&self, key: &Type::Key, buf: Vec<u8>) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<Type>;
+
+    /// Removes a value from the storage and returning it without deserializing it.
+    fn take(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. The type should implement the

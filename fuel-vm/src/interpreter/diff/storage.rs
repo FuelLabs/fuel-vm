@@ -277,6 +277,10 @@ where
     fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         <S as StorageRead<Type>>::read(&self.0, key, buf)
     }
+
+    fn read_alloc(&self, key: &<Type as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        <S as StorageRead<Type>>::read_alloc(&self.0, key)
+    }
 }
 
 impl<Type: StorageType, S> StorageMutate<Type> for Record<S>

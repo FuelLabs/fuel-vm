@@ -50,15 +50,23 @@ impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'
     }
 }
 
-impl<'a, T: StorageRead<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a T {
+impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a T {
     fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, buf)
     }
+
+    fn read_alloc(&self, key: &<Type as Mappable>::Key) -> Result<Option<alloc::vec::Vec<u8>>, Self::Error> {
+        <T as StorageRead<Type>>::read_alloc(self, key)
+    }
 }
 
-impl<'a, T: StorageRead<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a mut T {
+impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type> for &'a mut T {
     fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, buf)
+    }
+
+    fn read_alloc(&self, key: &<Type as Mappable>::Key) -> Result<Option<alloc::vec::Vec<u8>>, Self::Error> {
+        <T as StorageRead<Type>>::read_alloc(self, key)
     }
 }
 

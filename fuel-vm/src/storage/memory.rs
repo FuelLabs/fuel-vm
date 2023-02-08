@@ -139,6 +139,10 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
     fn read(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.contracts.get(key).and_then(|c| c.as_ref().read(buf).ok()))
     }
+
+    fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
+    }
 }
 
 impl StorageInspect<ContractsInfo> for MemoryStorage {

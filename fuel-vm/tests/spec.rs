@@ -5,10 +5,17 @@ use fuel_tx::{ConsensusParameters, Receipt, ScriptExecutionResult, Transaction};
 use fuel_vm::prelude::{IntoChecked, MemoryClient};
 
 struct CaseGroup {
+    /// A short description for diagnostic purposes.
     name: &'static str,
+    /// Setup done before the cases.
     setup: Vec<Instruction>,
+    /// Each case is just a simple instruction.
+    /// They are ran in separate transactions, each prepended by the setup.
     cases: Vec<Instruction>,
+    /// A function checking that the case did run correctly.
     check: fn(CaseResult<'_>) -> bool,
+    /// A function checking that the case without setup did run as it should.
+    /// This is useful for i.e. checking cases with and without flags set.
     check_nosetup: fn(CaseResult<'_>) -> bool,
 }
 impl fmt::Debug for CaseGroup {

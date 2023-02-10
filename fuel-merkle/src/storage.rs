@@ -2,14 +2,14 @@ use alloc::borrow::Cow;
 use core::convert::Infallible;
 
 // Re-export fuel-storage traits
-pub use fuel_storage::{Mappable, StorageInspect, StorageMutate};
+pub(crate) use fuel_storage::{Mappable, StorageInspect, StorageMutate};
 
-pub trait StorageInspectInfallible<Type: Mappable> {
+pub(crate) trait StorageInspectInfallible<Type: Mappable> {
     fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>>;
     fn contains_key(&self, key: &Type::Key) -> bool;
 }
 
-pub trait StorageMutateInfallible<Type: Mappable> {
+pub(crate) trait StorageMutateInfallible<Type: Mappable> {
     fn insert(&mut self, key: &Type::Key, value: &Type::Value) -> Option<Type::OwnedValue>;
     fn remove(&mut self, key: &Type::Key) -> Option<Type::OwnedValue>;
 }

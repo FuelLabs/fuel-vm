@@ -4,17 +4,17 @@ use crate::{
     storage::{Mappable, StorageInspect, StorageMutate},
 };
 
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 use core::{cmp, iter, marker::PhantomData};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum MerkleTreeError<StorageError> {
+pub enum MerkleTreeError<Key, StorageError> {
     #[cfg_attr(
         feature = "std",
         error("cannot load node with key {0}; the key is not found in storage")
     )]
-    LoadError(String),
+    LoadError(Key),
 
     #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
@@ -26,8 +26,8 @@ pub enum MerkleTreeError<StorageError> {
     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
 }
 
-impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
-    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
+impl<Key, StorageError> From<StorageError> for MerkleTreeError<Key, StorageError> {
+    fn from(err: StorageError) -> MerkleTreeError<Key, StorageError> {
         MerkleTreeError::StorageError(err)
     }
 }
@@ -60,9 +60,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
+    TableType::Key: From<Bytes32> + Clone,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn new(storage: StorageType) -> Self {
@@ -73,10 +74,10 @@ where
         }
     }
 
-    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(storage: StorageType, root: &Key) -> Result<Self, MerkleTreeError<Key, StorageError>> {
         let primitive = storage
             .get(root)?
-            .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
+            .ok_or_else(|| MerkleTreeError::LoadError(root.clone()))?
             .into_owned();
         let tree = Self {
             root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
@@ -88,7 +89,7 @@ where
 
     // PRIVATE
 
-    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<Key, StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
@@ -100,7 +101,7 @@ where
                     side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
                 ))
             })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+            .collect::<Result<Vec<_>, MerkleTreeError<Key, StorageError>>>()?
             .into_iter()
             .unzip();
         path_nodes.reverse();
@@ -112,12 +113,13 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
+    TableType::Key: From<Bytes32> + AsRef<Bytes32> + Clone,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn update(&mut self, key: &Key, data: &[u8]) -> Result<(), MerkleTreeError<Key, StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -125,9 +127,11 @@ where
             return Ok(());
         }
 
-        let leaf_node = Node::create_leaf(key, data);
-        self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
-        self.storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
+        let leaf_node = Node::create_leaf(key.as_ref(), data);
+        let leaf_hash = leaf_node.hash();
+        let leaf_key = *leaf_node.leaf_key();
+        self.storage.insert(&leaf_hash.into(), &leaf_node.as_ref().into())?;
+        self.storage.insert(&leaf_key.into(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -139,7 +143,7 @@ where
         Ok(())
     }
 
-    pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn delete(&mut self, key: &Key) -> Result<(), MerkleTreeError<Key, StorageError>> {
         if self.root() == Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
@@ -195,7 +199,7 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node = Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(&current_node.hash().into(), &current_node.as_ref().into())?;
             }
 
             // Merge placeholders
@@ -206,7 +210,7 @@ where
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(&current_node.hash().into(), &current_node.as_ref().into())?;
             }
         }
 
@@ -214,7 +218,7 @@ where
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(&current_node.hash().into(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -229,7 +233,7 @@ where
         side_nodes: &[Node],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
-            self.storage.remove(&node.hash())?;
+            self.storage.remove(&node.hash().into())?;
         }
 
         let path = requested_leaf_node.leaf_key();
@@ -268,7 +272,7 @@ where
                 if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
                     current_node = Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
-                        .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                        .insert(&current_node.hash().into(), &current_node.as_ref().into())?;
                 }
             }
         }
@@ -277,7 +281,7 @@ where
         for side_node in side_nodes_iter {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(&current_node.hash().into(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -289,7 +293,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        common::{Bytes32, StorageMap},
+        common::{StorageMap, WrappedBytes32},
         sparse::{hash::sum, MerkleTree, MerkleTreeError, Primitive},
     };
     use fuel_storage::Mappable;
@@ -300,7 +304,7 @@ mod test {
 
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
-        type OwnedKey = Bytes32;
+        type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
     }
@@ -656,7 +660,7 @@ mod test {
 
         let root = {
             // Create a Merkle tree by loading the generated storage and root.
-            let mut tree = MerkleTree::load(&mut storage_to_load, &root_to_load).unwrap();
+            let mut tree = MerkleTree::load(&mut storage_to_load, &root_to_load.into()).unwrap();
             // Build up the loaded tree using the additional set of `update` data so its
             // root matches the expected root. This verifies that the loaded tree has
             // successfully wrapped the given storage backing and assumed the correct state
@@ -707,9 +711,9 @@ mod test {
         // Overwrite the root key-value with an invalid primitive to create a
         // DeserializeError.
         let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
-        storage.insert(&root, &primitive).unwrap();
+        storage.insert(&root.into(), &primitive).unwrap();
 
-        let err = MerkleTree::load(&mut storage, &root).expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage, &root.into()).expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::DeserializeError(_)));
     }
 }

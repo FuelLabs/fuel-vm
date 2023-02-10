@@ -38,6 +38,12 @@ impl Message {
         // TODO: Wrap this unsafe conversion safely in `fuel_types::Bytes32`.
         unsafe { &*(bytes.as_ptr() as *const Self) }
     }
+
+    /// Kept temporarily for backwards compatibility.
+    #[deprecated = "Use `Message::from_bytes` instead"]
+    pub fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+        Self::from_bytes(bytes)
+    }
 }
 
 impl Deref for Message {

@@ -23,7 +23,7 @@ pub enum MerkleTreeError<Key, StorageError> {
     DeserializeError(DeserializeError),
 
     #[cfg_attr(feature = "std", error(transparent))]
-    ChildError(ChildError<Key, StorageNodeError<StorageError>>),
+    ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
 }
 
 impl<Key, StorageError> From<StorageError> for MerkleTreeError<Key, StorageError> {

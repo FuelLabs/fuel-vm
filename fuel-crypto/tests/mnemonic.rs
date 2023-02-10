@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use coins_bip32::path::DerivationPath;
 use coins_bip39::{English, Mnemonic};
-use fuel_crypto::{FuelMnemonic, SecretKey};
+use fuel_crypto::SecretKey;
 
 type W = English;
 
@@ -41,7 +41,7 @@ fn random_mnemonic_phrase() {
     // create rng
     let mut rng = rand::thread_rng();
 
-    let phrase = FuelMnemonic::generate_mnemonic_phrase(&mut rng, 12).expect("failed to generate mnemonic phrase");
+    let phrase = fuel_crypto::generate_mnemonic_phrase(&mut rng, 12).expect("failed to generate mnemonic phrase");
 
     let _secret = SecretKey::new_from_mnemonic_phrase_with_path(&phrase, "m/44'/60'/0'/0/0")
         .expect("failed to create secret key from mnemonic phrase");

@@ -141,7 +141,7 @@ macro_rules! key_methods {
         }
 
         impl AsRef<[u8; $s]> for $i {
-            fn as_ref(&self) -> &[u8] {
+            fn as_ref(&self) -> &[u8; $s] {
                 &self.0
             }
         }

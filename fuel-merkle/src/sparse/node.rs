@@ -6,15 +6,14 @@ use crate::{
     },
     sparse::{
         hash::{sum, sum_all},
+        merkle_tree::MerkleTreeKey,
         zero_sum, Primitive,
     },
     storage::{Mappable, StorageInspect},
 };
 
-use crate::sparse::merkle_tree::MerkleTreeKey;
-use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::{cmp, fmt};
+use core::{cmp, fmt, fmt::Debug};
 
 #[derive(Clone)]
 pub(crate) struct Node<Key> {

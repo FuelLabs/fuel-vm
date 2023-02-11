@@ -140,12 +140,6 @@ macro_rules! key_methods {
             }
         }
 
-        impl AsRef<[u8; $s]> for $i {
-            fn as_ref(&self) -> &[u8; $s] {
-                &self.0
-            }
-        }
-
         impl AsMut<[u8]> for $i {
             fn as_mut(&mut self) -> &mut [u8] {
                 &mut self.0

@@ -69,6 +69,8 @@ where
     }
 }
 
+type PathSet<Node> = (Vec<Node>, Vec<Node>);
+
 impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
 where
     TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
@@ -98,10 +100,7 @@ where
 
     // PRIVATE
 
-    fn path_set(
-        &self,
-        leaf_node: Node<Key>,
-    ) -> Result<(Vec<Node<Key>>, Vec<Node<Key>>), MerkleTreeError<Key, StorageError>> {
+    fn path_set(&self, leaf_node: Node<Key>) -> Result<PathSet<Node<Key>>, MerkleTreeError<Key, StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);

@@ -7,8 +7,8 @@ use crate::{
 use alloc::vec::Vec;
 use core::{cmp, iter, marker::PhantomData};
 
-pub trait MerkleTreeKey: From<Bytes32> + AsRef<Bytes32> + Msb + Copy + PartialEq {}
-impl<T> MerkleTreeKey for T where T: From<Bytes32> + AsRef<Bytes32> + Msb + Copy + PartialEq {}
+pub trait MerkleTreeKey: From<Bytes32> + AsRef<[u8]> + Msb + Copy + PartialEq {}
+impl<T> MerkleTreeKey for T where T: From<Bytes32> + AsRef<[u8]> + Msb + Copy + PartialEq {}
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -139,7 +139,7 @@ where
             return Ok(());
         }
 
-        let leaf_node: Node<Key> = Node::create_leaf(key.as_ref(), data);
+        let leaf_node: Node<Key> = Node::create_leaf(key.as_ref().try_into().unwrap(), data);
         let leaf_hash = leaf_node.hash();
         let leaf_key = leaf_node.leaf_key();
         self.storage.insert(&leaf_hash.into(), &leaf_node.as_ref().into())?;

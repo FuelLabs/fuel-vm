@@ -119,7 +119,7 @@ where
         if self.is_placeholder() || other.is_placeholder() {
             0
         } else {
-            self.leaf_key().common_path_length(&other.leaf_key())
+            self.leaf_key().common_path_length(other.leaf_key())
         }
     }
 
@@ -325,7 +325,7 @@ where
         }
         let primitive = self
             .storage
-            .get(&key.into())
+            .get(&key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(key))?;
         Ok(primitive
@@ -345,7 +345,7 @@ where
         }
         let primitive = self
             .storage
-            .get(&key.into())
+            .get(&key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(key))?;
         Ok(primitive

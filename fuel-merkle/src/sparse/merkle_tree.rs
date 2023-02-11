@@ -86,7 +86,7 @@ where
     pub fn load(storage: StorageType, root: &Key) -> Result<Self, MerkleTreeError<Key, StorageError>> {
         let primitive = storage
             .get(root)?
-            .ok_or_else(|| MerkleTreeError::LoadError(root.clone()))?
+            .ok_or_else(|| MerkleTreeError::LoadError(*root))?
             .into_owned();
         let tree = Self {
             root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
@@ -143,7 +143,7 @@ where
         let leaf_hash = leaf_node.hash();
         let leaf_key = *leaf_node.leaf_key();
         self.storage.insert(&leaf_hash.into(), &leaf_node.as_ref().into())?;
-        self.storage.insert(&leaf_key.into(), &leaf_node.as_ref().into())?;
+        self.storage.insert(&leaf_key, &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);

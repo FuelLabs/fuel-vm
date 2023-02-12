@@ -311,7 +311,7 @@ impl<TableType, StorageType, Key> ParentNodeTrait for StorageNode<'_, TableType,
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
-    Key: MerkleTreeKey + ComparablePath + PartialEq,
+    Key: MerkleTreeKey + PartialEq,
 {
     type Error = StorageNodeError<StorageType::Error>;
 
@@ -319,15 +319,15 @@ where
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf);
         }
-        let key = *self.node.left_child_key();
-        if key == Key::from(*zero_sum()) {
+        let key = self.node.left_child_key();
+        if key == &Key::from(*zero_sum()) {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
         let primitive = self
             .storage
-            .get(&key)
+            .get(key)
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(key))?;
+            .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -339,15 +339,15 @@ where
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf);
         }
-        let key = *self.node.right_child_key();
-        if key == Key::from(*zero_sum()) {
+        let key = self.node.right_child_key();
+        if key == &Key::from(*zero_sum()) {
             return Ok(Self::new(self.storage, Node::create_placeholder()));
         }
         let primitive = self
             .storage
             .get(&key)
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(key))?;
+            .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -356,7 +356,7 @@ where
     }
 }
 
-impl<TableType, StorageType, Key> fmt::Debug for StorageNode<'_, TableType, StorageType, Key>
+impl<TableType, StorageType, Key> Debug for StorageNode<'_, TableType, StorageType, Key>
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,

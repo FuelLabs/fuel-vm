@@ -140,9 +140,9 @@ where
 
         let leaf_node: Node<Key> = Node::create_leaf(key, data);
         let leaf_hash = leaf_node.hash();
-        let leaf_key = *leaf_node.leaf_key();
+        let leaf_key = leaf_node.leaf_key();
         self.storage.insert(&leaf_hash.into(), &leaf_node.as_ref().into())?;
-        self.storage.insert(&leaf_key, &leaf_node.as_ref().into())?;
+        self.storage.insert(leaf_key, &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);

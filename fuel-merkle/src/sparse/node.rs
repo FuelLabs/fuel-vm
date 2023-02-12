@@ -345,7 +345,7 @@ where
         }
         let primitive = self
             .storage
-            .get(&key)
+            .get(key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive

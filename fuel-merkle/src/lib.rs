@@ -3,7 +3,6 @@
 
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
-extern crate core;
 
 pub mod binary;
 pub mod common;

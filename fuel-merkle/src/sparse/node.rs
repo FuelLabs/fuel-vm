@@ -21,7 +21,6 @@ pub(crate) struct Node<Key> {
     prefix: Prefix,
     bytes_lo: Key,
     bytes_hi: Key,
-    key: PhantomData<Key>,
 }
 
 impl<Key> Default for Node<Key>
@@ -34,7 +33,6 @@ where
             prefix: Default::default(),
             bytes_lo: Key::from(*zero_sum()),
             bytes_hi: Key::from(*zero_sum()),
-            key: Default::default(),
         }
     }
 }
@@ -53,7 +51,6 @@ where
             prefix,
             bytes_lo,
             bytes_hi,
-            ..Default::default()
         }
     }
 
@@ -63,7 +60,6 @@ where
             prefix: Prefix::Leaf,
             bytes_lo: *key,
             bytes_hi: Key::from(sum(data)),
-            ..Default::default()
         }
     }
 
@@ -73,7 +69,6 @@ where
             prefix: Prefix::Node,
             bytes_lo: left_child.hash().into(),
             bytes_hi: right_child.hash().into(),
-            ..Default::default()
         }
     }
 

@@ -310,7 +310,7 @@ pub enum StorageNodeError<StorageError> {
 impl<TableType, StorageType, Key> ParentNodeTrait for StorageNode<'_, TableType, StorageType, Key>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     Key: MerkleTreeKey + ComparablePath + PartialEq,
 {
     type Error = StorageNodeError<StorageType::Error>;
@@ -359,7 +359,7 @@ where
 impl<TableType, StorageType, Key> fmt::Debug for StorageNode<'_, TableType, StorageType, Key>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     Key: MerkleTreeKey + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -551,7 +551,7 @@ mod test_storage_node {
         type Key = Self::OwnedKey;
         type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
-        type OwnedValue = Primitive<Self::Key>;
+        type OwnedValue = Primitive;
     }
 
     #[test]

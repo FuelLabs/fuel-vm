@@ -7,8 +7,8 @@ use crate::{
 use alloc::vec::Vec;
 use core::{cmp, fmt::Debug, iter, marker::PhantomData};
 
-pub trait MerkleTreeKey: From<Bytes32> + AsRef<[u8]> + Copy + PartialEq {}
-impl<T> MerkleTreeKey for T where T: From<Bytes32> + AsRef<[u8]> + Copy + PartialEq {}
+pub trait MerkleTreeKey: From<Bytes32> + Into<Bytes32> + AsRef<[u8]> + Copy + PartialEq {}
+impl<T> MerkleTreeKey for T where T: From<Bytes32> + Into<Bytes32> + AsRef<[u8]> + Copy + PartialEq {}
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -73,7 +73,7 @@ type PathSet<Node> = (Vec<Node>, Vec<Node>);
 
 impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
 where
-    TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     TableType::Key: MerkleTreeKey,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
@@ -126,7 +126,7 @@ where
 
 impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
 where
-    TableType: Mappable<Key = Key, Value = Primitive<Key>, OwnedValue = Primitive<Key>>,
+    TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     TableType::Key: MerkleTreeKey,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
@@ -317,7 +317,7 @@ mod test {
         type Key = Self::OwnedKey;
         type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
-        type OwnedValue = Primitive<Self::Key>;
+        type OwnedValue = Primitive;
     }
 
     #[test]

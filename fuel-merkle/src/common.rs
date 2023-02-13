@@ -49,6 +49,12 @@ impl From<Bytes32> for WrappedBytes32 {
     }
 }
 
+impl Into<Bytes32> for WrappedBytes32 {
+    fn into(self) -> Bytes32 {
+        self.0
+    }
+}
+
 use alloc::vec::Vec;
 
 pub type ProofSet = Vec<Bytes32>;

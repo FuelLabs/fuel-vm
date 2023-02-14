@@ -286,7 +286,7 @@ impl<TableType, StorageType, Key> ParentNodeTrait for StorageNode<'_, TableType,
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
-    Key: MerkleTreeKey + ComparablePath + PartialEq,
+    TableType::Key: MerkleTreeKey,
 {
     type Error = StorageNodeError<StorageType::Error>;
 

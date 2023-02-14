@@ -65,8 +65,8 @@ impl TryFrom<Primitive> for Node {
     fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {
         let height = primitive.height();
         let prefix = primitive.prefix()?;
-        let bytes_lo = (*primitive.bytes_lo());
-        let bytes_hi = (*primitive.bytes_hi());
+        let bytes_lo = *primitive.bytes_lo();
+        let bytes_hi = *primitive.bytes_hi();
         let node = Self::new(height, prefix, bytes_lo, bytes_hi);
         Ok(node)
     }

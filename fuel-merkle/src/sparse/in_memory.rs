@@ -13,11 +13,11 @@ impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
     type OwnedKey = WrappedBytes32;
     type Value = Self::OwnedValue;
-    type OwnedValue = Primitive<Self::Key>;
+    type OwnedValue = Primitive;
 }
 
 type Storage = StorageMap<NodesTable>;
-type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage, WrappedBytes32>;
+type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
 pub struct MerkleTree {
     tree: SparseMerkleTree,

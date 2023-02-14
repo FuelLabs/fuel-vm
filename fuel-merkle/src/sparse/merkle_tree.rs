@@ -104,7 +104,7 @@ where
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
+        let (mut path_nodes, mut side_nodes): (Vec<Node<Key>>, Vec<Node<Key>>) = root_storage_node
             .as_path_iter(&leaf_storage_node)
             .map(|(path_node, side_node)| {
                 Ok((
@@ -130,7 +130,7 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
 where
     TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     TableType::Key: MerkleTreeKey,
@@ -169,8 +169,8 @@ where
 
         if let Some(primitive) = self.storage.get(key)? {
             let primitive = primitive.into_owned();
-            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
+            let leaf_node: Node<Key> = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
+            let (path_nodes, side_nodes): (Vec<Node<Key>>, Vec<Node<Key>>) = self.path_set(leaf_node.clone())?;
             self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -181,9 +181,9 @@ where
 
     fn update_with_path_set(
         &mut self,
-        requested_leaf_node: &Node,
-        path_nodes: &[Node],
-        side_nodes: &[Node],
+        requested_leaf_node: &Node<Key>,
+        path_nodes: &[Node<Key>],
+        side_nodes: &[Node<Key>],
     ) -> Result<(), StorageError> {
         let path = &requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -245,9 +245,9 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_node: &Node,
-        path_nodes: &[Node],
-        side_nodes: &[Node],
+        requested_leaf_node: &Node<Key>,
+        path_nodes: &[Node<Key>],
+        side_nodes: &[Node<Key>],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
             self.storage.remove(&node.hash().into())?;
@@ -323,7 +323,7 @@ mod test {
         type Key = Self::OwnedKey;
         type OwnedKey = WrappedBytes32;
         type Value = Self::OwnedValue;
-        type OwnedValue = Primitive;
+        type OwnedValue = Primitive<Self::Key>;
     }
 
     #[test]

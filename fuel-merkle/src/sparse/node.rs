@@ -45,7 +45,6 @@ impl Node {
             prefix,
             bytes_lo,
             bytes_hi,
-            ..Default::default()
         }
     }
 

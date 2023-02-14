@@ -674,10 +674,7 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
-        let _ = s.insert(
-            &leaf_0.hash().into(),
-            &(0xff, 0xff, [0xff; 32], [0xff; 32]),
-        );
+        let _ = s.insert(&leaf_0.hash().into(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
@@ -700,10 +697,7 @@ mod test_storage_node {
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
-        let _ = s.insert(
-            &leaf_1.hash().into(),
-            &(0xff, 0xff, [0xff; 32], [0xff; 32]),
-        );
+        let _ = s.insert(&leaf_1.hash().into(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
         let storage_node = StorageNode::new(&s, node_0);

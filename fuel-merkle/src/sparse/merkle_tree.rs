@@ -727,7 +727,7 @@ mod test {
 
         // Overwrite the root key-value with an invalid primitive to create a
         // DeserializeError.
-        let primitive = (0xff, 0xff, [0xff; 32].into(), [0xff; 32].into());
+        let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
         storage.insert(&root.into(), &primitive).unwrap();
 
         let err = MerkleTree::load(&mut storage, &root.into()).expect_err("Expected load() to return Error; got Ok");

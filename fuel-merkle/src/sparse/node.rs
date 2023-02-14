@@ -421,7 +421,7 @@ mod test_node {
 
     #[test]
     fn test_create_leaf_from_primitive_returns_a_valid_leaf() {
-        let primitive = (0, Prefix::Leaf as u8, [0xff; 32].into(), [0xff; 32].into());
+        let primitive = (0, Prefix::Leaf as u8, [0xff; 32], [0xff; 32]);
 
         let node: Node = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), true);
@@ -434,7 +434,7 @@ mod test_node {
 
     #[test]
     fn test_create_node_from_primitive_returns_a_valid_node() {
-        let primitive = (255, Prefix::Node as u8, [0xff; 32].into(), [0xff; 32].into());
+        let primitive = (255, Prefix::Node as u8, [0xff; 32], [0xff; 32]);
 
         let node: Node = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), false);
@@ -447,7 +447,7 @@ mod test_node {
 
     #[test]
     fn test_create_from_primitive_returns_deserialize_error_if_invalid_prefix() {
-        let primitive = (0xff, 0xff, [0xff; 32].into(), [0xff; 32].into());
+        let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
 
         // Should return Error; prefix 0xff is does not represent a node or leaf
         let err = Node::try_from(primitive).expect_err("Expected try_from() to be Error; got OK");
@@ -676,7 +676,7 @@ mod test_storage_node {
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), &[1u8; 32]);
         let _ = s.insert(
             &leaf_0.hash().into(),
-            &(0xff, 0xff, [0xff; 32].into(), [0xff; 32].into()),
+            &(0xff, 0xff, [0xff; 32], [0xff; 32]),
         );
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
@@ -702,7 +702,7 @@ mod test_storage_node {
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), &[1u8; 32]);
         let _ = s.insert(
             &leaf_1.hash().into(),
-            &(0xff, 0xff, [0xff; 32].into(), [0xff; 32].into()),
+            &(0xff, 0xff, [0xff; 32], [0xff; 32]),
         );
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 

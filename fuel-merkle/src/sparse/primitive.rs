@@ -1,4 +1,3 @@
-use crate::sparse::merkle_tree::MerkleTreeKey;
 use crate::{
     common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
     sparse::Node,
@@ -49,11 +48,8 @@ impl PrimitiveView for Primitive {
     }
 }
 
-impl<Key> From<&Node<Key>> for Primitive
-where
-    Key: MerkleTreeKey,
-{
-    fn from(node: &Node<Key>) -> Self {
+impl From<&Node> for Primitive {
+    fn from(node: &Node) -> Self {
         (
             node.height(),
             node.prefix() as u8,
@@ -63,10 +59,7 @@ where
     }
 }
 
-impl<Key> TryFrom<Primitive> for Node<Key>
-where
-    Key: MerkleTreeKey,
-{
+impl TryFrom<Primitive> for Node {
     type Error = DeserializeError;
 
     fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {

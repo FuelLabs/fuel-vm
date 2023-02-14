@@ -36,19 +36,13 @@ impl<Key, StorageError> From<StorageError> for MerkleTreeError<Key, StorageError
 }
 
 #[derive(Debug)]
-pub struct MerkleTree<TableType, StorageType, Key>
-where
-    Key: MerkleTreeKey,
-{
-    root_node: Node<Key>,
+pub struct MerkleTree<TableType, StorageType> {
+    root_node: Node,
     storage: StorageType,
     phantom_table: PhantomData<TableType>,
 }
 
-impl<TableType, StorageType, Key> MerkleTree<TableType, StorageType, Key>
-where
-    Key: MerkleTreeKey,
-{
+impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     pub const fn empty_root() -> Bytes32 {
         *zero_sum()
     }
@@ -59,19 +53,19 @@ where
 
     // PRIVATE
 
-    fn root_node(&self) -> &Node<Key> {
+    fn root_node(&self) -> &Node {
         &self.root_node
     }
 
-    fn set_root_node(&mut self, node: Node<Key>) {
-        debug_assert!(node.is_leaf() || node.height() == Node::<Key>::max_height() as u32);
+    fn set_root_node(&mut self, node: Node) {
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
         self.root_node = node;
     }
 }
 
 type PathSet<Node> = (Vec<Node>, Vec<Node>);
 
-impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
+impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     TableType::Key: MerkleTreeKey,
@@ -100,16 +94,28 @@ where
 
     // PRIVATE
 
-    fn path_set(&self, leaf_node: Node<Key>) -> Result<PathSet<Node<Key>>, MerkleTreeError<Key, StorageError>> {
+    fn path_set(&self, leaf_node: Node) -> Result<PathSet<Node>, MerkleTreeError<Key, StorageError>> {
+        let convert_child_error = |e: ChildError<Bytes32, StorageNodeError<StorageError>>| match e {
+            ChildError::ChildNotFound(key) => ChildError::ChildNotFound(key.into()),
+            ChildError::NodeIsLeaf => ChildError::NodeIsLeaf,
+            ChildError::Error(e) => ChildError::Error(e),
+        };
+
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node<Key>>, Vec<Node<Key>>) = root_storage_node
+        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
             .as_path_iter(&leaf_storage_node)
             .map(|(path_node, side_node)| {
                 Ok((
-                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                    path_node
+                        .map_err(convert_child_error)
+                        .map_err(MerkleTreeError::ChildError)?
+                        .into_node(),
+                    side_node
+                        .map_err(convert_child_error)
+                        .map_err(MerkleTreeError::ChildError)?
+                        .into_node(),
                 ))
             })
             .collect::<Result<Vec<_>, MerkleTreeError<Key, StorageError>>>()?
@@ -124,7 +130,7 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType, Key>
+impl<TableType, StorageType, StorageError, Key> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Key, Value = Primitive, OwnedValue = Primitive>,
     TableType::Key: MerkleTreeKey,
@@ -138,9 +144,9 @@ where
             return Ok(());
         }
 
-        let leaf_node: Node<Key> = Node::create_leaf(key, data);
+        let leaf_node = Node::create_leaf(&(*key).into(), data);
         let leaf_hash = leaf_node.hash();
-        let leaf_key = *leaf_node.leaf_key();
+        let leaf_key = (*leaf_node.leaf_key()).into();
         self.storage.insert(&leaf_hash.into(), &leaf_node.as_ref().into())?;
         self.storage.insert(&leaf_key, &leaf_node.as_ref().into())?;
 
@@ -163,8 +169,8 @@ where
 
         if let Some(primitive) = self.storage.get(key)? {
             let primitive = primitive.into_owned();
-            let leaf_node: Node<Key> = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node<Key>>, Vec<Node<Key>>) = self.path_set(leaf_node.clone())?;
+            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
+            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
             self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -175,9 +181,9 @@ where
 
     fn update_with_path_set(
         &mut self,
-        requested_leaf_node: &Node<Key>,
-        path_nodes: &[Node<Key>],
-        side_nodes: &[Node<Key>],
+        requested_leaf_node: &Node,
+        path_nodes: &[Node],
+        side_nodes: &[Node],
     ) -> Result<(), StorageError> {
         let path = &requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -239,9 +245,9 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_node: &Node<Key>,
-        path_nodes: &[Node<Key>],
-        side_nodes: &[Node<Key>],
+        requested_leaf_node: &Node,
+        path_nodes: &[Node],
+        side_nodes: &[Node],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
             self.storage.remove(&node.hash().into())?;

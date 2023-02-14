@@ -17,7 +17,7 @@ impl Mappable for NodesTable {
 }
 
 type Storage = StorageMap<NodesTable>;
-type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage, WrappedBytes32>;
+type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
 pub struct MerkleTree {
     tree: SparseMerkleTree,

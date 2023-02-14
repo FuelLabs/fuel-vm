@@ -1,6 +1,5 @@
-use crate::sparse::merkle_tree::MerkleTreeKey;
 use crate::{
-    common::{error::DeserializeError, Prefix, PrefixError},
+    common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
     sparse::Node,
 };
 
@@ -22,16 +21,16 @@ use crate::{
 /// | `05 - 37`  | Left child key (32 bytes)  |
 /// | `37 - 69`  | Right child key (32 bytes) |
 ///
-pub type Primitive<Key> = (u32, u8, Key, Key);
+pub type Primitive = (u32, u8, Bytes32, Bytes32);
 
-trait PrimitiveView<Key> {
+trait PrimitiveView {
     fn height(&self) -> u32;
     fn prefix(&self) -> Result<Prefix, PrefixError>;
-    fn bytes_lo(&self) -> &Key;
-    fn bytes_hi(&self) -> &Key;
+    fn bytes_lo(&self) -> &Bytes32;
+    fn bytes_hi(&self) -> &Bytes32;
 }
 
-impl<Key> PrimitiveView<Key> for Primitive<Key> {
+impl PrimitiveView for Primitive {
     fn height(&self) -> u32 {
         self.0
     }
@@ -40,31 +39,30 @@ impl<Key> PrimitiveView<Key> for Primitive<Key> {
         Prefix::try_from(self.1)
     }
 
-    fn bytes_lo(&self) -> &Key {
+    fn bytes_lo(&self) -> &Bytes32 {
         &self.2
     }
 
-    fn bytes_hi(&self) -> &Key {
+    fn bytes_hi(&self) -> &Bytes32 {
         &self.3
     }
 }
 
-impl<Key> From<&Node<Key>> for Primitive<Key>
-where
-    Key: MerkleTreeKey,
-{
-    fn from(node: &Node<Key>) -> Self {
-        (node.height(), node.prefix() as u8, *node.bytes_lo(), *node.bytes_hi())
+impl From<&Node> for Primitive {
+    fn from(node: &Node) -> Self {
+        (
+            node.height(),
+            node.prefix() as u8,
+            (*node.bytes_lo()),
+            (*node.bytes_hi()),
+        )
     }
 }
 
-impl<Key> TryFrom<Primitive<Key>> for Node<Key>
-where
-    Key: MerkleTreeKey,
-{
+impl TryFrom<Primitive> for Node {
     type Error = DeserializeError;
 
-    fn try_from(primitive: Primitive<Key>) -> Result<Self, Self::Error> {
+    fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {
         let height = primitive.height();
         let prefix = primitive.prefix()?;
         let bytes_lo = *primitive.bytes_lo();

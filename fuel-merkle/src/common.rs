@@ -49,9 +49,9 @@ impl From<Bytes32> for WrappedBytes32 {
     }
 }
 
-impl Into<Bytes32> for WrappedBytes32 {
-    fn into(self) -> Bytes32 {
-        self.0
+impl From<WrappedBytes32> for Bytes32 {
+    fn from(val: WrappedBytes32) -> Self {
+        val.0
     }
 }
 

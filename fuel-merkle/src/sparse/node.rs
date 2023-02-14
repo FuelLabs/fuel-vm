@@ -62,8 +62,8 @@ impl Node {
         Self {
             height,
             prefix: Prefix::Node,
-            bytes_lo: left_child.hash().into(),
-            bytes_hi: right_child.hash().into(),
+            bytes_lo: left_child.hash(),
+            bytes_hi: right_child.hash(),
         }
     }
 
@@ -158,7 +158,7 @@ impl Node {
     }
 
     pub fn is_placeholder(&self) -> bool {
-        *self.bytes_lo() == Bytes32::from(*zero_sum()) && *self.bytes_hi() == Bytes32::from(*zero_sum())
+        *self.bytes_lo() == (*zero_sum()) && *self.bytes_hi() == (*zero_sum())
     }
 
     pub fn hash(&self) -> Bytes32 {

@@ -202,15 +202,15 @@ impl Debug for Node {
             f.debug_struct("Node (Internal)")
                 .field("Height", &self.height())
                 .field("Hash", &hex::encode(self.hash()))
-                .field("Left child key", &self.left_child_key())
-                .field("Right child key", &self.right_child_key())
+                .field("Left child key", &hex::encode(self.left_child_key()))
+                .field("Right child key", &hex::encode(self.right_child_key()))
                 .finish()
         } else {
             f.debug_struct("Node (Leaf)")
                 .field("Height", &self.height())
                 .field("Hash", &hex::encode(self.hash()))
-                .field("Leaf key", &self.leaf_key())
-                .field("Leaf data", &self.leaf_data())
+                .field("Leaf key", &hex::encode(self.leaf_key()))
+                .field("Leaf data", &hex::encode(self.leaf_data()))
                 .finish()
         }
     }
@@ -341,15 +341,15 @@ where
             f.debug_struct("StorageNode (Internal)")
                 .field("Height", &self.height())
                 .field("Hash", &hex::encode(self.hash()))
-                .field("Left child key", &self.node.left_child_key())
-                .field("Right child key", &self.node.right_child_key())
+                .field("Left child key", &hex::encode(self.node.left_child_key()))
+                .field("Right child key", &hex::encode(self.node.right_child_key()))
                 .finish()
         } else {
             f.debug_struct("StorageNode (Leaf)")
                 .field("Height", &self.height())
                 .field("Hash", &hex::encode(self.hash()))
-                .field("Leaf key", &self.node.leaf_key())
-                .field("Leaf data", &self.node.leaf_data())
+                .field("Leaf key", &hex::encode(self.node.leaf_key()))
+                .field("Leaf data", &hex::encode(self.node.leaf_data()))
                 .finish()
         }
     }

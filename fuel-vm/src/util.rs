@@ -8,9 +8,8 @@
 /// # Example
 ///
 /// ```
-/// use fuel_asm::op;
+/// use fuel_asm::{op, RegId};
 /// use fuel_types::{Immediate18, Word};
-/// use fuel_asm::RegId;
 /// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;

@@ -161,7 +161,7 @@ impl CallFrame {
 
     /// Start of the asset id offset from the beginning of the call frame.
     pub const fn asset_id_offset() -> usize {
-        ContractId::LEN
+        Self::contract_id_offset() + ContractId::LEN
     }
 
     /// Start of the registers offset from the beginning of the call frame.

@@ -1,10 +1,11 @@
 use super::{ExecutableTransaction, Interpreter};
-use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
-use crate::storage::InterpreterStorage;
+use crate::storage::{ContractsAssets, ContractsAssetsStorage, InterpreterStorage};
+use crate::{consts::*, storage::ContractsRawCode};
 
 use fuel_asm::{PanicReason, RegId, RegisterId, Word};
+use fuel_storage::{StorageInspect, StorageSize};
 use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
@@ -23,11 +24,7 @@ where
     }
 
     pub(crate) fn contract_size(&self, contract: &ContractId) -> Result<Word, RuntimeError> {
-        Ok(self
-            .storage
-            .storage_contract_size(contract)
-            .map_err(RuntimeError::from_io)?
-            .ok_or(PanicReason::ContractNotFound)? as Word)
+        contract_size(&self.storage, contract)
     }
 
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -196,11 +193,7 @@ where
     }
 
     pub(crate) fn balance(&self, contract: &ContractId, asset_id: &AssetId) -> Result<Word, RuntimeError> {
-        Ok(self
-            .storage
-            .merkle_contract_asset_id_balance(contract, asset_id)
-            .map_err(RuntimeError::from_io)?
-            .unwrap_or_default())
+        balance(&self.storage, contract, asset_id)
     }
 
     /// Increase the asset balance for a contract
@@ -210,12 +203,7 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(contract, asset_id)?;
-        let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
-        self.storage
-            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
-        Ok(balance)
+        balance_increase(&mut self.storage, contract, asset_id, amount)
     }
 
     /// Decrease the asset balance for a contract
@@ -225,11 +213,66 @@ where
         asset_id: &AssetId,
         amount: Word,
     ) -> Result<Word, RuntimeError> {
-        let balance = self.balance(contract, asset_id)?;
-        let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
-        self.storage
-            .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
-        Ok(balance)
+        balance_decrease(&mut self.storage, contract, asset_id, amount)
     }
+}
+
+pub(crate) fn contract_size<S>(storage: &S, contract: &ContractId) -> Result<Word, RuntimeError>
+where
+    S: StorageSize<ContractsRawCode> + ?Sized,
+    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
+{
+    Ok(storage
+        .size_of_value(contract)
+        .map_err(RuntimeError::from_io)?
+        .ok_or(PanicReason::ContractNotFound)? as Word)
+}
+
+pub(crate) fn balance<S>(storage: &S, contract: &ContractId, asset_id: &AssetId) -> Result<Word, RuntimeError>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
+    Ok(storage
+        .merkle_contract_asset_id_balance(contract, asset_id)
+        .map_err(RuntimeError::from_io)?
+        .unwrap_or_default())
+}
+
+/// Increase the asset balance for a contract
+pub(crate) fn balance_increase<S>(
+    storage: &mut S,
+    contract: &ContractId,
+    asset_id: &AssetId,
+    amount: Word,
+) -> Result<Word, RuntimeError>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
+    let balance = balance(storage, contract, asset_id)?;
+    let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
+    storage
+        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .map_err(RuntimeError::from_io)?;
+    Ok(balance)
+}
+
+/// Decrease the asset balance for a contract
+pub(crate) fn balance_decrease<S>(
+    storage: &mut S,
+    contract: &ContractId,
+    asset_id: &AssetId,
+    amount: Word,
+) -> Result<Word, RuntimeError>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
+    let balance = balance(storage, contract, asset_id)?;
+    let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
+    storage
+        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .map_err(RuntimeError::from_io)?;
+    Ok(balance)
 }

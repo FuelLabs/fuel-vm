@@ -360,7 +360,7 @@ where
             ..
         } = self;
 
-        state_write_qword(&contract_id, storage, memory, &mut registers[rb], input)?;
+        state_write_qword(&contract_id, storage, memory.as_mut(), &mut registers[rb], input)?;
         self.inc_pc()
     }
 
@@ -483,7 +483,7 @@ impl StateReadQWord {
 fn state_read_qword(
     contract_id: &ContractId,
     storage: &impl InterpreterStorage,
-    memory: &mut [u8],
+    memory: &mut [u8; VM_MEMORY_SIZE],
     result_register: &mut Word,
     input: StateReadQWord,
 ) -> Result<(), RuntimeError> {
@@ -545,7 +545,7 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8],
+    memory: &[u8; VM_MEMORY_SIZE],
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
@@ -590,7 +590,7 @@ impl StateClearQWord {
 fn state_clear_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8],
+    memory: &[u8; VM_MEMORY_SIZE],
     result_register: &mut Word,
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {

@@ -1,8 +1,8 @@
 use crate::{
     Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRead, StorageRef,
-    StorageSize,
+    StorageSize, StorageWrite,
 };
-use alloc::borrow::Cow;
+use alloc::{borrow::Cow, vec::Vec};
 
 impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'a T {
     type Error = T::Error;
@@ -98,6 +98,18 @@ impl<'a, T, Type: Mappable> StorageRef<'a, T, Type> {
     }
 }
 
+impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
+    #[inline(always)]
+    pub fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, T::Error> {
+        self.0.read(key, buf)
+    }
+
+    #[inline(always)]
+    pub fn read_alloc(&self, key: &<Type as Mappable>::Key) -> Result<Option<alloc::vec::Vec<u8>>, T::Error> {
+        self.0.read_alloc(key)
+    }
+}
+
 impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
     pub fn get(self, key: &Type::Key) -> Result<Option<Cow<'a, Type::OwnedValue>>, T::Error> {
@@ -131,5 +143,25 @@ impl<'a, T, Type: Mappable> StorageMut<'a, T, Type> {
         T: MerkleRootStorage<Key, Type>,
     {
         self.0.root(key)
+    }
+}
+
+impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
+    #[inline(always)]
+    pub fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, T::Error> {
+        self.0.write(key, buf)
+    }
+
+    #[inline(always)]
+    pub fn replace(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<(usize, Option<Vec<u8>>), T::Error>
+    where
+        T: StorageSize<Type>,
+    {
+        self.0.replace(key, buf)
+    }
+
+    #[inline(always)]
+    pub fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, T::Error> {
+        self.0.take(key)
     }
 }

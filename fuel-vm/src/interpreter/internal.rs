@@ -1,4 +1,6 @@
-use super::{ExecutableTransaction, Interpreter};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use crate::constraints::reg_key::*;
+use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
@@ -6,6 +8,8 @@ use crate::error::RuntimeError;
 
 use fuel_asm::{Instruction, PanicReason, RegId};
 use fuel_tx::field::ReceiptsRoot;
+use fuel_tx::ConsensusParameters;
+use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, ContractId, RegisterId, Word};
@@ -48,28 +52,42 @@ where
     }
 
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
-        self.receipts.push(receipt);
+        append_receipt(
+            &mut self.receipts,
+            self.tx.as_script_mut(),
+            &self.params,
+            &mut self.memory,
+            receipt,
+        )
+    }
+}
 
-        if let Some(script) = self.tx.as_script() {
-            let offset = self.tx_offset() + script.receipts_root_offset();
+pub(crate) fn append_receipt(
+    receipts: &mut Vec<Receipt>,
+    tx: Option<&mut Script>,
+    consensus_params: &ConsensusParameters,
+    memory: &mut [u8; VM_MEMORY_SIZE],
+    receipt: Receipt,
+) {
+    receipts.push(receipt);
 
-            // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
-            // linear monadic model and should be discussed. Maybe the receipts tree should have
-            // constant capacity so the gas cost is also constant to the maximum depth?
-            let root = if self.receipts().is_empty() {
-                EMPTY_RECEIPTS_MERKLE_ROOT.into()
-            } else {
-                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
-            };
+    if let Some(script) = tx {
+        let offset = consensus_params.tx_offset() + script.receipts_root_offset();
 
-            if let Some(script) = self.tx.as_script_mut() {
-                *script.receipts_root_mut() = root;
-            }
+        // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
+        // linear monadic model and should be discussed. Maybe the receipts tree should have
+        // constant capacity so the gas cost is also constant to the maximum depth?
+        let root = if receipts.is_empty() {
+            EMPTY_RECEIPTS_MERKLE_ROOT.into()
+        } else {
+            crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()))
+        };
 
-            // Transaction memory space length is already checked on initialization so its
-            // guaranteed to fit
-            self.memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
-        }
+        *script.receipts_root_mut() = root;
+
+        // Transaction memory space length is already checked on initialization so its
+        // guaranteed to fit
+        memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
     }
 }
 
@@ -121,10 +139,6 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.context().is_external()
     }
 
-    pub(crate) const fn is_internal_context(&self) -> bool {
-        !self.is_external_context()
-    }
-
     pub(crate) const fn is_predicate(&self) -> bool {
         matches!(self.context, Context::Predicate { .. })
     }
@@ -135,30 +149,15 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
-        let (c, cx) = self.internal_contract_bounds()?;
-
-        // Safety: Memory bounds logically verified by the interpreter
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
-
-        Ok(contract)
+        internal_contract(&self.context, self.registers.fp(), &self.memory)
     }
 
     pub(crate) fn internal_contract_or_default(&self) -> ContractId {
-        // Safety: memory bounds checked by `internal_contract_bounds`
-        self.internal_contract_bounds()
-            .map(|(c, cx)| unsafe { ContractId::from_slice_unchecked(&self.memory[c..cx]) })
-            .unwrap_or_default()
+        internal_contract_or_default(&self.context, self.registers.fp(), self.memory.as_ref())
     }
 
     pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), RuntimeError> {
-        self.is_internal_context()
-            .then(|| {
-                let c = self.registers[RegId::FP] as usize;
-                let cx = c + ContractId::LEN;
-
-                (c, cx)
-            })
-            .ok_or_else(|| PanicReason::ExpectedInternalContext.into())
+        internal_contract_bounds(&self.context, self.registers.fp())
     }
 
     /// Reduces the unspent balance of a given asset ID
@@ -170,11 +169,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let balances = &mut self.balances;
         let memory = &mut self.memory;
 
-        balances
-            .checked_balance_sub(memory, asset_id, value)
-            .ok_or(PanicReason::NotEnoughBalance)?;
-
-        Ok(())
+        external_asset_id_balance_sub(balances, memory.as_mut(), asset_id, value)
     }
 
     /// Reduces the unspent balance of the base asset
@@ -192,9 +187,8 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
-        self.context.update_from_frame_pointer(fp);
-
-        self.registers[RegId::FP] = fp;
+        let ReadRegisters { fp: register, .. } = split_registers(&mut self.registers).0;
+        set_frame_pointer(&mut self.context, register, fp)
     }
 
     pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
@@ -208,6 +202,61 @@ pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
     } else {
         Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
     }
+}
+
+/// Reduces the unspent balance of a given asset ID
+pub(crate) fn external_asset_id_balance_sub(
+    balances: &mut RuntimeBalances,
+    memory: &mut [u8; VM_MEMORY_SIZE],
+    asset_id: &AssetId,
+    value: Word,
+) -> Result<(), RuntimeError> {
+    balances
+        .checked_balance_sub(memory, asset_id, value)
+        .ok_or(PanicReason::NotEnoughBalance)?;
+
+    Ok(())
+}
+
+pub(crate) fn internal_contract_or_default(
+    context: &Context,
+    register: Reg<FP>,
+    memory: &[u8; VM_MEMORY_SIZE],
+) -> ContractId {
+    internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
+}
+
+pub(crate) fn internal_contract<'a>(
+    context: &Context,
+    register: Reg<FP>,
+    memory: &'a [u8; VM_MEMORY_SIZE],
+) -> Result<&'a ContractId, RuntimeError> {
+    let (c, _) = internal_contract_bounds(context, register)?;
+
+    // Safety: Memory bounds logically verified by the interpreter
+    let contract = unsafe {
+        ContractId::as_ref_unchecked(CheckedMemRange::new_const::<{ ContractId::LEN }>(c as Word)?.read(memory))
+    };
+
+    Ok(contract)
+}
+
+pub(crate) fn internal_contract_bounds(context: &Context, fp: Reg<FP>) -> Result<(usize, usize), RuntimeError> {
+    context
+        .is_internal()
+        .then(|| {
+            let c = *fp as usize;
+            let cx = c + ContractId::LEN;
+
+            (c, cx)
+        })
+        .ok_or_else(|| PanicReason::ExpectedInternalContext.into())
+}
+
+pub(crate) fn set_frame_pointer(context: &mut Context, mut register: RegMut<FP>, fp: Word) {
+    context.update_from_frame_pointer(fp);
+
+    *register = fp;
 }
 
 #[cfg(all(test, feature = "random"))]

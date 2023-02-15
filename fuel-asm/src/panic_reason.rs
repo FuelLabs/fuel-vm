@@ -560,3 +560,9 @@ impl From<PanicReason> for std::io::Error {
         io::Error::new(io::ErrorKind::Other, reason)
     }
 }
+
+impl From<core::array::TryFromSliceError> for PanicReason {
+    fn from(_: core::array::TryFromSliceError) -> Self {
+        Self::MemoryOverflow
+    }
+}

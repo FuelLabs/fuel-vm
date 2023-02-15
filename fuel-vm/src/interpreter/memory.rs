@@ -451,7 +451,7 @@ fn try_mem_write(
     addr: usize,
     data: &[u8],
     registers: OwnershipRegisters,
-    memory: &mut [u8],
+    memory: &mut [u8; VM_MEMORY_SIZE],
 ) -> Result<(), RuntimeError> {
     let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
 
@@ -472,7 +472,12 @@ fn try_mem_write(
         .ok_or_else(|| PanicReason::MemoryOwnership.into())
 }
 
-fn try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters, memory: &mut [u8]) -> Result<(), RuntimeError> {
+fn try_zeroize(
+    addr: usize,
+    len: usize,
+    registers: OwnershipRegisters,
+    memory: &mut [u8; VM_MEMORY_SIZE],
+) -> Result<(), RuntimeError> {
     let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
 
     let range = (ax <= VM_MAX_RAM as usize)
@@ -707,8 +712,9 @@ mod tests {
         => (false, [0u8; 100]); "Internal too large for heap"
     )]
     fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-        let mut memory = [0u8; 100];
-        let r = try_mem_write(addr, data, registers, &mut memory[..]).is_ok();
+        let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+        let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
+        let memory: [u8; 100] = memory[..100].try_into().unwrap();
         (r, memory)
     }
 
@@ -758,8 +764,9 @@ mod tests {
         => (false, [1u8; 100]); "Internal too large for heap"
     )]
     fn test_try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-        let mut memory = [1u8; 100];
-        let r = try_zeroize(addr, len, registers, &mut memory[..]).is_ok();
+        let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+        let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
+        let memory: [u8; 100] = memory[..100].try_into().unwrap();
         (r, memory)
     }
 }

@@ -6,10 +6,10 @@ mod scwq;
 mod srwq;
 mod swwq;
 
-fn mem(chains: &[&[u8]]) -> Vec<u8> {
+fn mem(chains: &[&[u8]]) -> Box<[u8; VM_MEMORY_SIZE]> {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
-    vec.resize(200, 0);
-    vec
+    vec.resize(VM_MEMORY_SIZE, 0);
+    vec.try_into().unwrap()
 }
 const fn key(k: u8) -> [u8; 32] {
     [

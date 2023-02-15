@@ -6,6 +6,7 @@ use fuel_storage::StorageSize;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
 
+use crate::storage::ContractsAssetsStorage;
 use crate::storage::{ContractsAssetKey, ContractsStateKey, InterpreterStorage};
 
 use super::ExecutableTransaction;
@@ -81,7 +82,6 @@ where
             gas_costs: self.gas_costs,
             params: self.params,
             panic_context: self.panic_context,
-            #[cfg(feature = "profile-any")]
             profiler: self.profiler,
         }
     }
@@ -146,7 +146,6 @@ where
             gas_costs: self.gas_costs,
             params: self.params,
             panic_context: self.panic_context,
-            #[cfg(feature = "profile-any")]
             profiler: self.profiler,
         }
     }
@@ -318,6 +317,8 @@ where
         <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
     }
 }
+
+impl<S: ContractsAssetsStorage + InterpreterStorage> ContractsAssetsStorage for Record<S> {}
 
 impl<S> InterpreterStorage for Record<S>
 where

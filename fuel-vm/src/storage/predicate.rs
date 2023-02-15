@@ -7,7 +7,7 @@ use fuel_asm::Word;
 use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate, StorageRead, StorageSize};
 use fuel_types::{Address, Bytes32, ContractId};
 
-use super::ContractsRawCode;
+use super::{interpreter::ContractsAssetsStorage, ContractsRawCode};
 
 /// No-op storage used for predicate operations.
 ///
@@ -60,6 +60,8 @@ impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
         Err(InterpreterError::PredicateFailure)
     }
 }
+
+impl ContractsAssetsStorage for PredicateStorage {}
 
 impl InterpreterStorage for PredicateStorage {
     type DataError = InterpreterError;

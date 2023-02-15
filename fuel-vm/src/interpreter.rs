@@ -27,7 +27,6 @@ mod crypto;
 pub mod diff;
 mod executors;
 mod flow;
-mod frame;
 mod gas;
 mod initialization;
 mod internal;
@@ -39,7 +38,6 @@ mod post_execution;
 #[cfg(feature = "debug")]
 mod debug;
 
-#[cfg(feature = "profile-any")]
 use crate::profiler::Profiler;
 
 #[cfg(feature = "profile-gas")]
@@ -61,7 +59,7 @@ use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheck
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Vec<u8>,
+    memory: Box<[u8; VM_MEMORY_SIZE]>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
     tx: Tx,
@@ -71,7 +69,6 @@ pub struct Interpreter<S, Tx = ()> {
     context: Context,
     balances: RuntimeBalances,
     gas_costs: GasCosts,
-    #[cfg(feature = "profile-any")]
     profiler: Profiler,
     params: ConsensusParameters,
     /// `PanicContext` after the latest execution. It is consumed by `append_panic_receipt`
@@ -144,12 +141,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.receipts.as_slice()
     }
 
-    #[cfg(feature = "profile-gas")]
-    fn current_location(&self) -> InstructionLocation {
-        InstructionLocation::new(
-            self.frames.last().map(|frame| *frame.to()),
-            self.registers[RegId::PC] - self.registers[RegId::IS],
-        )
+    pub(crate) fn contract_id(&self) -> Option<ContractId> {
+        self.frames.last().map(|frame| *frame.to())
     }
 
     /// Reference to the underlying profiler
@@ -157,6 +150,15 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+}
+
+#[cfg(feature = "profile-gas")]
+fn current_location(
+    current_contract: Option<ContractId>,
+    pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
+    is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
+) -> InstructionLocation {
+    InstructionLocation::new(current_contract, *pc - *is)
 }
 
 impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {

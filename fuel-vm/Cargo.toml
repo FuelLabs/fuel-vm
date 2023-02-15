@@ -23,7 +23,6 @@ fuel-storage = { workspace = true, path = "../fuel-storage" }
 fuel-tx = { workspace = true, features = ["builder", "std"], path = "../fuel-tx" }
 fuel-types = { workspace = true, path = "../fuel-types" }
 itertools = "0.10"
-mockall = { version = "0.11", optional = true }
 rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = "0.10"
@@ -53,7 +52,7 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["fuel-tx/builder", "random", "dep:anyhow", "dep:mockall"]
+test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
 
 [[test]]
 name = "test-backtrace"

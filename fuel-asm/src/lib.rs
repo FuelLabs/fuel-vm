@@ -65,23 +65,6 @@ impl CheckRegId for u8 {
     }
 }
 
-pub enum InstructionProperty {
-    /// If the F_UNSAFEMATH flag is set, an ALU operation that would have panicked
-    /// will instead set $err to true.
-    UnsafeMath,
-    /// If the F_WRAPPING flag is set, an ALU operation that would have panicked
-    /// will instead set $of to the overflow of the operation.
-    WrappingMath,
-    /// Is always followed by the usual PC increment of four
-    NormalPcIncrement,
-    /// Write to reserved registers is prohibited
-    NoReservedRegWrites,
-    /// Always clears $of
-    ClearsOveflowReg,
-    /// Always clears $err
-    ClearsErrorReg,
-}
-
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a unique type
 // for each opcode's instruction variant. For a detailed explanation of how this works, see the
 // `fuel_asm::macros` module level documentation.

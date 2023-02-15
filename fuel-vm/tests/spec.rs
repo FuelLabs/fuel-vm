@@ -109,6 +109,96 @@ fn spec_wrapping_flag(
 }
 
 #[rstest]
+fn spec_logic_ops_clear_of(
+    #[values(
+        op::and(0x10, RegId::ZERO, RegId::ONE),
+        op::andi(0x10, RegId::ZERO, 1),
+        op::eq(0x10, RegId::ZERO, RegId::ONE),
+        op::gt(0x10, RegId::ZERO, RegId::ONE),
+        op::lt(0x10, RegId::ZERO, RegId::ONE),
+        op::move_(0x10, RegId::ONE),
+        op::movi(0x10, 1),
+        op::noop(),
+        op::or(0x10, RegId::ZERO, RegId::ONE),
+        op::ori(0x10, RegId::ZERO, 1),
+        op::sll(0x10, RegId::ZERO, RegId::ONE),
+        op::slli(0x10, RegId::ZERO, 1),
+        op::srl(0x10, RegId::ZERO, RegId::ONE),
+        op::srli(0x10, RegId::ZERO, 1),
+        op::xor(0x10, RegId::ZERO, RegId::ONE),
+        op::xori(0x10, RegId::ZERO, 1)
+    )]
+    case: Instruction,
+) {
+    let mut script = common_setup();
+    script.extend(&[op::addi(0x10, RegId::ZERO, 0x02), op::flag(0x10)]);
+    script.push(op::add(0x10, 0x31, 0x31)); // Set $of to nonzero
+    script.push(op::log(RegId::IS, RegId::PC, RegId::OF, RegId::ERR));
+    script.push(case); // Check that the logic op clears it
+    script.push(op::log(RegId::IS, RegId::PC, RegId::OF, RegId::ERR));
+    script.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(script.into_iter().collect());
+
+    if let Receipt::Log { rc: of, .. } = receipts[0] {
+        assert_ne!(of, 0);
+    } else {
+        panic!("No log data");
+    }
+
+    if let Receipt::Log { rc: of, .. } = receipts[1] {
+        assert_eq!(of, 0);
+    } else {
+        panic!("No log data");
+    }
+}
+
+#[rstest]
+fn spec_logic_ops_clear_err(
+    #[values(
+        op::and(0x10, RegId::ZERO, RegId::ONE),
+        op::andi(0x10, RegId::ZERO, 1),
+        op::eq(0x10, RegId::ZERO, RegId::ONE),
+        op::gt(0x10, RegId::ZERO, RegId::ONE),
+        op::lt(0x10, RegId::ZERO, RegId::ONE),
+        op::move_(0x10, RegId::ONE),
+        op::movi(0x10, 1),
+        op::noop(),
+        op::or(0x10, RegId::ZERO, RegId::ONE),
+        op::ori(0x10, RegId::ZERO, 1),
+        op::sll(0x10, RegId::ZERO, RegId::ONE),
+        op::slli(0x10, RegId::ZERO, 1),
+        op::srl(0x10, RegId::ZERO, RegId::ONE),
+        op::srli(0x10, RegId::ZERO, 1),
+        op::xor(0x10, RegId::ZERO, RegId::ONE),
+        op::xori(0x10, RegId::ZERO, 1)
+    )]
+    case: Instruction,
+) {
+    let mut script = common_setup();
+    script.extend(&[op::addi(0x10, RegId::ZERO, 0x01), op::flag(0x10)]);
+    script.push(op::div(0x10, RegId::ZERO, RegId::ZERO)); // Set $err to nonzero
+    script.push(op::log(RegId::IS, RegId::PC, RegId::OF, RegId::ERR));
+    script.push(case); // Check that the logic op clears it
+    script.push(op::log(RegId::IS, RegId::PC, RegId::OF, RegId::ERR));
+    script.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(script.into_iter().collect());
+
+    if let Receipt::Log { rd: err, .. } = receipts[0] {
+        assert_ne!(err, 0);
+    } else {
+        panic!("No log data");
+    }
+
+    if let Receipt::Log { rd: err, .. } = receipts[1] {
+        assert_eq!(err, 0);
+    } else {
+        panic!("No log data");
+    }
+}
+
+#[rstest]
 fn spec_reserved_reg_write(
     #[values(
         op::add(0, 0, 0),

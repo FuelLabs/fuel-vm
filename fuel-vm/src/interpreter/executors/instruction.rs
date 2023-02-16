@@ -122,8 +122,20 @@ where
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
                 let (a, b, c) = exp.unpack();
-                let expo = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
+                self.alu_boolean_overflow(
+                    a.into(),
+                    |l, r| {
+                        if let Ok(expo) = u32::try_from(r) {
+                            Word::overflowing_pow(l, expo)
+                        } else if l < 2 {
+                            (l, false)
+                        } else {
+                            (0, true)
+                        }
+                    },
+                    r!(b),
+                    r!(c),
+                )?;
             }
 
             Instruction::EXPI(expi) => {
@@ -235,8 +247,17 @@ where
             Instruction::SLL(sll) => {
                 self.gas_charge(self.gas_costs.sll)?;
                 let (a, b, c) = sll.unpack();
-                let rhs = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
+
+                self.alu_error(
+                    a.into(),
+                    |l, r| {
+                        l.checked_shl(u32::try_from(r).expect("value out of range"))
+                            .unwrap_or_default()
+                    },
+                    r!(b),
+                    r!(c),
+                    u32::try_from(r!(c)).is_err(),
+                )?;
             }
 
             Instruction::SLLI(slli) => {
@@ -249,8 +270,16 @@ where
             Instruction::SRL(srl) => {
                 self.gas_charge(self.gas_costs.srl)?;
                 let (a, b, c) = srl.unpack();
-                let rhs = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
+                self.alu_error(
+                    a.into(),
+                    |l, r| {
+                        l.checked_shr(u32::try_from(r).expect("value out of range"))
+                            .unwrap_or_default()
+                    },
+                    r!(b),
+                    r!(c),
+                    u32::try_from(r!(c)).is_err(),
+                )?;
             }
 
             Instruction::SRLI(srli) => {

@@ -22,6 +22,14 @@ where
             .ok_or_else(|| PanicReason::ContractNotFound.into())
     }
 
+    pub(crate) fn contract_size(&self, contract: &ContractId) -> Result<Word, RuntimeError> {
+        Ok(self
+            .storage
+            .storage_contract_size(contract)
+            .map_err(RuntimeError::from_io)?
+            .ok_or(PanicReason::ContractNotFound)? as Word)
+    }
+
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         Self::is_register_writable(ra)?;
 

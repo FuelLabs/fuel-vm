@@ -13,10 +13,10 @@ where
     pub(crate) fn call_frame(&self, call: Call, asset_id: AssetId) -> Result<CallFrame, RuntimeError> {
         let (to, a, b) = call.into_inner();
 
-        let code = self.contract(&to)?.into_owned();
+        let code_size = self.contract_size(&to)?;
         let registers = self.registers;
 
-        let frame = CallFrame::new(to, asset_id, registers, a, b, code);
+        let frame = CallFrame::new(to, asset_id, registers, code_size, a, b);
 
         Ok(frame)
     }

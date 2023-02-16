@@ -4,8 +4,10 @@ use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::Word;
-use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate};
+use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate, StorageRead, StorageSize};
 use fuel_types::{Address, Bytes32, ContractId};
+
+use super::ContractsRawCode;
 
 /// No-op storage used for predicate operations.
 ///
@@ -33,6 +35,22 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
     }
 
     fn remove(&mut self, _key: &Type::Key) -> Result<Option<Type::OwnedValue>, InterpreterError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+}
+
+impl StorageSize<ContractsRawCode> for PredicateStorage {
+    fn size_of_value(&self, _key: &ContractId) -> Result<Option<usize>, InterpreterError> {
+        Err(InterpreterError::PredicateFailure)
+    }
+}
+
+impl StorageRead<ContractsRawCode> for PredicateStorage {
+    fn read(&self, _key: &<ContractsRawCode as Mappable>::Key, _buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        Err(InterpreterError::PredicateFailure)
+    }
+
+    fn read_alloc(&self, _key: &<ContractsRawCode as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(InterpreterError::PredicateFailure)
     }
 }

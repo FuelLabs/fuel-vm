@@ -76,7 +76,10 @@ use crate::common::{
 /// the same list of positional indices that we observed earlier: `07, 11, 13,
 /// 12`.
 ///
-pub struct PathIter<T: ParentNode> {
+pub struct PathIter<T: ParentNode>
+where
+    T::Key: AsRef<[u8]>,
+{
     leaf: T,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
     current_offset: usize,
@@ -85,6 +88,7 @@ pub struct PathIter<T: ParentNode> {
 impl<T> PathIter<T>
 where
     T: ParentNode + Clone,
+    T::Key: AsRef<[u8]>,
 {
     pub fn new(root: &T, leaf: &T) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
@@ -144,7 +148,7 @@ where
 impl<T> Iterator for PathIter<T>
 where
     T: ParentNode,
-    T::Key: Path,
+    T::Key: Path + AsRef<[u8]>,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
@@ -177,13 +181,17 @@ where
     }
 }
 
-pub trait AsPathIterator<T: ParentNode> {
+pub trait AsPathIterator<T: ParentNode>
+where
+    T::Key: AsRef<[u8]>,
+{
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T>;
 }
 
 impl<T> AsPathIterator<T> for T
 where
     T: ParentNode + Clone,
+    T::Key: AsRef<[u8]>,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T> {
         PathIter::new(self, leaf)

@@ -4,7 +4,7 @@ use crate::{
     storage::{Mappable, StorageInspect, StorageMutate},
 };
 
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 use core::{cmp, iter, marker::PhantomData};
 
 #[derive(Debug, Clone)]
@@ -12,9 +12,9 @@ use core::{cmp, iter, marker::PhantomData};
 pub enum MerkleTreeError<StorageError> {
     #[cfg_attr(
         feature = "std",
-        error("cannot load node with key {0}; the key is not found in storage")
+        error("cannot load node with key {}; the key is not found in storage", hex::encode(.0))
     )]
-    LoadError(String),
+    LoadError(Bytes32),
 
     #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
@@ -76,7 +76,7 @@ where
     pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
         let primitive = storage
             .get(root)?
-            .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
+            .ok_or_else(|| MerkleTreeError::LoadError(*root))?
             .into_owned();
         let tree = Self {
             root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,

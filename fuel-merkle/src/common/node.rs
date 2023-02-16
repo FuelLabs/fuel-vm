@@ -16,6 +16,7 @@ pub trait Node {
 pub trait ParentNode: Node
 where
     Self: Sized,
+    <Self as Node>::Key: AsRef<[u8]>,
 {
     type Error;
 
@@ -28,8 +29,11 @@ pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum ChildError<Key, E> {
-    #[cfg_attr(feature = "std", error("Child with key {0} was not found in storage"))]
+pub enum ChildError<Key, E>
+where
+    Key: AsRef<[u8]>,
+{
+    #[cfg_attr(feature = "std", error("Child with key {} was not found in storage", hex::encode(.0)))]
     ChildNotFound(Key),
     #[cfg_attr(feature = "std", error("Node is a leaf with no children"))]
     NodeIsLeaf,
@@ -37,7 +41,10 @@ pub enum ChildError<Key, E> {
     Error(E),
 }
 
-impl<Key, E> From<E> for ChildError<Key, E> {
+impl<Key, E> From<E> for ChildError<Key, E>
+where
+    Key: AsRef<[u8]>,
+{
     fn from(e: E) -> Self {
         Self::Error(e)
     }

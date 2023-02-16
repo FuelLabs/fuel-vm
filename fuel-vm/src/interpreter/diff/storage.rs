@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use fuel_storage::StorageRead;
+use fuel_storage::StorageSize;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
 
@@ -254,6 +256,30 @@ where
 
     fn contains_key(&self, key: &<Type as Mappable>::Key) -> Result<bool, Self::Error> {
         <S as StorageInspect<Type>>::contains_key(&self.0, key)
+    }
+}
+
+impl<Type: Mappable, S> StorageSize<Type> for Record<S>
+where
+    S: StorageSize<Type>,
+    S: InterpreterStorage,
+{
+    fn size_of_value(&self, key: &<Type as Mappable>::Key) -> Result<Option<usize>, Self::Error> {
+        <S as StorageSize<Type>>::size_of_value(&self.0, key)
+    }
+}
+
+impl<Type: Mappable, S> StorageRead<Type> for Record<S>
+where
+    S: StorageRead<Type>,
+    S: InterpreterStorage,
+{
+    fn read(&self, key: &<Type as Mappable>::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        <S as StorageRead<Type>>::read(&self.0, key, buf)
+    }
+
+    fn read_alloc(&self, key: &<Type as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        <S as StorageRead<Type>>::read_alloc(&self.0, key)
     }
 }
 

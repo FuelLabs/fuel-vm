@@ -1,6 +1,6 @@
 use super::{ExecutableTransaction, Interpreter};
 use crate::arith;
-use crate::call::{Call, CallFrame};
+use crate::call::Call;
 use crate::consts::*;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
@@ -163,10 +163,7 @@ where
 
         let mut frame = self.call_frame(call, asset_id)?;
 
-        // FIXME: This is checking the cost after the db call has happened.
-        // when https://github.com/FuelLabs/fuel-vm/pull/272 lands this check
-        // should happen on the pinned slice before reading it.
-        self.dependent_gas_charge(self.gas_costs.call, frame.code().len() as u64)?;
+        self.dependent_gas_charge(self.gas_costs.call, frame.total_code_size())?;
 
         if self.is_external_context() {
             self.external_asset_id_balance_sub(&asset_id, b)?;
@@ -195,8 +192,8 @@ where
         *frame.set_context_gas() = self.registers[RegId::CGAS];
         *frame.set_global_gas() = self.registers[RegId::GGAS];
 
-        let stack = frame.to_bytes();
-        let len = stack.len() as Word;
+        let frame_bytes = frame.to_bytes();
+        let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
 
         if len > self.registers[RegId::HP] || self.registers[RegId::SP] > self.registers[RegId::HP] - len {
             return Err(PanicReason::MemoryOverflow.into());
@@ -209,11 +206,26 @@ where
         self.registers[RegId::SP] += len;
         self.registers[RegId::SSP] = self.registers[RegId::SP];
 
-        self.memory[self.registers[RegId::FP] as usize..self.registers[RegId::SP] as usize]
-            .copy_from_slice(stack.as_slice());
+        let fpx = arith::add_word(self.registers[RegId::FP], frame_bytes.len() as Word)?;
+        self.memory[self.registers[RegId::FP] as usize..fpx as usize].copy_from_slice(frame_bytes.as_slice());
+
+        let code_range = (fpx as usize)..arith::add_usize(fpx as usize, frame.code_size() as usize);
+        let bytes_read = self
+            .storage
+            .read(frame.to(), &mut self.memory[code_range.clone()])
+            .map_err(RuntimeError::from_io)?
+            .ok_or(PanicReason::ContractNotFound)?;
+        if bytes_read as Word != frame.code_size() {
+            return Err(PanicReason::ContractNotFound.into());
+        }
+        let pad_len = frame.code_size_padding();
+        if pad_len > 0 {
+            self.memory[code_range.end..code_range.end + pad_len as usize]
+                .copy_from_slice(&[0; 32][..pad_len as usize]);
+        }
 
         self.registers[RegId::BAL] = b;
-        self.registers[RegId::PC] = self.registers[RegId::FP].saturating_add(CallFrame::code_offset() as Word);
+        self.registers[RegId::PC] = fpx;
         self.registers[RegId::IS] = self.registers[RegId::PC];
         self.registers[RegId::CGAS] = forward_gas_amount;
 

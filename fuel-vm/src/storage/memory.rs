@@ -6,7 +6,9 @@ use crate::storage::{
 };
 
 use fuel_crypto::Hasher;
-use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate};
+use fuel_storage::{
+    Mappable, MerkleRoot, MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate, StorageRead, StorageSize,
+};
 use fuel_tx::Contract;
 use fuel_types::{Address, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
@@ -14,6 +16,7 @@ use tai64::Tai64;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::io::Read;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -123,6 +126,22 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.remove(key))
+    }
+}
+
+impl StorageSize<ContractsRawCode> for MemoryStorage {
+    fn size_of_value(&self, key: &ContractId) -> Result<Option<usize>, Infallible> {
+        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().len()))
+    }
+}
+
+impl StorageRead<ContractsRawCode> for MemoryStorage {
+    fn read(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
+        Ok(self.memory.contracts.get(key).and_then(|c| c.as_ref().read(buf).ok()))
+    }
+
+    fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
     }
 }
 

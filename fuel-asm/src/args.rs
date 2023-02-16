@@ -7,7 +7,7 @@ const GM_GET_CALLER: u8 = 0x02;
 const GM_GET_VERIFYING_PREDICATE: u8 = 0x03;
 
 /// Argument list for GM (get metadata) instruction
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
 #[repr(u8)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
@@ -118,7 +118,7 @@ const GTF_WITNESS_DATA_LENGTH: u16 = 0x301;
 const GTF_WITNESS_DATA: u16 = 0x302;
 
 /// Argument list for GTF (get tx fields) instruction
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
 #[repr(u16)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]

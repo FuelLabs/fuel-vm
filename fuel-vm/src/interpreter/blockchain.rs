@@ -111,7 +111,10 @@ where
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
-            let length = length as Word;
+            let length = Word::from_be_bytes(self.memory[fp_code_size..fp_code_size_end])
+                .checked_add(length as Word)
+                .ok_or_else(|| PanicReason::MemoryOverflow.into())?;
+
             self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
         }
 

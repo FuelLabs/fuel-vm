@@ -112,12 +112,12 @@ where
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
             let length = Word::from_be_bytes(
-                    self.memory[fp_code_size..fp_code_size_end]
-                        .try_into()
-                        .map_err(|| PanicReason::MemoryOverflow.into())?,
-                )
-                .checked_add(length as Word)
-                .ok_or_else(|| PanicReason::MemoryOverflow.into())?;
+                self.memory[fp_code_size..fp_code_size_end]
+                    .try_into()
+                    .map_err(|_| PanicReason::MemoryOverflow)?,
+            )
+            .checked_add(length as Word)
+            .ok_or(PanicReason::MemoryOverflow)?;
 
             self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
         }

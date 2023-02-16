@@ -11,27 +11,23 @@ pub const fn zero_sum() -> &'static Bytes32 {
     &ZERO_SUM
 }
 
-pub fn sum<I, V>(data: I) -> V
+pub fn sum<I>(data: I) -> Bytes32
 where
     I: AsRef<[u8]>,
-    V: From<Bytes32>,
 {
     let mut hash = Hash::new();
     hash.update(data);
-    let bytes: Bytes32 = hash.finalize().try_into().unwrap();
-    bytes.into()
+    hash.finalize().try_into().unwrap()
 }
 
-pub fn sum_all<I, V>(data: I) -> V
+pub fn sum_all<I>(data: I) -> Bytes32
 where
     I: IntoIterator,
     I::Item: AsRef<[u8]>,
-    V: From<Bytes32>,
 {
     let mut hash = Hash::new();
     for datum in data.into_iter() {
         hash.update(datum)
     }
-    let bytes: Bytes32 = hash.finalize().try_into().unwrap();
-    bytes.into()
+    hash.finalize().try_into().unwrap()
 }

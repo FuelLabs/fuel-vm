@@ -4,6 +4,7 @@ use fuel_vm::prelude::{IntoChecked, MemoryClient};
 
 use rstest::rstest;
 
+/// Assert that transaction receipts end in a panic with the given reason
 fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
         if *result != ScriptExecutionResult::Panic {
@@ -148,6 +149,40 @@ fn spec_logic_ops_clear_of(
 
     if let Receipt::Log { rc: of, .. } = receipts[1] {
         assert_eq!(of, 0);
+    } else {
+        panic!("No log data");
+    }
+}
+
+#[rstest]
+fn spec_alu_immediates_are_zero_extended(
+    #[values(
+        (op::addi(0x10, RegId::ZERO, Imm12::MAX.into()), Imm12::MAX.into()),
+        (op::andi(0x10, 0x31, Imm12::MAX.into()), Imm12::MAX.into()),
+        (op::divi(0x10, 0x31, Imm12::MAX.into()), u64::MAX / (Imm12::MAX.to_u16() as u64)),
+        (op::expi(0x10, 0x31, Imm12::MAX.into()), 1), // pow(Imm12::MAX, 2) would overflow
+        (op::modi(0x10, 0x31, Imm12::MAX.into()), u64::MAX % (Imm12::MAX.to_u16() as u64)),
+        (op::movi(0x10, Imm18::MAX.into()), Imm18::MAX.into()),
+        (op::muli(0x10, 0x32, Imm12::MAX.into()), 8190),
+        (op::ori(0x10, RegId::ZERO, Imm12::MAX.into()), Imm12::MAX.into()),
+        (op::slli(0x10, 0x31, Imm12::MAX.into()), 0), // These cases don't make much sense, since
+        (op::srli(0x10, 0x31, Imm12::MAX.into()), 0), // shifting more than 64 bits is meaningless
+        (op::subi(0x10, 0x31, Imm12::MAX.into()), u64::MAX - (Imm12::MAX.to_u16() as u64)),
+        (op::xori(0x10, 0x31, Imm12::MAX.into()), u64::MAX ^ (Imm12::MAX.to_u16() as u64))
+    )]
+    case: (Instruction, u64),
+) {
+    let (op, expected) = case;
+
+    let mut script = common_setup();
+    script.push(op);
+    script.push(op::log(0x10, RegId::ZERO, RegId::OF, RegId::ERR));
+    script.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(script.into_iter().collect());
+
+    if let Receipt::Log { ra, .. } = receipts[0] {
+        assert_eq!(ra, expected);
     } else {
         panic!("No log data");
     }

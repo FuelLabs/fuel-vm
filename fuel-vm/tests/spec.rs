@@ -160,7 +160,7 @@ fn spec_alu_immediates_are_zero_extended(
         (op::addi(0x10, RegId::ZERO, Imm12::MAX.into()), Imm12::MAX.into()),
         (op::andi(0x10, 0x31, Imm12::MAX.into()), Imm12::MAX.into()),
         (op::divi(0x10, 0x31, Imm12::MAX.into()), u64::MAX / (Imm12::MAX.to_u16() as u64)),
-        (op::expi(0x10, 0x31, Imm12::MAX.into()), 1), // pow(Imm12::MAX, 2) would overflow
+        (op::expi(0x10, 1, Imm12::MAX.into()), 1), // pow(Imm12::MAX, 2) would overflow
         (op::modi(0x10, 0x31, Imm12::MAX.into()), u64::MAX % (Imm12::MAX.to_u16() as u64)),
         (op::movi(0x10, Imm18::MAX.into()), Imm18::MAX.into()),
         (op::muli(0x10, 0x32, Imm12::MAX.into()), 8190),

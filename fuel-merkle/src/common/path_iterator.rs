@@ -1,7 +1,10 @@
 use crate::common::{
+    node::ChildErrorKey,
     path::{Instruction, Path},
     ChildResult, ParentNode,
 };
+
+use core::fmt::Display;
 
 /// # Path Iterator
 ///
@@ -78,7 +81,8 @@ use crate::common::{
 ///
 pub struct PathIter<T: ParentNode>
 where
-    T::Key: AsRef<[u8]>,
+    T::Key: Copy,
+    ChildErrorKey<T::Key>: Display,
 {
     leaf: T,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
@@ -88,7 +92,8 @@ where
 impl<T> PathIter<T>
 where
     T: ParentNode + Clone,
-    T::Key: AsRef<[u8]>,
+    T::Key: Copy,
+    ChildErrorKey<T::Key>: Display,
 {
     pub fn new(root: &T, leaf: &T) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
@@ -148,7 +153,8 @@ where
 impl<T> Iterator for PathIter<T>
 where
     T: ParentNode,
-    T::Key: Path + AsRef<[u8]>,
+    T::Key: Path + Copy,
+    ChildErrorKey<T::Key>: Display,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
@@ -183,7 +189,8 @@ where
 
 pub trait AsPathIterator<T: ParentNode>
 where
-    T::Key: AsRef<[u8]>,
+    T::Key: Copy,
+    ChildErrorKey<T::Key>: Display,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T>;
 }
@@ -191,7 +198,8 @@ where
 impl<T> AsPathIterator<T> for T
 where
     T: ParentNode + Clone,
-    T::Key: AsRef<[u8]>,
+    T::Key: Copy,
+    ChildErrorKey<T::Key>: Display,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T> {
         PathIter::new(self, leaf)

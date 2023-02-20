@@ -17,6 +17,8 @@ use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
 use core::mem;
 
+#[cfg(test)]
+mod message_tests;
 #[cfg(all(test, feature = "random"))]
 mod tests;
 

@@ -1,8 +1,8 @@
 use crate::common::{
-    node::{ChildErrorKey, ChildResult, Node, ParentNode},
+    node::{ChildResult, Node, ParentNode},
     Bytes8, PositionPath,
 };
-use core::{convert::Infallible, fmt};
+use core::convert::Infallible;
 
 /// # Position
 ///
@@ -277,12 +277,6 @@ impl ParentNode for Position {
 
     fn right_child(&self) -> ChildResult<Self> {
         Ok(Position::right_child(*self))
-    }
-}
-
-impl fmt::Display for ChildErrorKey<&Bytes8> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", u64::from_be_bytes(*self.0))
     }
 }
 

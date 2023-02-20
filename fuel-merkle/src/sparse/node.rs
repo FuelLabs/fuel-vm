@@ -1,7 +1,7 @@
 use crate::{
     common::{
         error::DeserializeError,
-        node::{ChildError, ChildErrorKey, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait},
+        node::{ChildError, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait},
         path::{ComparablePath, Instruction, Path},
         Bytes32, Prefix,
     },
@@ -325,12 +325,6 @@ where
             .try_into()
             .map(|node| Self::new(self.storage, node))
             .map_err(StorageNodeError::DeserializeError)?)
-    }
-}
-
-impl fmt::Display for ChildErrorKey<&Bytes32> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
     }
 }
 

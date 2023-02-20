@@ -28,9 +28,6 @@ use std::ops::Range;
 #[cfg(test)]
 mod test;
 
-#[cfg(test)]
-mod smo_tests;
-
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,

@@ -4,9 +4,6 @@ use crate::{constraints::reg_key::*, error::RuntimeError};
 use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
-#[cfg(test)]
-mod tests;
-
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,

@@ -28,20 +28,6 @@ where
 #[allow(type_alias_bounds)]
 pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
 
-pub struct ChildErrorKey<Key>(Key);
-
-impl fmt::Display for ChildErrorKey<&Bytes8> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", u64::from_be_bytes(*self.0))
-    }
-}
-
-impl fmt::Display for ChildErrorKey<&Bytes32> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
-
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum ChildError<Key, E>
@@ -62,5 +48,19 @@ where
 {
     fn from(e: E) -> Self {
         Self::Error(e)
+    }
+}
+
+pub struct ChildErrorKey<Key>(Key);
+
+impl fmt::Display for ChildErrorKey<&Bytes8> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", u64::from_be_bytes(*self.0))
+    }
+}
+
+impl fmt::Display for ChildErrorKey<&Bytes32> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
     }
 }

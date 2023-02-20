@@ -1,6 +1,9 @@
 use crate::common::{Bytes32, Bytes8};
-use core::fmt::{Display, Formatter};
-use core::mem;
+
+use core::{
+    fmt::{Display, Formatter},
+    mem,
+};
 
 pub trait Node {
     type Key;

@@ -1,7 +1,8 @@
 use super::contract::{balance_decrease, balance_increase, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
-    append_receipt, external_asset_id_balance_sub, internal_contract, internal_contract_or_default, set_frame_pointer,
+    append_receipt, current_contract, external_asset_id_balance_sub, inc_pc, internal_contract_or_default,
+    set_frame_pointer, AppendReceipt,
 };
 use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::arith;
@@ -25,6 +26,10 @@ use fuel_types::{AssetId, Bytes32, ContractId, Word};
 use std::{cmp, io};
 
 #[cfg(test)]
+mod jump_tests;
+#[cfg(test)]
+mod ret_tests;
+#[cfg(test)]
 mod tests;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -32,109 +37,64 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
-        let j = self.registers[RegId::IS].saturating_add(j.saturating_mul(Instruction::SIZE as Word));
-
-        if j > VM_MAX_RAM - 1 {
-            Err(PanicReason::MemoryOverflow.into())
-        } else if self.is_predicate() && j <= self.registers[RegId::PC] {
-            Err(PanicReason::IllegalJump.into())
-        } else {
-            self.registers[RegId::PC] = j;
-
-            Ok(())
-        }
+        let (ReadRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
+        jump(is.as_ref(), pc, j)
     }
 
     pub(crate) fn jump_not_equal(&mut self, a: Word, b: Word, to: Word) -> Result<(), RuntimeError> {
-        if a != b {
-            self.jump(to)
-        } else {
-            self.inc_pc()
-        }
+        let (ReadRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
+        jump_not_equal(is.as_ref(), pc, a, b, to)
     }
 
     pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
-        if a != self.registers[RegId::ZERO] {
-            self.jump(to)
-        } else {
-            self.inc_pc()
-        }
-    }
-
-    pub(crate) fn return_from_context(&mut self, receipt: Receipt) -> Result<(), RuntimeError> {
-        if let Some(frame) = self.frames.pop() {
-            self.registers[RegId::CGAS] = arith::add_word(self.registers[RegId::CGAS], frame.context_gas())?;
-
-            let cgas = self.registers[RegId::CGAS];
-            let ggas = self.registers[RegId::GGAS];
-            let ret = self.registers[RegId::RET];
-            let retl = self.registers[RegId::RETL];
-
-            self.registers.copy_from_slice(frame.registers());
-
-            self.registers[RegId::CGAS] = cgas;
-            self.registers[RegId::GGAS] = ggas;
-            self.registers[RegId::RET] = ret;
-            self.registers[RegId::RETL] = retl;
-
-            self.set_frame_pointer(self.registers[RegId::FP]);
-        }
-
-        self.append_receipt(receipt);
-
-        self.inc_pc()
+        let (ReadRegisters { pc, is, zero, .. }, _) = split_registers(&mut self.registers);
+        jump_not_zero(is.as_ref(), pc, zero.as_ref(), a, to)
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let receipt = Receipt::ret(
-            self.internal_contract_or_default(),
-            a,
-            self.registers[RegId::PC],
-            self.registers[RegId::IS],
-        );
-
-        self.registers[RegId::RET] = a;
-        self.registers[RegId::RETL] = 0;
-
-        // TODO if ret instruction is in memory boundary, inc_pc shouldn't fail
-        self.return_from_context(receipt)
+        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let input = RetInput {
+            append: AppendReceipt {
+                receipts: &mut self.receipts,
+                script: self.tx.as_script_mut(),
+                tx_offset: self.params.tx_offset(),
+                memory: &mut self.memory,
+            },
+            frames: &mut self.frames,
+            registers: &mut self.registers,
+            context: &mut self.context,
+            current_contract,
+        };
+        input.ret(a)
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let ab = (a + b) as usize;
-        let digest = Hasher::hash(&self.memory[a as usize..ab]);
-
-        let receipt = Receipt::return_data_with_len(
-            self.internal_contract_or_default(),
-            a,
-            b,
-            digest,
-            self.memory[a as usize..ab].to_vec(),
-            self.registers[RegId::PC],
-            self.registers[RegId::IS],
-        );
-
-        self.registers[RegId::RET] = a;
-        self.registers[RegId::RETL] = b;
-
-        self.return_from_context(receipt)?;
-
-        Ok(digest)
+        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let input = RetInput {
+            append: AppendReceipt {
+                receipts: &mut self.receipts,
+                script: self.tx.as_script_mut(),
+                tx_offset: self.params.tx_offset(),
+                memory: &mut self.memory,
+            },
+            frames: &mut self.frames,
+            registers: &mut self.registers,
+            context: &mut self.context,
+            current_contract,
+        };
+        input.ret_data(a, b)
     }
 
     pub(crate) fn revert(&mut self, a: Word) {
-        let receipt = Receipt::revert(
-            self.internal_contract_or_default(),
-            a,
-            self.registers[RegId::PC],
-            self.registers[RegId::IS],
-        );
-
-        self.append_receipt(receipt);
+        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
+            .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
+        let append = AppendReceipt {
+            receipts: &mut self.receipts,
+            script: self.tx.as_script_mut(),
+            tx_offset: self.params.tx_offset(),
+            memory: &mut self.memory,
+        };
+        revert(append, current_contract, self.registers.pc(), self.registers.is(), a)
     }
 
     pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
@@ -155,6 +115,125 @@ where
     }
 }
 
+struct RetInput<'vm> {
+    frames: &'vm mut Vec<CallFrame>,
+    registers: &'vm mut [Word; VM_REGISTER_COUNT],
+    append: AppendReceipt<'vm>,
+    context: &'vm mut Context,
+    current_contract: Option<ContractId>,
+}
+
+impl RetInput<'_> {
+    pub(crate) fn ret(self, a: Word) -> Result<(), RuntimeError> {
+        let receipt = Receipt::ret(
+            self.current_contract.unwrap_or_else(ContractId::zeroed),
+            a,
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
+        );
+
+        self.registers[RegId::RET] = a;
+        self.registers[RegId::RETL] = 0;
+
+        // TODO if ret instruction is in memory boundary, inc_pc shouldn't fail
+        self.return_from_context(receipt)
+    }
+
+    pub(crate) fn return_from_context(mut self, receipt: Receipt) -> Result<(), RuntimeError> {
+        if let Some(frame) = self.frames.pop() {
+            let registers = &mut self.registers;
+            let context = &mut self.context;
+
+            registers[RegId::CGAS] = arith::add_word(registers[RegId::CGAS], frame.context_gas())?;
+
+            let cgas = registers[RegId::CGAS];
+            let ggas = registers[RegId::GGAS];
+            let ret = registers[RegId::RET];
+            let retl = registers[RegId::RETL];
+
+            registers.copy_from_slice(frame.registers());
+
+            registers[RegId::CGAS] = cgas;
+            registers[RegId::GGAS] = ggas;
+            registers[RegId::RET] = ret;
+            registers[RegId::RETL] = retl;
+
+            let fp = registers[RegId::FP];
+            set_frame_pointer(context, registers.fp_mut(), fp);
+        }
+
+        append_receipt(self.append, receipt);
+
+        inc_pc(self.registers.pc_mut())
+    }
+
+    pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
+        if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let ab = (a + b) as usize;
+        let digest = Hasher::hash(&self.append.memory[a as usize..ab]);
+
+        let receipt = Receipt::return_data_with_len(
+            self.current_contract.unwrap_or_else(ContractId::zeroed),
+            a,
+            b,
+            digest,
+            self.append.memory[a as usize..ab].to_vec(),
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
+        );
+
+        self.registers[RegId::RET] = a;
+        self.registers[RegId::RETL] = b;
+
+        self.return_from_context(receipt)?;
+
+        Ok(digest)
+    }
+}
+
+pub(crate) fn revert(append: AppendReceipt, current_contract: Option<ContractId>, pc: Reg<PC>, is: Reg<IS>, a: Word) {
+    let receipt = Receipt::revert(current_contract.unwrap_or_else(ContractId::zeroed), a, *pc, *is);
+
+    append_receipt(append, receipt);
+}
+
+pub(crate) fn jump_not_equal(is: Reg<IS>, pc: RegMut<PC>, a: Word, b: Word, j: Word) -> Result<(), RuntimeError> {
+    if a != b {
+        jump(is, pc, j)
+    } else {
+        inc_pc(pc)
+    }
+}
+
+pub(crate) fn jump_not_zero(
+    is: Reg<IS>,
+    pc: RegMut<PC>,
+    zero: Reg<ZERO>,
+    a: Word,
+    j: Word,
+) -> Result<(), RuntimeError> {
+    if a != *zero {
+        jump(is, pc, j)
+    } else {
+        inc_pc(pc)
+    }
+}
+
+pub(crate) fn jump(is: Reg<IS>, mut pc: RegMut<PC>, j: Word) -> Result<(), RuntimeError> {
+    let j = is.saturating_add(j.saturating_mul(Instruction::SIZE as Word));
+
+    if j > VM_MAX_RAM - 1 {
+        Err(PanicReason::MemoryOverflow.into())
+    } else {
+        *pc = j;
+
+        Ok(())
+    }
+}
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
@@ -167,15 +246,7 @@ where
             asset_id_mem_address: c,
             amount_of_gas_to_forward: d,
         };
-        let current_contract = if self.context.is_internal() {
-            Some(*internal_contract(
-                &self.context,
-                self.registers.fp(),
-                self.memory.as_ref(),
-            )?)
-        } else {
-            None
-        };
+        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
         let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
         let input_contracts = self.tx.input_contracts().copied().collect();
 
@@ -406,7 +477,15 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
             *self.registers.read_registers.is,
         );
 
-        append_receipt(self.receipts, self.script, self.consensus, self.memory.memory, receipt);
+        append_receipt(
+            AppendReceipt {
+                receipts: self.receipts,
+                script: self.script,
+                tx_offset: self.consensus.tx_offset(),
+                memory: self.memory.memory,
+            },
+            receipt,
+        );
 
         self.frames.push(frame);
 

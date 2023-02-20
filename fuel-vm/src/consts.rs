@@ -7,8 +7,11 @@ use std::mem;
 /// Register count for checking constraints
 pub const VM_REGISTER_COUNT: usize = 64;
 
+/// The number of readable registers.
+pub const VM_REGISTER_READ_COUNT: usize = 16;
+
 /// The number of writable registers.
-pub const VM_REGISTER_WRITE_COUNT: usize = VM_REGISTER_COUNT - 16;
+pub const VM_REGISTER_WRITE_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_READ_COUNT;
 
 /* MEMORY TYPES */
 

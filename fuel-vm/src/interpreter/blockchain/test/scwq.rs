@@ -77,7 +77,16 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     }
 
     let mut result_register = 0u64;
-    state_clear_qword(&Default::default(), &mut storage, &memory, &mut result_register, input).unwrap();
+    let mut pc = 0;
+    state_clear_qword(
+        &Default::default(),
+        &mut storage,
+        &memory,
+        RegMut::new(&mut pc),
+        &mut result_register,
+        input,
+    )
+    .unwrap();
 
     let results = storage
         .all_contract_state()

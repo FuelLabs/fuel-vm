@@ -1,7 +1,6 @@
 use crate::common::{
-    node::ChildErrorKey,
+    node::{ChildErrorKey, ChildResult, ParentNode},
     path::{Instruction, Path},
-    ChildResult, ParentNode,
 };
 
 use core::fmt::Display;
@@ -208,7 +207,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::common::{AsPathIterator, Bytes8, ChildResult, Node, ParentNode};
+    use crate::common::{
+        node::{ChildResult, Node, ParentNode},
+        AsPathIterator, Bytes8,
+    };
     use alloc::vec::Vec;
     use core::convert::Infallible;
 

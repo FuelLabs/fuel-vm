@@ -1,5 +1,5 @@
 use crate::{
-    common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
+    common::{error::DeserializeError, node::ChildError, AsPathIterator, Bytes32},
     sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
     storage::{Mappable, StorageInspect, StorageMutate},
 };

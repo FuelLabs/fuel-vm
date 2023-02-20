@@ -1,8 +1,9 @@
 use crate::{
     common::{
         error::DeserializeError,
+        node::{ChildError, ChildErrorKey, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait},
         path::{ComparablePath, Instruction, Path},
-        Bytes32, ChildError, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait, Prefix,
+        Bytes32, Prefix,
     },
     sparse::{
         hash::{sum, sum_all},
@@ -11,8 +12,7 @@ use crate::{
     storage::{Mappable, StorageInspect},
 };
 
-use core::marker::PhantomData;
-use core::{cmp, fmt};
+use core::{cmp, fmt, marker::PhantomData};
 
 #[derive(Clone)]
 pub(crate) struct Node {
@@ -328,6 +328,12 @@ where
     }
 }
 
+impl fmt::Display for ChildErrorKey<&Bytes32> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
 impl<TableType, StorageType> fmt::Debug for StorageNode<'_, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
@@ -505,7 +511,11 @@ mod test_node {
 #[cfg(test)]
 mod test_storage_node {
     use crate::{
-        common::{error::DeserializeError, Bytes32, ChildError, ParentNode, PrefixError, StorageMap},
+        common::{
+            error::DeserializeError,
+            node::{ChildError, ParentNode},
+            Bytes32, PrefixError, StorageMap,
+        },
         sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
         storage::{Mappable, StorageMutate},
     };

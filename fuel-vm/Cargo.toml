@@ -39,6 +39,7 @@ quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rayon = "1.5.3"
 regex = "1.6"
+rstest = "0.16"
 serde_json = "1.0"
 test-case = "2.2"
 
@@ -118,3 +119,7 @@ required-features = ["random", "profile-gas"]
 name = "test-serde-profile"
 path = "tests/serde_profile.rs"
 required-features = ["random", "profile-coverage", "profile-gas", "serde"]
+
+[[test]]
+name = "test-spec"
+path = "tests/spec.rs"

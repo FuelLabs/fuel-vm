@@ -1285,7 +1285,7 @@ fn message_output_a_b_over() {
         op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(message_output, ArithmeticOverflow);
+    check_expected_reason_for_instructions(message_output, MemoryOverflow);
 }
 
 #[test]

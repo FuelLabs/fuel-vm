@@ -5,12 +5,18 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use fuel_asm::PanicReason;
 use fuel_asm::RegId;
+use fuel_asm::RegisterId;
 use fuel_asm::Word;
 
 use crate::consts::VM_REGISTER_COUNT;
+use crate::consts::VM_REGISTER_READ_COUNT;
 use crate::consts::VM_REGISTER_WRITE_COUNT;
+use crate::prelude::RuntimeError;
 
+#[cfg(test)]
+mod tests;
 #[derive(Debug, PartialEq, Eq)]
 /// Mutable reference to a register value at a given index.
 pub struct RegMut<'r, const INDEX: u8>(&'r mut Word);
@@ -18,6 +24,35 @@ pub struct RegMut<'r, const INDEX: u8>(&'r mut Word);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Immutable reference to a register value at a given index.
 pub struct Reg<'r, const INDEX: u8>(&'r Word);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// A key to a writable register that is within
+/// the bounds of the writable registers.
+pub struct WriteRegKey(usize);
+
+impl WriteRegKey {
+    /// Create a new writable register key if the index is within the bounds
+    /// of the writable registers.
+    pub fn new(k: impl Into<usize>) -> Result<Self, RuntimeError> {
+        let k = k.into();
+        is_register_writable(&k)?;
+        Ok(Self(k))
+    }
+
+    fn translate(self) -> usize {
+        self.0 - VM_REGISTER_READ_COUNT
+    }
+}
+
+pub(crate) fn is_register_writable(ra: &RegisterId) -> Result<(), RuntimeError> {
+    const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
+    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_WRITE_COUNT);
+    if RANGE.contains(ra) {
+        Ok(())
+    } else {
+        Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
+    }
+}
 
 impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
     /// Create a new mutable register reference.
@@ -70,7 +105,7 @@ impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
 }
 
 macro_rules! impl_keys {
-    ( $($i:ident, $f:ident)* ) => {
+    ( $($i:ident, $f:ident, $f_mut:ident)* ) => {
         $(
             #[doc = "Register index key for use with Reg and RegMut."]
             pub const $i: u8 = RegId::$i.to_u8();
@@ -80,6 +115,9 @@ macro_rules! impl_keys {
         $(
             #[doc = "Get register reference for this key."]
             fn $f(&self) -> Reg<'_, $i>;
+
+            #[doc = "Get mutable register reference for this key."]
+            fn $f_mut(&mut self) -> RegMut<'_, $i>;
         )*
         }
         impl GetReg for [Word; VM_REGISTER_COUNT] {
@@ -87,28 +125,32 @@ macro_rules! impl_keys {
             fn $f(&self) -> Reg<'_, $i> {
                 Reg(&self[$i as usize])
             }
+
+            fn $f_mut(&mut self) -> RegMut<'_, $i> {
+                RegMut(&mut self[$i as usize])
+            }
         )*
         }
     };
 }
 
 impl_keys! {
-    ZERO, zero
-    ONE, one
-    OF, of
-    PC, pc
-    SSP, ssp
-    SP, sp
-    FP, fp
-    HP, hp
-    ERR, err
-    GGAS, ggas
-    CGAS, cgas
-    BAL, bal
-    IS, is
-    RET, ret
-    RETL, retl
-    FLAG, flag
+    ZERO, zero, zero_mut
+    ONE, one, one_mut
+    OF, of, of_mut
+    PC, pc, pc_mut
+    SSP, ssp, ssp_mut
+    SP, sp, sp_mut
+    FP, fp, fp_mut
+    HP, hp, hp_mut
+    ERR, err, err_mut
+    GGAS, ggas, ggas_mut
+    CGAS, cgas, cgas_mut
+    BAL, bal, bal_mut
+    IS, is, is_mut
+    RET, ret, ret_mut
+    RETL, retl, retl_mut
+    FLAG, flag, flag_mut
 }
 
 pub(crate) struct ReadRegisters<'a> {
@@ -246,6 +288,28 @@ pub(crate) fn copy_registers(
     ]
 }
 
+impl<'r> WriteRegisters<'r> {
+    pub fn split(&mut self, a: WriteRegKey, b: WriteRegKey) -> Option<(&mut Word, &mut Word)> {
+        match a.cmp(&b) {
+            std::cmp::Ordering::Less => {
+                let a = a.translate();
+                let [i, rest @ ..] = &mut self.0[a..] else { return None };
+                let b = b.translate() - 1 - a;
+                let j = &mut rest[b];
+                Some((i, j))
+            }
+            std::cmp::Ordering::Equal => None,
+            std::cmp::Ordering::Greater => {
+                let b = b.translate();
+                let [i, rest @ ..] = &mut self.0[b..] else { return None };
+                let a = a.translate() - 1 - b;
+                let j = &mut rest[a];
+                Some((j, i))
+            }
+        }
+    }
+}
+
 impl<'a> From<&'a ReadRegisters<'_>> for ReadRegistersRef<'a> {
     fn from(value: &'a ReadRegisters<'_>) -> Self {
         Self {
@@ -304,39 +368,22 @@ impl<'a> From<WriteRegisters<'a>> for WriteRegistersRef<'a> {
     }
 }
 
-#[test]
-fn can_split() {
-    let mut reg: [Word; VM_REGISTER_COUNT] = std::iter::successors(Some(0), |x| Some(x + 1))
-        .take(VM_REGISTER_COUNT)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-    let expect = reg;
-
-    let (r, w) = split_registers(&mut reg);
-
-    assert_eq!(r.zero, RegMut::<ZERO>(&mut (ZERO as u64)));
-    assert_eq!(r.one, RegMut::<ONE>(&mut (ONE as u64)));
-    assert_eq!(r.of, RegMut::<OF>(&mut (OF as u64)));
-    assert_eq!(r.pc, RegMut::<PC>(&mut (PC as u64)));
-    assert_eq!(r.ssp, RegMut::<SSP>(&mut (SSP as u64)));
-    assert_eq!(r.sp, RegMut::<SP>(&mut (SP as u64)));
-    assert_eq!(r.fp, RegMut::<FP>(&mut (FP as u64)));
-    assert_eq!(r.hp, RegMut::<HP>(&mut (HP as u64)));
-    assert_eq!(r.err, RegMut::<ERR>(&mut (ERR as u64)));
-    assert_eq!(r.ggas, RegMut::<GGAS>(&mut (GGAS as u64)));
-    assert_eq!(r.cgas, RegMut::<CGAS>(&mut (CGAS as u64)));
-    assert_eq!(r.bal, RegMut::<BAL>(&mut (BAL as u64)));
-    assert_eq!(r.is, RegMut::<IS>(&mut (IS as u64)));
-    assert_eq!(r.ret, RegMut::<RET>(&mut (RET as u64)));
-    assert_eq!(r.retl, RegMut::<RETL>(&mut (RETL as u64)));
-    assert_eq!(r.flag, RegMut::<FLAG>(&mut (FLAG as u64)));
-
-    for i in 0..VM_REGISTER_WRITE_COUNT {
-        assert_eq!(w.0[i], i as u64 + 16);
+impl TryFrom<RegisterId> for WriteRegKey {
+    type Error = RuntimeError;
+    fn try_from(ra: RegisterId) -> Result<Self, Self::Error> {
+        Self::new(ra)
     }
+}
 
-    let reg = copy_registers(&(&r).into(), &(&w).into());
+impl core::ops::Index<WriteRegKey> for WriteRegisters<'_> {
+    type Output = Word;
+    fn index(&self, index: WriteRegKey) -> &Self::Output {
+        &self.0[index.translate()]
+    }
+}
 
-    assert_eq!(reg, expect);
+impl core::ops::IndexMut<WriteRegKey> for WriteRegisters<'_> {
+    fn index_mut(&mut self, index: WriteRegKey) -> &mut Self::Output {
+        &mut self.0[index.translate()]
+    }
 }

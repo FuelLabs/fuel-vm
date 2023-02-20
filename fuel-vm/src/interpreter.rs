@@ -1,11 +1,12 @@
 //! [`Interpreter`] implementation
 
 use crate::call::CallFrame;
+use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::{PanicReason, RegId};
+use fuel_asm::PanicReason;
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -108,14 +109,6 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
-    pub(crate) fn is_unsafe_math(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x01 == 0x01
-    }
-
-    pub(crate) fn is_wrapping(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x02 == 0x02
-    }
-
     /// The current transaction.
     pub fn transaction(&self) -> &Tx {
         &self.tx
@@ -150,6 +143,14 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+}
+
+pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
+    *flag & 0x02 == 0x02
+}
+
+pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
+    *flag & 0x01 == 0x01
 }
 
 #[cfg(feature = "profile-gas")]

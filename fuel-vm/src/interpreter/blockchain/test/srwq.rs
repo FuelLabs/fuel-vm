@@ -99,7 +99,16 @@ fn test_state_read_qword(input: SRWQInput) -> (Box<[u8; VM_MEMORY_SIZE]>, bool) 
             .unwrap();
     }
     let mut result_register = 0u64;
-    state_read_qword(&Default::default(), &storage, &mut memory, &mut result_register, input).unwrap();
+    let mut pc = 0;
+    state_read_qword(
+        &Default::default(),
+        &storage,
+        &mut memory,
+        RegMut::new(&mut pc),
+        &mut result_register,
+        input,
+    )
+    .unwrap();
     (memory, result_register != 0)
 }
 

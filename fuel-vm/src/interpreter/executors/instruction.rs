@@ -122,20 +122,7 @@ where
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
                 let (a, b, c) = exp.unpack();
-                self.alu_boolean_overflow(
-                    a.into(),
-                    |l, r| {
-                        if let Ok(expo) = u32::try_from(r) {
-                            Word::overflowing_pow(l, expo)
-                        } else if l < 2 {
-                            (l, false)
-                        } else {
-                            (0, true)
-                        }
-                    },
-                    r!(b),
-                    r!(c),
-                )?;
+                self.alu_boolean_overflow(a.into(), crate::interpreter::alu::exp, r!(b), r!(c))?;
             }
 
             Instruction::EXPI(expi) => {

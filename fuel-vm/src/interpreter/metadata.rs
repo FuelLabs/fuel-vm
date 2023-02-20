@@ -1,5 +1,9 @@
+use super::internal::inc_pc;
 use super::{ExecutableTransaction, Interpreter};
+use crate::call::CallFrame;
+use crate::constraints::reg_key::*;
 use crate::consts::*;
+use crate::context::Context;
 use crate::error::RuntimeError;
 
 use fuel_asm::{GMArgs, GTFArgs, PanicReason, RegId};
@@ -14,44 +18,9 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
-        Self::is_register_writable(ra)?;
-
-        let external = self.is_external_context();
-        let args = GMArgs::try_from(imm)?;
-
-        if external {
-            match args {
-                GMArgs::GetVerifyingPredicate => {
-                    self.registers[ra] = self
-                        .context
-                        .predicate()
-                        .map(|p| p.idx() as Word)
-                        .ok_or(PanicReason::TransactionValidity)?;
-                }
-
-                _ => return Err(PanicReason::ExpectedInternalContext.into()),
-            }
-        } else {
-            let parent = self
-                .frames
-                .last()
-                .map(|f| f.registers()[RegId::FP])
-                .expect("External context will always have a frame");
-
-            match args {
-                GMArgs::IsCallerExternal => {
-                    self.registers[ra] = (parent == 0) as Word;
-                }
-
-                GMArgs::GetCaller if parent != 0 => {
-                    self.registers[ra] = parent;
-                }
-
-                _ => return Err(PanicReason::ExpectedInternalContext.into()),
-            }
-        }
-
-        self.inc_pc()
+        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let result = &mut w[WriteRegKey::try_from(ra)?];
+        metadata(&self.context, &self.frames, pc, result, imm)
     }
 
     pub(crate) fn get_transaction_field(
@@ -60,12 +29,75 @@ where
         b: Word,
         imm: Immediate12,
     ) -> Result<(), RuntimeError> {
-        Self::is_register_writable(ra)?;
+        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let result = &mut w[WriteRegKey::try_from(ra)?];
+        let input = GTFInput {
+            tx: &self.tx,
+            tx_offset: self.params.tx_offset(),
+            pc,
+        };
+        input.get_transaction_field(result, b, imm)
+    }
+}
 
+pub(crate) fn metadata(
+    context: &Context,
+    frames: &[CallFrame],
+    pc: RegMut<PC>,
+    result: &mut Word,
+    imm: Immediate18,
+) -> Result<(), RuntimeError> {
+    let external = context.is_external();
+    let args = GMArgs::try_from(imm)?;
+
+    if external {
+        match args {
+            GMArgs::GetVerifyingPredicate => {
+                *result = context
+                    .predicate()
+                    .map(|p| p.idx() as Word)
+                    .ok_or(PanicReason::TransactionValidity)?;
+            }
+
+            _ => return Err(PanicReason::ExpectedInternalContext.into()),
+        }
+    } else {
+        let parent = frames
+            .last()
+            .map(|f| f.registers()[RegId::FP])
+            .expect("External context will always have a frame");
+
+        match args {
+            GMArgs::IsCallerExternal => {
+                *result = (parent == 0) as Word;
+            }
+
+            GMArgs::GetCaller if parent != 0 => {
+                *result = parent;
+            }
+
+            _ => return Err(PanicReason::ExpectedInternalContext.into()),
+        }
+    }
+
+    inc_pc(pc)
+}
+
+struct GTFInput<'vm, Tx> {
+    tx: &'vm Tx,
+    tx_offset: usize,
+    pc: RegMut<'vm, PC>,
+}
+
+impl<Tx> GTFInput<'_, Tx> {
+    pub(crate) fn get_transaction_field(self, result: &mut Word, b: Word, imm: Immediate12) -> Result<(), RuntimeError>
+    where
+        Tx: ExecutableTransaction,
+    {
         let b = b as usize;
         let args = GTFArgs::try_from(imm)?;
-        let tx = self.transaction();
-        let ofs = self.tx_offset();
+        let tx = self.tx;
+        let ofs = self.tx_offset;
 
         let a = match args {
             GTFArgs::Type => Tx::transaction_type(),
@@ -472,8 +504,8 @@ where
             }
         };
 
-        self.registers[ra] = a;
+        *result = a;
 
-        self.inc_pc()
+        inc_pc(self.pc)
     }
 }

@@ -22,7 +22,7 @@ pub trait ParentNode: Node
 where
     Self: Sized,
     <Self as Node>::Key: Copy,
-    ChildErrorKey<<Self as Node>::Key>: Display,
+    for<'a> ChildErrorKey<&'a <Self as Node>::Key>: Display,
 {
     type Error;
 
@@ -35,13 +35,13 @@ pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
 
 pub struct ChildErrorKey<Key>(Key);
 
-impl Display for ChildErrorKey<Bytes8> {
+impl Display for ChildErrorKey<&Bytes8> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", u64::from_be_bytes(self.0))
+        write!(f, "{}", u64::from_be_bytes(*self.0))
     }
 }
 
-impl Display for ChildErrorKey<Bytes32> {
+impl Display for ChildErrorKey<&Bytes32> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
@@ -52,9 +52,9 @@ impl Display for ChildErrorKey<Bytes32> {
 pub enum ChildError<Key, E>
 where
     Key: Copy,
-    ChildErrorKey<Key>: Display,
+    for<'a> ChildErrorKey<&'a Key>: Display,
 {
-    #[cfg_attr(feature = "std", error("Child with key {} was not found in storage", ChildErrorKey(*.0)))]
+    #[cfg_attr(feature = "std", error("Child with key {} was not found in storage", ChildErrorKey(.0)))]
     ChildNotFound(Key),
     #[cfg_attr(feature = "std", error("Node is a leaf with no children"))]
     NodeIsLeaf,
@@ -65,7 +65,7 @@ where
 impl<Key, E> From<E> for ChildError<Key, E>
 where
     Key: Copy,
-    ChildErrorKey<Key>: Display,
+    for<'a> ChildErrorKey<&'a Key>: Display,
 {
     fn from(e: E) -> Self {
         Self::Error(e)

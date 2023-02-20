@@ -82,7 +82,7 @@ use core::fmt::Display;
 pub struct PathIter<T: ParentNode>
 where
     T::Key: Copy,
-    ChildErrorKey<T::Key>: Display,
+    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     leaf: T,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
@@ -93,7 +93,7 @@ impl<T> PathIter<T>
 where
     T: ParentNode + Clone,
     T::Key: Copy,
-    ChildErrorKey<T::Key>: Display,
+    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     pub fn new(root: &T, leaf: &T) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
@@ -154,7 +154,7 @@ impl<T> Iterator for PathIter<T>
 where
     T: ParentNode,
     T::Key: Path + Copy,
-    ChildErrorKey<T::Key>: Display,
+    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
@@ -190,7 +190,7 @@ where
 pub trait AsPathIterator<T: ParentNode>
 where
     T::Key: Copy,
-    ChildErrorKey<T::Key>: Display,
+    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T>;
 }
@@ -199,7 +199,7 @@ impl<T> AsPathIterator<T> for T
 where
     T: ParentNode + Clone,
     T::Key: Copy,
-    ChildErrorKey<T::Key>: Display,
+    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T> {
         PathIter::new(self, leaf)

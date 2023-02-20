@@ -17,7 +17,6 @@ pub trait Node {
 pub trait ParentNode: Node
 where
     Self: Sized,
-    <Self as Node>::Key: Copy,
     for<'a> ChildErrorKey<&'a <Self as Node>::Key>: fmt::Display,
 {
     type Error;
@@ -47,7 +46,6 @@ impl fmt::Display for ChildErrorKey<&Bytes32> {
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum ChildError<Key, E>
 where
-    Key: Copy,
     for<'a> ChildErrorKey<&'a Key>: fmt::Display,
 {
     #[cfg_attr(feature = "std", error("Child with key {} was not found in storage", ChildErrorKey(.0)))]
@@ -60,7 +58,6 @@ where
 
 impl<Key, E> From<E> for ChildError<Key, E>
 where
-    Key: Copy,
     for<'a> ChildErrorKey<&'a Key>: fmt::Display,
 {
     fn from(e: E) -> Self {

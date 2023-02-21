@@ -37,7 +37,13 @@ mod metadata;
 mod post_execution;
 
 #[cfg(feature = "test-helpers")]
+pub use alu::benchmarks::bench_alu_clear;
+#[cfg(feature = "test-helpers")]
+pub use crypto::benchmarks::bench_sha256;
+#[cfg(feature = "test-helpers")]
 pub use flow::benchmarks::bench_prepare_call;
+#[cfg(feature = "test-helpers")]
+pub use internal::benchmarks::bench_set_receipt_root;
 
 #[cfg(feature = "debug")]
 mod debug;

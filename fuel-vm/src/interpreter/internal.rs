@@ -17,6 +17,8 @@ use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
 use core::mem;
 
+#[cfg(feature = "test-helpers")]
+pub mod benchmarks;
 #[cfg(test)]
 mod message_tests;
 #[cfg(all(test, feature = "random"))]
@@ -120,19 +122,23 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
     receipts.push(receipt);
 
     if let Some(script) = script {
-        let offset = tx_offset + script.receipts_root_offset();
-
-        // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
-        // linear monadic model and should be discussed. Maybe the receipts tree should have
-        // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()));
-
-        *script.receipts_root_mut() = root;
-
-        // Transaction memory space length is already checked on initialization so its
-        // guaranteed to fit
-        memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
+        set_receipt_root(tx_offset, memory, receipts, script);
     }
+}
+
+fn set_receipt_root(tx_offset: usize, memory: &mut [u8; VM_MEMORY_SIZE], receipts: &[Receipt], script: &mut Script) {
+    let offset = tx_offset + script.receipts_root_offset();
+
+    // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
+    // linear monadic model and should be discussed. Maybe the receipts tree should have
+    // constant capacity so the gas cost is also constant to the maximum depth?
+    let root = crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()));
+
+    *script.receipts_root_mut() = root;
+
+    // Transaction memory space length is already checked on initialization so its
+    // guaranteed to fit
+    memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
 }
 
 impl<S, Tx> Interpreter<S, Tx> {

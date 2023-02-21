@@ -152,6 +152,23 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Box<[u8; VM_MEMORY_SIZE]> {
 #[test_case(
     Input{
         params: PrepareCallParams {
+            call_params_mem_address: 0,
+            amount_of_coins_to_forward: 0,
+            asset_id_mem_address: 0,
+            amount_of_gas_to_forward: 0,
+        },
+        reg: RegInput{hp: 11_601, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 20001, ggas: 20001 },
+        context: Context::Script{ block_height: 0u32 },
+        storage_contract: vec![(ContractId::from([0u8; 32]), vec![0u8; 10_000])],
+        ..Default::default()
+    } => using check_output(Ok(Output{
+        reg: RegInput{hp: 11_601, sp: 10_700, ssp: 10_700, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 18991 },
+        ..Default::default()
+    })); "large_contract"
+)]
+#[test_case(
+    Input{
+        params: PrepareCallParams {
             call_params_mem_address: 2032,
             amount_of_coins_to_forward: 20,
             asset_id_mem_address: 2000,

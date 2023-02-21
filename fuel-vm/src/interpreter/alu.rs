@@ -4,6 +4,8 @@ use crate::{constraints::reg_key::*, error::RuntimeError};
 use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
+#[cfg(feature = "test-helpers")]
+pub mod benchmarks;
 #[cfg(test)]
 mod tests;
 

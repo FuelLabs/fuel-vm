@@ -5,6 +5,7 @@ use super::*;
 use crate::crypto;
 use fuel_storage::StorageAsMut;
 use fuel_tx::field::ReceiptsRoot;
+use fuel_types::bytes::SerializableVec;
 use fuel_types::ContractId;
 use test_case::test_case;
 
@@ -393,7 +394,7 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
     => Ok(600); "call"
 )]
 fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedMemRange) -> Result<Word, RuntimeError> {
-    let frame_bytes = call_frame.to_bytes();
+    let frame_bytes = call_frame.to_bytes().try_into().unwrap();
     let mut storage = MemoryStorage::new(0, Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)

@@ -15,6 +15,8 @@ use crate::consts::VM_REGISTER_READ_COUNT;
 use crate::consts::VM_REGISTER_WRITE_COUNT;
 use crate::prelude::RuntimeError;
 
+#[cfg(feature = "test-helpers")]
+pub mod benchmarks;
 #[cfg(test)]
 mod tests;
 #[derive(Debug, PartialEq, Eq)]

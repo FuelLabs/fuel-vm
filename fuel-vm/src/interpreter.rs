@@ -36,6 +36,9 @@ mod memory;
 mod metadata;
 mod post_execution;
 
+#[cfg(feature = "test-helpers")]
+pub use flow::benchmarks::bench_prepare_call;
+
 #[cfg(feature = "debug")]
 mod debug;
 

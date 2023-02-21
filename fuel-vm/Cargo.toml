@@ -15,6 +15,7 @@ description = "FuelVM interpreter."
 anyhow = { version = "1.0", optional = true }
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 bitflags = "1"
+criterion = { version = "0.4", optional = true }
 dyn-clone = { version = "1.0", optional = true }
 fuel-asm = { workspace = true, path = "../fuel-asm" }
 fuel-crypto = { workspace = true, path = "../fuel-crypto" }
@@ -52,7 +53,7 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
+test-helpers = ["fuel-tx/builder", "random", "dep:anyhow", "dep:criterion"]
 
 [[test]]
 name = "test-backtrace"
@@ -118,3 +119,7 @@ required-features = ["random", "profile-gas"]
 name = "test-serde-profile"
 path = "tests/serde_profile.rs"
 required-features = ["random", "profile-coverage", "profile-gas", "serde"]
+
+[[bench]]
+name = "bench"
+harness = false

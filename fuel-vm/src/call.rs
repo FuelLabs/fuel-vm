@@ -308,7 +308,7 @@ impl io::Write for CallFrame {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-helpers"))]
 impl From<Call> for Vec<u8> {
     fn from(mut call: Call) -> Self {
         use io::Read;

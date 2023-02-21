@@ -21,10 +21,11 @@ use fuel_asm::{Instruction, InstructionResult, RegId};
 use fuel_crypto::Hasher;
 use fuel_storage::{StorageAsRef, StorageInspect, StorageRead, StorageSize};
 use fuel_tx::{ConsensusParameters, PanicReason, Receipt, Script};
-use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, ContractId, Word};
 use std::{cmp, io};
 
+#[cfg(feature = "test-helpers")]
+pub mod benchmarks;
 #[cfg(test)]
 mod jump_tests;
 #[cfg(test)]
@@ -438,7 +439,9 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
         *frame.set_context_gas() = *self.registers.read_registers.cgas;
         *frame.set_global_gas() = *self.registers.read_registers.ggas;
 
-        let frame_bytes = frame.to_bytes();
+        let mut frame_bytes = [0u8; CallFrame::serialized_size()];
+        io::Read::read(&mut frame, &mut frame_bytes[..])?;
+        // let frame_bytes = frame.to_bytes();
         let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
 
         if len > *self.registers.read_registers.hp
@@ -495,7 +498,7 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
 
 fn write_call_to_memory<S>(
     frame: &CallFrame,
-    frame_bytes: Vec<u8>,
+    frame_bytes: [u8; CallFrame::serialized_size()],
     code_mem_range: CheckedMemRange,
     memory: &mut [u8; VM_MEMORY_SIZE],
     storage: &S,

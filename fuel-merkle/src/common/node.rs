@@ -1,4 +1,6 @@
 use crate::common::{Bytes32, Bytes8};
+
+use alloc::string::String;
 use core::{fmt, mem};
 
 pub trait KeyFormatting {

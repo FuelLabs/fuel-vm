@@ -48,15 +48,11 @@ impl Input {
                     .ok_or(CheckError::InputWitnessIndexBounds { index })?
                     .as_ref();
 
-                if witness.len() != Signature::LEN {
-                    return Err(CheckError::InputInvalidSignature { index });
-                }
+                let bytes = <[u8; Signature::LEN]>::try_from(witness)
+                    .map_err(|_| CheckError::InputInvalidSignature { index })?;
+                let signature = Signature::from_bytes(bytes);
 
-                // Safety: checked length
-                let signature = unsafe { Signature::as_ref_unchecked(witness) };
-
-                // Safety: checked length
-                let message = unsafe { Message::as_ref_unchecked(txhash.as_ref()) };
+                let message = Message::from_bytes_ref(txhash);
 
                 let pk = signature
                     .recover(message)

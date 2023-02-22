@@ -302,11 +302,14 @@ impl RegId {
 }
 
 impl Imm12 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 12 bits.
     pub const fn new(u: u16) -> Self {
-        Self(u & 0b_0000_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -324,11 +327,14 @@ impl Imm12 {
 }
 
 impl Imm18 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_0000_0011_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 18 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -346,11 +352,14 @@ impl Imm18 {
 }
 
 impl Imm24 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_1111_1111_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 24 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.

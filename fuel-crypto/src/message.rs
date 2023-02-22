@@ -1,9 +1,7 @@
 use crate::Hasher;
-
-pub use fuel_types::Bytes32;
-
 use core::fmt;
 use core::ops::Deref;
+pub use fuel_types::Bytes32;
 
 /// Normalized signature message
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -12,10 +10,11 @@ use core::ops::Deref;
 pub struct Message(Bytes32);
 
 impl Message {
-    /// Memory length of the type
+    /// Memory length of the type in bytes.
     pub const LEN: usize = Bytes32::LEN;
 
-    /// Normalize a message for signature
+    /// Normalize the given message by cryptographically hashing its content in
+    /// preparation for signing.
     pub fn new<M>(message: M) -> Self
     where
         M: AsRef<[u8]>,
@@ -23,43 +22,27 @@ impl Message {
         Self(Hasher::hash(message))
     }
 
-    /// Add a conversion from arbitrary slices into owned
+    /// Construct a `Message` directly from its bytes.
     ///
-    /// # Safety
-    ///
-    /// There is no guarantee the provided bytes will be the product of a cryptographically secure
-    /// hash. Using insecure messages might compromise the security of the signature.
-    pub unsafe fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+    /// This constructor expects the given bytes to be a valid,
+    /// cryptographically hashed message. No hashing is performed.
+    pub fn from_bytes(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }
 
-    /// Add a conversion from arbitrary slices into owned
+    /// Construct a `Message` reference directly from a reference to its bytes.
     ///
-    /// # Safety
-    ///
-    /// This function will not panic if the length of the slice is smaller than
-    /// `Self::LEN`. Instead, it will cause undefined behavior and read random
-    /// disowned bytes.
-    ///
-    /// This function extends the unsafety of [`Self::from_bytes_unchecked`].
-    pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-        Self(Bytes32::from_slice_unchecked(bytes))
+    /// This constructor expects the given bytes to be a valid,
+    /// cryptographically hashed message. No hashing is performed.
+    pub fn from_bytes_ref(bytes: &[u8; Self::LEN]) -> &Self {
+        // TODO: Wrap this unsafe conversion safely in `fuel_types::Bytes32`.
+        unsafe { &*(bytes.as_ptr() as *const Self) }
     }
 
-    /// Copy-free reference cast
-    ///
-    /// # Safety
-    ///
-    /// Inputs smaller than `Self::LEN` will cause undefined behavior.
-    ///
-    /// This function extends the unsafety of [`Self::from_bytes_unchecked`].
-    pub unsafe fn as_ref_unchecked(bytes: &[u8]) -> &Self {
-        // The interpreter will frequently make references to keys and values using
-        // logically checked slices.
-        //
-        // This function will avoid unnecessary copy to owned slices for the interpreter
-        // access
-        &*(bytes.as_ptr() as *const Self)
+    /// Kept temporarily for backwards compatibility.
+    #[deprecated = "Use `Message::from_bytes` instead"]
+    pub fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+        Self::from_bytes(bytes)
     }
 }
 
@@ -83,17 +66,23 @@ impl From<Message> for [u8; Message::LEN] {
     }
 }
 
+impl From<Message> for Bytes32 {
+    fn from(s: Message) -> Self {
+        s.0
+    }
+}
+
 impl From<&Hasher> for Message {
     fn from(hasher: &Hasher) -> Self {
         // Safety: `Hasher` is a cryptographic hash
-        unsafe { Self::from_bytes_unchecked(*hasher.digest()) }
+        Self::from_bytes(*hasher.digest())
     }
 }
 
 impl From<Hasher> for Message {
     fn from(hasher: Hasher) -> Self {
         // Safety: `Hasher` is a cryptographic hash
-        unsafe { Self::from_bytes_unchecked(*hasher.finalize()) }
+        Self::from_bytes(*hasher.finalize())
     }
 }
 

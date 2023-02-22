@@ -22,11 +22,13 @@ where
             return Err(PanicReason::MemoryOverflow.into());
         }
 
+        // TODO: These casts may overflow/truncate on 32-bit?
         let (a, b, bx, c, cx) = (a as usize, b as usize, bx as usize, c as usize, cx as usize);
 
-        // Safety: memory bounds are checked
-        let signature = unsafe { Signature::as_ref_unchecked(&self.memory[b..bx]) };
-        let message = unsafe { Message::as_ref_unchecked(&self.memory[c..cx]) };
+        let sig_bytes = <&_>::try_from(&self.memory[b..bx]).expect("memory bounds checked");
+        let msg_bytes = <&_>::try_from(&self.memory[c..cx]).expect("memory bounds checked");
+        let signature = Signature::from_bytes_ref(sig_bytes);
+        let message = Message::from_bytes_ref(msg_bytes);
 
         match signature.recover(message) {
             Ok(pub_key) => {

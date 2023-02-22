@@ -27,10 +27,13 @@ use core::slice;
 use std::ops::Range;
 
 #[cfg(test)]
-mod test;
-
+mod code_tests;
+#[cfg(test)]
+mod other_tests;
 #[cfg(test)]
 mod smo_tests;
+#[cfg(test)]
+mod test;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -51,7 +54,7 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input = LoadContractCode {
+        let input = LoadContractCodeInput {
             memory: &mut self.memory,
             storage: &mut self.storage,
             contract_max_size: self.params.contract_max_size,
@@ -249,7 +252,7 @@ where
     }
 }
 
-struct LoadContractCode<'vm, S, I> {
+struct LoadContractCodeInput<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
@@ -262,7 +265,7 @@ struct LoadContractCode<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> LoadContractCode<'vm, S, I> {
+impl<'vm, S, I> LoadContractCodeInput<'vm, S, I> {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt

@@ -99,6 +99,7 @@ impl RuntimeBalances {
         Ok(value)
     }
 
+    #[cfg(test)]
     /// Attempt to add the balance of an asset, updating the VM memory in the appropriate
     /// offset
     ///

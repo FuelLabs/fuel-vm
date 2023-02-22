@@ -1,9 +1,7 @@
 use crate::common::{
-    node::{ChildErrorKey, ChildResult, ParentNode},
+    node::{ChildResult, ParentNode},
     path::{Instruction, Path},
 };
-
-use core::fmt::Display;
 
 /// # Path Iterator
 ///
@@ -78,10 +76,7 @@ use core::fmt::Display;
 /// the same list of positional indices that we observed earlier: `07, 11, 13,
 /// 12`.
 ///
-pub struct PathIter<T: ParentNode>
-where
-    for<'a> ChildErrorKey<&'a T::Key>: Display,
-{
+pub struct PathIter<T: ParentNode> {
     leaf: T,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
     current_offset: usize,
@@ -90,7 +85,6 @@ where
 impl<T> PathIter<T>
 where
     T: ParentNode + Clone,
-    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     pub fn new(root: &T, leaf: &T) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
@@ -151,7 +145,6 @@ impl<T> Iterator for PathIter<T>
 where
     T: ParentNode,
     T::Key: Path,
-    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     type Item = (ChildResult<T>, ChildResult<T>);
 
@@ -184,17 +177,13 @@ where
     }
 }
 
-pub trait AsPathIterator<T: ParentNode>
-where
-    for<'a> ChildErrorKey<&'a T::Key>: Display,
-{
+pub trait AsPathIterator<T: ParentNode> {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T>;
 }
 
 impl<T> AsPathIterator<T> for T
 where
     T: ParentNode + Clone,
-    for<'a> ChildErrorKey<&'a T::Key>: Display,
 {
     fn as_path_iter(&self, leaf: &Self) -> PathIter<T> {
         PathIter::new(self, leaf)

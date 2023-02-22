@@ -15,7 +15,7 @@ fn test_malloc(mut hp: Word, sp: Word, a: Word) -> Result<Word, RuntimeError> {
 
 #[test_case(true, 1, 10 => Ok(()); "Can clear some bytes")]
 fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,
@@ -40,7 +40,7 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 
 #[test_case(true, 1, 20, 10 => Ok(()); "Can copy some bytes")]
 fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
@@ -66,7 +66,7 @@ fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), Ru
 
 #[test_case(1, 20, 10 => Ok(()); "Can compare some bytes")]
 fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + d as usize].copy_from_slice(&vec![2u8; d as usize]);
     memory[c as usize..c as usize + d as usize].copy_from_slice(&vec![2u8; d as usize]);
     let mut pc = 4;
@@ -109,7 +109,7 @@ fn test_stack_pointer_overflow(add: bool, mut sp: Word, hp: Word, v: Word) -> Re
 
 #[test_case(20, 20 => Ok(()); "Can load a byte")]
 fn test_load_byte(b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[(b + c) as usize] = 2;
     let mut pc = 4;
     let mut result = 0;
@@ -124,7 +124,7 @@ fn test_load_byte(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(20, 20 => Ok(()); "Can load a word")]
 fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let start = b as usize + (c as usize * 8);
     memory[start..start + 8].copy_from_slice(&[2u8; 8]);
     let mut pc = 4;
@@ -140,7 +140,7 @@ fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a byte")]
 fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,
@@ -164,7 +164,7 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(),
 
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a word")]
 fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,

@@ -15,7 +15,7 @@ use test_case::test_case;
 #[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
 fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([3u8; 32]);
@@ -61,7 +61,7 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
 fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([3u8; 32]);
@@ -97,7 +97,7 @@ fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test]
 fn test_block_hash() {
     let storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -112,19 +112,19 @@ fn test_block_hash() {
 }
 
 #[test]
-fn test_set_block_height() {
+fn test_block_height() {
     let context = Context::Script { block_height: 20 };
     let mut pc = 4;
     let mut result = 0;
-    set_block_height(&context, RegMut::new(&mut pc), &mut result).unwrap();
+    block_height(&context, RegMut::new(&mut pc), &mut result).unwrap();
     assert_eq!(pc, 8);
     assert_eq!(result, 20);
 }
 
 #[test]
-fn test_block_proposer() {
+fn test_coinbase() {
     let storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -133,7 +133,7 @@ fn test_block_proposer() {
         context: Context::Script { block_height: 0 },
     };
     let mut pc = 4;
-    block_proposer(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
+    coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
     assert_eq!(pc, 8);
     assert_eq!(memory[20..20 + 32], [0u8; 32]);
 }
@@ -141,7 +141,7 @@ fn test_block_proposer() {
 #[test]
 fn test_code_root() {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let owner = OwnershipRegisters {
         sp: 1000,
@@ -176,7 +176,7 @@ fn test_code_root() {
 #[test]
 fn test_code_size() {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .write(&ContractId::from([3u8; 32]), vec![1u8; 100])
@@ -185,14 +185,14 @@ fn test_code_size() {
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
-    let input = CodeSizeInput {
+    let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost {
             base: 0,
             dep_per_unit: 0,
         },
-        profiler: &mut (),
+        profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -203,14 +203,14 @@ fn test_code_size() {
     input.code_size(&mut result, 1).expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
-    let input = CodeSizeInput {
+    let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost {
             base: 0,
             dep_per_unit: 0,
         },
-        profiler: &mut (),
+        profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),

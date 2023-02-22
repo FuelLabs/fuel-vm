@@ -27,21 +27,21 @@ fn test_absolute_output_offset(tx_offset: usize, idx: usize, num_outputs: usize)
     ; "Output at 200 in memory"
 )]
 #[test_case(
-    VM_MEMORY_SIZE - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    ; "Output at VM_MEMORY_SIZE - 1 should overflow"
+    MEM_SIZE - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    ; "Output at MEM_SIZE - 1 should overflow"
 )]
 #[test_case(
-    VM_MEMORY_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    ; "Output at VM_MEMORY_SIZE - 1 - output_size should overflow"
+    MEM_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
-fn test_update_memory_output(tx_offset: usize) -> Result<Box<[u8; VM_MEMORY_SIZE]>, RuntimeError> {
+fn test_update_memory_output(tx_offset: usize) -> Result<Box<[u8; MEM_SIZE]>, RuntimeError> {
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![Output::default()];
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![0; MEM_SIZE].try_into().unwrap();
     update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)
 }
 
-fn check_memory(result: Box<[u8; VM_MEMORY_SIZE]>, expected: &[(usize, Vec<u8>)]) {
+fn check_memory(result: Box<[u8; MEM_SIZE]>, expected: &[(usize, Vec<u8>)]) {
     for (offset, bytes) in expected {
         assert_eq!(
             &result[*offset..*offset + bytes.len()],

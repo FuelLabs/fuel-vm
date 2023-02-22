@@ -170,7 +170,7 @@ fn test_smo(
         balance,
     }: Input,
 ) -> Result<Output, RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
@@ -180,7 +180,7 @@ fn test_smo(
     let mut balances = RuntimeBalances::from(balance);
     let fp = 0;
     let mut pc = 0;
-    let input = MessageOutputInput {
+    let input = MessageOutputCtx {
         max_message_data_length,
         memory: &mut memory,
         tx_offset: 0,

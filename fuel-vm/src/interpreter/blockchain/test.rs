@@ -47,7 +47,7 @@ fn test_state_read_word(
     key: Word,
 ) -> Result<(Word, Word), RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;
@@ -62,7 +62,7 @@ fn test_state_read_word(
     if let Some(insert) = insert.into() {
         let fp = 0;
         let context = Context::Call { block_height: 0 };
-        let input = StateWordInput {
+        let input = StateWordCtx {
             storage: &mut storage,
             memory: &mut memory,
             context: &context,
@@ -73,7 +73,7 @@ fn test_state_read_word(
     }
     let mut pc = 4;
 
-    let input = StateWordInput {
+    let input = StateWordCtx {
         storage: &mut storage,
         memory: &mut memory,
         context: &context,
@@ -97,7 +97,7 @@ fn test_state_read_word(
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> Result<Word, RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;
@@ -111,7 +111,7 @@ fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> R
     if insert {
         let fp = 0;
         let context = Context::Call { block_height: 0 };
-        let input = StateWordInput {
+        let input = StateWordCtx {
             storage: &mut storage,
             memory: &mut memory,
             context: &context,
@@ -122,7 +122,7 @@ fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> R
     }
     let mut pc = 4;
 
-    let input = StateWordInput {
+    let input = StateWordCtx {
         storage: &mut storage,
         memory: &mut memory,
         context: &context,

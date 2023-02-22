@@ -6,7 +6,7 @@ use fuel_tx::Contract;
 #[test]
 fn test_load_contract() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let hp = 2000;
     let mut ssp = 1000;
@@ -47,7 +47,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
 #[test]
 fn test_code_copy() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
 
     let contract_id = ContractId::from([4u8; 32]);
@@ -64,7 +64,7 @@ fn test_code_copy() -> Result<(), RuntimeError> {
         .unwrap();
 
     let input_contracts = vec![contract_id];
-    let input = CodeCopyInput {
+    let input = CodeCopyCtx {
         storage: &storage,
         memory: &mut memory,
         panic_context: &mut PanicContext::None,

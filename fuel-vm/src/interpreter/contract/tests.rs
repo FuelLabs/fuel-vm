@@ -10,7 +10,7 @@ use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
 fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..(b as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     memory[c as usize..(c as usize + ContractId::LEN)].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
@@ -20,7 +20,7 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
         .unwrap();
     let mut pc = 4;
 
-    let input = ContractBalanceInput {
+    let input = ContractBalanceCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
@@ -39,7 +39,7 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[a as usize..(a as usize + ContractId::LEN)].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[c as usize..(c as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
@@ -71,7 +71,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
     let fp = 0;
     let is = 0;
 
-    let input = TransferInput {
+    let input = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
@@ -99,7 +99,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[a as usize..(a as usize + Address::LEN)].copy_from_slice(&[3u8; Address::LEN][..]);
     memory[d as usize..(d as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
@@ -135,7 +135,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
     let fp = 0;
     let is = 0;
 
-    let input = TransferInput {
+    let input = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),

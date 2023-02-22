@@ -25,7 +25,7 @@ fn test_return() {
     let mut context = Context::Call { block_height: 0 };
 
     let mut receipts = Vec::default();
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(&mut frames, &mut registers, &mut receipts, &mut memory, &mut context)
         .return_from_context(Receipt::ret(Default::default(), 0, 0, 0))
         .unwrap();
@@ -83,10 +83,10 @@ fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
     receipts: &'a mut Vec<Receipt>,
-    memory: &'a mut [u8; VM_MEMORY_SIZE],
+    memory: &'a mut [u8; MEM_SIZE],
     context: &'a mut Context,
-) -> RetInput<'a> {
-    RetInput {
+) -> RetCtx<'a> {
+    RetCtx {
         frames,
         registers,
         append: AppendReceipt {
@@ -103,7 +103,7 @@ fn input<'a>(
 #[test]
 fn test_revert() {
     let mut receipts = Vec::default();
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Box<[u8; MEM_SIZE]> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let append = AppendReceipt {
         receipts: &mut receipts,
         script: None,

@@ -1,9 +1,7 @@
-use crate::Hasher;
-
-use fuel_types::{Bytes32, Bytes64};
-
+use crate::hasher::Hasher;
 use core::fmt;
 use core::ops::Deref;
+use fuel_types::{Bytes32, Bytes64};
 
 /// Asymmetric public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -12,51 +10,18 @@ use core::ops::Deref;
 pub struct PublicKey(Bytes64);
 
 impl PublicKey {
-    /// Memory length of the type
+    /// Memory length of the type in bytes.
     pub const LEN: usize = Bytes64::LEN;
 
-    /// Copy-free reference cast
+    /// Construct a `PublicKey` directly from its bytes.
     ///
-    /// # Safety
-    ///
-    /// This function will not panic if the length of the slice is smaller than
-    /// `Self::LEN`. Instead, it will cause undefined behavior and read random
-    /// disowned bytes.
-    ///
-    /// There is no guarantee the provided bytes will fit the curve.
-    pub unsafe fn as_ref_unchecked(bytes: &[u8]) -> &Self {
-        // The interpreter will frequently make references to keys and values using
-        // logically checked slices.
-        //
-        // This function will save unnecessary copy to owned slices for the interpreter
-        // access
-        &*(bytes.as_ptr() as *const Self)
-    }
-
-    /// Add a conversion from arbitrary slices into owned
-    ///
-    /// # Safety
-    ///
-    /// There is no guarantee the provided bytes will fit the curve. The curve
-    /// security can be checked with [`PublicKey::is_in_curve`].
-    pub unsafe fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+    /// This constructor expects the given bytes to be a valid public key, and
+    /// does not check whether the public key is within the curve.
+    fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }
 
-    /// Add a conversion from arbitrary slices into owned
-    ///
-    /// # Safety
-    ///
-    /// This function will not panic if the length of the slice is smaller than
-    /// `Self::LEN`. Instead, it will cause undefined behavior and read random
-    /// disowned bytes.
-    ///
-    /// There is no guarantee the provided bytes will fit the curve.
-    pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-        Self(Bytes64::from_slice_unchecked(bytes))
-    }
-
-    /// Hash of the public key
+    /// Cryptographic hash of the public key.
     pub fn hash(&self) -> Bytes32 {
         Hasher::hash(self.as_ref())
     }
@@ -117,12 +82,12 @@ mod use_std {
     use super::*;
     use crate::{Error, SecretKey};
 
-    use secp256k1::{Error as Secp256k1Error, PublicKey as Secp256k1PublicKey, Secp256k1};
+    use secp256k1::{
+        constants::UNCOMPRESSED_PUBLIC_KEY_SIZE, Error as Secp256k1Error, PublicKey as Secp256k1PublicKey, Secp256k1,
+    };
 
     use core::borrow::Borrow;
     use core::str;
-
-    const UNCOMPRESSED_PUBLIC_KEY_SIZE: usize = 65;
 
     // Internal secp256k1 identifier for uncompressed point
     //
@@ -130,39 +95,6 @@ mod use_std {
     const SECP_UNCOMPRESSED_FLAG: u8 = 4;
 
     impl PublicKey {
-        /// Check if the provided slice represents a public key that is in the
-        /// curve.
-        ///
-        /// # Safety
-        ///
-        /// This function extends the unsafety of
-        /// [`PublicKey::as_ref_unchecked`].
-        pub unsafe fn is_slice_in_curve_unchecked(slice: &[u8]) -> bool {
-            use secp256k1::ffi::{self, CPtr};
-
-            let public = Self::as_ref_unchecked(slice);
-
-            let mut public_with_flag = [0u8; UNCOMPRESSED_PUBLIC_KEY_SIZE];
-
-            public_with_flag[1..].copy_from_slice(public.as_ref());
-
-            // Safety: FFI call
-            let curve = ffi::secp256k1_ec_pubkey_parse(
-                ffi::secp256k1_context_no_precomp,
-                &mut ffi::PublicKey::new(),
-                public_with_flag.as_c_ptr(),
-                UNCOMPRESSED_PUBLIC_KEY_SIZE,
-            );
-
-            curve == 1
-        }
-
-        /// Check if the secret key representation is in the curve.
-        pub fn is_in_curve(&self) -> bool {
-            // Safety: struct is guaranteed to reference itself with correct len
-            unsafe { Self::is_slice_in_curve_unchecked(self.as_ref()) }
-        }
-
         pub(crate) fn from_secp(pk: &Secp256k1PublicKey) -> PublicKey {
             debug_assert_eq!(
                 UNCOMPRESSED_PUBLIC_KEY_SIZE,
@@ -174,10 +106,9 @@ mod use_std {
             debug_assert_eq!(SECP_UNCOMPRESSED_FLAG, pk[0]);
 
             // Ignore the first byte of the compression flag
-            let pk = &pk[1..];
+            let bytes = <[u8; Self::LEN]>::try_from(&pk[1..]).expect("compile-time bounds-checks");
 
-            // Safety: compile-time assertion of size correctness
-            unsafe { Self::from_slice_unchecked(pk) }
+            Self::from_bytes_unchecked(bytes)
         }
 
         pub(crate) fn _to_secp(&self) -> Result<Secp256k1PublicKey, Error> {
@@ -197,9 +128,7 @@ mod use_std {
         type Error = Error;
 
         fn try_from(b: Bytes64) -> Result<Self, Self::Error> {
-            let public = PublicKey(b);
-
-            public.is_in_curve().then_some(public).ok_or(Error::InvalidPublicKey)
+            public_key_bytes_valid(&b).map(|_| Self(b))
         }
     }
 
@@ -235,5 +164,14 @@ mod use_std {
                 .map_err(|_| Secp256k1Error::InvalidPublicKey.into())
                 .and_then(PublicKey::try_from)
         }
+    }
+
+    /// Check if the public key byte representation is in the curve.
+    fn public_key_bytes_valid(bytes: &[u8; PublicKey::LEN]) -> Result<(), Error> {
+        let mut public_with_flag = [0u8; UNCOMPRESSED_PUBLIC_KEY_SIZE];
+        public_with_flag[1..].copy_from_slice(bytes);
+        secp256k1::PublicKey::from_slice(&public_with_flag)
+            .map(|_| ())
+            .map_err(|_| Error::InvalidPublicKey)
     }
 }

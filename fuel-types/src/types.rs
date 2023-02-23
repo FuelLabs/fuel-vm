@@ -26,6 +26,7 @@ macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic type.
+        #[repr(transparent)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -43,6 +44,7 @@ macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic type.
+        #[repr(transparent)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);

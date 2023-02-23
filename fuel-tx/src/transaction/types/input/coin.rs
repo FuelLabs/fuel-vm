@@ -72,6 +72,15 @@ where
     pub predicate_data: Specification::PredicateData,
 }
 
+impl<Specification> Coin<Specification>
+where
+    Specification: CoinSpecification,
+{
+    pub fn prepare_sign(&mut self) {
+        core::mem::take(&mut self.tx_pointer);
+    }
+}
+
 impl<Specification> SizedBytes for Coin<Specification>
 where
     Specification: CoinSpecification,

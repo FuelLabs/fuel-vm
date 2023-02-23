@@ -1,4 +1,4 @@
-use super::{Input, Output, Transaction, Witness};
+use crate::{Input, Output, Transaction, Witness};
 use core::hash::Hash;
 
 use fuel_types::{AssetId, Word};
@@ -12,8 +12,8 @@ use itertools::Itertools;
 
 mod error;
 
-use crate::coin::{CoinPredicate, CoinSigned};
-use crate::message::{MessagePredicate, MessageSigned};
+use crate::input::coin::{CoinPredicate, CoinSigned};
+use crate::input::message::{MessagePredicate, MessageSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;

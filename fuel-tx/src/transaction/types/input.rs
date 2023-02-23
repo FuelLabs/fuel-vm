@@ -1,29 +1,24 @@
 use crate::{TxPointer, UtxoId};
-
+use alloc::vec::Vec;
+use coin::*;
+use consts::*;
+use contract::*;
 use fuel_crypto::{Hasher, PublicKey};
+use fuel_types::bytes;
+use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, MemLayout, MemLocType};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
-
-use core::mem;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
-
-use alloc::vec::Vec;
+use message::*;
 
 #[cfg(feature = "std")]
 use std::io;
 
 pub mod coin;
 mod consts;
+pub mod contract;
 pub mod message;
 mod repr;
 mod sizes;
-
-use coin::*;
-use consts::*;
-use message::*;
-use sizes::*;
 
 pub use repr::InputRepr;
 
@@ -74,28 +69,20 @@ impl AsField<Vec<u8>> for Vec<u8> {
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
-
-    Contract {
-        utxo_id: UtxoId,
-        balance_root: Bytes32,
-        state_root: Bytes32,
-        tx_pointer: TxPointer,
-        contract_id: ContractId,
-    },
-
+    Contract(Contract),
     MessageSigned(MessageSigned),
     MessagePredicate(MessagePredicate),
 }
 
 impl Default for Input {
     fn default() -> Self {
-        Self::Contract {
-            utxo_id: Default::default(),
-            balance_root: Default::default(),
-            state_root: Default::default(),
-            tx_pointer: Default::default(),
-            contract_id: Default::default(),
-        }
+        Self::contract(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
     }
 }
 
@@ -104,9 +91,7 @@ impl bytes::SizedBytes for Input {
         match self {
             Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
             Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
-
-            Self::Contract { .. } => INPUT_CONTRACT_SIZE,
-
+            Self::Contract(contract) => WORD_SIZE + contract.serialized_size(),
             Self::MessageSigned(message) => WORD_SIZE + message.serialized_size(),
             Self::MessagePredicate(message) => WORD_SIZE + message.serialized_size(),
         }
@@ -176,13 +161,13 @@ impl Input {
         tx_pointer: TxPointer,
         contract_id: ContractId,
     ) -> Self {
-        Self::Contract {
+        Self::Contract(Contract {
             utxo_id,
             balance_root,
             state_root,
             tx_pointer,
             contract_id,
-        }
+        })
     }
 
     pub const fn message_signed(
@@ -234,7 +219,7 @@ impl Input {
         match self {
             Self::CoinSigned(CoinSigned { utxo_id, .. })
             | Self::CoinPredicate(CoinPredicate { utxo_id, .. })
-            | Self::Contract { utxo_id, .. } => Some(utxo_id),
+            | Self::Contract(Contract { utxo_id, .. }) => Some(utxo_id),
             Self::MessageSigned { .. } => None,
             Self::MessagePredicate { .. } => None,
         }
@@ -245,7 +230,7 @@ impl Input {
             Self::CoinSigned(CoinSigned { owner, .. }) | Self::CoinPredicate(CoinPredicate { owner, .. }) => {
                 Some(owner)
             }
-            Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract { .. } => None,
+            Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract(_) => None,
         }
     }
 
@@ -261,7 +246,7 @@ impl Input {
 
     pub const fn contract_id(&self) -> Option<&ContractId> {
         match self {
-            Self::Contract { contract_id, .. } => Some(contract_id),
+            Self::Contract(Contract { contract_id, .. }) => Some(contract_id),
             _ => None,
         }
     }
@@ -343,7 +328,7 @@ impl Input {
         match self {
             Input::CoinSigned(CoinSigned { tx_pointer, .. })
             | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
-            | Input::Contract { tx_pointer, .. } => Some(tx_pointer),
+            | Input::Contract(Contract { tx_pointer, .. }) => Some(tx_pointer),
             _ => None,
         }
     }
@@ -431,14 +416,14 @@ impl Input {
 
     pub const fn balance_root(&self) -> Option<&Bytes32> {
         match self {
-            Input::Contract { balance_root, .. } => Some(balance_root),
+            Input::Contract(Contract { balance_root, .. }) => Some(balance_root),
             _ => None,
         }
     }
 
     pub const fn state_root(&self) -> Option<&Bytes32> {
         match self {
-            Input::Contract { state_root, .. } => Some(state_root),
+            Input::Contract(Contract { state_root, .. }) => Some(state_root),
             _ => None,
         }
     }
@@ -470,25 +455,11 @@ impl Input {
     /// Empties fields that should be zero during the signing.
     pub(crate) fn prepare_sign(&mut self) {
         match self {
-            Input::CoinSigned(CoinSigned { tx_pointer, .. })
-            | Input::CoinPredicate(CoinPredicate { tx_pointer, .. }) => {
-                mem::take(tx_pointer);
-            }
-
-            Input::Contract {
-                utxo_id,
-                balance_root,
-                state_root,
-                tx_pointer,
-                ..
-            } => {
-                mem::take(utxo_id);
-                mem::take(balance_root);
-                mem::take(state_root);
-                mem::take(tx_pointer);
-            }
-
-            _ => (),
+            Input::CoinSigned(coin) => coin.prepare_sign(),
+            Input::CoinPredicate(coin) => coin.prepare_sign(),
+            Input::Contract(contract) => contract.prepare_sign(),
+            Input::MessageSigned(message) => message.prepare_sign(),
+            Input::MessagePredicate(message) => message.prepare_sign(),
         }
     }
 
@@ -548,45 +519,20 @@ impl io::Read for Input {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
                 let _ = coin.read(buf)?;
             }
-
             Self::CoinPredicate(coin) => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
                 let _ = coin.read(buf)?;
             }
 
-            Self::Contract {
-                utxo_id,
-                balance_root,
-                state_root,
-                tx_pointer,
-                contract_id,
-            } => {
-                type S = ContractSizes;
-                const LEN: usize = ContractSizes::LEN;
-                let buf: &mut [_; LEN] = full_buf
-                    .get_mut(..LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Contract as u8);
-                bytes::store_at(buf, S::layout(S::LAYOUT.tx_id), utxo_id.tx_id());
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.output_index), utxo_id.output_index() as Word);
-                bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
-                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
-
-                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
-                if n != S::LAYOUT.tx_pointer.size() {
-                    return Err(bytes::eof());
-                }
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
+            Self::Contract(contract) => {
+                let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
+                let _ = contract.read(buf)?;
             }
 
             Self::MessageSigned(message) => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
                 let _ = message.read(buf)?;
             }
-
             Self::MessagePredicate(message) => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
                 let _ = message.read(buf)?;
@@ -624,36 +570,12 @@ impl io::Write for Input {
             }
 
             InputRepr::Contract => {
-                type S = ContractSizes;
-                const LEN: usize = ContractSizes::LEN;
-                let buf: &[_; LEN] = full_buf
-                    .get(..LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
+                let mut contract = Contract::default();
+                let n = WORD_SIZE + Contract::write(&mut contract, buf)?;
 
-                let utxo_id =
-                    UtxoId::from_bytes(&buf[S::LAYOUT.tx_id.range().start..S::LAYOUT.output_index.range().end])?;
+                *self = Self::Contract(contract);
 
-                let balance_root = bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
-                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
-
-                let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
-
-                let contract_id = bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
-
-                let balance_root = balance_root.into();
-                let state_root = state_root.into();
-                let contract_id = contract_id.into();
-
-                *self = Self::Contract {
-                    utxo_id,
-                    balance_root,
-                    state_root,
-                    tx_pointer,
-                    contract_id,
-                };
-
-                Ok(INPUT_CONTRACT_SIZE)
+                Ok(n)
             }
 
             InputRepr::Message => {

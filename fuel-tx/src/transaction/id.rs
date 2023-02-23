@@ -1,7 +1,7 @@
 use crate::{field, Input, Transaction};
 
-use crate::coin::CoinSigned;
-use crate::message::MessageSigned;
+use crate::input::coin::CoinSigned;
+use crate::input::message::MessageSigned;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
 
@@ -74,11 +74,16 @@ where
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
-    use crate::*;
-
-    use coin::{CoinPredicate, CoinSigned};
+    use fuel_tx::{
+        field::*,
+        input::{
+            coin::{CoinPredicate, CoinSigned},
+            contract::Contract,
+            message::{MessagePredicate, MessageSigned},
+        },
+        Buildable, ConsensusParameters, Input, Output, StorageSlot, Transaction, UtxoId,
+    };
     use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
-    use message::{MessagePredicate, MessageSigned};
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use std::io::{Read, Write};
@@ -226,10 +231,10 @@ mod tests {
                 inv_v
             );
 
-            assert_io_eq!(tx, inputs_mut, Input::Contract, utxo_id, invert_utxo_id);
-            assert_io_eq!(tx, inputs_mut, Input::Contract, balance_root, invert);
-            assert_io_eq!(tx, inputs_mut, Input::Contract, state_root, invert);
-            assert_io_ne!(tx, inputs_mut, Input::Contract, contract_id, invert);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], utxo_id, invert_utxo_id);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], balance_root, invert);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], state_root, invert);
+            assert_io_ne!(tx, inputs_mut, Input::Contract[Contract], contract_id, invert);
 
             assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], message_id, invert);
             assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], sender, invert);
@@ -391,8 +396,8 @@ mod tests {
                             );
 
                             assert_id_common_attrs(&tx);
-                            assert_id_ne(&tx, |t| inv_v(&mut t.script));
-                            assert_id_ne(&tx, |t| inv_v(&mut t.script_data));
+                            assert_id_ne(&tx, |t| inv_v(t.script_mut()));
+                            assert_id_ne(&tx, |t| inv_v(t.script_data_mut()));
                         }
                     }
 
@@ -409,12 +414,12 @@ mod tests {
                             witnesses.clone(),
                         );
 
-                        assert_id_ne(&tx, |t| not(&mut t.bytecode_witness_index));
-                        assert_id_ne(&tx, |t| invert(&mut t.salt));
-                        assert_id_ne(&tx, |t| invert(&mut t.salt));
+                        assert_id_ne(&tx, |t| not(t.bytecode_witness_index_mut()));
+                        assert_id_ne(&tx, |t| invert(t.salt_mut()));
+                        assert_id_ne(&tx, |t| invert(t.salt_mut()));
 
                         if !storage_slots.is_empty() {
-                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots.first_mut().unwrap()));
+                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots_mut().first_mut().unwrap()));
                         }
 
                         assert_id_common_attrs(&tx);

@@ -70,6 +70,13 @@ where
     pub predicate_data: Specification::PredicateData,
 }
 
+impl<Specification> Message<Specification>
+where
+    Specification: MessageSpecification,
+{
+    pub fn prepare_sign(&mut self) {}
+}
+
 impl<Specification> SizedBytes for Message<Specification>
 where
     Specification: MessageSpecification,

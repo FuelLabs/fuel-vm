@@ -1,5 +1,5 @@
 mod create;
-mod input;
+pub mod input;
 mod mint;
 mod output;
 mod script;
@@ -8,7 +8,6 @@ mod utxo_id;
 mod witness;
 
 pub use create::Create;
-pub use input::*;
 pub use mint::Mint;
 pub use output::{Output, OutputRepr};
 pub use script::Script;

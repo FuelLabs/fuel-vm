@@ -28,8 +28,11 @@ pub use validity::{CheckError, FormatValidityChecks};
 
 use crate::TxPointer;
 
-use crate::coin::{CoinPredicate, CoinSigned};
-use crate::message::MessagePredicate;
+use crate::input::coin::{CoinPredicate, CoinSigned};
+use crate::input::contract::Contract;
+use crate::input::message::MessagePredicate;
+use input::*;
+
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
 
@@ -238,7 +241,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::Contract { contract_id, .. } => Some(contract_id),
+                Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
             .unique()

@@ -1,7 +1,10 @@
-use fuel_tx::message::{MessagePredicate, MessageSigned};
 use fuel_tx::{
-    coin::CoinPredicate, coin::CoinSigned, field, Chargeable, CheckError, ConsensusParameters, Input, Output,
-    TransactionFee,
+    field,
+    input::{
+        coin::{CoinPredicate, CoinSigned},
+        message::{MessagePredicate, MessageSigned},
+    },
+    Chargeable, CheckError, ConsensusParameters, Input, Output, TransactionFee,
 };
 use fuel_types::{AssetId, Word};
 use std::collections::BTreeMap;

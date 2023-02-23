@@ -1,9 +1,7 @@
-use crate::transaction::types::input::consts::INPUT_COIN_FIXED_SIZE;
+use crate::transaction::types::input::consts::INPUT_MESSAGE_FIXED_SIZE;
 use crate::transaction::types::input::AsField;
-use crate::{TxPointer, UtxoId};
-use fuel_types::bytes::Deserializable;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Address, AssetId, Word};
+use fuel_types::{bytes, Address, MessageId, Word};
 
 pub type MessageFull = Message<Full>;
 pub type MessageSigned = Message<Signed>;
@@ -61,13 +59,13 @@ pub struct Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    pub utxo_id: UtxoId,
-    pub owner: Address,
+    pub message_id: MessageId,
+    pub sender: Address,
+    pub recipient: Address,
     pub amount: Word,
-    pub asset_id: AssetId,
-    pub tx_pointer: TxPointer,
+    pub nonce: Word,
     pub witness_index: Specification::Witness,
-    pub maturity: Word,
+    pub data: Vec<u8>,
     pub predicate: Specification::Predicate,
     pub predicate_data: Specification::PredicateData,
 }
@@ -89,7 +87,10 @@ where
             0
         };
 
-        INPUT_COIN_FIXED_SIZE - WORD_SIZE + predicate_size + predicate_date_size
+        INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE
+            + bytes::padded_len(self.data.as_slice())
+            + predicate_size
+            + predicate_date_size
     }
 }
 
@@ -105,26 +106,22 @@ where
         }
 
         let Self {
-            utxo_id,
-            owner,
+            message_id,
+            sender,
+            recipient,
             amount,
-            asset_id,
-            tx_pointer,
+            nonce,
             witness_index,
-            maturity,
+            data,
             predicate,
             predicate_data,
         } = self;
 
-        let n = utxo_id.read(buf)?;
-        let buf = &mut buf[n..];
-
-        let buf = bytes::store_array_unchecked(buf, owner);
+        let buf = bytes::store_array_unchecked(buf, message_id);
+        let buf = bytes::store_array_unchecked(buf, sender);
+        let buf = bytes::store_array_unchecked(buf, recipient);
         let buf = bytes::store_number_unchecked(buf, *amount);
-        let buf = bytes::store_array_unchecked(buf, asset_id);
-
-        let n = tx_pointer.read(buf)?;
-        let buf = &mut buf[n..];
+        let buf = bytes::store_number_unchecked(buf, *nonce);
 
         let witness_index = if let Some(witness_index) = witness_index.as_field() {
             *witness_index as Word
@@ -133,7 +130,7 @@ where
         };
 
         let buf = bytes::store_number_unchecked(buf, witness_index);
-        let buf = bytes::store_number_unchecked(buf, *maturity);
+        let buf = bytes::store_number_unchecked(buf, data.len() as Word);
 
         let buf = if let Some(predicate) = predicate.as_field() {
             bytes::store_number_unchecked(buf, predicate.len() as Word)
@@ -146,6 +143,8 @@ where
         } else {
             bytes::store_number_unchecked(buf, 0u64)
         };
+
+        let (_, buf) = bytes::store_raw_bytes(buf, data.as_slice())?;
 
         let buf = if let Some(predicate) = predicate.as_field() {
             let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
@@ -168,42 +167,39 @@ where
     Specification: MessageSpecification,
 {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut n = INPUT_COIN_FIXED_SIZE - WORD_SIZE;
+        let mut n = INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE;
 
         if buf.len() < n {
             return Err(bytes::eof());
         }
 
-        let utxo_id = UtxoId::from_bytes(buf)?;
-        let buf = &buf[utxo_id.serialized_size()..];
-        self.utxo_id = utxo_id;
+        let (message_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        self.message_id = message_id.into();
 
-        // Safety: buf len is checked
-        let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let owner = owner.into();
-        self.owner = owner;
+        let (sender, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        self.sender = sender.into();
+
+        let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        self.recipient = recipient.into();
 
         let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
         self.amount = amount;
 
-        let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let asset_id = asset_id.into();
-        self.asset_id = asset_id;
-
-        let tx_pointer = TxPointer::from_bytes(buf)?;
-        let buf = &buf[tx_pointer.serialized_size()..];
-        self.tx_pointer = tx_pointer;
+        let (nonce, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+        self.nonce = nonce;
 
         let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
         if let Some(witness_index_field) = self.witness_index.as_mut_field() {
             *witness_index_field = witness_index;
         }
 
-        let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        self.maturity = maturity;
-
+        let (data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
         let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
         let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+
+        let (size, data, buf) = bytes::restore_raw_bytes(buf, data_len)?;
+        n += size;
+        self.data = data;
 
         let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
         n += size;
@@ -228,24 +224,24 @@ where
 impl Message<Full> {
     pub fn into_signed(self) -> Message<Signed> {
         let Self {
-            utxo_id,
-            owner,
+            message_id,
+            sender,
+            recipient,
             amount,
-            asset_id,
-            tx_pointer,
+            nonce,
             witness_index,
-            maturity,
+            data,
             ..
         } = self;
 
         Message {
-            utxo_id,
-            owner,
+            message_id,
+            sender,
+            recipient,
             amount,
-            asset_id,
-            tx_pointer,
+            nonce,
             witness_index,
-            maturity,
+            data,
             predicate: (),
             predicate_data: (),
         }
@@ -253,25 +249,25 @@ impl Message<Full> {
 
     pub fn into_predicate(self) -> Message<Predicate> {
         let Self {
-            utxo_id,
-            owner,
+            message_id,
+            sender,
+            recipient,
             amount,
-            asset_id,
-            tx_pointer,
-            maturity,
+            nonce,
+            data,
             predicate,
             predicate_data,
             ..
         } = self;
 
         Message {
-            utxo_id,
-            owner,
+            message_id,
+            sender,
+            recipient,
             amount,
-            asset_id,
-            tx_pointer,
+            nonce,
             witness_index: (),
-            maturity,
+            data,
             predicate,
             predicate_data,
         }

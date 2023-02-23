@@ -1,9 +1,9 @@
+use fuel_tx::message::{MessagePredicate, MessageSigned};
 use fuel_tx::{
     coin::CoinPredicate, coin::CoinSigned, field, Chargeable, CheckError, ConsensusParameters, Input, Output,
     TransactionFee,
 };
 use fuel_types::{AssetId, Word};
-
 use std::collections::BTreeMap;
 
 pub(crate) fn initial_free_balances<T>(
@@ -21,7 +21,8 @@ where
         Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
         | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => Some((*asset_id, amount)),
         // Sum message inputs
-        Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => Some((AssetId::BASE, amount)),
+        Input::MessagePredicate(MessagePredicate { amount, .. })
+        | Input::MessageSigned(MessageSigned { amount, .. }) => Some((AssetId::BASE, amount)),
         _ => None,
     }) {
         *balances.entry(asset_id).or_default() += amount;

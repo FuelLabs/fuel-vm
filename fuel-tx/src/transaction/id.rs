@@ -1,6 +1,7 @@
 use crate::{field, Input, Transaction};
 
 use crate::coin::CoinSigned;
+use crate::message::MessageSigned;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
 
@@ -53,11 +54,11 @@ where
                 Input::CoinSigned(CoinSigned {
                     owner, witness_index, ..
                 })
-                | Input::MessageSigned {
+                | Input::MessageSigned(MessageSigned {
                     recipient: owner,
                     witness_index,
                     ..
-                } if owner == &pk => Some(*witness_index as usize),
+                }) if owner == &pk => Some(*witness_index as usize),
                 _ => None,
             })
             .dedup()
@@ -75,9 +76,9 @@ where
 mod tests {
     use crate::*;
 
-    use coin::CoinPredicate;
-    use coin::CoinSigned;
+    use coin::{CoinPredicate, CoinSigned};
     use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
+    use message::{MessagePredicate, MessageSigned};
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
     use std::io::{Read, Write};
@@ -229,6 +230,53 @@ mod tests {
             assert_io_eq!(tx, inputs_mut, Input::Contract, balance_root, invert);
             assert_io_eq!(tx, inputs_mut, Input::Contract, state_root, invert);
             assert_io_ne!(tx, inputs_mut, Input::Contract, contract_id, invert);
+
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], message_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], sender, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], recipient, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], nonce, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], witness_index, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], data, inv_v);
+
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                message_id,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                sender,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                recipient,
+                invert
+            );
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], nonce, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], data, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                predicate,
+                inv_v
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                predicate_data,
+                inv_v
+            );
         }
 
         if !tx.outputs().is_empty() {
@@ -286,6 +334,25 @@ mod tests {
                     generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::message_signed(
+                    rng.gen(),
+                    rng.gen(),
+                    rng.gen(),
+                    rng.next_u64(),
+                    rng.next_u64(),
+                    rng.next_u32().to_be_bytes()[0],
+                    generate_nonempty_padded_bytes(rng),
+                ),
+                Input::message_predicate(
+                    rng.gen(),
+                    rng.gen(),
+                    rng.gen(),
+                    rng.next_u64(),
+                    rng.next_u64(),
+                    generate_nonempty_padded_bytes(rng),
+                    generate_nonempty_padded_bytes(rng),
+                    generate_bytes(rng),
+                ),
             ],
         ];
 

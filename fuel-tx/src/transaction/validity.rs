@@ -13,6 +13,7 @@ use itertools::Itertools;
 mod error;
 
 use crate::coin::{CoinPredicate, CoinSigned};
+use crate::message::{MessagePredicate, MessageSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -39,11 +40,11 @@ impl Input {
             Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
             })
-            | Self::MessageSigned {
+            | Self::MessageSigned(MessageSigned {
                 witness_index,
                 recipient: owner,
                 ..
-            } => {
+            }) => {
                 let witness = witnesses
                     .get(*witness_index as usize)
                     .ok_or(CheckError::InputWitnessIndexBounds { index })?
@@ -68,11 +69,11 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
-            | Self::MessagePredicate {
+            | Self::MessagePredicate(MessagePredicate {
                 recipient: owner,
                 predicate,
                 ..
-            } if !Input::is_predicate_owner_valid(owner, predicate) => Err(CheckError::InputPredicateOwner { index }),
+            }) if !Input::is_predicate_owner_valid(owner, predicate) => Err(CheckError::InputPredicateOwner { index }),
 
             _ => Ok(()),
         }
@@ -87,26 +88,29 @@ impl Input {
     ) -> Result<(), CheckError> {
         // TODO: Add verification of the `message_id` with hash from `Message`'s fields.
         match self {
-            Self::CoinPredicate(CoinPredicate { predicate, .. }) | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. })
+            | Self::MessagePredicate(MessagePredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
-            Self::CoinPredicate(CoinPredicate { predicate, .. }) | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. })
+            | Self::MessagePredicate(MessagePredicate { predicate, .. })
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::MessagePredicate { predicate_data, .. }
+            | Self::MessagePredicate(MessagePredicate { predicate_data, .. })
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
-            Self::CoinSigned(CoinSigned { witness_index, .. }) | Self::MessageSigned { witness_index, .. }
+            Self::CoinSigned(CoinSigned { witness_index, .. })
+            | Self::MessageSigned(MessageSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })
@@ -125,7 +129,7 @@ impl Input {
                 Err(CheckError::InputContractAssociatedOutputContract { index })
             }
 
-            Self::MessageSigned { data, .. } | Self::MessagePredicate { data, .. }
+            Self::MessageSigned(MessageSigned { data, .. }) | Self::MessagePredicate(MessagePredicate { data, .. })
                 if data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })

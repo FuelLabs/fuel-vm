@@ -29,6 +29,7 @@ pub use validity::{CheckError, FormatValidityChecks};
 use crate::TxPointer;
 
 use crate::coin::{CoinPredicate, CoinSigned};
+use crate::message::MessagePredicate;
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
 
@@ -252,9 +253,9 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|i| match i {
                 Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
-                Input::MessagePredicate {
+                Input::MessagePredicate(MessagePredicate {
                     recipient, predicate, ..
-                } => Some((recipient, predicate)),
+                }) => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {

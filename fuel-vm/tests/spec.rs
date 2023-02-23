@@ -358,7 +358,7 @@ fn spec_can_write_allowed_flag_combinations(#[values(0b00, 0b01, 0b10, 0b11)] fl
 #[rstest]
 fn spec_cannot_write_reserved_flags(#[values(0b100, 0b111)] flags: Immediate18) {
     let mut script = common_setup();
-    script.push(op::movi(0x20, 0b111));
+    script.push(op::movi(0x20, flags));
     script.push(op::flag(0x20));
     script.push(op::ret(RegId::ONE));
 

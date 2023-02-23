@@ -1,9 +1,18 @@
 use fuel_asm::*;
-use fuel_tx::{ConsensusParameters, Receipt, ScriptExecutionResult, Transaction};
-use fuel_types::Immediate18;
-use fuel_vm::prelude::{IntoChecked, MemoryClient};
+use fuel_tx::{
+    field::ScriptData, ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction,
+    Witness,
+};
+use fuel_types::{AssetId, Immediate12, Immediate18, Salt};
+use fuel_vm::{
+    consts::VM_MAX_RAM,
+    prelude::{Call, IntoChecked, MemoryClient, SerializableVec},
+};
 
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use rstest::rstest;
+
+mod test_helpers;
 
 /// Assert that transaction didn't panic
 fn assert_success(receipts: &[Receipt]) {
@@ -29,7 +38,7 @@ fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     let n = receipts.len();
     assert!(n >= 2, "Invalid receipts len");
     if let Receipt::Panic { reason: pr, .. } = receipts.get(n - 2).unwrap() {
-        assert_eq!(reason, *pr.reason());
+        assert_eq!(*pr.reason(), reason, "Panic reason differs for the expected reason");
     } else {
         unreachable!("No script receipt for a paniced tx");
     }
@@ -39,7 +48,15 @@ fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
 /// * 0x31 to all ones, i.e. max word
 /// * 0x32 to two
 fn common_setup() -> Vec<Instruction> {
-    vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)]
+    let mut setup = vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)];
+
+    setup.extend(&test_helpers::set_full_word(0x33, VM_MAX_RAM));
+    setup.extend(&test_helpers::set_full_word(
+        0x34,
+        VM_MAX_RAM / (Instruction::SIZE as u64),
+    ));
+
+    setup
 }
 
 fn run_script(script: Vec<u8>) -> Vec<Receipt> {
@@ -342,6 +359,30 @@ fn spec_incr_pc_by_four(
     } else {
         panic!("No log data");
     }
+}
+
+#[rstest]
+fn spec_jmp_beyond_ram_panics(
+    #[values(
+        op::jmp(0x20),
+        op::ji(Imm24::MAX.into()),
+        op::jne(RegId::ZERO, RegId::ONE, 0x20),
+        // TODO: Test JNEI and JNZI instructions
+        //       The immediates of these are 18 and 12 bits long, so they
+        //       cannot hold large-enough values to go over the RAM limit,
+        //       since the transaction size is limited. It could be possible
+        //       to setup a suitable scenario by repeatedly calling contract
+        //       until the $is is close enough to the RAM limit.
+    )]
+    case: Instruction,
+) {
+    let mut script = common_setup();
+    // This is just beyond ram
+    script.push(op::add(0x20, RegId::IS, 0x34));
+    script.push(case);
+
+    let receipts = run_script(script.into_iter().collect());
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
 }
 
 #[rstest]

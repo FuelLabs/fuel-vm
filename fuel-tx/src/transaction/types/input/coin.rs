@@ -19,6 +19,7 @@ mod private {
     impl Seal for super::Predicate {}
 }
 
+/// Specifies the coin based on the usage context. See [`Coin`].
 pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
@@ -55,6 +56,27 @@ impl CoinSpecification for Full {
     type PredicateData = Vec<u8>;
 }
 
+/// It is a full representation of the coin from the specification:
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
+///
+/// The specification defines the layout of the [`Coin`] in the serialized form for the `fuel-vm`.
+/// But on the business logic level, we don't use all fields at the same time. It is why in the
+/// [`super::Input`] the coin is represented by several forms based on the usage context.
+/// Leaving some fields empty reduces the memory consumption by the structure and erases the
+/// empty useless fields.
+///
+/// The [`CoinSpecification`] trait specifies the sub-coin for the corresponding usage context.
+/// It allows us to write the common logic of all sub-coins without the overhead and duplication.
+///
+/// Sub-coin:
+/// - [`Signed`] - means that the coin should be signed by the `owner`,
+///     and the signature(witness) should be stored under the `witness_index` index
+///     in the `witnesses` vector of the [`crate::Transaction`].
+/// - [`Predicate`] - means that the coin is not signed, and the `owner` is a `predicate` bytecode.
+///     The merkle root from the `predicate` should be equal to the `owner`.
+/// - [`Full`] - is used during the deserialization of the coin.
+///     It should be transformed into [`Signed`] or [`Predicate`] sub-coin.
+///     If the `predicate` is empty, it is [`Signed`], else [`Predicate`].
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Coin<Specification>
@@ -76,6 +98,8 @@ impl<Specification> Coin<Specification>
 where
     Specification: CoinSpecification,
 {
+    /// The "Note" section from the specification:
+    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.tx_pointer);
     }

@@ -3,6 +3,11 @@ use crate::{TxPointer, UtxoId};
 use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, Bytes32, ContractId, Word};
 
+/// It is a full representation of the contract input from the specification:
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
+///
+/// The specification defines the layout of the [`Contract`] in the serialized form for
+/// the `fuel-vm`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract {
@@ -14,6 +19,8 @@ pub struct Contract {
 }
 
 impl Contract {
+    /// The "Note" section from the specification:
+    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.utxo_id);
         core::mem::take(&mut self.balance_root);

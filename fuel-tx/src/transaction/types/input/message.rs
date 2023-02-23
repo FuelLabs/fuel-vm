@@ -17,6 +17,7 @@ mod private {
     impl Seal for super::Predicate {}
 }
 
+/// Specifies the message based on the usage context. See [`Message`].
 pub trait MessageSpecification: private::Seal {
     type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
@@ -53,6 +54,28 @@ impl MessageSpecification for Full {
     type PredicateData = Vec<u8>;
 }
 
+/// It is a full representation of the message from the specification:
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage.
+///
+/// The specification defines the layout of the [`Message`] in the serialized form for
+/// the `fuel-vm`. But on the business logic level, we don't use all fields at the same time.
+/// It is why in the [`super::Input`] the message is represented by several forms based on
+/// the usage context. Leaving some fields empty reduces the memory consumption by the
+/// structure and erases the empty useless fields.
+///
+/// The [`MessageSpecification`] trait specifies the sub-messages for the corresponding
+/// usage context. It allows us to write the common logic of all sub-messages without the overhead
+/// and duplication.
+///
+/// Sub-messages:
+/// - [`Signed`] - means that the message should be signed by the `recipient`,
+///     and the signature(witness) should be stored under the `witness_index` index
+///     in the `witnesses` vector of the [`crate::Transaction`].
+/// - [`Predicate`] - means that the message is not signed, and the `owner` is
+///     a `predicate` bytecode. The merkle root from the `predicate` should be equal to the `owner`.
+/// - [`Full`] - is used during the deserialization of the message.
+///     It should be transformed into [`Signed`] or [`Predicate`] sub-message.
+///     If the `predicate` is empty, it is [`Signed`], else [`Predicate`].
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message<Specification>
@@ -60,7 +83,9 @@ where
     Specification: MessageSpecification,
 {
     pub message_id: MessageId,
+    /// The sender from the L1 chain.
     pub sender: Address,
+    /// The receiver on the `Fuel` chain.
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Word,
@@ -74,6 +99,8 @@ impl<Specification> Message<Specification>
 where
     Specification: MessageSpecification,
 {
+    /// It is empty, because specification says nothing:
+    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
     pub fn prepare_sign(&mut self) {}
 }
 

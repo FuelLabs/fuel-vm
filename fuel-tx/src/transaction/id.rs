@@ -1,5 +1,6 @@
 use crate::{field, Input, Transaction};
 
+use crate::coin::CoinSigned;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
 
@@ -49,9 +50,9 @@ where
         let witness_indexes = inputs
             .iter()
             .filter_map(|input| match input {
-                Input::CoinSigned {
+                Input::CoinSigned(CoinSigned {
                     owner, witness_index, ..
-                }
+                })
                 | Input::MessageSigned {
                     recipient: owner,
                     witness_index,
@@ -74,6 +75,8 @@ where
 mod tests {
     use crate::*;
 
+    use coin::CoinPredicate;
+    use coin::CoinSigned;
     use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
@@ -160,6 +163,14 @@ mod tests {
                 })
             });
         };
+        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+            assert_id_ne($tx, |t| {
+                t.$t().iter_mut().for_each(|x| match x {
+                    $i($it { $a, .. }) => $inv($a),
+                    _ => (),
+                })
+            });
+        };
     }
 
     macro_rules! assert_io_eq {
@@ -167,6 +178,14 @@ mod tests {
             assert_id_eq($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
                     $i { $a, .. } => $inv($a),
+                    _ => (),
+                })
+            });
+        };
+        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+            assert_id_eq($tx, |t| {
+                t.$t().iter_mut().for_each(|x| match x {
+                    $i($it { $a, .. }) => $inv($a),
                     _ => (),
                 })
             });
@@ -179,20 +198,32 @@ mod tests {
         assert_id_ne(tx, |t| t.set_maturity(t.maturity().not()));
 
         if !tx.inputs().is_empty() {
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, utxo_id, invert_utxo_id);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, witness_index, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], utxo_id, invert_utxo_id);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], owner, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], asset_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], witness_index, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], maturity, not);
 
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, utxo_id, invert_utxo_id);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, maturity, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate, inv_v);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate_data, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                utxo_id,
+                invert_utxo_id
+            );
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], owner, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], asset_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], predicate, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                predicate_data,
+                inv_v
+            );
 
             assert_io_eq!(tx, inputs_mut, Input::Contract, utxo_id, invert_utxo_id);
             assert_io_eq!(tx, inputs_mut, Input::Contract, balance_root, invert);

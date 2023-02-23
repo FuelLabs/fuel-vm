@@ -1,4 +1,7 @@
-use fuel_tx::{field, Chargeable, CheckError, ConsensusParameters, Input, Output, TransactionFee};
+use fuel_tx::{
+    coin::CoinPredicate, coin::CoinSigned, field, Chargeable, CheckError, ConsensusParameters, Input, Output,
+    TransactionFee,
+};
 use fuel_types::{AssetId, Word};
 
 use std::collections::BTreeMap;
@@ -15,9 +18,8 @@ where
     // Add up all the inputs for each asset ID
     for (asset_id, amount) in transaction.inputs().iter().filter_map(|input| match input {
         // Sum coin inputs
-        Input::CoinPredicate { asset_id, amount, .. } | Input::CoinSigned { asset_id, amount, .. } => {
-            Some((*asset_id, amount))
-        }
+        Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
+        | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => Some((*asset_id, amount)),
         // Sum message inputs
         Input::MessagePredicate { amount, .. } | Input::MessageSigned { amount, .. } => Some((AssetId::BASE, amount)),
         _ => None,

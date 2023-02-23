@@ -12,6 +12,7 @@ use itertools::Itertools;
 
 mod error;
 
+use crate::coin::{CoinPredicate, CoinSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -35,9 +36,9 @@ impl Input {
     #[cfg(feature = "std")]
     pub fn check_signature(&self, index: usize, txhash: &Bytes32, witnesses: &[Witness]) -> Result<(), CheckError> {
         match self {
-            Self::CoinSigned {
+            Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
-            }
+            })
             | Self::MessageSigned {
                 witness_index,
                 recipient: owner,
@@ -66,7 +67,7 @@ impl Input {
                 Ok(())
             }
 
-            Self::CoinPredicate { owner, predicate, .. }
+            Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
             | Self::MessagePredicate {
                 recipient: owner,
                 predicate,
@@ -84,26 +85,28 @@ impl Input {
         witnesses: &[Witness],
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
+        // TODO: Add verification of the `message_id` with hash from `Message`'s fields.
         match self {
-            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. }) | Self::MessagePredicate { predicate, .. }
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
-            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. }) | Self::MessagePredicate { predicate, .. }
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
-            Self::CoinPredicate { predicate_data, .. } | Self::MessagePredicate { predicate_data, .. }
+            Self::CoinPredicate(CoinPredicate { predicate_data, .. })
+            | Self::MessagePredicate { predicate_data, .. }
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
-            Self::CoinSigned { witness_index, .. } | Self::MessageSigned { witness_index, .. }
+            Self::CoinSigned(CoinSigned { witness_index, .. }) | Self::MessageSigned { witness_index, .. }
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })

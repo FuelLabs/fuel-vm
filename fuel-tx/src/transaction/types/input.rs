@@ -14,10 +14,13 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::io;
 
+pub mod coin;
 mod consts;
+// pub mod message;
 mod repr;
 mod sizes;
 
+use coin::*;
 use consts::*;
 use sizes::*;
 
@@ -26,29 +29,50 @@ pub use repr::InputRepr;
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
 
+pub trait AsField<Type> {
+    fn as_field(&self) -> Option<&Type>;
+
+    fn as_mut_field(&mut self) -> Option<&mut Type>;
+}
+
+impl<Type> AsField<Type> for () {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&Type> {
+        None
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut Type> {
+        None
+    }
+}
+
+impl AsField<u8> for u8 {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&u8> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut u8> {
+        Some(self)
+    }
+}
+
+impl AsField<Vec<u8>> for Vec<u8> {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&Vec<u8>> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut Vec<u8>> {
+        Some(self)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Input {
-    CoinSigned {
-        utxo_id: UtxoId,
-        owner: Address,
-        amount: Word,
-        asset_id: AssetId,
-        tx_pointer: TxPointer,
-        witness_index: u8,
-        maturity: Word,
-    },
-
-    CoinPredicate {
-        utxo_id: UtxoId,
-        owner: Address,
-        amount: Word,
-        asset_id: AssetId,
-        tx_pointer: TxPointer,
-        maturity: Word,
-        predicate: Vec<u8>,
-        predicate_data: Vec<u8>,
-    },
+    CoinSigned(CoinSigned),
+    CoinPredicate(CoinPredicate),
 
     Contract {
         utxo_id: UtxoId,
@@ -95,17 +119,8 @@ impl Default for Input {
 impl bytes::SizedBytes for Input {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::CoinSigned { .. } => INPUT_COIN_FIXED_SIZE,
-
-            Self::CoinPredicate {
-                predicate,
-                predicate_data,
-                ..
-            } => {
-                INPUT_COIN_FIXED_SIZE
-                    + bytes::padded_len(predicate.as_slice())
-                    + bytes::padded_len(predicate_data.as_slice())
-            }
+            Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
+            Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
 
             Self::Contract { .. } => INPUT_CONTRACT_SIZE,
 
@@ -147,16 +162,17 @@ impl Input {
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
     ) -> Self {
-        Self::CoinPredicate {
+        Self::CoinPredicate(CoinPredicate {
             utxo_id,
             owner,
             amount,
             asset_id,
             tx_pointer,
+            witness_index: (),
             maturity,
             predicate,
             predicate_data,
-        }
+        })
     }
 
     pub const fn coin_signed(
@@ -168,7 +184,7 @@ impl Input {
         witness_index: u8,
         maturity: Word,
     ) -> Self {
-        Self::CoinSigned {
+        Self::CoinSigned(CoinSigned {
             utxo_id,
             owner,
             amount,
@@ -176,7 +192,9 @@ impl Input {
             tx_pointer,
             witness_index,
             maturity,
-        }
+            predicate: (),
+            predicate_data: (),
+        })
     }
 
     pub const fn contract(
@@ -239,9 +257,9 @@ impl Input {
 
     pub const fn utxo_id(&self) -> Option<&UtxoId> {
         match self {
-            Self::CoinSigned { utxo_id, .. } | Self::CoinPredicate { utxo_id, .. } | Self::Contract { utxo_id, .. } => {
-                Some(utxo_id)
-            }
+            Self::CoinSigned(CoinSigned { utxo_id, .. })
+            | Self::CoinPredicate(CoinPredicate { utxo_id, .. })
+            | Self::Contract { utxo_id, .. } => Some(utxo_id),
             Self::MessageSigned { .. } => None,
             Self::MessagePredicate { .. } => None,
         }
@@ -249,14 +267,18 @@ impl Input {
 
     pub const fn input_owner(&self) -> Option<&Address> {
         match self {
-            Self::CoinSigned { owner, .. } | Self::CoinPredicate { owner, .. } => Some(owner),
+            Self::CoinSigned(CoinSigned { owner, .. }) | Self::CoinPredicate(CoinPredicate { owner, .. }) => {
+                Some(owner)
+            }
             Self::MessageSigned { .. } | Self::MessagePredicate { .. } | Self::Contract { .. } => None,
         }
     }
 
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Input::CoinSigned { asset_id, .. } | Input::CoinPredicate { asset_id, .. } => Some(asset_id),
+            Input::CoinSigned(CoinSigned { asset_id, .. }) | Input::CoinPredicate(CoinPredicate { asset_id, .. }) => {
+                Some(asset_id)
+            }
             Input::MessageSigned { .. } | Input::MessagePredicate { .. } => Some(&AssetId::BASE),
             Input::Contract { .. } => None,
         }
@@ -271,8 +293,8 @@ impl Input {
 
     pub const fn amount(&self) -> Option<Word> {
         match self {
-            Input::CoinSigned { amount, .. }
-            | Input::CoinPredicate { amount, .. }
+            Input::CoinSigned(CoinSigned { amount, .. })
+            | Input::CoinPredicate(CoinPredicate { amount, .. })
             | Input::MessageSigned { amount, .. }
             | Input::MessagePredicate { amount, .. } => Some(*amount),
             Input::Contract { .. } => None,
@@ -281,53 +303,56 @@ impl Input {
 
     pub const fn witness_index(&self) -> Option<u8> {
         match self {
-            Input::CoinSigned { witness_index, .. } | Input::MessageSigned { witness_index, .. } => {
+            Input::CoinSigned(CoinSigned { witness_index, .. }) | Input::MessageSigned { witness_index, .. } => {
                 Some(*witness_index)
             }
-            Input::CoinPredicate { .. } | Input::Contract { .. } | Input::MessagePredicate { .. } => None,
+            Input::CoinPredicate(_) | Input::Contract { .. } | Input::MessagePredicate { .. } => None,
         }
     }
 
     pub const fn maturity(&self) -> Option<Word> {
         match self {
-            Input::CoinSigned { maturity, .. } | Input::CoinPredicate { maturity, .. } => Some(*maturity),
+            Input::CoinSigned(CoinSigned { maturity, .. }) | Input::CoinPredicate(CoinPredicate { maturity, .. }) => {
+                Some(*maturity)
+            }
             Input::Contract { .. } | Input::MessageSigned { .. } | Input::MessagePredicate { .. } => None,
         }
     }
 
     pub fn predicate_offset(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { .. } => InputRepr::Coin.coin_predicate_offset(),
+            Input::CoinPredicate(_) => InputRepr::Coin.coin_predicate_offset(),
             Input::MessagePredicate { data, .. } => {
                 InputRepr::Message.data_offset().map(|o| o + bytes::padded_len(data))
             }
-            Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
+            Input::CoinSigned(_) | Input::Contract { .. } | Input::MessageSigned { .. } => None,
         }
     }
 
     pub fn predicate_data_offset(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => {
+            Input::CoinPredicate(CoinPredicate { predicate, .. }) | Input::MessagePredicate { predicate, .. } => {
                 self.predicate_offset().map(|o| o + bytes::padded_len(predicate))
             }
-            Input::CoinSigned { .. } | Input::Contract { .. } | Input::MessageSigned { .. } => None,
+            Input::CoinSigned(_) | Input::Contract { .. } | Input::MessageSigned { .. } => None,
         }
     }
 
     pub fn predicate_len(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => Some(predicate.len()),
-            Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
+            Input::CoinPredicate(CoinPredicate { predicate, .. }) | Input::MessagePredicate { predicate, .. } => {
+                Some(predicate.len())
+            }
+            Input::CoinSigned(_) | Input::MessageSigned { .. } => Some(0),
             Input::Contract { .. } => None,
         }
     }
 
     pub fn predicate_data_len(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate { predicate_data, .. } | Input::MessagePredicate { predicate_data, .. } => {
-                Some(predicate_data.len())
-            }
-            Input::CoinSigned { .. } | Input::MessageSigned { .. } => Some(0),
+            Input::CoinPredicate(CoinPredicate { predicate_data, .. })
+            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data.len()),
+            Input::CoinSigned(_) | Input::MessageSigned { .. } => Some(0),
             Input::Contract { .. } => None,
         }
     }
@@ -341,8 +366,8 @@ impl Input {
 
     pub const fn tx_pointer(&self) -> Option<&TxPointer> {
         match self {
-            Input::CoinSigned { tx_pointer, .. }
-            | Input::CoinPredicate { tx_pointer, .. }
+            Input::CoinSigned(CoinSigned { tx_pointer, .. })
+            | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
             | Input::Contract { tx_pointer, .. } => Some(tx_pointer),
             _ => None,
         }
@@ -357,7 +382,9 @@ impl Input {
 
     pub fn input_predicate(&self) -> Option<&[u8]> {
         match self {
-            Input::CoinPredicate { predicate, .. } | Input::MessagePredicate { predicate, .. } => Some(predicate),
+            Input::CoinPredicate(CoinPredicate { predicate, .. }) | Input::MessagePredicate { predicate, .. } => {
+                Some(predicate)
+            }
 
             _ => None,
         }
@@ -365,9 +392,8 @@ impl Input {
 
     pub fn input_predicate_data(&self) -> Option<&[u8]> {
         match self {
-            Input::CoinPredicate { predicate_data, .. } | Input::MessagePredicate { predicate_data, .. } => {
-                Some(predicate_data)
-            }
+            Input::CoinPredicate(CoinPredicate { predicate_data, .. })
+            | Input::MessagePredicate { predicate_data, .. } => Some(predicate_data),
 
             _ => None,
         }
@@ -377,11 +403,11 @@ impl Input {
     /// type `CoinPredicate` or `MessagePredicate`
     pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
         match self {
-            Input::CoinPredicate {
+            Input::CoinPredicate(CoinPredicate {
                 predicate,
                 predicate_data,
                 ..
-            }
+            })
             | Input::MessagePredicate {
                 predicate,
                 predicate_data,
@@ -397,11 +423,11 @@ impl Input {
     }
 
     pub const fn is_coin_signed(&self) -> bool {
-        matches!(self, Input::CoinSigned { .. })
+        matches!(self, Input::CoinSigned(_))
     }
 
     pub const fn is_coin_predicate(&self) -> bool {
-        matches!(self, Input::CoinPredicate { .. })
+        matches!(self, Input::CoinPredicate(_))
     }
 
     pub const fn is_message(&self) -> bool {
@@ -466,7 +492,8 @@ impl Input {
     /// Empties fields that should be zero during the signing.
     pub(crate) fn prepare_sign(&mut self) {
         match self {
-            Input::CoinSigned { tx_pointer, .. } | Input::CoinPredicate { tx_pointer, .. } => {
+            Input::CoinSigned(CoinSigned { tx_pointer, .. })
+            | Input::CoinPredicate(CoinPredicate { tx_pointer, .. }) => {
                 mem::take(tx_pointer);
             }
 
@@ -532,102 +559,21 @@ impl Input {
 
 #[cfg(feature = "std")]
 impl io::Read for Input {
-    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if full_buf.len() < n {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let serialized_size = self.serialized_size();
+        if buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
         match self {
-            Self::CoinSigned {
-                utxo_id,
-                owner,
-                amount,
-                asset_id,
-                tx_pointer,
-                witness_index,
-                maturity,
-            } => {
-                type S = CoinSizes;
-                const LEN: usize = CoinSizes::LEN;
-                let buf: &mut [_; LEN] = full_buf
-                    .get_mut(..LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Coin as u8);
-
-                let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
-                if n != S::LAYOUT.utxo_id.size() {
-                    return Err(bytes::eof());
-                }
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
-                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
-
-                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
-                if n != S::LAYOUT.tx_pointer.size() {
-                    return Err(bytes::eof());
-                }
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), *witness_index);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
-
-                // Predicate len zeroed for signed coin
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), 0);
-
-                // Predicate data len zeroed for signed coin
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), 0);
+            Self::CoinSigned(coin) => {
+                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
+                let _ = coin.read(buf)?;
             }
 
-            Self::CoinPredicate {
-                utxo_id,
-                owner,
-                amount,
-                asset_id,
-                tx_pointer,
-                maturity,
-                predicate,
-                predicate_data,
-            } => {
-                type S = CoinSizes;
-                const LEN: usize = CoinSizes::LEN;
-                let buf: &mut [_; LEN] = full_buf
-                    .get_mut(..LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Coin as u8);
-
-                let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
-                if n != S::LAYOUT.utxo_id.size() {
-                    return Err(bytes::eof());
-                }
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
-                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
-
-                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
-                if n != S::LAYOUT.tx_pointer.size() {
-                    return Err(bytes::eof());
-                }
-
-                // Witness index zeroed for coin predicate
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), 0);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate.len() as Word);
-
-                bytes::store_number_at(
-                    buf,
-                    S::layout(S::LAYOUT.predicate_data_len),
-                    predicate_data.len() as Word,
-                );
-
-                let (_, buf) =
-                    bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, predicate.as_slice())?;
-
-                bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
+            Self::CoinPredicate(coin) => {
+                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
+                let _ = coin.read(buf)?;
             }
 
             Self::Contract {
@@ -737,7 +683,7 @@ impl io::Read for Input {
             }
         }
 
-        Ok(n)
+        Ok(serialized_size)
     }
 }
 
@@ -755,60 +701,13 @@ impl io::Write for Input {
 
         match identifier {
             InputRepr::Coin => {
-                type S = CoinSizes;
-                const LEN: usize = CoinSizes::LEN;
-                let buf: &[_; LEN] = full_buf
-                    .get(..LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
+                let mut coin = CoinFull::default();
+                let n = WORD_SIZE + CoinFull::write(&mut coin, buf)?;
 
-                let mut n = INPUT_COIN_FIXED_SIZE;
-
-                let utxo_id = UtxoId::from_bytes(&buf[S::LAYOUT.utxo_id.range()])?;
-
-                let owner = bytes::restore_at(buf, S::layout(S::LAYOUT.owner));
-                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
-                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
-
-                let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
-
-                let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
-                let maturity = bytes::restore_number_at(buf, S::layout(S::LAYOUT.maturity));
-
-                let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
-                let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
-
-                let (size, predicate, buf) =
-                    bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
-                n += size;
-
-                let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
-                n += size;
-
-                let owner = owner.into();
-                let asset_id = asset_id.into();
-
-                *self = if predicate.is_empty() {
-                    Self::CoinSigned {
-                        utxo_id,
-                        owner,
-                        amount,
-                        asset_id,
-                        tx_pointer,
-                        witness_index,
-                        maturity,
-                    }
+                *self = if coin.predicate.is_empty() {
+                    Self::CoinSigned(coin.into_signed())
                 } else {
-                    Self::CoinPredicate {
-                        utxo_id,
-                        owner,
-                        amount,
-                        asset_id,
-                        tx_pointer,
-                        maturity,
-                        predicate,
-                        predicate_data,
-                    }
+                    Self::CoinPredicate(coin.into_predicate())
                 };
 
                 Ok(n)

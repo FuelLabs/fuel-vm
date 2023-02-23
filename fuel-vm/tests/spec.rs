@@ -1,8 +1,20 @@
 use fuel_asm::*;
 use fuel_tx::{ConsensusParameters, Receipt, ScriptExecutionResult, Transaction};
+use fuel_types::Immediate18;
 use fuel_vm::prelude::{IntoChecked, MemoryClient};
 
 use rstest::rstest;
+
+/// Assert that transaction didn't panic
+fn assert_success(receipts: &[Receipt]) {
+    if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
+        if *result != ScriptExecutionResult::Success {
+            panic!("Expected vm success, got {result:?} instead");
+        }
+    } else {
+        unreachable!("No script result");
+    }
+}
 
 /// Assert that transaction receipts end in a panic with the given reason
 fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
@@ -330,4 +342,26 @@ fn spec_incr_pc_by_four(
     } else {
         panic!("No log data");
     }
+}
+
+#[rstest]
+fn spec_can_write_allowed_flag_combinations(#[values(0b00, 0b01, 0b10, 0b11)] flags: Immediate18) {
+    let mut script = common_setup();
+    script.push(op::movi(0x20, flags));
+    script.push(op::flag(0x20));
+    script.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(script.into_iter().collect());
+    assert_success(&receipts);
+}
+
+#[rstest]
+fn spec_cannot_write_reserved_flags(#[values(0b100, 0b111)] flags: Immediate18) {
+    let mut script = common_setup();
+    script.push(op::movi(0x20, flags));
+    script.push(op::flag(0x20));
+    script.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(script.into_iter().collect());
+    assert_panics(&receipts, PanicReason::ErrorFlag);
 }

@@ -5,7 +5,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::{PanicReason, RegId};
+use fuel_asm::{Flags, PanicReason, RegId};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -111,12 +111,17 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
+    /// Contents of the flag register
+    pub(crate) fn flags(&self) -> Flags {
+        Flags::from_bits_truncate(self.registers[RegId::FLAG])
+    }
+
     pub(crate) fn is_unsafe_math(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x01 == 0x01
+        self.flags().contains(Flags::UNSAFEMATH)
     }
 
     pub(crate) fn is_wrapping(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x02 == 0x02
+        self.flags().contains(Flags::WRAPPING)
     }
 
     /// The current transaction.

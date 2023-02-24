@@ -414,20 +414,19 @@ pub(crate) fn memcopy(
     let (bc, of) = b.overflowing_add(c);
     let overflow = overflow || of;
 
+    let dst_before_src = a <= b;
     let range = MemoryRange::new(a, c);
     if overflow
         || ac > VM_MAX_RAM
         || bc > VM_MAX_RAM
         || c > MEM_MAX_ACCESS_SIZE
-        || a <= b && b < ac
+        || dst_before_src && b < ac
         || b <= a && a < bc
-        || a < bc && bc <= ac
-        || b < ac && ac <= bc
         || !owner.has_ownership_range(&range)
     {
         Err(PanicReason::MemoryOverflow.into())
     } else {
-        if a <= b {
+        if dst_before_src {
             let (dst, src) = memory.split_at_mut(b as usize);
             dst[a as usize..ac as usize].copy_from_slice(&src[..c as usize]);
         } else {

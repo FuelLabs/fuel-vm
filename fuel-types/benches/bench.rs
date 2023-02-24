@@ -3,7 +3,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 #[cfg(feature = "unsafe")]
 use criterion::black_box;
 #[cfg(feature = "unsafe")]
-use fuel_types::bytes::from_slice_unchecked;
+use fuel_types::bytes::{from_slice_unchecked, restore_array_unchecked};
 
 #[cfg(not(feature = "unsafe"))]
 pub fn criterion_benchmark(_: &mut Criterion) {}
@@ -39,6 +39,42 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
+    // c.bench_function("from_slice_1", |b| {
+    //     b.iter(|| {
+    //         let slice = from_array::<1>(&mem);
+    //         black_box(slice);
+    //     })
+    // });
+    // c.bench_function("from_slice_10", |b| {
+    //     b.iter(|| {
+    //         let slice = from_array::<10>(&mem);
+    //         black_box(slice);
+    //     })
+    // });
+    // c.bench_function("from_slice_100", |b| {
+    //     b.iter(|| {
+    //         let slice = from_array::<100>(&mem);
+    //         black_box(slice);
+    //     })
+    // });
+    // c.bench_function("from_slice_checked_1_000", |b| {
+    //     b.iter(|| {
+    //         let slice = from_array::<1_000>(&mem);
+    //         black_box(slice);
+    //     })
+    // });
+    c.bench_function("restore_array_unchecked", |b| {
+        b.iter(|| {
+            let slice = unsafe { restore_array_unchecked::<1_000>(&mem) };
+            black_box(slice);
+        })
+    });
+    // c.bench_function("restore_array_checked", |b| {
+    //     b.iter(|| {
+    //         let slice = restore_array_checked::<1_000>(&mem);
+    //         black_box(slice);
+    //     })
+    // });
     c.bench_function("Bytes32_from_bytes_ref", |b| {
         b.iter(|| {
             let mem: &[u8; 32] = (&mem[..32]).try_into().unwrap();
@@ -46,6 +82,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             black_box(bytes);
         })
     });
+    // c.bench_function("Bytes32_checked", |b| {
+    //     b.iter(|| {
+    //         let bytes = Bytes32::from_slice_checked(&mem).unwrap();
+    //         black_box(bytes);
+    //     })
+    // });
     c.bench_function("raw_try", |b| {
         b.iter(|| {
             let mem: &[u8; 32] = (&mem[..32]).try_into().unwrap();

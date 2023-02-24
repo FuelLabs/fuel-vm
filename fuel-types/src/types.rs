@@ -85,7 +85,6 @@ macro_rules! key_methods {
             }
 
             #[cfg(feature = "unsafe")]
-            #[allow(unsafe_code)]
             /// Add a conversion from arbitrary slices into owned
             ///
             /// # Safety

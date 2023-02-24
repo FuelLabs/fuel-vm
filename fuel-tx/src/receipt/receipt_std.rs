@@ -4,11 +4,13 @@ use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
 use fuel_types::{MemLayout, MemLocType, Word};
 
+use crate::receipt::receipt_std::sizes::CallSizes;
 use crate::receipt::script_result::ScriptExecutionResult;
-use crate::receipt::sizes::CallSizes;
 use std::io::{self, Write};
 
-use crate::receipt::sizes::*;
+use sizes::*;
+
+mod sizes;
 
 impl io::Read for Receipt {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -345,7 +347,11 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
+                    return Err(bytes::eof());
+                }
 
                 let id = id.into();
                 let digest = digest.into();
@@ -423,7 +429,11 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
+                    return Err(bytes::eof());
+                }
 
                 let id = id.into();
                 let digest = digest.into();
@@ -502,7 +512,11 @@ impl io::Write for Receipt {
                 let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
                 let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
+                    return Err(bytes::eof());
+                }
 
                 let message_id = message_id.into();
                 let sender = sender.into();
@@ -514,8 +528,7 @@ impl io::Write for Receipt {
             }
         }
 
-        let n = self.serialized_size();
-        Ok(n)
+        Ok(full_buf.len() + WORD_SIZE)
     }
 
     fn flush(&mut self) -> io::Result<()> {

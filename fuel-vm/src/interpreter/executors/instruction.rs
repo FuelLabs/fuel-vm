@@ -5,7 +5,7 @@ use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
-use fuel_types::{bytes, Word};
+use fuel_types::Word;
 
 use std::ops::Div;
 
@@ -20,7 +20,7 @@ where
         let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
-            .map(|b| unsafe { bytes::from_slice_unchecked(b) })
+            .map(|b| b.try_into().expect("Has to be correct size slice"))
             .map(Word::from_be_bytes)
             .map(fuel_asm::raw_instructions_from_word)
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;

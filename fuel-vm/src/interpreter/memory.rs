@@ -7,7 +7,7 @@ use crate::{consts::*, context::Context};
 use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
-use std::{ops, ptr};
+use std::ops;
 
 pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
 
@@ -414,24 +414,24 @@ pub(crate) fn memcopy(
     let (bc, of) = b.overflowing_add(c);
     let overflow = overflow || of;
 
+    let dst_before_src = a <= b;
     let range = MemoryRange::new(a, c);
     if overflow
         || ac > VM_MAX_RAM
         || bc > VM_MAX_RAM
         || c > MEM_MAX_ACCESS_SIZE
-        || a <= b && b < ac
+        || dst_before_src && b < ac
         || b <= a && a < bc
         || !owner.has_ownership_range(&range)
     {
         Err(PanicReason::MemoryOverflow.into())
     } else {
-        // The pointers are granted to be aligned so this is a safe
-        // operation
-        let src = &memory[b as usize] as *const u8;
-        let dst = &mut memory[a as usize] as *mut u8;
-
-        unsafe {
-            ptr::copy_nonoverlapping(src, dst, c as usize);
+        if dst_before_src {
+            let (dst, src) = memory.split_at_mut(b as usize);
+            dst[a as usize..ac as usize].copy_from_slice(&src[..c as usize]);
+        } else {
+            let (src, dst) = memory.split_at_mut(a as usize);
+            dst[..c as usize].copy_from_slice(&src[b as usize..bc as usize]);
         }
 
         inc_pc(pc)
@@ -538,13 +538,10 @@ pub(crate) fn try_mem_write(
     registers
         .has_ownership_range(&range)
         .then(|| {
-            let src = data.as_ptr();
-            let dst = &mut memory[addr] as *mut u8;
-
-            unsafe {
-                ptr::copy_nonoverlapping(src, dst, data.len());
-            }
+            memory.get_mut(addr..ax)?.copy_from_slice(data);
+            Some(())
         })
+        .flatten()
         .ok_or_else(|| PanicReason::MemoryOwnership.into())
 }
 

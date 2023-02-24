@@ -1,13 +1,16 @@
 //! Atomic types of the FuelVM.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![warn(unsafe_code)]
 #![warn(missing_docs)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+mod layout;
 mod types;
 
+pub use layout::*;
 pub use types::*;
 
 /// Word-aligned bytes serialization functions.

@@ -1,4 +1,7 @@
 //! Types to help constrain inputs to functions to only what is used.
+use std::ops::Deref;
+use std::ops::DerefMut;
+
 use fuel_asm::PanicReason;
 use fuel_asm::Word;
 use fuel_types::ContractId;
@@ -15,6 +18,10 @@ pub mod reg_key;
 #[derive(Clone)]
 /// A range of memory that has been checked that it fits into the VM memory.
 pub struct CheckedMemRange(core::ops::Range<usize>);
+
+#[derive(Clone)]
+/// A range of memory that has been checked that it fits into the VM memory.
+pub struct CheckedMemConstLen<const LEN: usize>(CheckedMemRange);
 
 #[derive(Clone)]
 /// A range of memory that has been checked that it fits into the VM memory.
@@ -131,6 +138,34 @@ impl CheckedMemRange {
     }
 }
 
+impl<const LEN: usize> CheckedMemConstLen<LEN> {
+    /// Create a new const sized memory range.
+    pub fn new(address: Word) -> Result<Self, RuntimeError> {
+        Ok(Self(CheckedMemRange::new_const::<LEN>(address)?))
+    }
+
+    /// Create a new memory range with a custom constraint.
+    /// Panics if constraints end > `VM_MAX_RAM`.
+    pub fn new_with_constraint(address: Word, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
+        assert!(constraint.end <= VM_MAX_RAM, "Constraint end must be <= VM_MAX_RAM.");
+        Ok(Self(CheckedMemRange::new_inner(address, LEN, constraint)?))
+    }
+
+    /// Get the memory slice for this range.
+    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8; LEN] {
+        (&memory[self.0 .0])
+            .try_into()
+            .expect("This is always correct as the address and LEN are checked on construction.")
+    }
+
+    /// Get the mutable memory slice for this range.
+    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8; LEN] {
+        (&mut memory[self.0 .0])
+            .try_into()
+            .expect("This is always correct as the address and LEN are checked on construction.")
+    }
+}
+
 /// Location of an instructing collected during runtime
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InstructionLocation {
@@ -138,4 +173,18 @@ pub struct InstructionLocation {
     pub context: Option<ContractId>,
     /// Offset from the IS register
     pub offset: u64,
+}
+
+impl<const LEN: usize> Deref for CheckedMemConstLen<LEN> {
+    type Target = CheckedMemRange;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<const LEN: usize> DerefMut for CheckedMemConstLen<LEN> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }

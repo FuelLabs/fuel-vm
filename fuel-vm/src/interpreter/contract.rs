@@ -2,7 +2,7 @@ use super::internal::{
     append_receipt, external_asset_id_balance_sub, inc_pc, internal_contract, set_variable_output, AppendReceipt,
 };
 use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
-use crate::constraints::reg_key::*;
+use crate::constraints::{reg_key::*, CheckedMemConstLen};
 use crate::context::Context;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
@@ -103,25 +103,13 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let bx = b
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let cx = c
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
         //if above usize::MAX then it cannot be safely cast to usize,
         // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if bx > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
+        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new_with_constraint(b, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
+        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new_with_constraint(c, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
 
-        let (b, c, bx, cx) = (b as usize, c as usize, bx as usize, cx as usize);
-
-        // Safety: memory bounds checked
-        let asset_id = unsafe { AssetId::as_ref_unchecked(&self.memory[b..bx]) };
-        let contract = unsafe { ContractId::as_ref_unchecked(&self.memory[c..cx]) };
+        let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
+        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
         if !self.input_contracts.any(|input| contract == input) {
             *self.panic_context = PanicContext::ContractId(*contract);

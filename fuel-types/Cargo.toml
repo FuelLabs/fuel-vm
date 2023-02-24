@@ -16,6 +16,7 @@ serde = { version = "1.0", default-features = false, features = ["derive", "allo
 
 [dev-dependencies]
 bincode = "1.3"
+criterion = "0.4"
 fuel-types = { path = ".", features = ["random"] }
 hex = "0.4"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
@@ -27,3 +28,8 @@ alloc = []
 random = ["rand"]
 serde = ["dep:serde", "alloc"]
 std = ["alloc", "serde?/std"]
+unsafe = []
+
+[[bench]]
+name = "bench"
+harness = false

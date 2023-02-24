@@ -670,7 +670,7 @@ fn code_copy_b_plus_32_overflow() {
         op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_copy, ArithmeticOverflow);
+    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
 }
 
 #[test]
@@ -730,7 +730,7 @@ fn code_root_b_plus_32_overflow() {
         op::croo(RegId::ZERO, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, ArithmeticOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
 
 #[test]
@@ -779,7 +779,7 @@ fn code_size_b_plus_32_overflow() {
         op::csiz(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, ArithmeticOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
 
 #[test]
@@ -1062,7 +1062,7 @@ fn state_r_word_b_plus_32_over() {
         op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
 
-    check_expected_reason_for_instructions(state_read_word, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_read_word, MemoryOverflow);
 }
 
 #[test]
@@ -1114,7 +1114,7 @@ fn state_r_qword_c_plus_32_over() {
         op::srwq(0x31, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1167,7 +1167,7 @@ fn state_w_word_a_plus_32_over() {
         op::sww(reg_a, SET_STATUS_REG, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(state_write_word, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_write_word, MemoryOverflow);
 }
 
 #[test]
@@ -1200,7 +1200,7 @@ fn state_w_qword_a_plus_32_over() {
         op::swwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
 }
 
 #[test]

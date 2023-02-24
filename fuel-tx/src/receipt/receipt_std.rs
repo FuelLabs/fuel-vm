@@ -2,10 +2,15 @@ use super::{Receipt, ReceiptRepr};
 
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
-use fuel_types::Word;
+use fuel_types::{MemLayout, MemLocType, Word};
 
+use crate::receipt::receipt_std::sizes::CallSizes;
 use crate::receipt::script_result::ScriptExecutionResult;
 use std::io::{self, Write};
+
+use sizes::*;
+
+mod sizes;
 
 impl io::Read for Receipt {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -27,28 +32,39 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Call as Word);
+                type S = CallSizes;
+                const LEN: usize = CallSizes::LEN;
+                let buf: &mut [_; LEN] = buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_array_unchecked(buf, to);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, asset_id);
-                let buf = bytes::store_number_unchecked(buf, *gas);
-                let buf = bytes::store_number_unchecked(buf, *param1);
-                let buf = bytes::store_number_unchecked(buf, *param2);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Call as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.gas), *gas);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.param1), *param1);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.param2), *param2);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::Return { id, val, pc, is } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Return as Word);
+                type S = ReturnSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *val);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Return as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.val), *val);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::ReturnData {
@@ -60,36 +76,53 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::ReturnData as Word);
+                let full_buf = buf;
+                type S = ReturnDataSizes;
+                let buf: &mut [_; S::LEN] = full_buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *ptr);
-                let buf = bytes::store_number_unchecked(buf, *len);
-                let buf = bytes::store_array_unchecked(buf, digest);
-                let (_, buf) = bytes::store_bytes(buf, data)?;
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::ReturnData as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.ptr), *ptr);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
+                bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
+
+                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
             }
 
             Self::Panic { id, reason, pc, is, .. } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Panic as Word);
+                type S = PanicSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *reason);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Panic as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.reason), Word::from(*reason));
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::Revert { id, ra, pc, is } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Revert as Word);
+                type S = RevertSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *ra);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Revert as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::Log {
@@ -101,16 +134,21 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Log as Word);
+                type S = LogSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *ra);
-                let buf = bytes::store_number_unchecked(buf, *rb);
-                let buf = bytes::store_number_unchecked(buf, *rc);
-                let buf = bytes::store_number_unchecked(buf, *rd);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Log as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.rb), *rb);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.rc), *rc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.rd), *rd);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::LogData {
@@ -124,18 +162,25 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::LogData as Word);
+                let full_buf = buf;
+                type S = LogDataSizes;
+                let buf: &mut [_; S::LEN] = full_buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_number_unchecked(buf, *ra);
-                let buf = bytes::store_number_unchecked(buf, *rb);
-                let buf = bytes::store_number_unchecked(buf, *ptr);
-                let buf = bytes::store_number_unchecked(buf, *len);
-                let buf = bytes::store_array_unchecked(buf, digest);
-                let (_, buf) = bytes::store_bytes(buf, data)?;
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::LogData as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.rb), *rb);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.ptr), *ptr);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
+                bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
+
+                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
             }
 
             Self::Transfer {
@@ -146,15 +191,20 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::Transfer as Word);
+                type S = TransferSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_array_unchecked(buf, to);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, asset_id);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Transfer as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::TransferOut {
@@ -165,24 +215,34 @@ impl io::Read for Receipt {
                 pc,
                 is,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::TransferOut as Word);
+                type S = TransferOutSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, id);
-                let buf = bytes::store_array_unchecked(buf, to);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, asset_id);
-                let buf = bytes::store_number_unchecked(buf, *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::TransferOut as u8);
 
-                bytes::store_number_unchecked(buf, *is);
+                bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
 
             Self::ScriptResult { result, gas_used } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::ScriptResult as Word);
+                type S = ScriptResultSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::ScriptResult as u8);
 
                 let result = Word::from(*result);
-                let buf = bytes::store_number_unchecked(buf, result);
-
-                bytes::store_number_unchecked(buf, *gas_used);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.result), result);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.gas_used), *gas_used);
             }
 
             Self::MessageOut {
@@ -195,17 +255,24 @@ impl io::Read for Receipt {
                 digest,
                 data,
             } => {
-                let buf = bytes::store_number_unchecked(buf, ReceiptRepr::MessageOut as Word);
+                let full_buf = buf;
+                type S = MessageOutSizes;
+                let buf: &mut [_; S::LEN] = full_buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let buf = bytes::store_array_unchecked(buf, message_id);
-                let buf = bytes::store_array_unchecked(buf, sender);
-                let buf = bytes::store_array_unchecked(buf, recipient);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, nonce);
-                let buf = bytes::store_number_unchecked(buf, *len);
-                let buf = bytes::store_array_unchecked(buf, digest);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::MessageOut as u8);
 
-                bytes::store_bytes(buf, data)?;
+                bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
+                bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.nonce), nonce);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
+                bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
+
+                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
             }
         }
 
@@ -214,34 +281,33 @@ impl io::Read for Receipt {
 }
 
 impl io::Write for Receipt {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < WORD_SIZE {
-            return Err(bytes::eof());
-        }
-
-        // Safety: buffer size is checked
-        let (identifier, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let identifier = ReceiptRepr::try_from(identifier)?;
-
-        let orig_buf_len = buf.len();
-        let mut used_len = Self::variant_len_without_data(identifier);
-
-        if orig_buf_len < used_len {
-            return Err(bytes::eof());
-        }
+    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
+        let identifier: &[_; WORD_SIZE] = full_buf
+            .get(..WORD_SIZE)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
         // Safety: buf len is checked
+        let identifier = bytes::restore_word(bytes::from_array(identifier));
+        let identifier = ReceiptRepr::try_from(identifier)?;
+
         match identifier {
             ReceiptRepr::Call => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (gas, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (param1, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (param2, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = CallSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let to = bytes::restore_at(buf, S::layout(S::LAYOUT.to));
+                let amount = bytes::restore_word_at(buf, S::layout(S::LAYOUT.amount));
+                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
+                let gas = bytes::restore_word_at(buf, S::layout(S::LAYOUT.gas));
+                let param1 = bytes::restore_word_at(buf, S::layout(S::LAYOUT.param1));
+                let param2 = bytes::restore_word_at(buf, S::layout(S::LAYOUT.param2));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
                 let to = to.into();
@@ -251,10 +317,16 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::Return => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (val, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = ReturnSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let val = bytes::restore_word_at(buf, S::layout(S::LAYOUT.val));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
 
@@ -262,20 +334,24 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::ReturnData => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (ptr, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                type S = ReturnDataSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let (count, data, buf) = bytes::restore_bytes(buf)?;
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let ptr = bytes::restore_word_at(buf, S::layout(S::LAYOUT.ptr));
+                let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
+                let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                used_len += count;
-                if orig_buf_len < used_len {
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
                     return Err(bytes::eof());
                 }
-
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let digest = digest.into();
@@ -284,10 +360,16 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::Panic => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (reason, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = PanicSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let reason = bytes::restore_word_at(buf, S::layout(S::LAYOUT.reason));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
 
@@ -295,10 +377,16 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::Revert => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (ra, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = RevertSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let ra = bytes::restore_word_at(buf, S::layout(S::LAYOUT.ra));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
 
@@ -306,13 +394,19 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::Log => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (ra, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (rb, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (rc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (rd, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = LogSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let ra = bytes::restore_word_at(buf, S::layout(S::LAYOUT.ra));
+                let rb = bytes::restore_word_at(buf, S::layout(S::LAYOUT.rb));
+                let rc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.rc));
+                let rd = bytes::restore_word_at(buf, S::layout(S::LAYOUT.rd));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
 
@@ -320,22 +414,26 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::LogData => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (ra, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (rb, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (ptr, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                type S = LogDataSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let (count, data, buf) = bytes::restore_bytes(buf)?;
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let ra = bytes::restore_word_at(buf, S::layout(S::LAYOUT.ra));
+                let rb = bytes::restore_word_at(buf, S::layout(S::LAYOUT.rb));
+                let ptr = bytes::restore_word_at(buf, S::layout(S::LAYOUT.ptr));
+                let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
+                let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                used_len += count;
-                if orig_buf_len < used_len {
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
                     return Err(bytes::eof());
                 }
-
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
                 let id = id.into();
                 let digest = digest.into();
@@ -344,12 +442,18 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::Transfer => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = TransferSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let to = bytes::restore_at(buf, S::layout(S::LAYOUT.to));
+                let amount = bytes::restore_word_at(buf, S::layout(S::LAYOUT.amount));
+                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
                 let to = to.into();
@@ -359,12 +463,18 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::TransferOut => {
-                let (id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (pc, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (is, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = TransferOutSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let id = bytes::restore_at(buf, S::layout(S::LAYOUT.id));
+                let to = bytes::restore_at(buf, S::layout(S::LAYOUT.to));
+                let amount = bytes::restore_word_at(buf, S::layout(S::LAYOUT.amount));
+                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
                 let id = id.into();
                 let to = to.into();
@@ -374,8 +484,13 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::ScriptResult => {
-                let (result, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (gas_used, _) = unsafe { bytes::restore_word_unchecked(buf) };
+                type S = ScriptResultSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+                let result = bytes::restore_word_at(buf, S::layout(S::LAYOUT.result));
+                let gas_used = bytes::restore_word_at(buf, S::layout(S::LAYOUT.gas_used));
 
                 let result = ScriptExecutionResult::from(result);
 
@@ -383,17 +498,23 @@ impl io::Write for Receipt {
             }
 
             ReceiptRepr::MessageOut => {
-                let (message_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (sender, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (nonce, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (len, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-                let (digest, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (count, data, _) = bytes::restore_bytes(buf)?;
+                type S = MessageOutSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                used_len += count;
-                if orig_buf_len < used_len {
+                let message_id = bytes::restore_at(buf, S::layout(S::LAYOUT.message_id));
+                let sender = bytes::restore_at(buf, S::layout(S::LAYOUT.sender));
+                let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
+                let amount = bytes::restore_word_at(buf, S::layout(S::LAYOUT.amount));
+                let nonce = bytes::restore_at(buf, S::layout(S::LAYOUT.nonce));
+                let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
+                let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
+
+                let (_, data, buf) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+
+                if !buf.is_empty() {
                     return Err(bytes::eof());
                 }
 
@@ -407,7 +528,7 @@ impl io::Write for Receipt {
             }
         }
 
-        Ok(used_len + WORD_SIZE)
+        Ok(full_buf.len() + WORD_SIZE)
     }
 
     fn flush(&mut self) -> io::Result<()> {

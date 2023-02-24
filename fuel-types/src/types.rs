@@ -1,8 +1,8 @@
 // serde-big-array doesn't allow documentation of its generated structure
 #![allow(missing_docs)]
-use crate::bytes;
-
 use core::array::TryFromSliceError;
+use core::borrow::Borrow;
+use core::borrow::BorrowMut;
 use core::convert::TryFrom;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, str};
@@ -84,6 +84,7 @@ macro_rules! key_methods {
                 $i([0; $s])
             }
 
+            #[cfg(feature = "unsafe")]
             /// Add a conversion from arbitrary slices into owned
             ///
             /// # Safety
@@ -92,19 +93,30 @@ macro_rules! key_methods {
             /// `Self::LEN`. Instead, it will cause undefined behavior and read random disowned
             /// bytes
             pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-                $i(bytes::from_slice_unchecked(bytes))
+                $i($crate::bytes::from_slice_unchecked(bytes))
             }
 
             /// Copy-free reference cast
             /// # Safety
-            /// Assumes byte slice is the same length as this type.
-            pub unsafe fn as_ref_unchecked(bytes: &[u8]) -> &Self {
+            /// Assumes the type is `repr[transparent]`.
+            pub fn from_bytes_ref_checked(bytes: &[u8]) -> Option<&Self> {
+                let bytes: &[u8; $s] = bytes.get(..$s)?.try_into().ok()?;
+                Some(Self::from_bytes_ref(bytes))
+            }
+
+            /// Copy-free reference cast
+            /// # Safety
+            /// Assumes the type is `repr[transparent]`.
+            pub fn from_bytes_ref(bytes: &[u8; $s]) -> &Self {
                 // The interpreter will frequently make references to keys and values using
                 // logically checked slices.
                 //
                 // This function will save unnecessary copy to owned slices for the interpreter
                 // access
-                &*(bytes.as_ptr() as *const Self)
+                #[allow(unsafe_code)]
+                unsafe {
+                    &*(bytes.as_ptr() as *const Self)
+                }
             }
 
             /// The memory size of the type by the method.
@@ -127,6 +139,18 @@ macro_rules! key_methods {
 
             fn deref(&self) -> &[u8; $s] {
                 &self.0
+            }
+        }
+
+        impl Borrow<[u8; $s]> for $i {
+            fn borrow(&self) -> &[u8; $s] {
+                &self.0
+            }
+        }
+
+        impl BorrowMut<[u8; $s]> for $i {
+            fn borrow_mut(&mut self) -> &mut [u8; $s] {
+                &mut self.0
             }
         }
 

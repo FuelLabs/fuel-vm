@@ -145,9 +145,9 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     ; "Fail when rA + 32 > VM_MAX_RAM"
 )]
 #[test_case(
-    VM_MAX_RAM - 32, 0, 1
+    VM_MAX_RAM - 33, 0, 1
     => matches Ok(_)
-    ; "Pass when rA + 32 == VM_MAX_RAM"
+    ; "Pass when rA + 32 == VM_MAX_RAM - 1"
 )]
 #[test_case(
     0, VM_MAX_RAM - 1, 1

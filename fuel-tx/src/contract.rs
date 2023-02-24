@@ -33,8 +33,7 @@ impl Contract {
             .chunks(Bytes8::LEN)
             .map(|c| {
                 if c.len() == Bytes8::LEN {
-                    // Safety: checked len chunk
-                    unsafe { Bytes8::from_slice_unchecked(c) }
+                    Bytes8::new(c.try_into().expect("checked len chunk"))
                 } else {
                     // Potential collision with non-padded input. Consider adding an extra leaf
                     // for padding?

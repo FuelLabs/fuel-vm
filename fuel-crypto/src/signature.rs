@@ -12,49 +12,28 @@ use core::{fmt, str};
 pub struct Signature(Bytes64);
 
 impl Signature {
-    /// Memory length of the type
+    /// Memory length of the type in bytes.
     pub const LEN: usize = Bytes64::LEN;
 
-    /// Add a conversion from arbitrary slices into owned
+    /// Construct a `Signature` directly from its bytes.
     ///
-    /// # Safety
-    ///
-    /// There is no guarantee the provided bytes will be a valid signature. Internally, some FFI
-    /// calls to `secp256k1` are performed and we might have undefined behavior in case the bytes
-    /// are not canonically encoded to a valid `secp256k1` signature.
-    pub unsafe fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+    /// This constructor expects the given bytes to be a valid signature. No signing is performed.
+    pub fn from_bytes(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }
 
-    /// Add a conversion from arbitrary slices into owned
+    /// Construct a `Signature` reference directly from a reference to its bytes.
     ///
-    /// # Safety
-    ///
-    /// This function will not panic if the length of the slice is smaller than
-    /// `Self::LEN`. Instead, it will cause undefined behavior and read random
-    /// disowned bytes.
-    ///
-    /// There is no guarantee the provided bytes will be a valid signature. Internally, some FFI
-    /// calls to `secp256k1` are performed and we might have undefined behavior in case the bytes
-    /// are not canonically encoded to a valid `secp256k1` signature.
-    pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-        Self(Bytes64::from_slice_unchecked(bytes))
+    /// This constructor expects the given bytes to be a valid signature. No signing is performed.
+    pub fn from_bytes_ref(bytes: &[u8; Self::LEN]) -> &Self {
+        // TODO: Wrap this unsafe conversion safely in `fuel_types::Bytes64`.
+        unsafe { &*(bytes.as_ptr() as *const Self) }
     }
 
-    /// Copy-free reference cast
-    ///
-    /// There is no guarantee the provided bytes will fit the field.
-    ///
-    /// # Safety
-    ///
-    /// Inputs smaller than `Self::LEN` will cause undefined behavior.
-    pub unsafe fn as_ref_unchecked(bytes: &[u8]) -> &Self {
-        // The interpreter will frequently make references to keys and values using
-        // logically checked slices.
-        //
-        // This function will avoid unnecessary copy to owned slices for the interpreter
-        // access
-        &*(bytes.as_ptr() as *const Self)
+    /// Kept temporarily for backwards compatibility.
+    #[deprecated = "Use `Signature::from_bytes` instead"]
+    pub fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+        Self::from_bytes(bytes)
     }
 }
 
@@ -75,12 +54,6 @@ impl AsRef<[u8]> for Signature {
 impl AsMut<[u8]> for Signature {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
-    }
-}
-
-impl From<Signature> for [u8; Signature::LEN] {
-    fn from(salt: Signature) -> [u8; Signature::LEN] {
-        salt.0.into()
     }
 }
 
@@ -108,9 +81,9 @@ impl fmt::Display for Signature {
     }
 }
 
-impl From<Bytes64> for Signature {
-    fn from(b: Bytes64) -> Self {
-        Self(b)
+impl From<Signature> for [u8; Signature::LEN] {
+    fn from(salt: Signature) -> [u8; Signature::LEN] {
+        salt.0.into()
     }
 }
 
@@ -122,10 +95,13 @@ impl From<Signature> for Bytes64 {
 
 impl str::FromStr for Signature {
     type Err = Error;
+    /// Parse a `Signature` directly from its bytes encoded as hex in a string.
+    ///
+    /// This constructor does not perform any signing.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Bytes64::from_str(s)
             .map_err(|_| Error::InvalidSignature)
-            .map(|s| s.into())
+            .map(|s| Self::from_bytes(s.into()))
     }
 }
 
@@ -170,9 +146,7 @@ mod use_std {
             let v = v.to_i32();
 
             signature[32] |= (v << 7) as u8;
-
-            // Safety: the security of this call reflects the security of secp256k1 FFI
-            unsafe { Signature::from_bytes_unchecked(signature) }
+            Signature::from_bytes(signature)
         }
 
         /// Truncate the recovery id from the signature, producing a valid `secp256k1`

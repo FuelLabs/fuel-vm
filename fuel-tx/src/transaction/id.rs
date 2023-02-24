@@ -40,8 +40,7 @@ where
         let pk = Input::owner(&pk);
         let id = self.id();
 
-        // Safety: checked length
-        let message = unsafe { Message::as_ref_unchecked(id.as_ref()) };
+        let message = Message::from_bytes_ref(&id);
 
         let signature = Signature::sign(secret, message);
 

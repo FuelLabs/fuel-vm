@@ -1,5 +1,7 @@
-use crate::common::{Bytes8, ChildResult, Node, ParentNode, PositionPath};
-
+use crate::common::{
+    node::{ChildResult, Node, ParentNode},
+    Bytes8, PositionPath,
+};
 use core::convert::Infallible;
 
 /// # Position

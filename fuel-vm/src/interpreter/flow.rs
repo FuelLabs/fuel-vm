@@ -36,8 +36,6 @@ where
 
         if j > VM_MAX_RAM - 1 {
             Err(PanicReason::MemoryOverflow.into())
-        } else if self.is_predicate() && j <= self.registers[RegId::PC] {
-            Err(PanicReason::IllegalJump.into())
         } else {
             self.registers[RegId::PC] = j;
 

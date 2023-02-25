@@ -6,7 +6,7 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
-use fuel_asm::{Instruction, PanicReason, RegId};
+use fuel_asm::{Flags, Instruction, PanicReason, RegId};
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::ConsensusParameters;
 use fuel_tx::Script;
@@ -111,7 +111,11 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
-        self.registers[RegId::FLAG] = a;
+        let Some(flags) = Flags::from_bits(a) else {
+            return Err(PanicReason::ErrorFlag.into());
+        };
+
+        self.registers[RegId::FLAG] = flags.bits();
 
         self.inc_pc()
     }

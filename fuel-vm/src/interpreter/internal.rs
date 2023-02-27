@@ -191,7 +191,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
-        let ReadRegisters { fp: register, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters { fp: register, .. } = split_registers(&mut self.registers).0;
         set_frame_pointer(&mut self.context, register, fp)
     }
 

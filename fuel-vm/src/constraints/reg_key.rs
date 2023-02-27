@@ -9,6 +9,7 @@ use fuel_asm::RegId;
 use fuel_asm::Word;
 
 use crate::consts::VM_REGISTER_COUNT;
+use crate::consts::VM_REGISTER_READ_COUNT;
 use crate::consts::VM_REGISTER_WRITE_COUNT;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -39,22 +40,26 @@ impl<const INDEX: u8> Deref for Reg<'_, INDEX> {
         self.0
     }
 }
+
 impl<const INDEX: u8> Deref for RegMut<'_, INDEX> {
     type Target = Word;
     fn deref(&self) -> &Self::Target {
         self.0
     }
 }
+
 impl<const INDEX: u8> DerefMut for RegMut<'_, INDEX> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0
     }
 }
+
 impl<'a, const INDEX: u8> From<RegMut<'a, INDEX>> for Reg<'a, INDEX> {
     fn from(reg: RegMut<'a, INDEX>) -> Self {
         Self(reg.0)
     }
 }
+
 impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
     /// Re-borrow the register as an immutable reference.
     pub fn as_ref(&self) -> Reg<INDEX> {
@@ -111,7 +116,7 @@ impl_keys! {
     FLAG, flag
 }
 
-pub(crate) struct ReadRegisters<'a> {
+pub(crate) struct SystemRegisters<'a> {
     pub(crate) zero: RegMut<'a, ZERO>,
     pub(crate) one: RegMut<'a, ONE>,
     pub(crate) of: RegMut<'a, OF>,
@@ -130,7 +135,7 @@ pub(crate) struct ReadRegisters<'a> {
     pub(crate) flag: RegMut<'a, FLAG>,
 }
 
-pub(crate) struct ReadRegistersRef<'a> {
+pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) zero: Reg<'a, ZERO>,
     pub(crate) one: Reg<'a, ONE>,
     pub(crate) of: Reg<'a, OF>,
@@ -148,12 +153,16 @@ pub(crate) struct ReadRegistersRef<'a> {
     pub(crate) retl: Reg<'a, RETL>,
     pub(crate) flag: Reg<'a, FLAG>,
 }
-pub(crate) struct WriteRegisters<'a>(pub &'a mut [Word; VM_REGISTER_WRITE_COUNT]);
-pub(crate) struct WriteRegistersRef<'a>(pub &'a [Word; VM_REGISTER_WRITE_COUNT]);
 
-pub(crate) fn split_registers(registers: &mut [Word; VM_REGISTER_COUNT]) -> (ReadRegisters<'_>, WriteRegisters<'_>) {
+pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_WRITE_COUNT]);
+
+pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_WRITE_COUNT]);
+
+pub(crate) fn split_registers(
+    registers: &mut [Word; VM_REGISTER_COUNT],
+) -> (SystemRegisters<'_>, ProgramRegisters<'_>) {
     let [zero, one, of, pc, ssp, sp, fp, hp, err, ggas, cgas, bal, is, ret, retl, flag, rest @ ..] = registers;
-    let r = ReadRegisters {
+    let r = SystemRegisters {
         zero: RegMut(zero),
         one: RegMut(one),
         of: RegMut(of),
@@ -171,83 +180,21 @@ pub(crate) fn split_registers(registers: &mut [Word; VM_REGISTER_COUNT]) -> (Rea
         retl: RegMut(retl),
         flag: RegMut(flag),
     };
-    (r, WriteRegisters(rest))
+    (r, ProgramRegisters(rest))
 }
 
 pub(crate) fn copy_registers(
-    read_registers: &ReadRegistersRef<'_>,
-    write_registers: &WriteRegistersRef<'_>,
+    read_registers: &SystemRegistersRef<'_>,
+    write_registers: &ProgramRegistersRef<'_>,
 ) -> [Word; VM_REGISTER_COUNT] {
-    [
-        *read_registers.zero,
-        *read_registers.one,
-        *read_registers.of,
-        *read_registers.pc,
-        *read_registers.ssp,
-        *read_registers.sp,
-        *read_registers.fp,
-        *read_registers.hp,
-        *read_registers.err,
-        *read_registers.ggas,
-        *read_registers.cgas,
-        *read_registers.bal,
-        *read_registers.is,
-        *read_registers.ret,
-        *read_registers.retl,
-        *read_registers.flag,
-        write_registers.0[0],
-        write_registers.0[1],
-        write_registers.0[2],
-        write_registers.0[3],
-        write_registers.0[4],
-        write_registers.0[5],
-        write_registers.0[6],
-        write_registers.0[7],
-        write_registers.0[8],
-        write_registers.0[9],
-        write_registers.0[10],
-        write_registers.0[11],
-        write_registers.0[12],
-        write_registers.0[13],
-        write_registers.0[14],
-        write_registers.0[15],
-        write_registers.0[16],
-        write_registers.0[17],
-        write_registers.0[18],
-        write_registers.0[19],
-        write_registers.0[20],
-        write_registers.0[21],
-        write_registers.0[22],
-        write_registers.0[23],
-        write_registers.0[24],
-        write_registers.0[25],
-        write_registers.0[26],
-        write_registers.0[27],
-        write_registers.0[28],
-        write_registers.0[29],
-        write_registers.0[30],
-        write_registers.0[31],
-        write_registers.0[32],
-        write_registers.0[33],
-        write_registers.0[34],
-        write_registers.0[35],
-        write_registers.0[36],
-        write_registers.0[37],
-        write_registers.0[38],
-        write_registers.0[39],
-        write_registers.0[40],
-        write_registers.0[41],
-        write_registers.0[42],
-        write_registers.0[43],
-        write_registers.0[44],
-        write_registers.0[45],
-        write_registers.0[46],
-        write_registers.0[47],
-    ]
+    let mut out = [0u64; VM_REGISTER_COUNT];
+    out[..VM_REGISTER_READ_COUNT].copy_from_slice(&<[Word; VM_REGISTER_READ_COUNT]>::from(read_registers));
+    out[VM_REGISTER_READ_COUNT..].copy_from_slice(write_registers.0);
+    out
 }
 
-impl<'a> From<&'a ReadRegisters<'_>> for ReadRegistersRef<'a> {
-    fn from(value: &'a ReadRegisters<'_>) -> Self {
+impl<'a> From<&'a SystemRegisters<'_>> for SystemRegistersRef<'a> {
+    fn from(value: &'a SystemRegisters<'_>) -> Self {
         Self {
             zero: Reg(value.zero.0),
             one: Reg(value.one.0),
@@ -269,8 +216,8 @@ impl<'a> From<&'a ReadRegisters<'_>> for ReadRegistersRef<'a> {
     }
 }
 
-impl<'a> From<ReadRegisters<'a>> for ReadRegistersRef<'a> {
-    fn from(value: ReadRegisters<'a>) -> Self {
+impl<'a> From<SystemRegisters<'a>> for SystemRegistersRef<'a> {
+    fn from(value: SystemRegisters<'a>) -> Self {
         Self {
             zero: Reg(value.zero.0),
             one: Reg(value.one.0),
@@ -292,15 +239,38 @@ impl<'a> From<ReadRegisters<'a>> for ReadRegistersRef<'a> {
     }
 }
 
-impl<'a> From<&'a WriteRegisters<'_>> for WriteRegistersRef<'a> {
-    fn from(value: &'a WriteRegisters<'_>) -> Self {
+impl<'a> From<&'a ProgramRegisters<'_>> for ProgramRegistersRef<'a> {
+    fn from(value: &'a ProgramRegisters<'_>) -> Self {
         Self(value.0)
     }
 }
 
-impl<'a> From<WriteRegisters<'a>> for WriteRegistersRef<'a> {
-    fn from(value: WriteRegisters<'a>) -> Self {
+impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
+    fn from(value: ProgramRegisters<'a>) -> Self {
         Self(value.0)
+    }
+}
+
+impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_READ_COUNT] {
+    fn from(value: &SystemRegistersRef<'a>) -> Self {
+        [
+            *value.zero,
+            *value.one,
+            *value.of,
+            *value.pc,
+            *value.ssp,
+            *value.sp,
+            *value.fp,
+            *value.hp,
+            *value.err,
+            *value.ggas,
+            *value.cgas,
+            *value.bal,
+            *value.is,
+            *value.ret,
+            *value.retl,
+            *value.flag,
+        ]
     }
 }
 

@@ -246,7 +246,7 @@ struct PrepareCallParams {
     pub amount_of_gas_to_forward: Word,
 }
 
-struct PrepareCallReadRegisters<'a> {
+struct PrepareCallSystemRegisters<'a> {
     hp: Reg<'a, HP>,
     sp: RegMut<'a, SP>,
     ssp: RegMut<'a, SSP>,
@@ -257,9 +257,10 @@ struct PrepareCallReadRegisters<'a> {
     cgas: RegMut<'a, CGAS>,
     ggas: RegMut<'a, GGAS>,
 }
+
 struct PrepareCallRegisters<'a> {
-    read_registers: PrepareCallReadRegisters<'a>,
-    write_registers: WriteRegistersRef<'a>,
+    read_registers: PrepareCallSystemRegisters<'a>,
+    write_registers: ProgramRegistersRef<'a>,
     unused_registers: PrepareCallUnusedRegisters<'a>,
 }
 
@@ -382,11 +383,17 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
         let sp = *self.registers.read_registers.sp;
         set_frame_pointer(self.context, self.registers.read_registers.fp.as_mut(), sp);
 
-        *self.registers.read_registers.sp += len;
+        *self.registers.read_registers.sp = arith::checked_add_word(*self.registers.read_registers.sp, len)?;
         *self.registers.read_registers.ssp = *self.registers.read_registers.sp;
 
-        let code_mem_range = CheckedMemRange::new(*self.registers.read_registers.fp, len as usize)?;
-        let frame_end = write_call_to_memory(&frame, frame_bytes, code_mem_range, self.memory.memory, self.storage)?;
+        let code_frame_mem_range = CheckedMemRange::new(*self.registers.read_registers.fp, len as usize)?;
+        let frame_end = write_call_to_memory(
+            &frame,
+            frame_bytes,
+            code_frame_mem_range,
+            self.memory.memory,
+            self.storage,
+        )?;
         *self.registers.read_registers.bal = self.params.amount_of_coins_to_forward;
         *self.registers.read_registers.pc = frame_end;
         *self.registers.read_registers.is = *self.registers.read_registers.pc;
@@ -467,7 +474,7 @@ where
     Ok(frame)
 }
 
-impl<'a> From<&'a PrepareCallRegisters<'_>> for ReadRegistersRef<'a> {
+impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {
     fn from(registers: &'a PrepareCallRegisters) -> Self {
         Self {
             hp: registers.read_registers.hp,
@@ -502,9 +509,9 @@ impl<'reg> From<&'reg mut [Word; VM_REGISTER_COUNT]> for PrepareCallRegisters<'r
     }
 }
 
-impl<'reg> From<ReadRegisters<'reg>> for (PrepareCallReadRegisters<'reg>, PrepareCallUnusedRegisters<'reg>) {
-    fn from(registers: ReadRegisters<'reg>) -> Self {
-        let read = PrepareCallReadRegisters {
+impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, PrepareCallUnusedRegisters<'reg>) {
+    fn from(registers: SystemRegisters<'reg>) -> Self {
+        let read = PrepareCallSystemRegisters {
             hp: registers.hp.into(),
             sp: registers.sp,
             ssp: registers.ssp,

@@ -7,7 +7,6 @@ use dyn_clone::DynClone;
 
 use fuel_types::ContractId;
 
-use crate::constraints::ProfileCapture;
 use crate::prelude::*;
 
 pub use crate::constraints::InstructionLocation;
@@ -183,12 +182,14 @@ impl Profiler {
     }
 }
 
-impl ProfileCapture for Profiler {
-    fn set_coverage(&mut self, location: InstructionLocation) {
+impl Profiler {
+    /// Set the current coverage location.
+    pub fn set_coverage(&mut self, location: InstructionLocation) {
         self.data_mut().coverage_mut().set(location);
     }
 
-    fn add_gas(&mut self, location: InstructionLocation, gas_use: u64) {
+    /// Add gas to the current coverage location.
+    pub fn add_gas(&mut self, location: InstructionLocation, gas_use: u64) {
         self.data_mut().gas_mut().add(location, gas_use);
     }
 }

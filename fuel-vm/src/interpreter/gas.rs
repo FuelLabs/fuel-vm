@@ -1,9 +1,9 @@
 use super::Interpreter;
 use crate::arith;
 use crate::constraints::reg_key::*;
-use crate::constraints::ProfileCapture;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
+use crate::profiler::Profiler;
 
 use fuel_asm::PanicReason;
 use fuel_asm::RegId;
@@ -107,7 +107,7 @@ pub(crate) struct ProfileGas<'a> {
     pub pc: Reg<'a, PC>,
     pub is: Reg<'a, IS>,
     pub current_contract: Option<ContractId>,
-    pub profiler: &'a mut dyn ProfileCapture,
+    pub profiler: &'a mut Profiler,
 }
 
 impl<'a> ProfileGas<'a> {

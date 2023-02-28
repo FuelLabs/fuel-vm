@@ -13,6 +13,7 @@ use crate::context::Context;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
 use crate::interpreter::PanicContext;
+use crate::profiler::Profiler;
 use crate::state::ProgramState;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 
@@ -301,7 +302,7 @@ struct PrepareCallInput<'vm, S> {
     consensus: &'vm ConsensusParameters,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    profiler: &'vm mut dyn ProfileCapture,
+    profiler: &'vm mut Profiler,
 }
 
 impl<'vm, S> PrepareCallInput<'vm, S> {
@@ -363,8 +364,8 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
         // subtract gas
         *self.registers.read_registers.cgas = arith::sub_word(*self.registers.read_registers.cgas, forward_gas_amount)?;
 
-        *frame.set_context_gas() = *self.registers.read_registers.cgas;
-        *frame.set_global_gas() = *self.registers.read_registers.ggas;
+        *frame.context_gas_mut() = *self.registers.read_registers.cgas;
+        *frame.global_gas_mut() = *self.registers.read_registers.ggas;
 
         let frame_bytes = frame.to_bytes();
         let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
@@ -444,7 +445,7 @@ where
         .map_err(RuntimeError::from_io)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
-        return Err(PanicReason::ContractNotFound.into());
+        return Err(PanicReason::ContractMismatch.into());
     }
 
     if frame.code_size_padding() > 0 {

@@ -77,8 +77,8 @@ pub enum PanicReason {
     ZeroedMessageOutputRecipient = 0x21,
     /// The contract ID is already deployed and can't be overwritten.
     ContractIdAlreadyDeployed = 0x22,
-    /// RESERV23
-    RESERV23 = 0x23,
+    /// The loaded contract mismatch expectations.
+    ContractMismatch = 0x23,
     /// RESERV24
     RESERV24 = 0x24,
     /// RESERV25

@@ -272,6 +272,7 @@ impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
     }
 }
 impl ContractsAssetsStorage for MemoryStorage {}
+
 impl InterpreterStorage for MemoryStorage {
     type DataError = Infallible;
 

@@ -9,8 +9,8 @@ use fuel_asm::RegId;
 use fuel_asm::Word;
 
 use crate::consts::VM_REGISTER_COUNT;
-use crate::consts::VM_REGISTER_READ_COUNT;
-use crate::consts::VM_REGISTER_WRITE_COUNT;
+use crate::consts::VM_REGISTER_PROGRAM_COUNT;
+use crate::consts::VM_REGISTER_SYSTEM_COUNT;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Mutable reference to a register value at a given index.
@@ -154,9 +154,9 @@ pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) flag: Reg<'a, FLAG>,
 }
 
-pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_WRITE_COUNT]);
+pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_PROGRAM_COUNT]);
 
-pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_WRITE_COUNT]);
+pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COUNT]);
 
 pub(crate) fn split_registers(
     registers: &mut [Word; VM_REGISTER_COUNT],
@@ -188,8 +188,8 @@ pub(crate) fn copy_registers(
     write_registers: &ProgramRegistersRef<'_>,
 ) -> [Word; VM_REGISTER_COUNT] {
     let mut out = [0u64; VM_REGISTER_COUNT];
-    out[..VM_REGISTER_READ_COUNT].copy_from_slice(&<[Word; VM_REGISTER_READ_COUNT]>::from(read_registers));
-    out[VM_REGISTER_READ_COUNT..].copy_from_slice(write_registers.0);
+    out[..VM_REGISTER_SYSTEM_COUNT].copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(read_registers));
+    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(write_registers.0);
     out
 }
 
@@ -251,25 +251,29 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
     }
 }
 
-impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_READ_COUNT] {
+impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_SYSTEM_COUNT] {
     fn from(value: &SystemRegistersRef<'a>) -> Self {
+        let SystemRegistersRef {
+            zero,
+            one,
+            of,
+            pc,
+            ssp,
+            sp,
+            fp,
+            hp,
+            err,
+            ggas,
+            cgas,
+            bal,
+            is,
+            ret,
+            retl,
+            flag,
+        } = value;
         [
-            *value.zero,
-            *value.one,
-            *value.of,
-            *value.pc,
-            *value.ssp,
-            *value.sp,
-            *value.fp,
-            *value.hp,
-            *value.err,
-            *value.ggas,
-            *value.cgas,
-            *value.bal,
-            *value.is,
-            *value.ret,
-            *value.retl,
-            *value.flag,
+            *zero.0, *one.0, *of.0, *pc.0, *ssp.0, *sp.0, *fp.0, *hp.0, *err.0, *ggas.0, *cgas.0, *bal.0, *is.0,
+            *ret.0, *retl.0, *flag.0,
         ]
     }
 }
@@ -285,24 +289,43 @@ fn can_split() {
 
     let (r, w) = split_registers(&mut reg);
 
-    assert_eq!(r.zero, RegMut::<ZERO>(&mut (ZERO as u64)));
-    assert_eq!(r.one, RegMut::<ONE>(&mut (ONE as u64)));
-    assert_eq!(r.of, RegMut::<OF>(&mut (OF as u64)));
-    assert_eq!(r.pc, RegMut::<PC>(&mut (PC as u64)));
-    assert_eq!(r.ssp, RegMut::<SSP>(&mut (SSP as u64)));
-    assert_eq!(r.sp, RegMut::<SP>(&mut (SP as u64)));
-    assert_eq!(r.fp, RegMut::<FP>(&mut (FP as u64)));
-    assert_eq!(r.hp, RegMut::<HP>(&mut (HP as u64)));
-    assert_eq!(r.err, RegMut::<ERR>(&mut (ERR as u64)));
-    assert_eq!(r.ggas, RegMut::<GGAS>(&mut (GGAS as u64)));
-    assert_eq!(r.cgas, RegMut::<CGAS>(&mut (CGAS as u64)));
-    assert_eq!(r.bal, RegMut::<BAL>(&mut (BAL as u64)));
-    assert_eq!(r.is, RegMut::<IS>(&mut (IS as u64)));
-    assert_eq!(r.ret, RegMut::<RET>(&mut (RET as u64)));
-    assert_eq!(r.retl, RegMut::<RETL>(&mut (RETL as u64)));
-    assert_eq!(r.flag, RegMut::<FLAG>(&mut (FLAG as u64)));
+    let SystemRegisters {
+        zero,
+        one,
+        of,
+        pc,
+        ssp,
+        sp,
+        fp,
+        hp,
+        err,
+        ggas,
+        cgas,
+        bal,
+        is,
+        ret,
+        retl,
+        flag,
+    } = &r;
 
-    for i in 0..VM_REGISTER_WRITE_COUNT {
+    assert_eq!(*zero, RegMut::<ZERO>(&mut (ZERO as u64)));
+    assert_eq!(*one, RegMut::<ONE>(&mut (ONE as u64)));
+    assert_eq!(*of, RegMut::<OF>(&mut (OF as u64)));
+    assert_eq!(*pc, RegMut::<PC>(&mut (PC as u64)));
+    assert_eq!(*ssp, RegMut::<SSP>(&mut (SSP as u64)));
+    assert_eq!(*sp, RegMut::<SP>(&mut (SP as u64)));
+    assert_eq!(*fp, RegMut::<FP>(&mut (FP as u64)));
+    assert_eq!(*hp, RegMut::<HP>(&mut (HP as u64)));
+    assert_eq!(*err, RegMut::<ERR>(&mut (ERR as u64)));
+    assert_eq!(*ggas, RegMut::<GGAS>(&mut (GGAS as u64)));
+    assert_eq!(*cgas, RegMut::<CGAS>(&mut (CGAS as u64)));
+    assert_eq!(*bal, RegMut::<BAL>(&mut (BAL as u64)));
+    assert_eq!(*is, RegMut::<IS>(&mut (IS as u64)));
+    assert_eq!(*ret, RegMut::<RET>(&mut (RET as u64)));
+    assert_eq!(*retl, RegMut::<RETL>(&mut (RETL as u64)));
+    assert_eq!(*flag, RegMut::<FLAG>(&mut (FLAG as u64)));
+
+    for i in 0..VM_REGISTER_PROGRAM_COUNT {
         assert_eq!(w.0[i], i as u64 + 16);
     }
 

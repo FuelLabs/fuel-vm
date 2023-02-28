@@ -8,10 +8,10 @@ use std::mem;
 pub const VM_REGISTER_COUNT: usize = 64;
 
 /// The number of readable registers.
-pub const VM_REGISTER_READ_COUNT: usize = 16;
+pub const VM_REGISTER_SYSTEM_COUNT: usize = 16;
 
 /// The number of writable registers.
-pub const VM_REGISTER_WRITE_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_READ_COUNT;
+pub const VM_REGISTER_PROGRAM_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_SYSTEM_COUNT;
 
 /* MEMORY TYPES */
 

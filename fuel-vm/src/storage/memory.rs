@@ -271,6 +271,7 @@ impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
         Ok(crypto::ephemeral_merkle_root(root).into())
     }
 }
+
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {

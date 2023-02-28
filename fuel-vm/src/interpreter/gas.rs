@@ -89,7 +89,9 @@ pub(crate) fn gas_charge(
 }
 
 fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
-    if gas > *cgas {
+    if *cgas > *ggas {
+        Err(PanicReason::GlobalGasLessThanContext.into())
+    } else if gas > *cgas {
         *ggas = arith::sub_word(*ggas, *cgas)?;
         *cgas = 0;
 

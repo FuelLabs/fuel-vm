@@ -44,6 +44,11 @@ impl Context {
         matches!(self, Self::Predicate { .. } | Self::Script { .. })
     }
 
+    /// Return `true` if the context is internal; `false` otherwise.
+    pub const fn is_internal(&self) -> bool {
+        !self.is_external()
+    }
+
     /// Return the program to be executed, if its a predicate
     pub const fn predicate(&self) -> Option<&RuntimePredicate> {
         match self {

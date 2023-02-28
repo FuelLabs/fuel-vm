@@ -8,6 +8,7 @@ use crate::storage::{
 use fuel_crypto::Hasher;
 use fuel_storage::{
     Mappable, MerkleRoot, MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate, StorageRead, StorageSize,
+    StorageWrite,
 };
 use fuel_tx::Contract;
 use fuel_types::{Address, Bytes32, ContractId, Salt, Word};
@@ -17,6 +18,8 @@ use tai64::Tai64;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::Read;
+
+use super::interpreter::ContractsAssetsStorage;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -126,6 +129,31 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.remove(key))
+    }
+}
+
+impl StorageWrite<ContractsRawCode> for MemoryStorage {
+    fn write(&mut self, key: &ContractId, buf: Vec<u8>) -> Result<usize, Infallible> {
+        let size = buf.len();
+        self.memory.contracts.insert(*key, Contract::from(buf));
+        Ok(size)
+    }
+
+    fn replace(
+        &mut self,
+        key: &<ContractsRawCode as Mappable>::Key,
+        buf: Vec<u8>,
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<ContractsRawCode>,
+    {
+        let size = buf.len();
+        let last = self.memory.contracts.insert(*key, Contract::from(buf));
+        Ok((size, last.map(Vec::from)))
+    }
+
+    fn take(&mut self, key: &<ContractsRawCode as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.contracts.remove(key).map(Vec::from))
     }
 }
 
@@ -243,6 +271,8 @@ impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
         Ok(crypto::ephemeral_merkle_root(root).into())
     }
 }
+
+impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
     type DataError = Infallible;

@@ -44,7 +44,7 @@ serde_json = "1.0"
 test-case = "2.2"
 
 [features]
-default = ["optimized"]
+default = []
 arbitrary = ["fuel-asm/arbitrary"]
 debug = []
 optimized = []

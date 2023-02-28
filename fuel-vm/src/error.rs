@@ -216,6 +216,12 @@ impl From<Infallible> for io::Error {
     }
 }
 
+impl From<core::array::TryFromSliceError> for RuntimeError {
+    fn from(value: core::array::TryFromSliceError) -> Self {
+        Self::Recoverable(value.into())
+    }
+}
+
 /// Predicates checking failed
 #[derive(Debug, Error)]
 pub enum PredicateVerificationFailed {

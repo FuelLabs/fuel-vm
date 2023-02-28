@@ -6,6 +6,7 @@ pub mod arith;
 pub mod backtrace;
 pub mod call;
 pub mod checked_transaction;
+pub mod constraints;
 pub mod consts;
 pub mod context;
 pub mod crypto;
@@ -21,6 +22,24 @@ pub mod util;
 
 #[cfg(feature = "profile-any")]
 pub mod profiler;
+
+#[cfg(not(feature = "profile-any"))]
+/// Placeholder
+pub mod profiler {
+    use crate::constraints::InstructionLocation;
+
+    /// Placeholder profiler.
+    #[derive(Default, Debug, Clone)]
+    pub struct Profiler;
+
+    impl Profiler {
+        /// Set the current coverage location.
+        pub fn set_coverage(&mut self, _location: InstructionLocation) {}
+
+        /// Add gas to the current coverage location.
+        pub fn add_gas(&mut self, _location: InstructionLocation, _gas_use: u64) {}
+    }
+}
 
 // Fully re-export fuel dependencies
 #[doc(no_inline)]

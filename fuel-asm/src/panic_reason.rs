@@ -77,10 +77,10 @@ pub enum PanicReason {
     ZeroedMessageOutputRecipient = 0x21,
     /// The contract ID is already deployed and can't be overwritten.
     ContractIdAlreadyDeployed = 0x22,
-    /// RESERV23
-    RESERV23 = 0x23,
-    /// RESERV24
-    RESERV24 = 0x24,
+    /// The loaded contract mismatch expectations.
+    ContractMismatch = 0x23,
+    /// The global gas is less than the context gas.
+    GlobalGasLessThanContext = 0x24,
     /// RESERV25
     RESERV25 = 0x25,
     /// RESERV26
@@ -558,5 +558,11 @@ impl From<PanicReason> for std::io::Error {
         use std::io;
 
         io::Error::new(io::ErrorKind::Other, reason)
+    }
+}
+
+impl From<core::array::TryFromSliceError> for PanicReason {
+    fn from(_: core::array::TryFromSliceError) -> Self {
+        Self::MemoryOverflow
     }
 }

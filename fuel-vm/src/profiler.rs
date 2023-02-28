@@ -9,14 +9,7 @@ use fuel_types::ContractId;
 
 use crate::prelude::*;
 
-/// Location of an instructing collected during runtime
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InstructionLocation {
-    /// Context, i.e. current contract. None if running a script.
-    context: Option<ContractId>,
-    /// Offset from the IS register
-    offset: u64,
-}
+pub use crate::constraints::InstructionLocation;
 
 #[cfg(feature = "serde")]
 impl serde::Serialize for InstructionLocation {
@@ -186,6 +179,18 @@ impl Profiler {
     /// Write access to the data
     pub fn data_mut(&mut self) -> &mut ProfilingData {
         &mut self.data
+    }
+}
+
+impl Profiler {
+    /// Set the current coverage location.
+    pub fn set_coverage(&mut self, location: InstructionLocation) {
+        self.data_mut().coverage_mut().set(location);
+    }
+
+    /// Add gas to the current coverage location.
+    pub fn add_gas(&mut self, location: InstructionLocation, gas_use: u64) {
+        self.data_mut().gas_mut().add(location, gas_use);
     }
 }
 

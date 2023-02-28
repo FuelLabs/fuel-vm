@@ -1,11 +1,17 @@
 use super::Interpreter;
 use crate::arith;
+use crate::constraints::reg_key::*;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
+use crate::profiler::Profiler;
 
 use fuel_asm::PanicReason;
 use fuel_asm::RegId;
+use fuel_types::ContractId;
 use fuel_types::Word;
+
+#[cfg(test)]
+mod tests;
 
 impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn remaining_gas(&self) -> Word {
@@ -21,37 +27,105 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
-        if gas_cost.dep_per_unit == 0 {
-            self.gas_charge(gas_cost.base)
-        } else {
-            self.gas_charge(gas_cost.base.saturating_add(arg.saturating_div(gas_cost.dep_per_unit)))
-        }
+        let current_contract = self.contract_id();
+        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is: is.as_ref(),
+            current_contract,
+            profiler: &mut self.profiler,
+        };
+        dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
     }
 
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
+        let current_contract = self.contract_id();
+        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is: is.as_ref(),
+            current_contract,
+            profiler: &mut self.profiler,
+        };
+        gas_charge(cgas, ggas, profiler, gas)
+    }
+}
+
+pub(crate) fn dependent_gas_charge(
+    mut cgas: RegMut<CGAS>,
+    ggas: RegMut<GGAS>,
+    mut profiler: ProfileGas<'_>,
+    gas_cost: DependentCost,
+    arg: Word,
+) -> Result<(), RuntimeError> {
+    if gas_cost.dep_per_unit == 0 {
+        gas_charge(cgas, ggas, profiler, gas_cost.base)
+    } else {
+        let cost = dependent_gas_charge_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
+        profiler.profile(cgas.as_ref(), cost);
+        Ok(())
+    }
+}
+
+fn dependent_gas_charge_inner(
+    cgas: RegMut<CGAS>,
+    ggas: RegMut<GGAS>,
+    gas_cost: DependentCost,
+    arg: Word,
+) -> Result<Word, RuntimeError> {
+    let cost = gas_cost.base.saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
+    gas_charge_inner(cgas, ggas, cost).map(|_| cost)
+}
+
+pub(crate) fn gas_charge(
+    cgas: RegMut<CGAS>,
+    ggas: RegMut<GGAS>,
+    mut profiler: ProfileGas<'_>,
+    gas: Word,
+) -> Result<(), RuntimeError> {
+    profiler.profile(cgas.as_ref(), gas);
+    gas_charge_inner(cgas, ggas, gas)
+}
+
+fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
+    if *cgas > *ggas {
+        Err(PanicReason::GlobalGasLessThanContext.into())
+    } else if gas > *cgas {
+        *ggas = arith::sub_word(*ggas, *cgas)?;
+        *cgas = 0;
+
+        Err(PanicReason::OutOfGas.into())
+    } else {
+        *cgas = arith::sub_word(*cgas, gas)?;
+        *ggas = arith::sub_word(*ggas, gas)?;
+
+        Ok(())
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) struct ProfileGas<'a> {
+    pub pc: Reg<'a, PC>,
+    pub is: Reg<'a, IS>,
+    pub current_contract: Option<ContractId>,
+    pub profiler: &'a mut Profiler,
+}
+
+impl<'a> ProfileGas<'a> {
+    #[allow(unused_variables)]
+    pub(crate) fn profile(&mut self, cgas: Reg<CGAS>, gas: Word) {
         #[cfg(feature = "profile-coverage")]
         {
-            let location = self.current_location();
-            self.profiler.data_mut().coverage_mut().set(location);
+            let location = super::current_location(self.current_contract, self.pc, self.is);
+            self.profiler.set_coverage(location);
         }
 
         #[cfg(feature = "profile-gas")]
         {
-            let gas_use = gas.min(self.registers[RegId::CGAS]);
-            let location = self.current_location();
-            self.profiler.data_mut().gas_mut().add(location, gas_use);
-        }
-
-        if gas > self.registers[RegId::CGAS] {
-            self.registers[RegId::GGAS] = arith::sub_word(self.registers[RegId::GGAS], self.registers[RegId::CGAS])?;
-            self.registers[RegId::CGAS] = 0;
-
-            Err(PanicReason::OutOfGas.into())
-        } else {
-            self.registers[RegId::CGAS] = arith::sub_word(self.registers[RegId::CGAS], gas)?;
-            self.registers[RegId::GGAS] = arith::sub_word(self.registers[RegId::GGAS], gas)?;
-
-            Ok(())
+            let gas_use = gas.min(*cgas);
+            let location = super::current_location(self.current_contract, self.pc, self.is);
+            self.profiler.add_gas(location, gas_use);
         }
     }
 }

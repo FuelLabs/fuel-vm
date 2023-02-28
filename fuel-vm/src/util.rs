@@ -75,7 +75,7 @@ pub mod test_helpers {
     use crate::gas::GasCosts;
     use crate::memory_client::MemoryClient;
     use crate::state::StateTransition;
-    use crate::storage::{InterpreterStorage, MemoryStorage};
+    use crate::storage::{ContractsAssetsStorage, MemoryStorage};
     use crate::transactor::Transactor;
     use anyhow::anyhow;
 

@@ -7,6 +7,12 @@ use std::mem;
 /// Register count for checking constraints
 pub const VM_REGISTER_COUNT: usize = 64;
 
+/// The number of readable registers.
+pub const VM_REGISTER_SYSTEM_COUNT: usize = 16;
+
+/// The number of writable registers.
+pub const VM_REGISTER_PROGRAM_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_SYSTEM_COUNT;
+
 /* MEMORY TYPES */
 
 /// Length of a word, in bytes
@@ -17,6 +23,9 @@ pub const FUEL_MAX_MEMORY_SIZE: u64 = 64;
 
 /// Maximum VM RAM, in bytes.
 pub const VM_MAX_RAM: u64 = 1024 * 1024 * FUEL_MAX_MEMORY_SIZE;
+
+/// Size of the VM memory, in bytes.
+pub const MEM_SIZE: usize = VM_MAX_RAM as usize;
 
 /// Maximum memory access size, in bytes.
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;

@@ -21,6 +21,9 @@ pub struct Call {
 }
 
 impl Call {
+    /// The size of the call structures in memory representation.
+    pub const LEN: usize = ContractId::LEN + 2 * WORD_SIZE;
+
     /// Create a new call structure representation.
     pub const fn new(to: ContractId, a: Word, b: Word) -> Self {
         Self { to, a, b }
@@ -49,7 +52,7 @@ impl Call {
 
 impl SizedBytes for Call {
     fn serialized_size(&self) -> usize {
-        ContractId::LEN + 2 * WORD_SIZE
+        Self::LEN
     }
 }
 
@@ -115,6 +118,20 @@ pub struct CallFrame {
     code_size: Word,
     a: Word,
     b: Word,
+}
+
+#[cfg(test)]
+impl Default for CallFrame {
+    fn default() -> Self {
+        Self {
+            to: ContractId::default(),
+            asset_id: AssetId::default(),
+            registers: [0; VM_REGISTER_COUNT],
+            code_size: 0,
+            a: 0,
+            b: 0,
+        }
+    }
 }
 
 impl CallFrame {
@@ -217,13 +234,13 @@ impl CallFrame {
         &self.asset_id
     }
 
-    /// Set the value of the context gas for this call frame.
-    pub fn set_context_gas(&mut self) -> &mut Word {
+    /// Returns the mutable value of the context gas for this call frame.
+    pub fn context_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::CGAS]
     }
 
-    /// Set the value of the global gas for this call frame.
-    pub fn set_global_gas(&mut self) -> &mut Word {
+    /// Returns the mutable value of the global gas for this call frame.
+    pub fn global_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::GGAS]
     }
 }
@@ -288,5 +305,25 @@ impl io::Write for CallFrame {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+impl From<Call> for Vec<u8> {
+    fn from(mut call: Call) -> Self {
+        use io::Read;
+        let mut buf = [0; Call::LEN];
+        call.read_exact(&mut buf[..]).unwrap();
+        buf.to_vec()
+    }
+}
+
+#[cfg(test)]
+impl From<CallFrame> for Vec<u8> {
+    fn from(mut call: CallFrame) -> Self {
+        use io::Read;
+        let mut buf = [0; CallFrame::serialized_size()];
+        call.read_exact(&mut buf[..]).unwrap();
+        buf.to_vec()
     }
 }

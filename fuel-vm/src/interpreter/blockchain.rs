@@ -42,7 +42,7 @@ where
     /// ```
     pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (
-            ReadRegisters {
+            SystemRegisters {
                 ssp, sp, hp, fp, pc, ..
             },
             _,
@@ -63,12 +63,12 @@ where
     }
 
     pub(crate) fn burn(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         burn(&mut self.storage, &self.memory, &self.context, fp.as_ref(), pc, a)
     }
 
     pub(crate) fn mint(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         mint(&mut self.storage, &self.memory, &self.context, fp.as_ref(), pc, a)
     }
 
@@ -91,7 +91,7 @@ where
     }
 
     pub(crate) fn set_block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         set_block_height(&self.context, pc, result)
     }
@@ -108,7 +108,7 @@ where
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
-        let (ReadRegisters { cgas, ggas, pc, is, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { cgas, ggas, pc, is, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeInput {
             memory: &mut self.memory,
@@ -126,7 +126,7 @@ where
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         let contract_id = self.internal_contract().copied();
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateClearQWord::new(a, c)?;
@@ -140,7 +140,7 @@ where
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, mut w) = split_registers(&mut self.registers);
         let (result, got_result) = w
             .split(WriteRegKey::try_from(ra)?, WriteRegKey::try_from(rb)?)
             .ok_or(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))?;
@@ -167,7 +167,7 @@ where
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         let contract_id = self.internal_contract().copied();
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateReadQWord::new(a, c, d, owner)?;
@@ -181,7 +181,7 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, mut w) = split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
         let Self {
             ref mut storage,
@@ -205,7 +205,7 @@ where
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         let contract_id = self.internal_contract().copied();
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateWriteQWord::new(a, c, d)?;
@@ -220,13 +220,13 @@ where
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         let block_height = self.block_height()?;
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         timestamp(&self.storage, block_height, pc, result, b)
     }
 
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputInput {
             max_message_data_length: self.params.max_message_data_length,
             memory: &mut self.memory,
@@ -247,7 +247,7 @@ where
 
 struct LoadContractCode<'vm, S, I> {
     contract_max_size: u64,
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
     storage: &'vm S,
@@ -364,7 +364,7 @@ impl<'vm, S, I> LoadContractCode<'vm, S, I> {
 
 pub(crate) fn burn<S>(
     storage: &mut S,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     context: &Context,
     fp: Reg<FP>,
     pc: RegMut<PC>,
@@ -392,7 +392,7 @@ where
 
 pub(crate) fn mint<S>(
     storage: &mut S,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     context: &Context,
     fp: Reg<FP>,
     pc: RegMut<PC>,
@@ -419,7 +419,7 @@ where
 }
 
 struct CodeCopyInput<'vm, S, I> {
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
     storage: &'vm S,
@@ -465,7 +465,7 @@ impl<'vm, S, I> CodeCopyInput<'vm, S, I> {
 
 pub(crate) fn block_hash<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -490,7 +490,7 @@ pub(crate) fn set_block_height(context: &Context, pc: RegMut<PC>, result: &mut W
 
 pub(crate) fn block_proposer<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -505,7 +505,7 @@ pub(crate) fn block_proposer<S: InterpreterStorage>(
 
 pub(crate) fn code_root<S>(
     storage: &S,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -541,7 +541,7 @@ where
 
 struct CodeSizeInput<'vm, S> {
     storage: &'vm S,
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     gas_cost: DependentCost,
     profiler: &'vm mut dyn ProfileCapture,
     current_contract: Option<ContractId>,
@@ -584,7 +584,7 @@ impl<'vm, S> CodeSizeInput<'vm, S> {
 
 pub(crate) struct StateWordInput<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm [u8; VM_MEMORY_SIZE],
+    pub memory: &'vm [u8; MEM_SIZE],
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
@@ -685,7 +685,7 @@ pub(crate) fn timestamp(
 
 struct MessageOutputInput<'vm, Tx> {
     max_message_data_length: u64,
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     receipts: &'vm mut Vec<Receipt>,
     tx: &'vm mut Tx,
@@ -826,7 +826,7 @@ impl StateReadQWord {
 fn state_read_qword(
     contract_id: &ContractId,
     storage: &impl InterpreterStorage,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateReadQWord,
@@ -891,7 +891,7 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
@@ -939,7 +939,7 @@ impl StateClearQWord {
 fn state_clear_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,

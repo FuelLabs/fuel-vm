@@ -3,8 +3,8 @@ use fuel_asm::PanicReason;
 use fuel_asm::Word;
 use fuel_types::ContractId;
 
+use crate::consts::MEM_SIZE;
 use crate::consts::VM_MAX_RAM;
-use crate::consts::VM_MEMORY_SIZE;
 use crate::prelude::RuntimeError;
 
 pub mod reg_key;
@@ -39,7 +39,7 @@ impl<T> CheckedMemValue<T> {
     }
 
     /// Try to read a value of type `T` from memory.
-    pub fn try_from(self, memory: &[u8; VM_MEMORY_SIZE]) -> Result<T, RuntimeError>
+    pub fn try_from(self, memory: &[u8; MEM_SIZE]) -> Result<T, RuntimeError>
     where
         T: for<'a> TryFrom<&'a [u8]>,
         RuntimeError: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
@@ -59,7 +59,7 @@ impl<T> CheckedMemValue<T> {
 
     #[cfg(test)]
     /// Inspect a value of type `T` from memory.
-    pub fn inspect(self, memory: &[u8; VM_MEMORY_SIZE]) -> T
+    pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
     where
         T: std::io::Write + Default,
     {
@@ -124,12 +124,12 @@ impl CheckedMemRange {
     }
 
     /// Get the memory slice for this range.
-    pub fn read(self, memory: &[u8; VM_MEMORY_SIZE]) -> &[u8] {
+    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8] {
         &memory[self.0]
     }
 
     /// Get the mutable memory slice for this range.
-    pub fn write(self, memory: &mut [u8; VM_MEMORY_SIZE]) -> &mut [u8] {
+    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8] {
         &mut memory[self.0]
     }
 }

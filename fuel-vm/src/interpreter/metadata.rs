@@ -18,7 +18,7 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         metadata(&self.context, &self.frames, pc, result, imm)
     }
@@ -29,7 +29,7 @@ where
         b: Word,
         imm: Immediate12,
     ) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = GTFInput {
             tx: &self.tx,

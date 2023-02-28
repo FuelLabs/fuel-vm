@@ -11,8 +11,8 @@ use fuel_asm::RegisterId;
 use fuel_asm::Word;
 
 use crate::consts::VM_REGISTER_COUNT;
-use crate::consts::VM_REGISTER_READ_COUNT;
-use crate::consts::VM_REGISTER_WRITE_COUNT;
+use crate::consts::VM_REGISTER_PROGRAM_COUNT;
+use crate::consts::VM_REGISTER_SYSTEM_COUNT;
 use crate::prelude::RuntimeError;
 
 #[cfg(test)]
@@ -40,13 +40,13 @@ impl WriteRegKey {
     }
 
     fn translate(self) -> usize {
-        self.0 - VM_REGISTER_READ_COUNT
+        self.0 - VM_REGISTER_SYSTEM_COUNT
     }
 }
 
 pub(crate) fn is_register_writable(ra: &RegisterId) -> Result<(), RuntimeError> {
     const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
-    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_WRITE_COUNT);
+    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
     if RANGE.contains(ra) {
         Ok(())
     } else {
@@ -153,7 +153,7 @@ impl_keys! {
     FLAG, flag, flag_mut
 }
 
-pub(crate) struct ReadRegisters<'a> {
+pub(crate) struct SystemRegisters<'a> {
     pub(crate) zero: RegMut<'a, ZERO>,
     pub(crate) one: RegMut<'a, ONE>,
     pub(crate) of: RegMut<'a, OF>,
@@ -172,7 +172,7 @@ pub(crate) struct ReadRegisters<'a> {
     pub(crate) flag: RegMut<'a, FLAG>,
 }
 
-pub(crate) struct ReadRegistersRef<'a> {
+pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) zero: Reg<'a, ZERO>,
     pub(crate) one: Reg<'a, ONE>,
     pub(crate) of: Reg<'a, OF>,
@@ -190,12 +190,14 @@ pub(crate) struct ReadRegistersRef<'a> {
     pub(crate) retl: Reg<'a, RETL>,
     pub(crate) flag: Reg<'a, FLAG>,
 }
-pub(crate) struct WriteRegisters<'a>(pub &'a mut [Word; VM_REGISTER_WRITE_COUNT]);
-pub(crate) struct WriteRegistersRef<'a>(pub &'a [Word; VM_REGISTER_WRITE_COUNT]);
+pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_PROGRAM_COUNT]);
+pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COUNT]);
 
-pub(crate) fn split_registers(registers: &mut [Word; VM_REGISTER_COUNT]) -> (ReadRegisters<'_>, WriteRegisters<'_>) {
+pub(crate) fn split_registers(
+    registers: &mut [Word; VM_REGISTER_COUNT],
+) -> (SystemRegisters<'_>, ProgramRegisters<'_>) {
     let [zero, one, of, pc, ssp, sp, fp, hp, err, ggas, cgas, bal, is, ret, retl, flag, rest @ ..] = registers;
-    let r = ReadRegisters {
+    let r = SystemRegisters {
         zero: RegMut(zero),
         one: RegMut(one),
         of: RegMut(of),
@@ -213,12 +215,12 @@ pub(crate) fn split_registers(registers: &mut [Word; VM_REGISTER_COUNT]) -> (Rea
         retl: RegMut(retl),
         flag: RegMut(flag),
     };
-    (r, WriteRegisters(rest))
+    (r, ProgramRegisters(rest))
 }
 
 pub(crate) fn copy_registers(
-    read_registers: &ReadRegistersRef<'_>,
-    write_registers: &WriteRegistersRef<'_>,
+    read_registers: &SystemRegistersRef<'_>,
+    write_registers: &ProgramRegistersRef<'_>,
 ) -> [Word; VM_REGISTER_COUNT] {
     [
         *read_registers.zero,
@@ -288,7 +290,7 @@ pub(crate) fn copy_registers(
     ]
 }
 
-impl<'r> WriteRegisters<'r> {
+impl<'r> ProgramRegisters<'r> {
     pub fn split(&mut self, a: WriteRegKey, b: WriteRegKey) -> Option<(&mut Word, &mut Word)> {
         match a.cmp(&b) {
             std::cmp::Ordering::Less => {
@@ -310,8 +312,8 @@ impl<'r> WriteRegisters<'r> {
     }
 }
 
-impl<'a> From<&'a ReadRegisters<'_>> for ReadRegistersRef<'a> {
-    fn from(value: &'a ReadRegisters<'_>) -> Self {
+impl<'a> From<&'a SystemRegisters<'_>> for SystemRegistersRef<'a> {
+    fn from(value: &'a SystemRegisters<'_>) -> Self {
         Self {
             zero: Reg(value.zero.0),
             one: Reg(value.one.0),
@@ -333,8 +335,8 @@ impl<'a> From<&'a ReadRegisters<'_>> for ReadRegistersRef<'a> {
     }
 }
 
-impl<'a> From<ReadRegisters<'a>> for ReadRegistersRef<'a> {
-    fn from(value: ReadRegisters<'a>) -> Self {
+impl<'a> From<SystemRegisters<'a>> for SystemRegistersRef<'a> {
+    fn from(value: SystemRegisters<'a>) -> Self {
         Self {
             zero: Reg(value.zero.0),
             one: Reg(value.one.0),
@@ -356,14 +358,14 @@ impl<'a> From<ReadRegisters<'a>> for ReadRegistersRef<'a> {
     }
 }
 
-impl<'a> From<&'a WriteRegisters<'_>> for WriteRegistersRef<'a> {
-    fn from(value: &'a WriteRegisters<'_>) -> Self {
+impl<'a> From<&'a ProgramRegisters<'_>> for ProgramRegistersRef<'a> {
+    fn from(value: &'a ProgramRegisters<'_>) -> Self {
         Self(value.0)
     }
 }
 
-impl<'a> From<WriteRegisters<'a>> for WriteRegistersRef<'a> {
-    fn from(value: WriteRegisters<'a>) -> Self {
+impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
+    fn from(value: ProgramRegisters<'a>) -> Self {
         Self(value.0)
     }
 }
@@ -375,14 +377,14 @@ impl TryFrom<RegisterId> for WriteRegKey {
     }
 }
 
-impl core::ops::Index<WriteRegKey> for WriteRegisters<'_> {
+impl core::ops::Index<WriteRegKey> for ProgramRegisters<'_> {
     type Output = Word;
     fn index(&self, index: WriteRegKey) -> &Self::Output {
         &self.0[index.translate()]
     }
 }
 
-impl core::ops::IndexMut<WriteRegKey> for WriteRegisters<'_> {
+impl core::ops::IndexMut<WriteRegKey> for ProgramRegisters<'_> {
     fn index_mut(&mut self, index: WriteRegKey) -> &mut Self::Output {
         &mut self.0[index.translate()]
     }

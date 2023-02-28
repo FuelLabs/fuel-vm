@@ -2,7 +2,7 @@ use super::internal::{clear_err, inc_pc, set_err};
 use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
 use super::{ExecutableTransaction, Interpreter};
 use crate::constraints::reg_key::*;
-use crate::consts::{MEM_MAX_ACCESS_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM, VM_MEMORY_SIZE};
+use crate::consts::{MEM_MAX_ACCESS_SIZE, MEM_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
 use crate::error::RuntimeError;
 
 use crate::arith::{checked_add_word, checked_sub_word};
@@ -16,7 +16,7 @@ where
 {
     pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        let (ReadRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         ecrecover(&mut self.memory, owner, err, pc, a, b, c)
     }
 
@@ -32,7 +32,7 @@ where
 }
 
 pub(crate) fn ecrecover(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -73,7 +73,7 @@ pub(crate) fn ecrecover(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -103,7 +103,7 @@ pub(crate) fn keccak256(
 }
 
 pub(crate) fn sha256(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,

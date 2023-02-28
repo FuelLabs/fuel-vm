@@ -205,18 +205,18 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (ReadRegisters { sp, hp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { sp, hp, pc, .. }, _) = split_registers(&mut self.registers);
         stack_pointer_overflow(sp, hp.as_ref(), pc, f, v)
     }
 
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_byte(&self.memory, pc, result, b, c)
     }
 
     pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_word(&self.memory, pc, result, b, c)
     }
@@ -232,7 +232,7 @@ where
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { hp, sp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { hp, sp, pc, .. }, _) = split_registers(&mut self.registers);
         malloc(hp, sp.as_ref(), pc, a)
     }
 
@@ -247,7 +247,7 @@ where
     }
 
     pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         memeq(&mut self.memory, result, pc, b, c, d)
     }
@@ -275,7 +275,7 @@ where
 }
 
 pub(crate) fn load_byte(
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -295,7 +295,7 @@ pub(crate) fn load_byte(
 }
 
 pub(crate) fn load_word(
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -324,7 +324,7 @@ pub(crate) fn load_word(
 }
 
 pub(crate) fn store_byte(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -343,7 +343,7 @@ pub(crate) fn store_byte(
 }
 
 pub(crate) fn store_word(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -378,7 +378,7 @@ pub(crate) fn malloc(mut hp: RegMut<HP>, sp: Reg<SP>, pc: RegMut<PC>, a: Word) -
 }
 
 pub(crate) fn memclear(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -400,7 +400,7 @@ pub(crate) fn memclear(
 }
 
 pub(crate) fn memcopy(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -436,7 +436,7 @@ pub(crate) fn memcopy(
 }
 
 pub(crate) fn memeq(
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     result: &mut Word,
     pc: RegMut<PC>,
     b: Word,
@@ -524,7 +524,7 @@ pub(crate) fn try_mem_write(
     addr: usize,
     data: &[u8],
     registers: OwnershipRegisters,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
 
@@ -549,7 +549,7 @@ pub(crate) fn try_zeroize(
     addr: usize,
     len: usize,
     registers: OwnershipRegisters,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
 
@@ -785,7 +785,7 @@ mod tests {
         => (false, [0u8; 100]); "Internal too large for heap"
     )]
     fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-        let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+        let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
         let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
         let memory: [u8; 100] = memory[..100].try_into().unwrap();
         (r, memory)
@@ -837,7 +837,7 @@ mod tests {
         => (false, [1u8; 100]); "Internal too large for heap"
     )]
     fn test_try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-        let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![1u8; VM_MEMORY_SIZE].try_into().unwrap();
+        let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
         let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
         let memory: [u8; 100] = memory[..100].try_into().unwrap();
         (r, memory)

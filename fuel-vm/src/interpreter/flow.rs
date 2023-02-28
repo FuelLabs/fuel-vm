@@ -33,17 +33,17 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
         jump(is.as_ref(), pc, j)
     }
 
     pub(crate) fn jump_not_equal(&mut self, a: Word, b: Word, to: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
         jump_not_equal(is.as_ref(), pc, a, b, to)
     }
 
     pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, is, zero, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, is, zero, .. }, _) = split_registers(&mut self.registers);
         jump_not_zero(is.as_ref(), pc, zero.as_ref(), a, to)
     }
 
@@ -315,7 +315,7 @@ struct PrepareCallParams {
     pub amount_of_gas_to_forward: Word,
 }
 
-struct PrepareCallReadRegisters<'a> {
+struct PrepareCallSystemRegisters<'a> {
     hp: Reg<'a, HP>,
     sp: RegMut<'a, SP>,
     ssp: RegMut<'a, SSP>,
@@ -327,8 +327,8 @@ struct PrepareCallReadRegisters<'a> {
     ggas: RegMut<'a, GGAS>,
 }
 struct PrepareCallRegisters<'a> {
-    read_registers: PrepareCallReadRegisters<'a>,
-    write_registers: WriteRegistersRef<'a>,
+    read_registers: PrepareCallSystemRegisters<'a>,
+    write_registers: ProgramRegistersRef<'a>,
     unused_registers: PrepareCallUnusedRegisters<'a>,
 }
 
@@ -349,7 +349,7 @@ impl<'a> PrepareCallRegisters<'a> {
 }
 
 struct PrepareCallMemory<'a> {
-    memory: &'a mut [u8; VM_MEMORY_SIZE],
+    memory: &'a mut [u8; MEM_SIZE],
     call_params: CheckedMemValue<Call>,
     asset_id: CheckedMemValue<AssetId>,
 }
@@ -493,7 +493,7 @@ fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
     code_mem_range: CheckedMemRange,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     storage: &S,
 ) -> Result<Word, RuntimeError>
 where
@@ -544,7 +544,7 @@ where
     Ok(frame)
 }
 
-impl<'a> From<&'a PrepareCallRegisters<'_>> for ReadRegistersRef<'a> {
+impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {
     fn from(registers: &'a PrepareCallRegisters) -> Self {
         Self {
             hp: registers.read_registers.hp,
@@ -579,9 +579,9 @@ impl<'reg> From<&'reg mut [Word; VM_REGISTER_COUNT]> for PrepareCallRegisters<'r
     }
 }
 
-impl<'reg> From<ReadRegisters<'reg>> for (PrepareCallReadRegisters<'reg>, PrepareCallUnusedRegisters<'reg>) {
-    fn from(registers: ReadRegisters<'reg>) -> Self {
-        let read = PrepareCallReadRegisters {
+impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, PrepareCallUnusedRegisters<'reg>) {
+    fn from(registers: SystemRegisters<'reg>) -> Self {
+        let read = PrepareCallSystemRegisters {
             hp: registers.hp.into(),
             sp: registers.sp,
             ssp: registers.ssp,
@@ -608,9 +608,9 @@ impl<'reg> From<ReadRegisters<'reg>> for (PrepareCallReadRegisters<'reg>, Prepar
     }
 }
 
-impl<'mem> TryFrom<(&'mem mut [u8; VM_MEMORY_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
+impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
     type Error = RuntimeError;
-    fn try_from((memory, params): (&'mem mut [u8; VM_MEMORY_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
+    fn try_from((memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,
             call_params: CheckedMemValue::new::<{ Call::LEN }>(params.call_params_mem_address)?,

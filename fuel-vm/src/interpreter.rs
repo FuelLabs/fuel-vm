@@ -60,7 +60,7 @@ use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheck
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Box<[u8; VM_MEMORY_SIZE]>,
+    memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
     tx: Tx,

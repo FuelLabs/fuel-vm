@@ -22,7 +22,7 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceInput {
             storage: &self.storage,
@@ -35,7 +35,7 @@ where
     }
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
         let input = TransferInput {
             storage: &mut self.storage,
             memory: &mut self.memory,
@@ -52,7 +52,7 @@ where
     }
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
         let input = TransferInput {
             storage: &mut self.storage,
             memory: &mut self.memory,
@@ -87,7 +87,7 @@ where
 
 struct ContractBalanceInput<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     pc: RegMut<'vm, PC>,
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
@@ -134,7 +134,7 @@ impl<'vm, S, I> ContractBalanceInput<'vm, S, I> {
 }
 struct TransferInput<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut Vec<Receipt>,

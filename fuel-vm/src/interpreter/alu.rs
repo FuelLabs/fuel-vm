@@ -13,7 +13,7 @@ where
     where
         F: FnOnce(B, C) -> (u128, bool),
     {
-        let (ReadRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
         let common = AluCommonReg { of, err, pc };
         alu_capture_overflow(dest, flag.as_ref(), common, f, b, c)
@@ -24,7 +24,7 @@ where
     where
         F: FnOnce(B, C) -> (Word, bool),
     {
-        let (ReadRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
         let common = AluCommonReg { of, err, pc };
         alu_boolean_overflow(dest, flag.as_ref(), common, f, b, c)
@@ -41,21 +41,21 @@ where
     where
         F: FnOnce(B, C) -> Word,
     {
-        let (ReadRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
         let common = AluCommonReg { of, err, pc };
         alu_error(dest, flag.as_ref(), common, f, b, c, err_bool)
     }
 
     pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
         let common = AluCommonReg { of, err, pc };
         alu_set(dest, common, b)
     }
 
     pub(crate) fn alu_clear(&mut self) -> Result<(), RuntimeError> {
-        let (ReadRegisters { of, err, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { of, err, pc, .. }, _) = split_registers(&mut self.registers);
         let common = AluCommonReg { of, err, pc };
         alu_clear(common)
     }

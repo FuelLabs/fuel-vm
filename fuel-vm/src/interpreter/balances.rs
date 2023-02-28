@@ -87,7 +87,7 @@ impl RuntimeBalances {
         self.state.get(asset).map(Balance::value)
     }
 
-    fn _set_memory_balance(balance: &Balance, memory: &mut [u8; VM_MEMORY_SIZE]) -> Result<Word, RuntimeError> {
+    fn _set_memory_balance(balance: &Balance, memory: &mut [u8; MEM_SIZE]) -> Result<Word, RuntimeError> {
         let value = balance.value();
         let offset = balance.offset();
 
@@ -105,12 +105,7 @@ impl RuntimeBalances {
     /// Note: This will not append a new asset into the set since all the assets must be created
     /// during VM initialization and any additional asset would imply reordering the memory
     /// representation of the balances since they must always be ordered, as in the protocol.
-    pub fn checked_balance_add(
-        &mut self,
-        memory: &mut [u8; VM_MEMORY_SIZE],
-        asset: &AssetId,
-        value: Word,
-    ) -> Option<Word> {
+    pub fn checked_balance_add(&mut self, memory: &mut [u8; MEM_SIZE], asset: &AssetId, value: Word) -> Option<Word> {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_add(value))
@@ -120,12 +115,7 @@ impl RuntimeBalances {
 
     /// Attempt to subtract the balance of an asset, updating the VM memory in the appropriate
     /// offset
-    pub fn checked_balance_sub(
-        &mut self,
-        memory: &mut [u8; VM_MEMORY_SIZE],
-        asset: &AssetId,
-        value: Word,
-    ) -> Option<Word> {
+    pub fn checked_balance_sub(&mut self, memory: &mut [u8; MEM_SIZE], asset: &AssetId, value: Word) -> Option<Word> {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_sub(value))

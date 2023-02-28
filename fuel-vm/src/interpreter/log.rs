@@ -15,7 +15,7 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
             tx_offset: self.params.tx_offset(),
@@ -30,7 +30,7 @@ where
     }
 
     pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
             tx_offset: self.params.tx_offset(),
@@ -46,7 +46,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     context: &'vm Context,
     receipts: &'vm mut Vec<Receipt>,

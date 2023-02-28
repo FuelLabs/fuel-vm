@@ -28,7 +28,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
         let current_contract = self.contract_id();
-        let ReadRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
         let profiler = ProfileGas {
             pc: pc.as_ref(),
             is: is.as_ref(),
@@ -40,7 +40,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
         let current_contract = self.contract_id();
-        let ReadRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
 
         let profiler = ProfileGas {
             pc: pc.as_ref(),

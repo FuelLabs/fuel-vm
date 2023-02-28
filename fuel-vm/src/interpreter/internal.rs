@@ -45,7 +45,7 @@ where
 /// serialized tx in vm memory.
 pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     tx_offset: usize,
     idx: usize,
     variable: Output,
@@ -56,7 +56,7 @@ pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
 
 pub(crate) fn set_message_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     tx_offset: usize,
     idx: usize,
     message: Output,
@@ -89,7 +89,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     tx_offset: usize,
     idx: usize,
 ) -> Result<(), RuntimeError> {
@@ -105,7 +105,7 @@ pub(crate) struct AppendReceipt<'vm> {
     pub receipts: &'vm mut Vec<Receipt>,
     pub script: Option<&'vm mut Script>,
     pub tx_offset: usize,
-    pub memory: &'vm mut [u8; VM_MEMORY_SIZE],
+    pub memory: &'vm mut [u8; MEM_SIZE],
 }
 
 pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
@@ -153,7 +153,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (ReadRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
         set_flag(flag, pc, a)
     }
 
@@ -206,7 +206,7 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
         .map(|i| *pc = i)
 }
 
-pub(crate) fn tx_id(memory: &[u8; VM_MEMORY_SIZE]) -> &Bytes32 {
+pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
     // Safety: vm parameters guarantees enough space for txid
     unsafe { Bytes32::as_ref_unchecked(&memory[..Bytes32::LEN]) }
 }
@@ -214,7 +214,7 @@ pub(crate) fn tx_id(memory: &[u8; VM_MEMORY_SIZE]) -> &Bytes32 {
 /// Reduces the unspent balance of the base asset
 pub(crate) fn base_asset_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     value: Word,
 ) -> Result<(), RuntimeError> {
     external_asset_id_balance_sub(balances, memory, &AssetId::zeroed(), value)
@@ -223,7 +223,7 @@ pub(crate) fn base_asset_balance_sub(
 /// Reduces the unspent balance of a given asset ID
 pub(crate) fn external_asset_id_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     asset_id: &AssetId,
     value: Word,
 ) -> Result<(), RuntimeError> {
@@ -237,7 +237,7 @@ pub(crate) fn external_asset_id_balance_sub(
 pub(crate) fn internal_contract_or_default(
     context: &Context,
     register: Reg<FP>,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
 ) -> ContractId {
     internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
 }
@@ -245,7 +245,7 @@ pub(crate) fn internal_contract_or_default(
 pub(crate) fn current_contract<'a>(
     context: &Context,
     fp: Reg<FP>,
-    memory: &'a [u8; VM_MEMORY_SIZE],
+    memory: &'a [u8; MEM_SIZE],
 ) -> Result<Option<&'a ContractId>, RuntimeError> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
@@ -257,7 +257,7 @@ pub(crate) fn current_contract<'a>(
 pub(crate) fn internal_contract<'a>(
     context: &Context,
     register: Reg<FP>,
-    memory: &'a [u8; VM_MEMORY_SIZE],
+    memory: &'a [u8; MEM_SIZE],
 ) -> Result<&'a ContractId, RuntimeError> {
     let (c, _) = internal_contract_bounds(context, register)?;
 

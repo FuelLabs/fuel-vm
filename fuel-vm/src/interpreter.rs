@@ -6,7 +6,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::PanicReason;
+use fuel_asm::{Flags, PanicReason};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -48,6 +48,8 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
+
+use self::memory::Memory;
 
 /// VM interpreter.
 ///
@@ -145,12 +147,16 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 }
 
+pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
+    Flags::from_bits_truncate(*flag)
+}
+
 pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
-    *flag & 0x02 == 0x02
+    flags(flag).contains(Flags::WRAPPING)
 }
 
 pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
-    *flag & 0x01 == 0x01
+    flags(flag).contains(Flags::UNSAFEMATH)
 }
 
 #[cfg(feature = "profile-gas")]

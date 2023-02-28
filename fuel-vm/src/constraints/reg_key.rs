@@ -74,22 +74,26 @@ impl<const INDEX: u8> Deref for Reg<'_, INDEX> {
         self.0
     }
 }
+
 impl<const INDEX: u8> Deref for RegMut<'_, INDEX> {
     type Target = Word;
     fn deref(&self) -> &Self::Target {
         self.0
     }
 }
+
 impl<const INDEX: u8> DerefMut for RegMut<'_, INDEX> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0
     }
 }
+
 impl<'a, const INDEX: u8> From<RegMut<'a, INDEX>> for Reg<'a, INDEX> {
     fn from(reg: RegMut<'a, INDEX>) -> Self {
         Self(reg.0)
     }
 }
+
 impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
     /// Re-borrow the register as an immutable reference.
     pub fn as_ref(&self) -> Reg<INDEX> {
@@ -190,7 +194,9 @@ pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) retl: Reg<'a, RETL>,
     pub(crate) flag: Reg<'a, FLAG>,
 }
+
 pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_PROGRAM_COUNT]);
+
 pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COUNT]);
 
 pub(crate) fn split_registers(
@@ -222,72 +228,10 @@ pub(crate) fn copy_registers(
     read_registers: &SystemRegistersRef<'_>,
     write_registers: &ProgramRegistersRef<'_>,
 ) -> [Word; VM_REGISTER_COUNT] {
-    [
-        *read_registers.zero,
-        *read_registers.one,
-        *read_registers.of,
-        *read_registers.pc,
-        *read_registers.ssp,
-        *read_registers.sp,
-        *read_registers.fp,
-        *read_registers.hp,
-        *read_registers.err,
-        *read_registers.ggas,
-        *read_registers.cgas,
-        *read_registers.bal,
-        *read_registers.is,
-        *read_registers.ret,
-        *read_registers.retl,
-        *read_registers.flag,
-        write_registers.0[0],
-        write_registers.0[1],
-        write_registers.0[2],
-        write_registers.0[3],
-        write_registers.0[4],
-        write_registers.0[5],
-        write_registers.0[6],
-        write_registers.0[7],
-        write_registers.0[8],
-        write_registers.0[9],
-        write_registers.0[10],
-        write_registers.0[11],
-        write_registers.0[12],
-        write_registers.0[13],
-        write_registers.0[14],
-        write_registers.0[15],
-        write_registers.0[16],
-        write_registers.0[17],
-        write_registers.0[18],
-        write_registers.0[19],
-        write_registers.0[20],
-        write_registers.0[21],
-        write_registers.0[22],
-        write_registers.0[23],
-        write_registers.0[24],
-        write_registers.0[25],
-        write_registers.0[26],
-        write_registers.0[27],
-        write_registers.0[28],
-        write_registers.0[29],
-        write_registers.0[30],
-        write_registers.0[31],
-        write_registers.0[32],
-        write_registers.0[33],
-        write_registers.0[34],
-        write_registers.0[35],
-        write_registers.0[36],
-        write_registers.0[37],
-        write_registers.0[38],
-        write_registers.0[39],
-        write_registers.0[40],
-        write_registers.0[41],
-        write_registers.0[42],
-        write_registers.0[43],
-        write_registers.0[44],
-        write_registers.0[45],
-        write_registers.0[46],
-        write_registers.0[47],
-    ]
+    let mut out = [0u64; VM_REGISTER_COUNT];
+    out[..VM_REGISTER_SYSTEM_COUNT].copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(read_registers));
+    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(write_registers.0);
+    out
 }
 
 impl<'r> ProgramRegisters<'r> {
@@ -387,5 +331,83 @@ impl core::ops::Index<WriteRegKey> for ProgramRegisters<'_> {
 impl core::ops::IndexMut<WriteRegKey> for ProgramRegisters<'_> {
     fn index_mut(&mut self, index: WriteRegKey) -> &mut Self::Output {
         &mut self.0[index.translate()]
+    }
+}
+
+impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_SYSTEM_COUNT] {
+    fn from(value: &SystemRegistersRef<'a>) -> Self {
+        let SystemRegistersRef {
+            zero,
+            one,
+            of,
+            pc,
+            ssp,
+            sp,
+            fp,
+            hp,
+            err,
+            ggas,
+            cgas,
+            bal,
+            is,
+            ret,
+            retl,
+            flag,
+        } = value;
+        [
+            *zero.0, *one.0, *of.0, *pc.0, *ssp.0, *sp.0, *fp.0, *hp.0, *err.0, *ggas.0, *cgas.0, *bal.0, *is.0,
+            *ret.0, *retl.0, *flag.0,
+        ]
+    }
+}
+
+#[test]
+fn can_split() {
+    let mut reg: [Word; VM_REGISTER_COUNT] = std::iter::successors(Some(0), |x| Some(x + 1))
+        .take(VM_REGISTER_COUNT)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+
+    let (r, w) = split_registers(&mut reg);
+
+    let SystemRegisters {
+        zero,
+        one,
+        of,
+        pc,
+        ssp,
+        sp,
+        fp,
+        hp,
+        err,
+        ggas,
+        cgas,
+        bal,
+        is,
+        ret,
+        retl,
+        flag,
+    } = &r;
+
+    assert_eq!(*zero, RegMut::<ZERO>(&mut (ZERO as u64)));
+    assert_eq!(*one, RegMut::<ONE>(&mut (ONE as u64)));
+    assert_eq!(*of, RegMut::<OF>(&mut (OF as u64)));
+    assert_eq!(*pc, RegMut::<PC>(&mut (PC as u64)));
+    assert_eq!(*ssp, RegMut::<SSP>(&mut (SSP as u64)));
+    assert_eq!(*sp, RegMut::<SP>(&mut (SP as u64)));
+    assert_eq!(*fp, RegMut::<FP>(&mut (FP as u64)));
+    assert_eq!(*hp, RegMut::<HP>(&mut (HP as u64)));
+    assert_eq!(*err, RegMut::<ERR>(&mut (ERR as u64)));
+    assert_eq!(*ggas, RegMut::<GGAS>(&mut (GGAS as u64)));
+    assert_eq!(*cgas, RegMut::<CGAS>(&mut (CGAS as u64)));
+    assert_eq!(*bal, RegMut::<BAL>(&mut (BAL as u64)));
+    assert_eq!(*is, RegMut::<IS>(&mut (IS as u64)));
+    assert_eq!(*ret, RegMut::<RET>(&mut (RET as u64)));
+    assert_eq!(*retl, RegMut::<RETL>(&mut (RETL as u64)));
+    assert_eq!(*flag, RegMut::<FLAG>(&mut (FLAG as u64)));
+
+    for i in 0..VM_REGISTER_PROGRAM_COUNT {
+        assert_eq!(w.0[i], i as u64 + 16);
     }
 }

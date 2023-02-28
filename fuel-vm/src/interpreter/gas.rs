@@ -87,6 +87,7 @@ pub(crate) fn gas_charge(
     profiler.profile(cgas.as_ref(), gas);
     gas_charge_inner(cgas, ggas, gas)
 }
+
 fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
     if gas > *cgas {
         *ggas = arith::sub_word(*ggas, *cgas)?;

@@ -1,4 +1,5 @@
 use crate::context::Context;
+use crate::interpreter::memory::Memory;
 
 use super::*;
 

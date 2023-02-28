@@ -326,6 +326,7 @@ struct PrepareCallSystemRegisters<'a> {
     cgas: RegMut<'a, CGAS>,
     ggas: RegMut<'a, GGAS>,
 }
+
 struct PrepareCallRegisters<'a> {
     read_registers: PrepareCallSystemRegisters<'a>,
     write_registers: ProgramRegistersRef<'a>,
@@ -451,11 +452,17 @@ impl<'vm, S> PrepareCallInput<'vm, S> {
         let sp = *self.registers.read_registers.sp;
         set_frame_pointer(self.context, self.registers.read_registers.fp.as_mut(), sp);
 
-        *self.registers.read_registers.sp += len;
+        *self.registers.read_registers.sp = arith::checked_add_word(*self.registers.read_registers.sp, len)?;
         *self.registers.read_registers.ssp = *self.registers.read_registers.sp;
 
-        let code_mem_range = CheckedMemRange::new(*self.registers.read_registers.fp, len as usize)?;
-        let frame_end = write_call_to_memory(&frame, frame_bytes, code_mem_range, self.memory.memory, self.storage)?;
+        let code_frame_mem_range = CheckedMemRange::new(*self.registers.read_registers.fp, len as usize)?;
+        let frame_end = write_call_to_memory(
+            &frame,
+            frame_bytes,
+            code_frame_mem_range,
+            self.memory.memory,
+            self.storage,
+        )?;
         *self.registers.read_registers.bal = self.params.amount_of_coins_to_forward;
         *self.registers.read_registers.pc = frame_end;
         *self.registers.read_registers.is = *self.registers.read_registers.pc;

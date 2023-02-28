@@ -9,6 +9,8 @@ use fuel_types::{RegisterId, Word};
 
 use std::{ops, ptr};
 
+pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
+
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

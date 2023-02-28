@@ -6,6 +6,7 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
+use fuel_asm::Flags;
 use fuel_asm::{Instruction, PanicReason, RegId};
 use fuel_tx::field::Outputs;
 use fuel_tx::field::ReceiptsRoot;
@@ -195,7 +196,9 @@ pub(crate) fn set_err(mut err: RegMut<ERR>) {
 }
 
 pub(crate) fn set_flag(mut flag: RegMut<FLAG>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
-    *flag = a;
+    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::ErrorFlag.into()) };
+
+    *flag = flags.bits();
 
     inc_pc(pc)
 }

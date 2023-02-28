@@ -1,3 +1,4 @@
+use crate::interpreter::memory::Memory;
 use crate::interpreter::InitialBalances;
 use crate::storage::MemoryStorage;
 

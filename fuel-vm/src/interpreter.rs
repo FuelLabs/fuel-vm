@@ -48,6 +48,8 @@ pub use memory::MemoryRange;
 
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
 
+use self::memory::Memory;
+
 /// VM interpreter.
 ///
 /// The internal state of the VM isn't expose because the intended usage is to
@@ -59,7 +61,7 @@ use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheck
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Box<[u8; VM_MEMORY_SIZE]>,
+    memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
     tx: Tx,

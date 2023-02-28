@@ -25,7 +25,7 @@ pub const FUEL_MAX_MEMORY_SIZE: u64 = 64;
 pub const VM_MAX_RAM: u64 = 1024 * 1024 * FUEL_MAX_MEMORY_SIZE;
 
 /// Size of the VM memory, in bytes.
-pub const VM_MEMORY_SIZE: usize = VM_MAX_RAM as usize;
+pub const MEM_SIZE: usize = VM_MAX_RAM as usize;
 
 /// Maximum memory access size, in bytes.
 pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;

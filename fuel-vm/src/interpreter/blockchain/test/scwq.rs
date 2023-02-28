@@ -10,7 +10,7 @@ use test_case::test_case;
 struct SCWQInput {
     input: StateClearQWord,
     storage_slots: Vec<([u8; 32], [u8; 32])>,
-    memory: Box<[u8; VM_MEMORY_SIZE]>,
+    memory: Memory<MEM_SIZE>,
 }
 
 #[test_case(

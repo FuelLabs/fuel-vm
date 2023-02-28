@@ -66,7 +66,7 @@ pub(crate) fn append_receipt(
     receipts: &mut Vec<Receipt>,
     tx: Option<&mut Script>,
     consensus_params: &ConsensusParameters,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     receipt: Receipt,
 ) {
     receipts.push(receipt);
@@ -211,7 +211,7 @@ pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
 /// Reduces the unspent balance of a given asset ID
 pub(crate) fn external_asset_id_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     asset_id: &AssetId,
     value: Word,
 ) -> Result<(), RuntimeError> {
@@ -225,7 +225,7 @@ pub(crate) fn external_asset_id_balance_sub(
 pub(crate) fn internal_contract_or_default(
     context: &Context,
     register: Reg<FP>,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
 ) -> ContractId {
     internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
 }
@@ -233,7 +233,7 @@ pub(crate) fn internal_contract_or_default(
 pub(crate) fn internal_contract<'a>(
     context: &Context,
     register: Reg<FP>,
-    memory: &'a [u8; VM_MEMORY_SIZE],
+    memory: &'a [u8; MEM_SIZE],
 ) -> Result<&'a ContractId, RuntimeError> {
     let (c, _) = internal_contract_bounds(context, register)?;
 

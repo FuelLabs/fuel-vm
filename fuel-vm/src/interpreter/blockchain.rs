@@ -490,7 +490,7 @@ impl StateReadQWord {
 fn state_read_qword(
     contract_id: &ContractId,
     storage: &impl InterpreterStorage,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     result_register: &mut Word,
     input: StateReadQWord,
 ) -> Result<(), RuntimeError> {
@@ -552,7 +552,7 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
@@ -597,7 +597,7 @@ impl StateClearQWord {
 fn state_clear_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; VM_MEMORY_SIZE],
+    memory: &[u8; MEM_SIZE],
     result_register: &mut Word,
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {

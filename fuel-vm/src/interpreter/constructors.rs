@@ -26,7 +26,7 @@ where
     pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; VM_MEMORY_SIZE].try_into().expect("Failed to allocate memory"),
+            memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
             frames: vec![],
             receipts: vec![],
             tx: Default::default(),

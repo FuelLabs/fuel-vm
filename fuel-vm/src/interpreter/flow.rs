@@ -281,7 +281,7 @@ impl<'a> PrepareCallRegisters<'a> {
 }
 
 struct PrepareCallMemory<'a> {
-    memory: &'a mut [u8; VM_MEMORY_SIZE],
+    memory: &'a mut [u8; MEM_SIZE],
     call_params: CheckedMemValue<Call>,
     asset_id: CheckedMemValue<AssetId>,
 }
@@ -423,7 +423,7 @@ fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
     code_mem_range: CheckedMemRange,
-    memory: &mut [u8; VM_MEMORY_SIZE],
+    memory: &mut [u8; MEM_SIZE],
     storage: &S,
 ) -> Result<Word, RuntimeError>
 where
@@ -538,9 +538,9 @@ impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, Pr
     }
 }
 
-impl<'mem> TryFrom<(&'mem mut [u8; VM_MEMORY_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
+impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
     type Error = RuntimeError;
-    fn try_from((memory, params): (&'mem mut [u8; VM_MEMORY_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
+    fn try_from((memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,
             call_params: CheckedMemValue::new::<{ Call::LEN }>(params.call_params_mem_address)?,

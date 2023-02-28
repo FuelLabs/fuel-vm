@@ -1,3 +1,4 @@
+use crate::interpreter::memory::Memory;
 use crate::interpreter::InitialBalances;
 use crate::storage::MemoryStorage;
 
@@ -15,7 +16,7 @@ struct Input {
     balance: InitialBalances,
     input_contracts: Vec<ContractId>,
     storage_balance: InitialBalances,
-    memory: Box<[u8; VM_MEMORY_SIZE]>,
+    memory: Memory<MEM_SIZE>,
     gas_cost: DependentCost,
     storage_contract: Vec<(ContractId, Vec<u8>)>,
     script: Option<Script>,
@@ -34,7 +35,7 @@ impl Default for Input {
             balance: Default::default(),
             input_contracts: vec![Default::default()],
             storage_balance: Default::default(),
-            memory: vec![0u8; VM_MEMORY_SIZE].try_into().unwrap(),
+            memory: vec![0u8; MEM_SIZE].try_into().unwrap(),
             gas_cost: DependentCost {
                 base: 10,
                 dep_per_unit: 10,
@@ -61,7 +62,7 @@ struct RegInput {
 #[derive(PartialEq, Eq)]
 enum CheckMem {
     Check(Vec<(usize, Vec<u8>)>),
-    Mem(Box<[u8; VM_MEMORY_SIZE]>),
+    Mem(Memory<MEM_SIZE>),
 }
 
 #[derive(PartialEq, Eq)]
@@ -124,8 +125,8 @@ impl Default for Output {
     }
 }
 
-fn mem(set: &[(usize, Vec<u8>)]) -> Box<[u8; VM_MEMORY_SIZE]> {
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
+    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     for (addr, data) in set {
         memory[*addr..*addr + data.len()].copy_from_slice(data);
     }
@@ -399,13 +400,13 @@ fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedM
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
-    let mut memory: Box<[u8; VM_MEMORY_SIZE]> = vec![0u8; VM_MEMORY_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let end = write_call_to_memory(&call_frame, frame_bytes, code_mem_range, memory.as_mut(), &storage)?;
     check_memory(memory, call_frame, code);
     Ok(end)
 }
 
-fn check_memory(result: Box<[u8; VM_MEMORY_SIZE]>, expected: CallFrame, code: Vec<u8>) {
+fn check_memory(result: Memory<MEM_SIZE>, expected: CallFrame, code: Vec<u8>) {
     let frame = CheckedMemValue::<CallFrame>::new::<{ CallFrame::serialized_size() }>(0)
         .unwrap()
         .inspect(&result);

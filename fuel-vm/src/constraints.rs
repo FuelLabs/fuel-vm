@@ -87,6 +87,8 @@ impl CheckedMemRange {
         Self::new_inner(address, size, constraint.start..constraint.end)
     }
 
+    /// Create a new memory range, checks that the range is not empty
+    /// and that it fits into the constraint.
     fn new_inner(address: Word, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
         let (end, of) = (address as usize).overflowing_add(size);
         let range = address as usize..end;

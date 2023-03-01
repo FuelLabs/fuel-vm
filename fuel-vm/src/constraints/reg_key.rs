@@ -40,11 +40,17 @@ impl WriteRegKey {
         Ok(Self(k))
     }
 
+    /// Translate this key from an absolute register index
+    /// to a program register index.
+    ///
+    /// This subtracts the number of system registers from the key.
     fn translate(self) -> usize {
         self.0 - VM_REGISTER_SYSTEM_COUNT
     }
 }
 
+/// Check that the register is above the system registers and below the total
+/// number of registers.
 pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), RuntimeError> {
     const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
     const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
@@ -169,6 +175,8 @@ impl_keys! {
     FLAG, flag, flag_mut
 }
 
+/// The set of system registers split into
+/// individual mutable references.
 pub(crate) struct SystemRegisters<'a> {
     pub(crate) zero: RegMut<'a, ZERO>,
     pub(crate) one: RegMut<'a, ONE>,
@@ -188,6 +196,7 @@ pub(crate) struct SystemRegisters<'a> {
     pub(crate) flag: RegMut<'a, FLAG>,
 }
 
+/// Same as `SystemRegisters` but with immutable references.
 pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) zero: Reg<'a, ZERO>,
     pub(crate) one: Reg<'a, ONE>,
@@ -207,10 +216,15 @@ pub(crate) struct SystemRegistersRef<'a> {
     pub(crate) flag: Reg<'a, FLAG>,
 }
 
+/// The set of program registers split from the system registers.
 pub(crate) struct ProgramRegisters<'a>(pub &'a mut [Word; VM_REGISTER_PROGRAM_COUNT]);
 
+/// Same as `ProgramRegisters` but with immutable references.
 pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COUNT]);
 
+/// Split the registers into system and program registers.
+///
+/// This allows multiple mutable references to registers.
 pub(crate) fn split_registers(
     registers: &mut [Word; VM_REGISTER_COUNT],
 ) -> (SystemRegisters<'_>, ProgramRegisters<'_>) {
@@ -236,6 +250,7 @@ pub(crate) fn split_registers(
     (r, ProgramRegisters(rest))
 }
 
+/// Copy the system and program registers into a single array.
 pub(crate) fn copy_registers(
     system_registers: &SystemRegistersRef<'_>,
     program_registers: &ProgramRegistersRef<'_>,
@@ -247,20 +262,35 @@ pub(crate) fn copy_registers(
 }
 
 impl<'r> ProgramRegisters<'r> {
+    /// Get two mutable references to program registers.
+    /// Note they cannot be the same register.
     pub fn get_mut_two(&mut self, a: WriteRegKey, b: WriteRegKey) -> Option<(&mut Word, &mut Word)> {
         match a.cmp(&b) {
             std::cmp::Ordering::Less => {
+                // Translate the `a` absolute register index to a program register index.
                 let a = a.translate();
+                // Split the array at the first register which is a.
                 let [i, rest @ ..] = &mut self.0[a..] else { return None };
+                // Translate the `b` absolute register index to a program register index.
+                // Subtract 1 because the first register is `a`.
+                // Subtract `a` registers because we split the array at `a`.
                 let b = b.translate() - 1 - a;
+                // Get the `b` register.
                 let j = &mut rest[b];
                 Some((i, j))
             }
+            // Cannot mutably borrow the same register twice.
             std::cmp::Ordering::Equal => None,
             std::cmp::Ordering::Greater => {
+                // Translate the `b` absolute register index to a program register index.
                 let b = b.translate();
+                // Split the array at the first register which is b.
                 let [i, rest @ ..] = &mut self.0[b..] else { return None };
+                // Translate the `a` absolute register index to a program register index.
+                // Subtract 1 because the first register is `b`.
+                // Subtract `b` registers because we split the array at `b`.
                 let a = a.translate() - 1 - b;
+                // Get the `a` register.
                 let j = &mut rest[a];
                 Some((j, i))
             }

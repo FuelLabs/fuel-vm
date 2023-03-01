@@ -305,15 +305,15 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     } = input;
     let mut registers = [0; VM_REGISTER_COUNT];
     let mut registers: PrepareCallRegisters = (&mut registers).into();
-    registers.read_registers.hp = Reg::new(&reg.hp);
-    registers.read_registers.sp = RegMut::new(&mut reg.sp);
-    registers.read_registers.ssp = RegMut::new(&mut reg.ssp);
-    registers.read_registers.fp = RegMut::new(&mut reg.fp);
-    registers.read_registers.pc = RegMut::new(&mut reg.pc);
-    registers.read_registers.is = RegMut::new(&mut reg.is);
-    registers.read_registers.bal = RegMut::new(&mut reg.bal);
-    registers.read_registers.cgas = RegMut::new(&mut reg.cgas);
-    registers.read_registers.ggas = RegMut::new(&mut reg.ggas);
+    registers.system_registers.hp = Reg::new(&reg.hp);
+    registers.system_registers.sp = RegMut::new(&mut reg.sp);
+    registers.system_registers.ssp = RegMut::new(&mut reg.ssp);
+    registers.system_registers.fp = RegMut::new(&mut reg.fp);
+    registers.system_registers.pc = RegMut::new(&mut reg.pc);
+    registers.system_registers.is = RegMut::new(&mut reg.is);
+    registers.system_registers.bal = RegMut::new(&mut reg.bal);
+    registers.system_registers.cgas = RegMut::new(&mut reg.cgas);
+    registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
     let memory = PrepareCallMemory::try_from((mem.as_mut(), &params))?;
     let mut runtime_balances = RuntimeBalances::from(balance);
     let mut storage = MemoryStorage::new(0, Default::default());
@@ -333,7 +333,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     let mut frames = Vec::default();
     let current_contract = context.is_internal().then_some(ContractId::default());
 
-    let input = PrepareCallInput {
+    let input = PrepareCallCtx {
         params,
         registers,
         memory,

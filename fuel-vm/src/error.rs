@@ -270,6 +270,8 @@ pub enum BugId {
     ID005,
     ID006,
     ID007,
+    ID008,
+    ID009,
 }
 
 /// Traceable bug variants
@@ -286,6 +288,12 @@ pub enum BugVariant {
 
     /// The stack point has overflow
     StackPointerOverflow,
+
+    /// The global gas is less than the context gas.
+    GlobalGasLessThanContext,
+
+    /// Constraint larger then memory bounds
+    InvalidMemoryConstraint,
 }
 
 impl fmt::Display for BugVariant {
@@ -317,6 +325,20 @@ impl fmt::Display for BugVariant {
                 r#"The stack pointer cannot overflow under checked operations.
 
                 This overflow means the registers are corrupted."#
+            ),
+
+            Self::GlobalGasLessThanContext => write!(
+                f,
+                r#"The global gas cannot ever be less than the context gas. 
+
+                This means the registers are corrupted."#
+            ),
+
+            Self::InvalidMemoryConstraint => write!(
+                f,
+                r#"The memory constraint cannot exceed the memory size.
+
+                This is a bug in the vm."#
             ),
         }
     }

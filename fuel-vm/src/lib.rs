@@ -97,9 +97,10 @@ pub mod prelude {
     #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
     pub use crate::util::gas_profiling::GasProfiler;
 
+    pub use crate::profiler::Profiler;
     #[cfg(feature = "profile-any")]
     pub use crate::profiler::{
         CoverageProfilingData, GasProfilingData, InstructionLocation, PerLocationIter, PerLocationKeys,
-        PerLocationValues, ProfileReceiver, Profiler, ProfilingData, StderrReceiver,
+        PerLocationValues, ProfileReceiver, ProfilingData, StderrReceiver,
     };
 }

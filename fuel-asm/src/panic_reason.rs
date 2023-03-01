@@ -79,8 +79,8 @@ pub enum PanicReason {
     ContractIdAlreadyDeployed = 0x22,
     /// The loaded contract mismatch expectations.
     ContractMismatch = 0x23,
-    /// The global gas is less than the context gas.
-    GlobalGasLessThanContext = 0x24,
+    /// RESERV24
+    RESERV24 = 0x24,
     /// RESERV25
     RESERV25 = 0x25,
     /// RESERV26

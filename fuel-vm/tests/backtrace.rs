@@ -50,7 +50,7 @@ fn backtrace() {
 
     #[rustfmt::skip]
     let mut function_call = vec![
-        op::movi(0x10,  (contract_undefined.as_ref().len() + WORD_SIZE * 2) as Immediate18),
+        op::movi(0x10,  (contract_undefined.as_ref().len() + WORD_SIZE * 2 + 1) as Immediate18),
         op::aloc(0x10),
     ];
 
@@ -92,7 +92,7 @@ fn backtrace() {
 
     #[rustfmt::skip]
     let mut script = vec![
-        op::movi(0x10, (contract_call.as_ref().len() + WORD_SIZE * 2) as Immediate18),
+        op::movi(0x10, (contract_call.as_ref().len() + WORD_SIZE * 2 + 1) as Immediate18),
         op::aloc(0x10),
     ];
 

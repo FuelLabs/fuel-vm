@@ -6,82 +6,125 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
-use fuel_asm::{Flags, Instruction, PanicReason, RegId};
+use fuel_asm::Flags;
+use fuel_asm::{Instruction, PanicReason, RegId};
+use fuel_tx::field::Outputs;
 use fuel_tx::field::ReceiptsRoot;
-use fuel_tx::ConsensusParameters;
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SerializableVec;
-use fuel_types::{AssetId, Bytes32, ContractId, RegisterId, Word};
+use fuel_types::bytes::SizedBytes;
+use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
 use core::mem;
+
+#[cfg(all(test, feature = "random"))]
+mod tests;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    /// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
-    /// serialized tx in vm memory.
-    pub(crate) fn set_variable_output(&mut self, idx: usize, variable: Output) -> Result<(), RuntimeError> {
-        self.tx.replace_variable_output(idx, variable)?;
-        self.update_memory_output(idx)?;
-
-        Ok(())
-    }
-
-    pub(crate) fn set_message_output(&mut self, idx: usize, message: Output) -> Result<(), RuntimeError> {
-        self.tx.replace_message_output(idx, message)?;
-        self.update_memory_output(idx)?;
-
-        Ok(())
-    }
-
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> Result<(), RuntimeError> {
-        let offset = self.tx_offset()
-            + self
-                .transaction()
-                .outputs_offset_at(idx)
-                .ok_or(PanicReason::OutputNotFound)?;
-
-        let tx = &mut self.tx;
-        let mem = &mut self.memory[offset..];
-
-        tx.output_to_mem(idx, mem)?;
-
-        Ok(())
+        update_memory_output(&mut self.tx, &mut self.memory, self.params.tx_offset(), idx)
     }
 
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
         append_receipt(
-            &mut self.receipts,
-            self.tx.as_script_mut(),
-            &self.params,
-            &mut self.memory,
+            AppendReceipt {
+                receipts: &mut self.receipts,
+                script: self.tx.as_script_mut(),
+                tx_offset: self.params.tx_offset(),
+                memory: &mut self.memory,
+            },
             receipt,
         )
     }
 }
 
-pub(crate) fn append_receipt(
-    receipts: &mut Vec<Receipt>,
-    tx: Option<&mut Script>,
-    consensus_params: &ConsensusParameters,
+/// Increase the variable output with a given asset ID. Modifies both the referenced tx and the
+/// serialized tx in vm memory.
+pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
+    tx: &mut Tx,
     memory: &mut [u8; MEM_SIZE],
-    receipt: Receipt,
-) {
+    tx_offset: usize,
+    idx: usize,
+    variable: Output,
+) -> Result<(), RuntimeError> {
+    tx.replace_variable_output(idx, variable)?;
+    update_memory_output(tx, memory, tx_offset, idx)
+}
+
+pub(crate) fn set_message_output<Tx: ExecutableTransaction>(
+    tx: &mut Tx,
+    memory: &mut [u8; MEM_SIZE],
+    tx_offset: usize,
+    idx: usize,
+    message: Output,
+) -> Result<(), RuntimeError> {
+    tx.replace_message_output(idx, message)?;
+    update_memory_output(tx, memory, tx_offset, idx)
+}
+
+fn absolute_output_offset<Tx: Outputs>(tx: &Tx, tx_offset: usize, idx: usize) -> Option<usize> {
+    tx.outputs_offset_at(idx).map(|offset| tx_offset + offset)
+}
+
+pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
+    tx: &Tx,
+    tx_offset: usize,
+    idx: usize,
+    memory_constraint: Option<core::ops::Range<Word>>,
+) -> Result<Option<CheckedMemRange>, RuntimeError> {
+    absolute_output_offset(tx, tx_offset, idx)
+        .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.serialized_size())))
+        .map_or(Ok(None), |(offset, output_size)| match memory_constraint {
+            Some(constraint) => Ok(Some(CheckedMemRange::new_with_constraint(
+                offset as u64,
+                output_size,
+                constraint,
+            )?)),
+            None => Ok(Some(CheckedMemRange::new(offset as u64, output_size)?)),
+        })
+}
+
+pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
+    tx: &mut Tx,
+    memory: &mut [u8; MEM_SIZE],
+    tx_offset: usize,
+    idx: usize,
+) -> Result<(), RuntimeError> {
+    let mem_range = absolute_output_mem_range(tx, tx_offset, idx, None)?.ok_or(PanicReason::OutputNotFound)?;
+    let mem = mem_range.write(memory);
+
+    tx.output_to_mem(idx, mem)?;
+
+    Ok(())
+}
+
+pub(crate) struct AppendReceipt<'vm> {
+    pub receipts: &'vm mut Vec<Receipt>,
+    pub script: Option<&'vm mut Script>,
+    pub tx_offset: usize,
+    pub memory: &'vm mut [u8; MEM_SIZE],
+}
+
+pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
+    let AppendReceipt {
+        receipts,
+        script,
+        tx_offset,
+        memory,
+    } = input;
     receipts.push(receipt);
 
-    if let Some(script) = tx {
-        let offset = consensus_params.tx_offset() + script.receipts_root_offset();
+    if let Some(script) = script {
+        let offset = tx_offset + script.receipts_root_offset();
 
         // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
         // linear monadic model and should be discussed. Maybe the receipts tree should have
         // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = if receipts.is_empty() {
-            EMPTY_RECEIPTS_MERKLE_ROOT.into()
-        } else {
-            crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()))
-        };
+        let root = crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()));
 
         *script.receipts_root_mut() = root;
 
@@ -111,28 +154,8 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let Some(flags) = Flags::from_bits(a) else {
-            return Err(PanicReason::ErrorFlag.into());
-        };
-
-        self.registers[RegId::FLAG] = flags.bits();
-
-        self.inc_pc()
-    }
-
-    pub(crate) fn clear_err(&mut self) {
-        self.registers[RegId::ERR] = 0;
-    }
-
-    pub(crate) fn set_err(&mut self) {
-        self.registers[RegId::ERR] = 1;
-    }
-
-    pub(crate) fn inc_pc(&mut self) -> Result<(), RuntimeError> {
-        self.registers[RegId::PC]
-            .checked_add(Instruction::SIZE as Word)
-            .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
-            .map(|pc| self.registers[RegId::PC] = pc)
+        let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
+        set_flag(flag, pc, a)
     }
 
     pub(crate) const fn context(&self) -> &Context {
@@ -147,11 +170,6 @@ impl<S, Tx> Interpreter<S, Tx> {
         matches!(self.context, Context::Predicate { .. })
     }
 
-    // TODO: We should take a `RegId` as an argument.
-    pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
-        is_register_writable(ra)
-    }
-
     pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
         internal_contract(&self.context, self.registers.fp(), &self.memory)
     }
@@ -160,52 +178,49 @@ impl<S, Tx> Interpreter<S, Tx> {
         internal_contract_or_default(&self.context, self.registers.fp(), self.memory.as_ref())
     }
 
-    pub(crate) fn internal_contract_bounds(&self) -> Result<(usize, usize), RuntimeError> {
-        internal_contract_bounds(&self.context, self.registers.fp())
-    }
-
-    /// Reduces the unspent balance of a given asset ID
-    pub(crate) fn external_asset_id_balance_sub(
-        &mut self,
-        asset_id: &AssetId,
-        value: Word,
-    ) -> Result<(), RuntimeError> {
-        let balances = &mut self.balances;
-        let memory = &mut self.memory;
-
-        external_asset_id_balance_sub(balances, memory.as_mut(), asset_id, value)
-    }
-
-    /// Reduces the unspent balance of the base asset
-    pub(crate) fn base_asset_balance_sub(&mut self, value: Word) -> Result<(), RuntimeError> {
-        self.external_asset_id_balance_sub(&AssetId::default(), value)
-    }
-
     pub(crate) const fn tx_offset(&self) -> usize {
         self.params().tx_offset()
     }
 
-    pub(crate) fn tx_id(&self) -> &Bytes32 {
-        // Safety: vm parameters guarantees enough space for txid
-        unsafe { Bytes32::as_ref_unchecked(&self.memory[..Bytes32::LEN]) }
-    }
-
-    pub(crate) fn set_frame_pointer(&mut self, fp: Word) {
-        let SystemRegisters { fp: register, .. } = split_registers(&mut self.registers).0;
-        set_frame_pointer(&mut self.context, register, fp)
-    }
-
-    pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
+    pub(crate) fn get_block_height(&self) -> Result<u32, PanicReason> {
         self.context().block_height().ok_or(PanicReason::TransactionValidity)
     }
 }
 
-pub(crate) fn is_register_writable(ra: RegisterId) -> Result<(), RuntimeError> {
-    if ra >= RegId::WRITABLE.into() {
-        Ok(())
-    } else {
-        Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
-    }
+pub(crate) fn clear_err(mut err: RegMut<ERR>) {
+    *err = 0;
+}
+
+pub(crate) fn set_err(mut err: RegMut<ERR>) {
+    *err = 1;
+}
+
+pub(crate) fn set_flag(mut flag: RegMut<FLAG>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
+    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::ErrorFlag.into()) };
+
+    *flag = flags.bits();
+
+    inc_pc(pc)
+}
+
+pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
+    pc.checked_add(Instruction::SIZE as Word)
+        .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
+        .map(|i| *pc = i)
+}
+
+pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
+    // Safety: vm parameters guarantees enough space for txid
+    unsafe { Bytes32::as_ref_unchecked(&memory[..Bytes32::LEN]) }
+}
+
+/// Reduces the unspent balance of the base asset
+pub(crate) fn base_asset_balance_sub(
+    balances: &mut RuntimeBalances,
+    memory: &mut [u8; MEM_SIZE],
+    value: Word,
+) -> Result<(), RuntimeError> {
+    external_asset_id_balance_sub(balances, memory, &AssetId::zeroed(), value)
 }
 
 /// Reduces the unspent balance of a given asset ID
@@ -228,6 +243,18 @@ pub(crate) fn internal_contract_or_default(
     memory: &[u8; MEM_SIZE],
 ) -> ContractId {
     internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
+}
+
+pub(crate) fn current_contract<'a>(
+    context: &Context,
+    fp: Reg<FP>,
+    memory: &'a [u8; MEM_SIZE],
+) -> Result<Option<&'a ContractId>, RuntimeError> {
+    if context.is_internal() {
+        Ok(Some(internal_contract(context, fp, memory)?))
+    } else {
+        Ok(None)
+    }
 }
 
 pub(crate) fn internal_contract<'a>(
@@ -261,108 +288,4 @@ pub(crate) fn set_frame_pointer(context: &mut Context, mut register: RegMut<FP>,
     context.update_from_frame_pointer(fp);
 
     *register = fp;
-}
-
-#[cfg(all(test, feature = "random"))]
-mod tests {
-    use crate::prelude::*;
-    use fuel_asm::op;
-    use fuel_tx::field::Outputs;
-    use fuel_tx::TransactionBuilder;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
-    use std::io::Write;
-
-    #[test]
-    fn external_balance() {
-        let mut rng = StdRng::seed_from_u64(2322u64);
-
-        let mut vm = Interpreter::with_memory_storage();
-
-        let gas_price = 0;
-        let gas_limit = 1_000_000;
-        let maturity = 0;
-        let height = 0;
-
-        let script = op::ret(0x01).to_bytes().to_vec();
-        let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
-
-        let mut tx = TransactionBuilder::script(script, Default::default());
-
-        balances.iter().copied().for_each(|(asset, amount)| {
-            tx.add_unsigned_coin_input(rng.gen(), rng.gen(), amount, asset, rng.gen(), maturity);
-        });
-
-        let tx = tx
-            .gas_price(gas_price)
-            .gas_limit(gas_limit)
-            .gas_limit(100)
-            .maturity(maturity)
-            .finalize_checked(height as Word, &Default::default(), &Default::default());
-
-        vm.init_script(tx).expect("Failed to init VM!");
-
-        for (asset_id, amount) in balances {
-            assert!(vm.external_asset_id_balance_sub(&asset_id, amount + 1).is_err());
-            vm.external_asset_id_balance_sub(&asset_id, amount - 10).unwrap();
-            assert!(vm.external_asset_id_balance_sub(&asset_id, 11).is_err());
-            vm.external_asset_id_balance_sub(&asset_id, 10).unwrap();
-            assert!(vm.external_asset_id_balance_sub(&asset_id, 1).is_err());
-        }
-    }
-
-    #[test]
-    fn variable_output_updates_in_memory() {
-        let mut rng = StdRng::seed_from_u64(2322u64);
-
-        let mut vm = Interpreter::with_memory_storage();
-
-        let gas_price = 0;
-        let gas_limit = 1_000_000;
-        let maturity = 0;
-        let height = 0;
-        let asset_id_to_update: AssetId = rng.gen();
-        let amount_to_set: Word = 100;
-        let owner: Address = rng.gen();
-
-        let variable_output = Output::Variable {
-            to: rng.gen(),
-            amount: 0,
-            asset_id: rng.gen(),
-        };
-
-        let tx = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            vec![],
-            vec![],
-            vec![],
-            vec![variable_output],
-            vec![Witness::default()],
-        )
-        .into_checked(height, vm.params(), vm.gas_costs())
-        .expect("failed to check tx");
-
-        vm.init_script(tx).expect("Failed to init VM!");
-
-        // increase variable output
-        let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
-
-        vm.set_variable_output(0, variable).unwrap();
-
-        // verify the referenced tx output is updated properly
-        assert!(matches!(
-            vm.transaction().outputs()[0],
-            Output::Variable {amount, asset_id, to} if amount == amount_to_set
-                                                    && asset_id == asset_id_to_update
-                                                    && to == owner
-        ));
-
-        // verify the vm memory is updated properly
-        let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
-        let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
-        let _ = mem_output.write(&vm.memory()[position..]).unwrap();
-        assert_eq!(vm.transaction().outputs()[0], mem_output);
-    }
 }

@@ -3,6 +3,9 @@ use crate::arith;
 use crate::constraints::reg_key::*;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
+use crate::prelude::Bug;
+use crate::prelude::BugId;
+use crate::prelude::BugVariant;
 use crate::profiler::Profiler;
 
 use fuel_asm::PanicReason;
@@ -90,7 +93,7 @@ pub(crate) fn gas_charge(
 
 fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
     if *cgas > *ggas {
-        Err(PanicReason::GlobalGasLessThanContext.into())
+        Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
     } else if gas > *cgas {
         *ggas = arith::sub_word(*ggas, *cgas)?;
         *cgas = 0;

@@ -134,7 +134,7 @@ fn metadata() {
     outputs.push(Output::contract(1, rng.gen(), rng.gen()));
 
     let mut script = vec![
-        op::movi(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
+        op::movi(0x10, (1 + Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         op::aloc(0x10),
         op::addi(0x10, RegId::HP, 1),
     ];

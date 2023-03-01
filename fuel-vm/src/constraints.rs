@@ -5,6 +5,9 @@ use fuel_types::ContractId;
 
 use crate::consts::MEM_SIZE;
 use crate::consts::VM_MAX_RAM;
+use crate::prelude::Bug;
+use crate::prelude::BugId;
+use crate::prelude::BugVariant;
 use crate::prelude::RuntimeError;
 
 pub mod reg_key;
@@ -36,6 +39,16 @@ impl<T> CheckedMemValue<T> {
         Ok(T::try_from(&memory[self.0 .0])?)
     }
 
+    /// The start of the range.
+    pub fn start(&self) -> usize {
+        self.0.start()
+    }
+
+    /// The end of the range.
+    pub fn end(&self) -> usize {
+        self.0.end()
+    }
+
     #[cfg(test)]
     /// Inspect a value of type `T` from memory.
     pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
@@ -49,6 +62,8 @@ impl<T> CheckedMemValue<T> {
 }
 
 impl CheckedMemRange {
+    const DEFAULT_CONSTRAINT: core::ops::Range<Word> = 0..VM_MAX_RAM;
+
     /// Create a new const sized memory range.
     pub fn new_const<const SIZE: usize>(address: Word) -> Result<Self, RuntimeError> {
         Self::new(address, SIZE)
@@ -56,9 +71,28 @@ impl CheckedMemRange {
 
     /// Create a new memory range.
     pub fn new(address: Word, size: usize) -> Result<Self, RuntimeError> {
+        Self::new_inner(address, size, Self::DEFAULT_CONSTRAINT)
+    }
+
+    /// Create a new memory range with a custom constraint.
+    /// The min of the constraints end and `VM_MAX_RAM` will be used.
+    pub fn new_with_constraint(
+        address: Word,
+        size: usize,
+        constraint: core::ops::Range<Word>,
+    ) -> Result<Self, RuntimeError> {
+        if constraint.end > VM_MAX_RAM {
+            return Err(Bug::new(BugId::ID009, BugVariant::InvalidMemoryConstraint).into());
+        }
+        Self::new_inner(address, size, constraint.start..constraint.end)
+    }
+
+    /// Create a new memory range, checks that the range is not empty
+    /// and that it fits into the constraint.
+    fn new_inner(address: Word, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
         let (end, of) = (address as usize).overflowing_add(size);
         let range = address as usize..end;
-        if of || range.end as Word > VM_MAX_RAM {
+        if of || !constraint.contains(&(range.end as Word)) || range.is_empty() {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self(range))

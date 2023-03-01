@@ -1,11 +1,12 @@
 //! [`Interpreter`] implementation
 
 use crate::call::CallFrame;
+use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::{Flags, PanicReason, RegId};
+use fuel_asm::{Flags, PanicReason};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -110,19 +111,6 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
-    /// Contents of the flag register
-    pub(crate) fn flags(&self) -> Flags {
-        Flags::from_bits_truncate(self.registers[RegId::FLAG])
-    }
-
-    pub(crate) fn is_unsafe_math(&self) -> bool {
-        self.flags().contains(Flags::UNSAFEMATH)
-    }
-
-    pub(crate) fn is_wrapping(&self) -> bool {
-        self.flags().contains(Flags::WRAPPING)
-    }
-
     /// The current transaction.
     pub fn transaction(&self) -> &Tx {
         &self.tx
@@ -157,6 +145,18 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+}
+
+pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
+    Flags::from_bits_truncate(*flag)
+}
+
+pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
+    flags(flag).contains(Flags::WRAPPING)
+}
+
+pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
+    flags(flag).contains(Flags::UNSAFEMATH)
 }
 
 #[cfg(feature = "profile-gas")]

@@ -1,6 +1,6 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::{ExecutableTransaction, Interpreter};
+use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 
@@ -122,20 +122,7 @@ where
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
                 let (a, b, c) = exp.unpack();
-                self.alu_boolean_overflow(
-                    a.into(),
-                    |l, r| {
-                        if let Ok(expo) = u32::try_from(r) {
-                            Word::overflowing_pow(l, expo)
-                        } else if l < 2 {
-                            (l, false)
-                        } else {
-                            (0, true)
-                        }
-                    },
-                    r!(b),
-                    r!(c),
-                )?;
+                self.alu_boolean_overflow(a.into(), alu::exp, r!(b), r!(c))?;
             }
 
             Instruction::EXPI(expi) => {
@@ -458,7 +445,7 @@ where
             Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs.bhei)?;
                 let a = bhei.unpack();
-                self.set_block_height(a.into())?;
+                self.block_height(a.into())?;
             }
 
             Instruction::BHSH(bhsh) => {

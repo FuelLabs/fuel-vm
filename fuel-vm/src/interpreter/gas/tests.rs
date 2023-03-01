@@ -13,7 +13,7 @@ struct GasChargeOutput {
 }
 #[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 0} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "zero")]
 #[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 1} => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "no gas")]
-#[test_case(GasChargeInput{cgas: 2, ggas: 0, dependent_factor: 1} => Err(RuntimeError::Recoverable(PanicReason::GlobalGasLessThanContext)); "global gas less than context")]
+#[test_case(GasChargeInput{cgas: 2, ggas: 0, dependent_factor: 1} => matches Err(RuntimeError::Halt(_)); "global gas less than context")]
 #[test_case(GasChargeInput{cgas: 0, ggas: 2, dependent_factor: 1} => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "no call gas")]
 #[test_case(GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just enough")]
 #[test_case(GasChargeInput{cgas: 10, ggas: 15, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 9, ggas: 14}); "heaps")]

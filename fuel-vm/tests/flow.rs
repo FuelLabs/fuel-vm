@@ -492,7 +492,7 @@ fn nested_call_limit() {
         maturity,
         script,
         script_data,
-        vec![input.clone()],
+        vec![input],
         vec![output],
         vec![],
     )

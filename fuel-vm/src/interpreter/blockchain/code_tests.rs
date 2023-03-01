@@ -26,7 +26,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
         .unwrap();
 
     let input_contracts = vec![contract_id];
-    let input = LoadContractCodeInput {
+    let input = LoadContractCodeCtx {
         contract_max_size: 100,
         storage: &storage,
         memory: &mut memory,

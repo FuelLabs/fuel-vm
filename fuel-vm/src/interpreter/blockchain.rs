@@ -54,7 +54,7 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input = LoadContractCodeInput {
+        let input = LoadContractCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
             contract_max_size: self.params.contract_max_size,
@@ -252,7 +252,7 @@ where
     }
 }
 
-struct LoadContractCodeInput<'vm, S, I> {
+struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
@@ -265,7 +265,7 @@ struct LoadContractCodeInput<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> LoadContractCodeInput<'vm, S, I> {
+impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt

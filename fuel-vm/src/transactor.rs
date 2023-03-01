@@ -30,6 +30,7 @@ where
 {
     /// Transactor constructor
     pub fn new(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
+        dbg!(core::mem::size_of::<Interpreter<S, Tx>>());
         Interpreter::with_storage(storage, params, gas_costs).into()
     }
 

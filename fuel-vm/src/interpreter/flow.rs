@@ -278,7 +278,14 @@ where
     }
 
     pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
+        let sp: u64;
+        unsafe {
+            core::arch::asm!("mov x0, sp", out("x0") sp, options(nomem));
+        }
+        println!("A: {sp:#x}");
+
         self._prepare_call(a, b, c, d)?;
+
         self.run_call()
     }
 }

@@ -474,7 +474,9 @@ where
             }
 
             Instruction::CALL(call) => {
+                
                 let (a, b, c, d) = call.unpack();
+                println!("CALL");
                 let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
                 // raise revert state to halt execution for the callee
                 if let ProgramState::Revert(ra) = state {

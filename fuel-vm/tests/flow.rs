@@ -461,30 +461,13 @@ fn nested_call_limit() {
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
     let output = Output::contract(0, rng.gen(), rng.gen());
 
-    let mut script_ops = vec![
-        op::movi(0x10, 0),
+    let script: Vec<u8> = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
         op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
         op::ret(RegId::ONE),
-    ];
-
-    let script: Vec<u8> = script_ops.clone().into_iter().collect();
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        vec![],
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset();
-    script_ops[0] = op::movi(0x10, script_data_offset as Immediate18);
-
-    let script: Vec<u8> = script_ops.clone().into_iter().collect();
+    ]
+    .into_iter()
+    .collect();
     let script_data = Call::new(contract, 0, 1000).to_bytes();
     let tx = Transaction::script(
         gas_price,

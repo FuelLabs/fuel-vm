@@ -89,7 +89,7 @@ impl Default for Input {
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow))
     ; "address + call abi length overflows memory"
 )]
 #[test_case(

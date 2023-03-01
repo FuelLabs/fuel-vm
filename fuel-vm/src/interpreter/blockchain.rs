@@ -716,10 +716,8 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
         let memory_constraint = recipient_address.end() as Word
-            ..(arith::add_word(
-                recipient_address.end() as Word,
-                self.max_message_data_length.min(MEM_MAX_ACCESS_SIZE),
-            )?);
+            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
+                .min(MEM_MAX_ACCESS_SIZE));
         let call_abi = CheckedMemRange::new_with_constraint(
             recipient_address.end() as Word,
             self.call_abi_len as usize,

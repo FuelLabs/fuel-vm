@@ -234,13 +234,13 @@ impl CallFrame {
         &self.asset_id
     }
 
-    /// Set the value of the context gas for this call frame.
-    pub fn set_context_gas(&mut self) -> &mut Word {
+    /// Returns the mutable value of the context gas for this call frame.
+    pub fn context_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::CGAS]
     }
 
-    /// Set the value of the global gas for this call frame.
-    pub fn set_global_gas(&mut self) -> &mut Word {
+    /// Returns the mutable value of the global gas for this call frame.
+    pub fn global_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::GGAS]
     }
 }

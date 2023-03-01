@@ -1,9 +1,12 @@
 use super::Interpreter;
 use crate::arith;
 use crate::constraints::reg_key::*;
-use crate::constraints::ProfileCapture;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
+use crate::prelude::Bug;
+use crate::prelude::BugId;
+use crate::prelude::BugVariant;
+use crate::profiler::Profiler;
 
 use fuel_asm::PanicReason;
 use fuel_asm::RegId;
@@ -89,7 +92,9 @@ pub(crate) fn gas_charge(
 }
 
 fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
-    if gas > *cgas {
+    if *cgas > *ggas {
+        Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
+    } else if gas > *cgas {
         *ggas = arith::sub_word(*ggas, *cgas)?;
         *cgas = 0;
 
@@ -107,7 +112,7 @@ pub(crate) struct ProfileGas<'a> {
     pub pc: Reg<'a, PC>,
     pub is: Reg<'a, IS>,
     pub current_contract: Option<ContractId>,
-    pub profiler: &'a mut dyn ProfileCapture,
+    pub profiler: &'a mut Profiler,
 }
 
 impl<'a> ProfileGas<'a> {

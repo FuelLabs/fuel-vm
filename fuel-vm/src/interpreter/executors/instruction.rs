@@ -1,6 +1,6 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::{ExecutableTransaction, Interpreter, alu};
+use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
 use crate::state::{ExecuteState, ProgramState};
 use crate::storage::InterpreterStorage;
 

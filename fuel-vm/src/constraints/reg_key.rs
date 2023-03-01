@@ -17,6 +17,7 @@ use crate::prelude::RuntimeError;
 
 #[cfg(test)]
 mod tests;
+
 #[derive(Debug, PartialEq, Eq)]
 /// Mutable reference to a register value at a given index.
 pub struct RegMut<'r, const INDEX: u8>(&'r mut Word);
@@ -358,56 +359,5 @@ impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_SYSTEM_COUNT] {
             *zero.0, *one.0, *of.0, *pc.0, *ssp.0, *sp.0, *fp.0, *hp.0, *err.0, *ggas.0, *cgas.0, *bal.0, *is.0,
             *ret.0, *retl.0, *flag.0,
         ]
-    }
-}
-
-#[test]
-fn can_split() {
-    let mut reg: [Word; VM_REGISTER_COUNT] = std::iter::successors(Some(0), |x| Some(x + 1))
-        .take(VM_REGISTER_COUNT)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-
-    let (r, w) = split_registers(&mut reg);
-
-    let SystemRegisters {
-        zero,
-        one,
-        of,
-        pc,
-        ssp,
-        sp,
-        fp,
-        hp,
-        err,
-        ggas,
-        cgas,
-        bal,
-        is,
-        ret,
-        retl,
-        flag,
-    } = &r;
-
-    assert_eq!(*zero, RegMut::<ZERO>(&mut (ZERO as u64)));
-    assert_eq!(*one, RegMut::<ONE>(&mut (ONE as u64)));
-    assert_eq!(*of, RegMut::<OF>(&mut (OF as u64)));
-    assert_eq!(*pc, RegMut::<PC>(&mut (PC as u64)));
-    assert_eq!(*ssp, RegMut::<SSP>(&mut (SSP as u64)));
-    assert_eq!(*sp, RegMut::<SP>(&mut (SP as u64)));
-    assert_eq!(*fp, RegMut::<FP>(&mut (FP as u64)));
-    assert_eq!(*hp, RegMut::<HP>(&mut (HP as u64)));
-    assert_eq!(*err, RegMut::<ERR>(&mut (ERR as u64)));
-    assert_eq!(*ggas, RegMut::<GGAS>(&mut (GGAS as u64)));
-    assert_eq!(*cgas, RegMut::<CGAS>(&mut (CGAS as u64)));
-    assert_eq!(*bal, RegMut::<BAL>(&mut (BAL as u64)));
-    assert_eq!(*is, RegMut::<IS>(&mut (IS as u64)));
-    assert_eq!(*ret, RegMut::<RET>(&mut (RET as u64)));
-    assert_eq!(*retl, RegMut::<RETL>(&mut (RETL as u64)));
-    assert_eq!(*flag, RegMut::<FLAG>(&mut (FLAG as u64)));
-
-    for i in 0..VM_REGISTER_PROGRAM_COUNT {
-        assert_eq!(w.0[i], i as u64 + 16);
     }
 }

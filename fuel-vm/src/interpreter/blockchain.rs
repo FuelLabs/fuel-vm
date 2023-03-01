@@ -7,10 +7,11 @@ use super::internal::{
 use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
 use crate::call::CallFrame;
-use crate::constraints::{reg_key::*, CheckedMemRange, CheckedMemValue, ProfileCapture};
+use crate::constraints::{reg_key::*, CheckedMemRange, CheckedMemValue};
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
+use crate::prelude::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 use crate::{arith, consts::*};
 
@@ -543,7 +544,7 @@ struct CodeSizeInput<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     gas_cost: DependentCost,
-    profiler: &'vm mut dyn ProfileCapture,
+    profiler: &'vm mut Profiler,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,

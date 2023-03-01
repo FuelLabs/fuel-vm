@@ -22,11 +22,23 @@ pub mod util;
 
 #[cfg(feature = "profile-any")]
 pub mod profiler;
+
 #[cfg(not(feature = "profile-any"))]
 /// Placeholder
 pub mod profiler {
-    /// Placeholder
-    pub type Profiler = ();
+    use crate::constraints::InstructionLocation;
+
+    /// Placeholder profiler.
+    #[derive(Default, Debug, Clone)]
+    pub struct Profiler;
+
+    impl Profiler {
+        /// Set the current coverage location.
+        pub fn set_coverage(&mut self, _location: InstructionLocation) {}
+
+        /// Add gas to the current coverage location.
+        pub fn add_gas(&mut self, _location: InstructionLocation, _gas_use: u64) {}
+    }
 }
 
 // Fully re-export fuel dependencies
@@ -85,9 +97,10 @@ pub mod prelude {
     #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
     pub use crate::util::gas_profiling::GasProfiler;
 
+    pub use crate::profiler::Profiler;
     #[cfg(feature = "profile-any")]
     pub use crate::profiler::{
         CoverageProfilingData, GasProfilingData, InstructionLocation, PerLocationIter, PerLocationKeys,
-        PerLocationValues, ProfileReceiver, Profiler, ProfilingData, StderrReceiver,
+        PerLocationValues, ProfileReceiver, ProfilingData, StderrReceiver,
     };
 }

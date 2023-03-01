@@ -18,17 +18,6 @@ pub struct CheckedMemRange(core::ops::Range<usize>);
 /// This range can be used to read a value of type `T` from memory.
 pub struct CheckedMemValue<T>(CheckedMemRange, core::marker::PhantomData<T>);
 
-/// A trait to capture profiling information during runtime.
-pub trait ProfileCapture {
-    /// Set the current coverage location.
-    fn set_coverage(&mut self, _location: InstructionLocation) {}
-    /// Add gas to the current coverage location.
-    fn add_gas(&mut self, _location: InstructionLocation, _amount: u64) {}
-}
-
-impl ProfileCapture for () {}
-impl ProfileCapture for &'static () {}
-
 impl<T> CheckedMemValue<T> {
     /// Create a new const sized memory range.
     pub fn new<const SIZE: usize>(address: Word) -> Result<Self, RuntimeError> {

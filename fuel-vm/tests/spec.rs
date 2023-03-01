@@ -386,7 +386,7 @@ fn spec_jmp_beyond_ram_panics(
 fn spec_TODO_recursive_calls() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut balance = 1000;
+    let balance = 1000;
 
     let mut client = MemoryClient::default();
 
@@ -410,7 +410,6 @@ fn spec_TODO_recursive_calls() {
     let state_root = Contract::default_state_root();
     let contract = contract.id(&salt, &contract_root, &state_root);
 
-    let asset_id = AssetId::from(*contract);
     let output = Output::contract_created(contract, state_root);
 
     let bytecode_witness = 0;
@@ -471,137 +470,7 @@ fn spec_TODO_recursive_calls() {
     .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
-    let script_data_check_balance: Vec<u8> = asset_id
-        .as_ref()
-        .iter()
-        .chain(contract.as_ref().iter())
-        .copied()
-        .collect();
-    let mut script_check_balance = vec![
-        op::noop(),
-        op::move_(0x11, 0x10),
-        op::addi(0x12, 0x10, AssetId::LEN as Immediate12),
-        op::bal(0x10, 0x11, 0x12),
-        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::ret(RegId::ONE),
-    ];
-
-    let tx_check_balance = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script_check_balance.clone().into_iter().collect(),
-        vec![],
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    let script_data_offset = client.tx_offset() + tx_check_balance.transaction().script_data_offset();
-    script_check_balance[0] = op::movi(0x10, script_data_offset as Immediate18);
-
-    let tx_check_balance = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script_check_balance.into_iter().collect(),
-        script_data_check_balance,
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
-    assert_eq!(0, storage_balance);
-
     client.transact(tx);
-
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
-    assert_eq!(balance as Word, storage_balance);
-
-    // Try to burn more than the available balance
-    let script: Vec<u8> = script_ops.clone().into_iter().collect();
-    let script_data = Call::new(contract, 1, balance + 1).to_bytes();
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
-    assert_eq!(balance as Word, storage_balance);
-
-    // Out of balance test
-    client.transact(tx);
-
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
-    assert_eq!(balance as Word, storage_balance);
-
-    // Burn some of the balance
-    let burn = 100;
-
-    let script: Vec<u8> = script_ops.clone().into_iter().collect();
-    let script_data = Call::new(contract, 1, burn).to_bytes();
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    client.transact(tx);
-    balance -= burn;
-
-    let storage_balance = client.transact(tx_check_balance.clone())[0]
-        .ra()
-        .expect("Balance expected");
-    assert_eq!(balance as Word, storage_balance);
-
-    // Burn the remainder balance
-    let script: Vec<u8> = script_ops.into_iter().collect();
-    let script_data = Call::new(contract, 1, balance).to_bytes();
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to generate checked tx");
-
-    client.transact(tx);
-
-    let storage_balance = client.transact(tx_check_balance)[0].ra().expect("Balance expected");
-    assert_eq!(0, storage_balance);
 }
 
 

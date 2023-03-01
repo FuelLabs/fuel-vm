@@ -75,7 +75,7 @@ where
 
     pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        let input = CodeCopyInput {
+        let input = CodeCopyCtx {
             memory: &mut self.memory,
             input_contracts: self.tx.input_contracts(),
             panic_context: &mut self.panic_context,
@@ -91,15 +91,15 @@ where
         block_hash(&self.storage, &mut self.memory, owner, self.registers.pc_mut(), a, b)
     }
 
-    pub(crate) fn set_block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
+    pub(crate) fn block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        set_block_height(&self.context, pc, result)
+        block_height(&self.context, pc, result)
     }
 
     pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        block_proposer(&self.storage, &mut self.memory, owner, self.registers.pc_mut(), a)
+        coinbase(&self.storage, &mut self.memory, owner, self.registers.pc_mut(), a)
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
@@ -111,7 +111,7 @@ where
         let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
         let (SystemRegisters { cgas, ggas, pc, is, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        let input = CodeSizeInput {
+        let input = CodeSizeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
             gas_cost: self.gas_costs.csiz,
@@ -143,7 +143,7 @@ where
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, pc, .. }, mut w) = split_registers(&mut self.registers);
         let (result, got_result) = w
-            .split(WriteRegKey::try_from(ra)?, WriteRegKey::try_from(rb)?)
+            .get_mut_two(WriteRegKey::try_from(ra)?, WriteRegKey::try_from(rb)?)
             .ok_or(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))?;
         let Self {
             ref mut storage,
@@ -152,7 +152,7 @@ where
             ..
         } = self;
         state_read_word(
-            StateWordInput {
+            StateWordCtx {
                 storage,
                 memory,
                 context,
@@ -191,7 +191,7 @@ where
             ..
         } = self;
         state_write_word(
-            StateWordInput {
+            StateWordCtx {
                 storage,
                 memory,
                 context,
@@ -220,7 +220,7 @@ where
     }
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let block_height = self.block_height()?;
+        let block_height = self.get_block_height()?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         timestamp(&self.storage, block_height, pc, result, b)
@@ -228,7 +228,7 @@ where
 
     pub(crate) fn message_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
-        let input = MessageOutputInput {
+        let input = MessageOutputCtx {
             max_message_data_length: self.params.max_message_data_length,
             memory: &mut self.memory,
             tx_offset: self.params.tx_offset(),
@@ -419,7 +419,7 @@ where
     inc_pc(pc)
 }
 
-struct CodeCopyInput<'vm, S, I> {
+struct CodeCopyCtx<'vm, S, I> {
     memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
@@ -428,7 +428,7 @@ struct CodeCopyInput<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> CodeCopyInput<'vm, S, I> {
+impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
     pub(crate) fn code_copy(mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError>
     where
         I: Iterator<Item = &'vm ContractId>,
@@ -479,7 +479,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     inc_pc(pc)
 }
 
-pub(crate) fn set_block_height(context: &Context, pc: RegMut<PC>, result: &mut Word) -> Result<(), RuntimeError> {
+pub(crate) fn block_height(context: &Context, pc: RegMut<PC>, result: &mut Word) -> Result<(), RuntimeError> {
     context
         .block_height()
         .map(|h| h as Word)
@@ -489,7 +489,7 @@ pub(crate) fn set_block_height(context: &Context, pc: RegMut<PC>, result: &mut W
     inc_pc(pc)
 }
 
-pub(crate) fn block_proposer<S: InterpreterStorage>(
+pub(crate) fn coinbase<S: InterpreterStorage>(
     storage: &S,
     memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
@@ -540,7 +540,7 @@ where
     inc_pc(pc)
 }
 
-struct CodeSizeInput<'vm, S> {
+struct CodeSizeCtx<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     gas_cost: DependentCost,
@@ -552,7 +552,7 @@ struct CodeSizeInput<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> CodeSizeInput<'vm, S> {
+impl<'vm, S> CodeSizeCtx<'vm, S> {
     pub(crate) fn code_size(self, result: &mut Word, b: Word) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>,
@@ -583,7 +583,7 @@ impl<'vm, S> CodeSizeInput<'vm, S> {
     }
 }
 
-pub(crate) struct StateWordInput<'vm, S> {
+pub(crate) struct StateWordCtx<'vm, S> {
     pub storage: &'vm mut S,
     pub memory: &'vm [u8; MEM_SIZE],
     pub context: &'vm Context,
@@ -592,13 +592,13 @@ pub(crate) struct StateWordInput<'vm, S> {
 }
 
 pub(crate) fn state_read_word<S: InterpreterStorage>(
-    StateWordInput {
+    StateWordCtx {
         storage,
         memory,
         context,
         fp,
         pc,
-    }: StateWordInput<S>,
+    }: StateWordCtx<S>,
     result: &mut Word,
     got_result: &mut Word,
     c: Word,
@@ -629,13 +629,13 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 }
 
 pub(crate) fn state_write_word<S: InterpreterStorage>(
-    StateWordInput {
+    StateWordCtx {
         storage,
         memory,
         context,
         fp,
         pc,
-    }: StateWordInput<S>,
+    }: StateWordCtx<S>,
     a: Word,
     exists: &mut Word,
     c: Word,
@@ -684,7 +684,7 @@ pub(crate) fn timestamp(
     inc_pc(pc)
 }
 
-struct MessageOutputInput<'vm, Tx> {
+struct MessageOutputCtx<'vm, Tx> {
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
@@ -703,7 +703,7 @@ struct MessageOutputInput<'vm, Tx> {
     amount_coins_to_send: Word,
 }
 
-impl<Tx> MessageOutputInput<'_, Tx> {
+impl<Tx> MessageOutputCtx<'_, Tx> {
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,

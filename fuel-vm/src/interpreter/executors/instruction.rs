@@ -445,7 +445,7 @@ where
             Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs.bhei)?;
                 let a = bhei.unpack();
-                self.set_block_height(a.into())?;
+                self.block_height(a.into())?;
             }
 
             Instruction::BHSH(bhsh) => {

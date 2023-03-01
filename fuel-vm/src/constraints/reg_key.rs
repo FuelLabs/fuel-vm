@@ -45,10 +45,10 @@ impl WriteRegKey {
     }
 }
 
-pub(crate) fn is_register_writable(ra: &RegisterId) -> Result<(), RuntimeError> {
+pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), RuntimeError> {
     const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
     const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
-    if RANGE.contains(ra) {
+    if RANGE.contains(r) {
         Ok(())
     } else {
         Err(RuntimeError::Recoverable(PanicReason::ReservedRegisterNotWritable))
@@ -110,7 +110,7 @@ impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
 }
 
 macro_rules! impl_keys {
-    ( $($i:ident, $f:ident, $f_mut:ident)* ) => {
+    ( $($i:ident, $f:ident $(,$f_mut:ident)?)* ) => {
         $(
             #[doc = "Register index key for use with Reg and RegMut."]
             pub const $i: u8 = RegId::$i.to_u8();
@@ -120,9 +120,15 @@ macro_rules! impl_keys {
         $(
             #[doc = "Get register reference for this key."]
             fn $f(&self) -> Reg<'_, $i>;
-
+        )*
+        }
+        #[doc = "Get register mutable reference by name."]
+        pub trait GetRegMut {
+        $(
+            $(
             #[doc = "Get mutable register reference for this key."]
             fn $f_mut(&mut self) -> RegMut<'_, $i>;
+            )?
         )*
         }
         impl GetReg for [Word; VM_REGISTER_COUNT] {
@@ -130,18 +136,23 @@ macro_rules! impl_keys {
             fn $f(&self) -> Reg<'_, $i> {
                 Reg(&self[$i as usize])
             }
-
+        )*
+        }
+        impl GetRegMut for [Word; VM_REGISTER_COUNT] {
+        $(
+            $(
             fn $f_mut(&mut self) -> RegMut<'_, $i> {
                 RegMut(&mut self[$i as usize])
             }
+            )?
         )*
         }
     };
 }
 
 impl_keys! {
-    ZERO, zero, zero_mut
-    ONE, one, one_mut
+    ZERO, zero
+    ONE, one
     OF, of, of_mut
     PC, pc, pc_mut
     SSP, ssp, ssp_mut
@@ -226,17 +237,17 @@ pub(crate) fn split_registers(
 }
 
 pub(crate) fn copy_registers(
-    read_registers: &SystemRegistersRef<'_>,
-    write_registers: &ProgramRegistersRef<'_>,
+    system_registers: &SystemRegistersRef<'_>,
+    program_registers: &ProgramRegistersRef<'_>,
 ) -> [Word; VM_REGISTER_COUNT] {
     let mut out = [0u64; VM_REGISTER_COUNT];
-    out[..VM_REGISTER_SYSTEM_COUNT].copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(read_registers));
-    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(write_registers.0);
+    out[..VM_REGISTER_SYSTEM_COUNT].copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(system_registers));
+    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(program_registers.0);
     out
 }
 
 impl<'r> ProgramRegisters<'r> {
-    pub fn split(&mut self, a: WriteRegKey, b: WriteRegKey) -> Option<(&mut Word, &mut Word)> {
+    pub fn get_mut_two(&mut self, a: WriteRegKey, b: WriteRegKey) -> Option<(&mut Word, &mut Word)> {
         match a.cmp(&b) {
             std::cmp::Ordering::Less => {
                 let a = a.translate();
@@ -317,8 +328,8 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
 
 impl TryFrom<RegisterId> for WriteRegKey {
     type Error = RuntimeError;
-    fn try_from(ra: RegisterId) -> Result<Self, Self::Error> {
-        Self::new(ra)
+    fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
+        Self::new(r)
     }
 }
 

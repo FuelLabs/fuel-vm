@@ -5,6 +5,9 @@ use fuel_types::ContractId;
 
 use crate::consts::MEM_SIZE;
 use crate::consts::VM_MAX_RAM;
+use crate::prelude::Bug;
+use crate::prelude::BugId;
+use crate::prelude::BugVariant;
 use crate::prelude::RuntimeError;
 
 pub mod reg_key;
@@ -78,7 +81,10 @@ impl CheckedMemRange {
         size: usize,
         constraint: core::ops::Range<Word>,
     ) -> Result<Self, RuntimeError> {
-        Self::new_inner(address, size, constraint.start..constraint.end.min(VM_MAX_RAM))
+        if constraint.end > VM_MAX_RAM {
+            return Err(Bug::new(BugId::ID009, BugVariant::InvalidMemoryConstraint).into());
+        }
+        Self::new_inner(address, size, constraint.start..constraint.end)
     }
 
     fn new_inner(address: Word, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {

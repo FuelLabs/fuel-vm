@@ -182,7 +182,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.params().tx_offset()
     }
 
-    pub(crate) fn block_height(&self) -> Result<u32, PanicReason> {
+    pub(crate) fn get_block_height(&self) -> Result<u32, PanicReason> {
         self.context().block_height().ok_or(PanicReason::TransactionValidity)
     }
 }

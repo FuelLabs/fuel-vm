@@ -24,7 +24,7 @@ where
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        let input = ContractBalanceInput {
+        let input = ContractBalanceCtx {
             storage: &self.storage,
             memory: &mut self.memory,
             pc,
@@ -36,7 +36,7 @@ where
 
     pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
-        let input = TransferInput {
+        let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
             context: &self.context,
@@ -53,7 +53,7 @@ where
 
     pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
-        let input = TransferInput {
+        let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
             context: &self.context,
@@ -85,7 +85,7 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
-struct ContractBalanceInput<'vm, S, I> {
+struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     pc: RegMut<'vm, PC>,
@@ -93,7 +93,7 @@ struct ContractBalanceInput<'vm, S, I> {
     panic_context: &'vm mut PanicContext,
 }
 
-impl<'vm, S, I> ContractBalanceInput<'vm, S, I> {
+impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
     pub(crate) fn contract_balance(mut self, result: &mut Word, b: Word, c: Word) -> Result<(), RuntimeError>
     where
         I: Iterator<Item = &'vm ContractId>,
@@ -132,7 +132,7 @@ impl<'vm, S, I> ContractBalanceInput<'vm, S, I> {
         inc_pc(self.pc)
     }
 }
-struct TransferInput<'vm, S, Tx> {
+struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
     memory: &'vm mut [u8; MEM_SIZE],
     context: &'vm Context,
@@ -144,7 +144,7 @@ struct TransferInput<'vm, S, Tx> {
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
 }
-impl<'vm, S, Tx> TransferInput<'vm, S, Tx> {
+impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     pub(crate) fn transfer(
         self,
         panic_context: &mut PanicContext,

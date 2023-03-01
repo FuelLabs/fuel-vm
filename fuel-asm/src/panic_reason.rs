@@ -79,8 +79,8 @@ pub enum PanicReason {
     ContractIdAlreadyDeployed = 0x22,
     /// The loaded contract mismatch expectations.
     ContractMismatch = 0x23,
-    /// RESERV24
-    RESERV24 = 0x24,
+    /// No more nested calls are allowed.
+    NestedCallLimitReached = 0x24,
     /// RESERV25
     RESERV25 = 0x25,
     /// RESERV26

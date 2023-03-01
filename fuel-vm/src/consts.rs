@@ -13,6 +13,11 @@ pub const VM_REGISTER_SYSTEM_COUNT: usize = 16;
 /// The number of writable registers.
 pub const VM_REGISTER_PROGRAM_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_SYSTEM_COUNT;
 
+/// Max amount of nested call contexts.
+/// Used to protect against stack overflows, since the CALL
+/// instruction is currently implemented using recursion.
+pub const VM_MAX_NESTED_CALLS: usize = 64;
+
 /* MEMORY TYPES */
 
 /// Length of a word, in bytes

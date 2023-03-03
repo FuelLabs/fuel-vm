@@ -16,6 +16,9 @@ use fuel_types::{Address, AssetId, ContractId};
 
 use std::borrow::Cow;
 
+#[cfg(test)]
+mod tests;
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,

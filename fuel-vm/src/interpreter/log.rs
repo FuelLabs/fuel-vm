@@ -10,6 +10,9 @@ use fuel_crypto::Hasher;
 use fuel_tx::{Receipt, Script};
 use fuel_types::Word;
 
+#[cfg(test)]
+mod tests;
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,

@@ -13,6 +13,9 @@ use fuel_tx::field::{
 use fuel_tx::{Input, InputRepr, Output, OutputRepr, UtxoId};
 use fuel_types::{Immediate12, Immediate18, RegisterId, Word};
 
+#[cfg(test)]
+mod tests;
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,

@@ -10,6 +10,9 @@ use fuel_asm::PanicReason;
 use fuel_crypto::{Hasher, Message, PublicKey, Signature};
 use fuel_types::{Bytes32, Bytes64, Word};
 
+#[cfg(test)]
+mod tests;
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,

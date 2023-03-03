@@ -27,6 +27,12 @@ use core::slice;
 use std::ops::Range;
 
 #[cfg(test)]
+mod code_tests;
+#[cfg(test)]
+mod other_tests;
+#[cfg(test)]
+mod smo_tests;
+#[cfg(test)]
 mod test;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -48,7 +54,7 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input = LoadContractCode {
+        let input = LoadContractCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
             contract_max_size: self.params.contract_max_size,
@@ -246,7 +252,7 @@ where
     }
 }
 
-struct LoadContractCode<'vm, S, I> {
+struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     input_contracts: I,
@@ -259,7 +265,7 @@ struct LoadContractCode<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> LoadContractCode<'vm, S, I> {
+impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt
@@ -710,10 +716,8 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
         let memory_constraint = recipient_address.end() as Word
-            ..(arith::add_word(
-                recipient_address.end() as Word,
-                self.max_message_data_length.min(MEM_MAX_ACCESS_SIZE),
-            )?);
+            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
+                .min(MEM_MAX_ACCESS_SIZE));
         let call_abi = CheckedMemRange::new_with_constraint(
             recipient_address.end() as Word,
             self.call_abi_len as usize,

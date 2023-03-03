@@ -27,6 +27,10 @@ use fuel_types::{AssetId, Bytes32, ContractId, Word};
 use std::{cmp, io};
 
 #[cfg(test)]
+mod jump_tests;
+#[cfg(test)]
+mod ret_tests;
+#[cfg(test)]
 mod tests;
 
 impl<S, Tx> Interpreter<S, Tx>

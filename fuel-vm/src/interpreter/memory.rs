@@ -336,11 +336,8 @@ pub(crate) fn store_byte(
     c: Word,
 ) -> Result<(), RuntimeError> {
     let (ac, overflow) = a.overflowing_add(c);
-
-    if overflow
-        || ac >= VM_MAX_RAM
-        || !(owner.has_ownership_stack(ac..(ac + 1)) || owner.has_ownership_heap(ac..(ac + 1)))
-    {
+    let range = ac..(ac + 1);
+    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range)) {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         memory[ac as usize] = b as u8;
@@ -495,14 +492,14 @@ impl OwnershipRegisters {
         }
 
         if (self.ssp..self.sp).contains(&start_incl) {
-            return dbg!(self.has_ownership_stack(range));
+            return self.has_ownership_stack(&range);
         }
 
-        self.has_ownership_heap(range)
+        self.has_ownership_heap(&range)
     }
 
     /// Zero-length range is never owned
-    pub(crate) fn has_ownership_stack(&self, range: Range<Word>) -> bool {
+    pub(crate) fn has_ownership_stack(&self, range: &Range<Word>) -> bool {
         if range.is_empty() {
             return false;
         }
@@ -515,7 +512,7 @@ impl OwnershipRegisters {
     }
 
     /// Zero-length range is never owned
-    pub(crate) fn has_ownership_heap(&self, range: Range<Word>) -> bool {
+    pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
         // TODO implement fp->hp and (addr, size) validations
         // fp->hp
         // it means $hp from the previous context, i.e. what's saved in the
@@ -524,8 +521,6 @@ impl OwnershipRegisters {
         if range.is_empty() {
             return false;
         }
-
-        dbg!(self.hp, self.prev_hp, self.context.is_external(), &range);
 
         if range.start < self.hp {
             return false;
@@ -536,8 +531,6 @@ impl OwnershipRegisters {
         } else {
             self.prev_hp
         };
-
-        dbg!(self.hp != heap_end, range.end <= heap_end);
 
         self.hp != heap_end && range.end <= heap_end
     }

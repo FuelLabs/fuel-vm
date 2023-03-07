@@ -117,11 +117,9 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
         } else {
             panic!("Expected tx panic when cause_error is set");
         }
+    } else if let Receipt::ScriptResult { result, .. } = receipts.pop().unwrap() {
+        assert!(matches!(result, ScriptExecutionResult::Success));
     } else {
-        if let Receipt::ScriptResult { result, .. } = receipts.pop().unwrap() {
-            assert!(matches!(result, ScriptExecutionResult::Success));
-        } else {
-            panic!("Expected tx success when cause_error is not set");
-        }
+        panic!("Expected tx success when cause_error is not set");
     }
 }

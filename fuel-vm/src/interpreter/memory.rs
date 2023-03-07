@@ -273,7 +273,7 @@ where
 {
     let (result, overflow) = f(*sp, v);
 
-    if overflow || result > *hp {
+    if overflow || result >= *hp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *sp = result;

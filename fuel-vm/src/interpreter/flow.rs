@@ -15,7 +15,6 @@ use crate::error::RuntimeError;
 use crate::gas::DependentCost;
 use crate::interpreter::PanicContext;
 use crate::profiler::Profiler;
-use crate::state::ProgramState;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 
 use fuel_asm::{Instruction, InstructionResult, RegId};

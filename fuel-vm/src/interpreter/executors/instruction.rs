@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
-use crate::state::{ExecuteState, ProgramState};
+use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};

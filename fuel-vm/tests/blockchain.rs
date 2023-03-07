@@ -70,8 +70,8 @@ fn state_read_write() {
         op::jnei(0x10, 0x31, 45),                               // (1, b) Unpack arg into 4x16 and xor into state
         op::movi(0x20, 32),                                     // r[0x20]      := 32
         op::aloc(0x20),                                         // aloc            0x20
-        op::addi(0x20, RegId::HP, 1),                       // r[0x20]      := $hp+1
-        op::srwq(0x20, SET_STATUS_REG, 0x11, RegId::ONE),   // m[0x20,32]   := s[m[b, 32], 32]
+        op::move_(0x20, RegId::HP),                             // r[0x20]      := $hp
+        op::srwq(0x20, SET_STATUS_REG, 0x11, RegId::ONE),   // m[0x20,32]       := s[m[b, 32], 32]
         op::lw(0x21, 0x11, 4),                                  // r[0x21]      := m[b+32, 8]
         op::log(0x21, 0x00, 0x00, 0x00),
         op::srli(0x22, 0x21, 48),                               // r[0x22]      := r[0x21] >> 48
@@ -348,15 +348,14 @@ fn load_external_contract_code() {
         let index = i as Immediate12;
         let value = *byte as Immediate12;
         load_contract.extend([
-            op::xor(reg_a, reg_a, reg_a),        // r[a] := 0
-            op::ori(reg_a, reg_a, value),        // r[a] := r[a] | value
-            op::sb(RegId::HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+            op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
+            op::ori(reg_a, reg_a, value),    // r[a] := r[a] | value
+            op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
         ]);
     }
 
     load_contract.extend([
         op::move_(reg_a, RegId::HP),                      // r[a] := $hp
-        op::addi(reg_a, reg_a, 1),                        // r[a] += 1
         op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
         op::ori(reg_b, reg_b, 12),                        // r[b] += 12 (will be padded to 16)
         op::ldc(reg_a, RegId::ZERO, reg_b),               // Load first two words from the contract
@@ -497,9 +496,9 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
             let index = i as Immediate12;
             let value = *byte as Immediate12;
             load_contract.extend([
-                op::xor(reg_a, reg_a, reg_a),        // r[a] := 0
-                op::ori(reg_a, reg_a, value),        // r[a] := r[a] | value
-                op::sb(RegId::HP, reg_a, index + 1), // m[$hp+index+1] := r[a] (=value)
+                op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
+                op::ori(reg_a, reg_a, value),    // r[a] := r[a] | value
+                op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
             ]);
         }
 
@@ -628,7 +627,6 @@ fn ldc_contract_offset_over_length() {
 
     let load_contract = vec![
         op::move_(reg_a, RegId::HP),                      // r[a] := $hp
-        op::addi(reg_a, reg_a, 1),                        // r[a] += 1
         op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
         op::ori(reg_b, reg_b, 12),                        // r[b] += 12 (will be padded to 16)
         op::ldc(reg_a, reg_a, reg_b),                     // Load first two words from the contract
@@ -803,7 +801,7 @@ fn code_size_b_over_max_ram() {
 fn sww_sets_status() {
     #[rustfmt::skip]
         let program = vec![
-        op::sww(0x30,  SET_STATUS_REG, RegId::ZERO),
+        op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
         op::srw(0x31, SET_STATUS_REG + 1, RegId::ZERO),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
         op::ret(RegId::ONE),
@@ -832,12 +830,12 @@ fn scwq_clears_status_for_range() {
     let program = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::addi(0x31, RegId::HP, 0x5),
+        op::addi(0x31, RegId::HP, 0x4),
         op::addi(0x32, RegId::ONE, 2),
         op::scwq(0x31, SET_STATUS_REG, 0x32),
-        op::addi(0x31, RegId::HP, 0x5),
+        op::addi(0x31, RegId::HP, 0x4),
         op::swwq(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
-        op::addi(0x31, RegId::HP, 0x5),
+        op::addi(0x31, RegId::HP, 0x4),
         op::scwq(0x31, SET_STATUS_REG + 2, 0x32),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, SET_STATUS_REG + 2, 0x00),
         op::ret(RegId::ONE),
@@ -922,11 +920,9 @@ fn swwq_sets_status_with_range() {
     let program = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::addi(0x31, RegId::HP, 0x01),
         op::movi(0x32, 0x2),
-        op::swwq(0x31, SET_STATUS_REG, 0x31, 0x32),
-        op::addi(0x31, RegId::HP, 0x01),
-        op::swwq(0x31, SET_STATUS_REG + 1, 0x31, 0x32),
+        op::swwq(RegId::HP, SET_STATUS_REG, 0x31, 0x32),
+        op::swwq(RegId::HP, SET_STATUS_REG + 1, 0x31, 0x32),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
         op::ret(RegId::ONE),
     ];
@@ -1107,11 +1103,10 @@ fn state_r_qword_c_plus_32_over() {
     let state_read_qword = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::addi(0x31, RegId::HP, 0x01),
         op::xor(reg_a, reg_a, reg_a),
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::srwq(0x31, SET_STATUS_REG, reg_a, RegId::ONE),
+        op::srwq(RegId::HP, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(state_read_qword, ArithmeticOverflow);
@@ -1143,7 +1138,7 @@ fn state_r_qword_c_over_max_ram() {
     let state_read_qword = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::addi(0x31, RegId::HP, 0x01),
+        op::move_(0x31, RegId::HP),
         op::xor(reg_a, reg_a, reg_a),
         op::ori(reg_a, reg_a, 1),
         op::slli(reg_a, reg_a, MAX_MEM_SHL),

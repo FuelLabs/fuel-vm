@@ -301,11 +301,6 @@ where
 
         self._prepare_call(a, b, c, d)
     }
-
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
-        self._prepare_call(a, b, c, d)?;
-        self.run_call()
-    }
 }
 
 #[cfg_attr(test, derive(Default))]

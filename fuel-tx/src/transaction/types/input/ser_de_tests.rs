@@ -32,6 +32,10 @@ fn test_input_serialization() {
             + DATA_SIZE
             + DATA_SIZE
     );
+    assert_eq!(
+        input.serialized_size(),
+        MessageSizesLayout::LEN + DATA_SIZE + DATA_SIZE + DATA_SIZE
+    );
     let bytes = input.to_bytes();
     let mut r = 0..8;
     assert_eq!(bytes[r.clone()], 2u64.to_be_bytes());
@@ -63,14 +67,14 @@ fn test_input_serialization() {
     r.end += 8;
     assert_eq!(bytes[r.clone()], 16u64.to_be_bytes());
     r.start = r.end;
-    r.end += 16;
-    assert_eq!(bytes[r.clone()], [7u8; 16]);
+    r.end += DATA_SIZE;
+    assert_eq!(bytes[r.clone()], [7u8; DATA_SIZE]);
     r.start = r.end;
-    r.end += 16;
-    assert_eq!(bytes[r.clone()], [8u8; 16]);
+    r.end += DATA_SIZE;
+    assert_eq!(bytes[r.clone()], [8u8; DATA_SIZE]);
     r.start = r.end;
-    r.end += 16;
-    assert_eq!(bytes[r], [9u8; 16]);
+    r.end += DATA_SIZE;
+    assert_eq!(bytes[r], [9u8; DATA_SIZE]);
     let input2 = Input::from_bytes(&bytes).unwrap();
     assert_eq!(input, input2);
 }

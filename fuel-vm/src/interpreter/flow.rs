@@ -15,7 +15,6 @@ use crate::error::RuntimeError;
 use crate::gas::DependentCost;
 use crate::interpreter::PanicContext;
 use crate::profiler::Profiler;
-use crate::state::ProgramState;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 
 use fuel_asm::{Instruction, InstructionResult, RegId};
@@ -300,11 +299,6 @@ where
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
         self._prepare_call(a, b, c, d)
-    }
-
-    pub(crate) fn call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<ProgramState, RuntimeError> {
-        self._prepare_call(a, b, c, d)?;
-        self.run_call()
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
-use crate::state::{ExecuteState, ProgramState};
+use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
@@ -467,11 +467,8 @@ where
                     return Err(PanicReason::NestedCallLimitReached.into());
                 }
 
-                let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
-                // raise revert state to halt execution for the callee
-                if let ProgramState::Revert(ra) = state {
-                    return Ok(ExecuteState::Revert(ra));
-                }
+                // Enter call context
+                self.prepare_call(a, b, c, d)?;
             }
 
             Instruction::CB(cb) => {

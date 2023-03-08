@@ -46,12 +46,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             black_box(bytes);
         })
     });
-    // c.bench_function("Bytes32_checked", |b| {
-    //     b.iter(|| {
-    //         let bytes = Bytes32::from_slice_checked(&mem).unwrap();
-    //         black_box(bytes);
-    //     })
-    // });
     c.bench_function("raw_try", |b| {
         b.iter(|| {
             let mem: &[u8; 32] = (&mem[..32]).try_into().unwrap();

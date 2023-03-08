@@ -6,6 +6,7 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+extern crate core;
 
 mod layout;
 mod types;

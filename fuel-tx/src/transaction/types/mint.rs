@@ -213,8 +213,8 @@ mod field {
 #[cfg(feature = "std")]
 impl io::Read for Mint {
     fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if full_buf.len() < n {
+        let serialized_size = self.serialized_size();
+        if full_buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
@@ -242,7 +242,7 @@ impl io::Read for Mint {
             buf = &mut buf[output_len..];
         }
 
-        Ok(n)
+        Ok(serialized_size)
     }
 }
 

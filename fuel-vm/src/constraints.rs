@@ -26,10 +26,6 @@ pub struct CheckedMemRange(core::ops::Range<usize>);
 pub struct CheckedMemConstLen<const LEN: usize>(CheckedMemRange);
 
 /// A range of memory that has been checked that it fits into the VM memory.
-pub struct CheckedMemConstLen<const LEN: usize>(CheckedMemRange);
-
-#[derive(Clone)]
-/// A range of memory that has been checked that it fits into the VM memory.
 /// This range can be used to read a value of type `T` from memory.
 #[derive(Clone)]
 // TODO: Merge this type with `CheckedMemConstLen`.

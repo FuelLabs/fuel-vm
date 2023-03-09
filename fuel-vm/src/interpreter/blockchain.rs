@@ -720,25 +720,16 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
 
-        let fp = *self.fp as usize;
+        let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
         let call_abi = call_abi.read(self.memory).to_vec();
-
-        let fpx = checked_add_usize(fp, Address::LEN)?;
-
-        // Safety: $fp is guaranteed to contain enough bytes
-        let sender = Address::new(
-            self.memory
-                .get(fp..fpx)
-                .and_then(|slice| slice.try_into().ok())
-                .ok_or(PanicReason::MemoryOverflow)?,
-        );
+        let sender = Address::from_bytes_ref(sender.read(self.memory));
 
         let message = Output::message(recipient, self.amount_coins_to_send);
         let receipt = Receipt::message_out_from_tx_output(
             txid,
             self.message_output_idx,
-            sender,
+            *sender,
             recipient,
             self.amount_coins_to_send,
             call_abi,

@@ -106,14 +106,14 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     ; "Fail when $rA + 32 overflows"
 )]
 #[test_case(
-    VM_MAX_RAM, 1
+    VM_MAX_RAM-1, 1
     => matches Err(_)
-    ; "Fail when $rA + 32 >= VM_MAX_RAM"
+    ; "Fail when $rA + 32 > VM_MAX_RAM"
 )]
 #[test_case(
-    VM_MAX_RAM-33, 1
+    VM_MAX_RAM-32, 1
     => matches Ok(_)
-    ; "Pass when $rA + 32 == VM_MAX_RAM - 1"
+    ; "Pass when $rA + 32 == VM_MAX_RAM"
 )]
 fn test_state_clear_qword_input(start_key_memory_address: Word, num_slots: Word) -> Result<(), RuntimeError> {
     StateClearQWord::new(start_key_memory_address, num_slots).map(|_| ())

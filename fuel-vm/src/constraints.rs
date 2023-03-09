@@ -15,17 +15,20 @@ use crate::prelude::RuntimeError;
 
 pub mod reg_key;
 
-#[derive(Clone)]
 /// A range of memory that has been checked that it fits into the VM memory.
+#[derive(Clone)]
 pub struct CheckedMemRange(core::ops::Range<usize>);
 
-#[derive(Clone)]
 /// A range of memory that has been checked that it fits into the VM memory.
+#[derive(Clone)]
+// TODO: Replace `LEN` constant with a generic object that implements some trait that knows
+//  the static size of the generic.
 pub struct CheckedMemConstLen<const LEN: usize>(CheckedMemRange);
 
-#[derive(Clone)]
 /// A range of memory that has been checked that it fits into the VM memory.
 /// This range can be used to read a value of type `T` from memory.
+#[derive(Clone)]
+// TODO: Merge this type with `CheckedMemConstLen`.
 pub struct CheckedMemValue<T>(CheckedMemRange, core::marker::PhantomData<T>);
 
 impl<T> CheckedMemValue<T> {
@@ -91,7 +94,7 @@ impl CheckedMemRange {
         if constraint.end > VM_MAX_RAM {
             return Err(Bug::new(BugId::ID009, BugVariant::InvalidMemoryConstraint).into());
         }
-        Self::new_inner(address, size, constraint.start..constraint.end)
+        Self::new_inner(address, size, constraint)
     }
 
     /// Create a new memory range, checks that the range is not empty
@@ -99,7 +102,7 @@ impl CheckedMemRange {
     fn new_inner(address: Word, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
         let (end, of) = (address as usize).overflowing_add(size);
         let range = address as usize..end;
-        if of || !constraint.contains(&(range.end as Word)) || range.is_empty() {
+        if of || range.is_empty() || !constraint.contains(&((range.end - 1) as Word)) {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self(range))

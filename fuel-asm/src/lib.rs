@@ -31,7 +31,7 @@ pub struct RegId(u8);
 
 /// Represents a 6-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Imm6(u8);
+pub struct Imm06(u8);
 
 /// Represents a 12-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -252,9 +252,9 @@ impl_instructions! {
     "Dynamic relative jump backwards, conditional against zero, with a constant offset."
     0x77 JNZB jnzb [RegId RegId Imm12]
     "Dynamic relative jump forwards, conditional on comparsion, with a constant offset."
-    0x78 JNEF jnef [RegId RegId RegId Imm6]
+    0x78 JNEF jnef [RegId RegId RegId Imm06]
     "Dynamic relative jump backwards, conditional on comparsion, with a constant offset."
-    0x79 JNEB jneb [RegId RegId RegId Imm6]
+    0x79 JNEB jneb [RegId RegId RegId Imm06]
 
     "Jump."
     0x90 JI ji [Imm24]
@@ -331,7 +331,7 @@ impl RegId {
     }
 }
 
-impl Imm6 {
+impl Imm06 {
     /// Max value for the type
     pub const MAX: Self = Self(0b_0011_1111);
 
@@ -457,9 +457,9 @@ impl From<u8> for RegId {
     }
 }
 
-impl From<u8> for Imm6 {
+impl From<u8> for Imm06 {
     fn from(u: u8) -> Self {
-        Imm6::new(u)
+        Imm06::new(u)
     }
 }
 
@@ -487,8 +487,8 @@ impl From<RegId> for u8 {
     }
 }
 
-impl From<Imm6> for u8 {
-    fn from(Imm6(u): Imm6) -> Self {
+impl From<Imm06> for u8 {
+    fn from(Imm06(u): Imm06) -> Self {
         u
     }
 }
@@ -519,26 +519,26 @@ impl From<RegId> for usize {
     }
 }
 
-impl From<Imm6> for u16 {
-    fn from(imm: Imm6) -> Self {
+impl From<Imm06> for u16 {
+    fn from(imm: Imm06) -> Self {
         u8::from(imm).into()
     }
 }
 
-impl From<Imm6> for u32 {
-    fn from(imm: Imm6) -> Self {
+impl From<Imm06> for u32 {
+    fn from(imm: Imm06) -> Self {
         u8::from(imm).into()
     }
 }
 
-impl From<Imm6> for u64 {
-    fn from(imm: Imm6) -> Self {
+impl From<Imm06> for u64 {
+    fn from(imm: Imm06) -> Self {
         u8::from(imm).into()
     }
 }
 
-impl From<Imm6> for u128 {
-    fn from(imm: Imm6) -> Self {
+impl From<Imm06> for u128 {
+    fn from(imm: Imm06) -> Self {
         u8::from(imm).into()
     }
 }
@@ -683,8 +683,8 @@ where
 
 // Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
 
-fn check_imm6(u: u8) -> Imm6 {
-    Imm6::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
+fn check_imm06(u: u8) -> Imm06 {
+    Imm06::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
 }
 
 fn check_imm12(u: u16) -> Imm12 {

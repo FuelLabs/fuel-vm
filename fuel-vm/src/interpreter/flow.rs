@@ -36,19 +36,15 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn jump(
+        &mut self,
+        condition: bool,
+        mode: JumpMode,
+        addr: Word,
+        offset: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
-        jump(is.as_ref(), pc, j)
-    }
-
-    pub(crate) fn jump_not_equal(&mut self, a: Word, b: Word, to: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
-        jump_not_equal(is.as_ref(), pc, a, b, to)
-    }
-
-    pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, is, zero, .. }, _) = split_registers(&mut self.registers);
-        jump_not_zero(is.as_ref(), pc, zero.as_ref(), a, to)
+        jump(condition, mode, is.as_ref(), pc, addr, offset)
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -200,38 +196,44 @@ pub(crate) fn revert(append: AppendReceipt, current_contract: Option<ContractId>
     append_receipt(append, receipt);
 }
 
-pub(crate) fn jump_not_equal(is: Reg<IS>, pc: RegMut<PC>, a: Word, b: Word, j: Word) -> Result<(), RuntimeError> {
-    if a != b {
-        jump(is, pc, j)
-    } else {
-        inc_pc(pc)
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum JumpMode {
+    /// `$pc = $is + address`
+    Absolute,
+    /// `$pc = $pc + address`
+    RelativeForwards,
+    /// `$pc = $pc - address`
+    RelativeBackwards,
 }
 
-pub(crate) fn jump_not_zero(
+pub(crate) fn jump(
+    condition: bool,
+    mode: JumpMode,
     is: Reg<IS>,
-    pc: RegMut<PC>,
-    zero: Reg<ZERO>,
-    a: Word,
-    j: Word,
+    mut pc: RegMut<PC>,
+    addr: Word,
+    offset: Word,
 ) -> Result<(), RuntimeError> {
-    if a != *zero {
-        jump(is, pc, j)
-    } else {
-        inc_pc(pc)
+    if !condition {
+        return inc_pc(pc);
     }
-}
 
-pub(crate) fn jump(is: Reg<IS>, mut pc: RegMut<PC>, j: Word) -> Result<(), RuntimeError> {
-    let j = is.saturating_add(j.saturating_mul(Instruction::SIZE as Word));
+    let addr = match mode {
+        JumpMode::Absolute => is.saturating_add(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word)),
+        JumpMode::RelativeForwards => {
+            pc.saturating_add(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word))
+        }
+        JumpMode::RelativeBackwards => pc
+            .checked_sub(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word))
+            .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
+    };
 
-    if j > VM_MAX_RAM - 1 {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *pc = j;
-
-        Ok(())
+    if addr > VM_MAX_RAM - 1 {
+        return Err(PanicReason::MemoryOverflow.into());
     }
+
+    *pc = addr;
+    Ok(())
 }
 
 impl<S, Tx> Interpreter<S, Tx>

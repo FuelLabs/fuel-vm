@@ -1,6 +1,6 @@
 //! Functions for packing instruction data into bytes or u32s.
 
-use crate::{Imm12, Imm18, Imm24, RegId};
+use crate::{Imm12, Imm18, Imm24, Imm6, RegId};
 
 pub(super) fn bytes_from_ra(ra: RegId) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra(ra).to_be_bytes())
@@ -16,6 +16,10 @@ pub(super) fn bytes_from_ra_rb_rc(ra: RegId, rb: RegId, rc: RegId) -> [u8; 3] {
 
 pub(super) fn bytes_from_ra_rb_rc_rd(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra_rb_rc_rd(ra, rb, rc, rd).to_be_bytes())
+}
+
+pub(super) fn bytes_from_ra_rb_rc_imm6(ra: RegId, rb: RegId, rc: RegId, imm: Imm6) -> [u8; 3] {
+    u8x3_from_u8x4(u32_from_ra_rb_rc_imm6(ra, rb, rc, imm).to_be_bytes())
 }
 
 pub(super) fn bytes_from_ra_rb_imm12(ra: RegId, rb: RegId, imm: Imm12) -> [u8; 3] {
@@ -46,6 +50,10 @@ fn u32_from_rd(r: RegId) -> u32 {
     r.0 as u32
 }
 
+fn u32_from_imm6(imm: Imm6) -> u32 {
+    imm.0 as u32
+}
+
 fn u32_from_imm12(imm: Imm12) -> u32 {
     imm.0 as u32
 }
@@ -68,6 +76,10 @@ fn u32_from_ra_rb_rc(ra: RegId, rb: RegId, rc: RegId) -> u32 {
 
 fn u32_from_ra_rb_rc_rd(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> u32 {
     u32_from_ra_rb_rc(ra, rb, rc) | u32_from_rd(rd)
+}
+
+fn u32_from_ra_rb_rc_imm6(ra: RegId, rb: RegId, rc: RegId, imm: Imm6) -> u32 {
+    u32_from_ra_rb_rc(ra, rb, rc) | u32_from_imm6(imm)
 }
 
 fn u32_from_ra_rb_imm12(ra: RegId, rb: RegId, imm: Imm12) -> u32 {

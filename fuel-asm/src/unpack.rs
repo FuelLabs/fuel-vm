@@ -1,9 +1,13 @@
 //! Functions for unpacking instruction data from bytes or u32s.
 
-use crate::{Imm12, Imm18, Imm24, RegId};
+use crate::{Imm12, Imm18, Imm24, Imm6, RegId};
 
 pub(super) fn rd_from_bytes(bs: [u8; 3]) -> RegId {
     rd_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
+}
+
+pub(super) fn imm6_from_bytes(bs: [u8; 3]) -> Imm6 {
+    imm6_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))
 }
 
 pub(super) fn imm12_from_bytes(bs: [u8; 3]) -> Imm12 {
@@ -35,6 +39,15 @@ pub(super) fn ra_rb_rc_rd_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId, RegId
     )
 }
 
+pub(super) fn ra_rb_rc_imm6_from_bytes(bs: [u8; 3]) -> (RegId, RegId, RegId, Imm6) {
+    (
+        ra_from_bytes(bs),
+        rb_from_bytes(bs),
+        rc_from_bytes(bs),
+        imm6_from_bytes(bs),
+    )
+}
+
 pub(super) fn ra_rb_imm12_from_bytes(bs: [u8; 3]) -> (RegId, RegId, Imm12) {
     (ra_from_bytes(bs), rb_from_bytes(bs), imm12_from_bytes(bs))
 }
@@ -57,6 +70,10 @@ fn rc_from_u32(u: u32) -> RegId {
 
 fn rd_from_u32(u: u32) -> RegId {
     RegId::new(u as u8)
+}
+
+fn imm6_from_u32(u: u32) -> Imm6 {
+    Imm6::new(u as u8)
 }
 
 fn imm12_from_u32(u: u32) -> Imm12 {

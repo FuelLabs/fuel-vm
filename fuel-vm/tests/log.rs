@@ -1,11 +1,11 @@
 use fuel_asm::*;
 use fuel_tx::Receipt;
 use fuel_types::Immediate24;
-use fuel_vm::consts::{VM_REGISTER_COUNT, VM_MAX_RAM};
+use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT};
 
 mod test_helpers;
 
-use test_helpers::{run_script, assert_success, assert_panics};
+use test_helpers::{assert_panics, assert_success, run_script};
 
 use crate::test_helpers::set_full_word;
 
@@ -36,7 +36,7 @@ fn logd_memory_range_overflow() {
     let script = vec![
         op::not(0x30, RegId::ZERO),
         op::logd(RegId::ZERO, RegId::ZERO, 0x30, 1),
-        op::ret(RegId::ONE)
+        op::ret(RegId::ONE),
     ];
 
     let receipts = run_script(script.into_iter().collect());

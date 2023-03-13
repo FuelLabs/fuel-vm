@@ -1,3 +1,5 @@
+#![allow(dead_code)] // This module is used by other test, but clippy doesn't understand that
+
 use fuel_asm::{op, Instruction};
 use fuel_vm::prelude::*;
 

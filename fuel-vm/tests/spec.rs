@@ -1,5 +1,5 @@
 use fuel_asm::*;
-use fuel_tx::{Receipt, ScriptExecutionResult};
+use fuel_tx::Receipt;
 use fuel_types::Immediate18;
 use fuel_vm::consts::VM_MAX_RAM;
 

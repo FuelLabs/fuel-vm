@@ -96,6 +96,10 @@ path = "tests/gas_factor.rs"
 required-features = ["profile-gas"]
 
 [[test]]
+name = "test-log"
+path = "tests/log.rs"
+
+[[test]]
 name = "test-memory"
 path = "tests/memory.rs"
 required-features = ["random"]

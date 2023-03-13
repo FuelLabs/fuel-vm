@@ -1,71 +1,26 @@
 use fuel_asm::*;
-use fuel_tx::{
-    field::ScriptData, ConsensusParameters, Contract, Input, Output, Receipt, ScriptExecutionResult, Transaction,
-    Witness,
-};
-use fuel_types::{AssetId, Immediate12, Immediate18, Salt};
-use fuel_vm::{
-    consts::VM_MAX_RAM,
-    prelude::{Call, IntoChecked, MemoryClient, SerializableVec},
-};
+use fuel_tx::{Receipt, ScriptExecutionResult};
+use fuel_types::Immediate18;
+use fuel_vm::consts::VM_MAX_RAM;
 
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use rstest::rstest;
 
 mod test_helpers;
 
-/// Assert that transaction didn't panic
-fn assert_success(receipts: &[Receipt]) {
-    if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
-        if *result != ScriptExecutionResult::Success {
-            panic!("Expected vm success, got {result:?} instead");
-        }
-    } else {
-        unreachable!("No script result");
-    }
-}
-
-/// Assert that transaction receipts end in a panic with the given reason
-fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
-    if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
-        if *result != ScriptExecutionResult::Panic {
-            panic!("Expected vm panic, got {result:?} instead");
-        }
-    } else {
-        unreachable!("No script result");
-    }
-
-    let n = receipts.len();
-    assert!(n >= 2, "Invalid receipts len");
-    if let Receipt::Panic { reason: pr, .. } = receipts.get(n - 2).unwrap() {
-        assert_eq!(*pr.reason(), reason, "Panic reason differs for the expected reason");
-    } else {
-        unreachable!("No script receipt for a paniced tx");
-    }
-}
+use test_helpers::{assert_panics, assert_success, run_script, set_full_word};
 
 /// Setup some useful values
 /// * 0x31 to all ones, i.e. max word
 /// * 0x32 to two
+/// * 0x33 to VM_MAX_RAM
+/// * 0x33 to (VM_MAX_RAM / instruction_size)
 fn common_setup() -> Vec<Instruction> {
     let mut setup = vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)];
 
-    setup.extend(&test_helpers::set_full_word(0x33, VM_MAX_RAM));
-    setup.extend(&test_helpers::set_full_word(
-        0x34,
-        VM_MAX_RAM / (Instruction::SIZE as u64),
-    ));
+    setup.extend(&set_full_word(0x33, VM_MAX_RAM));
+    setup.extend(&set_full_word(0x34, VM_MAX_RAM / (Instruction::SIZE as u64)));
 
     setup
-}
-
-fn run_script(script: Vec<u8>) -> Vec<Receipt> {
-    let mut client = MemoryClient::default();
-    let tx = Transaction::script(0, 1_000_000, 0, script, vec![], vec![], vec![], vec![])
-        .into_checked(0, &ConsensusParameters::DEFAULT, client.gas_costs())
-        .expect("failed to generate a checked tx");
-    client.transact(tx);
-    client.receipts().expect("Expected receipts").to_vec()
 }
 
 #[rstest]
@@ -89,7 +44,7 @@ fn spec_unsafemath_flag(
     script.push(op::log(RegId::IS, RegId::PC, RegId::OF, RegId::ERR));
     script.push(op::ret(RegId::ONE));
 
-    let receipts = run_script(script.into_iter().collect());
+    let receipts = run_script(script);
 
     if flag {
         if let Receipt::Log { rd: err, .. } = receipts[0] {

@@ -40,8 +40,8 @@ pub struct MerkleTree<TableType, StorageType> {
 }
 
 impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
-    pub const fn empty_root() -> Bytes32 {
-        *empty_sum()
+    pub const fn empty_root() -> &'static Bytes32 {
+        empty_sum()
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -74,7 +74,7 @@ where
     }
 
     pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
-        if root == empty_sum() {
+        if root == Self::empty_root() {
             let tree = Self::new(storage);
             Ok(tree)
         } else {
@@ -145,7 +145,7 @@ where
     }
 
     pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
-        if self.root() == Self::empty_root() {
+        if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
             return Ok(());

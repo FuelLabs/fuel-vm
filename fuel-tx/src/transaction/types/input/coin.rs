@@ -1,9 +1,9 @@
-use crate::transaction::types::input::consts::INPUT_COIN_FIXED_SIZE;
+use crate::input::sizes::CoinSizes;
 use crate::transaction::types::input::AsField;
 use crate::{TxPointer, UtxoId};
 use fuel_types::bytes::Deserializable;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Address, AssetId, Word};
+use fuel_types::bytes::SizedBytes;
+use fuel_types::{bytes, Address, AssetId, MemLayout, MemLocType, Word};
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -122,7 +122,7 @@ where
             0
         };
 
-        INPUT_COIN_FIXED_SIZE - WORD_SIZE + predicate_size + predicate_date_size
+        CoinSizes::LEN + predicate_size + predicate_date_size
     }
 }
 
@@ -131,9 +131,9 @@ impl<Specification> std::io::Read for Coin<Specification>
 where
     Specification: CoinSpecification,
 {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
         let serialized_size = self.serialized_size();
-        if buf.len() < serialized_size {
+        if full_buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
@@ -149,39 +149,54 @@ where
             predicate_data,
         } = self;
 
-        let n = utxo_id.read(buf)?;
-        let buf = &mut buf[n..];
+        type S = CoinSizes;
+        const LEN: usize = CoinSizes::LEN;
+        let buf: &mut [_; LEN] = full_buf
+            .get_mut(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_array_unchecked(buf, owner);
-        let buf = bytes::store_number_unchecked(buf, *amount);
-        let buf = bytes::store_array_unchecked(buf, asset_id);
+        let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
+        if n != S::LAYOUT.utxo_id.size() {
+            return Err(bytes::eof());
+        }
 
-        let n = tx_pointer.read(buf)?;
-        let buf = &mut buf[n..];
+        bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+        bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
+
+        let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
+        if n != S::LAYOUT.tx_pointer.size() {
+            return Err(bytes::eof());
+        }
 
         let witness_index = if let Some(witness_index) = witness_index.as_field() {
-            *witness_index as Word
+            *witness_index
         } else {
-            0 as Word
+            // Witness index zeroed for coin predicate
+            0
+        };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
+
+        let predicate_len = if let Some(predicate) = predicate.as_field() {
+            predicate.len()
+        } else {
+            0
         };
 
-        let buf = bytes::store_number_unchecked(buf, witness_index);
-        let buf = bytes::store_number_unchecked(buf, *maturity);
+        let predicate_data_len = if let Some(predicate_data) = predicate_data.as_field() {
+            predicate_data.len()
+        } else {
+            0
+        };
+
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
+
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
 
         let buf = if let Some(predicate) = predicate.as_field() {
-            bytes::store_number_unchecked(buf, predicate.len() as Word)
-        } else {
-            bytes::store_number_unchecked(buf, 0u64)
-        };
-
-        let buf = if let Some(predicate_data) = predicate_data.as_field() {
-            bytes::store_number_unchecked(buf, predicate_data.len() as Word)
-        } else {
-            bytes::store_number_unchecked(buf, 0u64)
-        };
-
-        let buf = if let Some(predicate) = predicate.as_field() {
-            let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
+            let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, predicate.as_slice())?;
             buf
         } else {
             buf
@@ -200,45 +215,44 @@ impl<Specification> std::io::Write for Coin<Specification>
 where
     Specification: CoinSpecification,
 {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut n = INPUT_COIN_FIXED_SIZE - WORD_SIZE;
+    fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        type S = CoinSizes;
+        const LEN: usize = CoinSizes::LEN;
+        let buf: &[_; LEN] = full_buf
+            .get(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
+        let mut n = LEN;
 
-        let utxo_id = UtxoId::from_bytes(buf)?;
-        let buf = &buf[utxo_id.serialized_size()..];
+        let utxo_id = UtxoId::from_bytes(&buf[S::LAYOUT.utxo_id.range()])?;
         self.utxo_id = utxo_id;
 
-        // Safety: buf len is checked
-        let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let owner = bytes::restore_at(buf, S::layout(S::LAYOUT.owner));
         let owner = owner.into();
         self.owner = owner;
 
-        let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+        let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
         self.amount = amount;
 
-        let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
         let asset_id = asset_id.into();
         self.asset_id = asset_id;
 
-        let tx_pointer = TxPointer::from_bytes(buf)?;
-        let buf = &buf[tx_pointer.serialized_size()..];
+        let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
         self.tx_pointer = tx_pointer;
 
-        let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+        let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
         if let Some(witness_index_field) = self.witness_index.as_mut_field() {
             *witness_index_field = witness_index;
         }
-
-        let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+        let maturity = bytes::restore_number_at(buf, S::layout(S::LAYOUT.maturity));
         self.maturity = maturity;
 
-        let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
-        let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
+        let (size, predicate, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
         n += size;
         if let Some(predicate_field) = self.predicate.as_mut_field() {
             *predicate_field = predicate;

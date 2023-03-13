@@ -1,7 +1,7 @@
-use crate::transaction::types::input::consts::INPUT_MESSAGE_FIXED_SIZE;
+use crate::input::sizes::MessageSizes;
 use crate::transaction::types::input::AsField;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Address, MessageId, Word};
+use fuel_types::bytes::SizedBytes;
+use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Word};
 
 pub type MessageFull = Message<Full>;
 pub type MessageSigned = Message<Signed>;
@@ -121,10 +121,7 @@ where
             0
         };
 
-        INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE
-            + bytes::padded_len(self.data.as_slice())
-            + predicate_size
-            + predicate_date_size
+        MessageSizes::LEN + bytes::padded_len(self.data.as_slice()) + predicate_size + predicate_date_size
     }
 }
 
@@ -133,9 +130,9 @@ impl<Specification> std::io::Read for Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
         let serialized_size = self.serialized_size();
-        if buf.len() < serialized_size {
+        if full_buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
@@ -150,35 +147,44 @@ where
             predicate,
             predicate_data,
         } = self;
+        type S = MessageSizes;
+        const LEN: usize = MessageSizes::LEN;
+        let buf: &mut [_; LEN] = full_buf
+            .get_mut(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_array_unchecked(buf, message_id);
-        let buf = bytes::store_array_unchecked(buf, sender);
-        let buf = bytes::store_array_unchecked(buf, recipient);
-        let buf = bytes::store_number_unchecked(buf, *amount);
-        let buf = bytes::store_number_unchecked(buf, *nonce);
+        bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
+        bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
+        bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
+
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.nonce), *nonce);
 
         let witness_index = if let Some(witness_index) = witness_index.as_field() {
-            *witness_index as Word
+            *witness_index
         } else {
-            0 as Word
+            0
         };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
 
-        let buf = bytes::store_number_unchecked(buf, witness_index);
-        let buf = bytes::store_number_unchecked(buf, data.len() as Word);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.data_len), data.len() as Word);
 
-        let buf = if let Some(predicate) = predicate.as_field() {
-            bytes::store_number_unchecked(buf, predicate.len() as Word)
+        let predicate_len = if let Some(predicate) = predicate.as_field() {
+            predicate.len()
         } else {
-            bytes::store_number_unchecked(buf, 0u64)
+            0
         };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
 
-        let buf = if let Some(predicate_data) = predicate_data.as_field() {
-            bytes::store_number_unchecked(buf, predicate_data.len() as Word)
+        let predicate_data_len = if let Some(predicate_data) = predicate_data.as_field() {
+            predicate_data.len()
         } else {
-            bytes::store_number_unchecked(buf, 0u64)
+            0
         };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
 
-        let (_, buf) = bytes::store_raw_bytes(buf, data.as_slice())?;
+        let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, data.as_slice())?;
 
         let buf = if let Some(predicate) = predicate.as_field() {
             let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
@@ -200,38 +206,36 @@ impl<Specification> std::io::Write for Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut n = INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE;
+    fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        type S = MessageSizes;
+        const LEN: usize = MessageSizes::LEN;
+        let buf: &[_; LEN] = full_buf
+            .get(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
+        let mut n = LEN;
 
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
-
-        let (message_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let message_id = bytes::restore_at(buf, S::layout(S::LAYOUT.message_id));
         self.message_id = message_id.into();
-
-        let (sender, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let sender = bytes::restore_at(buf, S::layout(S::LAYOUT.sender));
         self.sender = sender.into();
-
-        let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
         self.recipient = recipient.into();
 
-        let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+        let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
         self.amount = amount;
-
-        let (nonce, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+        let nonce = bytes::restore_number_at(buf, S::layout(S::LAYOUT.nonce));
         self.nonce = nonce;
-
-        let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+        let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
         if let Some(witness_index_field) = self.witness_index.as_mut_field() {
             *witness_index_field = witness_index;
         }
 
-        let (data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+        let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
+        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
-        let (size, data, buf) = bytes::restore_raw_bytes(buf, data_len)?;
+        let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
         n += size;
         self.data = data;
 

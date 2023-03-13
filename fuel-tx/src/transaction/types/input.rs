@@ -6,7 +6,6 @@ use contract::*;
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, MemLayout, MemLocType};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 use message::*;
 
@@ -18,7 +17,7 @@ mod consts;
 pub mod contract;
 pub mod message;
 mod repr;
-mod sizes;
+pub mod sizes;
 
 pub use repr::InputRepr;
 
@@ -508,34 +507,38 @@ impl Input {
 
 #[cfg(feature = "std")]
 impl io::Read for Input {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let serialized_size = self.serialized_size();
-        if buf.len() < serialized_size {
+        if full_buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
+        let ident_buf: &mut [_; WORD_SIZE] = full_buf
+            .get_mut(..WORD_SIZE)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
         match self {
             Self::CoinSigned(coin) => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
-                let _ = coin.read(buf)?;
+                bytes::store_number(ident_buf, InputRepr::Coin as Word);
+                let _ = coin.read(&mut full_buf[WORD_SIZE..])?;
             }
             Self::CoinPredicate(coin) => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
-                let _ = coin.read(buf)?;
+                bytes::store_number(ident_buf, InputRepr::Coin as Word);
+                let _ = coin.read(&mut full_buf[WORD_SIZE..])?;
             }
 
             Self::Contract(contract) => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
-                let _ = contract.read(buf)?;
+                bytes::store_number(ident_buf, InputRepr::Contract as Word);
+                let _ = contract.read(&mut full_buf[WORD_SIZE..])?;
             }
 
             Self::MessageSigned(message) => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
-                let _ = message.read(buf)?;
+                bytes::store_number(ident_buf, InputRepr::Message as Word);
+                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
             }
             Self::MessagePredicate(message) => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
-                let _ = message.read(buf)?;
+                bytes::store_number(ident_buf, InputRepr::Message as Word);
+                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
             }
         }
 
@@ -558,7 +561,7 @@ impl io::Write for Input {
         match identifier {
             InputRepr::Coin => {
                 let mut coin = CoinFull::default();
-                let n = WORD_SIZE + CoinFull::write(&mut coin, buf)?;
+                let n = WORD_SIZE + CoinFull::write(&mut coin, &full_buf[WORD_SIZE..])?;
 
                 *self = if coin.predicate.is_empty() {
                     Self::CoinSigned(coin.into_signed())
@@ -571,7 +574,7 @@ impl io::Write for Input {
 
             InputRepr::Contract => {
                 let mut contract = Contract::default();
-                let n = WORD_SIZE + Contract::write(&mut contract, buf)?;
+                let n = WORD_SIZE + Contract::write(&mut contract, &full_buf[WORD_SIZE..])?;
 
                 *self = Self::Contract(contract);
 
@@ -580,7 +583,7 @@ impl io::Write for Input {
 
             InputRepr::Message => {
                 let mut message = MessageFull::default();
-                let n = WORD_SIZE + MessageFull::write(&mut message, buf)?;
+                let n = WORD_SIZE + MessageFull::write(&mut message, &full_buf[WORD_SIZE..])?;
 
                 *self = if message.predicate.is_empty() {
                     Self::MessageSigned(message.into_signed())

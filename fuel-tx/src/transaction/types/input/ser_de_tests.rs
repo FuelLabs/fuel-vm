@@ -1,6 +1,8 @@
-use fuel_types::bytes::SerializableVec;
-
 use super::*;
+use crate::input::sizes::{MessageSizes, MessageSizesLayout};
+use fuel_types::bytes::Deserializable;
+use fuel_types::bytes::SerializableVec;
+use fuel_types::MemLayout;
 
 #[test]
 fn test_input_serialization() {
@@ -15,10 +17,10 @@ fn test_input_serialization() {
         vec![8u8; DATA_SIZE],
         vec![9u8; DATA_SIZE],
     );
-    const S: MessageSizesLayout = super::MessageSizes::LAYOUT;
+    const S: MessageSizesLayout = MessageSizes::LAYOUT;
     assert_eq!(
         input.serialized_size(),
-        S.repr.size()
+        WORD_SIZE
             + S.message_id.size()
             + S.sender.size()
             + S.recipient.size()
@@ -34,7 +36,7 @@ fn test_input_serialization() {
     );
     assert_eq!(
         input.serialized_size(),
-        MessageSizesLayout::LEN + DATA_SIZE + DATA_SIZE + DATA_SIZE
+        WORD_SIZE + MessageSizesLayout::LEN + DATA_SIZE + DATA_SIZE + DATA_SIZE
     );
     let bytes = input.to_bytes();
     let mut r = 0..8;

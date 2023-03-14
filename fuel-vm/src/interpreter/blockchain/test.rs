@@ -38,7 +38,7 @@ impl OwnershipRegisters {
 #[test_case(true, 0, None, 32 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't read state from external context")]
 #[test_case(false, 1, 29, 32 => Ok((0, 0)); "Wrong contract id")]
 #[test_case(false, 0, 29, 33 => Ok((0, 0)); "Wrong key")]
-#[test_case(true, 0, None, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing key")]
+#[test_case(true, 0, None, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
 #[test_case(true, 0, None, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_read_word(
     external: bool,
@@ -93,7 +93,7 @@ fn test_state_read_word(
 #[test_case(false, 0, false, 33 => Ok(0); "Wrong key")]
 #[test_case(false, 1, true, 32 => Ok(0); "Wrong contract id with existing")]
 #[test_case(false, 0, true, 33 => Ok(0); "Wrong key with existing")]
-#[test_case(true, 0, false, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing key")]
+#[test_case(true, 0, false, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> Result<Word, RuntimeError> {
     let mut storage = MemoryStorage::new(0, Default::default());

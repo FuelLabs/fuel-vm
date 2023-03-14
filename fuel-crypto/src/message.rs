@@ -36,7 +36,10 @@ impl Message {
     /// cryptographically hashed message. No hashing is performed.
     pub fn from_bytes_ref(bytes: &[u8; Self::LEN]) -> &Self {
         // TODO: Wrap this unsafe conversion safely in `fuel_types::Bytes32`.
-        unsafe { &*(bytes.as_ptr() as *const Self) }
+        #[allow(unsafe_code)]
+        unsafe {
+            &*(bytes.as_ptr() as *const Self)
+        }
     }
 
     /// Kept temporarily for backwards compatibility.

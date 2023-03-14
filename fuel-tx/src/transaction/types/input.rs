@@ -1,7 +1,7 @@
 use crate::{TxPointer, UtxoId};
 
 use fuel_crypto::{Hasher, PublicKey};
-use fuel_types::bytes;
+use fuel_types::{bytes, MemLayout, MemLocType};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 use core::mem;
@@ -16,10 +16,15 @@ use std::io;
 
 mod consts;
 mod repr;
+mod sizes;
 
 use consts::*;
+use sizes::*;
 
 pub use repr::InputRepr;
+
+#[cfg(all(test, feature = "std"))]
+mod ser_de_tests;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -527,9 +532,9 @@ impl Input {
 
 #[cfg(feature = "std")]
 impl io::Read for Input {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
-        if buf.len() < n {
+        if full_buf.len() < n {
             return Err(bytes::eof());
         }
 
@@ -543,26 +548,36 @@ impl io::Read for Input {
                 witness_index,
                 maturity,
             } => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
+                type S = CoinSizes;
+                const LEN: usize = CoinSizes::LEN;
+                let buf: &mut [_; LEN] = full_buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Coin as u8);
 
-                let n = utxo_id.read(buf)?;
-                let buf = &mut buf[n..];
+                let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
+                if n != S::LAYOUT.utxo_id.size() {
+                    return Err(bytes::eof());
+                }
 
-                let buf = bytes::store_array_unchecked(buf, owner);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, asset_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
 
-                let n = tx_pointer.read(buf)?;
-                let buf = &mut buf[n..];
+                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
+                if n != S::LAYOUT.tx_pointer.size() {
+                    return Err(bytes::eof());
+                }
 
-                let buf = bytes::store_number_unchecked(buf, *witness_index);
-                let buf = bytes::store_number_unchecked(buf, *maturity);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), *witness_index);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
 
                 // Predicate len zeroed for signed coin
-                let buf = bytes::store_number_unchecked(buf, 0u64);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), 0);
 
                 // Predicate data len zeroed for signed coin
-                bytes::store_number_unchecked(buf, 0u64);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), 0);
             }
 
             Self::CoinPredicate {
@@ -575,26 +590,42 @@ impl io::Read for Input {
                 predicate,
                 predicate_data,
             } => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
+                type S = CoinSizes;
+                const LEN: usize = CoinSizes::LEN;
+                let buf: &mut [_; LEN] = full_buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Coin as u8);
 
-                let n = utxo_id.read(buf)?;
-                let buf = &mut buf[n..];
+                let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
+                if n != S::LAYOUT.utxo_id.size() {
+                    return Err(bytes::eof());
+                }
 
-                let buf = bytes::store_array_unchecked(buf, owner);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_array_unchecked(buf, asset_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
 
-                let n = tx_pointer.read(buf)?;
-                let buf = &mut buf[n..];
+                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
+                if n != S::LAYOUT.tx_pointer.size() {
+                    return Err(bytes::eof());
+                }
 
                 // Witness index zeroed for coin predicate
-                let buf = bytes::store_number_unchecked(buf, 0u64);
-                let buf = bytes::store_number_unchecked(buf, *maturity);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), 0);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
 
-                let buf = bytes::store_number_unchecked(buf, predicate.len() as Word);
-                let buf = bytes::store_number_unchecked(buf, predicate_data.len() as Word);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate.len() as Word);
 
-                let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.predicate_data_len),
+                    predicate_data.len() as Word,
+                );
+
+                let (_, buf) =
+                    bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, predicate.as_slice())?;
 
                 bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
             }
@@ -606,16 +637,25 @@ impl io::Read for Input {
                 tx_pointer,
                 contract_id,
             } => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Contract as Word);
-                let buf = bytes::store_array_unchecked(buf, utxo_id.tx_id());
-                let buf = bytes::store_number_unchecked(buf, utxo_id.output_index() as Word);
-                let buf = bytes::store_array_unchecked(buf, balance_root);
-                let buf = bytes::store_array_unchecked(buf, state_root);
+                type S = ContractSizes;
+                const LEN: usize = ContractSizes::LEN;
+                let buf: &mut [_; LEN] = full_buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let n = tx_pointer.read(buf)?;
-                let buf = &mut buf[n..];
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Contract as u8);
+                bytes::store_at(buf, S::layout(S::LAYOUT.tx_id), utxo_id.tx_id());
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.output_index), utxo_id.output_index() as Word);
+                bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
+                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
 
-                bytes::store_array_unchecked(buf, contract_id);
+                let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
+                if n != S::LAYOUT.tx_pointer.size() {
+                    return Err(bytes::eof());
+                }
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
             }
 
             Self::MessageSigned {
@@ -627,20 +667,29 @@ impl io::Read for Input {
                 witness_index,
                 data,
             } => {
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
-                let buf = bytes::store_array_unchecked(buf, message_id);
-                let buf = bytes::store_array_unchecked(buf, sender);
-                let buf = bytes::store_array_unchecked(buf, recipient);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_number_unchecked(buf, *nonce);
-                let buf = bytes::store_number_unchecked(buf, *witness_index);
-                let buf = bytes::store_number_unchecked(buf, data.len() as Word);
+                type S = MessageSizes;
+                const LEN: usize = MessageSizes::LEN;
+                let buf: &mut [_; LEN] = full_buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Message as u8);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
+                bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.nonce), *nonce);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), *witness_index);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.data_len), data.len() as Word);
 
                 // predicate + data are empty for signed message
-                let buf = bytes::store_number_unchecked(buf, 0 as Word);
-                let buf = bytes::store_number_unchecked(buf, 0 as Word);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), 0);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), 0);
 
-                bytes::store_raw_bytes(buf, data.as_slice())?;
+                bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, data.as_slice())?;
             }
 
             Self::MessagePredicate {
@@ -653,20 +702,35 @@ impl io::Read for Input {
                 predicate,
                 predicate_data,
             } => {
-                let witness_index = 0 as Word;
+                let witness_index = 0;
 
-                let buf = bytes::store_number_unchecked(buf, InputRepr::Message as Word);
-                let buf = bytes::store_array_unchecked(buf, message_id);
-                let buf = bytes::store_array_unchecked(buf, sender);
-                let buf = bytes::store_array_unchecked(buf, recipient);
-                let buf = bytes::store_number_unchecked(buf, *amount);
-                let buf = bytes::store_number_unchecked(buf, *nonce);
-                let buf = bytes::store_number_unchecked(buf, witness_index);
-                let buf = bytes::store_number_unchecked(buf, data.len() as Word);
-                let buf = bytes::store_number_unchecked(buf, predicate.len() as Word);
-                let buf = bytes::store_number_unchecked(buf, predicate_data.len() as Word);
+                type S = MessageSizes;
+                const LEN: usize = MessageSizes::LEN;
+                let buf: &mut [_; LEN] = full_buf
+                    .get_mut(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                let (_, buf) = bytes::store_raw_bytes(buf, data.as_slice())?;
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), InputRepr::Message as u8);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
+                bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.nonce), *nonce);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.data_len), data.len() as Word);
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate.len() as Word);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.predicate_data_len),
+                    predicate_data.len() as Word,
+                );
+
+                let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, data.as_slice())?;
+
                 let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
 
                 bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
@@ -679,39 +743,43 @@ impl io::Read for Input {
 
 #[cfg(feature = "std")]
 impl io::Write for Input {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < WORD_SIZE {
-            return Err(bytes::eof());
-        }
+    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
+        let identifier: &[_; WORD_SIZE] = full_buf
+            .get(..WORD_SIZE)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
         // Safety: buf len is checked
-        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
+        let identifier = bytes::restore_word(bytes::from_array(identifier));
         let identifier = InputRepr::try_from(identifier)?;
 
         match identifier {
-            InputRepr::Coin if buf.len() < INPUT_COIN_FIXED_SIZE - WORD_SIZE => Err(bytes::eof()),
-
             InputRepr::Coin => {
+                type S = CoinSizes;
+                const LEN: usize = CoinSizes::LEN;
+                let buf: &[_; LEN] = full_buf
+                    .get(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
                 let mut n = INPUT_COIN_FIXED_SIZE;
 
-                let utxo_id = UtxoId::from_bytes(buf)?;
-                let buf = &buf[utxo_id.serialized_size()..];
+                let utxo_id = UtxoId::from_bytes(&buf[S::LAYOUT.utxo_id.range()])?;
 
-                // Safety: buf len is checked
-                let (owner, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let owner = bytes::restore_at(buf, S::layout(S::LAYOUT.owner));
+                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
+                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
 
-                let tx_pointer = TxPointer::from_bytes(buf)?;
-                let buf = &buf[tx_pointer.serialized_size()..];
+                let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
 
-                let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
-                let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
+                let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
+                let maturity = bytes::restore_number_at(buf, S::layout(S::LAYOUT.maturity));
 
-                let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-                let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+                let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
-                let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
+                let (size, predicate, buf) =
+                    bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
                 n += size;
 
                 let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
@@ -746,20 +814,23 @@ impl io::Write for Input {
                 Ok(n)
             }
 
-            InputRepr::Contract if buf.len() < INPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
-
             InputRepr::Contract => {
-                let utxo_id = UtxoId::from_bytes(buf)?;
-                let buf = &buf[utxo_id.serialized_size()..];
+                type S = ContractSizes;
+                const LEN: usize = ContractSizes::LEN;
+                let buf: &[_; LEN] = full_buf
+                    .get(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                // Safety: checked buffer len
-                let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (state_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+                let utxo_id =
+                    UtxoId::from_bytes(&buf[S::LAYOUT.tx_id.range().start..S::LAYOUT.output_index.range().end])?;
 
-                let tx_pointer = TxPointer::from_bytes(buf)?;
-                let buf = &buf[tx_pointer.serialized_size()..];
+                let balance_root = bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
+                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
 
-                let (contract_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
+                let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
+
+                let contract_id = bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
 
                 let balance_root = balance_root.into();
                 let state_root = state_root.into();
@@ -776,24 +847,29 @@ impl io::Write for Input {
                 Ok(INPUT_CONTRACT_SIZE)
             }
 
-            InputRepr::Message if buf.len() < INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE => Err(bytes::eof()),
-
             InputRepr::Message => {
+                type S = MessageSizes;
+                const LEN: usize = MessageSizes::LEN;
+                let buf: &[_; LEN] = full_buf
+                    .get(..LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
                 let mut n = INPUT_MESSAGE_FIXED_SIZE;
 
                 // Safety: buf len is checked
-                let (message_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (sender, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (nonce, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
+                let message_id = bytes::restore_at(buf, S::layout(S::LAYOUT.message_id));
+                let sender = bytes::restore_at(buf, S::layout(S::LAYOUT.sender));
+                let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
 
-                let (data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-                let (predicate_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-                let (predicate_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
+                let nonce = bytes::restore_number_at(buf, S::layout(S::LAYOUT.nonce));
+                let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
 
-                let (size, data, buf) = bytes::restore_raw_bytes(buf, data_len)?;
+                let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
+                let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+                let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
+
+                let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
                 n += size;
 
                 let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;

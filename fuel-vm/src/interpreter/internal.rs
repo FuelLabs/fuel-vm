@@ -4,11 +4,11 @@ use crate::constraints::CheckedMemConstLen;
 use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::context::Context;
-use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::Flags;
 use fuel_asm::{Instruction, PanicReason, RegId};
+use fuel_merkle::binary;
 use fuel_tx::field::Outputs;
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::Script;
@@ -18,7 +18,6 @@ use fuel_types::bytes::SizedBytes;
 use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
 use core::mem;
-use fuel_merkle::binary;
 
 #[cfg(test)]
 mod message_tests;

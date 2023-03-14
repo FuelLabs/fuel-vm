@@ -1,7 +1,6 @@
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
-use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
@@ -16,7 +15,6 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully

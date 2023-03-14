@@ -7,6 +7,7 @@ fn test_log() -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let context = Context::Script { block_height: 0 };
     let mut receipts = vec![];
+    let mut receipts_tree = Default::default();
     let mut script = Some(Script::default());
 
     let fp = 0;
@@ -17,6 +18,7 @@ fn test_log() -> Result<(), RuntimeError> {
         tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
+        receipts_tree: &mut receipts_tree,
         script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
@@ -35,6 +37,7 @@ fn test_log() -> Result<(), RuntimeError> {
         tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
+        receipts_tree: &mut receipts_tree,
         script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),

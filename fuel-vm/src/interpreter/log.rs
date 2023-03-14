@@ -7,6 +7,7 @@ use crate::{context::Context, error::RuntimeError};
 
 use fuel_asm::PanicReason;
 use fuel_crypto::Hasher;
+use fuel_merkle::binary;
 use fuel_tx::{Receipt, Script};
 use fuel_types::Word;
 
@@ -24,6 +25,7 @@ where
             tx_offset: self.params.tx_offset(),
             context: &self.context,
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
@@ -39,6 +41,7 @@ where
             tx_offset: self.params.tx_offset(),
             context: &self.context,
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
@@ -53,6 +56,7 @@ struct LogInput<'vm> {
     tx_offset: usize,
     context: &'vm Context,
     receipts: &'vm mut Vec<Receipt>,
+    receipts_tree: &'vm mut binary::in_memory::MerkleTree,
     script: Option<&'vm mut Script>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
@@ -74,6 +78,7 @@ impl LogInput<'_> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: self.receipts_tree,
                 script: self.script,
                 tx_offset: self.tx_offset,
                 memory: self.memory,
@@ -107,6 +112,7 @@ impl LogInput<'_> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: self.receipts_tree,
                 script: self.script,
                 tx_offset: self.tx_offset,
                 memory: self.memory,

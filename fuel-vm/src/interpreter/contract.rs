@@ -14,6 +14,7 @@ use fuel_storage::{StorageInspect, StorageSize};
 use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
+use fuel_merkle::binary;
 use std::borrow::Cow;
 
 #[cfg(test)]
@@ -45,6 +46,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             tx: &mut self.tx,
             tx_offset: self.params.tx_offset(),
             fp: fp.as_ref(),
@@ -62,6 +64,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             tx: &mut self.tx,
             tx_offset: self.params.tx_offset(),
             fp: fp.as_ref(),
@@ -129,6 +132,7 @@ struct TransferCtx<'vm, S, Tx> {
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut Vec<Receipt>,
+    receipts_tree: &'vm mut binary::in_memory::MerkleTree,
     tx: &'vm mut Tx,
     tx_offset: usize,
     fp: Reg<'vm, FP>,
@@ -208,6 +212,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.tx_offset,
                 memory: self.memory,
@@ -278,6 +283,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.tx_offset,
                 memory: self.memory,

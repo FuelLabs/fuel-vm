@@ -59,6 +59,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
 
     let mut balances = RuntimeBalances::from(InitialBalances::try_from([(AssetId::from([2u8; 32]), 50)]).unwrap());
     let mut receipts = Vec::new();
+    let mut receipts_tree = Default::default();
     let mut panic_context = PanicContext::None;
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
@@ -79,6 +80,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        receipts_tree: &mut receipts_tree,
         tx: &mut tx,
         tx_offset: 0,
         fp: Reg::new(&fp),
@@ -119,6 +121,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
 
     let mut balances = RuntimeBalances::from(InitialBalances::try_from([(AssetId::from([2u8; 32]), 50)]).unwrap());
     let mut receipts = Vec::new();
+    let mut receipts_tree = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
         Default::default(),
@@ -143,6 +146,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        receipts_tree: &mut receipts_tree,
         tx: &mut tx,
         tx_offset: 0,
         fp: Reg::new(&fp),

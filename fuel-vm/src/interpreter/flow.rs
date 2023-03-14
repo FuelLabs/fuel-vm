@@ -19,6 +19,7 @@ use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, 
 
 use fuel_asm::{Instruction, InstructionResult, RegId};
 use fuel_crypto::Hasher;
+use fuel_merkle::binary;
 use fuel_storage::{StorageAsRef, StorageInspect, StorageRead, StorageSize};
 use fuel_tx::{ConsensusParameters, PanicReason, Receipt, Script};
 use fuel_types::bytes::SerializableVec;
@@ -56,6 +57,7 @@ where
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
+                receipts_tree: &mut self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.params.tx_offset(),
                 memory: &mut self.memory,
@@ -73,6 +75,7 @@ where
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
+                receipts_tree: &mut self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.params.tx_offset(),
                 memory: &mut self.memory,
@@ -90,6 +93,7 @@ where
             .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
         let append = AppendReceipt {
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             tx_offset: self.params.tx_offset(),
             memory: &mut self.memory,
@@ -261,6 +265,7 @@ where
             input_contracts,
             panic_context: &mut self.panic_context,
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             consensus: &self.params,
             frames: &mut self.frames,
@@ -365,6 +370,7 @@ struct PrepareCallCtx<'vm, S> {
     input_contracts: Vec<fuel_types::ContractId>,
     panic_context: &'vm mut PanicContext,
     receipts: &'vm mut Vec<Receipt>,
+    receipts_tree: &'vm mut binary::in_memory::MerkleTree,
     script: Option<&'vm mut Script>,
     consensus: &'vm ConsensusParameters,
     frames: &'vm mut Vec<CallFrame>,
@@ -483,6 +489,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: &mut self.receipts_tree,
                 script: self.script,
                 tx_offset: self.consensus.tx_offset(),
                 memory: self.memory.memory,

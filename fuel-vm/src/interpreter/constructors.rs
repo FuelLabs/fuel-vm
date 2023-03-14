@@ -29,6 +29,7 @@ where
             memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
             frames: vec![],
             receipts: vec![],
+            receipts_tree: Default::default(),
             tx: Default::default(),
             initial_balances: Default::default(),
             storage,

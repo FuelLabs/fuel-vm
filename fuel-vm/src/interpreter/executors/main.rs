@@ -239,11 +239,7 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = if self.receipts().is_empty() {
-                EMPTY_RECEIPTS_MERKLE_ROOT.into()
-            } else {
-                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
-            };
+            let receipts_root = self.receipts_tree.root().into();
 
             // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {

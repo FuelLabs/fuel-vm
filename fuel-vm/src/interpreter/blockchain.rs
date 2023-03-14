@@ -23,6 +23,7 @@ use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::interpreter::PanicContext;
+use fuel_merkle::binary;
 use std::borrow::Borrow;
 use std::ops::Range;
 
@@ -239,6 +240,7 @@ where
             memory: &mut self.memory,
             tx_offset: self.params.tx_offset(),
             receipts: &mut self.receipts,
+            receipts_tree: &mut self.receipts_tree,
             tx: &mut self.tx,
             balances: &mut self.balances,
             fp: fp.as_ref(),
@@ -672,6 +674,7 @@ struct MessageOutputCtx<'vm, Tx> {
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     receipts: &'vm mut Vec<Receipt>,
+    receipts_tree: &'vm mut binary::in_memory::MerkleTree,
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
     fp: Reg<'vm, FP>,
@@ -746,6 +749,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
+                receipts_tree: self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.tx_offset,
                 memory: self.memory,

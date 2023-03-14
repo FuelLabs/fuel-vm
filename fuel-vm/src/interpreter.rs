@@ -45,6 +45,7 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
+use fuel_merkle::binary;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
@@ -65,6 +66,7 @@ pub struct Interpreter<S, Tx = ()> {
     memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
+    receipts_tree: binary::in_memory::MerkleTree,
     tx: Tx,
     initial_balances: InitialBalances,
     storage: S,

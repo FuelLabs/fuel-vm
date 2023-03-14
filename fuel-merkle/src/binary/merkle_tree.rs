@@ -29,7 +29,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
     head: Option<Box<Subtree<Node>>>,

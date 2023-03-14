@@ -329,6 +329,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     }
     let mut panic_context = PanicContext::None;
     let mut receipts = Vec::default();
+    let mut receipts_tree = Default::default();
     let consensus = ConsensusParameters::default();
     let mut frames = Vec::default();
     let current_contract = context.is_internal().then_some(ContractId::default());
@@ -344,6 +345,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
         input_contracts,
         panic_context: &mut panic_context,
         receipts: &mut receipts,
+        receipts_tree: &mut receipts_tree,
         script: script.as_mut(),
         consensus: &consensus,
         frames: &mut frames,

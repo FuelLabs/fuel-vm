@@ -1,5 +1,5 @@
 use fuel_crypto::Hasher;
-use fuel_types::bytes;
+use fuel_types::{bytes, MemLayout, MemLocType};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 use core::mem;
@@ -12,8 +12,10 @@ use std::io;
 
 mod consts;
 mod repr;
+mod sizes;
 
 use consts::*;
+use sizes::*;
 
 pub use repr::OutputRepr;
 
@@ -279,29 +281,43 @@ impl Output {
 
 #[cfg(feature = "std")]
 impl io::Read for Output {
-    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
         if buf.len() < n {
             return Err(bytes::eof());
         }
 
         let identifier: OutputRepr = self.into();
-        buf = bytes::store_number_unchecked(buf, identifier as Word);
 
         match self {
             Self::Coin { to, amount, asset_id }
             | Self::Change { to, amount, asset_id }
             | Self::Variable { to, amount, asset_id } => {
-                buf = bytes::store_array_unchecked(buf, to);
-                buf = bytes::store_number_unchecked(buf, *amount);
+                type S = CoinSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                bytes::store_array_unchecked(buf, asset_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
             }
 
             Self::Message { recipient, amount } => {
-                buf = bytes::store_array_unchecked(buf, recipient);
+                type S = MessageSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                bytes::store_number_unchecked(buf, *amount);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
             }
 
             Self::Contract {
@@ -309,19 +325,35 @@ impl io::Read for Output {
                 balance_root,
                 state_root,
             } => {
-                buf = bytes::store_number_unchecked(buf, *input_index);
-                buf = bytes::store_array_unchecked(buf, balance_root);
+                type S = ContractSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                bytes::store_array_unchecked(buf, state_root);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
+
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.input_index), *input_index);
+                bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
             }
 
             Self::ContractCreated {
                 contract_id,
                 state_root,
             } => {
-                buf = bytes::store_array_unchecked(buf, contract_id);
+                type S = ContractCreatedSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
 
-                bytes::store_array_unchecked(buf, state_root);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
             }
         }
 
@@ -332,30 +364,25 @@ impl io::Read for Output {
 #[cfg(feature = "std")]
 impl io::Write for Output {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < WORD_SIZE {
-            return Err(bytes::eof());
-        }
+        let identifier: &[_; WORD_SIZE] = buf
+            .get(..WORD_SIZE)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        // Bounds safely checked
-        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
+        let identifier = bytes::restore_word(bytes::from_array(identifier));
         let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable if buf.len() < OUTPUT_CCV_SIZE - WORD_SIZE => {
-                Err(bytes::eof())
-            }
-
-            OutputRepr::Message if buf.len() < OUTPUT_MESSAGE_SIZE - WORD_SIZE => Err(bytes::eof()),
-
-            OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
-
-            OutputRepr::ContractCreated if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE - WORD_SIZE => Err(bytes::eof()),
-
             OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                // Safety: buf len is checked
-                let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-                let (asset_id, _) = unsafe { bytes::restore_array_unchecked(buf) };
+                type S = CoinSizes;
+                let buf: &[_; S::LEN] = buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let to = bytes::restore_at(buf, S::layout(S::LAYOUT.to));
+                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
+                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
 
                 let to = to.into();
                 let asset_id = asset_id.into();
@@ -372,9 +399,14 @@ impl io::Write for Output {
             }
 
             OutputRepr::Message => {
-                // Safety: buf len is checked
-                let (recipient, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (amount, _) = unsafe { bytes::restore_number_unchecked(buf) };
+                type S = MessageSizes;
+                let buf: &[_; S::LEN] = buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
+                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
 
                 let recipient = recipient.into();
 
@@ -384,10 +416,15 @@ impl io::Write for Output {
             }
 
             OutputRepr::Contract => {
-                // Safety: buf len is checked
-                let (input_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
-                let (balance_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (state_root, _) = unsafe { bytes::restore_array_unchecked(buf) };
+                type S = ContractSizes;
+                let buf: &[_; S::LEN] = buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let input_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.input_index));
+                let balance_root = bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
+                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
 
                 let balance_root = balance_root.into();
                 let state_root = state_root.into();
@@ -402,9 +439,14 @@ impl io::Write for Output {
             }
 
             OutputRepr::ContractCreated => {
-                // Safety: buf len is checked
-                let (contract_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-                let (state_root, _) = unsafe { bytes::restore_array_unchecked(buf) };
+                type S = ContractCreatedSizes;
+                let buf: &[_; S::LEN] = buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let contract_id = bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
+                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
 
                 let contract_id = contract_id.into();
                 let state_root = state_root.into();

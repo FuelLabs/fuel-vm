@@ -1,12 +1,13 @@
 use fuel_crypto::SecretKey;
 
 use crate::context::Context;
+use crate::interpreter::memory::Memory;
 
 use super::*;
 
 #[test]
 fn test_ecrecover() -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -49,7 +50,7 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_keccak256() -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -69,7 +70,7 @@ fn test_keccak256() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_sha256() -> Result<(), RuntimeError> {
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,

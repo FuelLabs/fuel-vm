@@ -1,5 +1,6 @@
 use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::reg_key::*;
+use crate::constraints::CheckedMemConstLen;
 use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::context::Context;
@@ -212,8 +213,9 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
 }
 
 pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
+    let memory = (&memory[..Bytes32::LEN]).try_into().expect("Bytes32::LEN < MEM_SIZE");
     // Safety: vm parameters guarantees enough space for txid
-    unsafe { Bytes32::as_ref_unchecked(&memory[..Bytes32::LEN]) }
+    Bytes32::from_bytes_ref(memory)
 }
 
 /// Reduces the unspent balance of the base asset
@@ -264,26 +266,23 @@ pub(crate) fn internal_contract<'a>(
     register: Reg<FP>,
     memory: &'a [u8; MEM_SIZE],
 ) -> Result<&'a ContractId, RuntimeError> {
-    let (c, _) = internal_contract_bounds(context, register)?;
+    let range = internal_contract_bounds(context, register)?;
 
     // Safety: Memory bounds logically verified by the interpreter
-    let contract = unsafe {
-        ContractId::as_ref_unchecked(CheckedMemRange::new_const::<{ ContractId::LEN }>(c as Word)?.read(memory))
-    };
+    let contract = ContractId::from_bytes_ref(range.read(memory));
 
     Ok(contract)
 }
 
-pub(crate) fn internal_contract_bounds(context: &Context, fp: Reg<FP>) -> Result<(usize, usize), RuntimeError> {
-    context
-        .is_internal()
-        .then(|| {
-            let c = *fp as usize;
-            let cx = c + ContractId::LEN;
-
-            (c, cx)
-        })
-        .ok_or_else(|| PanicReason::ExpectedInternalContext.into())
+pub(crate) fn internal_contract_bounds(
+    context: &Context,
+    fp: Reg<FP>,
+) -> Result<CheckedMemConstLen<{ ContractId::LEN }>, RuntimeError> {
+    if context.is_internal() {
+        CheckedMemConstLen::new(*fp)
+    } else {
+        Err(PanicReason::ExpectedInternalContext.into())
+    }
 }
 
 pub(crate) fn set_frame_pointer(context: &mut Context, mut register: RegMut<FP>, fp: Word) {

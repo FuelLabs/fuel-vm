@@ -1,3 +1,4 @@
+use crate::interpreter::memory::Memory;
 use crate::interpreter::InitialBalances;
 
 use super::*;
@@ -170,7 +171,7 @@ fn test_smo(
         balance,
     }: Input,
 ) -> Result<Output, RuntimeError> {
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }

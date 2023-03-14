@@ -1,6 +1,7 @@
 //! FuelVM implementation
 
 #![warn(missing_docs)]
+#![deny(unsafe_code)]
 
 pub mod arith;
 pub mod backtrace;

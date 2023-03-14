@@ -171,7 +171,10 @@ mod use_std {
         fn borrow(&self) -> &Secp256k1SecretKey {
             // Safety: field checked. The memory representation of the secp256k1 key is
             // `[u8; 32]`
-            unsafe { &*(self.as_ref().as_ptr() as *const Secp256k1SecretKey) }
+            #[allow(unsafe_code)]
+            unsafe {
+                &*(self.as_ref().as_ptr() as *const Secp256k1SecretKey)
+            }
         }
     }
 

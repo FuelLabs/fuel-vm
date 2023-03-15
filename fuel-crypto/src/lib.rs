@@ -6,6 +6,7 @@
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
+#![deny(unsafe_code)]
 
 /// Required export to implement [`Keystore`].
 #[doc(no_inline)]
@@ -40,7 +41,8 @@ pub use error::Error;
 pub use hasher::Hasher;
 pub use keystore::Keystore;
 pub use message::Message;
-pub use mnemonic::FuelMnemonic;
+#[cfg(all(feature = "std", feature = "random"))]
+pub use mnemonic::generate_mnemonic_phrase;
 pub use public::PublicKey;
 pub use secret::SecretKey;
 pub use signature::Signature;

@@ -8,8 +8,11 @@ use crate::transaction::{
 };
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, Bytes32, Word};
+use fuel_types::{
+    bytes::{SizedBytes, WORD_SIZE},
+    mem_layout, MemLayout, MemLocType,
+};
 
 #[cfg(feature = "std")]
 use std::io;
@@ -43,6 +46,20 @@ pub struct Script {
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     pub(crate) metadata: Option<ScriptMetadata>,
 }
+
+mem_layout!(
+    ScriptLayout for Script
+    repr: u8 = WORD_SIZE,
+    gas_price: Word = WORD_SIZE,
+    gas_limit: Word = WORD_SIZE,
+    maturity: Word = WORD_SIZE,
+    script_len: Word = WORD_SIZE,
+    script_data_len: Word = WORD_SIZE,
+    inputs_len: Word = WORD_SIZE,
+    outputs_len: Word = WORD_SIZE,
+    witnesses_len: Word = WORD_SIZE,
+    receipts_root: Bytes32 = {Bytes32::LEN}
+);
 
 impl Default for Script {
     fn default() -> Self {
@@ -457,13 +474,21 @@ mod field {
 
 #[cfg(feature = "std")]
 impl io::Read for Script {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
-        if buf.len() < n {
+        if full_buf.len() < n {
             return Err(bytes::eof());
         }
+        let buf: &mut [_; Self::LEN] = full_buf
+            .get_mut(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_number_unchecked(buf, crate::TransactionRepr::Script as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.repr),
+            crate::TransactionRepr::Script as u8,
+        );
         let Script {
             gas_price,
             gas_limit,
@@ -474,25 +499,26 @@ impl io::Read for Script {
             inputs,
             outputs,
             witnesses,
-            ..
+            metadata: _,
         } = self;
 
-        let mut buf = {
-            let buf = bytes::store_number_unchecked(buf, *gas_price);
-            let buf = bytes::store_number_unchecked(buf, *gas_limit);
-            let buf = bytes::store_number_unchecked(buf, *maturity);
-            let buf = bytes::store_number_unchecked(buf, script.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, script_data.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, inputs.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, witnesses.len() as Word);
-            let buf = bytes::store_array_unchecked(buf, receipts_root);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.script_len), script.len() as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.script_data_len),
+            script_data.len() as Word,
+        );
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.inputs_len), inputs.len() as Word);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.witnesses_len), witnesses.len() as Word);
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.receipts_root), receipts_root);
 
-            let (_, buf) = bytes::store_raw_bytes(buf, script.as_slice())?;
-            let (_, buf) = bytes::store_raw_bytes(buf, script_data.as_slice())?;
-
-            buf
-        };
+        let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
+        let (_, buf) = bytes::store_raw_bytes(buf, script.as_slice())?;
+        let (_, mut buf) = bytes::store_raw_bytes(buf, script_data.as_slice())?;
 
         for input in self.inputs.iter_mut() {
             let input_len = input.read(buf)?;
@@ -515,14 +541,18 @@ impl io::Read for Script {
 
 #[cfg(feature = "std")]
 impl io::Write for Script {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
         let mut n = crate::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
-        if buf.len() < n {
+        if full_buf.len() < n {
             return Err(bytes::eof());
         }
+        let buf: &[_; Self::LEN] = full_buf
+            .get(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
-        let identifier = crate::TransactionRepr::try_from(identifier)?;
+        let identifier = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.repr));
+        let identifier = crate::TransactionRepr::try_from(identifier as Word)?;
         if identifier != crate::TransactionRepr::Script {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -530,19 +560,19 @@ impl io::Write for Script {
             ));
         }
 
-        // Safety: buffer size is checked
-        let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (script_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (script_data_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (receipts_root, buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
+        let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
+        let maturity = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.maturity));
+        let script_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
+        let script_data_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
+        let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
+        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
+        let witnesses_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
+        let receipts_root = bytes::restore_at(buf, Self::layout(Self::LAYOUT.receipts_root));
 
         let receipts_root = receipts_root.into();
 
+        let buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
         let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
         n += size;
 

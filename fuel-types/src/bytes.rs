@@ -6,8 +6,9 @@ pub use use_std::*;
 #[cfg(feature = "alloc")]
 pub use use_alloc::*;
 
-/// Memory size of a [`Word`]
-pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
+pub use const_layout::*;
+
+mod const_layout;
 
 /// Define the amount of bytes for a serialization implementation.
 pub trait SizedBytes {
@@ -39,159 +40,58 @@ pub const fn padded_len_usize(len: usize) -> usize {
     len + (pad != 0) as usize * (WORD_SIZE - pad)
 }
 
-/// Consume the initial bytes of a buffer to store a word.
-///
-/// Return the remainder of the buffer
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub fn store_number_unchecked<T>(buf: &mut [u8], number: T) -> &mut [u8]
+/// Store a number into this buffer.
+pub fn store_number<T>(buf: &mut [u8; WORD_SIZE], number: T)
 where
     T: Into<Word>,
 {
-    buf[..WORD_SIZE].copy_from_slice(&number.into().to_be_bytes());
-
-    &mut buf[WORD_SIZE..]
+    buf.copy_from_slice(&number.into().to_be_bytes());
 }
 
-/// Read the initial bytes of a buffer to fetch a word.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_number_unchecked<T>(buf: &[u8]) -> (T, &[u8])
+/// Read a number from a buffer.
+pub fn restore_number<T>(buf: [u8; WORD_SIZE]) -> T
 where
     T: From<Word>,
 {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number).into();
-
-    (number, &buf[WORD_SIZE..])
+    Word::from_be_bytes(buf).into()
 }
 
-/// Read the initial bytes of a buffer to fetch a word.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_word_unchecked(buf: &[u8]) -> (Word, &[u8]) {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number);
-
-    (number, &buf[WORD_SIZE..])
+/// Read a word from a buffer.
+pub fn restore_word(buf: [u8; WORD_SIZE]) -> Word {
+    Word::from_be_bytes(buf)
 }
 
-/// Read the a word-padded u8 from a buffer.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_u8_unchecked(buf: &[u8]) -> (u8, &[u8]) {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number) as u8;
-
-    (number, &buf[WORD_SIZE..])
+/// Read a word-padded u8 from a buffer.
+pub fn restore_u8(buf: [u8; WORD_SIZE]) -> u8 {
+    Word::from_be_bytes(buf) as u8
 }
 
 /// Read the a word-padded u16 from a buffer.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_u16_unchecked(buf: &[u8]) -> (u16, &[u8]) {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number) as u16;
-
-    (number, &buf[WORD_SIZE..])
+pub fn restore_u16(buf: [u8; WORD_SIZE]) -> u16 {
+    Word::from_be_bytes(buf) as u16
 }
 
 /// Read the a word-padded u32 from a buffer.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_u32_unchecked(buf: &[u8]) -> (u32, &[u8]) {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number) as u32;
-
-    (number, &buf[WORD_SIZE..])
+pub fn restore_u32(buf: [u8; WORD_SIZE]) -> u32 {
+    Word::from_be_bytes(buf) as u32
 }
 
 /// Read the a word-padded usize from a buffer.
-///
-/// Return the read word and the remainder of the buffer
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
-/// # Panics
-///
-/// This function will panic if the length of the buffer is smaller than a word
-pub unsafe fn restore_usize_unchecked(buf: &[u8]) -> (usize, &[u8]) {
-    let number = from_slice_unchecked(buf);
-    let number = Word::from_be_bytes(number) as usize;
-
-    (number, &buf[WORD_SIZE..])
-}
-
-/// Copy `array` into `buf` and return the remainder bytes of `buf`
-///
-/// # Panics
-///
-/// This function will panic if the length of `buf` is smaller than `N`
-pub fn store_array_unchecked<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> &'a mut [u8] {
-    buf[..N].copy_from_slice(array);
-
-    &mut buf[N..]
+pub fn restore_usize(buf: [u8; WORD_SIZE]) -> usize {
+    Word::from_be_bytes(buf) as usize
 }
 
 /// Read an array of `N` bytes from `buf`.
 ///
-/// Return the read array and the remainder bytes.
-///
-/// # Safety
-///
-/// Extends the safety properties of [`from_slice_unchecked`]
-///
 /// # Panics
 ///
 /// This function will panic if the length of `buf` is smaller than `N`
-pub unsafe fn restore_array_unchecked<const N: usize>(buf: &[u8]) -> ([u8; N], &[u8]) {
-    (from_slice_unchecked(buf), &buf[N..])
+pub fn restore_array_from_slice<const N: usize>(buf: &[u8]) -> [u8; N] {
+    buf.try_into().expect("buf must be at least N bytes long")
 }
 
+#[cfg(feature = "unsafe")]
+#[allow(unsafe_code)]
 /// Add a conversion from arbitrary slices into arrays
 ///
 /// # Safety
@@ -329,7 +229,7 @@ mod use_std {
         let len = buf
             .chunks_exact(WORD_SIZE)
             .next()
-            .map(|b| unsafe { from_slice_unchecked(b) })
+            .and_then(|b| b.try_into().ok())
             .map(|len| Word::from_be_bytes(len) as usize)
             .ok_or_else(eof)?;
 
@@ -359,38 +259,6 @@ mod use_std {
         let buf = &buf[len + pad..];
 
         Ok((len + pad, data, buf))
-    }
-
-    /// Convert a number to a word, store it in the buffer, and return a tuple containing the
-    /// number of written bytes and the remainder of the buffer.
-    pub fn store_number<T>(buf: &mut [u8], number: T) -> io::Result<(usize, &mut [u8])>
-    where
-        T: Into<Word>,
-    {
-        buf.chunks_exact_mut(WORD_SIZE)
-            .next()
-            .map(|chunk| chunk.copy_from_slice(&number.into().to_be_bytes()))
-            .ok_or_else(eof)?;
-
-        Ok((WORD_SIZE, &mut buf[WORD_SIZE..]))
-    }
-
-    /// Attempt to read a word-aligned number stored in the buffer.
-    ///
-    /// Return the readon number and the remainder buffer, if successful.
-    pub fn restore_number<T>(buf: &[u8]) -> io::Result<(T, &[u8])>
-    where
-        T: From<Word>,
-    {
-        // Safe checked memory bounds
-        let number = buf
-            .chunks_exact(WORD_SIZE)
-            .next()
-            .map(|b| unsafe { from_slice_unchecked(b) })
-            .map(|chunk| Word::from_be_bytes(chunk).into())
-            .ok_or_else(eof)?;
-
-        Ok((number, &buf[WORD_SIZE..]))
     }
 
     /// Store a statically sized array into a buffer, returning the remainder of the buffer.

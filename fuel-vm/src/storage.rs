@@ -8,6 +8,7 @@ mod interpreter;
 mod memory;
 mod predicate;
 
+pub use interpreter::ContractsAssetsStorage;
 pub use interpreter::InterpreterStorage;
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
@@ -104,12 +105,20 @@ macro_rules! double_key {
 
             /// Returns the reference to the first sub-key.
             pub fn $first_getter(&self) -> &$first {
-                unsafe { $first::as_ref_unchecked(&self.0[0..Self::first_end()]) }
+                $first::from_bytes_ref(
+                    (&self.0[0..Self::first_end()])
+                        .try_into()
+                        .expect("0..first_end() < first_end() + second_end()"),
+                )
             }
 
             /// Returns the reference to the second sub-key.
             pub fn $second_getter(&self) -> &$second {
-                unsafe { $second::as_ref_unchecked(&self.0[Self::first_end()..Self::second_end()]) }
+                $second::from_bytes_ref(
+                    (&self.0[Self::first_end()..Self::second_end()])
+                        .try_into()
+                        .expect("first_end()..second_end() < first_end() + second_end()"),
+                )
             }
 
             const fn first_end() -> usize {

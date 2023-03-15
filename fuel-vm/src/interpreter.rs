@@ -1,11 +1,12 @@
 //! [`Interpreter`] implementation
 
 use crate::call::CallFrame;
+use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::{PanicReason, RegId};
+use fuel_asm::{Flags, PanicReason};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
@@ -27,7 +28,6 @@ mod crypto;
 pub mod diff;
 mod executors;
 mod flow;
-mod frame;
 mod gas;
 mod initialization;
 mod internal;
@@ -39,7 +39,6 @@ mod post_execution;
 #[cfg(feature = "debug")]
 mod debug;
 
-#[cfg(feature = "profile-any")]
 use crate::profiler::Profiler;
 
 #[cfg(feature = "profile-gas")]
@@ -49,6 +48,8 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
+
+use self::memory::Memory;
 
 /// VM interpreter.
 ///
@@ -61,7 +62,7 @@ use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheck
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Vec<u8>,
+    memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
     receipts: Vec<Receipt>,
     tx: Tx,
@@ -71,7 +72,6 @@ pub struct Interpreter<S, Tx = ()> {
     context: Context,
     balances: RuntimeBalances,
     gas_costs: GasCosts,
-    #[cfg(feature = "profile-any")]
     profiler: Profiler,
     params: ConsensusParameters,
     /// `PanicContext` after the latest execution. It is consumed by `append_panic_receipt`
@@ -111,14 +111,6 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.debugger
     }
 
-    pub(crate) fn is_unsafe_math(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x01 == 0x01
-    }
-
-    pub(crate) fn is_wrapping(&self) -> bool {
-        self.registers[RegId::FLAG] & 0x02 == 0x02
-    }
-
     /// The current transaction.
     pub fn transaction(&self) -> &Tx {
         &self.tx
@@ -144,12 +136,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.receipts.as_slice()
     }
 
-    #[cfg(feature = "profile-gas")]
-    fn current_location(&self) -> InstructionLocation {
-        InstructionLocation::new(
-            self.frames.last().map(|frame| *frame.to()),
-            self.registers[RegId::PC] - self.registers[RegId::IS],
-        )
+    pub(crate) fn contract_id(&self) -> Option<ContractId> {
+        self.frames.last().map(|frame| *frame.to())
     }
 
     /// Reference to the underlying profiler
@@ -157,6 +145,27 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+}
+
+pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
+    Flags::from_bits_truncate(*flag)
+}
+
+pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
+    flags(flag).contains(Flags::WRAPPING)
+}
+
+pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
+    flags(flag).contains(Flags::UNSAFEMATH)
+}
+
+#[cfg(feature = "profile-gas")]
+fn current_location(
+    current_contract: Option<ContractId>,
+    pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
+    is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
+) -> InstructionLocation {
+    InstructionLocation::new(current_contract, *pc - *is)
 }
 
 impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {

@@ -4,6 +4,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
+#![warn(unsafe_code)]
 
 mod args;
 mod instruction_result;
@@ -47,6 +48,19 @@ pub type RawInstruction = u32;
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidOpcode;
 
+bitflags::bitflags! {
+    /// Possible values for the FLAG instruction.
+    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#flags
+    pub struct Flags: Word {
+        /// If set, arithmetic errors result in setting $err instead of panicking.
+        /// This includes cases where result of a computation is undefined, like
+        /// division by zero. Arithmetic overflows still cause a panic, but that be
+        /// controlled with [`Flags::WRAPPING`].
+        const UNSAFEMATH = 0x01;
+        /// If set, arithmetic overflows result in setting $of instead of panicking.
+        const WRAPPING = 0x02;
+    }
+}
 /// Type is convertible to a [`RegId`]
 pub trait CheckRegId {
     /// Convert to a [`RegId`], or panic
@@ -302,11 +316,14 @@ impl RegId {
 }
 
 impl Imm12 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 12 bits.
     pub const fn new(u: u16) -> Self {
-        Self(u & 0b_0000_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -324,11 +341,14 @@ impl Imm12 {
 }
 
 impl Imm18 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_0000_0011_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 18 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -346,11 +366,14 @@ impl Imm18 {
 }
 
 impl Imm24 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_1111_1111_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 24 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.

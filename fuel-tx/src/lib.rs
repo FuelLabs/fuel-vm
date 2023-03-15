@@ -4,6 +4,7 @@
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
+#![deny(unsafe_code)]
 
 // TODO Add docs
 

@@ -9,7 +9,7 @@ use test_case::test_case;
 struct SRWQInput {
     input: StateReadQWord,
     storage_slots: Vec<([u8; 32], [u8; 32])>,
-    memory: Vec<u8>,
+    memory: Memory<MEM_SIZE>,
 }
 
 impl StateReadQWord {
@@ -85,7 +85,7 @@ impl StateReadQWord {
         memory: mem(&[&key(27)]),
     } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), false)
 )]
-fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
+fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
     let SRWQInput {
         input,
         storage_slots,
@@ -99,7 +99,16 @@ fn test_state_read_qword(input: SRWQInput) -> (Vec<u8>, bool) {
             .unwrap();
     }
     let mut result_register = 0u64;
-    state_read_qword(&Default::default(), &storage, &mut memory, &mut result_register, input).unwrap();
+    let mut pc = 0;
+    state_read_qword(
+        &Default::default(),
+        &storage,
+        &mut memory,
+        RegMut::new(&mut pc),
+        &mut result_register,
+        input,
+    )
+    .unwrap();
     (memory, result_register != 0)
 }
 

@@ -17,8 +17,8 @@ pub trait InterpreterStorage:
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
     + StorageMutate<ContractsInfo, Error = Self::DataError>
-    + MerkleRootStorage<ContractId, ContractsAssets, Error = Self::DataError>
     + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
+    + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
     type DataError: StdError + Into<io::Error>;
@@ -176,13 +176,16 @@ pub trait InterpreterStorage:
         start_key: &Bytes32,
         range: Word,
     ) -> Result<Option<()>, Self::DataError>;
+}
 
+/// Storage operations for contract assets.
+pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets> {
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,
         id: &ContractId,
         asset_id: &AssetId,
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, Self::Error> {
         let balance = self
             .storage::<ContractsAssets>()
             .get(&(id, asset_id).into())?
@@ -197,10 +200,12 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         asset_id: &AssetId,
         value: Word,
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, Self::Error> {
         StorageMutate::<ContractsAssets>::insert(self, &(contract, asset_id).into(), &value)
     }
 }
+
+impl<S> ContractsAssetsStorage for &mut S where S: ContractsAssetsStorage {}
 
 impl<S> InterpreterStorage for &mut S
 where

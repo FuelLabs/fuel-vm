@@ -1,11 +1,11 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::{ExecutableTransaction, Interpreter};
-use crate::state::{ExecuteState, ProgramState};
+use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
+use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
-use fuel_types::{bytes, Word};
+use fuel_types::Word;
 
 use std::ops::Div;
 
@@ -20,7 +20,7 @@ where
         let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
-            .map(|b| unsafe { bytes::from_slice_unchecked(b) })
+            .map(|b| b.try_into().expect("Has to be correct size slice"))
             .map(Word::from_be_bytes)
             .map(fuel_asm::raw_instructions_from_word)
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
@@ -122,20 +122,7 @@ where
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
                 let (a, b, c) = exp.unpack();
-                self.alu_boolean_overflow(
-                    a.into(),
-                    |l, r| {
-                        if let Ok(expo) = u32::try_from(r) {
-                            Word::overflowing_pow(l, expo)
-                        } else if l < 2 {
-                            (l, false)
-                        } else {
-                            (0, true)
-                        }
-                    },
-                    r!(b),
-                    r!(c),
-                )?;
+                self.alu_boolean_overflow(a.into(), alu::exp, r!(b), r!(c))?;
             }
 
             Instruction::EXPI(expi) => {
@@ -458,7 +445,7 @@ where
             Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs.bhei)?;
                 let a = bhei.unpack();
-                self.set_block_height(a.into())?;
+                self.block_height(a.into())?;
             }
 
             Instruction::BHSH(bhsh) => {
@@ -475,11 +462,13 @@ where
 
             Instruction::CALL(call) => {
                 let (a, b, c, d) = call.unpack();
-                let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
-                // raise revert state to halt execution for the callee
-                if let ProgramState::Revert(ra) = state {
-                    return Ok(ExecuteState::Revert(ra));
+
+                if self.frames.len() >= VM_MAX_NESTED_CALLS {
+                    return Err(PanicReason::NestedCallLimitReached.into());
                 }
+
+                // Enter call context
+                self.prepare_call(a, b, c, d)?;
             }
 
             Instruction::CB(cb) => {

@@ -58,7 +58,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             cases.owner = true;
 
             let ofs = input_ofs + i.repr().owner_offset().expect("input contains owner");
-            let owner_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let owner_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(owner, owner_p);
         }
@@ -69,7 +69,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                 cases.asset_id = true;
 
                 let ofs = input_ofs + offset;
-                let asset_id_p = unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + AssetId::LEN]) };
+                let asset_id_p = AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + AssetId::LEN]).unwrap();
 
                 assert_eq!(asset_id, asset_id_p);
             }
@@ -113,7 +113,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_balance_root_offset()
                     .expect("input contains balance root");
 
-            let balance_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let balance_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -126,7 +126,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_state_root_offset()
                     .expect("input contains state root");
 
-            let state_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let state_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(state_root, state_root_p);
         }
@@ -136,7 +136,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
             let ofs = input_ofs + i.repr().contract_id_offset().expect("input contains contract id");
 
-            let contract_id_p = unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
+            let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -146,7 +146,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
             let ofs = input_ofs + i.repr().message_id_offset().expect("input contains message id");
 
-            let message_id_p = unsafe { MessageId::as_ref_unchecked(&bytes[ofs..ofs + MessageId::LEN]) };
+            let message_id_p = MessageId::from_bytes_ref_checked(&bytes[ofs..ofs + MessageId::LEN]).unwrap();
 
             assert_eq!(message_id, message_id_p);
         }
@@ -156,7 +156,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
             let ofs = input_ofs + i.repr().message_sender_offset().expect("input contains sender");
 
-            let sender_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let sender_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(sender, sender_p);
         }
@@ -166,7 +166,7 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
             let ofs = input_ofs + i.repr().message_recipient_offset().expect("input contains recipient");
 
-            let recipient_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let recipient_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(recipient, recipient_p);
         }
@@ -217,7 +217,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             cases.output_to = true;
 
             let ofs = output_ofs + o.repr().to_offset().expect("output have to");
-            let to_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let to_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(to, to_p);
         }
@@ -226,7 +226,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             cases.output_asset_id = true;
 
             let ofs = output_ofs + o.repr().asset_id_offset().expect("output have asset id");
-            let asset_id_p = unsafe { AssetId::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let asset_id_p = AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(asset_id, asset_id_p);
         }
@@ -238,7 +238,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
                 + o.repr()
                     .contract_balance_root_offset()
                     .expect("output have balance root");
-            let balance_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let balance_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -255,7 +255,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             };
 
             let ofs = output_ofs + ofs;
-            let state_root_p = unsafe { Bytes32::as_ref_unchecked(&bytes[ofs..ofs + Bytes32::LEN]) };
+            let state_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(state_root, state_root_p);
         }
@@ -264,7 +264,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             cases.output_contract_created_id = true;
 
             let ofs = output_ofs + o.repr().contract_id_offset().expect("output have contract id");
-            let contract_id_p = unsafe { ContractId::as_ref_unchecked(&bytes[ofs..ofs + ContractId::LEN]) };
+            let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -273,7 +273,7 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             cases.output_recipient = true;
 
             let ofs = output_ofs + o.repr().recipient_offset().expect("output have recipient");
-            let recipient_p = unsafe { Address::as_ref_unchecked(&bytes[ofs..ofs + Address::LEN]) };
+            let recipient_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(recipient, recipient_p);
         }
@@ -297,7 +297,7 @@ fn tx_offset_create() {
             cases.salt = true;
 
             let ofs = tx.salt_offset();
-            let salt_p = unsafe { Salt::as_ref_unchecked(&bytes[ofs..ofs + Salt::LEN]) };
+            let salt_p = Salt::from_bytes_ref_checked(&bytes[ofs..ofs + Salt::LEN]).unwrap();
 
             assert_eq!(tx.salt(), salt_p);
 
@@ -306,7 +306,7 @@ fn tx_offset_create() {
 
                 let ofs = tx.storage_slots_offset_at(idx).expect("tx with slots contains offsets");
 
-                let bytes = unsafe { Bytes64::as_ref_unchecked(&bytes[ofs..ofs + Bytes64::LEN]) };
+                let bytes = Bytes64::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes64::LEN]).unwrap();
 
                 let slot_p = StorageSlot::from(bytes);
 

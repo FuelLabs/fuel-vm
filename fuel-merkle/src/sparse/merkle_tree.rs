@@ -1,10 +1,10 @@
 use crate::{
-    common::{error::DeserializeError, AsPathIterator, Bytes32, ChildError},
-    sparse::{primitive::Primitive, zero_sum, Node, StorageNode, StorageNodeError},
+    common::{error::DeserializeError, node::ChildError, AsPathIterator, Bytes32},
+    sparse::{empty_sum, primitive::Primitive, Node, StorageNode, StorageNodeError},
     storage::{Mappable, StorageInspect, StorageMutate},
 };
 
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 use core::{cmp, iter, marker::PhantomData};
 
 #[derive(Debug, Clone)]
@@ -12,9 +12,9 @@ use core::{cmp, iter, marker::PhantomData};
 pub enum MerkleTreeError<StorageError> {
     #[cfg_attr(
         feature = "std",
-        error("cannot load node with key {0}; the key is not found in storage")
+        error("cannot load node with key {}; the key is not found in storage", hex::encode(.0))
     )]
-    LoadError(String),
+    LoadError(Bytes32),
 
     #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
@@ -40,8 +40,8 @@ pub struct MerkleTree<TableType, StorageType> {
 }
 
 impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
-    pub const fn empty_root() -> Bytes32 {
-        *zero_sum()
+    pub const fn empty_root() -> &'static Bytes32 {
+        empty_sum()
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -74,16 +74,21 @@ where
     }
 
     pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
-        let primitive = storage
-            .get(root)?
-            .ok_or_else(|| MerkleTreeError::LoadError(hex::encode(root)))?
-            .into_owned();
-        let tree = Self {
-            root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
-            storage,
-            phantom_table: Default::default(),
-        };
-        Ok(tree)
+        if root == Self::empty_root() {
+            let tree = Self::new(storage);
+            Ok(tree)
+        } else {
+            let primitive = storage
+                .get(root)?
+                .ok_or_else(|| MerkleTreeError::LoadError(*root))?
+                .into_owned();
+            let tree = Self {
+                root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
+                storage,
+                phantom_table: Default::default(),
+            };
+            Ok(tree)
+        }
     }
 
     // PRIVATE
@@ -140,7 +145,7 @@ where
     }
 
     pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
-        if self.root() == Self::empty_root() {
+        if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
             return Ok(());
@@ -290,7 +295,7 @@ where
 mod test {
     use crate::{
         common::{Bytes32, StorageMap},
-        sparse::{hash::sum, MerkleTree, MerkleTreeError, Primitive},
+        sparse::{empty_sum, hash::sum, MerkleTree, MerkleTreeError, Primitive},
     };
     use fuel_storage::Mappable;
     use hex;
@@ -670,6 +675,15 @@ mod test {
         };
 
         assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_load_returns_an_empty_tree_for_empty_sum_root() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let tree = MerkleTree::load(&mut storage, empty_sum()).unwrap();
+        let root = tree.root();
+
+        assert_eq!(root, *empty_sum());
     }
 
     #[test]

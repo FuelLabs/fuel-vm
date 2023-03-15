@@ -3,7 +3,7 @@ use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::consts::*;
 use crate::context::Context;
 use crate::crypto;
-use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
@@ -166,47 +166,6 @@ impl<T> Interpreter<PredicateStorage, T> {
         Ok(PredicatesEstimated {
             gas_used: cumulative_gas_used,
         })
-    }
-}
-
-impl<S, Tx> Interpreter<S, Tx>
-where
-    S: InterpreterStorage,
-    Tx: ExecutableTransaction,
-{
-    pub(crate) fn run_call(&mut self) -> Result<ProgramState, RuntimeError> {
-        loop {
-            if self.registers[RegId::PC] >= VM_MAX_RAM {
-                return Err(PanicReason::MemoryOverflow.into());
-            }
-
-            let state = self.execute().map_err(|e| {
-                e.panic_reason()
-                    .map(RuntimeError::Recoverable)
-                    .unwrap_or_else(|| RuntimeError::Halt(e.into()))
-            })?;
-
-            match state {
-                ExecuteState::Return(r) => {
-                    return Ok(ProgramState::Return(r));
-                }
-
-                ExecuteState::ReturnData(d) => {
-                    return Ok(ProgramState::ReturnData(d));
-                }
-
-                ExecuteState::Revert(r) => {
-                    return Ok(ProgramState::Revert(r));
-                }
-
-                ExecuteState::Proceed => (),
-
-                #[cfg(feature = "debug")]
-                ExecuteState::DebugEvent(d) => {
-                    return Ok(ProgramState::RunProgram(d));
-                }
-            }
-        }
     }
 }
 
@@ -394,24 +353,36 @@ where
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
-            match self.execute()? {
-                ExecuteState::Return(r) => {
-                    return Ok(ProgramState::Return(r));
-                }
+            // Check whether the instruction will be executed in a call context
+            let in_call = !self.frames.is_empty();
 
-                ExecuteState::ReturnData(d) => {
-                    return Ok(ProgramState::ReturnData(d));
-                }
+            let state = self.execute()?;
 
-                ExecuteState::Revert(r) => {
+            if in_call {
+                // Only reverts should terminate execution from a call context
+                if let ExecuteState::Revert(r) = state {
                     return Ok(ProgramState::Revert(r));
                 }
+            } else {
+                match state {
+                    ExecuteState::Return(r) => {
+                        return Ok(ProgramState::Return(r));
+                    }
 
-                ExecuteState::Proceed => (),
+                    ExecuteState::ReturnData(d) => {
+                        return Ok(ProgramState::ReturnData(d));
+                    }
 
-                #[cfg(feature = "debug")]
-                ExecuteState::DebugEvent(d) => {
-                    return Ok(ProgramState::RunProgram(d));
+                    ExecuteState::Revert(r) => {
+                        return Ok(ProgramState::Revert(r));
+                    }
+
+                    ExecuteState::Proceed => (),
+
+                    #[cfg(feature = "debug")]
+                    ExecuteState::DebugEvent(d) => {
+                        return Ok(ProgramState::RunProgram(d));
+                    }
                 }
             }
         }

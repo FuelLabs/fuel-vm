@@ -98,11 +98,10 @@ fn backtrace() {
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
         script.push(op::movi(0x10, *b as Immediate18));
-        script.push(op::sb(RegId::HP, 0x10, 1 + i as Immediate12));
+        script.push(op::sb(RegId::HP, 0x10, i as Immediate12));
     });
 
-    script.push(op::addi(0x10, RegId::HP, 1));
-    script.push(op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS));
+    script.push(op::call(RegId::HP, RegId::ZERO, RegId::ZERO, RegId::CGAS));
     script.push(op::ret(RegId::ONE));
 
     let input_undefined = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_undefined);

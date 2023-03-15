@@ -21,6 +21,8 @@ num-integer = { version = "0.1", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
+strum = "0.24"
+strum_macros = "0.24"
 
 [dev-dependencies]
 bincode = { version = "1.3", default-features = false }

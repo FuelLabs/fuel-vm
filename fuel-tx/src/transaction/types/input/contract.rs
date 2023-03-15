@@ -1,7 +1,8 @@
-use crate::input::sizes::ContractSizes;
+use crate::transaction::types::input::consts::INPUT_CONTRACT_SIZE;
 use crate::{TxPointer, UtxoId};
-use fuel_types::bytes::{Deserializable, SizedBytes};
+use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, Bytes32, ContractId, MemLayout, MemLocType, Word};
+use crate::input::sizes::ContractSizes;
 
 /// It is a full representation of the contract input from the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.

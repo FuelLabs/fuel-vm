@@ -12,7 +12,7 @@ use fuel_asm::{
     op, Instruction,
     PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership},
 };
-use fuel_tx::field::{Outputs, Script as ScriptField};
+use fuel_tx::field::Script as ScriptField;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 const SET_STATUS_REG: u8 = 0x39;
@@ -1326,8 +1326,6 @@ fn smo_instruction_works() {
         let sender = rng.gen();
         let nonce = rng.gen();
 
-        let message = Output::message(Address::zeroed(), 0);
-
         #[rustfmt::skip]
         let script = vec![
             op::movi(0x10, 0),                          // set the txid as recipient
@@ -1346,7 +1344,6 @@ fn smo_instruction_works() {
             .gas_limit(gas_limit)
             .maturity(maturity)
             .add_unsigned_message_input(secret, sender, nonce, balance, data)
-            .add_output(message)
             .finalize_checked(block_height, params, client.gas_costs());
 
         let txid = tx.transaction().id();
@@ -1366,11 +1363,10 @@ fn smo_instruction_works() {
 
         let state = client.state_transition().expect("tx was executed");
         let (recipient, transferred) = state
-            .tx()
-            .outputs()
+            .receipts()
             .iter()
             .find_map(|o| match o {
-                Output::Message { recipient, amount } => Some((recipient, *amount)),
+                Receipt::MessageOut { recipient, amount, .. } => Some((*recipient, *amount)),
                 _ => None,
             })
             .expect("failed to find message output");

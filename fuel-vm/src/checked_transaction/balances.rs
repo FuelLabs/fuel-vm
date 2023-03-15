@@ -2,7 +2,7 @@ use fuel_tx::{
     field,
     input::{
         coin::{CoinPredicate, CoinSigned},
-        message::{MessagePredicate, MessageSigned},
+        message::{DepositCoinPredicate, DepositCoinSigned, MetadataPredicate, MetadataSigned},
     },
     Chargeable, CheckError, ConsensusParameters, Input, Output, TransactionFee,
 };
@@ -24,9 +24,11 @@ where
         Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
         | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => Some((*asset_id, amount)),
         // Sum message inputs
-        Input::MessagePredicate(MessagePredicate { amount, .. })
-        | Input::MessageSigned(MessageSigned { amount, .. }) => Some((AssetId::BASE, amount)),
-        _ => None,
+        Input::DepositCoinSigned(DepositCoinSigned { amount, .. })
+        | Input::DepositCoinPredicate(DepositCoinPredicate { amount, .. })
+        | Input::MetadataSigned(MetadataSigned { amount, .. })
+        | Input::MetadataPredicate(MetadataPredicate { amount, .. }) => Some((AssetId::BASE, amount)),
+        Input::Contract(_) => None,
     }) {
         *balances.entry(asset_id).or_default() += amount;
     }

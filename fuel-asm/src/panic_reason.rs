@@ -71,10 +71,6 @@ pub enum PanicReason {
     ExpectedParentInternalContext = 0x1e,
     /// The jump instruction cannot move backwards in predicate verification.
     IllegalJump = 0x1f,
-    /// The message output is with a recipient.
-    NonZeroMessageOutputRecipient = 0x20,
-    /// The destination recipient for a message output is zero.
-    ZeroedMessageOutputRecipient = 0x21,
     /// The contract ID is already deployed and can't be overwritten.
     ContractIdAlreadyDeployed = 0x22,
     /// The loaded contract mismatch expectations.

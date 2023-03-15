@@ -234,7 +234,7 @@ fn get_transaction_fields() {
     rng.fill(m_predicate_data.as_mut_slice());
 
     let owner = Input::predicate_owner(&m_predicate);
-    let message_predicate = Input::message_predicate(
+    let message_predicate = Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         owner,
@@ -247,8 +247,6 @@ fn get_transaction_fields() {
 
     let asset = rng.gen();
     let asset_amt = 27;
-
-    let output_message_amt = 3948;
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .prepare_script(true)
@@ -277,7 +275,6 @@ fn get_transaction_fields() {
         .add_input(message_predicate)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .add_output(Output::message(rng.gen(), output_message_amt))
         .finalize_checked(height, &params, client.gas_costs());
 
     let inputs = tx.as_ref().inputs();
@@ -315,10 +312,9 @@ fn get_transaction_fields() {
         outputs[2].asset_id().unwrap().to_vec(), // 20 - OutputCoinAssetId
         outputs[1].balance_root().unwrap().to_vec(), // 21 - OutputContractBalanceRoot
         outputs[1].state_root().unwrap().to_vec(), // 22 - OutputContractStateRoot
-        outputs[3].recipient().unwrap().to_vec(), // 23 - OutputMessageRecipient
-        witnesses[1].as_ref().to_vec(), // 24 - WitnessData
-        inputs[0].tx_pointer().unwrap().clone().to_bytes(), // 25 - InputCoinTxPointer
-        inputs[2].tx_pointer().unwrap().clone().to_bytes(), // 26 - InputContractTxPointer
+        witnesses[1].as_ref().to_vec(), // 23 - WitnessData
+        inputs[0].tx_pointer().unwrap().clone().to_bytes(), // 24 - InputCoinTxPointer
+        inputs[2].tx_pointer().unwrap().clone().to_bytes(), // 25 - InputContractTxPointer
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
@@ -688,19 +684,6 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x03),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputMessageRecipient),
-        op::movi(0x11, cases[23].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x11, 0),
-        op::movi(0x19, 0x03),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputMessageAmount),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, witnesses[1].as_ref().len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessDataLength),
@@ -709,21 +692,21 @@ fn get_transaction_fields() {
 
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessData),
-        op::movi(0x11, cases[24].len() as Immediate18),
+        op::movi(0x11, cases[23].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxPointer),
-        op::movi(0x11, cases[25].len() as Immediate18),
+        op::movi(0x11, cases[24].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxPointer),
-        op::movi(0x11, cases[26].len() as Immediate18),
+        op::movi(0x11, cases[25].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),

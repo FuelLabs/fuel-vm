@@ -7,9 +7,7 @@ use crate::context::Context;
 use crate::crypto;
 use crate::error::RuntimeError;
 
-use fuel_asm::Flags;
-use fuel_asm::{Instruction, PanicReason, RegId};
-use fuel_tx::field::Outputs;
+use fuel_asm::{Flags, Instruction, PanicReason, RegId};
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};

@@ -13,7 +13,7 @@ use itertools::Itertools;
 mod error;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
-use crate::input::message::{MessagePredicate, MessageSigned};
+use crate::input::message::{DepositCoinPredicate, DepositCoinSigned, MetadataPredicate, MetadataSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -40,7 +40,12 @@ impl Input {
             Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
             })
-            | Self::MessageSigned(MessageSigned {
+            | Self::DepositCoinSigned(DepositCoinSigned {
+                witness_index,
+                recipient: owner,
+                ..
+            })
+            | Self::MetadataSigned(MetadataSigned {
                 witness_index,
                 recipient: owner,
                 ..
@@ -69,7 +74,12 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
-            | Self::MessagePredicate(MessagePredicate {
+            | Self::DepositCoinPredicate(DepositCoinPredicate {
+                recipient: owner,
+                predicate,
+                ..
+            })
+            | Self::MetadataPredicate(MetadataPredicate {
                 recipient: owner,
                 predicate,
                 ..
@@ -89,28 +99,32 @@ impl Input {
         // TODO: Add verification of the `message_id` with hash from `Message`'s fields.
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate, .. })
+            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate, .. })
+            | Self::MetadataPredicate(MetadataPredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate, .. })
+            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate, .. })
+            | Self::MetadataPredicate(MetadataPredicate { predicate, .. })
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate_data, .. })
+            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate_data, .. })
+            | Self::MetadataPredicate(MetadataPredicate { predicate_data, .. })
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
             Self::CoinSigned(CoinSigned { witness_index, .. })
-            | Self::MessageSigned(MessageSigned { witness_index, .. })
+            | Self::DepositCoinSigned(DepositCoinSigned { witness_index, .. })
+            | Self::MetadataSigned(MetadataSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })
@@ -129,14 +143,15 @@ impl Input {
                 Err(CheckError::InputContractAssociatedOutputContract { index })
             }
 
-            Self::MessageSigned(MessageSigned { data, .. }) | Self::MessagePredicate(MessagePredicate { data, .. })
+            Self::MetadataSigned(MetadataSigned { data, .. })
+            | Self::MetadataPredicate(MetadataPredicate { data, .. })
                 if data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }
 
-            // TODO If h is the block height the UTXO being spent was created, transaction is
-            // invalid if `blockheight() < h + maturity`.
+            // TODO: If h is the block height the UTXO being spent was created, transaction is
+            //  invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
         }
     }

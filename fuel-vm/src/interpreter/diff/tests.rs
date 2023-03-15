@@ -1,7 +1,5 @@
 use fuel_asm::op;
-use fuel_tx::field::Outputs;
 use fuel_tx::Script;
-use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::ContractId;
 use test_case::test_case;
@@ -209,6 +207,7 @@ fn reset_vm_txns() {
     b.tx.outputs_mut().push(fuel_tx::Output::Message {
         recipient: Address::zeroed(),
         amount: 1,
+        asset_id: AssetId::zeroed(),
     });
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);

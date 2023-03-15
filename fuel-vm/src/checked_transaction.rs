@@ -388,10 +388,9 @@ mod tests {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        let output_amount = 0;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
+        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -409,11 +408,9 @@ mod tests {
         // ensure message outputs aren't deducted from available balance
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        // set a large message output amount
-        let output_amount = u64::MAX;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
+        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -497,7 +494,7 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount, 0);
+        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -523,7 +520,7 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount, 0);
+        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_min_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -811,32 +808,19 @@ mod tests {
     }
 
     // used to verify message inputs can cover fees
-    fn signed_message_tx(
-        rng: &mut StdRng,
-        gas_price: u64,
-        gas_limit: u64,
-        input_amount: u64,
-        output_amount: u64,
-    ) -> Script {
+    fn signed_message_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![])
-            .add_output(Output::message(rng.gen(), output_amount))
             .finalize()
     }
 
-    fn predicate_message_tx(
-        rng: &mut StdRng,
-        gas_price: u64,
-        gas_limit: u64,
-        input_amount: u64,
-        output_amount: u64,
-    ) -> Script {
+    fn predicate_message_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_input(Input::message_predicate(
+            .add_input(Input::metadata_predicate(
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
@@ -846,7 +830,6 @@ mod tests {
                 vec![],
                 vec![],
             ))
-            .add_output(Output::message(rng.gen(), output_amount))
             .finalize()
     }
 

@@ -20,7 +20,7 @@ fn input_coin_message_signature() {
                 .iter()
                 .enumerate()
                 .try_for_each(|(index, input)| match input {
-                    Input::CoinSigned { .. } | Input::MessageSigned { .. } => {
+                    Input::CoinSigned { .. } | Input::MetadataSigned { .. } => {
                         input.check(index, &txhash, outputs, witnesses, &Default::default())
                     }
                     _ => Ok(()),
@@ -214,7 +214,7 @@ fn contract() {
 }
 
 #[test]
-fn message() {
+fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let txhash: Bytes32 = rng.gen();
@@ -222,7 +222,7 @@ fn message() {
     let predicate = generate_nonempty_padded_bytes(rng);
     let recipient = (*Contract::root_from_code(&predicate)).into();
 
-    Input::message_predicate(
+    Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         recipient,
@@ -237,7 +237,7 @@ fn message() {
 
     let mut tx = Script::default();
 
-    let input = Input::message_signed(
+    let input = Input::metadata_signed(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -260,7 +260,7 @@ fn message() {
     let recipient = (*Contract::root_from_code(&predicate)).into();
     predicate[0] = predicate[0].wrapping_add(1);
 
-    let err = Input::message_predicate(
+    let err = Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         recipient,
@@ -277,13 +277,13 @@ fn message() {
 
     let data = vec![0xff; PARAMS.max_message_data_length as usize + 1];
 
-    let err = Input::message_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, data.clone())
+    let err = Input::metadata_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, data.clone())
         .check(1, &txhash, &[], &[vec![].into()], &Default::default())
         .expect_err("expected max data length error");
 
     assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
 
-    let err = Input::message_predicate(
+    let err = Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -300,7 +300,7 @@ fn message() {
 
     let predicate = vec![0xff; PARAMS.max_predicate_length as usize + 1];
 
-    let err = Input::message_predicate(
+    let err = Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -317,13 +317,97 @@ fn message() {
 
     let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
 
-    let err = Input::message_predicate(
+    let err = Input::metadata_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
         generate_bytes(rng),
+        generate_bytes(rng),
+        predicate_data,
+    )
+    .check(1, &txhash, &[], &[], &Default::default())
+    .expect_err("expected max predicate data length error");
+
+    assert_eq!(CheckError::InputPredicateDataLength { index: 1 }, err,);
+}
+
+#[test]
+fn message_deposit_coin() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let txhash: Bytes32 = rng.gen();
+
+    let predicate = generate_nonempty_padded_bytes(rng);
+    let recipient = (*Contract::root_from_code(&predicate)).into();
+
+    Input::deposit_coin_predicate(
+        rng.gen(),
+        rng.gen(),
+        recipient,
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .check(1, &txhash, &[], &[], &Default::default())
+    .expect("failed to validate empty message input");
+
+    let mut tx = Script::default();
+
+    let input = Input::deposit_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    tx.add_input(input);
+
+    let block_height = rng.gen();
+    let err = tx
+        .check(block_height, &Default::default())
+        .expect_err("Expected failure");
+
+    assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
+
+    let mut predicate = generate_nonempty_padded_bytes(rng);
+    let recipient = (*Contract::root_from_code(&predicate)).into();
+    predicate[0] = predicate[0].wrapping_add(1);
+
+    let err = Input::deposit_coin_predicate(
+        rng.gen(),
+        rng.gen(),
+        recipient,
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .check(1, &txhash, &[], &[], &Default::default())
+    .expect_err("Expected failure");
+
+    assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
+
+    let predicate = vec![0xff; PARAMS.max_predicate_length as usize + 1];
+
+    let err = Input::deposit_coin_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        predicate,
+        generate_bytes(rng),
+    )
+    .check(1, &txhash, &[], &[], &Default::default())
+    .expect_err("expected max predicate length error");
+
+    assert_eq!(CheckError::InputPredicateLength { index: 1 }, err,);
+
+    let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
+
+    let err = Input::deposit_coin_predicate(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
         generate_bytes(rng),
         predicate_data,
     )
@@ -357,7 +441,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let message_id = rng.gen();
 
-    let message_input = Input::message_signed(message_id, rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
+    let message_input = Input::metadata_signed(message_id, rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(message_input.clone())

@@ -35,7 +35,6 @@ struct TestedFields {
     output_contract_state_root: bool,
     output_contract_created_state_root: bool,
     output_contract_created_id: bool,
-    output_recipient: bool,
 }
 
 fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
@@ -330,7 +329,6 @@ fn tx_offset_create() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]
@@ -371,7 +369,6 @@ fn tx_offset_script() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]
@@ -404,7 +401,6 @@ fn tx_offset_mint() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]

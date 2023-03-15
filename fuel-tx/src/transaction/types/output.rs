@@ -19,7 +19,7 @@ use sizes::*;
 
 pub use repr::OutputRepr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Output {
     Coin {
@@ -32,11 +32,6 @@ pub enum Output {
         input_index: u8,
         balance_root: Bytes32,
         state_root: Bytes32,
-    },
-
-    Message {
-        recipient: Address,
-        amount: Word,
     },
 
     Change {
@@ -71,8 +66,6 @@ impl bytes::SizedBytes for Output {
         match self {
             Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => OUTPUT_CCV_SIZE,
 
-            Self::Message { .. } => OUTPUT_MESSAGE_SIZE,
-
             Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
 
             Self::ContractCreated { .. } => OUTPUT_CONTRACT_CREATED_SIZE,
@@ -95,10 +88,6 @@ impl Output {
             balance_root,
             state_root,
         }
-    }
-
-    pub const fn message(recipient: Address, amount: Word) -> Self {
-        Self::Message { recipient, amount }
     }
 
     pub const fn change(to: Address, amount: Word, asset_id: AssetId) -> Self {
@@ -134,10 +123,9 @@ impl Output {
 
     pub const fn amount(&self) -> Option<Word> {
         match self {
-            Output::Coin { amount, .. }
-            | Output::Message { amount, .. }
-            | Output::Change { amount, .. }
-            | Output::Variable { amount, .. } => Some(*amount),
+            Output::Coin { amount, .. } | Output::Change { amount, .. } | Output::Variable { amount, .. } => {
+                Some(*amount)
+            }
             _ => None,
         }
     }
@@ -170,19 +158,8 @@ impl Output {
         }
     }
 
-    pub const fn recipient(&self) -> Option<&Address> {
-        match self {
-            Output::Message { recipient, .. } => Some(recipient),
-            _ => None,
-        }
-    }
-
     pub const fn is_coin(&self) -> bool {
         matches!(self, Self::Coin { .. })
-    }
-
-    pub const fn is_message(&self) -> bool {
-        matches!(self, Self::Message { .. })
     }
 
     pub const fn is_variable(&self) -> bool {
@@ -229,11 +206,6 @@ impl Output {
                 mem::take(state_root);
             }
 
-            Output::Message { recipient, amount } => {
-                mem::take(recipient);
-                mem::take(amount);
-            }
-
             Output::Change { amount, .. } => {
                 mem::take(amount);
             }
@@ -254,11 +226,6 @@ impl Output {
     #[cfg(feature = "std")]
     pub fn prepare_init_script(&mut self) {
         match self {
-            Output::Message { recipient, amount } => {
-                mem::take(recipient);
-                mem::take(amount);
-            }
-
             Output::Change { amount, .. } => {
                 mem::take(amount);
             }
@@ -305,19 +272,6 @@ impl io::Read for Output {
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
-            }
-
-            Self::Message { recipient, amount } => {
-                type S = MessageSizes;
-                let buf: &mut [_; S::LEN] = buf
-                    .get_mut(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
             }
 
             Self::Contract {
@@ -373,6 +327,14 @@ impl io::Write for Output {
         let identifier = OutputRepr::try_from(identifier)?;
 
         match identifier {
+            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable if buf.len() < OUTPUT_CCV_SIZE - WORD_SIZE => {
+                Err(bytes::eof())
+            }
+
+            OutputRepr::Contract if buf.len() < OUTPUT_CONTRACT_SIZE - WORD_SIZE => Err(bytes::eof()),
+
+            OutputRepr::ContractCreated if buf.len() < OUTPUT_CONTRACT_CREATED_SIZE - WORD_SIZE => Err(bytes::eof()),
+
             OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
                 type S = CoinSizes;
                 let buf: &[_; S::LEN] = buf
@@ -396,23 +358,6 @@ impl io::Write for Output {
                 }
 
                 Ok(OUTPUT_CCV_SIZE)
-            }
-
-            OutputRepr::Message => {
-                type S = MessageSizes;
-                let buf: &[_; S::LEN] = buf
-                    .get(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
-                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
-
-                let recipient = recipient.into();
-
-                *self = Self::Message { recipient, amount };
-
-                Ok(OUTPUT_MESSAGE_SIZE)
             }
 
             OutputRepr::Contract => {

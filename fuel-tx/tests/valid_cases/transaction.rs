@@ -817,7 +817,7 @@ mod inputs {
             .gas_limit(PARAMS.max_gas_per_tx)
             .gas_price(rng.gen())
             .maturity(rng.gen())
-            .add_input(Input::message_predicate(
+            .add_input(Input::metadata_predicate(
                 rng.gen(),
                 rng.gen(),
                 recipient,
@@ -842,7 +842,7 @@ mod inputs {
             .gas_limit(PARAMS.max_gas_per_tx)
             .gas_price(rng.gen())
             .maturity(rng.gen())
-            .add_input(Input::message_predicate(
+            .add_input(Input::metadata_predicate(
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),

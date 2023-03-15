@@ -431,22 +431,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
                     .ok_or(PanicReason::OutputNotFound)?) as Word
             }
-            GTFArgs::OutputMessageRecipient => {
-                (ofs + tx
-                    .outputs()
-                    .get(b)
-                    .filter(|o| o.is_message())
-                    .map(Output::repr)
-                    .and_then(|r| r.recipient_offset())
-                    .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::OutputNotFound)?) as Word
-            }
-            GTFArgs::OutputMessageAmount => tx
-                .outputs()
-                .get(b)
-                .filter(|o| o.is_message())
-                .and_then(Output::amount)
-                .ok_or(PanicReason::OutputNotFound)?,
             GTFArgs::OutputContractCreatedContractId => {
                 (ofs + tx
                     .outputs()

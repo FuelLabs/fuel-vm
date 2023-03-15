@@ -64,8 +64,9 @@ mod use_std {
         R: Rng,
     {
         fn from(rng: R) -> Self {
-            let input_sampler = Uniform::from(0..5);
-            let output_sampler = Uniform::from(0..6);
+            use strum::EnumCount;
+            let input_sampler = Uniform::from(0..Input::COUNT);
+            let output_sampler = Uniform::from(0..Output::COUNT);
 
             // Trick to enforce coverage of all variants in compile-time
             //
@@ -74,11 +75,13 @@ mod use_std {
             debug_assert!({
                 Input::from_bytes(&[])
                     .map(|i| match i {
-                        Input::CoinSigned { .. } => (),
-                        Input::CoinPredicate { .. } => (),
-                        Input::Contract { .. } => (),
-                        Input::MessageSigned { .. } => (),
-                        Input::MessagePredicate { .. } => (),
+                        Input::CoinSigned(_) => (),
+                        Input::CoinPredicate(_) => (),
+                        Input::Contract(_) => (),
+                        Input::DepositCoinSigned(_) => (),
+                        Input::DepositCoinPredicate(_) => (),
+                        Input::MetadataSigned(_) => (),
+                        Input::MetadataPredicate(_) => (),
                     })
                     .unwrap_or(());
 
@@ -86,7 +89,6 @@ mod use_std {
                     .map(|o| match o {
                         Output::Coin { .. } => (),
                         Output::Contract { .. } => (),
-                        Output::Message { .. } => (),
                         Output::Change { .. } => (),
                         Output::Variable { .. } => (),
                         Output::ContractCreated { .. } => (),
@@ -95,9 +97,9 @@ mod use_std {
 
                 Transaction::from_bytes(&[])
                     .map(|t| match t {
-                        Transaction::Script { .. } => (),
-                        Transaction::Create { .. } => (),
-                        Transaction::Mint { .. } => (),
+                        Transaction::Script(_) => (),
+                        Transaction::Create(_) => (),
+                        Transaction::Mint(_) => (),
                     })
                     .unwrap_or(());
 
@@ -132,10 +134,9 @@ mod use_std {
                 let output = match variant {
                     0 => Output::coin(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     1 => Output::contract(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    2 => Output::message(self.rng.gen(), self.rng.gen()),
-                    3 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    4 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    5 => Output::contract_created(self.rng.gen(), self.rng.gen()),
+                    2 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    3 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
+                    4 => Output::contract_created(self.rng.gen(), self.rng.gen()),
 
                     _ => unreachable!(),
                 };
@@ -154,6 +155,11 @@ mod use_std {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
+
+            enum MessageType {
+                DepositCoin,
+                Metadata,
+            }
 
             for _ in 0..inputs {
                 let variant = self.input_sampler.sample(&mut self.rng);
@@ -198,14 +204,37 @@ mod use_std {
                     3 => {
                         let secret = SecretKey::random(&mut self.rng);
 
-                        input_message_keys.push(secret);
+                        input_message_keys.push((MessageType::DepositCoin, secret));
                     }
 
                     4 => {
                         let predicate = generate_nonempty_padded_bytes(&mut self.rng);
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
-                        let input = Input::message_predicate(
+                        let input = Input::deposit_coin_predicate(
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            recipient,
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            predicate,
+                            generate_bytes(&mut self.rng),
+                        );
+
+                        builder.add_input(input);
+                    }
+
+                    5 => {
+                        let secret = SecretKey::random(&mut self.rng);
+
+                        input_message_keys.push((MessageType::Metadata, secret));
+                    }
+
+                    6 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let recipient = (*Contract::root_from_code(&predicate)).into();
+
+                        let input = Input::metadata_predicate(
                             self.rng.gen(),
                             self.rng.gen(),
                             recipient,
@@ -234,14 +263,19 @@ mod use_std {
                 );
             });
 
-            input_message_keys.iter().for_each(|k| {
-                builder.add_unsigned_message_input(
-                    *k,
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    generate_bytes(&mut self.rng),
-                );
+            input_message_keys.iter().for_each(|(t, k)| match t {
+                MessageType::DepositCoin => {
+                    builder.add_unsigned_message_input(*k, self.rng.gen(), self.rng.gen(), self.rng.gen(), vec![]);
+                }
+                MessageType::Metadata => {
+                    builder.add_unsigned_message_input(
+                        *k,
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        generate_bytes(&mut self.rng),
+                    );
+                }
             });
 
             self.fill_outputs(builder);
@@ -254,7 +288,7 @@ mod use_std {
             }
 
             let mut input_keys = input_coin_keys;
-            input_keys.append(&mut input_message_keys);
+            input_keys.extend(input_message_keys.into_iter().map(|(_, k)| k));
             input_keys
         }
     }

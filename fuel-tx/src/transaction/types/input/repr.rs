@@ -103,9 +103,12 @@ impl InputRepr {
 
     pub const fn from_input(input: &Input) -> Self {
         match input {
-            Input::CoinSigned { .. } | Input::CoinPredicate { .. } => InputRepr::Coin,
-            Input::Contract { .. } => InputRepr::Contract,
-            Input::MessageSigned { .. } | Input::MessagePredicate { .. } => InputRepr::Message,
+            Input::CoinSigned(_) | Input::CoinPredicate(_) => InputRepr::Coin,
+            Input::Contract(_) => InputRepr::Contract,
+            Input::DepositCoinSigned(_)
+            | Input::DepositCoinPredicate(_)
+            | Input::MetadataSigned(_)
+            | Input::MetadataPredicate(_) => InputRepr::Message,
         }
     }
 }

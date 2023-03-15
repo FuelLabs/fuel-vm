@@ -166,7 +166,6 @@ fn output() {
     assert_encoding_correct(&[
         Output::coin([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::contract(0xaa, [0xbb; 32].into(), [0xcc; 32].into()),
-        Output::message([0xaa; 32].into(), Word::MAX >> 1),
         Output::change([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::variable([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::contract_created([0xaa; 32].into(), [0xaa; 32].into()),

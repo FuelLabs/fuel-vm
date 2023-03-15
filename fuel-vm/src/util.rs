@@ -163,11 +163,6 @@ pub mod test_helpers {
             self
         }
 
-        pub fn message_output(&mut self) -> &mut TestBuilder {
-            self.builder.add_output(Output::message(Address::zeroed(), 0));
-            self
-        }
-
         pub fn variable_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
             self.builder
                 .add_output(Output::variable(Address::zeroed(), 0, asset_id));

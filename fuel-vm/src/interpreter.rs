@@ -17,7 +17,7 @@ use fuel_tx::{
     TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{Address, AssetId, ContractId, Word};
+use fuel_types::{AssetId, ContractId, Word};
 
 mod alu;
 mod balances;
@@ -217,29 +217,6 @@ pub trait ExecutableTransaction:
             .get_mut(idx)
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Invalid output idx"))
             .and_then(|o| o.read(buf))
-    }
-
-    /// Replaces the `Output::Message` with the `output`(should be also `Output::Message`)
-    /// by the `idx` index.
-    fn replace_message_output(&mut self, idx: usize, output: Output) -> Result<(), PanicReason> {
-        // TODO increase the error granularity for this case - create a new variant of panic reason
-        if !matches!(&output, Output::Message {
-                recipient,
-                ..
-            } if recipient != &Address::zeroed())
-        {
-            return Err(PanicReason::OutputNotFound);
-        }
-
-        self.outputs_mut()
-            .get_mut(idx)
-            .and_then(|o| match o {
-                Output::Message { recipient, .. } if recipient == &Address::zeroed() => Some(o),
-                _ => None,
-            })
-            .map(|o| mem::replace(o, output))
-            .map(|_| ())
-            .ok_or(PanicReason::NonZeroMessageOutputRecipient)
     }
 
     /// Replaces the `Output::Variable` with the `output`(should be also `Output::Variable`)

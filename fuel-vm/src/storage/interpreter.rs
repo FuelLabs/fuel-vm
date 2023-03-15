@@ -41,20 +41,6 @@ pub trait InterpreterStorage:
     /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
 
-    /// Deploy a contract into the storage
-    fn deploy_contract(
-        &mut self,
-        salt: &Salt,
-        slots: &[StorageSlot],
-        contract: &Contract,
-    ) -> Result<(), Self::DataError> {
-        let storage_root = Contract::initial_state_root(slots.iter());
-        let root = contract.root();
-        let id = contract.id(salt, &root, &storage_root);
-
-        self.deploy_contract_with_id(salt, slots, contract, &root, &id)
-    }
-
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
         &mut self,

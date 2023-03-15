@@ -69,6 +69,7 @@ impl Mappable for ContractsState {
 /// it in most cases as on big key(except tests, which require access to sub-keys).
 /// But in the future, we may change the layout of the fields based on
 /// the performance measurements/new business logic.
+#[macro_export]
 macro_rules! double_key {
     ($i:ident, $first:ident, $first_getter:ident, $second:ident, $second_getter:ident) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -159,8 +160,6 @@ macro_rules! double_key {
         }
     };
 }
-
-pub(crate) use double_key;
 
 double_key!(ContractsAssetKey, ContractId, contract_id, AssetId, asset_id);
 double_key!(ContractsStateKey, ContractId, contract_id, Bytes32, state_key);

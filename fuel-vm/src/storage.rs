@@ -160,5 +160,7 @@ macro_rules! double_key {
     };
 }
 
+pub(crate) use double_key;
+
 double_key!(ContractsAssetKey, ContractId, contract_id, AssetId, asset_id);
 double_key!(ContractsStateKey, ContractId, contract_id, Bytes32, state_key);

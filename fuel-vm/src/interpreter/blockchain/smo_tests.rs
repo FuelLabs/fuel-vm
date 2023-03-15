@@ -2,9 +2,8 @@ use crate::interpreter::memory::Memory;
 use crate::interpreter::InitialBalances;
 
 use super::*;
-use fuel_tx::field::Outputs;
+
 use fuel_tx::Create;
-use fuel_types::bytes::SizedBytes;
 use test_case::test_case;
 
 struct Input {
@@ -17,7 +16,6 @@ struct Input {
     /// D
     amount_coins_to_send: Word,
     max_message_data_length: Word,
-    message_output: fuel_tx::Output,
     memory: Vec<(usize, Vec<u8>)>,
     balance: InitialBalances,
 }
@@ -27,12 +25,6 @@ struct Output {
     receipts: Vec<Receipt>,
 }
 
-fn output_bytes(mut output: fuel_tx::Output) -> Vec<u8> {
-    let mut buf = vec![0u8; output.serialized_size()];
-    std::io::Read::read(&mut output, &mut buf).unwrap();
-    buf
-}
-
 impl Default for Input {
     fn default() -> Self {
         Self {
@@ -40,11 +32,7 @@ impl Default for Input {
             call_abi_len: Default::default(),
             message_output_idx: Default::default(),
             amount_coins_to_send: Default::default(),
-            message_output: fuel_tx::Output::message(Address::zeroed(), 0),
-            memory: vec![
-                (112, output_bytes(fuel_tx::Output::message(Address::zeroed(), 0))),
-                (400, Address::from([1u8; 32]).to_vec()),
-            ],
+            memory: vec![(400, Address::from([1u8; 32]).to_vec())],
             max_message_data_length: 100,
             balance: Default::default(),
         }
@@ -108,17 +96,6 @@ impl Default for Input {
     Input {
         recipient_mem_address: 400,
         call_abi_len: 10,
-        message_output_idx: 1,
-        amount_coins_to_send: 0,
-        max_message_data_length: 100,
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::OutputNotFound))
-    ; "message index out of bounds"
-)]
-#[test_case(
-    Input {
-        recipient_mem_address: 400,
-        call_abi_len: 10,
         message_output_idx: 0,
         amount_coins_to_send: 30,
         balance: [(AssetId::zeroed(), 29)].into_iter().collect(),
@@ -127,45 +104,12 @@ impl Default for Input {
     ; "amount coins to send > balance"
 )]
 // TODO: Test the above on an internal context
-#[test_case(
-    Input {
-        recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        message_output: fuel_tx::Output::coin(Address::zeroed(), 0, Default::default()),
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::NonZeroMessageOutputRecipient))
-    ; "wrong output type"
-)]
-#[test_case(
-    Input {
-        recipient_mem_address: 4000,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::ZeroedMessageOutputRecipient))
-    ; "receipt address in memory == 0"
-)]
-#[test_case(
-    Input {
-        recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        message_output: fuel_tx::Output::message(Address::from([1u8; 32]), 0),
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::NonZeroMessageOutputRecipient))
-    ; "output message not zeroed out"
-)]
 fn test_smo(
     Input {
         recipient_mem_address,
         call_abi_len,
         message_output_idx,
         amount_coins_to_send,
-        message_output,
         memory: mem,
         max_message_data_length,
         balance,
@@ -177,7 +121,6 @@ fn test_smo(
     }
     let mut receipts = Vec::default();
     let mut tx = Create::default();
-    *tx.outputs_mut() = vec![message_output];
     let mut balances = RuntimeBalances::from(balance);
     let fp = 0;
     let mut pc = 0;

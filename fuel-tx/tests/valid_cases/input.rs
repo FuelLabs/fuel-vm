@@ -20,7 +20,7 @@ fn input_coin_message_signature() {
                 .iter()
                 .enumerate()
                 .try_for_each(|(index, input)| match input {
-                    Input::CoinSigned { .. } | Input::MetadataSigned { .. } => {
+                    Input::CoinSigned(_) | Input::DepositCoinSigned(_) | Input::MetadataSigned(_) => {
                         input.check(index, &txhash, outputs, witnesses, &Default::default())
                     }
                     _ => Ok(()),

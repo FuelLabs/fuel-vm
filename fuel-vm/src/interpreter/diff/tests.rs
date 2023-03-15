@@ -202,12 +202,12 @@ fn reset_vm_memory() {
 
 #[test]
 fn reset_vm_txns() {
+    use fuel_tx::field::Outputs;
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
-    b.tx.outputs_mut().push(fuel_tx::Output::Message {
-        recipient: Address::zeroed(),
-        amount: 1,
-        asset_id: AssetId::zeroed(),
+    b.tx.outputs_mut().push(fuel_tx::Output::ContractCreated {
+        contract_id: Default::default(),
+        state_root: Default::default(),
     });
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);

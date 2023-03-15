@@ -257,15 +257,6 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
 
             assert_eq!(contract_id, contract_id_p);
         }
-
-        if let Some(recipient) = o.recipient() {
-            cases.output_recipient = true;
-
-            let ofs = output_ofs + o.repr().recipient_offset().expect("output have recipient");
-            let recipient_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
-
-            assert_eq!(recipient, recipient_p);
-        }
     });
 }
 

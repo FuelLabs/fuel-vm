@@ -266,10 +266,10 @@ impl Input {
             Self::CoinSigned(CoinSigned { utxo_id, .. })
             | Self::CoinPredicate(CoinPredicate { utxo_id, .. })
             | Self::Contract(Contract { utxo_id, .. }) => Some(utxo_id),
-            Self::DepositCoinSigned { .. } => None,
-            Self::DepositCoinPredicate { .. } => None,
-            Self::MetadataSigned { .. } => None,
-            Self::MetadataPredicate { .. } => None,
+            Self::DepositCoinSigned(_) => None,
+            Self::DepositCoinPredicate(_) => None,
+            Self::MetadataSigned(_) => None,
+            Self::MetadataPredicate(_) => None,
         }
     }
 
@@ -630,9 +630,11 @@ impl io::Read for Input {
                 let _ = contract.read(&mut full_buf[WORD_SIZE..])?;
             }
 
-            bytes::store_number(ident_buf, InputRepr::Message as Word);
+            Self::DepositCoinSigned(message) => {
+                bytes::store_number(ident_buf, InputRepr::Message as Word);
                 let _ = message.read(&mut full_buf[WORD_SIZE..])?;
             }
+
             Self::DepositCoinPredicate(message) => {
                 bytes::store_number(ident_buf, InputRepr::Message as Word);
                 let _ = message.read(&mut full_buf[WORD_SIZE..])?;
@@ -687,8 +689,8 @@ impl io::Write for Input {
             }
 
             InputRepr::Message => {
-                let mut message = MessageFull::default();
-                let n = WORD_SIZE + MessageFull::write(&mut message, &full_buf[WORD_SIZE..])?;
+                let mut message = FullMessage::default();
+                let n = WORD_SIZE + FullMessage::write(&mut message, &full_buf[WORD_SIZE..])?;
 
                 *self = match (message.data.is_empty(), message.predicate.is_empty()) {
                     (true, true) => Self::DepositCoinSigned(message.into_coin_signed()),

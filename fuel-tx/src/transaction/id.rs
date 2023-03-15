@@ -1,6 +1,6 @@
-use crate::{field, Input, Transaction};
 use crate::input::coin::CoinSigned;
-use crate::input::message::MetadataSigned;
+use crate::input::message::{DepositCoinSigned, MetadataSigned};
+use crate::{field, Input, Transaction};
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
 
@@ -52,6 +52,11 @@ where
             .filter_map(|input| match input {
                 Input::CoinSigned(CoinSigned {
                     owner, witness_index, ..
+                })
+                | Input::DepositCoinSigned(DepositCoinSigned {
+                    recipient: owner,
+                    witness_index,
+                    ..
                 })
                 | Input::MetadataSigned(MetadataSigned {
                     recipient: owner,

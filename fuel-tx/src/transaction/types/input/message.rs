@@ -1,7 +1,7 @@
-use crate::transaction::types::input::consts::INPUT_MESSAGE_FIXED_SIZE;
+use crate::input::sizes::MessageSizes;
 use crate::transaction::types::input::AsField;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Address, MessageId, Word};
+use fuel_types::bytes::SizedBytes;
+use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Word};
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MetadataSigned = Message<specifications::Metadata<specifications::Signed>>;
@@ -219,11 +219,11 @@ where
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
 
         let data_size = if let Some(data) = data.as_field() {
-            data.as_field()
+            data.len()
         } else {
             0
         };
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.data_len), data_size);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.data_len), data_size as Word);
 
         let predicate_len = if let Some(predicate) = predicate.as_field() {
             predicate.len()
@@ -239,7 +239,13 @@ where
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
 
-        let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, data.as_slice())?;
+        let buf = full_buf.get_mut(LEN..).ok_or(bytes::eof())?;
+        let buf = if let Some(data) = data.as_field() {
+            let (_, buf) = bytes::store_raw_bytes(buf, data.as_slice())?;
+            buf
+        } else {
+            buf
+        };
 
         let buf = if let Some(predicate) = predicate.as_field() {
             let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;

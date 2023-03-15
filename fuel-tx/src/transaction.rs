@@ -30,7 +30,7 @@ use crate::TxPointer;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
 use crate::input::contract::Contract;
-use crate::input::message::MessagePredicate;
+use crate::input::message::MetadataPredicate;
 use input::*;
 
 #[cfg(feature = "std")]
@@ -214,7 +214,10 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .filter_map(|input| match input {
                 Input::CoinPredicate(CoinPredicate { asset_id, .. })
                 | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::MetadataPredicate(_) | Input::MetadataSigned(_) => Some(&AssetId::BASE),
+                Input::DepositCoinSigned(_)
+                | Input::DepositCoinPredicate(_)
+                | Input::MetadataPredicate(_)
+                | Input::MetadataSigned(_) => Some(&AssetId::BASE),
                 _ => None,
             })
             .collect_vec()

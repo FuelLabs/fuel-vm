@@ -298,6 +298,7 @@ key!(Bytes4, 4);
 key!(Bytes8, 8);
 key!(Bytes20, 20);
 key!(Bytes32, 32);
+key!(Nonce, 32);
 key!(MessageId, 32);
 key!(Salt, 32);
 
@@ -313,4 +314,12 @@ impl ContractId {
 impl AssetId {
     /// The base native asset of the Fuel protocol.
     pub const BASE: AssetId = AssetId::zeroed();
+}
+
+impl From<u64> for Nonce {
+    fn from(value: u64) -> Self {
+        let mut default = [0u8; 32];
+        default[..8].copy_from_slice(&value.to_be_bytes()[..]);
+        default.into()
+    }
 }

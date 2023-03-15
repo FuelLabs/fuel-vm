@@ -72,13 +72,13 @@ pub enum PanicReason {
     /// The jump instruction cannot move backwards in predicate verification.
     IllegalJump = 0x1f,
     /// The contract ID is already deployed and can't be overwritten.
-    ContractIdAlreadyDeployed = 0x22,
+    ContractIdAlreadyDeployed = 0x20,
     /// The loaded contract mismatch expectations.
-    ContractMismatch = 0x23,
+    ContractMismatch = 0x21,
     /// No more nested calls are allowed.
-    NestedCallLimitReached = 0x24,
+    NestedCallLimitReached = 0x22,
     /// The byte can't be mapped to any known `PanicReason`.
-    UnknownPanicReason = 0x25,
+    UnknownPanicReason = 0x23,
 }
 
 impl fmt::Display for PanicReason {
@@ -137,11 +137,9 @@ impl From<u8> for PanicReason {
             0x1d => ExpectedOutputVariable,
             0x1e => ExpectedParentInternalContext,
             0x1f => IllegalJump,
-            0x20 => NonZeroMessageOutputRecipient,
-            0x21 => ZeroedMessageOutputRecipient,
-            0x22 => ContractIdAlreadyDeployed,
-            0x23 => ContractMismatch,
-            0x24 => NestedCallLimitReached,
+            0x20 => ContractIdAlreadyDeployed,
+            0x21 => ContractMismatch,
+            0x22 => NestedCallLimitReached,
             _ => UnknownPanicReason,
         }
     }
@@ -168,15 +166,16 @@ mod tests {
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        for i in 0..0x25 {
+        const LAST_PANIC_REASON: u8 = 0x23;
+        for i in 0..LAST_PANIC_REASON {
             let reason = PanicReason::from(i);
             let i2 = reason as u8;
             assert_eq!(i, i2);
         }
-        for i in 0x25..=255 {
+        for i in LAST_PANIC_REASON..=255 {
             let reason = PanicReason::from(i);
             let i2 = reason as u8;
-            assert_eq!(0x25, i2);
+            assert_eq!(LAST_PANIC_REASON, i2);
         }
     }
 }

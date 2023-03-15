@@ -7,8 +7,8 @@ use crate::{consts::*, context::Context};
 use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
-use std::ops::Range;
 use std::ops;
+use std::ops::Range;
 
 pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
 

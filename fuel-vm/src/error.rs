@@ -219,6 +219,9 @@ impl From<Infallible> for io::Error {
 /// Predicates checking failed
 #[derive(Debug, Error)]
 pub enum PredicateVerificationFailed {
+    /// The predicate did not use the amount of gas provided
+    #[error("Predicate used less than the required amount of gas")]
+    GasMismatch,
     /// The transaction doesn't contain enough gas to evaluate the predicate
     #[error("Insufficient gas available for predicates")]
     OutOfGas,

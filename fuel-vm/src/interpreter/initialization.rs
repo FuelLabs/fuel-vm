@@ -70,15 +70,45 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    <Tx as IntoEstimated>::Metadata: CheckedMetadata,
+{
+    /// Initialize the VM for a predicate context
+    pub fn init_predicate_estimation(&mut self, estimated: Estimated<Tx>) -> bool {
+        self.context = Context::PredicateEstimation {
+            program: Default::default(),
+        };
+
+        let (mut tx, metadata): (Tx, Tx::Metadata) = estimated.into();
+        tx.prepare_init_predicate();
+
+        self._init(tx, metadata.balances(), 0).is_ok()
+    }
+}
+
+impl<S, Tx> Interpreter<S, Tx>
+where
+    Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
     pub fn init_predicate(&mut self, checked: Checked<Tx>) -> bool {
-        self.context = Context::Predicate {
+        self.context = Context::PredicateVerification {
             program: Default::default(),
         };
 
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
+        tx.prepare_init_predicate();
+
+        self._init(tx, metadata.balances(), 0).is_ok()
+    }
+{
+    /// Initialize the VM for a predicate context
+    pub fn init_predicate_estimation(&mut self, estimated: Estimated<Tx>) -> bool {
+        self.context = Context::PredicateEstimation {
+            program: Default::default(),
+        };
+
+        let (mut tx, metadata): (Tx, Tx::Metadata) = estimated.into();
         tx.prepare_init_predicate();
 
         self._init(tx, metadata.balances(), 0).is_ok()
@@ -94,7 +124,7 @@ where
     /// Initialize the VM with a given transaction, backed by a storage provider that allows
     /// execution of contract opcodes.
     ///
-    /// For predicate verification, check [`Self::init_predicate`]
+    /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 

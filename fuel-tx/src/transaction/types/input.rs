@@ -43,6 +43,7 @@ pub enum Input {
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
+        predicate_gas_used: Word,
     },
 
     Contract {
@@ -72,6 +73,7 @@ pub enum Input {
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
+        predicate_gas_used: Word,
     },
 }
 
@@ -141,6 +143,7 @@ impl Input {
         maturity: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
+        predicate_gas_used: Word,
     ) -> Self {
         Self::CoinPredicate {
             utxo_id,
@@ -151,6 +154,7 @@ impl Input {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 
@@ -219,6 +223,7 @@ impl Input {
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
+        predicate_gas_used: Word,
     ) -> Self {
         Self::MessagePredicate {
             message_id,
@@ -229,6 +234,7 @@ impl Input {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 
@@ -368,20 +374,32 @@ impl Input {
         }
     }
 
-    /// Return a tuple containing the predicate and its data if the input is of
+    pub fn input_predicate_gas_used(&self) -> Option<&Word> {
+        match self {
+            Input::CoinPredicate { predicate_gas_used, .. } | Input::MessagePredicate { predicate_gas_used, .. } => {
+                Some(predicate_gas_used)
+            }
+
+            _ => None,
+        }
+    }
+
+    /// Return a tuple containing the predicate, its data, and the gas used if the input is of
     /// type `CoinPredicate` or `MessagePredicate`
-    pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
+    pub fn predicate(&self) -> Option<(&[u8], &[u8], &Word)> {
         match self {
             Input::CoinPredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
             }
             | Input::MessagePredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
-            } => Some((predicate.as_slice(), predicate_data.as_slice())),
+            } => Some((predicate.as_slice(), predicate_data.as_slice(), predicate_gas_used)),
 
             _ => None,
         }
@@ -574,6 +592,7 @@ impl io::Read for Input {
                 maturity,
                 predicate,
                 predicate_data,
+                predicate_gas_used,
             } => {
                 let buf = bytes::store_number_unchecked(buf, InputRepr::Coin as Word);
 
@@ -596,7 +615,9 @@ impl io::Read for Input {
 
                 let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
 
-                bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
+                let (_, buf) = bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
+
+                bytes::store_number_unchecked(buf, predicate_gas_used as Word);
             }
 
             Self::Contract {
@@ -652,6 +673,7 @@ impl io::Read for Input {
                 data,
                 predicate,
                 predicate_data,
+                predicate_gas_used,
             } => {
                 let witness_index = 0 as Word;
 
@@ -665,11 +687,14 @@ impl io::Read for Input {
                 let buf = bytes::store_number_unchecked(buf, data.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, predicate.len() as Word);
                 let buf = bytes::store_number_unchecked(buf, predicate_data.len() as Word);
+                let buf = bytes::store_number_unchecked(buf, predicate_gas_used as Word);
 
                 let (_, buf) = bytes::store_raw_bytes(buf, data.as_slice())?;
                 let (_, buf) = bytes::store_raw_bytes(buf, predicate.as_slice())?;
 
-                bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
+                let (_, buf) = bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
+
+                bytes::store_number_unchecked(buf, predicate_gas_used as Word);
             }
         }
 
@@ -714,7 +739,7 @@ impl io::Write for Input {
                 let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
                 n += size;
 
-                let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
+                let (size, predicate_data, buf) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
                 n += size;
 
                 let owner = owner.into();
@@ -731,6 +756,8 @@ impl io::Write for Input {
                         maturity,
                     }
                 } else {
+                    let (predicate_gas_used, _) = unsafe { bytes::restore_number_unchecked(buf) };
+
                     Self::CoinPredicate {
                         utxo_id,
                         owner,
@@ -740,6 +767,7 @@ impl io::Write for Input {
                         maturity,
                         predicate,
                         predicate_data,
+                        predicate_gas_used,
                     }
                 };
 
@@ -799,7 +827,7 @@ impl io::Write for Input {
                 let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
                 n += size;
 
-                let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
+                let (size, predicate_data, buf) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
                 n += size;
 
                 let message_id = message_id.into();
@@ -809,6 +837,8 @@ impl io::Write for Input {
                 *self = if predicate.is_empty() {
                     Self::message_signed(message_id, sender, recipient, amount, nonce, witness_index, data)
                 } else {
+                    let (predicate_gas_used, _) = unsafe { bytes::restore_number_unchecked(buf) };
+
                     Self::message_predicate(
                         message_id,
                         sender,
@@ -818,6 +848,7 @@ impl io::Write for Input {
                         data,
                         predicate,
                         predicate_data,
+                        predicate_gas_used,
                     )
                 };
 

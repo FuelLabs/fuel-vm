@@ -366,6 +366,11 @@ mod field {
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
         }
+
+        #[inline(always)]
+        fn inputs_predicate_gas_used_at(&self, idx: usize) -> Option<(Word)> {
+            self.inputs().get(idx).and_then(|input| input.input_predicate_gas_used().cloned())
+        }
     }
 
     impl Outputs for Create {

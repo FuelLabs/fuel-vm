@@ -3,13 +3,14 @@
 use crate::interpreter::MemoryRange;
 
 use fuel_asm::Word;
-use fuel_tx::{field, ConsensusParameters};
+use fuel_tx::{field, ConsensusParameters, Input};
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RuntimePredicate {
     program: MemoryRange,
+    gasUsed: Word,
     idx: usize,
 }
 
@@ -17,6 +18,11 @@ impl RuntimePredicate {
     /// Memory slice with the program representation of the predicate
     pub const fn program(&self) -> &MemoryRange {
         &self.program
+    }
+
+    /// Index of the transaction input that maps to this predicate
+    pub const fn gas_used(&self) -> Word {
+        self.gasUsed
     }
 
     /// Index of the transaction input that maps to this predicate
@@ -34,7 +40,25 @@ impl RuntimePredicate {
         tx.inputs_predicate_offset_at(idx)
             .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self { program, idx })
+            .map(|program| Self { program, gasUsed: tx.inputs_predicate_gas_used_at(idx)?, idx })
+    }
+
+    /// Create a new runtime predicate from a transaction, given the input index
+    ///
+    /// Return `None` if the tx input doesn't map to an input with a predicate
+    pub fn from_input<T>(input: &Input) -> Option<Self>
+    where
+        T: field::Inputs,
+    {
+        new RuntimePredicate {
+            program: input.,
+            gasUsed: input.predicate_gas_used(),
+            idx,
+        }
+    }
+
+    pub fn set_gas_used(&mut self, gas_used: Word) {
+        self.gasUsed = gas_used;
     }
 }
 

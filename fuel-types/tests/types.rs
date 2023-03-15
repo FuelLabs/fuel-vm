@@ -6,42 +6,29 @@ use core::{fmt, str};
 
 macro_rules! check_consistency {
     ($i:ident,$r:expr,$b:expr) => {
-        unsafe {
-            let n = $i::LEN;
-            let s = $r.gen_range(0..$b.len() - n);
-            let e = $r.gen_range(s + n..$b.len());
-            let r = $r.gen_range(1..n - 1);
-            let i = &$b[s..s + n];
+        let n = $i::LEN;
+        let s = $r.gen_range(0..$b.len() - n);
+        let e = $r.gen_range(s + n..$b.len());
+        let r = $r.gen_range(1..n - 1);
+        let i = &$b[s..s + n];
 
-            let a = $i::from_slice_unchecked(i);
-            let b = $i::from_slice_unchecked(&$b[s..e]);
-            let c = $i::try_from(i).expect("Memory conversion");
+        let a = $i::from_bytes_ref(i.try_into().unwrap());
+        let b = $i::from_bytes_ref_checked(&$b[s..e]).unwrap();
+        let c = $i::try_from(i).expect("Memory conversion");
 
-            // `d` will create random smaller slices and expect the value to be parsed correctly
-            //
-            // However, this is not the expected usage of the function
-            let d = $i::from_slice_unchecked(&i[..i.len() - r]);
+        assert!($i::from_bytes_ref_checked(&i[..i.len() - r]).is_none());
 
-            let e = $i::as_ref_unchecked(i);
+        let e = $i::from_bytes_ref_checked(i).unwrap();
 
-            // Assert `from_slice_unchecked` will not create two references to the same owned
-            // memory
-            assert_ne!(a.as_ptr(), b.as_ptr());
+        assert_eq!(e.as_ptr(), i.as_ptr());
 
-            // Assert `as_ref_unchecked` is copy-free
-            assert_ne!(e.as_ptr(), a.as_ptr());
-            assert_eq!(e.as_ptr(), i.as_ptr());
-
-            assert_eq!(a, b);
-            assert_eq!(a, c);
-            assert_eq!(a, d);
-            assert_eq!(&a, e);
-            assert_eq!(a.len(), $i::LEN);
-            assert_eq!(b.len(), $i::LEN);
-            assert_eq!(c.len(), $i::LEN);
-            assert_eq!(d.len(), $i::LEN);
-            assert_eq!(e.len(), $i::LEN);
-        }
+        assert_eq!(a, b);
+        assert_eq!(*a, c);
+        assert_eq!(a, e);
+        assert_eq!(a.len(), $i::LEN);
+        assert_eq!(b.len(), $i::LEN);
+        assert_eq!(c.len(), $i::LEN);
+        assert_eq!(e.len(), $i::LEN);
     };
 }
 

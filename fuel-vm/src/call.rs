@@ -2,7 +2,7 @@
 
 use fuel_asm::{PanicReason, RegId};
 use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::{AssetId, ContractId, Word};
+use fuel_types::{mem_layout, AssetId, ContractId, MemLayout, MemLocType, Word};
 
 use crate::consts::WORD_SIZE;
 use crate::consts::*;
@@ -20,9 +20,16 @@ pub struct Call {
     b: Word,
 }
 
+mem_layout!(
+    CallLayout for Call
+    to: ContractId = {ContractId::LEN},
+    a: Word = WORD_SIZE,
+    b: Word = WORD_SIZE
+);
+
 impl Call {
     /// The size of the call structures in memory representation.
-    pub const LEN: usize = ContractId::LEN + 2 * WORD_SIZE;
+    pub const LEN: usize = <Call as MemLayout>::LEN;
 
     /// Create a new call structure representation.
     pub const fn new(to: ContractId, a: Word, b: Word) -> Self {
@@ -58,36 +65,35 @@ impl SizedBytes for Call {
 
 impl io::Read for Call {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
+        let buf: &mut [_; Self::LEN] = buf
+            .get_mut(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_array_unchecked(buf, &self.to);
-        let buf = bytes::store_number_unchecked(buf, self.a);
-        bytes::store_number_unchecked(buf, self.b);
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.to), &self.to);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.a), self.a);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.b), self.b);
 
-        Ok(n)
+        Ok(Self::LEN)
     }
 }
 
 impl io::Write for Call {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
+        let buf: &[_; Self::LEN] = buf
+            .get(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        // Safety: checked buffer lenght
-        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (b, _) = unsafe { bytes::restore_word_unchecked(buf) };
+        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
+        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
 
         self.to = to.into();
         self.a = a;
         self.b = b;
 
-        Ok(n)
+        Ok(Self::LEN)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -119,6 +125,16 @@ pub struct CallFrame {
     a: Word,
     b: Word,
 }
+
+mem_layout!(
+    CallFrameLayout for CallFrame
+    to: ContractId = {ContractId::LEN},
+    asset_id: AssetId = {AssetId::LEN},
+    registers: [u8; WORD_SIZE * VM_REGISTER_COUNT] = {WORD_SIZE * VM_REGISTER_COUNT},
+    code_size: Word = WORD_SIZE,
+    a: Word = WORD_SIZE,
+    b: Word = WORD_SIZE
+);
 
 #[cfg(test)]
 impl Default for CallFrame {
@@ -253,46 +269,43 @@ impl SizedBytes for CallFrame {
 
 impl io::Read for CallFrame {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
+        let buf: &mut [_; Self::LEN] = buf
+            .get_mut(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
+
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.to), &self.to);
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.asset_id), &self.asset_id);
+        let mut registers = [0u8; Self::LAYOUT.registers.size()];
+        for (reg, out) in self.registers.iter().zip(registers.chunks_exact_mut(WORD_SIZE)) {
+            bytes::store_number(out.try_into().expect("Can't fail as chunks are exact"), *reg);
         }
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.registers), &registers);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.code_size), self.code_size);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.a), self.a);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.b), self.b);
 
-        let buf = bytes::store_array_unchecked(buf, &self.to);
-        let buf = bytes::store_array_unchecked(buf, &self.asset_id);
-        let buf = self
-            .registers
-            .iter()
-            .fold(buf, |buf, reg| bytes::store_number_unchecked(buf, *reg));
-
-        let buf = bytes::store_number_unchecked(buf, self.code_size);
-        let buf = bytes::store_number_unchecked(buf, self.a);
-        bytes::store_number_unchecked(buf, self.b);
-
-        Ok(n)
+        Ok(Self::LEN)
     }
 }
 
 impl io::Write for CallFrame {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let n = Self::serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof());
+        let buf: &[_; Self::LEN] = buf
+            .get(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
+
+        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
+        let asset_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.asset_id));
+        let registers = bytes::restore_at(buf, Self::layout(Self::LAYOUT.registers));
+        let code_size = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
+        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
+
+        for (reg, word) in self.registers.iter_mut().zip(registers.chunks_exact(WORD_SIZE)) {
+            *reg = bytes::restore_number(word.try_into().expect("Can't fail as chunks are exact"));
         }
-
-        // Safety: checked buffer length
-        let (to, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (asset_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-
-        let buf = self.registers.iter_mut().fold(buf, |buf, reg| {
-            let (r, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-            *reg = r;
-            buf
-        });
-
-        let (code_size, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (a, buf) = unsafe { bytes::restore_word_unchecked(buf) };
-        let (b, _) = unsafe { bytes::restore_word_unchecked(buf) };
 
         self.to = to.into();
         self.asset_id = asset_id.into();
@@ -300,7 +313,7 @@ impl io::Write for CallFrame {
         self.a = a;
         self.b = b;
 
-        Ok(n)
+        Ok(Self::LEN)
     }
 
     fn flush(&mut self) -> io::Result<()> {

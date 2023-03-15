@@ -38,15 +38,15 @@ pub struct MerkleTree<TableType, StorageType> {
 }
 
 impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
-    pub const fn empty_root() -> Bytes32 {
-        *empty_sum()
+    pub const fn empty_root() -> &'static Bytes32 {
+        empty_sum()
     }
 
     pub fn root(&self) -> Bytes32 {
         let mut scratch_storage = StorageMap::<NodesTable>::new();
         let root_node = self.root_node(&mut scratch_storage);
         match root_node {
-            None => Self::empty_root(),
+            None => *Self::empty_root(),
             Some(ref node) => *node.hash(),
         }
     }
@@ -465,7 +465,7 @@ mod test {
     fn load_returns_empty_tree_for_0_leaves() {
         const LEAVES_COUNT: u64 = 0;
 
-        let expected_root = MerkleTree::<(), ()>::empty_root();
+        let expected_root = *MerkleTree::<(), ()>::empty_root();
 
         let root = {
             let mut storage_map = StorageMap::<TestTable>::new();

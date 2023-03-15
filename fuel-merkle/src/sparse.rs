@@ -9,3 +9,9 @@ pub(crate) use node::{Node, StorageNode, StorageNodeError};
 pub use merkle_tree::{MerkleTree, MerkleTreeError};
 pub use primitive::Primitive;
 pub mod in_memory;
+
+use crate::common::Bytes32;
+
+pub const fn empty_sum() -> &'static Bytes32 {
+    zero_sum()
+}

@@ -1,7 +1,7 @@
 use crate::TxId;
 
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::Bytes32;
+use fuel_types::{mem_layout, Bytes32, MemLayout, MemLocType};
 
 use core::{fmt, str};
 
@@ -27,8 +27,13 @@ pub struct UtxoId {
     output_index: u8,
 }
 
+mem_layout!(UtxoIdLayout for UtxoId
+    tx_id: TxId = {TxId::LEN},
+    output_index: u8 = WORD_SIZE
+);
+
 impl UtxoId {
-    pub const LEN: usize = TxId::LEN + WORD_SIZE;
+    pub const LEN: usize = <Self as MemLayout>::LEN;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self { tx_id, output_index }
@@ -105,16 +110,17 @@ impl SizedBytes for UtxoId {
 #[cfg(feature = "std")]
 impl io::Write for UtxoId {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() < Self::LEN {
-            return Err(bytes::eof());
-        }
+        const LEN: usize = UtxoId::LEN;
+        let buf: &[_; LEN] = buf
+            .get(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        // Safety: buf len is checked
-        let (tx_id, buf) = unsafe { bytes::restore_array_unchecked(buf) };
-        let (output_index, _) = unsafe { bytes::restore_word_unchecked(buf) };
+        let tx_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.tx_id));
+        let output_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
 
         self.tx_id = tx_id.into();
-        self.output_index = output_index as u8;
+        self.output_index = output_index;
 
         Ok(Self::LEN)
     }
@@ -127,12 +133,14 @@ impl io::Write for UtxoId {
 #[cfg(feature = "std")]
 impl io::Read for UtxoId {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if buf.len() < Self::LEN {
-            return Err(bytes::eof());
-        }
+        const LEN: usize = UtxoId::LEN;
+        let buf: &mut [_; LEN] = buf
+            .get_mut(..LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_array_unchecked(buf, &self.tx_id);
-        bytes::store_number_unchecked(buf, self.output_index);
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.tx_id), &self.tx_id);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.output_index), self.output_index);
 
         Ok(Self::LEN)
     }

@@ -1,3 +1,5 @@
+use crate::interpreter::memory::Memory;
+
 use super::*;
 
 #[test]
@@ -25,7 +27,7 @@ fn test_return() {
     let mut context = Context::Call { block_height: 0 };
 
     let mut receipts = Vec::default();
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(&mut frames, &mut registers, &mut receipts, &mut memory, &mut context)
         .return_from_context(Receipt::ret(Default::default(), 0, 0, 0))
         .unwrap();
@@ -103,7 +105,7 @@ fn input<'a>(
 #[test]
 fn test_revert() {
     let mut receipts = Vec::default();
-    let mut memory: Box<[u8; MEM_SIZE]> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let append = AppendReceipt {
         receipts: &mut receipts,
         script: None,

@@ -6,7 +6,7 @@
 #![allow(clippy::wrong_self_convention)]
 #![deny(unsafe_code)]
 
-// TODO Add docs
+// TODO: Add docs
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

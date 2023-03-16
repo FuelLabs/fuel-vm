@@ -23,7 +23,6 @@ datatest-stable = "0.1"
 fuel-merkle-test-helpers = { path = "test-helpers" }
 hex = "0.4"
 rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = "1.0"
 

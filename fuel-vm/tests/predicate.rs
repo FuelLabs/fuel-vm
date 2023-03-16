@@ -80,7 +80,7 @@ fn predicate() {
         op::addi(0x11, 0x10, 0x12),
         op::movi(0x12, 0x08),
         op::aloc(0x12),
-        op::addi(0x12, RegId::HP, 0x01),
+        op::move_(0x12, RegId::HP),
         op::sw(0x12, 0x11, 0),
         op::movi(0x10, 0x08),
         op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),

@@ -17,7 +17,7 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod encoding_tests;
 
 #[doc(no_inline)]

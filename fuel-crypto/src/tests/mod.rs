@@ -4,6 +4,10 @@ use k256 as _;
 
 mod hasher;
 mod mnemonic;
-mod serde;
 mod signature;
 mod signer;
+
+#[cfg(feature = "serde")]
+mod serde;
+#[cfg(not(feature = "serde"))]
+use bincode as _;

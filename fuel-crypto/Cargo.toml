@@ -23,7 +23,7 @@ sha2 = { version = "0.10", default-features = false }
 zeroize = { version = "1.5", features = ["derive"] }
 
 [dev-dependencies]
-bincode = { version = "1.3", default-features = false }
+bincode = { workspace = true }
 criterion = "0.3"
 fuel-crypto = { path = ".", default-features = false, features = ["random"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }

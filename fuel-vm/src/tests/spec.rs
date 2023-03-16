@@ -3,9 +3,8 @@ use fuel_tx::Receipt;
 use fuel_types::Immediate18;
 use fuel_vm::consts::VM_MAX_RAM;
 
+use super::test_helpers;
 use rstest::rstest;
-
-mod test_helpers;
 
 use test_helpers::{assert_panics, assert_success, run_script, set_full_word};
 

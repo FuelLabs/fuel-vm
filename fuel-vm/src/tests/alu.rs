@@ -1,8 +1,7 @@
+use super::test_helpers;
 use fuel_asm::RegId;
 use fuel_asm::{op, Instruction};
 use fuel_vm::prelude::*;
-
-mod test_helpers;
 
 use test_helpers::set_full_word;
 

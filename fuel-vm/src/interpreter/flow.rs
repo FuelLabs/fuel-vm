@@ -489,7 +489,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
-                receipts_tree: &mut self.receipts_tree,
+                receipts_tree: self.receipts_tree,
                 script: self.script,
                 tx_offset: self.consensus.tx_offset(),
                 memory: self.memory.memory,

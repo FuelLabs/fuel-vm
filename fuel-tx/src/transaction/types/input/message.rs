@@ -157,7 +157,7 @@ where
             ..
         } = self;
         if let Some(data) = data.as_field() {
-            compute_message_id(sender, recipient, *nonce, *amount, &data)
+            compute_message_id(sender, recipient, *nonce, *amount, data)
         } else {
             compute_message_id(sender, recipient, *nonce, *amount, &[])
         }

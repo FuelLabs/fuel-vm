@@ -220,11 +220,18 @@ pub(crate) fn jump(
 
     let addr = match mode {
         JumpMode::Absolute => is.saturating_add(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word)),
-        JumpMode::RelativeForwards => {
-            pc.saturating_add(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word))
-        }
+        JumpMode::RelativeForwards => pc.saturating_add(
+            addr.saturating_add(1)
+                .saturating_add(offset)
+                .saturating_mul(Instruction::SIZE as Word),
+        ),
         JumpMode::RelativeBackwards => pc
-            .checked_sub(addr.saturating_add(offset).saturating_mul(Instruction::SIZE as Word))
+            .checked_sub(
+                addr
+                    .saturating_add(1)
+                    .saturating_add(offset)
+                    .saturating_mul(Instruction::SIZE as Word),
+            )
             .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
     };
 

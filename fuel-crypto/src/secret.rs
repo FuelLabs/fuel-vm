@@ -18,6 +18,7 @@ impl SecretKey {
     /// Construct a `SecretKey` directly from its bytes.
     ///
     /// This constructor expects the given bytes to be a valid secret key. Validity is unchecked.
+    #[cfg(feature = "std")]
     fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }

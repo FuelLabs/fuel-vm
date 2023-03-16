@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 pub mod arith;
 pub mod backtrace;
@@ -23,6 +24,9 @@ pub mod util;
 
 #[cfg(feature = "profile-any")]
 pub mod profiler;
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(not(feature = "profile-any"))]
 /// Placeholder

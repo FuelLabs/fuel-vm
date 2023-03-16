@@ -9,7 +9,7 @@ use fuel_tx::field::{Inputs, Script, ScriptData};
 use std::fmt;
 use std::io::{self, Read, Write};
 
-pub fn assert_encoding_correct<'a, T>(data: &[T])
+pub fn assert_encoding_correct<T>(data: &[T])
 where
     T: Read
         + Write
@@ -20,15 +20,14 @@ where
         + bytes::SerializableVec
         + bytes::Deserializable
         + serde::Serialize
-        + serde::Deserialize<'a>,
+        + for<'a> serde::Deserialize<'a>,
 {
     let mut buffer;
 
     for data in data.iter() {
         let d_s = bincode::serialize(&data).expect("Failed to serialize data");
         // Safety: bincode/serde fails to understand the elision so this is a cheap way to convince it
-        let d_s: T =
-            bincode::deserialize(unsafe { std::mem::transmute(d_s.as_slice()) }).expect("Failed to deserialize data");
+        let d_s: T = bincode::deserialize(d_s.as_slice()).expect("Failed to deserialize data");
 
         assert_eq!(&d_s, data);
 

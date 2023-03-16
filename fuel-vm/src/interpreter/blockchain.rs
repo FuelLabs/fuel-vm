@@ -294,7 +294,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         let memory_offset_end = checked_add_usize(memory_offset, length)?;
 
         // Validate arguments
-        if memory_offset_end > *self.hp as usize
+        if memory_offset_end >= *self.hp as usize
             || contract_id_end as Word > VM_MAX_RAM
             || length > MEM_MAX_ACCESS_SIZE as usize
             || length > self.contract_max_size as usize

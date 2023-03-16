@@ -103,7 +103,7 @@ fn code_copy() {
     let mut script_ops = vec![
         op::movi(0x10, 2048),
         op::aloc(0x10),
-        op::addi(0x10, RegId::HP, 0x01),
+        op::move_(0x10, RegId::HP),
         op::movi(0x20, 0x00),
         op::add(0x11, RegId::ZERO, 0x20),
         op::movi(0x12, contract_size as Immediate18),
@@ -887,7 +887,7 @@ fn retd_from_top_of_heap() {
     let script = vec![
         op::movi(REG_SIZE, 32),              // Allocate 32 bytes.
         op::aloc(REG_SIZE),                  // $hp -= 32.
-        op::addi(REG_PTR, RegId::HP, 1), // Pointer is $hp + 1, first byte in allocated buffer.
+        op::move_(REG_PTR, RegId::HP),       // Pointer is $hp, first byte in allocated buffer.
         op::retd(REG_PTR, REG_SIZE),         // Return the allocated buffer.
     ].into_iter()
     .collect::<Vec<u8>>();
@@ -922,7 +922,7 @@ fn logd_from_top_of_heap() {
     let script = vec![
         op::movi(REG_SIZE, 32),                                               // Allocate 32 bytes.
         op::aloc(REG_SIZE),                                                   // $hp -= 32.
-        op::addi(reg_ptr, RegId::HP, 1),                                  // Pointer is $hp + 1, first byte in allocated buffer.
+        op::move_(reg_ptr, RegId::HP),                                        // Pointer is $hp, first byte in allocated buffer.
         op::logd(RegId::ZERO, RegId::ZERO, reg_ptr, REG_SIZE), // Log the whole buffer
         op::ret(RegId::ONE),                                                     // Return
     ].into_iter()

@@ -71,7 +71,7 @@ fn metadata() {
         op::log(0x10, 0x00, 0x00, 0x00),
         op::movi(0x10, (Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         op::aloc(0x10),
-        op::addi(0x10, RegId::HP, 1),
+        op::move_(0x10, RegId::HP),
     ];
 
     contract_metadata.as_ref().iter().enumerate().for_each(|(i, b)| {
@@ -136,7 +136,7 @@ fn metadata() {
     let mut script = vec![
         op::movi(0x10, (1 + Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
         op::aloc(0x10),
-        op::addi(0x10, RegId::HP, 1),
+        op::move_(0x10, RegId::HP),
     ];
 
     contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {

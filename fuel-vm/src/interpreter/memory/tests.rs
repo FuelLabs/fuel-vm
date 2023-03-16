@@ -35,33 +35,31 @@ fn memcopy() {
     vm.instruction(op::aloc(0x10)).unwrap();
 
     // r[0x20] := 128
-    vm.instruction(op::addi(0x20, 0x20, 128)).unwrap();
+    vm.instruction(op::addi(0x20, RegId::ZERO, 128)).unwrap();
 
     for i in 0..alloc {
         vm.instruction(op::addi(0x21, RegId::ZERO, i)).unwrap();
-        vm.instruction(op::sb(RegId::HP, 0x21, (i + 1) as Immediate12)).unwrap();
+        vm.instruction(op::sb(RegId::HP, 0x21, i as Immediate12)).unwrap();
     }
 
-    // r[0x23] := m[$hp, 0x20] == m[0x12, 0x20]
-    vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20)).unwrap();
+    // r[0x23] := m[$hp, 0x20] == m[$zero, 0x20]
+    vm.instruction(op::meq(0x23, RegId::HP, RegId::ZERO, 0x20)).unwrap();
 
     assert_eq!(0, vm.registers()[0x23]);
 
     // r[0x12] := $hp + r[0x20]
     vm.instruction(op::add(0x12, RegId::HP, 0x20)).unwrap();
-    vm.instruction(op::add(0x12, RegId::ONE, 0x12)).unwrap();
 
     // Test ownership
-    vm.instruction(op::add(0x30, RegId::HP, RegId::ONE)).unwrap();
-    vm.instruction(op::mcp(0x30, 0x12, 0x20)).unwrap();
+    vm.instruction(op::mcp(RegId::HP, 0x12, 0x20)).unwrap();
 
     // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
-    vm.instruction(op::meq(0x23, 0x30, 0x12, 0x20)).unwrap();
+    vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20)).unwrap();
 
     assert_eq!(1, vm.registers()[0x23]);
 
     // Assert ownership
-    vm.instruction(op::subi(0x24, RegId::HP, 1)).unwrap();
+    vm.instruction(op::subi(0x24, RegId::HP, 1)).unwrap(); // TODO: look into this
     let ownership_violated = vm.instruction(op::mcp(0x24, 0x12, 0x20));
 
     assert!(ownership_violated.is_err());
@@ -87,13 +85,13 @@ fn memrange() {
         .unwrap();
     vm.instruction(op::aloc(0x10)).unwrap();
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes);
+    let m = MemoryRange::new(vm.registers()[RegId::HP] - 1, bytes);
     assert!(!vm.ownership_registers().has_ownership_range(&m));
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP] + 1, bytes);
+    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes);
     assert!(vm.ownership_registers().has_ownership_range(&m));
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP] + 1, bytes + 1);
+    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes + 1);
     assert!(!vm.ownership_registers().has_ownership_range(&m));
 
     let m = MemoryRange::new(0, bytes).to_heap(&vm);
@@ -129,7 +127,7 @@ fn stack_alloc_ownership() {
     => false ; "empty stack and heap"
 )]
 #[test_case(
-    OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: 0}), 0..1
+    OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM, Context::Script{ block_height: 0 }), 0..1
     => false ; "empty stack and heap (external)"
 )]
 #[test_case(
@@ -157,7 +155,7 @@ fn stack_alloc_ownership() {
     => false; "between ranges (external)"
 )]
 #[test_case(
-    OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0}), 0..1
+    OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: 0 }), 0..1
     => true; "in stack range (external)"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {

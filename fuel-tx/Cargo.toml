@@ -23,7 +23,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 
 [dev-dependencies]
-bincode = { version = "1.3", default-features = false }
+bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
@@ -43,28 +43,3 @@ random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default"]
 # serde is requiring alloc because its mandatory for serde_json. to avoid adding a new feature only for serde_json, we just require `alloc` here since as of the moment we don't have a use case of serde without alloc.
 serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "serde_json"]
-
-[[test]]
-name = "test-bytes"
-path = "tests/bytes.rs"
-required-features = ["serde", "std"]
-
-[[test]]
-name = "test-display"
-path = "tests/display.rs"
-required-features = ["serde", "std"]
-
-[[test]]
-name = "test-offsets"
-path = "tests/offset.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-prepared-init"
-path = "tests/prepared_init.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-valid"
-path = "tests/valid.rs"
-required-features = ["std"]

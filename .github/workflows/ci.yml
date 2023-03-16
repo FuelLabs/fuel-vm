@@ -90,25 +90,10 @@ jobs:
       - name: Run Cargo.toml linter
         run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
-  cargo-unused-deps-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-      - uses: Swatinem/rust-cache@v1
-      - name: Install cargo-udeps
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-udeps
-      - run: cargo udeps --all-targets --all-features
-
   verifications-complete:
     needs:
       - cargo
       - cargo-toml-fmt-check
-      - cargo-unused-deps-check
     runs-on: ubuntu-latest
     steps:
       - run: true

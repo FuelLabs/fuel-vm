@@ -3,6 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
+#![deny(unused_crate_dependencies)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -16,6 +17,9 @@ pub use types::*;
 
 /// Word-aligned bytes serialization functions.
 pub mod bytes;
+
+#[cfg(test)]
+mod tests;
 
 /// Register ID type
 pub type RegisterId = usize;

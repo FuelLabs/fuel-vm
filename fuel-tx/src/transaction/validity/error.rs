@@ -48,6 +48,9 @@ pub enum CheckError {
     TransactionCreateInputContract {
         index: usize,
     },
+    TransactionCreateMetadata {
+        index: usize,
+    },
     TransactionCreateOutputContract {
         index: usize,
     },

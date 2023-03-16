@@ -25,7 +25,7 @@ zeroize = { version = "1.5", features = ["derive"] }
 [dev-dependencies]
 bincode = { version = "1.3", default-features = false }
 criterion = "0.3"
-fuel-crypto = { path = ".", default-features = false, features = ["random", "serde"] }
+fuel-crypto = { path = ".", default-features = false, features = ["random"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 sha2 = "0.10"

@@ -5,7 +5,6 @@ use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
-use fuel_types::MessageId;
 
 use crate::TxPointer;
 use crate::UtxoId;
@@ -38,7 +37,6 @@ mem_layout!(
 pub struct MessageSizes;
 mem_layout!(
     MessageSizesLayout for MessageSizes
-    message_id: MessageId = {MessageId::LEN},
     sender: Address = {Address::LEN},
     recipient: Address = {Address::LEN},
     amount: Word = WORD_SIZE,
@@ -52,7 +50,6 @@ mem_layout!(
 #[test]
 fn test_consts() {
     let l = MessageSizesLayout::new();
-    assert_eq!(l.message_id.addr(), super::consts::INPUT_MESSAGE_ID_OFFSET - WORD_SIZE);
     assert_eq!(l.sender.addr(), super::consts::INPUT_MESSAGE_SENDER_OFFSET - WORD_SIZE);
     assert_eq!(
         l.recipient.addr(),

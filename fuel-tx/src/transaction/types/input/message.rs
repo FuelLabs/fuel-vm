@@ -127,7 +127,6 @@ pub struct Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    pub message_id: MessageId,
     /// The sender from the L1 chain.
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
@@ -147,6 +146,22 @@ where
     /// It is empty, because specification says nothing:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
     pub fn prepare_sign(&mut self) {}
+
+    pub fn message_id(&self) -> MessageId {
+        let Self {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            data,
+            ..
+        } = self;
+        if let Some(data) = data.as_field() {
+            compute_message_id(sender, recipient, *nonce, *amount, &data)
+        } else {
+            compute_message_id(sender, recipient, *nonce, *amount, &[])
+        }
+    }
 }
 
 impl<Specification> SizedBytes for Message<Specification>
@@ -187,7 +202,6 @@ where
         }
 
         let Self {
-            message_id,
             sender,
             recipient,
             amount,
@@ -204,7 +218,6 @@ where
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
         bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
         bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
 
@@ -276,8 +289,6 @@ where
             .ok_or(bytes::eof())?;
         let mut n = LEN;
 
-        let message_id = bytes::restore_at(buf, S::layout(S::LAYOUT.message_id));
-        self.message_id = message_id.into();
         let sender = bytes::restore_at(buf, S::layout(S::LAYOUT.sender));
         self.sender = sender.into();
         let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
@@ -325,7 +336,6 @@ where
 impl FullMessage {
     pub fn into_metadata_signed(self) -> MetadataSigned {
         let Self {
-            message_id,
             sender,
             recipient,
             amount,
@@ -336,7 +346,6 @@ impl FullMessage {
         } = self;
 
         Message {
-            message_id,
             sender,
             recipient,
             amount,
@@ -350,7 +359,6 @@ impl FullMessage {
 
     pub fn into_metadata_predicate(self) -> MetadataPredicate {
         let Self {
-            message_id,
             sender,
             recipient,
             amount,
@@ -362,7 +370,6 @@ impl FullMessage {
         } = self;
 
         Message {
-            message_id,
             sender,
             recipient,
             amount,
@@ -376,7 +383,6 @@ impl FullMessage {
 
     pub fn into_coin_signed(self) -> DepositCoinSigned {
         let Self {
-            message_id,
             sender,
             recipient,
             amount,
@@ -386,7 +392,6 @@ impl FullMessage {
         } = self;
 
         Message {
-            message_id,
             sender,
             recipient,
             amount,
@@ -400,7 +405,6 @@ impl FullMessage {
 
     pub fn into_coin_predicate(self) -> DepositCoinPredicate {
         let Self {
-            message_id,
             sender,
             recipient,
             amount,
@@ -411,7 +415,6 @@ impl FullMessage {
         } = self;
 
         Message {
-            message_id,
             sender,
             recipient,
             amount,
@@ -422,4 +425,15 @@ impl FullMessage {
             predicate_data,
         }
     }
+}
+
+pub fn compute_message_id(sender: &Address, recipient: &Address, nonce: Word, amount: Word, data: &[u8]) -> MessageId {
+    let hasher = fuel_crypto::Hasher::default()
+        .chain(sender)
+        .chain(recipient)
+        .chain(nonce.to_be_bytes())
+        .chain(amount.to_be_bytes())
+        .chain(data);
+
+    (*hasher.finalize()).into()
 }

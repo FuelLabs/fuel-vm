@@ -175,7 +175,7 @@ mod tests {
         for i in LAST_PANIC_REASON..=255 {
             let reason = PanicReason::from(i);
             let i2 = reason as u8;
-            assert_eq!(LAST_PANIC_REASON, i2);
+            assert_eq!(PanicReason::UnknownPanicReason as u8, i2);
         }
     }
 }

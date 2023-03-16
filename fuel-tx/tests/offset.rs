@@ -23,7 +23,6 @@ struct TestedFields {
     contract_balance_root: bool,
     contract_state_root: bool,
     contract_id: bool,
-    message_id: bool,
     sender: bool,
     recipient: bool,
     message_data: bool,
@@ -128,16 +127,6 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
 
             assert_eq!(contract_id, contract_id_p);
-        }
-
-        if let Some(message_id) = i.message_id() {
-            cases.message_id = true;
-
-            let ofs = input_ofs + i.repr().message_id_offset().expect("input contains message id");
-
-            let message_id_p = MessageId::from_bytes_ref_checked(&bytes[ofs..ofs + MessageId::LEN]).unwrap();
-
-            assert_eq!(message_id, message_id_p);
         }
 
         if let Some(sender) = i.sender() {
@@ -308,7 +297,6 @@ fn tx_offset_create() {
     assert!(cases.contract_balance_root);
     assert!(cases.contract_state_root);
     assert!(cases.contract_id);
-    assert!(cases.message_id);
     assert!(cases.sender);
     assert!(cases.recipient);
     assert!(cases.message_data);
@@ -348,7 +336,6 @@ fn tx_offset_script() {
     assert!(cases.contract_balance_root);
     assert!(cases.contract_state_root);
     assert!(cases.contract_id);
-    assert!(cases.message_id);
     assert!(cases.sender);
     assert!(cases.recipient);
     assert!(cases.message_data);

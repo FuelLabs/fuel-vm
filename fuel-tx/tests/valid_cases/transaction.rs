@@ -819,7 +819,6 @@ mod inputs {
             .maturity(rng.gen())
             .add_input(Input::metadata_predicate(
                 rng.gen(),
-                rng.gen(),
                 recipient,
                 rng.gen(),
                 rng.gen(),
@@ -843,7 +842,6 @@ mod inputs {
             .gas_price(rng.gen())
             .maturity(rng.gen())
             .add_input(Input::metadata_predicate(
-                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),

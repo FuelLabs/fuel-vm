@@ -117,7 +117,6 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
             generate_bytes(rng),
         ),
         Input::metadata_predicate(
@@ -125,8 +124,16 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
             generate_bytes(rng),
+            generate_nonempty_padded_bytes(rng),
+            generate_bytes(rng),
+        ),
+        Input::deposit_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Input::deposit_coin_predicate(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
@@ -687,7 +694,6 @@ fn create_input_data_offset() {
 
     let data = generate_bytes(rng);
     let input_message = Input::metadata_predicate(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),

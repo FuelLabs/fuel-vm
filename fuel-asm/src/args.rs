@@ -91,7 +91,8 @@ const GTF_INPUT_CONTRACT_BALANCE_ROOT: u16 = 0x110;
 const GTF_INPUT_CONTRACT_STATE_ROOT: u16 = 0x111;
 const GTF_INPUT_CONTRACT_TX_POINTER: u16 = 0x112;
 const GTF_INPUT_CONTRACT_ID: u16 = 0x113;
-const GTF_INPUT_MESSAGE_ID: u16 = 0x114;
+// TODO: Add `GTF_INPUT_COIN_PREDICATE_GAS_USED` above, `GTF_INPUT_MESSAGE_SENDER` should
+//  have `0x115`
 const GTF_INPUT_MESSAGE_SENDER: u16 = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT: u16 = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT: u16 = 0x117;
@@ -267,9 +268,6 @@ pub enum GTFArgs {
     /// Set `$rA` to `Memory address of tx.inputs[$rB].contractID`
     InputContractId = GTF_INPUT_CONTRACT_ID,
 
-    /// Set `$rA` to `Memory address of tx.inputs[$rB].messageID`
-    InputMessageId = GTF_INPUT_MESSAGE_ID,
-
     /// Set `$rA` to `Memory address of tx.inputs[$rB].sender`
     InputMessageSender = GTF_INPUT_MESSAGE_SENDER,
 
@@ -390,7 +388,6 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_CONTRACT_STATE_ROOT => Ok(Self::InputContractStateRoot),
             GTF_INPUT_CONTRACT_TX_POINTER => Ok(Self::InputContractTxPointer),
             GTF_INPUT_CONTRACT_ID => Ok(Self::InputContractId),
-            GTF_INPUT_MESSAGE_ID => Ok(Self::InputMessageId),
             GTF_INPUT_MESSAGE_SENDER => Ok(Self::InputMessageSender),
             GTF_INPUT_MESSAGE_RECIPIENT => Ok(Self::InputMessageRecipient),
             GTF_INPUT_MESSAGE_AMOUNT => Ok(Self::InputMessageAmount),
@@ -493,7 +490,6 @@ fn encode_gtf_args() {
         GTFArgs::InputContractStateRoot,
         GTFArgs::InputContractTxPointer,
         GTFArgs::InputContractId,
-        GTFArgs::InputMessageId,
         GTFArgs::InputMessageSender,
         GTFArgs::InputMessageRecipient,
         GTFArgs::InputMessageAmount,

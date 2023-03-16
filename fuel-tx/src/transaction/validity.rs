@@ -96,7 +96,6 @@ impl Input {
         witnesses: &[Witness],
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        // TODO: Add verification of the `message_id` with hash from `Message`'s fields.
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::DepositCoinPredicate(DepositCoinPredicate { predicate, .. })
@@ -285,7 +284,7 @@ where
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
-    if let Some(message_id) = next_duplicate(duplicated_message_id).copied() {
+    if let Some(message_id) = next_duplicate(duplicated_message_id) {
         return Err(CheckError::DuplicateMessageInputId { message_id });
     }
 

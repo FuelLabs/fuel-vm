@@ -252,13 +252,6 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::DepositCoinSigned[DepositCoinSigned],
-                message_id,
-                invert
-            );
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::DepositCoinSigned[DepositCoinSigned],
                 sender,
                 invert
             );
@@ -279,13 +272,6 @@ mod tests {
                 not
             );
 
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::MetadataSigned[MetadataSigned],
-                message_id,
-                invert
-            );
             assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], sender, invert);
             assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], recipient, invert);
             assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], amount, not);
@@ -299,13 +285,6 @@ mod tests {
             );
             assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], data, inv_v);
 
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
-                message_id,
-                invert
-            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -349,13 +328,6 @@ mod tests {
                 inv_v
             );
 
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
-                message_id,
-                invert
-            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -444,13 +416,11 @@ mod tests {
                 Input::deposit_coin_signed(
                     rng.gen(),
                     rng.gen(),
-                    rng.gen(),
                     rng.next_u64(),
                     rng.next_u64(),
                     rng.next_u32().to_be_bytes()[0],
                 ),
                 Input::deposit_coin_predicate(
-                    rng.gen(),
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
@@ -461,14 +431,12 @@ mod tests {
                 Input::metadata_signed(
                     rng.gen(),
                     rng.gen(),
-                    rng.gen(),
                     rng.next_u64(),
                     rng.next_u64(),
                     rng.next_u32().to_be_bytes()[0],
                     generate_nonempty_padded_bytes(rng),
                 ),
                 Input::metadata_predicate(
-                    rng.gen(),
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),

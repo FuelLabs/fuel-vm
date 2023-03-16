@@ -122,16 +122,8 @@ fn input() {
             vec![0xdd; 50],
             vec![],
         ),
-        Input::deposit_coin_signed(
-            [0xaa; 32].into(),
-            [0xbb; 32].into(),
-            [0xcc; 32].into(),
-            Word::MAX,
-            Word::MAX,
-            0xff,
-        ),
+        Input::deposit_coin_signed([0xbb; 32].into(), [0xcc; 32].into(), Word::MAX, Word::MAX, 0xff),
         Input::deposit_coin_predicate(
-            [0xaa; 32].into(),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -140,7 +132,6 @@ fn input() {
             vec![0xff; 23],
         ),
         Input::metadata_signed(
-            [0xaa; 32].into(),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -149,7 +140,6 @@ fn input() {
             vec![0xdd; 50],
         ),
         Input::metadata_predicate(
-            [0xaa; 32].into(),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -159,7 +149,6 @@ fn input() {
             vec![0xff; 23],
         ),
         Input::metadata_predicate(
-            [0xaa; 32].into(),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,

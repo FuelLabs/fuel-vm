@@ -72,13 +72,6 @@ impl InputRepr {
         }
     }
 
-    pub const fn message_id_offset(&self) -> Option<usize> {
-        match self {
-            Self::Message => Some(INPUT_MESSAGE_ID_OFFSET),
-            Self::Contract | Self::Coin => None,
-        }
-    }
-
     pub const fn message_sender_offset(&self) -> Option<usize> {
         match self {
             Self::Message => Some(INPUT_MESSAGE_SENDER_OFFSET),

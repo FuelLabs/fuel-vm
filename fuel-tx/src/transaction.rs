@@ -311,13 +311,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         data: Vec<u8>,
     ) {
-        let message_id = Input::compute_message_id(&sender, &recipient, nonce, amount, &data);
-
         let witness_index = self.witnesses().len() as u8;
         let input = if data.is_empty() {
-            Input::deposit_coin_signed(message_id, sender, recipient, amount, nonce, witness_index)
+            Input::deposit_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
-            Input::metadata_signed(message_id, sender, recipient, amount, nonce, witness_index, data)
+            Input::metadata_signed(sender, recipient, amount, nonce, witness_index, data)
         };
 
         self.witnesses_mut().push(Witness::default());

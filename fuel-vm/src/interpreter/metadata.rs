@@ -277,16 +277,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
                     .ok_or(PanicReason::InputNotFound)?) as Word
             }
-            GTFArgs::InputMessageId => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_message())
-                    .map(Input::repr)
-                    .and_then(|r| r.message_id_offset())
-                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
             GTFArgs::InputMessageSender => {
                 (ofs + tx
                     .inputs()

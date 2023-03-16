@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use coin::*;
 use consts::*;
 use contract::*;
-use fuel_crypto::{Hasher, PublicKey};
+use fuel_crypto::PublicKey;
 use fuel_types::bytes;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
@@ -174,7 +174,6 @@ impl Input {
     }
 
     pub const fn deposit_coin_signed(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
@@ -182,7 +181,6 @@ impl Input {
         witness_index: u8,
     ) -> Self {
         Self::DepositCoinSigned(DepositCoinSigned {
-            message_id,
             sender,
             recipient,
             amount,
@@ -195,7 +193,6 @@ impl Input {
     }
 
     pub const fn deposit_coin_predicate(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
@@ -204,7 +201,6 @@ impl Input {
         predicate_data: Vec<u8>,
     ) -> Self {
         Self::DepositCoinPredicate(DepositCoinPredicate {
-            message_id,
             sender,
             recipient,
             amount,
@@ -217,7 +213,6 @@ impl Input {
     }
 
     pub const fn metadata_signed(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
@@ -226,7 +221,6 @@ impl Input {
         data: Vec<u8>,
     ) -> Self {
         Self::MetadataSigned(MetadataSigned {
-            message_id,
             sender,
             recipient,
             amount,
@@ -239,7 +233,6 @@ impl Input {
     }
 
     pub const fn metadata_predicate(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
@@ -249,7 +242,6 @@ impl Input {
         predicate_data: Vec<u8>,
     ) -> Self {
         Self::MetadataPredicate(MetadataPredicate {
-            message_id,
             sender,
             recipient,
             amount,
@@ -385,12 +377,12 @@ impl Input {
         }
     }
 
-    pub const fn message_id(&self) -> Option<&MessageId> {
+    pub fn message_id(&self) -> Option<MessageId> {
         match self {
-            Self::DepositCoinSigned(DepositCoinSigned { message_id, .. })
-            | Self::DepositCoinPredicate(DepositCoinPredicate { message_id, .. })
-            | Self::MetadataPredicate(MetadataPredicate { message_id, .. })
-            | Self::MetadataSigned(MetadataSigned { message_id, .. }) => Some(message_id),
+            Self::DepositCoinSigned(message) => Some(message.message_id()),
+            Self::DepositCoinPredicate(message) => Some(message.message_id()),
+            Self::MetadataPredicate(message) => Some(message.message_id()),
+            Self::MetadataSigned(message) => Some(message.message_id()),
             _ => None,
         }
     }
@@ -567,15 +559,7 @@ impl Input {
         amount: Word,
         data: &[u8],
     ) -> MessageId {
-        let message_id = *Hasher::default()
-            .chain(sender)
-            .chain(recipient)
-            .chain(nonce.to_be_bytes())
-            .chain(amount.to_be_bytes())
-            .chain(data)
-            .finalize();
-
-        message_id.into()
+        compute_message_id(sender, recipient, nonce, amount, data)
     }
 
     pub fn predicate_owner<P>(predicate: P) -> Address

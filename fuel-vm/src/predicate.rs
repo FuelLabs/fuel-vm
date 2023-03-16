@@ -80,13 +80,11 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
     );
 
     let c = Input::metadata_predicate(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),

@@ -213,7 +213,6 @@ mod use_std {
 
                         let input = Input::deposit_coin_predicate(
                             self.rng.gen(),
-                            self.rng.gen(),
                             recipient,
                             self.rng.gen(),
                             self.rng.gen(),
@@ -235,7 +234,6 @@ mod use_std {
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::metadata_predicate(
-                            self.rng.gen(),
                             self.rng.gen(),
                             recipient,
                             self.rng.gen(),

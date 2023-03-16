@@ -816,12 +816,12 @@ mod tests {
             .finalize()
     }
 
+    // TODO: Add tests for deposit coin
     fn predicate_message_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_input(Input::metadata_predicate(
-                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 input_amount,

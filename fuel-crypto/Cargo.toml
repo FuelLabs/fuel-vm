@@ -46,26 +46,6 @@ serde = ["dep:serde", "fuel-types/serde"]
 std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand/std_rng", "secp256k1/rand-std", "serde?/default"]
 wasm = ["secp256k1/rand"]
 
-[[test]]
-name = "test-mnemonic"
-path = "tests/mnemonic.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-serde"
-path = "tests/serde.rs"
-required-features = ["serde", "std"]
-
-[[test]]
-name = "test-signature"
-path = "tests/signature.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-signer"
-path = "tests/signer.rs"
-required-features = ["std"]
-
 [[bench]]
 name = "signature"
 harness = false

@@ -5,6 +5,7 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 #![warn(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 mod args;
 mod instruction_result;

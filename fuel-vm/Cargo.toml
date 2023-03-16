@@ -96,6 +96,14 @@ path = "tests/gas_factor.rs"
 required-features = ["profile-gas"]
 
 [[test]]
+name = "test-jump-absolute"
+path = "tests/jump_absolute.rs"
+
+[[test]]
+name = "test-jump-relative"
+path = "tests/jump_relative.rs"
+
+[[test]]
 name = "test-memory"
 path = "tests/memory.rs"
 required-features = ["random"]

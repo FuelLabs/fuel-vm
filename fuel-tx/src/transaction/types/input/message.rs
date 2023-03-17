@@ -1,7 +1,7 @@
 use crate::input::sizes::MessageSizes;
 use crate::transaction::types::input::AsField;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Word};
+use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Nonce, Word};
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MetadataSigned = Message<specifications::Metadata<specifications::Signed>>;
@@ -132,7 +132,7 @@ where
     /// The receiver on the `Fuel` chain.
     pub recipient: Address,
     pub amount: Word,
-    pub nonce: Word,
+    pub nonce: Nonce,
     pub witness_index: Specification::Witness,
     pub data: Specification::Data,
     pub predicate: Specification::Predicate,
@@ -157,9 +157,9 @@ where
             ..
         } = self;
         if let Some(data) = data.as_field() {
-            compute_message_id(sender, recipient, *nonce, *amount, data)
+            compute_message_id(sender, recipient, nonce, *amount, data)
         } else {
-            compute_message_id(sender, recipient, *nonce, *amount, &[])
+            compute_message_id(sender, recipient, nonce, *amount, &[])
         }
     }
 }
@@ -222,7 +222,7 @@ where
         bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
 
         bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.nonce), *nonce);
+        bytes::store_at(buf, S::layout(S::LAYOUT.nonce), nonce);
 
         let witness_index = if let Some(witness_index) = witness_index.as_field() {
             *witness_index
@@ -296,8 +296,8 @@ where
 
         let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
         self.amount = amount;
-        let nonce = bytes::restore_number_at(buf, S::layout(S::LAYOUT.nonce));
-        self.nonce = nonce;
+        let nonce = bytes::restore_at(buf, S::layout(S::LAYOUT.nonce));
+        self.nonce = nonce.into();
         let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
         if let Some(witness_index_field) = self.witness_index.as_mut_field() {
             *witness_index_field = witness_index;
@@ -427,11 +427,17 @@ impl FullMessage {
     }
 }
 
-pub fn compute_message_id(sender: &Address, recipient: &Address, nonce: Word, amount: Word, data: &[u8]) -> MessageId {
+pub fn compute_message_id(
+    sender: &Address,
+    recipient: &Address,
+    nonce: &Nonce,
+    amount: Word,
+    data: &[u8],
+) -> MessageId {
     let hasher = fuel_crypto::Hasher::default()
         .chain(sender)
         .chain(recipient)
-        .chain(nonce.to_be_bytes())
+        .chain(nonce)
         .chain(amount.to_be_bytes())
         .chain(data);
 

@@ -303,12 +303,16 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|i| i.is_message())
                 .and_then(Input::amount)
                 .ok_or(PanicReason::InputNotFound)?,
-            GTFArgs::InputMessageNonce => tx
-                .inputs()
-                .get(b)
-                .filter(|i| i.is_message())
-                .and_then(Input::nonce)
-                .ok_or(PanicReason::InputNotFound)?,
+            GTFArgs::InputMessageNonce => {
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_message())
+                    .map(Input::repr)
+                    .and_then(|r| r.message_nonce_offset())
+                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
+            }
             GTFArgs::InputMessageWitnessIndex => tx
                 .inputs()
                 .get(b)

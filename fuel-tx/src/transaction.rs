@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
+use fuel_types::{Address, AssetId, Bytes32, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -307,7 +307,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         &mut self,
         sender: Address,
         recipient: Address,
-        nonce: Word,
+        nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
     ) {

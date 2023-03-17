@@ -4,8 +4,8 @@ use coin::*;
 use consts::*;
 use contract::*;
 use fuel_crypto::PublicKey;
-use fuel_types::bytes;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
+use fuel_types::{bytes, Nonce};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 use message::*;
 
@@ -177,7 +177,7 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Word,
+        nonce: Nonce,
         witness_index: u8,
     ) -> Self {
         Self::DepositCoinSigned(DepositCoinSigned {
@@ -196,7 +196,7 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Word,
+        nonce: Nonce,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
     ) -> Self {
@@ -216,7 +216,7 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Word,
+        nonce: Nonce,
         witness_index: u8,
         data: Vec<u8>,
     ) -> Self {
@@ -236,7 +236,7 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Word,
+        nonce: Nonce,
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -529,12 +529,12 @@ impl Input {
         }
     }
 
-    pub const fn nonce(&self) -> Option<Word> {
+    pub const fn nonce(&self) -> Option<&Nonce> {
         match self {
             Input::DepositCoinSigned(DepositCoinSigned { nonce, .. })
             | Input::DepositCoinPredicate(DepositCoinPredicate { nonce, .. })
             | Input::MetadataSigned(MetadataSigned { nonce, .. })
-            | Input::MetadataPredicate(MetadataPredicate { nonce, .. }) => Some(*nonce),
+            | Input::MetadataPredicate(MetadataPredicate { nonce, .. }) => Some(nonce),
             _ => None,
         }
     }
@@ -555,7 +555,7 @@ impl Input {
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,
-        nonce: Word,
+        nonce: &Nonce,
         amount: Word,
         data: &[u8],
     ) -> MessageId {

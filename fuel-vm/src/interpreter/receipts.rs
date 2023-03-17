@@ -12,8 +12,8 @@ pub(crate) struct ReceiptsCtx {
 }
 
 impl ReceiptsCtx {
-    pub fn push(&mut self, receipt: Receipt) {
-        self.receipts_tree.push(receipt.clone().to_bytes().as_slice());
+    pub fn push(&mut self, mut receipt: Receipt) {
+        self.receipts_tree.push(receipt.to_bytes().as_slice());
         self.receipts.push(receipt)
     }
 

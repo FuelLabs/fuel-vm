@@ -51,8 +51,7 @@ pub use memory::MemoryRange;
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
 
 use self::memory::Memory;
-
-pub(crate) use self::receipts::ReceiptsCtx;
+use self::receipts::ReceiptsCtx;
 
 /// VM interpreter.
 ///

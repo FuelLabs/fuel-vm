@@ -30,7 +30,7 @@ use crate::TxPointer;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
 use crate::input::contract::Contract;
-use crate::input::message::MetadataPredicate;
+use crate::input::message::MessageDataPredicate;
 use input::*;
 
 #[cfg(feature = "std")]
@@ -214,10 +214,10 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .filter_map(|input| match input {
                 Input::CoinPredicate(CoinPredicate { asset_id, .. })
                 | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::DepositCoinSigned(_)
-                | Input::DepositCoinPredicate(_)
-                | Input::MetadataPredicate(_)
-                | Input::MetadataSigned(_) => Some(&AssetId::BASE),
+                Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_)
+                | Input::MessageDataSigned(_) => Some(&AssetId::BASE),
                 _ => None,
             })
             .collect_vec()
@@ -259,7 +259,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|i| match i {
                 Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
-                Input::MetadataPredicate(MetadataPredicate {
+                Input::MessageDataPredicate(MessageDataPredicate {
                     recipient, predicate, ..
                 }) => Some((recipient, predicate)),
                 _ => None,
@@ -313,9 +313,9 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ) {
         let witness_index = self.witnesses().len() as u8;
         let input = if data.is_empty() {
-            Input::deposit_coin_signed(sender, recipient, amount, nonce, witness_index)
+            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
-            Input::metadata_signed(sender, recipient, amount, nonce, witness_index, data)
+            Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
         };
 
         self.witnesses_mut().push(Witness::default());

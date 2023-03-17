@@ -4,10 +4,10 @@ use fuel_types::bytes::SizedBytes;
 use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Word};
 
 pub type FullMessage = Message<specifications::Full>;
-pub type MetadataSigned = Message<specifications::Metadata<specifications::Signed>>;
-pub type MetadataPredicate = Message<specifications::Metadata<specifications::Predicate>>;
-pub type DepositCoinSigned = Message<specifications::DepositCoin<specifications::Signed>>;
-pub type DepositCoinPredicate = Message<specifications::DepositCoin<specifications::Predicate>>;
+pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
+pub type MessageDataPredicate = Message<specifications::MessageData<specifications::Predicate>>;
+pub type MessageCoinSigned = Message<specifications::MessageCoin<specifications::Signed>>;
+pub type MessageCoinPredicate = Message<specifications::MessageCoin<specifications::Predicate>>;
 
 type Empty = ();
 
@@ -15,10 +15,10 @@ mod private {
     pub trait Seal {}
 
     impl Seal for super::specifications::Full {}
-    impl Seal for super::specifications::Metadata<super::specifications::Signed> {}
-    impl Seal for super::specifications::Metadata<super::specifications::Predicate> {}
-    impl Seal for super::specifications::DepositCoin<super::specifications::Signed> {}
-    impl Seal for super::specifications::DepositCoin<super::specifications::Predicate> {}
+    impl Seal for super::specifications::MessageData<super::specifications::Signed> {}
+    impl Seal for super::specifications::MessageData<super::specifications::Predicate> {}
+    impl Seal for super::specifications::MessageCoin<super::specifications::Signed> {}
+    impl Seal for super::specifications::MessageCoin<super::specifications::Predicate> {}
 }
 
 /// Specifies the message based on the usage context. See [`Message`].
@@ -52,16 +52,16 @@ pub mod specifications {
     /// used later until successful execution.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    pub struct Metadata<UsageRules>(core::marker::PhantomData<UsageRules>);
+    pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
-    impl MessageSpecification for Metadata<Signed> {
+    impl MessageSpecification for MessageData<Signed> {
         type Witness = u8;
         type Data = Vec<u8>;
         type Predicate = Empty;
         type PredicateData = Empty;
     }
 
-    impl MessageSpecification for Metadata<Predicate> {
+    impl MessageSpecification for MessageData<Predicate> {
         type Witness = Empty;
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
@@ -71,16 +71,16 @@ pub mod specifications {
     /// The spendable message acts as a standard coin.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    pub struct DepositCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
+    pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
-    impl MessageSpecification for DepositCoin<Signed> {
+    impl MessageSpecification for MessageCoin<Signed> {
         type Witness = u8;
         type Data = Empty;
         type Predicate = Empty;
         type PredicateData = Empty;
     }
 
-    impl MessageSpecification for DepositCoin<Predicate> {
+    impl MessageSpecification for MessageCoin<Predicate> {
         type Witness = Empty;
         type Data = Empty;
         type Predicate = Vec<u8>;
@@ -89,8 +89,8 @@ pub mod specifications {
 
     /// The type is used to represent the full message. It is used during the deserialization of
     /// the message to determine the final type.
-    /// If the `data` field is empty, it should be transformed into [`Metadata`]. Otherwise
-    /// into [`DepositCoin`].
+    /// If the `data` field is empty, it should be transformed into [`MessageData`]. Otherwise
+    /// into [`MessageCoin`].
     /// If the `predicate` is empty, the usage rules should be [`Signed`], else [`Predicate`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -118,8 +118,8 @@ pub mod specifications {
 /// and duplication.
 ///
 /// Sub-messages from [`specifications`]:
-/// - [`specifications::Metadata`] with [`specifications::Signed`] usage rules.
-/// - [`specifications::Metadata`] with [`specifications::Predicate`] usage rules.
+/// - [`specifications::MessageData`] with [`specifications::Signed`] usage rules.
+/// - [`specifications::MessageData`] with [`specifications::Predicate`] usage rules.
 /// - [`specifications::Full`].
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -334,7 +334,7 @@ where
 }
 
 impl FullMessage {
-    pub fn into_metadata_signed(self) -> MetadataSigned {
+    pub fn into_message_data_signed(self) -> MessageDataSigned {
         let Self {
             sender,
             recipient,
@@ -357,7 +357,7 @@ impl FullMessage {
         }
     }
 
-    pub fn into_metadata_predicate(self) -> MetadataPredicate {
+    pub fn into_message_data_predicate(self) -> MessageDataPredicate {
         let Self {
             sender,
             recipient,
@@ -381,7 +381,7 @@ impl FullMessage {
         }
     }
 
-    pub fn into_coin_signed(self) -> DepositCoinSigned {
+    pub fn into_coin_signed(self) -> MessageCoinSigned {
         let Self {
             sender,
             recipient,
@@ -403,7 +403,7 @@ impl FullMessage {
         }
     }
 
-    pub fn into_coin_predicate(self) -> DepositCoinPredicate {
+    pub fn into_coin_predicate(self) -> MessageCoinPredicate {
         let Self {
             sender,
             recipient,

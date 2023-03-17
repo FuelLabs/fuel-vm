@@ -98,10 +98,10 @@ impl InputRepr {
         match input {
             Input::CoinSigned(_) | Input::CoinPredicate(_) => InputRepr::Coin,
             Input::Contract(_) => InputRepr::Contract,
-            Input::DepositCoinSigned(_)
-            | Input::DepositCoinPredicate(_)
-            | Input::MetadataSigned(_)
-            | Input::MetadataPredicate(_) => InputRepr::Message,
+            Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => InputRepr::Message,
         }
     }
 }

@@ -78,10 +78,10 @@ mod use_std {
                         Input::CoinSigned(_) => (),
                         Input::CoinPredicate(_) => (),
                         Input::Contract(_) => (),
-                        Input::DepositCoinSigned(_) => (),
-                        Input::DepositCoinPredicate(_) => (),
-                        Input::MetadataSigned(_) => (),
-                        Input::MetadataPredicate(_) => (),
+                        Input::MessageCoinSigned(_) => (),
+                        Input::MessageCoinPredicate(_) => (),
+                        Input::MessageDataSigned(_) => (),
+                        Input::MessageDataPredicate(_) => (),
                     })
                     .unwrap_or(());
 
@@ -211,7 +211,7 @@ mod use_std {
                         let predicate = generate_nonempty_padded_bytes(&mut self.rng);
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
-                        let input = Input::deposit_coin_predicate(
+                        let input = Input::message_coin_predicate(
                             self.rng.gen(),
                             recipient,
                             self.rng.gen(),
@@ -233,7 +233,7 @@ mod use_std {
                         let predicate = generate_nonempty_padded_bytes(&mut self.rng);
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
-                        let input = Input::metadata_predicate(
+                        let input = Input::message_data_predicate(
                             self.rng.gen(),
                             recipient,
                             self.rng.gen(),

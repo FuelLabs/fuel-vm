@@ -142,7 +142,7 @@ impl FormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, input)| match input {
                 Input::Contract(_) => Err(CheckError::TransactionCreateInputContract { index }),
-                Input::MetadataSigned(_) | Input::MetadataPredicate(_) => {
+                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
                     Err(CheckError::TransactionCreateMetadata { index })
                 }
                 _ => Ok(()),

@@ -424,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn metadata_signed_message_is_not_used_to_cover_fees() {
+    fn message_data_signed_message_is_not_used_to_cover_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -451,7 +451,7 @@ mod tests {
     }
 
     #[test]
-    fn metadata_predicate_message_is_not_used_to_cover_fees() {
+    fn message_data_predicate_message_is_not_used_to_cover_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -460,7 +460,7 @@ mod tests {
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_input(Input::metadata_predicate(
+            .add_input(Input::message_data_predicate(
                 rng.gen(),
                 rng.gen(),
                 input_amount,
@@ -882,7 +882,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_input(Input::deposit_coin_predicate(
+            .add_input(Input::message_coin_predicate(
                 rng.gen(),
                 rng.gen(),
                 input_amount,

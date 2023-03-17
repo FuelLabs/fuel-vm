@@ -20,7 +20,7 @@ fn input_coin_message_signature() {
                 .iter()
                 .enumerate()
                 .try_for_each(|(index, input)| match input {
-                    Input::CoinSigned(_) | Input::DepositCoinSigned(_) | Input::MetadataSigned(_) => {
+                    Input::CoinSigned(_) | Input::MessageCoinSigned(_) | Input::MessageDataSigned(_) => {
                         input.check(index, &txhash, outputs, witnesses, &Default::default())
                     }
                     _ => Ok(()),
@@ -222,7 +222,7 @@ fn message_metadata() {
     let predicate = generate_nonempty_padded_bytes(rng);
     let recipient = (*Contract::root_from_code(&predicate)).into();
 
-    Input::metadata_predicate(
+    Input::message_data_predicate(
         rng.gen(),
         recipient,
         rng.gen(),
@@ -236,7 +236,7 @@ fn message_metadata() {
 
     let mut tx = Script::default();
 
-    let input = Input::metadata_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, generate_bytes(rng));
+    let input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, generate_bytes(rng));
 
     tx.add_input(input);
 
@@ -251,7 +251,7 @@ fn message_metadata() {
     let recipient = (*Contract::root_from_code(&predicate)).into();
     predicate[0] = predicate[0].wrapping_add(1);
 
-    let err = Input::metadata_predicate(
+    let err = Input::message_data_predicate(
         rng.gen(),
         recipient,
         rng.gen(),
@@ -267,13 +267,13 @@ fn message_metadata() {
 
     let data = vec![0xff; PARAMS.max_message_data_length as usize + 1];
 
-    let err = Input::metadata_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, data.clone())
+    let err = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, data.clone())
         .check(1, &txhash, &[], &[vec![].into()], &Default::default())
         .expect_err("expected max data length error");
 
     assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
 
-    let err = Input::metadata_predicate(
+    let err = Input::message_data_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -289,7 +289,7 @@ fn message_metadata() {
 
     let predicate = vec![0xff; PARAMS.max_predicate_length as usize + 1];
 
-    let err = Input::metadata_predicate(
+    let err = Input::message_data_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -305,7 +305,7 @@ fn message_metadata() {
 
     let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
 
-    let err = Input::metadata_predicate(
+    let err = Input::message_data_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -329,7 +329,7 @@ fn message_deposit_coin() {
     let predicate = generate_nonempty_padded_bytes(rng);
     let recipient = (*Contract::root_from_code(&predicate)).into();
 
-    Input::deposit_coin_predicate(
+    Input::message_coin_predicate(
         rng.gen(),
         recipient,
         rng.gen(),
@@ -342,7 +342,7 @@ fn message_deposit_coin() {
 
     let mut tx = Script::default();
 
-    let input = Input::deposit_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    let input = Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -356,7 +356,7 @@ fn message_deposit_coin() {
     let recipient = (*Contract::root_from_code(&predicate)).into();
     predicate[0] = predicate[0].wrapping_add(1);
 
-    let err = Input::deposit_coin_predicate(
+    let err = Input::message_coin_predicate(
         rng.gen(),
         recipient,
         rng.gen(),
@@ -371,7 +371,7 @@ fn message_deposit_coin() {
 
     let predicate = vec![0xff; PARAMS.max_predicate_length as usize + 1];
 
-    let err = Input::deposit_coin_predicate(
+    let err = Input::message_coin_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -386,7 +386,7 @@ fn message_deposit_coin() {
 
     let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
 
-    let err = Input::deposit_coin_predicate(
+    let err = Input::message_coin_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -422,7 +422,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let message_input = Input::metadata_signed(rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
+    let message_input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
     let message_id = message_input.message_id().unwrap();
 
     let err = TransactionBuilder::script(vec![], vec![])

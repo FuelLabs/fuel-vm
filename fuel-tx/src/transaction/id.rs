@@ -1,5 +1,5 @@
 use crate::input::coin::CoinSigned;
-use crate::input::message::{DepositCoinSigned, MetadataSigned};
+use crate::input::message::{MessageCoinSigned, MessageDataSigned};
 use crate::{field, Input, Transaction};
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
@@ -53,12 +53,12 @@ where
                 Input::CoinSigned(CoinSigned {
                     owner, witness_index, ..
                 })
-                | Input::DepositCoinSigned(DepositCoinSigned {
+                | Input::MessageCoinSigned(MessageCoinSigned {
                     recipient: owner,
                     witness_index,
                     ..
                 })
-                | Input::MetadataSigned(MetadataSigned {
+                | Input::MessageDataSigned(MessageDataSigned {
                     recipient: owner,
                     witness_index,
                     ..
@@ -83,7 +83,7 @@ mod tests {
         input::{
             coin::{CoinPredicate, CoinSigned},
             contract::Contract,
-            message::{DepositCoinPredicate, DepositCoinSigned, MetadataPredicate, MetadataSigned},
+            message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned},
         },
         Buildable, ConsensusParameters, Input, Output, StorageSlot, Transaction, UtxoId,
     };
@@ -251,79 +251,91 @@ mod tests {
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinSigned[DepositCoinSigned],
+                Input::MessageCoinSigned[MessageCoinSigned],
                 sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinSigned[DepositCoinSigned],
+                Input::MessageCoinSigned[MessageCoinSigned],
                 recipient,
                 invert
             );
-            assert_io_ne!(tx, inputs_mut, Input::DepositCoinSigned[DepositCoinSigned], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::DepositCoinSigned[DepositCoinSigned], nonce, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageCoinSigned[MessageCoinSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageCoinSigned[MessageCoinSigned], nonce, not);
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinSigned[DepositCoinSigned],
+                Input::MessageCoinSigned[MessageCoinSigned],
                 witness_index,
                 not
             );
 
-            assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], sender, invert);
-            assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], recipient, invert);
-            assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], nonce, not);
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::MetadataSigned[MetadataSigned],
-                witness_index,
-                not
-            );
-            assert_io_ne!(tx, inputs_mut, Input::MetadataSigned[MetadataSigned], data, inv_v);
-
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
+                Input::MessageDataSigned[MessageDataSigned],
                 sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinPredicate[DepositCoinPredicate],
+                Input::MessageDataSigned[MessageDataSigned],
+                recipient,
+                invert
+            );
+            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], nonce, not);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataSigned[MessageDataSigned],
+                witness_index,
+                not
+            );
+            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], data, inv_v);
+
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataPredicate[MessageDataPredicate],
+                sender,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageCoinPredicate[MessageCoinPredicate],
                 recipient,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinPredicate[DepositCoinPredicate],
+                Input::MessageCoinPredicate[MessageCoinPredicate],
                 amount,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinPredicate[DepositCoinPredicate],
+                Input::MessageCoinPredicate[MessageCoinPredicate],
                 nonce,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinPredicate[DepositCoinPredicate],
+                Input::MessageCoinPredicate[MessageCoinPredicate],
                 predicate,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::DepositCoinPredicate[DepositCoinPredicate],
+                Input::MessageCoinPredicate[MessageCoinPredicate],
                 predicate_data,
                 inv_v
             );
@@ -331,31 +343,49 @@ mod tests {
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
+                Input::MessageDataPredicate[MessageDataPredicate],
                 sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
+                Input::MessageDataPredicate[MessageDataPredicate],
                 recipient,
                 invert
             );
-            assert_io_ne!(tx, inputs_mut, Input::MetadataPredicate[MetadataPredicate], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::MetadataPredicate[MetadataPredicate], nonce, not);
-            assert_io_ne!(tx, inputs_mut, Input::MetadataPredicate[MetadataPredicate], data, inv_v);
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
+                Input::MessageDataPredicate[MessageDataPredicate],
+                amount,
+                not
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataPredicate[MessageDataPredicate],
+                nonce,
+                not
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataPredicate[MessageDataPredicate],
+                data,
+                inv_v
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataPredicate[MessageDataPredicate],
                 predicate,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::MetadataPredicate[MetadataPredicate],
+                Input::MessageDataPredicate[MessageDataPredicate],
                 predicate_data,
                 inv_v
             );
@@ -413,14 +443,14 @@ mod tests {
                     generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-                Input::deposit_coin_signed(
+                Input::message_coin_signed(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
                     rng.next_u64(),
                     rng.next_u32().to_be_bytes()[0],
                 ),
-                Input::deposit_coin_predicate(
+                Input::message_coin_predicate(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
@@ -428,7 +458,7 @@ mod tests {
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
-                Input::metadata_signed(
+                Input::message_data_signed(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
@@ -436,7 +466,7 @@ mod tests {
                     rng.next_u32().to_be_bytes()[0],
                     generate_nonempty_padded_bytes(rng),
                 ),
-                Input::metadata_predicate(
+                Input::message_data_predicate(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),

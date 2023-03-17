@@ -7,7 +7,7 @@ use fuel_types::MemLayout;
 #[test]
 fn test_input_serialization() {
     const DATA_SIZE: usize = 16;
-    let mut input = Input::metadata_predicate(
+    let mut input = Input::message_data_predicate(
         Address::from([2u8; 32]),
         Address::from([3u8; 32]),
         5,

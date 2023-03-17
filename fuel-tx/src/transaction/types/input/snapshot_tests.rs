@@ -66,7 +66,7 @@ fn tx_with_contract_snapshot() {
 #[test]
 fn tx_with_signed_deposit_coin() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::DepositCoinSigned(DepositCoinSigned {
+        .add_input(Input::MessageCoinSigned(MessageCoinSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
@@ -86,7 +86,7 @@ fn tx_with_signed_deposit_coin() {
 #[test]
 fn tx_with_predicate_deposit_coin() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::DepositCoinPredicate(DepositCoinPredicate {
+        .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
@@ -106,7 +106,7 @@ fn tx_with_predicate_deposit_coin() {
 #[test]
 fn tx_with_signed_message() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::MetadataSigned(MetadataSigned {
+        .add_input(Input::MessageDataSigned(MessageDataSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
@@ -126,7 +126,7 @@ fn tx_with_signed_message() {
 #[test]
 fn tx_with_predicate_message() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::MetadataPredicate(MetadataPredicate {
+        .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,

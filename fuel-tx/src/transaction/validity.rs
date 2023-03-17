@@ -13,7 +13,7 @@ use itertools::Itertools;
 mod error;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
-use crate::input::message::{DepositCoinPredicate, DepositCoinSigned, MetadataPredicate, MetadataSigned};
+use crate::input::message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -40,12 +40,12 @@ impl Input {
             Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
             })
-            | Self::DepositCoinSigned(DepositCoinSigned {
+            | Self::MessageCoinSigned(MessageCoinSigned {
                 witness_index,
                 recipient: owner,
                 ..
             })
-            | Self::MetadataSigned(MetadataSigned {
+            | Self::MessageDataSigned(MessageDataSigned {
                 witness_index,
                 recipient: owner,
                 ..
@@ -74,12 +74,12 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
-            | Self::DepositCoinPredicate(DepositCoinPredicate {
+            | Self::MessageCoinPredicate(MessageCoinPredicate {
                 recipient: owner,
                 predicate,
                 ..
             })
-            | Self::MetadataPredicate(MetadataPredicate {
+            | Self::MessageDataPredicate(MessageDataPredicate {
                 recipient: owner,
                 predicate,
                 ..
@@ -98,32 +98,32 @@ impl Input {
     ) -> Result<(), CheckError> {
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate, .. })
-            | Self::MetadataPredicate(MetadataPredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate, .. })
-            | Self::MetadataPredicate(MetadataPredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::DepositCoinPredicate(DepositCoinPredicate { predicate_data, .. })
-            | Self::MetadataPredicate(MetadataPredicate { predicate_data, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate_data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate_data, .. })
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
             Self::CoinSigned(CoinSigned { witness_index, .. })
-            | Self::DepositCoinSigned(DepositCoinSigned { witness_index, .. })
-            | Self::MetadataSigned(MetadataSigned { witness_index, .. })
+            | Self::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+            | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })
@@ -142,8 +142,8 @@ impl Input {
                 Err(CheckError::InputContractAssociatedOutputContract { index })
             }
 
-            Self::MetadataSigned(MetadataSigned { data, .. })
-            | Self::MetadataPredicate(MetadataPredicate { data, .. })
+            Self::MessageDataSigned(MessageDataSigned { data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty() || data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })

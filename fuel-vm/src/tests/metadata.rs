@@ -234,7 +234,7 @@ fn get_transaction_fields() {
     rng.fill(m_predicate_data.as_mut_slice());
 
     let owner = Input::predicate_owner(&m_predicate);
-    let message_predicate = Input::metadata_predicate(
+    let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,
         7_500,

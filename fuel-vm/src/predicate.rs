@@ -75,7 +75,7 @@ fn from_tx_works() {
         predicate_data.clone(),
     );
 
-    let b = Input::deposit_coin_predicate(
+    let b = Input::message_coin_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -84,7 +84,7 @@ fn from_tx_works() {
         predicate_data.clone(),
     );
 
-    let c = Input::metadata_predicate(
+    let c = Input::message_data_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),

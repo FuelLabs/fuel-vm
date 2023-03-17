@@ -2,7 +2,7 @@ use fuel_tx::{
     field,
     input::{
         coin::{CoinPredicate, CoinSigned},
-        message::{DepositCoinPredicate, DepositCoinSigned, MetadataPredicate, MetadataSigned},
+        message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned},
     },
     Chargeable, CheckError, ConsensusParameters, Input, Output, TransactionFee,
 };
@@ -29,13 +29,13 @@ where
                 *sum_inputs.entry(*asset_id).or_default() += amount;
             }
             // Sum deposit inputs
-            Input::DepositCoinSigned(DepositCoinSigned { amount, .. })
-            | Input::DepositCoinPredicate(DepositCoinPredicate { amount, .. }) => {
+            Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
                 *sum_inputs.entry(AssetId::BASE).or_default() += amount;
             }
             // Sum data messages
-            Input::MetadataSigned(MetadataSigned { amount, .. })
-            | Input::MetadataPredicate(MetadataPredicate { amount, .. }) => {
+            Input::MessageDataSigned(MessageDataSigned { amount, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
                 sum_data_messages += *amount;
             }
             Input::Contract(_) => {}

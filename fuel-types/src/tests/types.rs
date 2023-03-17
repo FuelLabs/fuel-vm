@@ -47,9 +47,10 @@ fn from_slice_unchecked_safety() {
         check_consistency!(Bytes8, rng, bytes);
         check_consistency!(Bytes20, rng, bytes);
         check_consistency!(Bytes32, rng, bytes);
-        check_consistency!(Bytes64, rng, bytes);
+        check_consistency!(Nonce, rng, bytes);
         check_consistency!(MessageId, rng, bytes);
         check_consistency!(Salt, rng, bytes);
+        check_consistency!(Bytes64, rng, bytes);
     }
 }
 
@@ -116,9 +117,10 @@ fn hex_encoding() {
     encode_decode::<Bytes8>(rng.gen());
     encode_decode::<Bytes20>(rng.gen());
     encode_decode::<Bytes32>(rng.gen());
-    encode_decode::<Bytes64>(rng.gen());
+    encode_decode::<Nonce>(rng.gen());
     encode_decode::<MessageId>(rng.gen());
     encode_decode::<Salt>(rng.gen());
+    encode_decode::<Bytes64>(rng.gen());
 }
 
 #[test]
@@ -132,6 +134,7 @@ fn test_key_serde() {
     let bytes8: Bytes8 = rng.gen();
     let bytes20: Bytes20 = rng.gen();
     let bytes32: Bytes32 = rng.gen();
+    let nonce: Nonce = rng.gen();
     let message_id: MessageId = rng.gen();
     let salt: Salt = rng.gen();
     let bytes64: Bytes64 = rng.gen();
@@ -163,6 +166,10 @@ fn test_key_serde() {
     let bytes32_t = bincode::serialize(&bytes32).expect("Failed to serialize Bytes32");
     let bytes32_t: Bytes32 = bincode::deserialize(&bytes32_t).expect("Failed to deserialize Bytes32");
     assert_eq!(bytes32, bytes32_t);
+
+    let nonce_t = bincode::serialize(&nonce).expect("Failed to serialize Nonce");
+    let nonce_t: Nonce = bincode::deserialize(&nonce_t).expect("Failed to deserialize Nonce");
+    assert_eq!(nonce, nonce_t);
 
     let message_id_t = bincode::serialize(&message_id).expect("Failed to serialize MessageId");
     let message_id_t: MessageId = bincode::deserialize(&message_id_t).expect("Failed to deserialize MessageId");

@@ -1,7 +1,7 @@
 use crate::{TxPointer, UtxoId};
 
 use fuel_types::bytes::WORD_SIZE;
-use fuel_types::{Address, AssetId, Bytes32};
+use fuel_types::{Address, AssetId, Bytes32, Nonce};
 
 pub(super) const INPUT_UTXO_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_COIN_OWNER_OFFSET: usize = INPUT_UTXO_ID_OFFSET + UtxoId::LEN;
@@ -23,11 +23,12 @@ pub(super) const INPUT_CONTRACT_ID_OFFSET: usize = INPUT_CONTRACT_TX_POINTER_OFF
 
 pub(super) const INPUT_MESSAGE_SENDER_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_MESSAGE_RECIPIENT_OFFSET: usize = INPUT_MESSAGE_SENDER_OFFSET + Address::LEN; // sender
+pub(super) const INPUT_NONCE_RECIPIENT_OFFSET: usize = INPUT_MESSAGE_RECIPIENT_OFFSET
+        + Address::LEN //amount
+        + WORD_SIZE; // recipient
 
-pub(super) const INPUT_MESSAGE_FIXED_SIZE: usize = INPUT_MESSAGE_RECIPIENT_OFFSET
-    + Address::LEN // recipient
-    + WORD_SIZE //amount
-    + WORD_SIZE // nonce
+pub(super) const INPUT_MESSAGE_FIXED_SIZE: usize = INPUT_NONCE_RECIPIENT_OFFSET
+    + Nonce::LEN // nonce
     + WORD_SIZE // witness_index
     + WORD_SIZE // Data size
     + WORD_SIZE // Predicate size

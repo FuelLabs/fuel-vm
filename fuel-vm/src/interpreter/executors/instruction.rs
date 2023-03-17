@@ -371,10 +371,22 @@ where
                 self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
             }
 
+            Instruction::CFE(cfe) => {
+                self.gas_charge(self.gas_costs.cfei)?;
+                let a = cfe.unpack();
+                self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
+            }
+
             Instruction::CFSI(cfsi) => {
                 self.gas_charge(self.gas_costs.cfsi)?;
                 let imm = cfsi.unpack();
                 self.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
+            }
+
+            Instruction::CFS(cfs) => {
+                self.gas_charge(self.gas_costs.cfsi)?;
+                let a = cfs.unpack();
+                self.stack_pointer_overflow(Word::overflowing_sub, r!(a))?;
             }
 
             Instruction::LB(lb) => {

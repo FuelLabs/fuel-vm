@@ -6,12 +6,13 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
-use fuel_asm::{Flags, PanicReason};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
 use std::{io, mem};
 
+use fuel_asm::{Flags, PanicReason};
+use fuel_merkle::binary;
 use fuel_tx::{
     field, Chargeable, CheckError, ConsensusParameters, Create, Executable, Output, Receipt, Script, Transaction,
     TransactionFee, TransactionRepr, UniqueIdentifier,
@@ -45,7 +46,6 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
-use fuel_merkle::binary;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};

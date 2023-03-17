@@ -5,6 +5,8 @@ use fuel_asm::RegId;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuel_vm::prelude::*;
 
+use super::test_helpers::set_full_word;
+
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
 
@@ -58,17 +60,6 @@ fn test_lb() {
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
-}
-
-fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
-    let r = u8::try_from(r).unwrap();
-    let mut ops = vec![op::movi(r, 0)];
-    for byte in v.to_be_bytes() {
-        ops.push(op::ori(r, r, byte as Immediate12));
-        ops.push(op::slli(r, r, 8));
-    }
-    ops.pop().unwrap(); // Remove last shift
-    ops
 }
 
 #[test_case(1, false)]

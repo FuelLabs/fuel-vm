@@ -17,6 +17,7 @@ impl PublicKey {
     ///
     /// This constructor expects the given bytes to be a valid public key, and
     /// does not check whether the public key is within the curve.
+    #[cfg(feature = "std")]
     fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }

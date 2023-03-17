@@ -227,8 +227,7 @@ pub(crate) fn jump(
         ),
         JumpMode::RelativeBackwards => pc
             .checked_sub(
-                addr
-                    .saturating_add(1)
+                addr.saturating_add(1)
                     .saturating_add(offset)
                     .saturating_mul(Instruction::SIZE as Word),
             )

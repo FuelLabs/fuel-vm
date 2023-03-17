@@ -27,3 +27,4 @@ fuel-merkle = { version = "0.27.0", path = "./fuel-merkle", default-features = f
 fuel-storage = { version = "0.27.0", path = "./fuel-storage", default-features = false }
 fuel-tx = { version = "0.27.0", path = "./fuel-tx", default-features = false }
 fuel-types = { version = "0.27.0", path = "./fuel-types", default-features = false }
+bincode = { version = "1.3", default-features = false }

@@ -23,10 +23,15 @@ pub use consensus_parameters::ConsensusParameters;
 pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
-pub use types::{Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness};
+pub use types::*;
 pub use validity::{CheckError, FormatValidityChecks};
 
 use crate::TxPointer;
+
+use crate::input::coin::{CoinPredicate, CoinSigned};
+use crate::input::contract::Contract;
+use crate::input::message::MessagePredicate;
+use input::*;
 
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
@@ -207,7 +212,8 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => Some(asset_id),
+                Input::CoinPredicate(CoinPredicate { asset_id, .. })
+                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
                 Input::MessagePredicate { .. } | Input::MessageSigned { .. } => Some(&AssetId::BASE),
                 _ => None,
             })
@@ -235,7 +241,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::Contract { contract_id, .. } => Some(contract_id),
+                Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
             .unique()
@@ -249,10 +255,10 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::CoinPredicate { owner, predicate, .. } => Some((owner, predicate)),
-                Input::MessagePredicate {
+                Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
+                Input::MessagePredicate(MessagePredicate {
                     recipient, predicate, ..
-                } => Some((recipient, predicate)),
+                }) => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {

@@ -5,6 +5,7 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 #![warn(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 mod args;
 mod instruction_result;
@@ -16,7 +17,7 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod encoding_tests;
 
 #[doc(no_inline)]

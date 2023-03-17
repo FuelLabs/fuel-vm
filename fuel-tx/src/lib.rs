@@ -4,6 +4,7 @@
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
+#![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
 // TODO Add docs
@@ -30,6 +31,9 @@ mod receipt;
 #[cfg(feature = "alloc")]
 mod transaction;
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "builder")]
 pub use builder::{Buildable, Finalizable, TransactionBuilder};
 
@@ -38,9 +42,9 @@ pub use receipt::{Receipt, ScriptExecutionResult};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    field, Cacheable, Chargeable, CheckError, ConsensusParameters, Create, Executable, FormatValidityChecks, Input,
-    InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee, TransactionRepr, TxId,
-    UtxoId, Witness,
+    field, input, input::Input, input::InputRepr, Cacheable, Chargeable, CheckError, ConsensusParameters, Create,
+    Executable, FormatValidityChecks, Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee,
+    TransactionRepr, TxId, UtxoId, Witness,
 };
 
 #[cfg(feature = "std")]

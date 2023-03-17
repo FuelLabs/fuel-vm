@@ -1,18 +1,11 @@
-use fuel_asm::{op, RegId, Instruction, PanicReason, Imm18};
+use fuel_asm::{op, Imm18, Instruction, PanicReason, RegId};
 use fuel_tx::Receipt;
 use rstest::rstest;
 
-mod test_helpers;
-
-use test_helpers::{run_script, assert_success, assert_panics};
+use super::test_helpers::{assert_panics, assert_success, run_script};
 
 #[rstest]
-fn relative_jump_forwards(
-    #[values(0, 1, 2)]
-    offset: u32,
-    #[values("jmp", "jnz", "jne")]
-    condition: &'static str,
-) {
+fn relative_jump_forwards(#[values(0, 1, 2)] offset: u32, #[values("jmp", "jnz", "jne")] condition: &'static str) {
     #[rustfmt::skip]
     let script = vec![
         op::movi(0x20, 2 - offset),
@@ -32,12 +25,7 @@ fn relative_jump_forwards(
 }
 
 #[rstest]
-fn relative_jump_backwards(
-    #[values(0, 1, 2)]
-    offset: u32,
-    #[values("jmp", "jnz", "jne")]
-    condition: &'static str,
-) {
+fn relative_jump_backwards(#[values(0, 1, 2)] offset: u32, #[values("jmp", "jnz", "jne")] condition: &'static str) {
     #[rustfmt::skip]
     let script = vec![
         op::movi(0x20, 2 - offset),
@@ -66,7 +54,7 @@ fn relative_jump_condition_false(
         op::jnzb(RegId::ZERO, RegId::ZERO, 2),
         op::jnzf(RegId::ZERO, RegId::ZERO, 2),
         op::jneb(RegId::ZERO, RegId::ZERO, RegId::ZERO, 2),
-        op::jnef(RegId::ZERO, RegId::ZERO, RegId::ZERO, 2),
+        op::jnef(RegId::ZERO, RegId::ZERO, RegId::ZERO, 2)
     )]
     instr: Instruction,
 ) {
@@ -162,7 +150,7 @@ fn relative_jump_repeat_loop() {
     assert_success(&receipts);
 
     for (i, receipt) in (0..=42).rev().zip(receipts.iter()) {
-        if let Receipt::Log {ra, ..} = receipt {
+        if let Receipt::Log { ra, .. } = receipt {
             assert_eq!(*ra, i);
         }
     }

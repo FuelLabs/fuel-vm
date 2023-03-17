@@ -428,9 +428,9 @@ fn invert_map<K: Hash + PartialEq + Eq + Clone, V: Clone + PartialEq>(
     }
 }
 
-fn invert_receipts_ctx(receipts: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>) {
-    invert_vec(receipts.as_mut(), value);
-    receipts.recalculate_root();
+fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>) {
+    let mut ctx_mut = ctx.lock();
+    invert_vec(ctx_mut.receipts_mut(), value);
 }
 
 impl<S, Tx> PartialEq for Interpreter<S, Tx>

@@ -131,7 +131,7 @@ pub struct Previous<S>(S);
 
 #[derive(Debug, Clone)]
 /// The state of a vector at an index.
-pub struct VecState<T> {
+struct VecState<T> {
     /// Index of the value.
     index: usize,
     /// Value at the index.

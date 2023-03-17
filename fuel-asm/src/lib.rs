@@ -247,6 +247,10 @@ impl_instructions! {
     0x91 CFEI cfei [Imm24]
     "Shrink the current call frame's stack by an immediate value."
     0x92 CFSI cfsi [Imm24]
+    "Extend the current call frame's stack"
+    0x93 CFE cfe [RegId]
+    "Shrink the current call frame's stack"
+    0x94 CFS cfs [RegId]
 }
 
 impl Instruction {

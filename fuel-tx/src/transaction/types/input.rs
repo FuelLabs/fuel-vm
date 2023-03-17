@@ -600,3 +600,6 @@ impl io::Write for Input {
         Ok(())
     }
 }
+
+#[cfg(all(test, feature = "std"))]
+mod snapshot_tests;

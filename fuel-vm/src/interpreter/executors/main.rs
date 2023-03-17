@@ -136,7 +136,7 @@ where
             false,
             remaining_gas,
             &initial_balances,
-            &RuntimeBalances::from(initial_balances.clone()),
+            &RuntimeBalances::try_from(initial_balances.clone())?,
             params,
         )?;
         Ok(())

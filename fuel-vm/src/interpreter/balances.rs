@@ -45,18 +45,18 @@ pub struct RuntimeBalances {
     state: HashMap<AssetId, Balance>,
 }
 
-impl From<InitialBalances> for RuntimeBalances {
-    fn from(initial_balances: InitialBalances) -> Self {
+impl TryFrom<InitialBalances> for RuntimeBalances {
+    type Error = CheckError;
+
+    fn try_from(initial_balances: InitialBalances) -> Result<Self, CheckError> {
         let mut balances: BTreeMap<_, _> = initial_balances.non_retryable.into();
         if let Some(retryable_amount) = initial_balances.retryable {
-            *balances.entry(AssetId::BASE).or_default() += *retryable_amount;
+            let entry = balances.entry(AssetId::BASE).or_default();
+            *entry = entry
+                .checked_add(*retryable_amount)
+                .ok_or(CheckError::ArithmeticOverflow)?;
         }
-        Self::try_from_iter(balances.into_iter()).expect(
-r#"This is a bug!
-
-A checked transaction shouldn't produce a malformed initial free balances set.
-
-Please, file a report mentioning an incorrect transaction validation implementation that allowed a type-safe checked transaction to be created from a malformed inputs set."#)
+        Self::try_from_iter(balances.into_iter())
     }
 }
 

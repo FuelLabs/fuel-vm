@@ -125,8 +125,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
         // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
         // linear monadic model and should be discussed. Maybe the receipts tree should have
         // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = receipts.root().into();
-
+        let root = receipts.root();
         *script.receipts_root_mut() = root;
 
         // Transaction memory space length is already checked on initialization so its

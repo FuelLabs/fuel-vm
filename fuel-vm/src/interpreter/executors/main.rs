@@ -237,7 +237,7 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = self.receipts.root().into();
+            let receipts_root = self.receipts.root();
 
             // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {

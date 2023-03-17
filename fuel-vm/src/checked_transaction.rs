@@ -390,7 +390,7 @@ mod tests {
         let input_amount = 100;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_deposit_coin_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -410,7 +410,7 @@ mod tests {
         let input_amount = 100;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_deposit_coin_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -556,7 +556,7 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_deposit_coin_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -582,7 +582,7 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_deposit_coin_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_min_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -870,7 +870,7 @@ mod tests {
     }
 
     // used to verify message inputs can cover fees
-    fn signed_deposit_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
+    fn signed_message_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
@@ -878,7 +878,7 @@ mod tests {
             .finalize()
     }
 
-    fn predicate_deposit_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
+    fn predicate_message_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)

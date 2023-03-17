@@ -321,7 +321,7 @@ fn message_metadata() {
 }
 
 #[test]
-fn message_deposit_coin() {
+fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let txhash: Bytes32 = rng.gen();

@@ -64,7 +64,7 @@ fn tx_with_contract_snapshot() {
 }
 
 #[test]
-fn tx_with_signed_deposit_coin() {
+fn tx_with_signed_message_coin() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinSigned(MessageCoinSigned {
             sender: [2u8; 32].into(),
@@ -84,7 +84,7 @@ fn tx_with_signed_deposit_coin() {
 }
 
 #[test]
-fn tx_with_predicate_deposit_coin() {
+fn tx_with_predicate_message_coin() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
             sender: [2u8; 32].into(),
@@ -104,7 +104,7 @@ fn tx_with_predicate_deposit_coin() {
 }
 
 #[test]
-fn tx_with_signed_message() {
+fn tx_with_signed_message_data() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataSigned(MessageDataSigned {
             sender: [2u8; 32].into(),
@@ -124,7 +124,7 @@ fn tx_with_signed_message() {
 }
 
 #[test]
-fn tx_with_predicate_message() {
+fn tx_with_predicate_message_data() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),

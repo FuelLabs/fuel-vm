@@ -424,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn metadata_message_is_not_used_to_cover_fees() {
+    fn metadata_signed_message_is_not_used_to_cover_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -434,6 +434,41 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            .finalize();
+
+        let err = tx
+            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .expect_err("Expected valid transaction");
+
+        // verify available balance was decreased by max fee
+        assert!(matches!(
+            err,
+            CheckError::InsufficientFeeAmount {
+                expected: _,
+                provided: 0
+            }
+        ));
+    }
+
+    #[test]
+    fn metadata_predicate_message_is_not_used_to_cover_fees() {
+        // simple test to ensure a tx that only has a message input can cover fees
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let input_amount = 100;
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .add_input(Input::metadata_predicate(
+                rng.gen(),
+                rng.gen(),
+                input_amount,
+                rng.gen(),
+                vec![0xff; 10],
+                vec![0xaa; 10],
+                vec![0xbb; 10],
+            ))
             .finalize();
 
         let err = tx

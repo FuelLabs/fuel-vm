@@ -1338,7 +1338,7 @@ fn smo_instruction_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .add_unsigned_message_input(secret, sender, nonce, input_amount, data.clone())
+            .add_unsigned_message_input(secret, sender, nonce, input_amount, data)
             .finalize_checked(block_height, params, client.gas_costs());
 
         let txid = tx.transaction().id();
@@ -1356,7 +1356,7 @@ fn smo_instruction_works() {
 
         let state = client.state_transition().expect("tx was executed");
         // TODO: Add check for the `data` field too, but it requires fixing of the `smo` behaviour.
-        let message_receipt = state.receipts().into_iter().find_map(|o| match o {
+        let message_receipt = state.receipts().iter().find_map(|o| match o {
             Receipt::MessageOut { recipient, amount, .. } => Some((*recipient, *amount)),
             _ => None,
         });

@@ -6,6 +6,8 @@ use fuel_types::{AssetId, Word};
 use std::collections::BTreeMap;
 
 /// The spendable unrestricted initial assets.
+/// More information about it in the specification:
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct SumInputs(pub(crate) BTreeMap<AssetId, Word>);
 
@@ -24,6 +26,8 @@ impl core::ops::Deref for SumInputs {
 }
 
 /// The spendable only during execution [`AssetId::BASE`] asset.
+/// More information about it in the specification:
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct SumDataMessages(pub(crate) Word);
 

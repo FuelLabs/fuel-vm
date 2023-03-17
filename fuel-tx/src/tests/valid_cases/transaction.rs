@@ -480,7 +480,7 @@ fn create() {
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionCreateMetadata { index: 0 });
+    assert_eq!(err, CheckError::TransactionCreateMessageData { index: 0 });
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)

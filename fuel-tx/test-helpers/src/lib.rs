@@ -157,8 +157,8 @@ mod use_std {
             let mut input_message_keys = Vec::with_capacity(10);
 
             enum MessageType {
-                DepositCoin,
-                Metadata,
+                MessageCoin,
+                MessageData,
             }
 
             for _ in 0..inputs {
@@ -204,7 +204,7 @@ mod use_std {
                     3 => {
                         let secret = SecretKey::random(&mut self.rng);
 
-                        input_message_keys.push((MessageType::DepositCoin, secret));
+                        input_message_keys.push((MessageType::MessageCoin, secret));
                     }
 
                     4 => {
@@ -226,7 +226,7 @@ mod use_std {
                     5 => {
                         let secret = SecretKey::random(&mut self.rng);
 
-                        input_message_keys.push((MessageType::Metadata, secret));
+                        input_message_keys.push((MessageType::MessageData, secret));
                     }
 
                     6 => {
@@ -262,10 +262,10 @@ mod use_std {
             });
 
             input_message_keys.iter().for_each(|(t, k)| match t {
-                MessageType::DepositCoin => {
+                MessageType::MessageCoin => {
                     builder.add_unsigned_message_input(*k, self.rng.gen(), self.rng.gen(), self.rng.gen(), vec![]);
                 }
-                MessageType::Metadata => {
+                MessageType::MessageData => {
                     builder.add_unsigned_message_input(
                         *k,
                         self.rng.gen(),

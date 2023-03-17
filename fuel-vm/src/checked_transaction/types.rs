@@ -88,7 +88,7 @@ pub mod create {
             } = initial_free_balances(&self, params)?;
             assert_eq!(
                 sum_data_messages, 0,
-                "The `check_without_signatures` should return `TransactionCreateMetadata` above"
+                "The `check_without_signatures` should return `TransactionCreateMessageData` above"
             );
 
             let metadata = CheckedMetadata {

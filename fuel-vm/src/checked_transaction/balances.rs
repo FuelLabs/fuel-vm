@@ -28,7 +28,7 @@ where
             | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => {
                 *sum_inputs.entry(*asset_id).or_default() += amount;
             }
-            // Sum deposit inputs
+            // Sum message coin inputs
             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
                 *sum_inputs.entry(AssetId::BASE).or_default() += amount;

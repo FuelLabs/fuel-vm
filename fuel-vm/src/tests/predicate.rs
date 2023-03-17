@@ -236,9 +236,9 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     let mut client = MemoryClient::default();
     client.transact(tx_with_predicate);
-    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_with_predicate = client.receipts().expect("Expected receipts").as_ref().to_vec();
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate = client.receipts().expect("Expected receipts").as_ref().to_vec();
 
     assert!(receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used());
 }
@@ -270,7 +270,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let mut client = MemoryClient::default();
 
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate = client.receipts().expect("Expected receipts").as_ref().to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
         .gas_used()
         .expect("Should retrieve gas used");
@@ -301,7 +301,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
-    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_with_predicate = client.receipts().expect("Expected receipts").as_ref().to_vec();
 
     //No panic for transaction without gas limit
     assert_eq!(receipts_without_predicate[1].reason(), None);
@@ -336,7 +336,7 @@ fn gas_used_by_predicates_more_than_limit() {
     let mut client = MemoryClient::default();
 
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate = client.receipts().expect("Expected receipts").as_ref().to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
         .gas_used()
         .expect("Should retrieve gas used");

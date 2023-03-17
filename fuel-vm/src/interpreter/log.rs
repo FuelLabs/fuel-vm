@@ -1,5 +1,6 @@
 use super::{
     internal::{append_receipt, inc_pc, internal_contract_or_default, AppendReceipt},
+    receipts::ReceiptsCtx,
     ExecutableTransaction, Interpreter,
 };
 use crate::{constraints::reg_key::*, consts::*};
@@ -7,7 +8,6 @@ use crate::{context::Context, error::RuntimeError};
 
 use fuel_asm::PanicReason;
 use fuel_crypto::Hasher;
-use fuel_merkle::binary;
 use fuel_tx::{Receipt, Script};
 use fuel_types::Word;
 
@@ -25,7 +25,6 @@ where
             tx_offset: self.params.tx_offset(),
             context: &self.context,
             receipts: &mut self.receipts,
-            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
@@ -41,7 +40,6 @@ where
             tx_offset: self.params.tx_offset(),
             context: &self.context,
             receipts: &mut self.receipts,
-            receipts_tree: &mut self.receipts_tree,
             script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
@@ -55,8 +53,7 @@ struct LogInput<'vm> {
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     context: &'vm Context,
-    receipts: &'vm mut Vec<Receipt>,
-    receipts_tree: &'vm mut binary::in_memory::MerkleTree,
+    receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
@@ -78,7 +75,6 @@ impl LogInput<'_> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
-                receipts_tree: self.receipts_tree,
                 script: self.script,
                 tx_offset: self.tx_offset,
                 memory: self.memory,
@@ -112,7 +108,6 @@ impl LogInput<'_> {
         append_receipt(
             AppendReceipt {
                 receipts: self.receipts,
-                receipts_tree: self.receipts_tree,
                 script: self.script,
                 tx_offset: self.tx_offset,
                 memory: self.memory,

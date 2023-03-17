@@ -24,7 +24,7 @@ struct Input {
 
 #[derive(Debug, PartialEq, Eq)]
 struct Output {
-    receipts: Vec<Receipt>,
+    receipts: ReceiptsCtx,
 }
 
 fn output_bytes(mut output: fuel_tx::Output) -> Vec<u8> {
@@ -175,8 +175,7 @@ fn test_smo(
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
-    let mut receipts = Vec::default();
-    let mut receipts_tree = Default::default();
+    let mut receipts = Default::default();
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![message_output];
     let mut balances = RuntimeBalances::from(balance);
@@ -187,7 +186,6 @@ fn test_smo(
         memory: &mut memory,
         tx_offset: 0,
         receipts: &mut receipts,
-        receipts_tree: &mut receipts_tree,
         tx: &mut tx,
         balances: &mut balances,
         fp: Reg::new(&fp),

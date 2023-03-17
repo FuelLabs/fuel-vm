@@ -23,7 +23,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .into_checked(0, &ConsensusParameters::DEFAULT, client.gas_costs())
         .expect("failed to generate a checked tx");
     client.transact(tx);
-    client.receipts().expect("Expected receipts").to_vec()
+    client.receipts().expect("Expected receipts").as_ref().to_vec()
 }
 
 /// Assert that transaction didn't panic

@@ -303,7 +303,10 @@ fn variable_output_set_by_external_transfer_out() {
             && asset_id == asset_id
     ));
 
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .as_ref()
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -379,7 +382,10 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .as_ref()
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -457,7 +463,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let output = Output::variable(owner, transfer_amount, asset_id);
 
     assert_eq!(output, outputs[0]);
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .as_ref()
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -536,5 +545,8 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .as_ref()
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

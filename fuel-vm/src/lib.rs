@@ -4,6 +4,8 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
+extern crate core;
+
 pub mod arith;
 pub mod backtrace;
 pub mod call;

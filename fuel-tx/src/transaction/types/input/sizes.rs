@@ -13,7 +13,6 @@ use crate::UtxoId;
 pub struct CoinSizes;
 mem_layout!(
     CoinSizesLayout for CoinSizes
-    repr: u8 = WORD_SIZE,
     utxo_id: UtxoId = {UtxoId::LEN},
     owner: Address = {Address::LEN},
     amount: Word = WORD_SIZE,
@@ -28,7 +27,6 @@ mem_layout!(
 pub struct ContractSizes;
 mem_layout!(
     ContractSizesLayout for ContractSizes
-    repr: u8 = WORD_SIZE,
     tx_id: Bytes32 = {Bytes32::LEN},
     output_index: Word = WORD_SIZE,
     balance_root: Bytes32 = {Bytes32::LEN},
@@ -40,7 +38,6 @@ mem_layout!(
 pub struct MessageSizes;
 mem_layout!(
     MessageSizesLayout for MessageSizes
-    repr: u8 = WORD_SIZE,
     message_id: MessageId = {MessageId::LEN},
     sender: Address = {Address::LEN},
     recipient: Address = {Address::LEN},
@@ -55,8 +52,14 @@ mem_layout!(
 #[test]
 fn test_consts() {
     let l = MessageSizesLayout::new();
-    assert_eq!(l.message_id.addr(), super::consts::INPUT_MESSAGE_ID_OFFSET);
-    assert_eq!(l.sender.addr(), super::consts::INPUT_MESSAGE_SENDER_OFFSET);
-    assert_eq!(l.recipient.addr(), super::consts::INPUT_MESSAGE_RECIPIENT_OFFSET);
-    assert_eq!(MessageSizesLayout::LEN, super::consts::INPUT_MESSAGE_FIXED_SIZE);
+    assert_eq!(l.message_id.addr(), super::consts::INPUT_MESSAGE_ID_OFFSET - WORD_SIZE);
+    assert_eq!(l.sender.addr(), super::consts::INPUT_MESSAGE_SENDER_OFFSET - WORD_SIZE);
+    assert_eq!(
+        l.recipient.addr(),
+        super::consts::INPUT_MESSAGE_RECIPIENT_OFFSET - WORD_SIZE
+    );
+    assert_eq!(
+        MessageSizesLayout::LEN,
+        super::consts::INPUT_MESSAGE_FIXED_SIZE - WORD_SIZE
+    );
 }

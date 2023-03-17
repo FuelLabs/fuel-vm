@@ -3,7 +3,7 @@ use std::mem;
 
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
-use fuel_types::bytes::SerializableVec;
+use fuel_types::{bytes::SerializableVec, Bytes32};
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct ReceiptsCtx {
@@ -22,8 +22,8 @@ impl ReceiptsCtx {
         self.receipts.clear();
     }
 
-    pub fn root(&self) -> [u8; 32] {
-        self.receipts_tree.root()
+    pub fn root(&self) -> Bytes32 {
+        self.receipts_tree.root().into()
     }
 
     /// Get a mutable lock on this context
@@ -105,5 +105,68 @@ impl<'a> Drop for ReceiptsCtxMut<'a> {
     fn drop(&mut self) {
         // The receipts may have been modified; recalculate the root
         self.receipts_ctx.recalculate_root()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::crypto::ephemeral_merkle_root;
+    use crate::interpreter::receipts::ReceiptsCtx;
+    use fuel_tx::Receipt;
+    use fuel_types::bytes::SerializableVec;
+    use std::iter;
+
+    fn create_receipt() -> Receipt {
+        Receipt::call(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
+    }
+
+    #[test]
+    fn root_returns_merkle_root_of_pushed_receipts() {
+        let mut ctx = ReceiptsCtx::default();
+        let receipts = iter::repeat(create_receipt()).take(5);
+        for receipt in receipts.clone() {
+            ctx.push(receipt)
+        }
+
+        let root = ctx.root();
+
+        let leaves = receipts
+            .clone()
+            .map(|mut receipt| receipt.to_bytes())
+            .collect::<Vec<_>>()
+            .into_iter();
+        let expected_root = ephemeral_merkle_root(leaves);
+        assert_eq!(root, expected_root)
+    }
+
+    #[test]
+    fn root_returns_merkle_root_of_directly_modified_receipts() {
+        let mut ctx = ReceiptsCtx::default();
+        let receipts = iter::repeat(create_receipt()).take(5);
+
+        {
+            let mut ctx_mut = ctx.lock();
+            *ctx_mut.receipts_mut() = receipts.clone().collect();
+        }
+
+        let root = ctx.root();
+
+        let leaves = receipts
+            .clone()
+            .map(|mut receipt| receipt.to_bytes())
+            .collect::<Vec<_>>()
+            .into_iter();
+        let expected_root = ephemeral_merkle_root(leaves);
+        assert_eq!(root, expected_root)
     }
 }

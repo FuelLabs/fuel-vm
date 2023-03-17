@@ -181,14 +181,6 @@ mod tests {
                 })
             });
         };
-        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
-            assert_id_ne($tx, |t| {
-                t.$t().iter_mut().for_each(|x| match x {
-                    $i($it { $a, .. }) => $inv($a),
-                    _ => (),
-                })
-            });
-        };
     }
 
     macro_rules! assert_io_eq {

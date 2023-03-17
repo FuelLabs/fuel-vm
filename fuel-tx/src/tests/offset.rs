@@ -23,7 +23,6 @@ struct TestedFields {
     contract_balance_root: bool,
     contract_state_root: bool,
     contract_id: bool,
-    message_id: bool,
     sender: bool,
     recipient: bool,
     message_data: bool,
@@ -35,7 +34,6 @@ struct TestedFields {
     output_contract_state_root: bool,
     output_contract_created_state_root: bool,
     output_contract_created_id: bool,
-    output_recipient: bool,
 }
 
 fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
@@ -129,16 +127,6 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
 
             assert_eq!(contract_id, contract_id_p);
-        }
-
-        if let Some(message_id) = i.message_id() {
-            cases.message_id = true;
-
-            let ofs = input_ofs + i.repr().message_id_offset().expect("input contains message id");
-
-            let message_id_p = MessageId::from_bytes_ref_checked(&bytes[ofs..ofs + MessageId::LEN]).unwrap();
-
-            assert_eq!(message_id, message_id_p);
         }
 
         if let Some(sender) = i.sender() {
@@ -258,15 +246,6 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
 
             assert_eq!(contract_id, contract_id_p);
         }
-
-        if let Some(recipient) = o.recipient() {
-            cases.output_recipient = true;
-
-            let ofs = output_ofs + o.repr().recipient_offset().expect("output have recipient");
-            let recipient_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
-
-            assert_eq!(recipient, recipient_p);
-        }
     });
 }
 
@@ -318,7 +297,6 @@ fn tx_offset_create() {
     assert!(cases.contract_balance_root);
     assert!(cases.contract_state_root);
     assert!(cases.contract_id);
-    assert!(cases.message_id);
     assert!(cases.sender);
     assert!(cases.recipient);
     assert!(cases.message_data);
@@ -330,7 +308,6 @@ fn tx_offset_create() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]
@@ -359,7 +336,6 @@ fn tx_offset_script() {
     assert!(cases.contract_balance_root);
     assert!(cases.contract_state_root);
     assert!(cases.contract_id);
-    assert!(cases.message_id);
     assert!(cases.sender);
     assert!(cases.recipient);
     assert!(cases.message_data);
@@ -371,7 +347,6 @@ fn tx_offset_script() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]
@@ -404,7 +379,6 @@ fn tx_offset_mint() {
     assert!(cases.output_contract_state_root);
     assert!(cases.output_contract_created_state_root);
     assert!(cases.output_contract_created_id);
-    assert!(cases.output_recipient);
 }
 
 #[test]

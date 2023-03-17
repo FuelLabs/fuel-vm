@@ -470,6 +470,18 @@ fn create() {
 
     assert_eq!(err, CheckError::TransactionCreateInputContract { index: 0 });
 
+    let not_empty_data = vec![0x1];
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .gas_price(rng.gen())
+        .maturity(maturity)
+        .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), not_empty_data)
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect_err("Expected erroneous transaction");
+
+    assert_eq!(err, CheckError::TransactionCreateMessageData { index: 0 });
+
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
@@ -817,8 +829,7 @@ mod inputs {
             .gas_limit(PARAMS.max_gas_per_tx)
             .gas_price(rng.gen())
             .maturity(rng.gen())
-            .add_input(Input::message_predicate(
-                rng.gen(),
+            .add_input(Input::message_data_predicate(
                 rng.gen(),
                 recipient,
                 rng.gen(),
@@ -842,8 +853,7 @@ mod inputs {
             .gas_limit(PARAMS.max_gas_per_tx)
             .gas_price(rng.gen())
             .maturity(rng.gen())
-            .add_input(Input::message_predicate(
-                rng.gen(),
+            .add_input(Input::message_data_predicate(
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),

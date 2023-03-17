@@ -7,7 +7,6 @@ use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
 use fuel_asm::{Flags, PanicReason};
-use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
 use std::{io, mem};
@@ -17,7 +16,7 @@ use fuel_tx::{
     TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{Address, AssetId, ContractId, Word};
+use fuel_types::{AssetId, ContractId, Word};
 
 mod alu;
 mod balances;
@@ -47,7 +46,9 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
-use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
+use crate::checked_transaction::{
+    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
+};
 
 use self::memory::Memory;
 
@@ -219,29 +220,6 @@ pub trait ExecutableTransaction:
             .and_then(|o| o.read(buf))
     }
 
-    /// Replaces the `Output::Message` with the `output`(should be also `Output::Message`)
-    /// by the `idx` index.
-    fn replace_message_output(&mut self, idx: usize, output: Output) -> Result<(), PanicReason> {
-        // TODO increase the error granularity for this case - create a new variant of panic reason
-        if !matches!(&output, Output::Message {
-                recipient,
-                ..
-            } if recipient != &Address::zeroed())
-        {
-            return Err(PanicReason::OutputNotFound);
-        }
-
-        self.outputs_mut()
-            .get_mut(idx)
-            .and_then(|o| match o {
-                Output::Message { recipient, .. } if recipient == &Address::zeroed() => Some(o),
-                _ => None,
-            })
-            .map(|o| mem::replace(o, output))
-            .map(|_| ())
-            .ok_or(PanicReason::NonZeroMessageOutputRecipient)
-    }
-
     /// Replaces the `Output::Variable` with the `output`(should be also `Output::Variable`)
     /// by the `idx` index.
     fn replace_variable_output(&mut self, idx: usize, output: Output) -> Result<(), PanicReason> {
@@ -290,14 +268,14 @@ pub trait ExecutableTransaction:
             //
             // Note: the initial balance deducts the gas limit from base asset
             Output::Change { asset_id, amount, .. } if revert && asset_id == &AssetId::BASE => initial_balances
-                [&AssetId::BASE]
+                .non_retryable[&AssetId::BASE]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
             Output::Change { asset_id, amount, .. } if revert => {
-                *amount = initial_balances[asset_id];
+                *amount = initial_balances.non_retryable[asset_id];
                 Ok(())
             }
 
@@ -378,8 +356,14 @@ impl ExecutableTransaction for Script {
     }
 }
 
-/// The alias of initial balances of the transaction.
-pub type InitialBalances = BTreeMap<AssetId, Word>;
+/// The initial balances of the transaction.
+#[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
+pub struct InitialBalances {
+    /// See [`NonRetryableFreeBalances`].
+    pub non_retryable: NonRetryableFreeBalances,
+    /// See [`RetryableAmount`].
+    pub retryable: Option<RetryableAmount>,
+}
 
 /// Methods that should be implemented by the checked metadata of supported transactions.
 pub trait CheckedMetadata {
@@ -395,7 +379,10 @@ pub trait CheckedMetadata {
 
 impl CheckedMetadata for ScriptCheckedMetadata {
     fn balances(self) -> InitialBalances {
-        self.initial_free_balances
+        InitialBalances {
+            non_retryable: self.non_retryable_balances,
+            retryable: Some(self.retryable_balance),
+        }
     }
 
     fn gas_used_by_predicates(&self) -> Word {
@@ -409,7 +396,10 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 
 impl CheckedMetadata for CreateCheckedMetadata {
     fn balances(self) -> InitialBalances {
-        self.initial_free_balances
+        InitialBalances {
+            non_retryable: self.free_balances,
+            retryable: None,
+        }
     }
 
     fn gas_used_by_predicates(&self) -> Word {

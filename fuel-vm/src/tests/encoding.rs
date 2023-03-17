@@ -122,8 +122,24 @@ fn input() {
             vec![0xdd; 50],
             vec![],
         ),
-        Input::message_signed(
-            [0xaa; 32].into(),
+        Input::message_coin_signed([0xbb; 32].into(), [0xcc; 32].into(), Word::MAX, Word::MAX, 0xff),
+        Input::message_coin_predicate(
+            [0xbb; 32].into(),
+            [0xcc; 32].into(),
+            Word::MAX,
+            Word::MAX,
+            vec![0xee; 50],
+            vec![0xff; 23],
+        ),
+        Input::message_coin_predicate(
+            [0xbb; 32].into(),
+            [0xcc; 32].into(),
+            Word::MAX,
+            Word::MAX,
+            vec![0xee; 50],
+            vec![],
+        ),
+        Input::message_data_signed(
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -131,8 +147,7 @@ fn input() {
             0xff,
             vec![0xdd; 50],
         ),
-        Input::message_predicate(
-            [0xaa; 32].into(),
+        Input::message_data_predicate(
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -141,8 +156,7 @@ fn input() {
             vec![0xee; 50],
             vec![0xff; 23],
         ),
-        Input::message_predicate(
-            [0xaa; 32].into(),
+        Input::message_data_predicate(
             [0xbb; 32].into(),
             [0xcc; 32].into(),
             Word::MAX,
@@ -166,7 +180,6 @@ fn output() {
     assert_encoding_correct(&[
         Output::coin([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::contract(0xaa, [0xbb; 32].into(), [0xcc; 32].into()),
-        Output::message([0xaa; 32].into(), Word::MAX >> 1),
         Output::change([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::variable([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into()),
         Output::contract_created([0xaa; 32].into(), [0xaa; 32].into()),

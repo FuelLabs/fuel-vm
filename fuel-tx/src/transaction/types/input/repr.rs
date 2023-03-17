@@ -72,13 +72,6 @@ impl InputRepr {
         }
     }
 
-    pub const fn message_id_offset(&self) -> Option<usize> {
-        match self {
-            Self::Message => Some(INPUT_MESSAGE_ID_OFFSET),
-            Self::Contract | Self::Coin => None,
-        }
-    }
-
     pub const fn message_sender_offset(&self) -> Option<usize> {
         match self {
             Self::Message => Some(INPUT_MESSAGE_SENDER_OFFSET),
@@ -103,9 +96,12 @@ impl InputRepr {
 
     pub const fn from_input(input: &Input) -> Self {
         match input {
-            Input::CoinSigned { .. } | Input::CoinPredicate { .. } => InputRepr::Coin,
-            Input::Contract { .. } => InputRepr::Contract,
-            Input::MessageSigned { .. } | Input::MessagePredicate { .. } => InputRepr::Message,
+            Input::CoinSigned(_) | Input::CoinPredicate(_) => InputRepr::Coin,
+            Input::Contract(_) => InputRepr::Contract,
+            Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => InputRepr::Message,
         }
     }
 }

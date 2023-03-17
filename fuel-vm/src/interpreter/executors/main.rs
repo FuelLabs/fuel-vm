@@ -237,7 +237,7 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = self.receipts_tree.root().into();
+            let receipts_root = self.receipts.root().into();
 
             // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {
@@ -325,7 +325,7 @@ where
         interpreter
             .transact(tx)
             .map(ProgramState::from)
-            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts))
+            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts.into()))
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided

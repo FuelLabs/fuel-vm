@@ -451,7 +451,7 @@ pub mod test_helpers {
     ) {
         let receipts = client.transact(checked_tx);
 
-        let panic_found = receipts.iter().any(|receipt| {
+        let panic_found = receipts.as_ref().iter().any(|receipt| {
             if let Receipt::Panic { id: _, reason, .. } = receipt {
                 assert_eq!(
                     &expected_reason,

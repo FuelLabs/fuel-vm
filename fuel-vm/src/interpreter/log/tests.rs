@@ -6,8 +6,7 @@ use super::*;
 fn test_log() -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let context = Context::Script { block_height: 0 };
-    let mut receipts = vec![];
-    let mut receipts_tree = Default::default();
+    let mut receipts = Default::default();
     let mut script = Some(Script::default());
 
     let fp = 0;
@@ -18,7 +17,6 @@ fn test_log() -> Result<(), RuntimeError> {
         tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        receipts_tree: &mut receipts_tree,
         script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
@@ -27,7 +25,7 @@ fn test_log() -> Result<(), RuntimeError> {
     input.log(1, 2, 3, 4)?;
 
     assert_eq!(pc, 8);
-    assert_eq!(receipts.len(), 1);
+    assert_eq!(receipts.as_ref().len(), 1);
 
     let expected = Receipt::log(Default::default(), 1, 2, 3, 4, 4, 0);
     assert_eq!(receipts[0], expected);
@@ -37,7 +35,6 @@ fn test_log() -> Result<(), RuntimeError> {
         tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        receipts_tree: &mut receipts_tree,
         script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
@@ -46,7 +43,7 @@ fn test_log() -> Result<(), RuntimeError> {
     input.log_data(1, 2, 3, 4)?;
 
     assert_eq!(pc, 12);
-    assert_eq!(receipts.len(), 2);
+    assert_eq!(receipts.as_ref().len(), 2);
 
     let expected = Receipt::log_data_with_len(
         Default::default(),

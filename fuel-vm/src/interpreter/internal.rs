@@ -1,4 +1,4 @@
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::reg_key::*;
 use crate::constraints::CheckedMemConstLen;
 use crate::constraints::CheckedMemRange;
@@ -8,12 +8,10 @@ use crate::error::RuntimeError;
 
 use fuel_asm::Flags;
 use fuel_asm::{Instruction, PanicReason, RegId};
-use fuel_merkle::binary;
 use fuel_tx::field::Outputs;
 use fuel_tx::field::ReceiptsRoot;
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
-use fuel_types::bytes::SerializableVec;
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
@@ -36,7 +34,6 @@ where
         append_receipt(
             AppendReceipt {
                 receipts: &mut self.receipts,
-                receipts_tree: &mut self.receipts_tree,
                 script: self.tx.as_script_mut(),
                 tx_offset: self.params.tx_offset(),
                 memory: &mut self.memory,
@@ -107,8 +104,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 }
 
 pub(crate) struct AppendReceipt<'vm> {
-    pub receipts: &'vm mut Vec<Receipt>,
-    pub receipts_tree: &'vm mut binary::in_memory::MerkleTree,
+    pub receipts: &'vm mut ReceiptsCtx,
     pub script: Option<&'vm mut Script>,
     pub tx_offset: usize,
     pub memory: &'vm mut [u8; MEM_SIZE],
@@ -117,12 +113,10 @@ pub(crate) struct AppendReceipt<'vm> {
 pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
     let AppendReceipt {
         receipts,
-        receipts_tree,
         script,
         tx_offset,
         memory,
     } = input;
-    receipts_tree.push(receipt.clone().to_bytes().as_slice());
     receipts.push(receipt);
 
     if let Some(script) = script {
@@ -131,7 +125,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
         // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
         // linear monadic model and should be discussed. Maybe the receipts tree should have
         // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = receipts_tree.root().into();
+        let root = receipts.root().into();
 
         *script.receipts_root_mut() = root;
 

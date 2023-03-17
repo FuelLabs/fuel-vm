@@ -28,7 +28,6 @@ where
 
         self.frames.clear();
         self.receipts.clear();
-        self.receipts_tree.reset();
 
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);

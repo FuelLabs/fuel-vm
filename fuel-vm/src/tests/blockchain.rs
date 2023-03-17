@@ -1,7 +1,7 @@
 use fuel_asm::RegId;
 use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::TransactionBuilder;
-use fuel_types::bytes;
+use fuel_tx::{field::Outputs, Input, Output, Receipt, TransactionBuilder};
+use fuel_types::{bytes, AssetId};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -1304,13 +1304,12 @@ fn message_output_a_b_gt_max_mem() {
 
 #[test]
 fn smo_instruction_works() {
-    fn execute_test<R>(rng: &mut R, input_amount: Word, send_amount: Word, data: Vec<u8>) -> bool
+    fn execute_test<R>(rng: &mut R, inputs: Vec<(u64, Vec<u8>)>, message_output_amount: Word, gas_price: Word) -> bool
     where
         R: Rng,
     {
         let mut client = MemoryClient::default();
 
-        let gas_price = 0;
         let gas_limit = 1_000_000;
         let maturity = 0;
         let block_height = 0;
@@ -1319,14 +1318,13 @@ fn smo_instruction_works() {
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
-        let nonce = rng.gen();
 
         #[rustfmt::skip]
         let script = vec![
             op::movi(0x10, 0),                          // set the txid as recipient
-            op::movi(0x11, data.len() as Immediate24),  // send the whole data buffer
+            op::movi(0x11, 1),                          // send the whole data buffer
             op::movi(0x12, 0),                          // tx output idx
-            op::movi(0x13, send_amount as Immediate24),      // expected output amount
+            op::movi(0x13, message_output_amount as Immediate24),      // expected output amount
             op::smo(0x10,0x11,0x12,0x13),
             op::ret(RegId::ONE)
         ];
@@ -1334,12 +1332,22 @@ fn smo_instruction_works() {
         let script = script.into_iter().collect();
         let script_data = vec![];
 
-        let tx = TransactionBuilder::script(script, script_data)
-            .gas_price(gas_price)
-            .gas_limit(gas_limit)
-            .maturity(maturity)
-            .add_unsigned_message_input(secret, sender, nonce, input_amount, data)
+        let mut tx = TransactionBuilder::script(script, script_data);
+        tx.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
+        // add inputs
+        for (amount, data) in inputs {
+            tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
+        }
+        let tx = tx
+            .add_output(Output::Change {
+                to: Default::default(),
+                amount: 0,
+                asset_id: Default::default(),
+            })
             .finalize_checked(block_height, params, client.gas_costs());
+
+        let non_retryable_free_balance = tx.metadata().non_retryable_balances[&AssetId::BASE];
+        let retryable_balance: u64 = tx.metadata().retryable_balance.into();
 
         let txid = tx.transaction().id();
         let receipts = client.transact(tx);
@@ -1363,7 +1371,27 @@ fn smo_instruction_works() {
         assert_eq!(message_receipt.is_some(), success);
         if let Some((recipient, transferred)) = message_receipt {
             assert_eq!(txid.as_ref(), recipient.as_ref());
-            assert_eq!(send_amount, transferred);
+            assert_eq!(message_output_amount, transferred);
+        }
+        // get gas used from script result
+        let gas_used = if let Receipt::ScriptResult { gas_used, .. } = state.receipts().last().unwrap() {
+            gas_used
+        } else {
+            panic!("expected script result")
+        };
+        // get refunded fee amount
+        let refund_amount = TransactionFee::gas_refund_value(client.params(), *gas_used, gas_price).unwrap();
+
+        // check that refundable balances aren't converted into change on failed txs
+        if !success {
+            assert!(
+                matches!(state.tx().outputs()[0], Output::Change { amount, ..} if amount == non_retryable_free_balance + refund_amount)
+            );
+        } else {
+            // check that unused retryable balance is returned as change
+            assert!(
+                matches!(state.tx().outputs()[0], Output::Change { amount, ..} if amount == non_retryable_free_balance + refund_amount + retryable_balance - message_output_amount)
+            );
         }
 
         success
@@ -1372,13 +1400,19 @@ fn smo_instruction_works() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // check arbitrary amount
-    assert!(execute_test(rng, 10, 10, vec![0xfa; 15]));
+    assert!(execute_test(rng, vec![(10, vec![0xfa; 15])], 10, 0));
 
     // check message with zero amount
-    assert!(execute_test(rng, 0, 0, vec![0xfa; 15]));
+    assert!(execute_test(rng, vec![(0, vec![0xfa; 15])], 0, 0));
 
     // Send more than we have
-    assert!(!execute_test(rng, 10, 11, vec![0xfa; 15]));
+    assert!(!execute_test(rng, vec![(10, vec![0xfa; 15])], 11, 0));
+
+    // check that retryable balance isn't refunded on revert
+    assert!(!execute_test(rng, vec![(10, vec![0xfa; 15]), (1000, vec![])], 1011, 1));
+
+    // check that retryable balance is refunded to user
+    assert!(execute_test(rng, vec![(10, vec![0xfa; 15]), (1000, vec![])], 50, 1));
 }
 
 #[test]

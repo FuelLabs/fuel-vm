@@ -12,7 +12,7 @@ use test_helpers::{assert_panics, assert_success, run_script, set_full_word};
 /// * 0x31 to all ones, i.e. max word
 /// * 0x32 to two
 /// * 0x33 to VM_MAX_RAM
-/// * 0x33 to (VM_MAX_RAM / instruction_size)
+/// * 0x34 to (VM_MAX_RAM / instruction_size)
 fn common_setup() -> Vec<Instruction> {
     let mut setup = vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)];
 

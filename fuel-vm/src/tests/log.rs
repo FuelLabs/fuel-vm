@@ -22,7 +22,7 @@ fn all_registers_can_be_logged() {
         if let Receipt::Log { ra, .. } = receipts_it.next().expect("Missing receipt") {
             assert_eq!(ra, reg as u64);
         } else {
-            unreachable!("Exptected a log receipt");
+            unreachable!("Expected a log receipt");
         }
     }
 }

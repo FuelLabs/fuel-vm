@@ -5,6 +5,7 @@
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
 #![warn(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 mod args;
 mod instruction_result;
@@ -16,7 +17,7 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod encoding_tests;
 
 #[doc(no_inline)]
@@ -246,6 +247,10 @@ impl_instructions! {
     0x91 CFEI cfei [Imm24]
     "Shrink the current call frame's stack by an immediate value."
     0x92 CFSI cfsi [Imm24]
+    "Extend the current call frame's stack"
+    0x93 CFE cfe [RegId]
+    "Shrink the current call frame's stack"
+    0x94 CFS cfs [RegId]
 }
 
 impl Instruction {
@@ -402,7 +407,7 @@ impl Opcode {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
             | XOR | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
             | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
-            | JNZI | JI | JMP | JNE | CFEI | CFSI | GTF => true,
+            | JNZI | JI | JMP | JNE | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }

@@ -33,12 +33,11 @@ tracing = "0.1"
 
 [dev-dependencies]
 fuel-tx = { workspace = true, features = ["builder"] }
-fuel-vm = { path = ".", default-features = false, features = ["test-helpers"] }
+fuel-vm = { path = ".", default-features = false, features = ["test-helpers", "serde", "profile-coverage", "profile-gas"] }
 num-integer = "0.1.45"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rayon = "1.5.3"
-regex = "1.6"
 rstest = "0.16"
 serde_json = "1.0"
 test-case = "2.2"
@@ -54,72 +53,3 @@ profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
 test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
-
-[[test]]
-name = "test-backtrace"
-path = "tests/backtrace.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-blockchain"
-path = "tests/blockchain.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-code-coverage"
-path = "tests/code_coverage.rs"
-required-features = ["random", "profile-coverage"]
-
-[[test]]
-name = "test-contract"
-path = "tests/contract.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-crypto"
-path = "tests/crypto.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-encoding"
-path = "tests/encoding.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-flow"
-path = "tests/flow.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-gas-factor"
-path = "tests/gas_factor.rs"
-required-features = ["profile-gas"]
-
-[[test]]
-name = "test-memory"
-path = "tests/memory.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-metadata"
-path = "tests/metadata.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-predicate"
-path = "tests/predicate.rs"
-required-features = ["random"]
-
-[[test]]
-name = "test-profile-gas"
-path = "tests/profile_gas.rs"
-required-features = ["random", "profile-gas"]
-
-[[test]]
-name = "test-serde-profile"
-path = "tests/serde_profile.rs"
-required-features = ["random", "profile-coverage", "profile-gas", "serde"]
-
-[[test]]
-name = "test-spec"
-path = "tests/spec.rs"

@@ -22,14 +22,8 @@ serde = { version = "1.0", default-features = false, features = ["derive"], opti
 sha2 = { version = "0.10", default-features = false }
 zeroize = { version = "1.5", features = ["derive"] }
 
-# Note that, while we don't use this dependency directly, we must specify it in
-# order to enable the transitive dependency's "js" feature which is required
-# for supporting the wasm32-unknown-unknown target.
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2.8", default-features = false, features = ["js"] }
-
 [dev-dependencies]
-bincode = { version = "1.3", default-features = false }
+bincode = { workspace = true }
 criterion = "0.3"
 fuel-crypto = { path = ".", default-features = false, features = ["random"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }
@@ -45,26 +39,6 @@ serde = ["dep:serde", "fuel-types/serde"]
 # the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
 std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand/std_rng", "secp256k1/rand-std", "serde?/default"]
 wasm = ["secp256k1/rand"]
-
-[[test]]
-name = "test-mnemonic"
-path = "tests/mnemonic.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-serde"
-path = "tests/serde.rs"
-required-features = ["serde", "std"]
-
-[[test]]
-name = "test-signature"
-path = "tests/signature.rs"
-required-features = ["std"]
-
-[[test]]
-name = "test-signer"
-path = "tests/signer.rs"
-required-features = ["std"]
 
 [[bench]]
 name = "signature"

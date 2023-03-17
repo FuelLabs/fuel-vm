@@ -1,7 +1,7 @@
 use crate::{TxPointer, UtxoId};
 
 use fuel_types::bytes::WORD_SIZE;
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId};
+use fuel_types::{Address, AssetId, Bytes32, MessageId};
 
 pub(super) const INPUT_UTXO_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_COIN_OWNER_OFFSET: usize = INPUT_UTXO_ID_OFFSET + UtxoId::LEN;
@@ -20,7 +20,6 @@ pub(super) const INPUT_CONTRACT_BALANCE_ROOT_OFFSET: usize = INPUT_UTXO_ID_OFFSE
 pub(super) const INPUT_CONTRACT_STATE_ROOT_OFFSET: usize = INPUT_CONTRACT_BALANCE_ROOT_OFFSET + Bytes32::LEN; // Balance root
 pub(super) const INPUT_CONTRACT_TX_POINTER_OFFSET: usize = INPUT_CONTRACT_STATE_ROOT_OFFSET + Bytes32::LEN; // State root
 pub(super) const INPUT_CONTRACT_ID_OFFSET: usize = INPUT_CONTRACT_TX_POINTER_OFFSET + TxPointer::LEN; // TxPointer
-pub(super) const INPUT_CONTRACT_SIZE: usize = INPUT_CONTRACT_ID_OFFSET + ContractId::LEN; // Contract address
 
 pub(super) const INPUT_MESSAGE_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_MESSAGE_SENDER_OFFSET: usize = INPUT_MESSAGE_ID_OFFSET + MessageId::LEN; // message_id

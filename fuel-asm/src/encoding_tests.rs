@@ -1,6 +1,7 @@
 #![allow(clippy::iter_cloned_collect)] // https://github.com/rust-lang/rust-clippy/issues/9119
 
 use crate::*;
+use fuel_asm as _;
 use strum::IntoEnumIterator;
 
 #[test]

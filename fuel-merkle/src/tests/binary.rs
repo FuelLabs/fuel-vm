@@ -3,7 +3,7 @@ extern crate core;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 use sha2::{Digest, Sha256};
 
-use fuel_merkle::{
+use crate::{
     binary::{MerkleTree, Primitive},
     common::{Bytes32, StorageMap},
 };

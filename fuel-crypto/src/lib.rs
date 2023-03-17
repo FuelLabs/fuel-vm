@@ -7,6 +7,7 @@
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
 #![deny(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 /// Required export to implement [`Keystore`].
 #[doc(no_inline)]
@@ -36,6 +37,9 @@ mod public;
 mod secret;
 mod signature;
 mod signer;
+
+#[cfg(test)]
+mod tests;
 
 pub use error::Error;
 pub use hasher::Hasher;

@@ -160,8 +160,8 @@ where
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
-                if let Input::Contract { contract_id, .. } = input {
-                    !self.check_contract_exists(contract_id).unwrap_or(false)
+                if let Input::Contract(contract) = input {
+                    !self.check_contract_exists(&contract.contract_id).unwrap_or(false)
                 } else {
                     false
                 }

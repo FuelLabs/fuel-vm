@@ -43,6 +43,10 @@ impl MerkleTree {
     pub fn prove(&self, proof_index: u64) -> Option<(Bytes32, ProofSet)> {
         self.tree.prove(proof_index).ok()
     }
+
+    pub fn reset(&mut self) {
+        self.tree.reset();
+    }
 }
 
 impl Default for MerkleTree {

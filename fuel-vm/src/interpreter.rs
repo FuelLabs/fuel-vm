@@ -7,7 +7,6 @@ use crate::context::Context;
 use crate::gas::GasCosts;
 use crate::state::Debugger;
 use fuel_asm::{Flags, PanicReason};
-use std::collections::BTreeMap;
 use std::io::Read;
 use std::ops::Index;
 use std::{io, mem};
@@ -364,16 +363,6 @@ pub struct InitialBalances {
     pub sum_inputs: SumInputs,
     /// See [`SumDataMessages`].
     pub sum_data_messages: Option<SumDataMessages>,
-}
-
-impl From<InitialBalances> for BTreeMap<AssetId, Word> {
-    fn from(value: InitialBalances) -> Self {
-        let mut result: BTreeMap<_, _> = value.sum_inputs.into();
-        if let Some(sum_data_messages) = value.sum_data_messages {
-            *result.entry(AssetId::BASE).or_default() += *sum_data_messages;
-        }
-        result
-    }
 }
 
 /// Methods that should be implemented by the checked metadata of supported transactions.

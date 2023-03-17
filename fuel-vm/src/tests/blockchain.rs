@@ -1304,13 +1304,13 @@ fn message_output_a_b_gt_max_mem() {
 
 #[test]
 fn smo_instruction_works() {
-    fn execute_test<R>(rng: &mut R, balance: Word, amount: Word, data: Vec<u8>)
+    fn execute_test<R>(rng: &mut R, input_amount: Word, send_amount: Word, data: Vec<u8>) -> bool
     where
         R: Rng,
     {
         let mut client = MemoryClient::default();
 
-        let gas_price = 1;
+        let gas_price = 0;
         let gas_limit = 1_000_000;
         let maturity = 0;
         let block_height = 0;
@@ -1326,7 +1326,7 @@ fn smo_instruction_works() {
             op::movi(0x10, 0),                          // set the txid as recipient
             op::movi(0x11, data.len() as Immediate24),  // send the whole data buffer
             op::movi(0x12, 0),                          // tx output idx
-            op::movi(0x13, amount as Immediate24),      // expected output amount
+            op::movi(0x13, send_amount as Immediate24),      // expected output amount
             op::smo(0x10,0x11,0x12,0x13),
             op::ret(RegId::ONE)
         ];
@@ -1338,10 +1338,7 @@ fn smo_instruction_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            // The first deposit coins message pays for the fee
-            .add_unsigned_message_input(secret, sender, nonce, balance, vec![])
-            // The second metadata message is used to withdraw `amount`
-            .add_unsigned_message_input(secret, sender, nonce, amount, data)
+            .add_unsigned_message_input(secret, sender, nonce, input_amount, data.clone())
             .finalize_checked(block_height, params, client.gas_costs());
 
         let txid = tx.transaction().id();
@@ -1357,29 +1354,31 @@ fn smo_instruction_works() {
             )
         });
 
-        assert!(success);
-
         let state = client.state_transition().expect("tx was executed");
-        let (recipient, transferred) = state
-            .receipts()
-            .iter()
-            .find_map(|o| match o {
-                Receipt::MessageOut { recipient, amount, .. } => Some((*recipient, *amount)),
-                _ => None,
-            })
-            .expect("failed to find message output");
+        // TODO: Add check for the `data` field too, but it requires fixing of the `smo` behaviour.
+        let message_receipt = state.receipts().into_iter().find_map(|o| match o {
+            Receipt::MessageOut { recipient, amount, .. } => Some((*recipient, *amount)),
+            _ => None,
+        });
+        assert_eq!(message_receipt.is_some(), success);
+        if let Some((recipient, transferred)) = message_receipt {
+            assert_eq!(txid.as_ref(), recipient.as_ref());
+            assert_eq!(send_amount, transferred);
+        }
 
-        assert_eq!(txid.as_ref(), recipient.as_ref());
-        assert_eq!(amount, transferred);
+        success
     }
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // check arbitrary amount
-    execute_test(rng, 1_000, 10, vec![0xfa; 15]);
+    assert!(execute_test(rng, 10, 10, vec![0xfa; 15]));
 
     // check message with zero amount
-    execute_test(rng, 1_000, 0, vec![0xfa; 15]);
+    assert!(execute_test(rng, 0, 0, vec![0xfa; 15]));
+
+    // Send more than we have
+    assert!(!execute_test(rng, 10, 11, vec![0xfa; 15]));
 }
 
 #[test]

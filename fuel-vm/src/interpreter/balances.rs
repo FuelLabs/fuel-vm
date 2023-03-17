@@ -46,9 +46,12 @@ pub struct RuntimeBalances {
 }
 
 impl From<InitialBalances> for RuntimeBalances {
-    fn from(balances: InitialBalances) -> Self {
-        let map: BTreeMap<_, _> = balances.into();
-        Self::try_from_iter(map.into_iter()).expect(
+    fn from(initial_balances: InitialBalances) -> Self {
+        let mut balances: BTreeMap<_, _> = initial_balances.sum_inputs.into();
+        if let Some(sum_data_messages) = initial_balances.sum_data_messages {
+            *balances.entry(AssetId::BASE).or_default() += *sum_data_messages;
+        }
+        Self::try_from_iter(balances.into_iter()).expect(
 r#"This is a bug!
 
 A checked transaction shouldn't produce a malformed initial free balances set.

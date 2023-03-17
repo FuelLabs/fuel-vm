@@ -89,7 +89,7 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        vec![],
+        vec![0xff; 10],
         predicate.clone(),
         predicate_data,
     );

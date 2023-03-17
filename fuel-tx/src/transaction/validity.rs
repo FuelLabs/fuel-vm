@@ -144,7 +144,7 @@ impl Input {
 
             Self::MetadataSigned(MetadataSigned { data, .. })
             | Self::MetadataPredicate(MetadataPredicate { data, .. })
-                if data.len() > parameters.max_message_data_length as usize =>
+                if data.is_empty() || data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }

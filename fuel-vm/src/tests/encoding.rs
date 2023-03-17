@@ -131,6 +131,14 @@ fn input() {
             vec![0xee; 50],
             vec![0xff; 23],
         ),
+        Input::deposit_coin_predicate(
+            [0xbb; 32].into(),
+            [0xcc; 32].into(),
+            Word::MAX,
+            Word::MAX,
+            vec![0xee; 50],
+            vec![],
+        ),
         Input::metadata_signed(
             [0xbb; 32].into(),
             [0xcc; 32].into(),

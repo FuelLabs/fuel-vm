@@ -179,7 +179,7 @@ pub mod test_helpers {
                 .builder
                 .inputs()
                 .iter()
-                .find_position(|input| matches!(input, Input::Contract {contract_id, ..} if contract_id == id))
+                .find_position(|input| matches!(input, Input::Contract(contract) if &contract.contract_id == id))
                 .expect("expected contract input with matching contract id");
 
             self.builder

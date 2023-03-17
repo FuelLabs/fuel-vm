@@ -1,5 +1,7 @@
 use crate::{field, Input, Transaction};
 
+use crate::input::coin::CoinSigned;
+use crate::input::message::MessageSigned;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_types::Bytes32;
 
@@ -49,14 +51,14 @@ where
         let witness_indexes = inputs
             .iter()
             .filter_map(|input| match input {
-                Input::CoinSigned {
+                Input::CoinSigned(CoinSigned {
                     owner, witness_index, ..
-                }
-                | Input::MessageSigned {
+                })
+                | Input::MessageSigned(MessageSigned {
                     recipient: owner,
                     witness_index,
                     ..
-                } if owner == &pk => Some(*witness_index as usize),
+                }) if owner == &pk => Some(*witness_index as usize),
                 _ => None,
             })
             .dedup()
@@ -72,8 +74,15 @@ where
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
-    use crate::*;
-
+    use fuel_tx::{
+        field::*,
+        input::{
+            coin::{CoinPredicate, CoinSigned},
+            contract::Contract,
+            message::{MessagePredicate, MessageSigned},
+        },
+        Buildable, ConsensusParameters, Input, Output, StorageSlot, Transaction, UtxoId,
+    };
     use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
@@ -160,6 +169,14 @@ mod tests {
                 })
             });
         };
+        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+            assert_id_ne($tx, |t| {
+                t.$t().iter_mut().for_each(|x| match x {
+                    $i($it { $a, .. }) => $inv($a),
+                    _ => (),
+                })
+            });
+        };
     }
 
     macro_rules! assert_io_eq {
@@ -167,6 +184,14 @@ mod tests {
             assert_id_eq($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
                     $i { $a, .. } => $inv($a),
+                    _ => (),
+                })
+            });
+        };
+        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+            assert_id_eq($tx, |t| {
+                t.$t().iter_mut().for_each(|x| match x {
+                    $i($it { $a, .. }) => $inv($a),
                     _ => (),
                 })
             });
@@ -179,25 +204,84 @@ mod tests {
         assert_id_ne(tx, |t| t.set_maturity(t.maturity().not()));
 
         if !tx.inputs().is_empty() {
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, utxo_id, invert_utxo_id);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, witness_index, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned, maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], utxo_id, invert_utxo_id);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], owner, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], asset_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], witness_index, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], maturity, not);
 
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, utxo_id, invert_utxo_id);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, maturity, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate, inv_v);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate, predicate_data, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                utxo_id,
+                invert_utxo_id
+            );
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], owner, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], asset_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], predicate, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                predicate_data,
+                inv_v
+            );
 
-            assert_io_eq!(tx, inputs_mut, Input::Contract, utxo_id, invert_utxo_id);
-            assert_io_eq!(tx, inputs_mut, Input::Contract, balance_root, invert);
-            assert_io_eq!(tx, inputs_mut, Input::Contract, state_root, invert);
-            assert_io_ne!(tx, inputs_mut, Input::Contract, contract_id, invert);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], utxo_id, invert_utxo_id);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], balance_root, invert);
+            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], state_root, invert);
+            assert_io_ne!(tx, inputs_mut, Input::Contract[Contract], contract_id, invert);
+
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], message_id, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], sender, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], recipient, invert);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], nonce, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], witness_index, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessageSigned[MessageSigned], data, inv_v);
+
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                message_id,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                sender,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                recipient,
+                invert
+            );
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], amount, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], nonce, not);
+            assert_io_ne!(tx, inputs_mut, Input::MessagePredicate[MessagePredicate], data, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                predicate,
+                inv_v
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessagePredicate[MessagePredicate],
+                predicate_data,
+                inv_v
+            );
         }
 
         if !tx.outputs().is_empty() {
@@ -255,6 +339,25 @@ mod tests {
                     generate_bytes(rng),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::message_signed(
+                    rng.gen(),
+                    rng.gen(),
+                    rng.gen(),
+                    rng.next_u64(),
+                    rng.next_u64(),
+                    rng.next_u32().to_be_bytes()[0],
+                    generate_nonempty_padded_bytes(rng),
+                ),
+                Input::message_predicate(
+                    rng.gen(),
+                    rng.gen(),
+                    rng.gen(),
+                    rng.next_u64(),
+                    rng.next_u64(),
+                    generate_nonempty_padded_bytes(rng),
+                    generate_nonempty_padded_bytes(rng),
+                    generate_bytes(rng),
+                ),
             ],
         ];
 
@@ -293,8 +396,8 @@ mod tests {
                             );
 
                             assert_id_common_attrs(&tx);
-                            assert_id_ne(&tx, |t| inv_v(&mut t.script));
-                            assert_id_ne(&tx, |t| inv_v(&mut t.script_data));
+                            assert_id_ne(&tx, |t| inv_v(t.script_mut()));
+                            assert_id_ne(&tx, |t| inv_v(t.script_data_mut()));
                         }
                     }
 
@@ -311,12 +414,12 @@ mod tests {
                             witnesses.clone(),
                         );
 
-                        assert_id_ne(&tx, |t| not(&mut t.bytecode_witness_index));
-                        assert_id_ne(&tx, |t| invert(&mut t.salt));
-                        assert_id_ne(&tx, |t| invert(&mut t.salt));
+                        assert_id_ne(&tx, |t| not(t.bytecode_witness_index_mut()));
+                        assert_id_ne(&tx, |t| invert(t.salt_mut()));
+                        assert_id_ne(&tx, |t| invert(t.salt_mut()));
 
                         if !storage_slots.is_empty() {
-                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots.first_mut().unwrap()));
+                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots_mut().first_mut().unwrap()));
                         }
 
                         assert_id_common_attrs(&tx);

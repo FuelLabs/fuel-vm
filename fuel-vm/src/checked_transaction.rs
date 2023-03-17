@@ -378,7 +378,7 @@ mod tests {
         assert_eq!(checked.transaction(), &tx);
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().sum_inputs[&AssetId::default()],
             input_amount - checked.metadata().fee.total() - output_amount
         );
     }
@@ -398,7 +398,7 @@ mod tests {
 
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().sum_inputs[&AssetId::default()],
             input_amount - checked.metadata().fee.total()
         );
     }
@@ -418,7 +418,7 @@ mod tests {
 
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().sum_inputs[&AssetId::default()],
             input_amount - checked.metadata().fee.total()
         );
     }

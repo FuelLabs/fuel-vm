@@ -47,7 +47,9 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
-use crate::checked_transaction::{CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata};
+use crate::checked_transaction::{
+    CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata, SumDataMessages, SumInputs,
+};
 
 use self::memory::Memory;
 
@@ -267,14 +269,14 @@ pub trait ExecutableTransaction:
             //
             // Note: the initial balance deducts the gas limit from base asset
             Output::Change { asset_id, amount, .. } if revert && asset_id == &AssetId::BASE => initial_balances
-                [&AssetId::BASE]
+                .sum_inputs[&AssetId::BASE]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
             Output::Change { asset_id, amount, .. } if revert => {
-                *amount = initial_balances[asset_id];
+                *amount = initial_balances.sum_inputs[asset_id];
                 Ok(())
             }
 
@@ -355,8 +357,24 @@ impl ExecutableTransaction for Script {
     }
 }
 
-/// The alias of initial balances of the transaction.
-pub type InitialBalances = BTreeMap<AssetId, Word>;
+/// The initial balances of the transaction.
+#[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
+pub struct InitialBalances {
+    /// See [`SumInputs`].
+    pub sum_inputs: SumInputs,
+    /// See [`SumDataMessages`].
+    pub sum_data_messages: Option<SumDataMessages>,
+}
+
+impl From<InitialBalances> for BTreeMap<AssetId, Word> {
+    fn from(value: InitialBalances) -> Self {
+        let mut result: BTreeMap<_, _> = value.sum_inputs.into();
+        if let Some(sum_data_messages) = value.sum_data_messages {
+            *result.entry(AssetId::BASE).or_default() += *sum_data_messages;
+        }
+        result
+    }
+}
 
 /// Methods that should be implemented by the checked metadata of supported transactions.
 pub trait CheckedMetadata {
@@ -372,7 +390,10 @@ pub trait CheckedMetadata {
 
 impl CheckedMetadata for ScriptCheckedMetadata {
     fn balances(self) -> InitialBalances {
-        self.initial_free_balances
+        InitialBalances {
+            sum_inputs: self.sum_inputs,
+            sum_data_messages: Some(self.sum_data_messages),
+        }
     }
 
     fn gas_used_by_predicates(&self) -> Word {
@@ -386,7 +407,10 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 
 impl CheckedMetadata for CreateCheckedMetadata {
     fn balances(self) -> InitialBalances {
-        self.initial_free_balances
+        InitialBalances {
+            sum_inputs: self.sum_inputs,
+            sum_data_messages: None,
+        }
     }
 
     fn gas_used_by_predicates(&self) -> Word {

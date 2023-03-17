@@ -48,6 +48,7 @@ pub enum CheckError {
     TransactionCreateInputContract {
         index: usize,
     },
+    /// The `Create` transaction contains metadata(retryable) message input.
     TransactionCreateMetadata {
         index: usize,
     },

@@ -1338,7 +1338,10 @@ fn smo_instruction_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .add_unsigned_message_input(secret, sender, nonce, balance, data)
+            // The first deposit coins message pays for the fee
+            .add_unsigned_message_input(secret, sender, nonce, balance, vec![])
+            // The second metadata message is used to withdraw `amount`
+            .add_unsigned_message_input(secret, sender, nonce, amount, data)
             .finalize_checked(block_height, params, client.gas_costs());
 
         let txid = tx.transaction().id();

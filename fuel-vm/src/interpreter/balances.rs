@@ -8,7 +8,7 @@ use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -47,7 +47,8 @@ pub struct RuntimeBalances {
 
 impl From<InitialBalances> for RuntimeBalances {
     fn from(balances: InitialBalances) -> Self {
-        Self::try_from_iter(balances.into_iter()).expect(
+        let map: BTreeMap<_, _> = balances.into();
+        Self::try_from_iter(map.into_iter()).expect(
 r#"This is a bug!
 
 A checked transaction shouldn't produce a malformed initial free balances set.

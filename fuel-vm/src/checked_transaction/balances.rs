@@ -16,27 +16,36 @@ pub(crate) fn initial_free_balances<T>(
 where
     T: Chargeable + field::Inputs + field::Outputs,
 {
-    let mut balances = BTreeMap::<AssetId, Word>::new();
+    let mut sum_inputs = BTreeMap::<AssetId, Word>::new();
+    // The sum of [`AssetId::Base`] from metadata messages.
+    let mut sum_data_messages: Word = 0;
 
     // Add up all the inputs for each asset ID
-    for (asset_id, amount) in transaction.inputs().iter().filter_map(|input| match input {
-        // Sum coin inputs
-        Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
-        | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => Some((*asset_id, amount)),
-        // Sum message inputs
-        Input::DepositCoinSigned(DepositCoinSigned { amount, .. })
-        | Input::DepositCoinPredicate(DepositCoinPredicate { amount, .. })
-        | Input::MetadataSigned(MetadataSigned { amount, .. })
-        | Input::MetadataPredicate(MetadataPredicate { amount, .. }) => Some((AssetId::BASE, amount)),
-        Input::Contract(_) => None,
-    }) {
-        *balances.entry(asset_id).or_default() += amount;
+    for input in transaction.inputs().iter() {
+        match input {
+            // Sum coin inputs
+            Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
+            | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => {
+                *sum_inputs.entry(*asset_id).or_default() += amount;
+            }
+            // Sum deposit inputs
+            Input::DepositCoinSigned(DepositCoinSigned { amount, .. })
+            | Input::DepositCoinPredicate(DepositCoinPredicate { amount, .. }) => {
+                *sum_inputs.entry(AssetId::BASE).or_default() += amount;
+            }
+            // Sum data messages
+            Input::MetadataSigned(MetadataSigned { amount, .. })
+            | Input::MetadataPredicate(MetadataPredicate { amount, .. }) => {
+                sum_data_messages += *amount;
+            }
+            Input::Contract(_) => {}
+        }
     }
 
     // Deduct fee from base asset
     let fee = TransactionFee::checked_from_tx(params, transaction).ok_or(CheckError::ArithmeticOverflow)?;
 
-    let base_asset_balance = balances.entry(AssetId::BASE).or_default();
+    let base_asset_balance = sum_inputs.entry(AssetId::BASE).or_default();
 
     *base_asset_balance = fee
         .checked_deduct_total(*base_asset_balance)
@@ -50,7 +59,7 @@ where
         Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
         _ => None,
     }) {
-        let balance = balances
+        let balance = sum_inputs
             .get_mut(asset_id)
             .ok_or(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
         *balance = balance
@@ -63,12 +72,14 @@ where
     }
 
     Ok(AvailableBalances {
-        initial_free_balances: balances,
+        sum_inputs,
+        sum_data_messages,
         fee,
     })
 }
 
 pub(crate) struct AvailableBalances {
-    pub(crate) initial_free_balances: BTreeMap<AssetId, Word>,
+    pub(crate) sum_inputs: BTreeMap<AssetId, Word>,
+    pub(crate) sum_data_messages: Word,
     pub(crate) fee: TransactionFee,
 }

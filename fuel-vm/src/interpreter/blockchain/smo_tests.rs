@@ -1,5 +1,4 @@
 use crate::interpreter::memory::Memory;
-use crate::interpreter::InitialBalances;
 
 use super::*;
 
@@ -17,7 +16,7 @@ struct Input {
     amount_coins_to_send: Word,
     max_message_data_length: Word,
     memory: Vec<(usize, Vec<u8>)>,
-    balance: InitialBalances,
+    balance: Vec<(AssetId, Word)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -121,7 +120,7 @@ fn test_smo(
     }
     let mut receipts = Vec::default();
     let mut tx = Create::default();
-    let mut balances = RuntimeBalances::from(balance);
+    let mut balances = RuntimeBalances::try_from_iter(balance).expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
     let input = MessageOutputCtx {

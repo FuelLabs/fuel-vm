@@ -9,15 +9,15 @@ use std::collections::BTreeMap;
 /// More information about it in the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct SumInputs(pub(crate) BTreeMap<AssetId, Word>);
+pub struct NonRetryableFreeBalances(pub(crate) BTreeMap<AssetId, Word>);
 
-impl From<SumInputs> for BTreeMap<AssetId, Word> {
-    fn from(value: SumInputs) -> Self {
+impl From<NonRetryableFreeBalances> for BTreeMap<AssetId, Word> {
+    fn from(value: NonRetryableFreeBalances) -> Self {
         value.0
     }
 }
 
-impl core::ops::Deref for SumInputs {
+impl core::ops::Deref for NonRetryableFreeBalances {
     type Target = BTreeMap<AssetId, Word>;
 
     fn deref(&self) -> &Self::Target {
@@ -29,15 +29,15 @@ impl core::ops::Deref for SumInputs {
 /// More information about it in the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct SumDataMessages(pub(crate) Word);
+pub struct RetryableAmount(pub(crate) Word);
 
-impl From<SumDataMessages> for Word {
-    fn from(value: SumDataMessages) -> Self {
+impl From<RetryableAmount> for Word {
+    fn from(value: RetryableAmount) -> Self {
         value.0
     }
 }
 
-impl core::ops::Deref for SumDataMessages {
+impl core::ops::Deref for RetryableAmount {
     type Target = Word;
 
     fn deref(&self) -> &Self::Target {
@@ -51,15 +51,15 @@ pub mod create {
         balances::{initial_free_balances, AvailableBalances},
         Checked, IntoChecked,
     };
-    use crate::checked_transaction::SumInputs;
+    use crate::checked_transaction::NonRetryableFreeBalances;
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::Word;
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
-        /// See [`SumInputs`].
-        pub sum_inputs: SumInputs,
+        /// See [`NonRetryableFreeBalances`].
+        pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
         pub block_height: Word,
         /// The fees and gas usage
@@ -82,17 +82,17 @@ pub mod create {
 
             // validate fees and compute free balances
             let AvailableBalances {
-                sum_inputs,
-                sum_data_messages,
+                non_retryable_balances,
+                retryable_balance,
                 fee,
             } = initial_free_balances(&self, params)?;
             assert_eq!(
-                sum_data_messages, 0,
+                retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
             );
 
             let metadata = CheckedMetadata {
-                sum_inputs: SumInputs(sum_inputs),
+                free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 fee,
                 gas_used_by_predicates: 0,
@@ -131,17 +131,17 @@ pub mod script {
         balances::{initial_free_balances, AvailableBalances},
         Checked, IntoChecked,
     };
-    use crate::checked_transaction::{SumDataMessages, SumInputs};
+    use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::Word;
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
-        /// See [`SumInputs`].
-        pub sum_inputs: SumInputs,
-        /// See [`SumDataMessages`].
-        pub sum_data_messages: SumDataMessages,
+        /// See [`NonRetryableFreeBalances`].
+        pub non_retryable_balances: NonRetryableFreeBalances,
+        /// See [`RetryableAmount`].
+        pub retryable_balance: RetryableAmount,
         /// The block height this tx was verified with
         pub block_height: Word,
         /// The fees and gas usage
@@ -164,14 +164,14 @@ pub mod script {
 
             // validate fees and compute free balances
             let AvailableBalances {
-                sum_inputs,
-                sum_data_messages,
+                non_retryable_balances,
+                retryable_balance,
                 fee,
             } = initial_free_balances(&self, params)?;
 
             let metadata = CheckedMetadata {
-                sum_inputs: SumInputs(sum_inputs),
-                sum_data_messages: SumDataMessages(sum_data_messages),
+                non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
+                retryable_balance: RetryableAmount(retryable_balance),
                 block_height,
                 fee,
                 gas_used_by_predicates: 0,

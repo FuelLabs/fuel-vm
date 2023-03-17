@@ -47,7 +47,7 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, IntoChecked, ScriptCheckedMetadata, SumDataMessages, SumInputs,
+    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
 };
 
 use self::memory::Memory;
@@ -268,14 +268,14 @@ pub trait ExecutableTransaction:
             //
             // Note: the initial balance deducts the gas limit from base asset
             Output::Change { asset_id, amount, .. } if revert && asset_id == &AssetId::BASE => initial_balances
-                .sum_inputs[&AssetId::BASE]
+                .non_retryable[&AssetId::BASE]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
             Output::Change { asset_id, amount, .. } if revert => {
-                *amount = initial_balances.sum_inputs[asset_id];
+                *amount = initial_balances.non_retryable[asset_id];
                 Ok(())
             }
 
@@ -359,10 +359,10 @@ impl ExecutableTransaction for Script {
 /// The initial balances of the transaction.
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct InitialBalances {
-    /// See [`SumInputs`].
-    pub sum_inputs: SumInputs,
-    /// See [`SumDataMessages`].
-    pub sum_data_messages: Option<SumDataMessages>,
+    /// See [`NonRetryableFreeBalances`].
+    pub non_retryable: NonRetryableFreeBalances,
+    /// See [`RetryableAmount`].
+    pub retryable: Option<RetryableAmount>,
 }
 
 /// Methods that should be implemented by the checked metadata of supported transactions.
@@ -380,8 +380,8 @@ pub trait CheckedMetadata {
 impl CheckedMetadata for ScriptCheckedMetadata {
     fn balances(self) -> InitialBalances {
         InitialBalances {
-            sum_inputs: self.sum_inputs,
-            sum_data_messages: Some(self.sum_data_messages),
+            non_retryable: self.non_retryable_balances,
+            retryable: Some(self.retryable_balance),
         }
     }
 
@@ -397,8 +397,8 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 impl CheckedMetadata for CreateCheckedMetadata {
     fn balances(self) -> InitialBalances {
         InitialBalances {
-            sum_inputs: self.sum_inputs,
-            sum_data_messages: None,
+            non_retryable: self.free_balances,
+            retryable: None,
         }
     }
 

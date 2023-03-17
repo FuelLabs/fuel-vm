@@ -47,9 +47,9 @@ pub struct RuntimeBalances {
 
 impl From<InitialBalances> for RuntimeBalances {
     fn from(initial_balances: InitialBalances) -> Self {
-        let mut balances: BTreeMap<_, _> = initial_balances.sum_inputs.into();
-        if let Some(sum_data_messages) = initial_balances.sum_data_messages {
-            *balances.entry(AssetId::BASE).or_default() += *sum_data_messages;
+        let mut balances: BTreeMap<_, _> = initial_balances.non_retryable.into();
+        if let Some(retryable_amount) = initial_balances.retryable {
+            *balances.entry(AssetId::BASE).or_default() += *retryable_amount;
         }
         Self::try_from_iter(balances.into_iter()).expect(
 r#"This is a bug!

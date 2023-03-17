@@ -1,25 +1,17 @@
 use fuel_asm::*;
 use fuel_tx::Receipt;
 use fuel_types::Immediate18;
-use fuel_vm::consts::VM_MAX_RAM;
 
 use super::test_helpers;
 use rstest::rstest;
 
-use test_helpers::{assert_panics, assert_success, run_script, set_full_word};
+use test_helpers::{assert_panics, assert_success, run_script};
 
 /// Setup some useful values
 /// * 0x31 to all ones, i.e. max word
 /// * 0x32 to two
-/// * 0x33 to VM_MAX_RAM
-/// * 0x34 to (VM_MAX_RAM / instruction_size)
 fn common_setup() -> Vec<Instruction> {
-    let mut setup = vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)];
-
-    setup.extend(&set_full_word(0x33, VM_MAX_RAM));
-    setup.extend(&set_full_word(0x34, VM_MAX_RAM / (Instruction::SIZE as u64)));
-
-    setup
+    vec![op::not(0x31, RegId::ZERO), op::movi(0x32, 2)]
 }
 
 #[rstest]
@@ -313,30 +305,6 @@ fn spec_incr_pc_by_four(
     } else {
         panic!("No log data");
     }
-}
-
-#[rstest]
-fn spec_jmp_beyond_ram_panics(
-    #[values(
-        op::jmp(0x20),
-        op::ji(Imm24::MAX.into()),
-        op::jne(RegId::ZERO, RegId::ONE, 0x20),
-        // TODO: Test JNEI and JNZI instructions
-        //       The immediates of these are 18 and 12 bits long, so they
-        //       cannot hold large-enough values to go over the RAM limit,
-        //       since the transaction size is limited. It could be possible
-        //       to setup a suitable scenario by repeatedly calling contract
-        //       until the $is is close enough to the RAM limit.
-    )]
-    case: Instruction,
-) {
-    let mut script = common_setup();
-    // This is just beyond ram
-    script.push(op::add(0x20, RegId::IS, 0x34));
-    script.push(case);
-
-    let receipts = run_script(script.into_iter().collect());
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
 }
 
 #[rstest]

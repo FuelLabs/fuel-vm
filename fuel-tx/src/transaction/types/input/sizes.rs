@@ -1,10 +1,10 @@
 use fuel_asm::Word;
 use fuel_types::bytes::WORD_SIZE;
-use fuel_types::mem_layout;
 use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
+use fuel_types::{mem_layout, Nonce};
 
 use crate::TxPointer;
 use crate::UtxoId;
@@ -40,7 +40,7 @@ mem_layout!(
     sender: Address = {Address::LEN},
     recipient: Address = {Address::LEN},
     amount: Word = WORD_SIZE,
-    nonce: Word = WORD_SIZE,
+    nonce: Nonce = {Nonce::LEN},
     witness_index: u8 = WORD_SIZE,
     data_len: Word = WORD_SIZE,
     predicate_len: Word = WORD_SIZE,

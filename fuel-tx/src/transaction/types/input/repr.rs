@@ -86,6 +86,13 @@ impl InputRepr {
         }
     }
 
+    pub const fn message_nonce_offset(&self) -> Option<usize> {
+        match self {
+            Self::Message => Some(INPUT_NONCE_RECIPIENT_OFFSET),
+            Self::Contract | Self::Coin => None,
+        }
+    }
+
     pub const fn tx_pointer_offset(&self) -> Option<usize> {
         match self {
             Self::Coin => Some(INPUT_COIN_TX_POINTER_OFFSET),

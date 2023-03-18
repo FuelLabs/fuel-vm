@@ -422,7 +422,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let message_input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), 0, 0, generate_bytes(rng));
+    let message_input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, generate_bytes(rng));
     let message_id = message_input.message_id().unwrap();
 
     let err = TransactionBuilder::script(vec![], vec![])

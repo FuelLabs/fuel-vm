@@ -255,7 +255,13 @@ mod tests {
                 invert
             );
             assert_io_ne!(tx, inputs_mut, Input::MessageCoinSigned[MessageCoinSigned], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::MessageCoinSigned[MessageCoinSigned], nonce, not);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageCoinSigned[MessageCoinSigned],
+                nonce,
+                invert
+            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -279,7 +285,13 @@ mod tests {
                 invert
             );
             assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], nonce, not);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataSigned[MessageDataSigned],
+                nonce,
+                invert
+            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -315,7 +327,7 @@ mod tests {
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
                 nonce,
-                not
+                invert
             );
             assert_io_ne!(
                 tx,
@@ -357,8 +369,15 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
+                data,
+                inv_v
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataPredicate[MessageDataPredicate],
                 nonce,
-                not
+                invert
             );
             assert_io_ne!(
                 tx,
@@ -439,14 +458,14 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.next_u64(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                 ),
                 Input::message_coin_predicate(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.next_u64(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
@@ -454,7 +473,7 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.next_u64(),
+                    rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
                     generate_nonempty_padded_bytes(rng),
                 ),
@@ -462,7 +481,7 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.next_u64(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),

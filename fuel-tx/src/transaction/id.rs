@@ -377,7 +377,7 @@ mod tests {
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
                 nonce,
-                not
+                invert
             );
             assert_io_ne!(
                 tx,

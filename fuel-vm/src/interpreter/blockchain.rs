@@ -721,7 +721,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         let receipt = Receipt::message_out_from_tx_output(
             txid,
-            self.receipts.as_ref().len() as Word,
+            self.receipts.len() as Word,
             *sender,
             recipient,
             self.amount_coins_to_send,

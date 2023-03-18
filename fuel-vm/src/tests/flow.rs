@@ -540,7 +540,7 @@ fn jump_if_not_zero_immediate_jump() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::Return { .. }));
 }
 
@@ -580,7 +580,7 @@ fn jump_if_not_zero_immediate_no_jump() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::Revert { .. }));
 }
 
@@ -612,7 +612,7 @@ fn jump_dynamic() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::Return { .. }));
 }
 
@@ -644,7 +644,7 @@ fn jump_dynamic_condition_true() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::Return { .. }));
 }
 
@@ -676,7 +676,7 @@ fn jump_dynamic_condition_false() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::Revert { .. }));
 }
 
@@ -902,7 +902,7 @@ fn retd_from_top_of_heap() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
     assert!(matches!(receipts[0], Receipt::ReturnData { .. }));
 }
 
@@ -938,6 +938,6 @@ fn logd_from_top_of_heap() {
     let receipts = client.receipts().expect("Expected receipts");
 
     // Expect the correct receipt
-    assert_eq!(receipts.as_ref().len(), 3);
+    assert_eq!(receipts.len(), 3);
     assert!(matches!(receipts[0], Receipt::LogData { .. }));
 }

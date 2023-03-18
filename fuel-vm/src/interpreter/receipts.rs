@@ -22,6 +22,10 @@ impl ReceiptsCtx {
         self.receipts.clear();
     }
 
+    pub fn len(&self) -> usize {
+        self.receipts.len()
+    }
+
     pub fn root(&self) -> Bytes32 {
         self.receipts_tree.root().into()
     }
@@ -35,6 +39,7 @@ impl ReceiptsCtx {
     /// only be used when the list of receipts has been mutated externally.
     fn recalculate_root(&mut self) {
         self.receipts_tree.reset();
+        // TODO: Remove `clone()` when `to_bytes()` no longer requires `&mut self`
         let receipts = self.as_ref().clone();
         for mut receipt in receipts {
             self.receipts_tree.push(receipt.to_bytes().as_slice())

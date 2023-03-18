@@ -25,7 +25,7 @@ fn test_log() -> Result<(), RuntimeError> {
     input.log(1, 2, 3, 4)?;
 
     assert_eq!(pc, 8);
-    assert_eq!(receipts.as_ref().len(), 1);
+    assert_eq!(receipts.len(), 1);
 
     let expected = Receipt::log(Default::default(), 1, 2, 3, 4, 4, 0);
     assert_eq!(receipts[0], expected);
@@ -43,7 +43,7 @@ fn test_log() -> Result<(), RuntimeError> {
     input.log_data(1, 2, 3, 4)?;
 
     assert_eq!(pc, 12);
-    assert_eq!(receipts.as_ref().len(), 2);
+    assert_eq!(receipts.len(), 2);
 
     let expected = Receipt::log_data_with_len(
         Default::default(),

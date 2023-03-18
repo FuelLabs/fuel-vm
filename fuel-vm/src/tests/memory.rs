@@ -109,7 +109,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
     let mut vm = Transactor::new(storage, Default::default(), Default::default());
     vm.transact(tx);
 
-    let mut receipts = vm.receipts().unwrap().as_ref().to_vec();
+    let mut receipts = vm.receipts().unwrap().to_vec();
 
     if cause_error {
         let _ = receipts.pop().unwrap(); // Script result unneeded, the panic receipt below is enough
@@ -164,7 +164,7 @@ fn dynamic_call_frame_ops() {
     let mut vm = Transactor::new(storage, Default::default(), Default::default());
     vm.transact(tx);
 
-    let receipts = vm.receipts().unwrap().as_ref().to_vec();
+    let receipts = vm.receipts().unwrap().to_vec();
     // gather values of sp from the test
     let initial_sp = if let Receipt::Log { ra, .. } = receipts[0] {
         ra

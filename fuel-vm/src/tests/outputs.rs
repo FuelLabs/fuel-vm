@@ -304,7 +304,6 @@ fn variable_output_set_by_external_transfer_out() {
     ));
 
     assert!(receipts
-        .as_ref()
         .iter()
         .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
@@ -383,7 +382,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     // TransferOut receipt should not be present
     assert!(!receipts
-        .as_ref()
         .iter()
         .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
@@ -464,7 +462,6 @@ fn variable_output_set_by_internal_contract_transfer_out() {
 
     assert_eq!(output, outputs[0]);
     assert!(receipts
-        .as_ref()
         .iter()
         .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
@@ -546,7 +543,6 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
 
     // TransferOut receipt should not be present
     assert!(!receipts
-        .as_ref()
         .iter()
         .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

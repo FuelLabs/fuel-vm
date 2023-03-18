@@ -1,4 +1,5 @@
 use core::ops::Index;
+use fuel_crypto::Hasher;
 use std::mem;
 
 use fuel_merkle::binary;
@@ -8,17 +9,68 @@ use fuel_types::{bytes::SerializableVec, Bytes32};
 #[derive(Debug, Default, Clone)]
 pub(crate) struct ReceiptsCtx {
     receipts: Vec<Receipt>,
-    receipts_tree: binary::in_memory::MerkleTree,
+    inner: Inner,
+}
+
+impl ReceiptsCtx {
+    pub fn new(accum: bool) -> Self {
+        let inner = if accum {
+            Inner::Accumulator {
+                current_root: Bytes32::zeroed(),
+            }
+        } else {
+            Inner::Merkle {
+                receipts_tree: Default::default(),
+            }
+        };
+        Self {
+            receipts: vec![],
+            inner,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Inner {
+    Merkle {
+        receipts_tree: binary::in_memory::MerkleTree,
+    },
+    Accumulator {
+        current_root: Bytes32,
+    },
+}
+
+impl Default for Inner {
+    fn default() -> Self {
+        Inner::Merkle {
+            receipts_tree: Default::default(),
+        }
+    }
 }
 
 impl ReceiptsCtx {
     pub fn push(&mut self, mut receipt: Receipt) {
-        self.receipts_tree.push(receipt.to_bytes().as_slice());
+        let receipt_bytes = receipt.to_bytes();
+        match &mut self.inner {
+            Inner::Merkle { receipts_tree } => {
+                receipts_tree.push(receipt_bytes.as_slice());
+            }
+            Inner::Accumulator { current_root } => {
+                *current_root = Hasher::default()
+                    .chain(current_root.as_slice())
+                    .chain(receipt_bytes.as_slice())
+                    .finalize()
+                    .into();
+            }
+        }
         self.receipts.push(receipt)
     }
 
     pub fn clear(&mut self) {
-        self.receipts_tree.reset();
+        match &mut self.inner {
+            Inner::Merkle { receipts_tree } => receipts_tree.reset(),
+            Inner::Accumulator { current_root } => *current_root = Bytes32::zeroed(),
+        }
         self.receipts.clear();
     }
 
@@ -27,7 +79,10 @@ impl ReceiptsCtx {
     }
 
     pub fn root(&self) -> Bytes32 {
-        self.receipts_tree.root().into()
+        match &self.inner {
+            Inner::Merkle { receipts_tree } => receipts_tree.root().into(),
+            Inner::Accumulator { current_root } => *current_root,
+        }
     }
 
     /// Get a mutable lock on this context
@@ -38,11 +93,10 @@ impl ReceiptsCtx {
     /// Recalculates the Merkle root of the receipts from scratch. This should
     /// only be used when the list of receipts has been mutated externally.
     fn recalculate_root(&mut self) {
-        self.receipts_tree.reset();
-        // TODO: Remove `clone()` when `to_bytes()` no longer requires `&mut self`
         let receipts = self.as_ref().clone();
-        for mut receipt in receipts {
-            self.receipts_tree.push(receipt.to_bytes().as_slice())
+        self.clear();
+        for receipt in receipts {
+            self.push(receipt);
         }
     }
 }

@@ -32,6 +32,8 @@ pub struct ConsensusParameters {
     pub gas_per_byte: u64,
     /// Maximum length of message data, in bytes.
     pub max_message_data_length: u64,
+    /// Set whether the receipt root uses merkle root or hash accumulator
+    pub receipt_accumulator: bool,
 }
 
 impl ConsensusParameters {
@@ -50,6 +52,7 @@ impl ConsensusParameters {
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
         max_message_data_length: 1024 * 1024,
+        receipt_accumulator: false,
     };
 
     /// Transaction memory offset in VM runtime
@@ -75,6 +78,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -92,6 +96,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -110,6 +115,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -127,6 +133,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -145,6 +152,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -162,6 +170,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -180,6 +189,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -197,6 +207,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -215,6 +226,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -232,6 +244,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -250,6 +263,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -267,6 +281,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -285,6 +300,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -302,6 +318,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -320,6 +337,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -337,6 +355,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -355,6 +374,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -372,6 +392,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -390,6 +411,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -407,6 +429,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -425,6 +448,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -442,6 +466,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -459,6 +484,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_price_factor,
             max_message_data_length,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -476,6 +502,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 
@@ -494,6 +521,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_price_factor,
             gas_per_byte,
+            receipt_accumulator,
             ..
         } = self;
 
@@ -511,6 +539,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
+            receipt_accumulator,
         }
     }
 }

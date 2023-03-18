@@ -12,6 +12,7 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
+use crate::interpreter::receipts::ReceiptsCtx;
 use fuel_tx::ConsensusParameters;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -28,7 +29,7 @@ where
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
             frames: vec![],
-            receipts: Default::default(),
+            receipts: ReceiptsCtx::new(params.receipt_accumulator),
             tx: Default::default(),
             initial_balances: Default::default(),
             storage,

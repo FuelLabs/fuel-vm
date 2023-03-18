@@ -41,7 +41,7 @@ where
         self.push_stack(self.transaction().id().as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        RuntimeBalances::from(initial_balances).to_vm(self);
+        RuntimeBalances::try_from(initial_balances)?.to_vm(self);
 
         let tx_size = self.transaction().serialized_size() as Word;
 

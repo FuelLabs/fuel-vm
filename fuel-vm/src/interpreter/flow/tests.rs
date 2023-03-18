@@ -1,5 +1,4 @@
 use crate::interpreter::memory::Memory;
-use crate::interpreter::InitialBalances;
 use crate::storage::MemoryStorage;
 
 use super::*;
@@ -13,9 +12,9 @@ struct Input {
     params: PrepareCallParams,
     reg: RegInput,
     context: Context,
-    balance: InitialBalances,
+    balance: Vec<(AssetId, Word)>,
     input_contracts: Vec<ContractId>,
-    storage_balance: InitialBalances,
+    storage_balance: Vec<(AssetId, Word)>,
     memory: Memory<MEM_SIZE>,
     gas_cost: DependentCost,
     storage_contract: Vec<(ContractId, Vec<u8>)>,
@@ -316,7 +315,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     registers.system_registers.cgas = RegMut::new(&mut reg.cgas);
     registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
     let memory = PrepareCallMemory::try_from((mem.as_mut(), &params))?;
-    let mut runtime_balances = RuntimeBalances::from(balance);
+    let mut runtime_balances = RuntimeBalances::try_from_iter(balance).expect("Balance should be valid");
     let mut storage = MemoryStorage::new(0, Default::default());
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)

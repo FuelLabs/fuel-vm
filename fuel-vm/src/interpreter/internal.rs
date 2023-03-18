@@ -6,10 +6,8 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
 
-use fuel_asm::Flags;
-use fuel_asm::{Instruction, PanicReason, RegId};
-use fuel_tx::field::Outputs;
-use fuel_tx::field::ReceiptsRoot;
+use fuel_asm::{Flags, Instruction, PanicReason, RegId};
+use fuel_tx::field::{Outputs, ReceiptsRoot};
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SizedBytes;
@@ -53,17 +51,6 @@ pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     variable: Output,
 ) -> Result<(), RuntimeError> {
     tx.replace_variable_output(idx, variable)?;
-    update_memory_output(tx, memory, tx_offset, idx)
-}
-
-pub(crate) fn set_message_output<Tx: ExecutableTransaction>(
-    tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
-    tx_offset: usize,
-    idx: usize,
-    message: Output,
-) -> Result<(), RuntimeError> {
-    tx.replace_message_output(idx, message)?;
     update_memory_output(tx, memory, tx_offset, idx)
 }
 

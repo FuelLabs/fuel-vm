@@ -11,10 +11,9 @@ use std::io;
 pub enum OutputRepr {
     Coin = 0x00,
     Contract = 0x01,
-    Message = 0x02,
-    Change = 0x03,
-    Variable = 0x04,
-    ContractCreated = 0x05,
+    Change = 0x02,
+    Variable = 0x03,
+    ContractCreated = 0x04,
 }
 
 impl OutputRepr {
@@ -60,18 +59,10 @@ impl OutputRepr {
         }
     }
 
-    pub const fn recipient_offset(&self) -> Option<usize> {
-        match self {
-            Self::Message => Some(OUTPUT_MESSAGE_RECIPIENT_OFFSET),
-            _ => None,
-        }
-    }
-
     pub const fn from_output(output: &Output) -> Self {
         match output {
             Output::Coin { .. } => Self::Coin,
             Output::Contract { .. } => Self::Contract,
-            Output::Message { .. } => Self::Message,
             Output::Change { .. } => Self::Change,
             Output::Variable { .. } => Self::Variable,
             Output::ContractCreated { .. } => Self::ContractCreated,
@@ -87,10 +78,9 @@ impl TryFrom<Word> for OutputRepr {
         match b {
             0x00 => Ok(Self::Coin),
             0x01 => Ok(Self::Contract),
-            0x02 => Ok(Self::Message),
-            0x03 => Ok(Self::Change),
-            0x04 => Ok(Self::Variable),
-            0x05 => Ok(Self::ContractCreated),
+            0x02 => Ok(Self::Change),
+            0x03 => Ok(Self::Variable),
+            0x04 => Ok(Self::ContractCreated),
             i => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("The provided output identifier ({i}) is invalid!"),

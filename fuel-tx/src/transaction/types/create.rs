@@ -137,13 +137,16 @@ impl FormatValidityChecks for Create {
         // TODO The computed contract ADDRESS (see below) is not equal to the
         // contractADDRESS of the one OutputType.ContractCreated output
 
-        self.inputs.iter().enumerate().try_for_each(|(index, input)| {
-            if let Input::Contract { .. } = input {
-                return Err(CheckError::TransactionCreateInputContract { index });
-            }
-
-            Ok(())
-        })?;
+        self.inputs
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| match input {
+                Input::Contract(_) => Err(CheckError::TransactionCreateInputContract { index }),
+                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Err(CheckError::TransactionCreateMessageData { index })
+                }
+                _ => Ok(()),
+            })?;
 
         let mut contract_created = false;
         self.outputs

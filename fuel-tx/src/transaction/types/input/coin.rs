@@ -1,8 +1,7 @@
 use crate::input::sizes::CoinSizes;
 use crate::transaction::types::input::AsField;
 use crate::{TxPointer, UtxoId};
-use fuel_types::bytes::Deserializable;
-use fuel_types::bytes::SizedBytes;
+use fuel_types::bytes::{Deserializable, SizedBytes};
 use fuel_types::{bytes, Address, AssetId, MemLayout, MemLocType, Word};
 
 pub type CoinFull = Coin<Full>;

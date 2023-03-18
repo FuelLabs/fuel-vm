@@ -64,10 +64,49 @@ fn tx_with_contract_snapshot() {
 }
 
 #[test]
-fn tx_with_signed_message() {
+fn tx_with_signed_message_coin() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::MessageSigned(MessageSigned {
-            message_id: [1u8; 32].into(),
+        .add_input(Input::MessageCoinSigned(MessageCoinSigned {
+            sender: [2u8; 32].into(),
+            recipient: [3u8; 32].into(),
+            amount: 4,
+            nonce: 5,
+            witness_index: 6,
+            data: (),
+            predicate: (),
+            predicate_data: (),
+        }))
+        .finalize_as_transaction();
+
+    let bytes = tx.to_bytes();
+    let hex = hex::encode(&bytes);
+    insta::assert_snapshot!(hex);
+}
+
+#[test]
+fn tx_with_predicate_message_coin() {
+    let mut tx = TransactionBuilder::script(vec![], vec![])
+        .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
+            sender: [2u8; 32].into(),
+            recipient: [3u8; 32].into(),
+            amount: 4,
+            nonce: 5,
+            witness_index: (),
+            data: (),
+            predicate: vec![7u8; 11],
+            predicate_data: vec![8u8; 12],
+        }))
+        .finalize_as_transaction();
+
+    let bytes = tx.to_bytes();
+    let hex = hex::encode(&bytes);
+    insta::assert_snapshot!(hex);
+}
+
+#[test]
+fn tx_with_signed_message_data() {
+    let mut tx = TransactionBuilder::script(vec![], vec![])
+        .add_input(Input::MessageDataSigned(MessageDataSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
@@ -85,10 +124,9 @@ fn tx_with_signed_message() {
 }
 
 #[test]
-fn tx_with_predicate_message() {
+fn tx_with_predicate_message_data() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
-        .add_input(Input::MessagePredicate(MessagePredicate {
-            message_id: [1u8; 32].into(),
+        .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,

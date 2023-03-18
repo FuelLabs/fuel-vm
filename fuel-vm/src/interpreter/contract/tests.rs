@@ -1,5 +1,4 @@
 use crate::interpreter::memory::Memory;
-use crate::interpreter::InitialBalances;
 use crate::storage::MemoryStorage;
 
 use super::*;
@@ -57,7 +56,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
         Context::Call { block_height: 0 }
     };
 
-    let mut balances = RuntimeBalances::from(InitialBalances::try_from([(AssetId::from([2u8; 32]), 50)]).unwrap());
+    let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
     let mut receipts = Default::default();
     let mut panic_context = PanicContext::None;
     let mut tx = Script::default();
@@ -117,7 +116,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
         Context::Call { block_height: 0 }
     };
 
-    let mut balances = RuntimeBalances::from(InitialBalances::try_from([(AssetId::from([2u8; 32]), 50)]).unwrap());
+    let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
     let mut receipts = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(

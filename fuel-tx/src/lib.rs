@@ -7,7 +7,7 @@
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
-// TODO Add docs
+// TODO: Add docs
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

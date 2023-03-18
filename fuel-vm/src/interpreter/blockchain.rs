@@ -1,29 +1,29 @@
 use super::contract::{balance, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
-    absolute_output_mem_range, append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract,
-    internal_contract_bounds, set_message_output, tx_id, AppendReceipt,
+    append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
+    tx_id, AppendReceipt,
 };
 use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
+use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
 use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, CheckedMemValue};
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
+use crate::interpreter::receipts::ReceiptsCtx;
+use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 use crate::{arith, consts::*};
 
 use fuel_asm::PanicReason;
 use fuel_storage::{StorageInspect, StorageSize};
-use fuel_tx::{Output, Receipt};
-use fuel_types::bytes::{self, Deserializable};
+use fuel_tx::Receipt;
+use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
-use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
-use crate::interpreter::receipts::ReceiptsCtx;
-use crate::interpreter::PanicContext;
 use std::borrow::Borrow;
 use std::ops::Range;
 
@@ -668,6 +668,11 @@ pub(crate) fn timestamp(
     inc_pc(pc)
 }
 
+// TODO: Register b is the address of the begin of the data and register c
+//  is the end of the data(Based on the specification).
+//  The user doesn't specify the output index for message.
+//  We need to use the index of the receipt to calculate the `Nonce`.
+//  Add unit tests for a new usage.
 struct MessageOutputCtx<'vm, Tx> {
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
@@ -682,6 +687,7 @@ struct MessageOutputCtx<'vm, Tx> {
     /// B
     call_abi_len: Word,
     /// C
+    #[allow(dead_code)]
     message_output_idx: Word,
     /// D
     amount_coins_to_send: Word,
@@ -704,19 +710,6 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         let recipient = recipient_address.try_from(self.memory)?;
 
-        if recipient == Address::zeroed() {
-            return Err(PanicReason::ZeroedMessageOutputRecipient.into());
-        }
-
-        let output = absolute_output_mem_range(self.tx, self.tx_offset, self.message_output_idx as usize, None)?
-            .ok_or(PanicReason::OutputNotFound)?;
-        let output = Output::from_bytes(output.read(self.memory))?;
-
-        // amount isn't checked because we are allowed to send zero balances with a message
-        if !matches!(output, Output::Message { recipient, .. } if recipient == Address::zeroed()) {
-            return Err(PanicReason::NonZeroMessageOutputRecipient.into());
-        }
-
         // validations passed, perform the mutations
 
         base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
@@ -726,23 +719,14 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         let call_abi = call_abi.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
-        let message = Output::message(recipient, self.amount_coins_to_send);
         let receipt = Receipt::message_out_from_tx_output(
             txid,
-            self.message_output_idx,
+            self.receipts.len() as Word,
             *sender,
             recipient,
             self.amount_coins_to_send,
             call_abi,
         );
-
-        set_message_output(
-            self.tx,
-            self.memory,
-            self.tx_offset,
-            self.message_output_idx as usize,
-            message,
-        )?;
 
         append_receipt(
             AppendReceipt {

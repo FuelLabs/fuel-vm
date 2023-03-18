@@ -48,6 +48,10 @@ pub enum CheckError {
     TransactionCreateInputContract {
         index: usize,
     },
+    /// The `Create` transaction contains (retryable) message input.
+    TransactionCreateMessageData {
+        index: usize,
+    },
     TransactionCreateOutputContract {
         index: usize,
     },

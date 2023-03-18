@@ -110,8 +110,7 @@ fn input() {
             generate_bytes(rng),
         ),
         Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        Input::message_signed(
-            rng.gen(),
+        Input::message_data_signed(
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -119,13 +118,21 @@ fn input() {
             rng.gen(),
             generate_bytes(rng),
         ),
-        Input::message_predicate(
-            rng.gen(),
+        Input::message_data_predicate(
             rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),
             generate_bytes(rng),
+            generate_nonempty_padded_bytes(rng),
+            generate_bytes(rng),
+        ),
+        Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Input::message_coin_predicate(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
@@ -139,7 +146,6 @@ fn output() {
     assert_encoding_correct(&[
         Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
         Output::contract(rng.gen(), rng.gen(), rng.gen()),
-        Output::message(rng.gen(), rng.next_u64()),
         Output::change(rng.gen(), rng.next_u64(), rng.gen()),
         Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
         Output::contract_created(rng.gen(), rng.gen()),
@@ -661,10 +667,7 @@ fn create_input_data_offset() {
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
         vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![
-            Output::contract(rng.gen(), rng.gen(), rng.gen()),
-            Output::message(rng.gen(), rng.next_u64()),
-        ],
+        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],
@@ -689,8 +692,7 @@ fn create_input_data_offset() {
     );
 
     let data = generate_bytes(rng);
-    let input_message = Input::message_predicate(
-        rng.gen(),
+    let input_message = Input::message_data_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -780,10 +782,7 @@ fn script_input_coin_data_offset() {
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
         vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![
-            Output::contract(rng.gen(), rng.gen(), rng.gen()),
-            Output::message(rng.gen(), rng.next_u64()),
-        ],
+        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],

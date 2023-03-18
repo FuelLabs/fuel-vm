@@ -237,12 +237,8 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = self.receipts.root();
-
-            // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {
-                // TODO: also set this on the serialized tx in memory to keep serialized form consistent
-                // https://github.com/FuelLabs/fuel-vm/issues/97
+                let receipts_root = self.receipts.root();
                 *script.receipts_root_mut() = receipts_root;
             }
 

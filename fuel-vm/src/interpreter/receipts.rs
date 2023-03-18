@@ -141,7 +141,6 @@ mod tests {
         let root = ctx.root();
 
         let leaves = receipts
-            .clone()
             .map(|mut receipt| receipt.to_bytes())
             .collect::<Vec<_>>()
             .into_iter();
@@ -162,7 +161,6 @@ mod tests {
         let root = ctx.root();
 
         let leaves = receipts
-            .clone()
             .map(|mut receipt| receipt.to_bytes())
             .collect::<Vec<_>>()
             .into_iter();

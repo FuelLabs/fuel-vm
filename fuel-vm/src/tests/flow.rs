@@ -409,6 +409,7 @@ fn revert_from_call_immediately_ends_execution() {
     // verify there is only 1 revert receipt
     let revert_receipts = result
         .receipts()
+        .as_ref()
         .iter()
         .filter(|r| matches!(r, Receipt::Revert { .. }))
         .collect_vec();

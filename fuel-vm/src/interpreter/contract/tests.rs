@@ -57,7 +57,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
     };
 
     let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
-    let mut receipts = Vec::new();
+    let mut receipts = Default::default();
     let mut panic_context = PanicContext::None;
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
@@ -117,7 +117,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
     };
 
     let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
-    let mut receipts = Vec::new();
+    let mut receipts = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
         Default::default(),

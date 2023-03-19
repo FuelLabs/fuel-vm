@@ -12,6 +12,7 @@ use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, Checke
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
+use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
@@ -22,6 +23,7 @@ use fuel_storage::{StorageInspect, StorageSize};
 use fuel_tx::Receipt;
 use fuel_types::bytes;
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
+
 use std::borrow::Borrow;
 use std::ops::Range;
 
@@ -675,7 +677,7 @@ struct MessageOutputCtx<'vm, Tx> {
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
-    receipts: &'vm mut Vec<Receipt>,
+    receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
     fp: Reg<'vm, FP>,

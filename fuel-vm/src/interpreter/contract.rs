@@ -5,6 +5,7 @@ use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::{reg_key::*, CheckedMemConstLen};
 use crate::context::Context;
 use crate::error::RuntimeError;
+use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, InterpreterStorage};
 use crate::{consts::*, storage::ContractsRawCode};
@@ -128,7 +129,7 @@ struct TransferCtx<'vm, S, Tx> {
     memory: &'vm mut [u8; MEM_SIZE],
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
-    receipts: &'vm mut Vec<Receipt>,
+    receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
     tx_offset: usize,
     fp: Reg<'vm, FP>,

@@ -69,7 +69,7 @@ struct Output {
     reg: RegInput,
     memory: CheckMem,
     frames: Vec<CallFrame>,
-    receipts: Vec<Receipt>,
+    receipts: ReceiptsCtx,
     context: Context,
     script: Option<Script>,
 }
@@ -117,7 +117,8 @@ impl Default for Output {
                 0,
                 700,
                 700,
-            )],
+            )]
+            .into(),
             context: Context::Call { block_height: 0 },
             script: None,
         }
@@ -171,7 +172,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         *script.receipts_root_mut() = crypto::ephemeral_merkle_root([receipt.to_bytes()].into_iter());
         Ok(Output{
             reg: RegInput{hp: 1000, sp: 904, ssp: 904, fp: 200, pc: 800, is: 800, bal: 20, cgas: 30, ggas: 181 },
-            receipts: vec![receipt],
+            receipts: vec![receipt].into(),
             frames: vec![frame.clone()],
             memory: CheckMem::Check(vec![(200, frame.into()), (2000, vec![2; 32]), (2032, Call::new(ContractId::from([1u8; 32]), 4, 5).into())]),
             script: Some(script),
@@ -193,7 +194,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         ..Default::default()
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 712, ssp: 712, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 0 },
-        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)],
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
         frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 0)]), 10, 0, 0)],
         ..Default::default()
     })); "transfers with enough balance external"
@@ -212,7 +213,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         ..Default::default()
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 712, ssp: 712, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 69 },
-        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)],
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)].into(),
         frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 19), (GGAS, 69)]), 10, 0, 0)],
         ..Default::default()
     })); "forwards gas"
@@ -231,7 +232,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         ..Default::default()
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 712, ssp: 712, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 0 },
-        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)],
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
         frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 0)]), 10, 0, 0)],
         ..Default::default()
     })); "transfers with enough balance internal"
@@ -327,7 +328,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
             .unwrap();
     }
     let mut panic_context = PanicContext::None;
-    let mut receipts = Vec::default();
+    let mut receipts = Default::default();
     let consensus = ConsensusParameters::default();
     let mut frames = Vec::default();
     let current_contract = context.is_internal().then_some(ContractId::default());

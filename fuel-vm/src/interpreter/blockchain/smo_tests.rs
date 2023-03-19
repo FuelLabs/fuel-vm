@@ -21,7 +21,7 @@ struct Input {
 
 #[derive(Debug, PartialEq, Eq)]
 struct Output {
-    receipts: Vec<Receipt>,
+    receipts: ReceiptsCtx,
 }
 
 impl Default for Input {
@@ -118,7 +118,7 @@ fn test_smo(
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
-    let mut receipts = Vec::default();
+    let mut receipts = Default::default();
     let mut tx = Create::default();
     let mut balances = RuntimeBalances::try_from_iter(balance).expect("Should be valid balance");
     let fp = 0;

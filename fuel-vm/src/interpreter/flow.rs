@@ -13,6 +13,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
+use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::profiler::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
@@ -364,7 +365,7 @@ struct PrepareCallCtx<'vm, S> {
     storage: &'vm mut S,
     input_contracts: Vec<fuel_types::ContractId>,
     panic_context: &'vm mut PanicContext,
-    receipts: &'vm mut Vec<Receipt>,
+    receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
     consensus: &'vm ConsensusParameters,
     frames: &'vm mut Vec<CallFrame>,

@@ -1,17 +1,15 @@
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::reg_key::*;
 use crate::constraints::CheckedMemConstLen;
 use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::context::Context;
-use crate::crypto;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Flags, Instruction, PanicReason, RegId};
 use fuel_tx::field::{Outputs, ReceiptsRoot};
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
-use fuel_types::bytes::SerializableVec;
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{AssetId, Bytes32, ContractId, Word};
 
@@ -93,7 +91,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 }
 
 pub(crate) struct AppendReceipt<'vm> {
-    pub receipts: &'vm mut Vec<Receipt>,
+    pub receipts: &'vm mut ReceiptsCtx,
     pub script: Option<&'vm mut Script>,
     pub tx_offset: usize,
     pub memory: &'vm mut [u8; MEM_SIZE],
@@ -114,8 +112,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
         // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
         // linear monadic model and should be discussed. Maybe the receipts tree should have
         // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = crypto::ephemeral_merkle_root(receipts.iter().map(|r| r.clone().to_bytes()));
-
+        let root = receipts.root();
         *script.receipts_root_mut() = root;
 
         // Transaction memory space length is already checked on initialization so its

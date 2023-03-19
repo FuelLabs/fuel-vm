@@ -29,7 +29,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
     head: Option<Box<Subtree<Node>>>,
@@ -180,6 +180,11 @@ where
 
         let root = *root_node.hash();
         Ok((root, proof_set))
+    }
+
+    pub fn reset(&mut self) {
+        self.leaves_count = 0;
+        self.head = None;
     }
 
     //
@@ -879,5 +884,40 @@ mod test {
             assert_eq!(set[1], node_9);
             assert_eq!(set[2], node_3);
         }
+    }
+
+    #[test]
+    fn reset_reverts_tree_to_empty_state() {
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
+
+        let data = &TEST_DATA[0..4]; // 4 leaves
+        for datum in data.iter() {
+            let _ = tree.push(datum);
+        }
+
+        tree.reset();
+
+        let root = tree.root();
+        let expected_root = *MerkleTree::<(), ()>::empty_root();
+        assert_eq!(root, expected_root);
+
+        let data = &TEST_DATA[0..4]; // 4 leaves
+        for datum in data.iter() {
+            let _ = tree.push(datum);
+        }
+
+        let leaf_0 = leaf_sum(data[0]);
+        let leaf_1 = leaf_sum(data[1]);
+        let leaf_2 = leaf_sum(data[2]);
+        let leaf_3 = leaf_sum(data[3]);
+
+        let node_1 = node_sum(&leaf_0, &leaf_1);
+        let node_5 = node_sum(&leaf_2, &leaf_3);
+        let node_3 = node_sum(&node_1, &node_5);
+
+        let root = tree.root();
+        let expected_root = node_3;
+        assert_eq!(root, expected_root);
     }
 }

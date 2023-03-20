@@ -349,7 +349,7 @@ impl Imm06 {
 
     /// Construct an immediate value.
     ///
-    /// Returns `None` if the value is outside the 12-bit value range.
+    /// Returns `None` if the value is outside the 6-bit value range.
     pub fn new_checked(u: u8) -> Option<Self> {
         let imm = Self::new(u);
         (imm.0 == u).then_some(imm)

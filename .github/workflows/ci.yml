@@ -73,6 +73,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
           components: "clippy, rustfmt"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: '${{ matrix.command }} ${{ matrix.args }}'
+          cache-on-failure: "true"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
 
   cargo-toml-fmt-check:

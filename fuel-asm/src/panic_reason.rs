@@ -75,8 +75,6 @@ pub enum PanicReason {
     ContractIdAlreadyDeployed = 0x20,
     /// The loaded contract mismatch expectations.
     ContractMismatch = 0x21,
-    /// No more nested calls are allowed.
-    NestedCallLimitReached = 0x22,
     /// The byte can't be mapped to any known `PanicReason`.
     UnknownPanicReason = 0x23,
 }
@@ -139,7 +137,6 @@ impl From<u8> for PanicReason {
             0x1f => IllegalJump,
             0x20 => ContractIdAlreadyDeployed,
             0x21 => ContractMismatch,
-            0x22 => NestedCallLimitReached,
             _ => UnknownPanicReason,
         }
     }
@@ -166,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        const LAST_PANIC_REASON: u8 = 0x23;
+        const LAST_PANIC_REASON: u8 = 0x22;
         for i in 0..LAST_PANIC_REASON {
             let reason = PanicReason::from(i);
             let i2 = reason as u8;

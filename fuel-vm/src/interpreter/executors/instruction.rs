@@ -552,10 +552,6 @@ where
             Instruction::CALL(call) => {
                 let (a, b, c, d) = call.unpack();
 
-                if self.frames.len() >= VM_MAX_NESTED_CALLS {
-                    return Err(PanicReason::NestedCallLimitReached.into());
-                }
-
                 // Enter call context
                 self.prepare_call(a, b, c, d)?;
             }

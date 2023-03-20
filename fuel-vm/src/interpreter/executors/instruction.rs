@@ -1,6 +1,6 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::flow::JumpMode;
+use crate::interpreter::flow::{JumpArgs, JumpMode};
 use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
@@ -304,67 +304,107 @@ where
             Instruction::JI(ji) => {
                 self.gas_charge(self.gas_costs.ji)?;
                 let imm = ji.unpack();
-                self.jump(true, JumpMode::Absolute, imm.into(), 0)?;
+                self.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
             }
 
             Instruction::JNEI(jnei) => {
                 self.gas_charge(self.gas_costs.jnei)?;
                 let (a, b, imm) = jnei.unpack();
-                self.jump(r!(a) != r!(b), JumpMode::Absolute, imm.into(), 0)?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(imm.into()),
+                )?;
             }
 
             Instruction::JNZI(jnzi) => {
                 self.gas_charge(self.gas_costs.jnzi)?;
                 let (a, imm) = jnzi.unpack();
-                self.jump(r!(a) != 0, JumpMode::Absolute, imm.into(), 0)?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != 0)
+                        .to_address(imm.into()),
+                )?;
             }
 
             Instruction::JMP(jmp) => {
                 self.gas_charge(self.gas_costs.jmp)?;
                 let a = jmp.unpack();
-                self.jump(true, JumpMode::Absolute, r!(a), 0)?;
+                self.jump(JumpArgs::new(JumpMode::Absolute).to_address(r!(a)))?;
             }
 
             Instruction::JNE(jne) => {
                 self.gas_charge(self.gas_costs.jne)?;
                 let (a, b, c) = jne.unpack();
-                self.jump(r!(a) != r!(b), JumpMode::Absolute, r!(c), 0)?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c)),
+                )?;
             }
 
             Instruction::JMPF(jmpf) => {
                 self.gas_charge(self.gas_costs.jmpf)?;
                 let (a, offset) = jmpf.unpack();
-                self.jump(true, JumpMode::RelativeForwards, r!(a), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .to_address(r!(a))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::JMPB(jmpb) => {
                 self.gas_charge(self.gas_costs.jmpb)?;
                 let (a, offset) = jmpb.unpack();
-                self.jump(true, JumpMode::RelativeBackwards, r!(a), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .to_address(r!(a))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::JNZF(jnzf) => {
                 self.gas_charge(self.gas_costs.jnzf)?;
                 let (a, b, offset) = jnzf.unpack();
-                self.jump(r!(a) != 0, JumpMode::RelativeForwards, r!(b), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .with_condition(r!(a) != 0)
+                        .to_address(r!(b))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::JNZB(jnzb) => {
                 self.gas_charge(self.gas_costs.jnzb)?;
                 let (a, b, offset) = jnzb.unpack();
-                self.jump(r!(a) != 0, JumpMode::RelativeBackwards, r!(b), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .with_condition(r!(a) != 0)
+                        .to_address(r!(b))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::JNEF(jnef) => {
                 self.gas_charge(self.gas_costs.jnef)?;
                 let (a, b, c, offset) = jnef.unpack();
-                self.jump(r!(a) != r!(b), JumpMode::RelativeForwards, r!(c), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::JNEB(jneb) => {
                 self.gas_charge(self.gas_costs.jneb)?;
                 let (a, b, c, offset) = jneb.unpack();
-                self.jump(r!(a) != r!(b), JumpMode::RelativeBackwards, r!(c), offset.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::RET(ret) => {

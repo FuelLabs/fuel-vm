@@ -417,8 +417,9 @@ fn revert_from_call_immediately_ends_execution() {
     assert_eq!(revert_receipts.len(), 1);
 }
 
+/// Makes sure that infinte recursion with CALL instruction doesn't crash
 #[test]
-fn nested_call_limit() {
+fn repeated_nested_calls() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let mut client = MemoryClient::default();
@@ -496,7 +497,7 @@ fn nested_call_limit() {
     if let Receipt::Panic { reason: pr, .. } = receipts.pop().expect("Missing panic reason receipt") {
         assert_eq!(
             *pr.reason(),
-            PanicReason::NestedCallLimitReached,
+            PanicReason::OutOfGas,
             "Panic reason differs for the expected reason"
         );
     } else {

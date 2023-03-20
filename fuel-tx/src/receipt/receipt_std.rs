@@ -244,7 +244,6 @@ impl io::Read for Receipt {
             }
 
             Self::MessageOut {
-                message_id,
                 sender,
                 recipient,
                 amount,
@@ -262,7 +261,6 @@ impl io::Read for Receipt {
 
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::MessageOut as u8);
 
-                bytes::store_at(buf, S::layout(S::LAYOUT.message_id), message_id);
                 bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
                 bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
@@ -494,7 +492,6 @@ impl io::Write for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                let message_id = bytes::restore_at(buf, S::layout(S::LAYOUT.message_id));
                 let sender = bytes::restore_at(buf, S::layout(S::LAYOUT.sender));
                 let recipient = bytes::restore_at(buf, S::layout(S::LAYOUT.recipient));
                 let amount = bytes::restore_word_at(buf, S::layout(S::LAYOUT.amount));
@@ -504,13 +501,12 @@ impl io::Write for Receipt {
 
                 let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
 
-                let message_id = message_id.into();
                 let sender = sender.into();
                 let recipient = recipient.into();
                 let nonce = nonce.into();
                 let digest = digest.into();
 
-                *self = Self::message_out_with_len(message_id, sender, recipient, amount, nonce, len, digest, data);
+                *self = Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data);
             }
         }
 

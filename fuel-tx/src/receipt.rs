@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Nonce, Word};
 
 #[cfg(feature = "std")]
 mod receipt_std;
@@ -19,6 +19,7 @@ mod sizes;
 
 use receipt_repr::ReceiptRepr;
 
+use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Debug, Clone, Derivative)]
@@ -116,11 +117,10 @@ pub enum Receipt {
     },
 
     MessageOut {
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         len: Word,
         digest: Bytes32,
         data: Vec<u8>,
@@ -300,38 +300,34 @@ impl Receipt {
         data: Vec<u8>,
     ) -> Self {
         let nonce = Output::message_nonce(txid, idx);
-        let message_id = Output::message_id(&sender, &recipient, &nonce, amount, &data);
         let digest = Output::message_digest(&data);
 
-        Self::message_out(message_id, sender, recipient, amount, nonce, digest, data)
+        Self::message_out(sender, recipient, amount, nonce, digest, data)
     }
 
     pub fn message_out(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         digest: Bytes32,
         data: Vec<u8>,
     ) -> Self {
         let len = bytes::padded_len(&data) as Word;
 
-        Self::message_out_with_len(message_id, sender, recipient, amount, nonce, len, digest, data)
+        Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data)
     }
 
     pub const fn message_out_with_len(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         len: Word,
         digest: Bytes32,
         data: Vec<u8>,
     ) -> Self {
         Self::MessageOut {
-            message_id,
             sender,
             recipient,
             amount,
@@ -549,9 +545,16 @@ impl Receipt {
         }
     }
 
-    pub const fn message_id(&self) -> Option<&MessageId> {
+    pub fn message_id(&self) -> Option<MessageId> {
         match self {
-            Self::MessageOut { message_id, .. } => Some(message_id),
+            Self::MessageOut {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                data,
+                ..
+            } => Some(compute_message_id(sender, recipient, nonce, *amount, data.as_slice())),
             _ => None,
         }
     }
@@ -570,7 +573,7 @@ impl Receipt {
         }
     }
 
-    pub const fn nonce(&self) -> Option<&Bytes32> {
+    pub const fn nonce(&self) -> Option<&Nonce> {
         match self {
             Self::MessageOut { nonce, .. } => Some(nonce),
             _ => None,

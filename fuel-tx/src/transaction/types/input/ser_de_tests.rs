@@ -7,12 +7,11 @@ use fuel_types::MemLayout;
 #[test]
 fn test_input_serialization() {
     const DATA_SIZE: usize = 16;
-    let mut input = Input::message_predicate(
-        MessageId::from([1u8; 32]),
+    let mut input = Input::message_data_predicate(
         Address::from([2u8; 32]),
         Address::from([3u8; 32]),
         5,
-        6,
+        Nonce::from([6u8; 32]),
         vec![7u8; DATA_SIZE],
         vec![8u8; DATA_SIZE],
         vec![9u8; DATA_SIZE],
@@ -21,7 +20,6 @@ fn test_input_serialization() {
     assert_eq!(
         input.serialized_size(),
         WORD_SIZE
-            + S.message_id.size()
             + S.sender.size()
             + S.recipient.size()
             + S.amount.size()
@@ -43,9 +41,6 @@ fn test_input_serialization() {
     assert_eq!(bytes[r.clone()], 2u64.to_be_bytes());
     r.start = r.end;
     r.end += 32;
-    assert_eq!(bytes[r.clone()], [1u8; 32]);
-    r.start = r.end;
-    r.end += 32;
     assert_eq!(bytes[r.clone()], [2u8; 32]);
     r.start = r.end;
     r.end += 32;
@@ -54,8 +49,8 @@ fn test_input_serialization() {
     r.end += 8;
     assert_eq!(bytes[r.clone()], 5u64.to_be_bytes());
     r.start = r.end;
-    r.end += 8;
-    assert_eq!(bytes[r.clone()], 6u64.to_be_bytes());
+    r.end += 32;
+    assert_eq!(bytes[r.clone()], [6u8; 32]);
     r.start = r.end;
     r.end += 8;
     assert_eq!(bytes[r.clone()], 0u64.to_be_bytes());

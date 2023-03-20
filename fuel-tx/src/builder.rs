@@ -6,7 +6,7 @@ use crate::{Cacheable, Input, Mint, Output, StorageSlot, Transaction, TxPointer,
 use crate::Signable;
 
 use fuel_crypto::SecretKey;
-use fuel_types::{Salt, Word};
+use fuel_types::{Nonce, Salt, Word};
 
 use alloc::vec::Vec;
 
@@ -226,7 +226,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         &mut self,
         secret: SecretKey,
         sender: fuel_types::Address,
-        nonce: Word,
+        nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
     ) -> &mut Self {

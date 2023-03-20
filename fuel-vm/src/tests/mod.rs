@@ -12,6 +12,7 @@ mod flow;
 mod gas_factor;
 mod jump_absolute;
 mod jump_relative;
+mod log;
 mod memory;
 mod metadata;
 mod outputs;

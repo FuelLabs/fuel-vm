@@ -6,7 +6,7 @@ use super::*;
 fn test_log() -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let context = Context::Script { block_height: 0 };
-    let mut receipts = vec![];
+    let mut receipts = Default::default();
     let mut script = Some(Script::default());
 
     let fp = 0;

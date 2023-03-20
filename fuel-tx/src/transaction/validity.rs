@@ -13,7 +13,7 @@ use itertools::Itertools;
 mod error;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
-use crate::input::message::{MessagePredicate, MessageSigned};
+use crate::input::message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -40,7 +40,12 @@ impl Input {
             Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
             })
-            | Self::MessageSigned(MessageSigned {
+            | Self::MessageCoinSigned(MessageCoinSigned {
+                witness_index,
+                recipient: owner,
+                ..
+            })
+            | Self::MessageDataSigned(MessageDataSigned {
                 witness_index,
                 recipient: owner,
                 ..
@@ -69,7 +74,12 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
-            | Self::MessagePredicate(MessagePredicate {
+            | Self::MessageCoinPredicate(MessageCoinPredicate {
+                recipient: owner,
+                predicate,
+                ..
+            })
+            | Self::MessageDataPredicate(MessageDataPredicate {
                 recipient: owner,
                 predicate,
                 ..
@@ -86,31 +96,34 @@ impl Input {
         witnesses: &[Witness],
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        // TODO: Add verification of the `message_id` with hash from `Message`'s fields.
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::MessagePredicate(MessagePredicate { predicate_data, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate_data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate_data, .. })
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
             Self::CoinSigned(CoinSigned { witness_index, .. })
-            | Self::MessageSigned(MessageSigned { witness_index, .. })
+            | Self::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+            | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })
@@ -129,14 +142,15 @@ impl Input {
                 Err(CheckError::InputContractAssociatedOutputContract { index })
             }
 
-            Self::MessageSigned(MessageSigned { data, .. }) | Self::MessagePredicate(MessagePredicate { data, .. })
-                if data.len() > parameters.max_message_data_length as usize =>
+            Self::MessageDataSigned(MessageDataSigned { data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
+                if data.is_empty() || data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }
 
-            // TODO If h is the block height the UTXO being spent was created, transaction is
-            // invalid if `blockheight() < h + maturity`.
+            // TODO: If h is the block height the UTXO being spent was created, transaction is
+            //  invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
         }
     }
@@ -270,7 +284,7 @@ where
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
-    if let Some(message_id) = next_duplicate(duplicated_message_id).copied() {
+    if let Some(message_id) = next_duplicate(duplicated_message_id) {
         return Err(CheckError::DuplicateMessageInputId { message_id });
     }
 

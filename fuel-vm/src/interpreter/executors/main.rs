@@ -1,7 +1,6 @@
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
-use crate::crypto;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
@@ -16,7 +15,6 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -136,7 +134,7 @@ where
             false,
             remaining_gas,
             &initial_balances,
-            &RuntimeBalances::from(initial_balances.clone()),
+            &RuntimeBalances::try_from(initial_balances.clone())?,
             params,
         )?;
         Ok(())
@@ -239,16 +237,8 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = if self.receipts().is_empty() {
-                EMPTY_RECEIPTS_MERKLE_ROOT.into()
-            } else {
-                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
-            };
-
-            // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {
-                // TODO: also set this on the serialized tx in memory to keep serialized form consistent
-                // https://github.com/FuelLabs/fuel-vm/issues/97
+                let receipts_root = self.receipts.root();
                 *script.receipts_root_mut() = receipts_root;
             }
 
@@ -331,7 +321,7 @@ where
         interpreter
             .transact(tx)
             .map(ProgramState::from)
-            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts))
+            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts.into()))
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided

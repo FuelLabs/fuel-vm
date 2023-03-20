@@ -26,7 +26,7 @@ fn test_return() {
     expected[RegId::PC] += 4;
     let mut context = Context::Call { block_height: 0 };
 
-    let mut receipts = Vec::default();
+    let mut receipts = Default::default();
     let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(&mut frames, &mut registers, &mut receipts, &mut memory, &mut context)
         .return_from_context(Receipt::ret(Default::default(), 0, 0, 0))
@@ -41,7 +41,7 @@ fn test_return() {
     expected[RegId::PC] += 4;
     assert_eq!(registers, expected);
     assert_eq!(
-        *receipts.last().unwrap(),
+        *receipts.as_ref().last().unwrap(),
         Receipt::ret(ContractId::default(), 1, expected[RegId::PC] - 4, expected[RegId::IS])
     );
 
@@ -68,7 +68,7 @@ fn test_return() {
     );
 
     assert_eq!(
-        *receipts.last().unwrap(),
+        *receipts.as_ref().last().unwrap(),
         Receipt::return_data_with_len(
             ContractId::default(),
             20,
@@ -84,7 +84,7 @@ fn test_return() {
 fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
-    receipts: &'a mut Vec<Receipt>,
+    receipts: &'a mut ReceiptsCtx,
     memory: &'a mut [u8; MEM_SIZE],
     context: &'a mut Context,
 ) -> RetCtx<'a> {
@@ -104,7 +104,7 @@ fn input<'a>(
 
 #[test]
 fn test_revert() {
-    let mut receipts = Vec::default();
+    let mut receipts = Default::default();
     let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let append = AppendReceipt {
         receipts: &mut receipts,
@@ -116,7 +116,7 @@ fn test_revert() {
     let is = 20;
     revert(append, None, Reg::new(&pc), Reg::new(&is), 99);
     assert_eq!(
-        *receipts.last().unwrap(),
+        *receipts.as_ref().last().unwrap(),
         Receipt::revert(ContractId::default(), 99, pc, is)
     );
 }

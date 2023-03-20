@@ -1,5 +1,6 @@
 use super::{
     internal::{append_receipt, inc_pc, internal_contract_or_default, AppendReceipt},
+    receipts::ReceiptsCtx,
     ExecutableTransaction, Interpreter,
 };
 use crate::{constraints::reg_key::*, consts::*};
@@ -52,7 +53,7 @@ struct LogInput<'vm> {
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     context: &'vm Context,
-    receipts: &'vm mut Vec<Receipt>,
+    receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,

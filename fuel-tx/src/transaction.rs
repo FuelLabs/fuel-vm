@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
+use fuel_types::{Address, AssetId, Bytes32, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -30,7 +30,7 @@ use crate::TxPointer;
 
 use crate::input::coin::{CoinPredicate, CoinSigned};
 use crate::input::contract::Contract;
-use crate::input::message::MessagePredicate;
+use crate::input::message::MessageDataPredicate;
 use input::*;
 
 #[cfg(feature = "std")]
@@ -40,7 +40,7 @@ pub use id::{Signable, UniqueIdentifier};
 pub type TxId = Bytes32;
 
 /// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Transaction {
     Script(Script),
@@ -214,7 +214,10 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .filter_map(|input| match input {
                 Input::CoinPredicate(CoinPredicate { asset_id, .. })
                 | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::MessagePredicate { .. } | Input::MessageSigned { .. } => Some(&AssetId::BASE),
+                Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_)
+                | Input::MessageDataSigned(_) => Some(&AssetId::BASE),
                 _ => None,
             })
             .collect_vec()
@@ -256,7 +259,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|i| match i {
                 Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
-                Input::MessagePredicate(MessagePredicate {
+                Input::MessageDataPredicate(MessageDataPredicate {
                     recipient, predicate, ..
                 }) => Some((recipient, predicate)),
                 _ => None,
@@ -304,14 +307,16 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         &mut self,
         sender: Address,
         recipient: Address,
-        nonce: Word,
+        nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
     ) {
-        let message_id = Input::compute_message_id(&sender, &recipient, nonce, amount, &data);
-
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::message_signed(message_id, sender, recipient, amount, nonce, witness_index, data);
+        let input = if data.is_empty() {
+            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
+        } else {
+            Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
+        };
 
         self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);

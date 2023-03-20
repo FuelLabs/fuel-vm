@@ -1,6 +1,6 @@
 use fuel_crypto::Hasher;
-use fuel_types::{bytes, MemLayout, MemLocType};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+use fuel_types::{bytes, MemLayout, MemLocType, Nonce};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
 
 use core::mem;
 
@@ -174,20 +174,8 @@ impl Output {
         matches!(self, Self::ContractCreated { .. })
     }
 
-    pub fn message_id(sender: &Address, recipient: &Address, nonce: &Bytes32, amount: Word, data: &[u8]) -> MessageId {
-        let message_id = *Hasher::default()
-            .chain(sender)
-            .chain(recipient)
-            .chain(nonce)
-            .chain(amount.to_be_bytes())
-            .chain(data)
-            .finalize();
-
-        message_id.into()
-    }
-
-    pub fn message_nonce(txid: &Bytes32, idx: Word) -> Bytes32 {
-        Hasher::default().chain(txid).chain([idx as u8]).finalize()
+    pub fn message_nonce(txid: &Bytes32, idx: Word) -> Nonce {
+        (*Hasher::default().chain(txid).chain([idx as u8]).finalize()).into()
     }
 
     pub fn message_digest(data: &[u8]) -> Bytes32 {

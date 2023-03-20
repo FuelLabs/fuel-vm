@@ -1,9 +1,8 @@
-use super::test_helpers;
 use fuel_asm::RegId;
 use fuel_asm::{op, Instruction};
 use fuel_vm::prelude::*;
 
-use test_helpers::set_full_word;
+use super::test_helpers::set_full_word;
 
 fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId, expected: Word) {
     let storage = MemoryStorage::default();

@@ -1,3 +1,5 @@
+mod test_helpers;
+
 mod alu;
 mod backtrace;
 mod blockchain;
@@ -8,6 +10,8 @@ mod crypto;
 mod encoding;
 mod flow;
 mod gas_factor;
+mod jump_absolute;
+mod jump_relative;
 mod log;
 mod memory;
 mod metadata;
@@ -16,5 +20,4 @@ mod predicate;
 mod profile_gas;
 mod serde_profile;
 mod spec;
-mod test_helpers;
 mod validation;

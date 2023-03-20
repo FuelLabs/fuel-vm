@@ -37,19 +37,9 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn jump(&mut self, j: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn jump(&mut self, args: JumpArgs) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
-        jump(is.as_ref(), pc, j)
-    }
-
-    pub(crate) fn jump_not_equal(&mut self, a: Word, b: Word, to: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
-        jump_not_equal(is.as_ref(), pc, a, b, to)
-    }
-
-    pub(crate) fn jump_not_zero(&mut self, a: Word, to: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, is, zero, .. }, _) = split_registers(&mut self.registers);
-        jump_not_zero(is.as_ref(), pc, zero.as_ref(), a, to)
+        args.jump(is.as_ref(), pc)
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -201,36 +191,81 @@ pub(crate) fn revert(append: AppendReceipt, current_contract: Option<ContractId>
     append_receipt(append, receipt);
 }
 
-pub(crate) fn jump_not_equal(is: Reg<IS>, pc: RegMut<PC>, a: Word, b: Word, j: Word) -> Result<(), RuntimeError> {
-    if a != b {
-        jump(is, pc, j)
-    } else {
-        inc_pc(pc)
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum JumpMode {
+    /// `$pc = $is + address`
+    Absolute,
+    /// `$pc = $pc + address`
+    RelativeForwards,
+    /// `$pc = $pc - address`
+    RelativeBackwards,
 }
 
-pub(crate) fn jump_not_zero(
-    is: Reg<IS>,
-    pc: RegMut<PC>,
-    zero: Reg<ZERO>,
-    a: Word,
-    j: Word,
-) -> Result<(), RuntimeError> {
-    if a != *zero {
-        jump(is, pc, j)
-    } else {
-        inc_pc(pc)
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct JumpArgs {
+    /// Condition. The jump is performed only if this is true.
+    condition: bool,
+    /// The kind of jump performed
+    mode: JumpMode,
+    /// Dynamic part of the jump target, i.e. register value
+    dynamic: Word,
+    /// Fixed part of the jump target, i.e. immediate value
+    fixed: Word,
 }
 
-pub(crate) fn jump(is: Reg<IS>, mut pc: RegMut<PC>, j: Word) -> Result<(), RuntimeError> {
-    let j = is.saturating_add(j.saturating_mul(Instruction::SIZE as Word));
+impl JumpArgs {
+    pub(crate) fn new(mode: JumpMode) -> Self {
+        Self {
+            condition: true,
+            mode,
+            dynamic: 0,
+            fixed: 0,
+        }
+    }
 
-    if j > VM_MAX_RAM - 1 {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *pc = j;
+    pub(crate) fn with_condition(mut self, condition: bool) -> Self {
+        self.condition = condition;
+        self
+    }
 
+    pub(crate) fn to_address(mut self, addr: Word) -> Self {
+        self.dynamic = addr;
+        self
+    }
+
+    pub(crate) fn plus_fixed(mut self, addr: Word) -> Self {
+        self.fixed = addr;
+        self
+    }
+
+    pub(crate) fn jump(&self, is: Reg<IS>, mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
+        if !self.condition {
+            return inc_pc(pc);
+        }
+
+        let offset_instructions = match self.mode {
+            JumpMode::Absolute => self.dynamic.saturating_add(self.fixed),
+            // Here +1 is added since jumping to the jump instruction itself doesn't make sense
+            JumpMode::RelativeForwards | JumpMode::RelativeBackwards => {
+                self.dynamic.saturating_add(self.fixed).saturating_add(1)
+            }
+        };
+
+        let offset_bytes = offset_instructions.saturating_mul(Instruction::SIZE as Word);
+
+        let target_addr = match self.mode {
+            JumpMode::Absolute => is.saturating_add(offset_bytes),
+            JumpMode::RelativeForwards => pc.saturating_add(offset_bytes),
+            JumpMode::RelativeBackwards => pc
+                .checked_sub(offset_bytes)
+                .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
+        };
+
+        if target_addr >= VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        *pc = target_addr;
         Ok(())
     }
 }

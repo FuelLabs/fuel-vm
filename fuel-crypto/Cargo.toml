@@ -27,17 +27,16 @@ bincode = { workspace = true }
 criterion = "0.3"
 fuel-crypto = { path = ".", default-features = false, features = ["random"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }
-rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 sha2 = "0.10"
 
 [features]
 default = ["fuel-types/default", "std"]
-alloc = ["rand/alloc", "secp256k1/alloc"]
+alloc = ["rand?/alloc", "secp256k1/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
 # `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise
 # the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
-std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand/std_rng", "secp256k1/rand-std", "serde?/default"]
+std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "secp256k1/rand-std", "serde?/default"]
 wasm = ["secp256k1/rand"]
 
 [[bench]]

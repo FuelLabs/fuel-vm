@@ -235,7 +235,7 @@ pub(crate) fn jump(
             .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
     };
 
-    if addr > VM_MAX_RAM - 1 {
+    if addr >= VM_MAX_RAM {
         return Err(PanicReason::MemoryOverflow.into());
     }
 

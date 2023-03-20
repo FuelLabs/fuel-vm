@@ -689,7 +689,7 @@ where
 // Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
 
 fn check_imm06(u: u8) -> Imm06 {
-    Imm06::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
+    Imm06::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 6-bit immediate"))
 }
 
 fn check_imm12(u: u16) -> Imm12 {

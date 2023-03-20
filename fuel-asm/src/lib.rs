@@ -342,7 +342,7 @@ impl Imm06 {
 
     /// Construct an immediate value.
     ///
-    /// The given value will be masked to 12 bits.
+    /// The given value will be masked to 6 bits.
     pub const fn new(u: u8) -> Self {
         Self(u & Self::MAX.0)
     }

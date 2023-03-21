@@ -41,7 +41,7 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        msg_data_ptr: 432,
+        msg_data_ptr: 0,
         msg_data_len: 1,
         amount_coins_to_send: 0,
         ..Default::default()
@@ -51,7 +51,7 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 0,
-        msg_data_ptr: 32,
+        msg_data_ptr: 0,
         msg_data_len: 0,
         amount_coins_to_send: 0,
         ..Default::default()
@@ -60,8 +60,8 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: Word::MAX,
-        msg_data_ptr: 32,
+        recipient_mem_address: 0,
+        msg_data_ptr: Word::MAX,
         msg_data_len: 1,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
@@ -71,19 +71,19 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: VM_MAX_RAM - 64,
-        msg_data_ptr: 32,
+        recipient_mem_address: 0,
+        msg_data_ptr: VM_MAX_RAM - 64,
         msg_data_len: 100,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
     ; "address + call abi length overflows memory"
 )]
 #[test_case(
     Input {
-        recipient_mem_address: 400,
-        msg_data_ptr: 32,
+        recipient_mem_address: 0,
+        msg_data_ptr: 0,
         msg_data_len: 101,
         amount_coins_to_send: 0,
         max_message_data_length: 100,
@@ -94,7 +94,7 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        msg_data_ptr: 432,
+        msg_data_ptr: 0,
         msg_data_len: 10,
         amount_coins_to_send: 30,
         balance: [(AssetId::zeroed(), 29)].into_iter().collect(),

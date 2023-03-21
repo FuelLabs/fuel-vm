@@ -692,14 +692,16 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         Tx: ExecutableTransaction,
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
-        let memory_constraint = recipient_address.end() as Word
-            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
-                .min(MEM_MAX_ACCESS_SIZE));
-        let msg_data_range = CheckedMemRange::new_with_constraint(
-            self.msg_data_ptr as Word,
-            self.msg_data_len as usize,
-            memory_constraint,
-        )?;
+
+        if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
+            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        }
+
+        if self.msg_data_len > self.max_message_data_length {
+            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        }
+
+        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 

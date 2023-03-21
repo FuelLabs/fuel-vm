@@ -1319,13 +1319,21 @@ fn smo_instruction_works() {
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
 
+        // Two bytes of random data to send as the message
+        let msg_data = [rng.gen::<u8>(), rng.gen::<u8>()];
+
         #[rustfmt::skip]
         let script = vec![
+            op::movi(0x10, 2),                          // data buffer allocation size
+            op::aloc(0x10),                             // allocate
+            op::movi(0x10, msg_data[0].into()),         // first message byte
+            op::sb(RegId::HP, 0x10, 0),                 // store above to the message buffer
+            op::movi(0x10, msg_data[1].into()),         // second message byte
+            op::sb(RegId::HP, 0x10, 1),                 // store above to the message buffer
             op::movi(0x10, 0),                          // set the txid as recipient
-            op::movi(0x11, 32),                         // data ptr just after the recipient
-            op::movi(0x12, 1),                          // one byte of data
+            op::movi(0x12, 2),                          // one byte of data
             op::movi(0x13, message_output_amount as Immediate24),      // expected output amount
-            op::smo(0x10,0x11,0x12,0x13),
+            op::smo(0x10,RegId::HP,0x12,0x13),
             op::ret(RegId::ONE)
         ];
 
@@ -1363,15 +1371,20 @@ fn smo_instruction_works() {
         });
 
         let state = client.state_transition().expect("tx was executed");
-        // TODO: Add check for the `data` field too, but it requires fixing of the `smo` behaviour.
         let message_receipt = state.receipts().iter().find_map(|o| match o {
-            Receipt::MessageOut { recipient, amount, .. } => Some((*recipient, *amount)),
+            Receipt::MessageOut {
+                recipient,
+                amount,
+                data,
+                ..
+            } => Some((*recipient, *amount, data.clone())),
             _ => None,
         });
         assert_eq!(message_receipt.is_some(), success);
-        if let Some((recipient, transferred)) = message_receipt {
+        if let Some((recipient, transferred, data)) = message_receipt {
             assert_eq!(txid.as_ref(), recipient.as_ref());
             assert_eq!(message_output_amount, transferred);
+            assert_eq!(data, msg_data);
         }
         // get gas used from script result
         let gas_used = if let Receipt::ScriptResult { gas_used, .. } = state.receipts().last().unwrap() {

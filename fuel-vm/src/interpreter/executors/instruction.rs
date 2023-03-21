@@ -432,7 +432,7 @@ where
 
             Instruction::SMO(smo) => {
                 let (a, b, c, d) = smo.unpack();
-                self.dependent_gas_charge(self.gas_costs.smo, r!(b))?;
+                self.dependent_gas_charge(self.gas_costs.smo, r!(c))?;
                 self.message_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 

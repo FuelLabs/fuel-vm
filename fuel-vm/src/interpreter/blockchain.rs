@@ -245,8 +245,8 @@ where
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
-            call_abi_len: b,
-            message_output_idx: c,
+            msg_data_ptr: b,
+            msg_data_len: c,
             amount_coins_to_send: d,
         };
         input.message_output()
@@ -685,10 +685,9 @@ struct MessageOutputCtx<'vm, Tx> {
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    #[allow(dead_code)]
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
 }
@@ -702,9 +701,9 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         let memory_constraint = recipient_address.end() as Word
             ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
                 .min(MEM_MAX_ACCESS_SIZE));
-        let call_abi = CheckedMemRange::new_with_constraint(
-            recipient_address.end() as Word,
-            self.call_abi_len as usize,
+        let msg_data_range = CheckedMemRange::new_with_constraint(
+            self.msg_data_ptr as Word,
+            self.msg_data_len as usize,
             memory_constraint,
         )?;
 
@@ -716,7 +715,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
-        let call_abi = call_abi.read(self.memory).to_vec();
+        let msg_data = msg_data_range.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
@@ -725,7 +724,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
             *sender,
             recipient,
             self.amount_coins_to_send,
-            call_abi,
+            msg_data,
         );
 
         append_receipt(

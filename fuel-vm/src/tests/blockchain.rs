@@ -1322,8 +1322,8 @@ fn smo_instruction_works() {
         #[rustfmt::skip]
         let script = vec![
             op::movi(0x10, 0),                          // set the txid as recipient
-            op::movi(0x11, 1),                          // send the whole data buffer
-            op::movi(0x12, 0),                          // tx output idx
+            op::movi(0x11, 32),                         // data ptr just after the recipient
+            op::movi(0x12, 1),                          // one byte of data
             op::movi(0x13, message_output_amount as Immediate24),      // expected output amount
             op::smo(0x10,0x11,0x12,0x13),
             op::ret(RegId::ONE)

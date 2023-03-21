@@ -1,4 +1,4 @@
-use fuel_merkle::binary::verify::verify;
+use fuel_merkle::binary::verify;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 

@@ -75,6 +75,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
           components: "clippy, rustfmt"
+      - name: Install Cargo Make
+        uses: davidB/rust-cargo-make@v1
+        with:
+          version: "0.36.4"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
 
   cargo-toml-fmt-check:

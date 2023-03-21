@@ -1331,7 +1331,7 @@ fn smo_instruction_works() {
             op::movi(0x10, msg_data[1].into()),         // second message byte
             op::sb(RegId::HP, 0x10, 1),                 // store above to the message buffer
             op::movi(0x10, 0),                          // set the txid as recipient
-            op::movi(0x12, 2),                          // one byte of data
+            op::movi(0x12, 2),                          // two bytess of data
             op::movi(0x13, message_output_amount as Immediate24),      // expected output amount
             op::smo(0x10,RegId::HP,0x12,0x13),
             op::ret(RegId::ONE)

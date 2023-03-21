@@ -667,12 +667,6 @@ pub(crate) fn timestamp(
 
     inc_pc(pc)
 }
-
-// TODO: Register b is the address of the begin of the data and register c
-//  is the end of the data(Based on the specification).
-//  The user doesn't specify the output index for message.
-//  We need to use the index of the receipt to calculate the `Nonce`.
-//  Add unit tests for a new usage.
 struct MessageOutputCtx<'vm, Tx> {
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],

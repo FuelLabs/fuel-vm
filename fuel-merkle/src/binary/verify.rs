@@ -1,6 +1,8 @@
-use crate::binary::{node_sum, Data};
+use crate::binary::node_sum;
+use crate::common::Bytes32;
+use crate::common::ProofSet;
 
-pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: u64) -> bool {
+pub fn verify(root: &Bytes32, proof_set: &ProofSet, proof_index: u64, num_leaves: u64) -> bool {
     if proof_index >= num_leaves {
         return false;
     }
@@ -60,23 +62,39 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
 mod test {
     use super::verify;
     use crate::binary::MerkleTree;
-    use crate::TEST_DATA;
+    use crate::binary::Primitive;
+    use crate::common::StorageMap;
+    use fuel_merkle_test_helpers::TEST_DATA;
+    use fuel_storage::Mappable;
+
+    #[derive(Debug)]
+    struct TestTable;
+
+    impl Mappable for TestTable {
+        type Key = Self::OwnedKey;
+        type OwnedKey = u64;
+        type Value = Self::OwnedValue;
+        type OwnedValue = Primitive;
+    }
 
     #[test]
     fn verify_returns_true_when_the_given_proof_set_matches_the_given_merkle_root() {
-        let mut mt = MerkleTree::new();
-        mt.set_proof_index(2);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
-        let data = &TEST_DATA[0..5]; // 5 leaves
+        const PROOF_INDEX: u64 = 2;
+        const LEAVES_COUNT: usize = 5;
+
+        let data = &TEST_DATA[0..LEAVES_COUNT]; // 5 leaves
         for datum in data.iter() {
-            mt.push(datum);
+            tree.push(datum).unwrap();
         }
 
-        let proof = mt.prove();
+        let proof = tree.prove(PROOF_INDEX).unwrap();
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, &set, 2, 5);
+        let verification = verify(&root, &set, PROOF_INDEX, LEAVES_COUNT as u64);
         assert!(verification);
     }
 
@@ -87,59 +105,61 @@ mod test {
         // trees, the comparison should fail.
 
         // Generate the first Merkle tree and get its root
-        let mut mt = MerkleTree::new();
-        mt.set_proof_index(2);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
-        let data = &TEST_DATA[0..4];
+        const PROOF_INDEX: u64 = 2;
+        const LEAVES_COUNT: usize = 5;
+
+        let data = &TEST_DATA[0..LEAVES_COUNT - 1];
         for datum in data.iter() {
-            mt.push(datum)
+            tree.push(datum).unwrap();
         }
-        let proof = mt.prove();
+        let proof = tree.prove(PROOF_INDEX).unwrap();
         let root = proof.0;
 
         // Generate the second Merkle tree and get its proof set
-        let mut mt = MerkleTree::new();
-        mt.set_proof_index(2);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
 
         let data = &TEST_DATA[5..10];
         for datum in data.iter() {
-            mt.push(datum);
+            tree.push(datum).unwrap();
         }
-        let proof = mt.prove();
+        let proof = tree.prove(PROOF_INDEX).unwrap();
         let set = proof.1;
 
-        let verification = verify(&root, &set, 2, 5);
+        let verification = verify(&root, &set, PROOF_INDEX, LEAVES_COUNT as u64);
         assert!(!verification);
     }
 
     #[test]
     fn verify_returns_false_when_the_proof_set_is_empty() {
-        let mut mt = MerkleTree::new();
-        mt.set_proof_index(0);
+        const PROOF_INDEX: u64 = 0;
+        const LEAVES_COUNT: u64 = 0;
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
-
-        let verification = verify(&root, &set, 0, 0);
+        let verification = verify(&Default::default(), &vec![], PROOF_INDEX, LEAVES_COUNT);
         assert!(!verification);
     }
 
     #[test]
     fn verify_returns_false_when_the_proof_index_is_invalid() {
-        let mut mt = MerkleTree::new();
-        mt.set_proof_index(0);
+        let mut storage_map = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage_map);
+
+        const PROOF_INDEX: u64 = 0;
+        const LEAVES_COUNT: u64 = 5;
 
         let data = &TEST_DATA[0..4];
         for datum in data.iter() {
-            mt.push(datum);
+            tree.push(datum).unwrap();
         }
 
-        let proof = mt.prove();
+        let proof = tree.prove(PROOF_INDEX).unwrap();
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, &set, 15, 5);
+        let verification = verify(&root, &set, PROOF_INDEX + 15, LEAVES_COUNT);
         assert!(!verification);
     }
 }

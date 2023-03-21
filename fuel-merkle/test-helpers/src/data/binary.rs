@@ -1,12 +1,10 @@
+use fuel_merkle::binary::verify::verify;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 use fuel_merkle::common::Bytes32;
 
-use crate::{
-    binary::verify,
-    data::{EncodedValue, TestError},
-};
+use crate::data::{EncodedValue, TestError};
 
 #[derive(Serialize, Deserialize)]
 pub struct ProofTest {

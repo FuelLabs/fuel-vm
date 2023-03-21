@@ -698,7 +698,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         }
 
         if self.msg_data_len > self.max_message_data_length {
-            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
         let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;

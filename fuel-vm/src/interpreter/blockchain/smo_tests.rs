@@ -88,7 +88,7 @@ impl Default for Input {
         amount_coins_to_send: 0,
         max_message_data_length: 100,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
     ; "call abi length > max message data length"
 )]
 #[test_case(

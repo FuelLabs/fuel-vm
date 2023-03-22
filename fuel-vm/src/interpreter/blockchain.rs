@@ -245,8 +245,8 @@ where
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
-            call_abi_len: b,
-            message_output_idx: c,
+            msg_data_ptr: b,
+            msg_data_len: c,
             amount_coins_to_send: d,
         };
         input.message_output()
@@ -667,12 +667,6 @@ pub(crate) fn timestamp(
 
     inc_pc(pc)
 }
-
-// TODO: Register b is the address of the begin of the data and register c
-//  is the end of the data(Based on the specification).
-//  The user doesn't specify the output index for message.
-//  We need to use the index of the receipt to calculate the `Nonce`.
-//  Add unit tests for a new usage.
 struct MessageOutputCtx<'vm, Tx> {
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
@@ -685,10 +679,9 @@ struct MessageOutputCtx<'vm, Tx> {
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    #[allow(dead_code)]
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
 }
@@ -699,14 +692,16 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
         Tx: ExecutableTransaction,
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
-        let memory_constraint = recipient_address.end() as Word
-            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
-                .min(MEM_MAX_ACCESS_SIZE));
-        let call_abi = CheckedMemRange::new_with_constraint(
-            recipient_address.end() as Word,
-            self.call_abi_len as usize,
-            memory_constraint,
-        )?;
+
+        if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
+            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        }
+
+        if self.msg_data_len > self.max_message_data_length {
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
+        }
+
+        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 
@@ -716,7 +711,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
-        let call_abi = call_abi.read(self.memory).to_vec();
+        let msg_data = msg_data_range.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
@@ -725,7 +720,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
             *sender,
             recipient,
             self.amount_coins_to_send,
-            call_abi,
+            msg_data,
         );
 
         append_receipt(

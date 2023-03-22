@@ -9,9 +9,9 @@ struct Input {
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
     max_message_data_length: Word,
@@ -28,8 +28,8 @@ impl Default for Input {
     fn default() -> Self {
         Self {
             recipient_mem_address: Default::default(),
-            call_abi_len: Default::default(),
-            message_output_idx: Default::default(),
+            msg_data_ptr: Default::default(),
+            msg_data_len: Default::default(),
             amount_coins_to_send: Default::default(),
             memory: vec![(400, Address::from([1u8; 32]).to_vec())],
             max_message_data_length: 100,
@@ -41,8 +41,8 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        call_abi_len: 1,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 1,
         amount_coins_to_send: 0,
         ..Default::default()
     } => matches Ok(Output { .. })
@@ -51,8 +51,8 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 0,
-        call_abi_len: 0,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 0,
         amount_coins_to_send: 0,
         ..Default::default()
     } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
@@ -60,9 +60,9 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: Word::MAX,
-        call_abi_len: 1,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: Word::MAX,
+        msg_data_len: 1,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
@@ -71,31 +71,31 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: VM_MAX_RAM - 64,
-        call_abi_len: 100,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: VM_MAX_RAM - 64,
+        msg_data_len: 100,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
     ; "address + call abi length overflows memory"
 )]
 #[test_case(
     Input {
-        recipient_mem_address: 400,
-        call_abi_len: 101,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 101,
         amount_coins_to_send: 0,
         max_message_data_length: 100,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
     ; "call abi length > max message data length"
 )]
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 10,
         amount_coins_to_send: 30,
         balance: [(AssetId::zeroed(), 29)].into_iter().collect(),
         ..Default::default()
@@ -106,8 +106,8 @@ impl Default for Input {
 fn test_smo(
     Input {
         recipient_mem_address,
-        call_abi_len,
-        message_output_idx,
+        msg_data_len,
+        msg_data_ptr,
         amount_coins_to_send,
         memory: mem,
         max_message_data_length,
@@ -133,8 +133,8 @@ fn test_smo(
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         recipient_mem_address,
-        call_abi_len,
-        message_output_idx,
+        msg_data_len,
+        msg_data_ptr,
         amount_coins_to_send,
     };
     input.message_output().map(|_| Output { receipts })

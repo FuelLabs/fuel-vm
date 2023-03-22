@@ -4,7 +4,10 @@ use std::convert::TryInto;
 
 use fuel_merkle::common::Bytes32;
 
-use crate::data::{EncodedValue, TestError};
+use crate::{
+    binary::verify as verify_from_test_helper,
+    data::{EncodedValue, TestError},
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct ProofTest {
@@ -29,6 +32,9 @@ impl ProofTest {
             .collect::<Vec<Bytes32>>();
 
         let verification = verify(&root, &proof_set, self.proof_index, self.num_leaves);
+        let verification_from_test_helper =
+            verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
+        assert_eq!(verification, verification_from_test_helper);
 
         if verification == self.expected_verification {
             Ok(())

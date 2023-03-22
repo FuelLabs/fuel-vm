@@ -5,38 +5,8 @@ root:
   value: ce04537ec4b4b84cf02fa5c50c7810e2f6592e3b00de7423d7c3e7e7d8689a67
   encoding: hex
 data:
-- 108
-- 207
-- 59
-- 240
-- 24
-- 116
-- 38
-- 151
-- 13
-- 69
-- 174
-- 251
-- 46
-- 75
-- 134
-- 189
-- 161
-- 188
-- 23
-- 105
-- 214
-- 156
-- 63
-- 72
-- 163
-- 198
-- 71
-- 102
-- 102
-- 154
-- 191
-- 18
+  value: 6ccf3bf0187426970d45aefb2e4b86bda1bc1769d69c3f48a3c64766669abf12
+  encoding: hex
 proof_set:
 - value: ce04537ec4b4b84cf02fa5c50c7810e2f6592e3b00de7423d7c3e7e7d8689a67
   encoding: hex

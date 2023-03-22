@@ -4,6 +4,39 @@ description: Build a proof from a binary Merkle tree consisting of 1 leaf and ma
 root:
   value: f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4
   encoding: hex
+data:
+- 61
+- 220
+- 238
+- 224
+- 79
+- 49
+- 248
+- 186
+- 142
+- 210
+- 242
+- 25
+- 49
+- 87
+- 49
+- 5
+- 41
+- 168
+- 249
+- 186
+- 148
+- 39
+- 195
+- 232
+- 241
+- 114
+- 13
+- 58
+- 40
+- 238
+- 73
+- 237
 proof_set:
 - value: 8d216d9f1b01ce2f51e3be1243e0da2591679f57bf2d062b9dbaae361558bb21
   encoding: hex

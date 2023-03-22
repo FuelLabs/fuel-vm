@@ -1,8 +1,14 @@
-use crate::binary::node_sum;
+use crate::binary::{leaf_sum, node_sum};
 use crate::common::Bytes32;
 use crate::common::ProofSet;
 
-pub fn verify(root: &Bytes32, proof_set: &ProofSet, proof_index: u64, num_leaves: u64) -> bool {
+pub fn verify<T: AsRef<[u8]>>(
+    root: &Bytes32,
+    digest: T,
+    proof_set: &ProofSet,
+    proof_index: u64,
+    num_leaves: u64,
+) -> bool {
     if proof_index >= num_leaves {
         return false;
     }
@@ -14,6 +20,11 @@ pub fn verify(root: &Bytes32, proof_set: &ProofSet, proof_index: u64, num_leaves
     let mut height = 0usize;
     let mut sum = proof_set[height];
     height += 1;
+
+    let digest = leaf_sum(digest.as_ref());
+    if digest != sum {
+        return false;
+    }
 
     let mut stable_end = proof_index;
 
@@ -82,7 +93,7 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
-        const PROOF_INDEX: u64 = 2;
+        const PROOF_INDEX: usize = 2;
         const LEAVES_COUNT: usize = 5;
 
         let data = &TEST_DATA[0..LEAVES_COUNT]; // 5 leaves
@@ -90,11 +101,17 @@ mod test {
             tree.push(datum).unwrap();
         }
 
-        let proof = tree.prove(PROOF_INDEX).unwrap();
+        let proof = tree.prove(PROOF_INDEX as u64).unwrap();
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, &set, PROOF_INDEX, LEAVES_COUNT as u64);
+        let verification = verify(
+            &root,
+            TEST_DATA[PROOF_INDEX],
+            &set,
+            PROOF_INDEX as u64,
+            LEAVES_COUNT as u64,
+        );
         assert!(verification);
     }
 
@@ -108,14 +125,14 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
-        const PROOF_INDEX: u64 = 2;
+        const PROOF_INDEX: usize = 2;
         const LEAVES_COUNT: usize = 5;
 
         let data = &TEST_DATA[0..LEAVES_COUNT - 1];
         for datum in data.iter() {
             tree.push(datum).unwrap();
         }
-        let proof = tree.prove(PROOF_INDEX).unwrap();
+        let proof = tree.prove(PROOF_INDEX as u64).unwrap();
         let root = proof.0;
 
         // Generate the second Merkle tree and get its proof set
@@ -126,19 +143,31 @@ mod test {
         for datum in data.iter() {
             tree.push(datum).unwrap();
         }
-        let proof = tree.prove(PROOF_INDEX).unwrap();
+        let proof = tree.prove(PROOF_INDEX as u64).unwrap();
         let set = proof.1;
 
-        let verification = verify(&root, &set, PROOF_INDEX, LEAVES_COUNT as u64);
+        let verification = verify(
+            &root,
+            TEST_DATA[PROOF_INDEX],
+            &set,
+            PROOF_INDEX as u64,
+            LEAVES_COUNT as u64,
+        );
         assert!(!verification);
     }
 
     #[test]
     fn verify_returns_false_when_the_proof_set_is_empty() {
-        const PROOF_INDEX: u64 = 0;
-        const LEAVES_COUNT: u64 = 0;
+        const PROOF_INDEX: usize = 0;
+        const LEAVES_COUNT: usize = 0;
 
-        let verification = verify(&Default::default(), &vec![], PROOF_INDEX, LEAVES_COUNT);
+        let verification = verify(
+            &Default::default(),
+            TEST_DATA[PROOF_INDEX],
+            &vec![],
+            PROOF_INDEX as u64,
+            LEAVES_COUNT as u64,
+        );
         assert!(!verification);
     }
 
@@ -147,19 +176,25 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
-        const PROOF_INDEX: u64 = 0;
-        const LEAVES_COUNT: u64 = 5;
+        const PROOF_INDEX: usize = 0;
+        const LEAVES_COUNT: usize = 5;
 
-        let data = &TEST_DATA[0..4];
+        let data = &TEST_DATA[0..LEAVES_COUNT - 1];
         for datum in data.iter() {
             tree.push(datum).unwrap();
         }
 
-        let proof = tree.prove(PROOF_INDEX).unwrap();
+        let proof = tree.prove(PROOF_INDEX as u64).unwrap();
         let root = proof.0;
         let set = proof.1;
 
-        let verification = verify(&root, &set, PROOF_INDEX + 15, LEAVES_COUNT);
+        let verification = verify(
+            &root,
+            TEST_DATA[PROOF_INDEX],
+            &set,
+            PROOF_INDEX as u64 + 15,
+            LEAVES_COUNT as u64,
+        );
         assert!(!verification);
     }
 }

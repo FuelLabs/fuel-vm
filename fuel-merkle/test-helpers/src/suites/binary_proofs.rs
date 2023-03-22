@@ -48,6 +48,7 @@ fn generate_test(
         function_name,
         description,
         root: encoded_root,
+        data: sample_data[proof_index as usize],
         proof_set: encoded_proof_set,
         proof_index,
         num_leaves,

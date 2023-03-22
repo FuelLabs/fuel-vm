@@ -91,9 +91,9 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Performs check of signatures, if not yet done.
-    pub fn check_signatures(mut self) -> Result<Self, CheckError> {
+    pub fn check_signatures(mut self, parameters: &ConsensusParameters) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
-            self.transaction.check_signatures()?;
+            self.transaction.check_signatures(parameters)?;
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
@@ -157,7 +157,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         Checked<Self>: CheckPredicates,
     {
         self.into_checked_basic(block_height, params)?
-            .check_signatures()?
+            .check_signatures(params)?
             .check_predicates(params, gas_costs)
     }
 
@@ -772,7 +772,7 @@ mod tests {
             .into_checked_basic(block_height, &params)
             .unwrap()
             // Sets Checks::Signatures
-            .check_signatures()
+            .check_signatures(&params)
             .unwrap();
 
         assert!(checked.checks().contains(Checks::Basic | Checks::Signatures));
@@ -851,7 +851,7 @@ mod tests {
     fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
-        let owner = Input::predicate_owner(&predicate);
+        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)

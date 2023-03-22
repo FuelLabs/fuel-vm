@@ -108,7 +108,7 @@ fn coin_predicate() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::coin_predicate(
         rng.gen(),
@@ -124,7 +124,7 @@ fn coin_predicate() {
     .unwrap();
 
     let predicate = vec![];
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     let err = Input::coin_predicate(
         rng.gen(),
@@ -220,7 +220,7 @@ fn message_metadata() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::message_data_predicate(
         rng.gen(),
@@ -248,7 +248,7 @@ fn message_metadata() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_data_predicate(
@@ -327,7 +327,7 @@ fn message_message_coin() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::message_coin_predicate(
         rng.gen(),
@@ -353,7 +353,7 @@ fn message_message_coin() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_coin_predicate(

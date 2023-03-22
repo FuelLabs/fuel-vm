@@ -126,7 +126,7 @@ impl Chargeable for Script {
 
 impl FormatValidityChecks for Script {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
         let id = self.id();
@@ -134,7 +134,7 @@ impl FormatValidityChecks for Script {
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
 
         Ok(())
     }

@@ -254,7 +254,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Checks that all owners of inputs in the predicates are valid.
     #[cfg(feature = "std")]
-    fn check_predicate_owners(&self) -> bool {
+    fn check_predicate_owners(&self, parameters: &ConsensusParameters) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
@@ -265,7 +265,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, predicate, parameters)
             })
     }
 

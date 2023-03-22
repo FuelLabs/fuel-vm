@@ -100,7 +100,7 @@ impl crate::UniqueIdentifier for Mint {
 
 impl FormatValidityChecks for Mint {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, _: &ConsensusParameters) -> Result<(), CheckError> {
         Ok(())
     }
 

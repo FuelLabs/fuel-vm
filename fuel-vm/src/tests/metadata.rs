@@ -207,7 +207,7 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -232,7 +232,7 @@ fn get_transaction_fields() {
     rng.fill(m_data.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&m_predicate);
+    let owner = Input::predicate_owner(&m_predicate, &params);
     let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,

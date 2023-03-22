@@ -771,7 +771,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an owner of the coin
-        let owner: Address = (*Contract::root_from_code(&predicate)).into();
+        let owner: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
         let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
             .gas_limit(PARAMS.max_gas_per_tx)
@@ -789,7 +789,7 @@ mod inputs {
             ))
             .finalize();
 
-        assert!(tx.check_predicate_owners());
+        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
 
     #[test]
@@ -814,7 +814,7 @@ mod inputs {
             ))
             .finalize();
 
-        assert!(!tx.check_predicate_owners());
+        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
 
     #[test]
@@ -823,7 +823,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an recipient(owner) of the message
-        let recipient: Address = (*Contract::root_from_code(&predicate)).into();
+        let recipient: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
         let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
             .gas_limit(PARAMS.max_gas_per_tx)
@@ -840,7 +840,7 @@ mod inputs {
             ))
             .finalize();
 
-        assert!(tx.check_predicate_owners());
+        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
 
     #[test]
@@ -864,6 +864,6 @@ mod inputs {
             ))
             .finalize();
 
-        assert!(!tx.check_predicate_owners());
+        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
 }

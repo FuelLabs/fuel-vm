@@ -192,7 +192,7 @@ fn test_smo(
         tx: &mut tx,
         balances: &mut balances,
         storage: &mut storage,
-        contract: if internal { Some(ContractId::default()) } else { None },
+        current_contract: if internal { Some(ContractId::default()) } else { None },
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         recipient_mem_address,

@@ -243,7 +243,7 @@ where
             tx: &mut self.tx,
             balances: &mut self.balances,
             storage: &mut self.storage,
-            contract: self.frames.last().map(|frame| frame.to()).copied(),
+            current_contract: self.frames.last().map(|frame| frame.to()).copied(),
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
@@ -681,8 +681,7 @@ where
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
-    /// The context of execution, None for external contexts
-    contract: Option<ContractId>,
+    current_contract: Option<ContractId>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     /// A
@@ -720,7 +719,7 @@ where
 
         // validations passed, perform the mutations
 
-        if let Some(source_contract) = self.contract {
+        if let Some(source_contract) = self.current_contract {
             balance_decrease(
                 self.storage,
                 &source_contract,

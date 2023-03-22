@@ -35,23 +35,21 @@ impl ProofTest {
         let verification = verify(&root, data, &proof_set, self.proof_index, self.num_leaves);
         let verification_from_test_helper =
             verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
+        let expected_verification = self.expected_verification;
 
         if verification != verification_from_test_helper {
             return Err(TestError::Failed(
                 self.name,
                 format!(
-                    "Verification {} does not match reference verification {}",
-                    verification, verification_from_test_helper
+                    "Verification {verification} does not match reference verification {verification_from_test_helper}",
                 ),
             ));
         }
-        if verification != self.expected_verification {
+
+        if verification != expected_verification {
             return Err(TestError::Failed(
                 self.name,
-                format!(
-                    "Verification {} does not match expected verification {}",
-                    verification, self.expected_verification
-                ),
+                format!("Verification {verification} does not match expected verification {expected_verification}",),
             ));
         }
 

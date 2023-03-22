@@ -107,7 +107,7 @@ impl Test {
             Err(TestError::Failed(
                 self.name,
                 format!(
-                    "Root {} does not match expected root {}",
+                    "Root 0x{} does not match expected root 0x{}",
                     hex::encode(root),
                     hex::encode(expected_root)
                 ),

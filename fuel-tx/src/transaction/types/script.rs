@@ -19,6 +19,7 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_crypto::Hasher;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SerializableVec;
@@ -85,7 +86,7 @@ impl Default for Script {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
-    fn id(&self) -> Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
         if let Some(ScriptMetadata {
             common: CommonMetadata { id, .. },
             ..
@@ -102,7 +103,12 @@ impl crate::UniqueIdentifier for Script {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        let mut hasher = Hasher::default();
+        // chain ID
+        hasher.input(params.chain_id.to_be_bytes());
+        // transaction bytes
+        hasher.input(clone.to_bytes().as_slice());
+        hasher.finalize()
     }
 }
 
@@ -129,7 +135,7 @@ impl FormatValidityChecks for Script {
     fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
@@ -168,10 +174,10 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
-            common: CommonMetadata::compute(self),
+            common: CommonMetadata::compute(self, parameters),
             script_data_offset: self.script_data_offset(),
         });
     }

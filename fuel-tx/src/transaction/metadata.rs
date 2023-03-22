@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 use fuel_types::Bytes32;
 
+use crate::ConsensusParameters;
 #[cfg(feature = "std")]
 use crate::{field, UniqueIdentifier};
 
@@ -12,7 +13,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self);
+    fn precompute(&mut self, parameters: &ConsensusParameters);
 }
 
 #[cfg(feature = "std")]
@@ -25,11 +26,11 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         match self {
-            Self::Script(script) => script.precompute(),
-            Self::Create(create) => create.precompute(),
-            Self::Mint(mint) => mint.precompute(),
+            Self::Script(script) => script.precompute(parameters),
+            Self::Create(create) => create.precompute(parameters),
+            Self::Mint(mint) => mint.precompute(parameters),
         }
     }
 }
@@ -50,7 +51,7 @@ pub(crate) struct CommonMetadata {
 #[cfg(feature = "std")]
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    pub fn compute<Tx>(tx: &Tx) -> Self
+    pub fn compute<Tx>(tx: &Tx, params: &ConsensusParameters) -> Self
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
@@ -61,7 +62,7 @@ impl CommonMetadata {
         use fuel_types::bytes::SizedBytes;
         use itertools::Itertools;
 
-        let id = tx.id();
+        let id = tx.id(params);
 
         let inputs_predicate_offset_at = tx
             .inputs()

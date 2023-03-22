@@ -12,7 +12,7 @@ fn input_coin_message_signature() {
         let rng = &mut StdRng::seed_from_u64(8586);
 
         fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), CheckError> {
-            let txhash = tx.id();
+            let txhash = tx.id(&ConsensusParameters::DEFAULT);
             let outputs = tx.outputs();
             let witnesses = tx.witnesses();
 
@@ -42,8 +42,9 @@ fn input_coin_message_signature() {
 
             f(&mut tx, &public);
 
-            tx.sign_inputs(&secret);
-            keys.iter().for_each(|sk| tx.sign_inputs(sk));
+            tx.sign_inputs(&secret, &ConsensusParameters::DEFAULT);
+            keys.iter()
+                .for_each(|sk| tx.sign_inputs(sk, &ConsensusParameters::DEFAULT));
 
             check_inputs(tx)
         }
@@ -412,7 +413,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .add_input(a)
         .add_input(b)
         .add_witness(rng.gen())
-        .finalize()
+        .finalize(&ConsensusParameters::DEFAULT)
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -430,7 +431,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         // duplicate input
         .add_input(message_input)
         .add_witness(rng.gen())
-        .finalize()
+        .finalize(&ConsensusParameters::DEFAULT)
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -453,7 +454,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_input(b)
         .add_output(o)
         .add_output(p)
-        .finalize()
+        .finalize(&ConsensusParameters::DEFAULT)
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -476,7 +477,7 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_input(b)
         .add_output(o)
         .add_output(p)
-        .finalize()
+        .finalize(&ConsensusParameters::DEFAULT)
         .check_without_signatures(0, &Default::default())
         .expect("Duplicated UTXO id is valid for contract input");
 }

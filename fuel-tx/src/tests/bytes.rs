@@ -720,7 +720,7 @@ fn create_input_data_offset() {
                     );
 
                     let mut tx_p = tx.clone();
-                    tx_p.precompute();
+                    tx_p.precompute(&ConsensusParameters::DEFAULT);
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
                     let _ = tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
@@ -826,7 +826,7 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute();
+                        tx_p.precompute(&ConsensusParameters::DEFAULT);
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
 

@@ -1,6 +1,6 @@
 use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
 use crate::transaction::{field, Chargeable, Create, Executable, Script};
-use crate::{Cacheable, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
 
 #[cfg(feature = "std")]
 use crate::Signable;
@@ -276,25 +276,25 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize(&mut self) -> Tx {
+    pub fn _finalize(&mut self, parameters: &ConsensusParameters) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k));
+        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k, parameters));
 
-        tx.precompute();
+        tx.precompute(parameters);
 
         tx
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize_without_signature(&mut self) -> Tx {
+    pub fn _finalize_without_signature(&mut self, parameters: &ConsensusParameters) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute();
+        tx.precompute(parameters);
 
         tx
     }
@@ -308,43 +308,43 @@ impl<Tx: field::Outputs> TransactionBuilder<Tx> {
 }
 
 pub trait Finalizable<Tx> {
-    fn finalize(&mut self) -> Tx;
+    fn finalize(&mut self, parameters: &ConsensusParameters) -> Tx;
 
-    fn finalize_without_signature(&mut self) -> Tx;
+    fn finalize_without_signature(&mut self, parameters: &ConsensusParameters) -> Tx;
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
-    fn finalize(&mut self) -> Mint {
+    fn finalize(&mut self, parameters: &ConsensusParameters) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute();
+        tx.precompute(parameters);
         tx
     }
 
-    fn finalize_without_signature(&mut self) -> Mint {
-        self.finalize()
+    fn finalize_without_signature(&mut self, parameters: &ConsensusParameters) -> Mint {
+        self.finalize(parameters)
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Create> for TransactionBuilder<Create> {
-    fn finalize(&mut self) -> Create {
-        self._finalize()
+    fn finalize(&mut self, parameters: &ConsensusParameters) -> Create {
+        self._finalize(parameters)
     }
 
-    fn finalize_without_signature(&mut self) -> Create {
-        self._finalize_without_signature()
+    fn finalize_without_signature(&mut self, parameters: &ConsensusParameters) -> Create {
+        self._finalize_without_signature(parameters)
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Script> for TransactionBuilder<Script> {
-    fn finalize(&mut self) -> Script {
-        self._finalize()
+    fn finalize(&mut self, parameters: &ConsensusParameters) -> Script {
+        self._finalize(parameters)
     }
 
-    fn finalize_without_signature(&mut self) -> Script {
-        self._finalize_without_signature()
+    fn finalize_without_signature(&mut self, parameters: &ConsensusParameters) -> Script {
+        self._finalize_without_signature(parameters)
     }
 }
 
@@ -354,12 +354,12 @@ where
     Transaction: From<Tx>,
 {
     #[cfg(feature = "std")]
-    pub fn finalize_as_transaction(&mut self) -> Transaction {
-        self.finalize().into()
+    pub fn finalize_as_transaction(&mut self, parameters: &ConsensusParameters) -> Transaction {
+        self.finalize(parameters).into()
     }
 
     #[cfg(feature = "std")]
-    pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
-        self.finalize_without_signature().into()
+    pub fn finalize_without_signature_as_transaction(&mut self, parameters: &ConsensusParameters) -> Transaction {
+        self.finalize_without_signature(parameters).into()
     }
 }

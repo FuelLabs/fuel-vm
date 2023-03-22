@@ -23,13 +23,13 @@ where
     Checked<Tx>: CheckPredicates,
 {
     fn finalize_checked(&mut self, height: Word, params: &ConsensusParameters, gas_costs: &GasCosts) -> Checked<Tx> {
-        self.finalize()
+        self.finalize(params)
             .into_checked(height, params, gas_costs)
             .expect("failed to check tx")
     }
 
     fn finalize_checked_basic(&mut self, height: Word, params: &ConsensusParameters) -> Checked<Tx> {
-        self.finalize()
+        self.finalize(params)
             .into_checked_basic(height, params)
             .expect("failed to check tx")
     }

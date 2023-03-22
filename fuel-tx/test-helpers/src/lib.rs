@@ -39,7 +39,8 @@ where
 mod use_std {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field, Buildable, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction, TransactionBuilder,
+        field, Buildable, ConsensusParameters, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction,
+        TransactionBuilder,
     };
     use fuel_types::bytes::Deserializable;
     use rand::distributions::{Distribution, Uniform};
@@ -308,7 +309,7 @@ mod use_std {
             );
 
             let keys = self.fill_transaction(&mut builder);
-            (builder.finalize(), keys)
+            (builder.finalize(&ConsensusParameters::DEFAULT), keys)
         }
     }
 
@@ -325,7 +326,7 @@ mod use_std {
                 TransactionBuilder::<Script>::script(generate_bytes(&mut self.rng), generate_bytes(&mut self.rng));
 
             let keys = self.fill_transaction(&mut builder);
-            (builder.finalize(), keys)
+            (builder.finalize(&ConsensusParameters::DEFAULT), keys)
         }
     }
 
@@ -337,7 +338,7 @@ mod use_std {
             let mut builder = TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
 
             self.fill_outputs(&mut builder);
-            builder.finalize()
+            builder.finalize(&ConsensusParameters::DEFAULT)
         }
     }
 

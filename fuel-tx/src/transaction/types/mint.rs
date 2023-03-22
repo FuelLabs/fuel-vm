@@ -15,6 +15,7 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_crypto::Hasher;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::{self, Deserializable, SerializableVec};
@@ -28,7 +29,7 @@ pub(crate) struct MintMetadata {
 
 #[cfg(feature = "std")]
 impl MintMetadata {
-    fn compute<Tx>(tx: &Tx) -> Self
+    fn compute<Tx>(tx: &Tx, parameters: &ConsensusParameters) -> Self
     where
         Tx: crate::UniqueIdentifier,
         Tx: Outputs,
@@ -36,7 +37,7 @@ impl MintMetadata {
     {
         use itertools::Itertools;
 
-        let id = tx.id();
+        let id = tx.id(parameters);
 
         let mut offset = tx.outputs_offset();
 
@@ -88,13 +89,18 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
-    fn id(&self) -> Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
         if let Some(MintMetadata { id, .. }) = self.metadata {
             return id;
         }
 
         let mut clone = self.clone();
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        let mut hasher = Hasher::default();
+        // chain ID
+        hasher.input(params.chain_id.to_be_bytes());
+        // transaction bytes
+        hasher.input(clone.to_bytes().as_slice());
+        hasher.finalize()
     }
 }
 
@@ -135,9 +141,9 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
-        self.metadata = Some(MintMetadata::compute(self));
+        self.metadata = Some(MintMetadata::compute(self, parameters));
     }
 }
 

@@ -19,6 +19,7 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_crypto::Hasher;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SerializableVec;
@@ -62,7 +63,7 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self) -> fuel_types::Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> fuel_types::Bytes32 {
         if let Some(CommonMetadata { id, .. }) = self.metadata {
             return id;
         }
@@ -74,7 +75,12 @@ impl crate::UniqueIdentifier for Create {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        let mut hasher = Hasher::default();
+        // chain ID
+        hasher.input(params.chain_id.to_be_bytes());
+        // transaction bytes
+        hasher.input(clone.to_bytes().as_slice());
+        hasher.finalize()
     }
 }
 
@@ -101,7 +107,7 @@ impl FormatValidityChecks for Create {
     fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
@@ -186,9 +192,9 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
-        self.metadata = Some(CommonMetadata::compute(self));
+        self.metadata = Some(CommonMetadata::compute(self, parameters));
     }
 }
 

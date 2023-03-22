@@ -1,4 +1,4 @@
-use super::contract::{balance, contract_size};
+use super::contract::{balance, balance_decrease, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
     append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
@@ -242,6 +242,8 @@ where
             receipts: &mut self.receipts,
             tx: &mut self.tx,
             balances: &mut self.balances,
+            storage: &mut self.storage,
+            contract: self.frames.last().map(|frame| frame.to()).copied(),
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
@@ -667,13 +669,20 @@ pub(crate) fn timestamp(
 
     inc_pc(pc)
 }
-struct MessageOutputCtx<'vm, Tx> {
+struct MessageOutputCtx<'vm, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
+    storage: &'vm mut S,
+    /// The context of execution, None for external contexts
+    contract: Option<ContractId>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     /// A
@@ -686,7 +695,11 @@ struct MessageOutputCtx<'vm, Tx> {
     amount_coins_to_send: Word,
 }
 
-impl<Tx> MessageOutputCtx<'_, Tx> {
+impl<Tx, S> MessageOutputCtx<'_, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
@@ -707,7 +720,16 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
 
         // validations passed, perform the mutations
 
-        base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        if let Some(source_contract) = self.contract {
+            balance_decrease(
+                self.storage,
+                &source_contract,
+                &AssetId::BASE,
+                self.amount_coins_to_send,
+            )?;
+        } else {
+            base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        }
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);

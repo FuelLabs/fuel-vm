@@ -35,12 +35,14 @@ impl ProofTest {
         let verification = verify(&root, data, &proof_set, self.proof_index, self.num_leaves);
         let verification_from_test_helper =
             verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
-        assert_eq!(verification, verification_from_test_helper);
 
-        if verification == self.expected_verification {
-            Ok(())
-        } else {
-            Err(TestError::Failed(self.name))
+        if verification != verification_from_test_helper {
+            return Err(TestError::Failed(self.name));
         }
+        if verification != self.expected_verification {
+            return Err(TestError::Failed(self.name));
+        }
+
+        Ok(())
     }
 }

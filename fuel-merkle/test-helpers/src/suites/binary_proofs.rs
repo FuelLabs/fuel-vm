@@ -34,9 +34,11 @@ fn generate_test(
         // be selected from this range.
         test_tree.prove(proof_index).unwrap()
     };
+    let data = sample_data[proof_index as usize];
 
     // SAFETY: All EncodedValues are specified with a valid encoding.
     let encoded_root = EncodedValue::from_raw(root, Encoding::Hex);
+    let encoded_data = EncodedValue::from_raw(data, Encoding::Hex);
     let encoded_proof_set = proof_set
         .iter()
         .map(|v| EncodedValue::from_raw(v, Encoding::Hex))
@@ -48,7 +50,7 @@ fn generate_test(
         function_name,
         description,
         root: encoded_root,
-        data: sample_data[proof_index as usize],
+        data: encoded_data,
         proof_set: encoded_proof_set,
         proof_index,
         num_leaves,
@@ -58,7 +60,8 @@ fn generate_test(
 
 fn write_test(test: &ProofTest) {
     let yaml = serde_yaml::to_string(test).expect("Unable to serialize test!");
-    std::fs::write(format!("../tests-data-binary/fixtures/{}.yaml", test.name), yaml).expect("Unable to write file!");
+    let dir = "./fuel-merkle/tests-data-binary/fixtures";
+    std::fs::write(format!("{}/{}.yaml", dir, test.name), yaml).expect("Unable to write file!");
 }
 
 #[named]

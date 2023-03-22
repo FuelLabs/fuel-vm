@@ -101,8 +101,8 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: 400,
-        msg_data_ptr: 32,
+        recipient_mem_address: 0,
+        msg_data_ptr: 0,
         msg_data_len: 101,
         amount_coins_to_send: 0,
         max_message_data_length: 100,

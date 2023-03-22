@@ -1,6 +1,7 @@
 mod hash;
 mod merkle_tree;
 mod node;
+mod verify;
 
 pub use merkle_tree::MerkleTree;
 

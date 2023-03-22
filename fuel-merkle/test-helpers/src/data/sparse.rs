@@ -104,7 +104,14 @@ impl Test {
         if root == expected_root {
             Ok(())
         } else {
-            Err(TestError::Failed(self.name))
+            Err(TestError::Failed(
+                self.name,
+                format!(
+                    "Root {} does not match expected root {}",
+                    hex::encode(root),
+                    hex::encode(expected_root)
+                ),
+            ))
         }
     }
 }

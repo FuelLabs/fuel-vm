@@ -37,10 +37,22 @@ impl ProofTest {
             verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
 
         if verification != verification_from_test_helper {
-            return Err(TestError::Failed(self.name));
+            return Err(TestError::Failed(
+                self.name,
+                format!(
+                    "Verification {} does not match reference verification {}",
+                    verification, verification_from_test_helper
+                ),
+            ));
         }
         if verification != self.expected_verification {
-            return Err(TestError::Failed(self.name));
+            return Err(TestError::Failed(
+                self.name,
+                format!(
+                    "Verification {} does not match expected verification {}",
+                    verification, self.expected_verification
+                ),
+            ));
         }
 
         Ok(())

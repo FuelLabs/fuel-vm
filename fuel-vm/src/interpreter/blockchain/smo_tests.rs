@@ -156,6 +156,29 @@ impl Default for Input {
     } => matches Ok(Output { external_balance: 29, internal_balance: 9, .. })
     ; "coins sent succesfully from internal context"
 )]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 20,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 0, internal_balance: 20, .. })
+    ; "spend all coins succesfully from external context"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 20,
+        internal: true,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 20, internal_balance: 0, .. })
+    ; "spend all coins succesfully from internal context"
+)]
 fn test_smo(
     Input {
         recipient_mem_address,

@@ -4,6 +4,9 @@ description: Build a proof from a binary Merkle tree consisting of 1024 leaves a
 root:
   value: f1234d75178d892a133a410355a5a990cf75d2f33eba25d575943d4df632f3a4
   encoding: hex
+data:
+  value: 8711188204125cd3bde90be717dc0a106935559431c2bdc6d6d114cf71f46b4a
+  encoding: hex
 proof_set:
 - value: 0fd57bb7146938576395aa785eef8970dc33f294fa2d9a77fc1598e9084be008
   encoding: hex

@@ -1,4 +1,4 @@
-use super::contract::{balance, contract_size};
+use super::contract::{balance, balance_decrease, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
     append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
@@ -242,11 +242,13 @@ where
             receipts: &mut self.receipts,
             tx: &mut self.tx,
             balances: &mut self.balances,
+            storage: &mut self.storage,
+            current_contract: self.frames.last().map(|frame| frame.to()).copied(),
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
-            call_abi_len: b,
-            message_output_idx: c,
+            msg_data_ptr: b,
+            msg_data_len: c,
             amount_coins_to_send: d,
         };
         input.message_output()
@@ -667,56 +669,70 @@ pub(crate) fn timestamp(
 
     inc_pc(pc)
 }
-
-// TODO: Register b is the address of the begin of the data and register c
-//  is the end of the data(Based on the specification).
-//  The user doesn't specify the output index for message.
-//  We need to use the index of the receipt to calculate the `Nonce`.
-//  Add unit tests for a new usage.
-struct MessageOutputCtx<'vm, Tx> {
+struct MessageOutputCtx<'vm, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
+    storage: &'vm mut S,
+    current_contract: Option<ContractId>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    #[allow(dead_code)]
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
 }
 
-impl<Tx> MessageOutputCtx<'_, Tx> {
+impl<Tx, S> MessageOutputCtx<'_, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
-        let memory_constraint = recipient_address.end() as Word
-            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
-                .min(MEM_MAX_ACCESS_SIZE));
-        let call_abi = CheckedMemRange::new_with_constraint(
-            recipient_address.end() as Word,
-            self.call_abi_len as usize,
-            memory_constraint,
-        )?;
+
+        if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
+            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        }
+
+        if self.msg_data_len > self.max_message_data_length {
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
+        }
+
+        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 
         // validations passed, perform the mutations
 
-        base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        if let Some(source_contract) = self.current_contract {
+            balance_decrease(
+                self.storage,
+                &source_contract,
+                &AssetId::BASE,
+                self.amount_coins_to_send,
+            )?;
+        } else {
+            base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        }
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
-        let call_abi = call_abi.read(self.memory).to_vec();
+        let msg_data = msg_data_range.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
@@ -725,7 +741,7 @@ impl<Tx> MessageOutputCtx<'_, Tx> {
             *sender,
             recipient,
             self.amount_coins_to_send,
-            call_abi,
+            msg_data,
         );
 
         append_receipt(

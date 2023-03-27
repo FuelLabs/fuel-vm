@@ -43,20 +43,6 @@ impl RuntimePredicate {
             .map(|program| Self { program, gasUsed: tx.inputs_predicate_gas_used_at(idx)?, idx })
     }
 
-    /// Create a new runtime predicate from a transaction, given the input index
-    ///
-    /// Return `None` if the tx input doesn't map to an input with a predicate
-    pub fn from_input<T>(input: &Input) -> Option<Self>
-    where
-        T: field::Inputs,
-    {
-        new RuntimePredicate {
-            program: input.,
-            gasUsed: input.predicate_gas_used(),
-            idx,
-        }
-    }
-
     pub fn set_gas_used(&mut self, gas_used: Word) {
         self.gasUsed = gas_used;
     }

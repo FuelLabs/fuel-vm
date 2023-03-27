@@ -489,9 +489,6 @@ pub mod field {
 
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
-
-        /// Returns predicate's offset and length of the `Input` at `idx`, if any.
-        fn inputs_predicate_gas_used_at(&self, idx: usize) -> Option<(Word)>;
     }
 
     pub trait Outputs {

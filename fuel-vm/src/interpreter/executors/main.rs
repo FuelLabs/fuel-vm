@@ -134,12 +134,14 @@ impl<T> Interpreter<PredicateStorage, T> {
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
         const tx_gas_limit: u64 = estimated.transaction().limit();
 
+        const predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate { params.max_gas_per_predicate } else { tx_gas_limit };
+
         // for inputNum in estimated.transaction().inputs().len() {
         for (idx, input) in estimated.transaction().inputs_mut().iter_mut().enumerate() {
             if let Some(predicate) = RuntimePredicate::from_tx(&params, estimated.transaction(), idx) {
                 vm.init_predicate_estimation(&estimated);
                 vm.context = Context::PredicateEstimation { program: predicate };
-                vm.set_gas(estimated.transaction().limit());
+                vm.set_gas(predicate_gas_limit);
 
                 if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                     return Err(PredicateVerificationFailed::False);

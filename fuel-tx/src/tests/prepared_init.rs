@@ -13,7 +13,7 @@ fn output_variable_prepare_init_zeroes_recipient_and_amount() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .prepare_script(false)
         .add_output(variable)
-        .finalize(&ConsensusParameters::DEFAULT);
+        .finalize();
 
     let output = tx
         .clone()

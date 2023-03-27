@@ -413,7 +413,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .add_input(a)
         .add_input(b)
         .add_witness(rng.gen())
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -431,7 +431,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         // duplicate input
         .add_input(message_input)
         .add_witness(rng.gen())
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -454,7 +454,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_input(b)
         .add_output(o)
         .add_output(p)
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check_without_signatures(0, &Default::default())
         .expect_err("Expected checkable failure");
 
@@ -477,7 +477,7 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_input(b)
         .add_output(o)
         .add_output(p)
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check_without_signatures(0, &Default::default())
         .expect("Duplicated UTXO id is valid for contract input");
 }

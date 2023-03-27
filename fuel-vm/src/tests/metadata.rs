@@ -198,7 +198,8 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_checked(height, &params, client.gas_costs());
+        .with_params(params)
+        .finalize_checked(height, client.gas_costs());
 
     client.deploy(tx);
 
@@ -267,7 +268,8 @@ fn get_transaction_fields() {
         .add_input(message_predicate)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height, &params, client.gas_costs());
+        .with_params(params)
+        .finalize_checked(height, client.gas_costs());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -725,7 +727,8 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .finalize_checked_basic(height, &params);
+        .with_params(params)
+        .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

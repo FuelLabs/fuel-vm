@@ -1352,7 +1352,8 @@ fn smo_instruction_works() {
                 amount: 0,
                 asset_id: Default::default(),
             })
-            .finalize_checked(block_height, params, client.gas_costs());
+            .with_params(*params)
+            .finalize_checked(block_height, client.gas_costs());
 
         let non_retryable_free_balance = tx.metadata().non_retryable_balances[&AssetId::BASE];
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
@@ -1473,7 +1474,8 @@ fn timestamp_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .finalize_checked(block_height, &params, client.gas_costs());
+            .with_params(params)
+            .finalize_checked(block_height, client.gas_costs());
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {

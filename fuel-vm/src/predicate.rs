@@ -98,8 +98,9 @@ fn from_tx_works() {
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])
+            .with_params(params)
             .add_input(i)
-            .finalize_checked_basic(height, &params);
+            .finalize_checked_basic(height);
 
         // assert invalid idx wont panic
         let idx = 1;

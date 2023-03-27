@@ -167,7 +167,7 @@ fn max_iow() {
     }
 
     builder
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
@@ -198,7 +198,7 @@ fn max_iow() {
     }
 
     builder
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
@@ -227,7 +227,7 @@ fn max_iow() {
     }
 
     let err = builder
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -258,7 +258,7 @@ fn max_iow() {
     }
 
     let err = builder
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -289,7 +289,7 @@ fn max_iow() {
     }
 
     let err = builder
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -317,7 +317,7 @@ fn output_change_asset_id() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), b))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
 
@@ -329,7 +329,7 @@ fn output_change_asset_id() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -343,7 +343,7 @@ fn output_change_asset_id() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -360,7 +360,7 @@ fn output_change_asset_id() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -389,7 +389,7 @@ fn script() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect("Failed to validate transaction");
 
@@ -402,7 +402,7 @@ fn script() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
@@ -417,7 +417,7 @@ fn script() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
@@ -432,7 +432,7 @@ fn script() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
@@ -454,7 +454,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate tx");
 
@@ -464,7 +464,7 @@ fn create() {
         .maturity(maturity)
         .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -476,7 +476,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), not_empty_data)
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -488,7 +488,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -502,7 +502,7 @@ fn create() {
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -518,7 +518,7 @@ fn create() {
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), asset_id, rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -532,7 +532,7 @@ fn create() {
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -551,7 +551,7 @@ fn create() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect("Failed to validate the transaction");
 
@@ -565,7 +565,7 @@ fn create() {
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize(&ConsensusParameters::DEFAULT)
+    .finalize()
     .check(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
 
@@ -593,7 +593,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate the transaction");
 
@@ -615,7 +615,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate the transaction");
 
@@ -631,7 +631,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -648,7 +648,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -664,13 +664,13 @@ fn mint() {
     TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height as Word, &PARAMS)
         .expect("Failed to validate tx");
 
     let err = TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height as Word, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -679,7 +679,7 @@ fn mint() {
     let err = TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height as Word, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
@@ -688,7 +688,7 @@ fn mint() {
     let err = TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize(&ConsensusParameters::DEFAULT)
+        .finalize()
         .check(block_height as Word + 1, &PARAMS)
         .expect_err("Expected erroneous transaction");
 

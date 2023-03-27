@@ -309,7 +309,7 @@ mod use_std {
             );
 
             let keys = self.fill_transaction(&mut builder);
-            (builder.finalize(&ConsensusParameters::DEFAULT), keys)
+            (builder.finalize(), keys)
         }
     }
 
@@ -326,7 +326,7 @@ mod use_std {
                 TransactionBuilder::<Script>::script(generate_bytes(&mut self.rng), generate_bytes(&mut self.rng));
 
             let keys = self.fill_transaction(&mut builder);
-            (builder.finalize(&ConsensusParameters::DEFAULT), keys)
+            (builder.finalize(), keys)
         }
     }
 
@@ -338,7 +338,7 @@ mod use_std {
             let mut builder = TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
 
             self.fill_outputs(&mut builder);
-            builder.finalize(&ConsensusParameters::DEFAULT)
+            builder.finalize()
         }
     }
 

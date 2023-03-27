@@ -226,7 +226,7 @@ pub mod test_helpers {
 
         pub fn build(&mut self) -> Checked<Script> {
             self.builder
-                .finalize_checked(self.block_height as Word, &self.params, &self.gas_costs)
+                .finalize_checked(self.block_height as Word, &self.gas_costs)
         }
 
         pub fn build_get_balance_tx(
@@ -401,8 +401,9 @@ pub mod test_helpers {
         let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .with_params(params)
             .add_output(Output::contract_created(contract_id, state_root))
-            .finalize_checked(height, &params, client.gas_costs());
+            .finalize_checked(height, client.gas_costs());
 
         client.deploy(contract_deployer).expect("valid contract deployment");
 
@@ -426,6 +427,7 @@ pub mod test_helpers {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
+            .with_params(params)
             .add_input(Input::contract(
                 Default::default(),
                 Default::default(),
@@ -434,7 +436,7 @@ pub mod test_helpers {
                 contract_id,
             ))
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, &params, client.gas_costs());
+            .finalize_checked(height, client.gas_costs());
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

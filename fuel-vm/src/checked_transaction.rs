@@ -434,7 +434,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
-            .finalize(&ConsensusParameters::DEFAULT);
+            .finalize();
 
         let err = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -469,7 +469,7 @@ mod tests {
                 vec![0xaa; 10],
                 vec![0xbb; 10],
             ))
-            .finalize(&ConsensusParameters::DEFAULT);
+            .finalize();
 
         let err = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -618,7 +618,7 @@ mod tests {
             .add_output(Output::coin(rng.gen(), 10, asset))
             .add_output(Output::change(rng.gen(), 0, asset))
             .add_witness(Default::default())
-            .finalize(&ConsensusParameters::DEFAULT);
+            .finalize();
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -733,7 +733,7 @@ mod tests {
             .add_unsigned_coin_input(secret, rng.gen(), input_amount, any_asset, rng.gen(), 0)
             .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
             .add_output(Output::change(rng.gen(), 0, any_asset))
-            .finalize(&ConsensusParameters::DEFAULT);
+            .finalize();
 
         let checked = tx
             .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
@@ -844,7 +844,7 @@ mod tests {
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), output_amount, asset))
             .add_output(Output::change(rng.gen(), 0, asset))
-            .finalize(&ConsensusParameters::DEFAULT)
+            .finalize()
     }
 
     // used when proptesting to avoid expensive crypto signatures
@@ -866,7 +866,7 @@ mod tests {
                 vec![],
             ))
             .add_output(Output::change(rng.gen(), 0, asset))
-            .finalize(&ConsensusParameters::DEFAULT)
+            .finalize()
     }
 
     // used to verify message inputs can cover fees
@@ -875,7 +875,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![])
-            .finalize(&ConsensusParameters::DEFAULT)
+            .finalize()
     }
 
     fn predicate_message_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
@@ -890,7 +890,7 @@ mod tests {
                 vec![],
                 vec![],
             ))
-            .finalize(&ConsensusParameters::DEFAULT)
+            .finalize()
     }
 
     fn base_asset_tx(rng: &mut StdRng, input_amount: u64, gas_price: u64, gas_limit: u64) -> Script {
@@ -899,6 +899,6 @@ mod tests {
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
-            .finalize(&ConsensusParameters::DEFAULT)
+            .finalize()
     }
 }

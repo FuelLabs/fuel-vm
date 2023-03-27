@@ -91,7 +91,7 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
         storage_slots,
         memory,
     } = input;
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
 
     for (k, v) in storage_slots {
         storage

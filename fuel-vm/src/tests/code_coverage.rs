@@ -16,8 +16,8 @@ fn code_coverage() {
 
     let gas_price = 1;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     // Deploy contract with loops
@@ -32,7 +32,14 @@ fn code_coverage() {
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+        .add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            1,
+            Default::default(),
+            rng.gen(),
+            Default::default(),
+        )
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)

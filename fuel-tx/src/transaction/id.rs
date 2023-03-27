@@ -134,6 +134,15 @@ mod tests {
         mem::swap(t, &mut t_p);
     }
 
+    fn not_u32<T>(t: &mut T)
+    where
+        T: Copy + Into<u32> + From<u32>,
+    {
+        let u_32: u32 = (*t).into();
+        let mut t_p = u_32.not().into();
+        mem::swap(t, &mut t_p);
+    }
+
     fn assert_id_eq<Tx: Buildable, F>(tx: &Tx, mut f: F)
     where
         F: FnMut(&mut Tx),
@@ -203,9 +212,10 @@ mod tests {
     }
 
     fn assert_id_common_attrs<Tx: Buildable>(tx: &Tx) {
+        use core::ops::Deref;
         assert_id_ne(tx, |t| t.set_gas_price(t.gas_price().not()));
         assert_id_ne(tx, |t| t.set_gas_limit(t.gas_limit().not()));
-        assert_id_ne(tx, |t| t.set_maturity(t.maturity().not()));
+        assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));
 
         if !tx.inputs().is_empty() {
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], utxo_id, invert_utxo_id);
@@ -213,7 +223,7 @@ mod tests {
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], amount, not);
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], asset_id, invert);
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], witness_index, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], maturity, not_u32);
 
             assert_io_ne!(
                 tx,
@@ -225,7 +235,7 @@ mod tests {
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], owner, invert);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], amount, not);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], maturity, not);
+            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], maturity, not_u32);
             assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], predicate, inv_v);
             assert_io_ne!(
                 tx,
@@ -441,7 +451,7 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
-                    rng.next_u64(),
+                    rng.gen(),
                 ),
                 Input::coin_predicate(
                     rng.gen(),
@@ -449,7 +459,7 @@ mod tests {
                     rng.next_u64(),
                     rng.gen(),
                     rng.gen(),
-                    rng.next_u64(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
@@ -514,7 +524,7 @@ mod tests {
                             let tx = Transaction::script(
                                 rng.next_u64(),
                                 rng.next_u64(),
-                                rng.next_u64(),
+                                rng.gen(),
                                 script.clone(),
                                 script_data.clone(),
                                 inputs.clone(),
@@ -532,7 +542,7 @@ mod tests {
                         let tx = Transaction::create(
                             rng.next_u64(),
                             ConsensusParameters::DEFAULT.max_gas_per_tx,
-                            rng.next_u64(),
+                            rng.gen(),
                             rng.next_u32().to_be_bytes()[0],
                             rng.gen(),
                             storage_slots.clone(),

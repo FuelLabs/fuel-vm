@@ -21,7 +21,7 @@ use crate::{arith, consts::*};
 use fuel_asm::PanicReason;
 use fuel_storage::{StorageInspect, StorageSize};
 use fuel_tx::Receipt;
-use fuel_types::bytes;
+use fuel_types::{bytes, BlockHeight};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use std::borrow::Borrow;
@@ -491,7 +491,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
 pub(crate) fn block_height(context: &Context, pc: RegMut<PC>, result: &mut Word) -> Result<(), RuntimeError> {
     context
         .block_height()
-        .map(|h| h as Word)
+        .map(|h| *h as Word)
         .map(|h| *result = h)
         .ok_or(PanicReason::TransactionValidity)?;
 
@@ -654,16 +654,15 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
 
 pub(crate) fn timestamp(
     storage: &impl InterpreterStorage,
-    block_height: u32,
+    block_height: BlockHeight,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
 ) -> Result<(), RuntimeError> {
-    (b <= block_height as Word)
+    let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
+    (b <= block_height)
         .then_some(())
         .ok_or(PanicReason::TransactionValidity)?;
-
-    let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?;
 
     *result = storage.timestamp(b).map_err(|e| e.into())?;
 

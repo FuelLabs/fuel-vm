@@ -9,8 +9,8 @@ fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId,
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
     let gas_costs = GasCosts::default();
@@ -42,8 +42,8 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
@@ -122,8 +122,8 @@ fn alu_wrapping(
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
@@ -175,8 +175,8 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
     let gas_costs = GasCosts::default();
@@ -240,8 +240,8 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 

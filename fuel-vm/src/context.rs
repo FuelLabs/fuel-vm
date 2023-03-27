@@ -3,6 +3,7 @@
 use crate::predicate::RuntimePredicate;
 
 use fuel_asm::Word;
+use fuel_types::BlockHeight;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -16,12 +17,12 @@ pub enum Context {
     /// Current context is a script execution.
     Script {
         /// Block height of the context
-        block_height: u32,
+        block_height: BlockHeight,
     },
     /// Current context is under a `CALL` scope
     Call {
         /// Block height of the context
-        block_height: u32,
+        block_height: BlockHeight,
     },
     /// No transaction initialized/invalid context.
     NotInitialized,
@@ -58,7 +59,7 @@ impl Context {
     }
 
     /// Return the block height from the context, if either script or call
-    pub const fn block_height(&self) -> Option<u32> {
+    pub const fn block_height(&self) -> Option<BlockHeight> {
         match self {
             Context::Script { block_height } | Context::Call { block_height } => Some(*block_height),
             _ => None,

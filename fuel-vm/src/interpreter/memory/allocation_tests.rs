@@ -22,7 +22,9 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
         ssp: 0,
         hp: 0,
         prev_hp: 0,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     if has_ownership {
         owner.ssp = a - 1;
@@ -53,7 +55,9 @@ fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), Ru
         ssp: 0,
         hp: 0,
         prev_hp: 0,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     if has_ownership {
         owner.ssp = b - 1;
@@ -152,7 +156,9 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(),
         ssp: 0,
         hp: 0,
         prev_hp: 0,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     if has_ownership {
         owner.ssp = b - 1;
@@ -176,7 +182,9 @@ fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(),
         ssp: 0,
         hp: 0,
         prev_hp: 0,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     if has_ownership {
         owner.ssp = b - 1;

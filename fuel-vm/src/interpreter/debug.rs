@@ -52,8 +52,8 @@ fn breakpoint_script() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     let script = [
@@ -117,8 +117,8 @@ fn single_stepping() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times

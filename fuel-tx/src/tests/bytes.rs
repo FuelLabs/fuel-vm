@@ -97,7 +97,7 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.next_u64(),
+            rng.gen(),
         ),
         Input::coin_predicate(
             rng.gen(),
@@ -494,7 +494,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             rng.gen::<Witness>().into_inner(),
             rng.gen::<Witness>().into_inner(),
             vec![i.clone()],
@@ -504,7 +504,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             vec![],
             generate_bytes(rng),
             vec![i.clone()],
@@ -514,7 +514,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             rng.gen::<Witness>().into_inner(),
             vec![],
             vec![i.clone()],
@@ -524,7 +524,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![i.clone()],
@@ -534,7 +534,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -544,7 +544,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -554,7 +554,7 @@ fn transaction() {
         Transaction::script(
             rng.next_u64(),
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen(),
             vec![],
             vec![],
             vec![],
@@ -566,7 +566,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![s.clone()],
@@ -577,7 +577,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![s],
@@ -588,7 +588,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![],
@@ -599,7 +599,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![],
@@ -610,7 +610,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![],
@@ -621,7 +621,7 @@ fn transaction() {
         Transaction::create(
             rng.next_u64(),
             ConsensusParameters::DEFAULT.max_gas_per_tx,
-            rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![],
@@ -646,7 +646,7 @@ fn create_input_data_offset() {
 
     let gas_price = 100;
     let gas_limit = 1000;
-    let maturity = 10;
+    let maturity = 10.into();
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
 
@@ -758,7 +758,7 @@ fn script_input_coin_data_offset() {
 
     let gas_price = 100;
     let gas_limit = 1000;
-    let maturity = 10;
+    let maturity = 10.into();
 
     let script: Vec<Vec<u8>> = vec![vec![], generate_bytes(rng)];
     let script_data: Vec<Vec<u8>> = vec![vec![], generate_bytes(rng)];

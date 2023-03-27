@@ -104,8 +104,8 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let bytecode_witness = 0;
     let mut create = Transaction::create(
         gas_price,
-        0,
-        0,
+        Default::default(),
+        Default::default(),
         bytecode_witness,
         salt,
         vec![],
@@ -117,9 +117,16 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         ],
         vec![program],
     );
-    create.add_unsigned_coin_input(rng.gen(), &Default::default(), input_amount, asset_id, rng.gen(), 0);
+    create.add_unsigned_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        asset_id,
+        rng.gen(),
+        Default::default(),
+    );
     let create = create
-        .into_checked_basic(context.get_block_height() as Word, context.get_params())
+        .into_checked_basic(context.get_block_height(), context.get_params())
         .expect("failed to generate checked tx");
 
     let state = context.execute_tx(create).expect("Create should be executed");

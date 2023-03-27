@@ -1,7 +1,7 @@
 use crate::{Input, Output, Transaction, Witness};
 use core::hash::Hash;
 
-use fuel_types::{AssetId, Word};
+use fuel_types::{AssetId, BlockHeight};
 
 #[cfg(feature = "std")]
 use fuel_types::Bytes32;
@@ -181,7 +181,7 @@ pub trait FormatValidityChecks {
     #[cfg(feature = "std")]
     /// Performs all stateless transaction validity checks. This includes the validity
     /// of fields according to rules in the specification and validity of signatures.
-    fn check(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check(&self, block_height: BlockHeight, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
         self.check_signatures()?;
 
@@ -194,7 +194,11 @@ pub trait FormatValidityChecks {
 
     /// Validates the transactions according to rules from the specification:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError>;
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError>;
 }
 
 impl FormatValidityChecks for Transaction {
@@ -207,7 +211,11 @@ impl FormatValidityChecks for Transaction {
         }
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => script.check_without_signatures(block_height, parameters),
             Transaction::Create(create) => create.check_without_signatures(block_height, parameters),
@@ -218,7 +226,7 @@ impl FormatValidityChecks for Transaction {
 
 pub(crate) fn check_common_part<T>(
     tx: &T,
-    block_height: Word,
+    block_height: BlockHeight,
     parameters: &ConsensusParameters,
 ) -> Result<(), CheckError>
 where

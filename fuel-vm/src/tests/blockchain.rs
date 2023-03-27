@@ -27,8 +27,8 @@ fn state_read_write() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     let salt: Salt = rng.gen();
@@ -293,8 +293,8 @@ fn load_external_contract_code() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
@@ -423,8 +423,8 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
@@ -937,8 +937,8 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     let salt: Salt = rng.gen();
@@ -1311,8 +1311,8 @@ fn smo_instruction_works() {
         let mut client = MemoryClient::default();
 
         let gas_limit = 1_000_000;
-        let maturity = 0;
-        let block_height = 0;
+        let maturity = Default::default();
+        let block_height = Default::default();
 
         let params = client.params();
 
@@ -1434,8 +1434,8 @@ fn timestamp_works() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let block_height = 0;
+    let maturity = Default::default();
+    let block_height = Default::default();
 
     let params = *client.params();
 
@@ -1454,9 +1454,12 @@ fn timestamp_works() {
     ];
 
     for (height, input) in cases {
-        client.as_mut().set_block_height(height);
+        client.as_mut().set_block_height(height.into());
 
-        let expected = client.as_ref().timestamp(input).expect("failed to calculate timestamp");
+        let expected = client
+            .as_ref()
+            .timestamp(input.into())
+            .expect("failed to calculate timestamp");
 
         #[rustfmt::skip]
         let script = vec![

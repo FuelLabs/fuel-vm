@@ -108,7 +108,7 @@ impl<Tx> GTFInput<'_, Tx> {
             // General
             GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice => tx.price(),
             GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit => tx.limit(),
-            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => *tx.maturity(),
+            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => **tx.maturity() as Word,
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => tx.inputs().len() as Word,
             GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount => tx.outputs().len() as Word,
             GTFArgs::ScriptWitnessesCound | GTFArgs::CreateWitnessesCount => tx.witnesses().len() as Word,
@@ -187,12 +187,12 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|i| i.is_coin())
                 .and_then(Input::witness_index)
                 .ok_or(PanicReason::InputNotFound)? as Word,
-            GTFArgs::InputCoinMaturity => tx
+            GTFArgs::InputCoinMaturity => *tx
                 .inputs()
                 .get(b)
                 .filter(|i| i.is_coin())
                 .and_then(Input::maturity)
-                .ok_or(PanicReason::InputNotFound)?,
+                .ok_or(PanicReason::InputNotFound)? as Word,
             GTFArgs::InputCoinPredicateLength => tx
                 .inputs()
                 .get(b)

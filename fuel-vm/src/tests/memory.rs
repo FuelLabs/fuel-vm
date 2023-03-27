@@ -13,8 +13,8 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
@@ -87,8 +87,8 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
@@ -142,8 +142,8 @@ fn dynamic_call_frame_ops() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 

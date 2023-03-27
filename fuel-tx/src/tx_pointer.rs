@@ -1,7 +1,6 @@
-use fuel_asm::Word;
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, MemLayout, MemLocType,
+    mem_layout, BlockHeight, MemLayout, MemLocType,
 };
 
 use core::{fmt, str};
@@ -23,25 +22,25 @@ use rand::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TxPointer {
     /// Block height
-    block_height: u32,
+    block_height: BlockHeight,
     /// Transaction index
     tx_index: u16,
 }
 
 mem_layout!(
     TxPointerLayout for TxPointer
-    block_height: Word = WORD_SIZE,
-    tx_index: Word = WORD_SIZE
+    block_height: u32 = WORD_SIZE,
+    tx_index: u16 = WORD_SIZE
 );
 
 impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;
 
-    pub const fn new(block_height: u32, tx_index: u16) -> Self {
+    pub const fn new(block_height: BlockHeight, tx_index: u16) -> Self {
         Self { block_height, tx_index }
     }
 
-    pub const fn block_height(&self) -> u32 {
+    pub const fn block_height(&self) -> BlockHeight {
         self.block_height
     }
 
@@ -88,7 +87,7 @@ impl str::FromStr for TxPointer {
         let block_height = u32::from_str_radix(&s[..8], 16).map_err(|_| ERR)?;
         let tx_index = u16::from_str_radix(&s[8..12], 16).map_err(|_| ERR)?;
 
-        Ok(Self::new(block_height, tx_index))
+        Ok(Self::new(block_height.into(), tx_index))
     }
 }
 
@@ -106,12 +105,11 @@ impl io::Write for TxPointer {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let block_height = bytes::restore_word_at(buf, Self::layout(Self::LAYOUT.block_height));
-        let tx_index = bytes::restore_word_at(buf, Self::layout(Self::LAYOUT.tx_index));
+        let block_height = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.block_height)).into();
+        let tx_index = bytes::restore_u16_at(buf, Self::layout(Self::LAYOUT.tx_index));
 
-        self.block_height = u32::try_from(block_height).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        self.tx_index = u16::try_from(tx_index).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.block_height = block_height;
+        self.tx_index = tx_index;
 
         Ok(Self::LEN)
     }
@@ -129,8 +127,8 @@ impl io::Read for TxPointer {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.block_height), self.block_height as Word);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.tx_index), self.tx_index as Word);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.block_height), *self.block_height);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.tx_index), self.tx_index);
 
         Ok(Self::LEN)
     }
@@ -143,7 +141,7 @@ fn fmt_encode_decode() {
     let cases = vec![(83473, 3829)];
 
     for (block_height, tx_index) in cases {
-        let tx_pointer = TxPointer::new(block_height, tx_index);
+        let tx_pointer = TxPointer::new(block_height.into(), tx_index);
 
         let lower = format!("{tx_pointer:x}");
         let upper = format!("{tx_pointer:X}");

@@ -14,7 +14,7 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
     memory[b as usize..(b as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     memory[c as usize..(c as usize + ContractId::LEN)].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
         .merkle_contract_asset_id_balance_insert(&contract_id, &AssetId::from([2u8; 32]), 33)
         .unwrap();
@@ -44,16 +44,20 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
     memory[c as usize..(c as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
         .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, 60)
         .unwrap();
     let mut pc = 4;
 
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
 
     let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
@@ -104,16 +108,20 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
     memory[d as usize..(d as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
         .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, 60)
         .unwrap();
     let mut pc = 4;
 
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
 
     let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
@@ -171,7 +179,7 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
 fn test_balance_increase(initial: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
         storage
@@ -203,7 +211,7 @@ fn test_balance_increase(initial: impl Into<Option<Word>>, amount: Word) -> Resu
 fn test_balance_decrease(initial: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
         storage

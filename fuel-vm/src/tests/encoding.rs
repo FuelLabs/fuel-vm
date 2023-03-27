@@ -98,17 +98,17 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
-            TxPointer::new(0x3802, 0x28),
+            TxPointer::new(0x3802.into(), 0x28),
             0xff,
-            Word::MAX >> 1,
+            (u32::MAX >> 1).into(),
         ),
         Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
-            TxPointer::new(0x3802, 0x28),
-            Word::MAX >> 1,
+            TxPointer::new(0x3802.into(), 0x28),
+            (u32::MAX >> 1).into(),
             vec![0xdd; 50],
             vec![0xee; 23],
         ),
@@ -117,8 +117,8 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
-            TxPointer::new(0x3802, 0x28),
-            Word::MAX >> 1,
+            TxPointer::new(0x3802.into(), 0x28),
+            (u32::MAX >> 1).into(),
             vec![0xdd; 50],
             vec![],
         ),
@@ -169,7 +169,7 @@ fn input() {
             UtxoId::new([0xaa; 32].into(), 0),
             [0xbb; 32].into(),
             [0xcc; 32].into(),
-            TxPointer::new(0x3802, 0x28),
+            TxPointer::new(0x3802.into(), 0x28),
             [0xdd; 32].into(),
         ),
     ]);
@@ -192,7 +192,7 @@ fn transaction() {
         UtxoId::new([0xaa; 32].into(), 0),
         [0xbb; 32].into(),
         [0xcc; 32].into(),
-        TxPointer::new(0xbeef, 0xeaae),
+        TxPointer::new(0xbeef.into(), 0xeaae),
         [0xdd; 32].into(),
     );
     let o = Output::coin([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into());
@@ -202,7 +202,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![0xfa],
             vec![0xfb, 0xfc],
             vec![i.clone()],
@@ -212,7 +212,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![],
             vec![0xfb, 0xfc],
             vec![i.clone()],
@@ -222,7 +222,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![0xfa],
             vec![],
             vec![i.clone()],
@@ -232,7 +232,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![],
             vec![],
             vec![i.clone()],
@@ -242,7 +242,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![],
             vec![],
             vec![],
@@ -252,7 +252,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![],
             vec![],
             vec![],
@@ -262,7 +262,7 @@ fn transaction() {
         Transaction::script(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             vec![],
             vec![],
             vec![],
@@ -274,7 +274,7 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -285,7 +285,7 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -296,7 +296,7 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             0xba,
             [0xdd; 32].into(),
             vec![],
@@ -307,7 +307,7 @@ fn transaction() {
         Transaction::create(
             Word::MAX >> 1,
             Word::MAX >> 2,
-            Word::MAX >> 3,
+            (u32::MAX >> 3).into(),
             0xba,
             [0xdd; 32].into(),
             vec![],

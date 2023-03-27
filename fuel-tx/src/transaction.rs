@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, Bytes32, Nonce, Salt, Word};
+use fuel_types::{Address, AssetId, BlockHeight, Bytes32, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -58,7 +58,7 @@ impl Transaction {
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,
-        maturity: Word,
+        maturity: BlockHeight,
         script: Vec<u8>,
         script_data: Vec<u8>,
         inputs: Vec<Input>,
@@ -84,7 +84,7 @@ impl Transaction {
     pub fn create(
         gas_price: Word,
         gas_limit: Word,
-        maturity: Word,
+        maturity: BlockHeight,
         bytecode_witness_index: u8,
         salt: Salt,
         storage_slots: Vec<StorageSlot>,
@@ -284,7 +284,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: Word,
+        maturity: BlockHeight,
     ) {
         let owner = Input::owner(owner);
 
@@ -377,7 +377,7 @@ impl From<Mint> for Transaction {
 /// used to write generic code based on the different combinations of the fields.
 pub mod field {
     use crate::{Input, Output, StorageSlot, Witness};
-    use fuel_types::{Bytes32, Word};
+    use fuel_types::{BlockHeight, Bytes32, Word};
 
     use alloc::vec::Vec;
 
@@ -402,8 +402,8 @@ pub mod field {
     }
 
     pub trait Maturity {
-        fn maturity(&self) -> &Word;
-        fn maturity_mut(&mut self) -> &mut Word;
+        fn maturity(&self) -> &BlockHeight;
+        fn maturity_mut(&mut self) -> &mut BlockHeight;
         fn maturity_offset(&self) -> usize {
             Self::maturity_offset_static()
         }
@@ -528,21 +528,47 @@ mod tests {
     #[test]
     fn metered_data_excludes_witnesses() {
         // test script
-        let script_with_no_witnesses = Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![]);
-        let script_with_witnesses =
-            Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![[0u8; 64].to_vec().into()]);
+        let script_with_no_witnesses = Transaction::script(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
+        let script_with_witnesses = Transaction::script(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![[0u8; 64].to_vec().into()],
+        );
 
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
             script_with_no_witnesses.metered_bytes_size()
         );
         // test create
-        let create_with_no_witnesses =
-            Transaction::create(0, 0, 0, 0, Default::default(), vec![], vec![], vec![], vec![]);
+        let create_with_no_witnesses = Transaction::create(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            0,
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
         let create_with_witnesses = Transaction::create(
-            0,
-            0,
-            0,
+            Default::default(),
+            Default::default(),
+            Default::default(),
             0,
             Default::default(),
             vec![],

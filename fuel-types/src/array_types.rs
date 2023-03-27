@@ -13,19 +13,12 @@ use rand::{
     Rng,
 };
 
-const fn hex_val(c: u8) -> Option<u8> {
-    match c {
-        b'A'..=b'F' => Some(c - b'A' + 10),
-        b'a'..=b'f' => Some(c - b'a' + 10),
-        b'0'..=b'9' => Some(c - b'0'),
-        _ => None,
-    }
-}
+use crate::hex_val;
 
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        /// FuelVM atomic type.
+        /// FuelVM atomic array type.
         #[repr(transparent)]
         pub struct $i([u8; $s]);
 

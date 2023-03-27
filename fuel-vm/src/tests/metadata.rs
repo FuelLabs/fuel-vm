@@ -18,8 +18,8 @@ fn metadata() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
@@ -183,8 +183,8 @@ fn get_transaction_fields() {
 
     let gas_price = 1;
     let gas_limit = 1_000_000;
-    let maturity = 50;
-    let height = 122;
+    let maturity = 50.into();
+    let height = 122.into();
     let input = 10_000_000;
 
     let params = ConsensusParameters::default();
@@ -214,7 +214,7 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        100,
+        100.into(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -355,7 +355,7 @@ fn get_transaction_fields() {
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0x00),
-        op::movi(0x11, maturity as Immediate18),
+        op::movi(0x11, *maturity as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptMaturity),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
@@ -478,7 +478,7 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x11, inputs[0].maturity().unwrap() as Immediate18),
+        op::movi(0x11, *inputs[0].maturity().unwrap() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinMaturity),
         op::eq(0x10, 0x10, 0x11),

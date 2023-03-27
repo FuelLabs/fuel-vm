@@ -24,7 +24,9 @@ fn test_return() {
     expected[RegId::RET] = 101;
     expected[RegId::RETL] = 102;
     expected[RegId::PC] += 4;
-    let mut context = Context::Call { block_height: 0 };
+    let mut context = Context::Call {
+        block_height: Default::default(),
+    };
 
     let mut receipts = Default::default();
     let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();

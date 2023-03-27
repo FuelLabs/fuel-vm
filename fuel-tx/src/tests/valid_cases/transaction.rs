@@ -12,8 +12,8 @@ use std::io::Write;
 fn gas_limit() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
-    let block_height = 1000;
+    let maturity = 100.into();
+    let block_height = 1000.into();
 
     Transaction::script(
         rng.gen(),
@@ -78,7 +78,7 @@ fn gas_limit() {
 fn maturity() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let block_height = 1000;
+    let block_height = 1000.into();
 
     Transaction::script(
         rng.gen(),
@@ -96,7 +96,7 @@ fn maturity() {
     Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        1000,
+        1000.into(),
         0,
         rng.gen(),
         vec![],
@@ -110,7 +110,7 @@ fn maturity() {
     let err = Transaction::script(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        1001,
+        1001.into(),
         vec![],
         vec![],
         vec![],
@@ -125,7 +125,7 @@ fn maturity() {
     let err = Transaction::create(
         rng.gen(),
         PARAMS.max_gas_per_tx,
-        1001,
+        1001.into(),
         0,
         rng.gen(),
         vec![],
@@ -143,8 +143,8 @@ fn maturity() {
 fn max_iow() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
-    let block_height = 1000;
+    let maturity = 100.into();
+    let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
 
@@ -300,8 +300,8 @@ fn max_iow() {
 fn output_change_asset_id() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
-    let block_height = 1000;
+    let maturity = 100.into();
+    let block_height = 1000.into();
 
     let a: AssetId = rng.gen();
     let b: AssetId = rng.gen();
@@ -374,8 +374,8 @@ fn output_change_asset_id() {
 fn script() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
-    let block_height = 1000;
+    let maturity = 100.into();
+    let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
     let asset_id: AssetId = rng.gen();
@@ -443,8 +443,8 @@ fn script() {
 fn create() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
-    let block_height = 1000;
+    let maturity = 100.into();
+    let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
     let secret_b = SecretKey::random(rng);
@@ -659,19 +659,19 @@ fn create() {
 fn mint() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let block_height = 1000;
+    let block_height = 1000.into();
 
     TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
         .finalize()
-        .check(block_height as Word, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect("Failed to validate tx");
 
     let err = TransactionBuilder::mint(block_height, rng.gen())
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
-        .check(block_height as Word, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintOutputIsNotCoin);
@@ -680,7 +680,7 @@ fn mint() {
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .finalize()
-        .check(block_height as Word, &PARAMS)
+        .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE));
@@ -689,7 +689,7 @@ fn mint() {
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .finalize()
-        .check(block_height as Word + 1, &PARAMS)
+        .check(block_height + 1.into(), &PARAMS)
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);
@@ -699,7 +699,7 @@ fn mint() {
 fn tx_id_bytecode_len() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100;
+    let maturity = 100.into();
     let gas_price = rng.gen();
     let salt = rng.gen();
 

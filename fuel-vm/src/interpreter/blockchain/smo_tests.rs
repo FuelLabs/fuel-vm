@@ -199,7 +199,7 @@ fn test_smo(
     }
     let mut receipts = Default::default();
     let mut tx = Create::default();
-    let mut storage = MemoryStorage::new(0, Address::default());
+    let mut storage = MemoryStorage::new(Default::default(), Address::default());
     storage
         .merkle_contract_asset_id_balance_insert(&ContractId::default(), &asset, initial_balance)
         .unwrap();

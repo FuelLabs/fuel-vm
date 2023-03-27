@@ -11,7 +11,7 @@ use fuel_storage::{
     StorageWrite,
 };
 use fuel_tx::Contract;
-use fuel_types::{Address, Bytes32, ContractId, Salt, Word};
+use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
 use tai64::Tai64;
 
@@ -38,7 +38,7 @@ struct MemoryStorageInner {
 /// - transacted: will receive the committed `memory` state.
 /// - persisted: will receive the persisted `transacted` state.
 pub struct MemoryStorage {
-    block_height: u32,
+    block_height: BlockHeight,
     coinbase: Address,
     memory: MemoryStorageInner,
     transacted: MemoryStorageInner,
@@ -47,7 +47,7 @@ pub struct MemoryStorage {
 
 impl MemoryStorage {
     /// Create a new memory storage.
-    pub fn new(block_height: u32, coinbase: Address) -> Self {
+    pub fn new(block_height: BlockHeight, coinbase: Address) -> Self {
         Self {
             block_height,
             coinbase,
@@ -96,14 +96,14 @@ impl MemoryStorage {
 
     #[cfg(feature = "test-helpers")]
     /// Set the block height of the chain
-    pub fn set_block_height(&mut self, block_height: u32) {
+    pub fn set_block_height(&mut self, block_height: BlockHeight) {
         self.block_height = block_height;
     }
 }
 
 impl Default for MemoryStorage {
     fn default() -> Self {
-        let block_height = 1;
+        let block_height = 1.into();
         let coinbase = Address::from(*Hasher::hash(b"coinbase"));
 
         Self::new(block_height, coinbase)
@@ -277,15 +277,15 @@ impl ContractsAssetsStorage for MemoryStorage {}
 impl InterpreterStorage for MemoryStorage {
     type DataError = Infallible;
 
-    fn block_height(&self) -> Result<u32, Infallible> {
+    fn block_height(&self) -> Result<BlockHeight, Infallible> {
         Ok(self.block_height)
     }
 
-    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         const GENESIS: Tai64 = Tai64::UNIX_EPOCH;
         const INTERVAL: Word = 10;
 
-        Ok((GENESIS + (height as Word * INTERVAL)).0)
+        Ok((GENESIS + (*height as Word * INTERVAL)).0)
     }
 
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Infallible> {

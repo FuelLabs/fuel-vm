@@ -53,7 +53,7 @@ pub mod create {
     };
     use crate::checked_transaction::NonRetryableFreeBalances;
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
-    use fuel_types::Word;
+    use fuel_types::{BlockHeight, Word};
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -61,7 +61,7 @@ pub mod create {
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
-        pub block_height: Word,
+        pub block_height: BlockHeight,
         /// The fees and gas usage
         pub fee: TransactionFee,
         /// If predicates have been checked, this is how much gas checking them used.
@@ -74,7 +74,7 @@ pub mod create {
 
         fn into_checked_basic(
             mut self,
-            block_height: Word,
+            block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute();
@@ -107,14 +107,14 @@ pub mod create {
 pub mod mint {
     use super::super::{Checked, IntoChecked};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
-    use fuel_types::Word;
+    use fuel_types::BlockHeight;
 
     impl IntoChecked for Mint {
         type Metadata = ();
 
         fn into_checked_basic(
             mut self,
-            block_height: Word,
+            block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute();
@@ -133,7 +133,7 @@ pub mod script {
     };
     use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
-    use fuel_types::Word;
+    use fuel_types::{BlockHeight, Word};
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -143,7 +143,7 @@ pub mod script {
         /// See [`RetryableAmount`].
         pub retryable_balance: RetryableAmount,
         /// The block height this tx was verified with
-        pub block_height: Word,
+        pub block_height: BlockHeight,
         /// The fees and gas usage
         pub fee: TransactionFee,
         /// If predicates have been checked, this is how much gas checking them used.
@@ -156,7 +156,7 @@ pub mod script {
 
         fn into_checked_basic(
             mut self,
-            block_height: Word,
+            block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute();

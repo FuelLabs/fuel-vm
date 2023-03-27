@@ -23,8 +23,8 @@ where
     let amount = 0;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     let owner = Input::predicate_owner(&predicate);
@@ -119,12 +119,22 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
     if predicates.is_empty() {
-        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
+        builder.add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            coin_amount,
+            AssetId::default(),
+            rng.gen(),
+            Default::default(),
+        );
     }
 
     for predicate in predicates {
@@ -140,7 +150,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            0,
+            Default::default(),
             predicate,
             vec![],
         );
@@ -148,7 +158,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let tx = builder.finalize_checked_basic(0, &ConsensusParameters::default());
+    let tx = builder.finalize_checked_basic(Default::default(), &ConsensusParameters::default());
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
@@ -193,14 +203,24 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let params = ConsensusParameters::default();
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
-    builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(0, &params)
+        .finalize_checked_basic(Default::default(), &params)
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -222,7 +242,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        0,
+        Default::default(),
         predicate,
         vec![],
     );
@@ -230,7 +250,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -256,14 +276,24 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
-    builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -288,7 +318,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        0,
+        Default::default(),
         predicate,
         vec![],
     );
@@ -296,7 +326,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -322,14 +352,24 @@ fn gas_used_by_predicates_more_than_limit() {
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(0);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
-    builder.add_unsigned_coin_input(rng.gen(), rng.gen(), coin_amount, AssetId::default(), rng.gen(), 0);
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -360,7 +400,7 @@ fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        0,
+        Default::default(),
         predicate,
         vec![],
     );
@@ -368,7 +408,7 @@ fn gas_used_by_predicates_more_than_limit() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(0, &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
         .check_predicates(&params, &GasCosts::default());
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);

@@ -2,7 +2,7 @@ use crate::input::sizes::CoinSizes;
 use crate::transaction::types::input::AsField;
 use crate::{TxPointer, UtxoId};
 use fuel_types::bytes::{Deserializable, SizedBytes};
-use fuel_types::{bytes, Address, AssetId, MemLayout, MemLocType, Word};
+use fuel_types::{bytes, Address, AssetId, BlockHeight, MemLayout, MemLocType, Word};
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -88,7 +88,7 @@ where
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
     pub witness_index: Specification::Witness,
-    pub maturity: Word,
+    pub maturity: BlockHeight,
     pub predicate: Specification::Predicate,
     pub predicate_data: Specification::PredicateData,
 }
@@ -176,7 +176,7 @@ where
             0
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), **maturity);
 
         let predicate_len = if let Some(predicate) = predicate.as_field() {
             predicate.len()
@@ -245,7 +245,7 @@ where
         if let Some(witness_index_field) = self.witness_index.as_mut_field() {
             *witness_index_field = witness_index;
         }
-        let maturity = bytes::restore_number_at(buf, S::layout(S::LAYOUT.maturity));
+        let maturity = bytes::restore_u32_at(buf, S::layout(S::LAYOUT.maturity)).into();
         self.maturity = maturity;
 
         let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));

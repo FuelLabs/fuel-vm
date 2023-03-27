@@ -13,7 +13,9 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
         ssp: 1000,
         hp: 2000,
         prev_hp: VM_MAX_RAM - 1,
-        context: Context::Call { block_height: 0 },
+        context: Context::Call {
+            block_height: Default::default(),
+        },
     };
     let mut err = 0;
     let mut pc = 4;
@@ -56,7 +58,9 @@ fn test_keccak256() -> Result<(), RuntimeError> {
         ssp: 1000,
         hp: 2000,
         prev_hp: VM_MAX_RAM - 1,
-        context: Context::Call { block_height: 0 },
+        context: Context::Call {
+            block_height: Default::default(),
+        },
     };
     let mut pc = 4;
     let hash = 2100;
@@ -76,7 +80,9 @@ fn test_sha256() -> Result<(), RuntimeError> {
         ssp: 1000,
         hp: 2000,
         prev_hp: VM_MAX_RAM - 1,
-        context: Context::Call { block_height: 0 },
+        context: Context::Call {
+            block_height: Default::default(),
+        },
     };
     let mut pc = 4;
     let hash = 2100;

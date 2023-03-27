@@ -5,7 +5,7 @@ use consts::*;
 use contract::*;
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Nonce};
+use fuel_types::{bytes, BlockHeight, Nonce};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 use message::*;
 
@@ -118,7 +118,7 @@ impl Input {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: Word,
+        maturity: BlockHeight,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
     ) -> Self {
@@ -142,7 +142,7 @@ impl Input {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         witness_index: u8,
-        maturity: Word,
+        maturity: BlockHeight,
     ) -> Self {
         Self::CoinSigned(CoinSigned {
             utxo_id,
@@ -322,7 +322,7 @@ impl Input {
         }
     }
 
-    pub const fn maturity(&self) -> Option<Word> {
+    pub const fn maturity(&self) -> Option<BlockHeight> {
         match self {
             Input::CoinSigned(CoinSigned { maturity, .. }) | Input::CoinPredicate(CoinPredicate { maturity, .. }) => {
                 Some(*maturity)

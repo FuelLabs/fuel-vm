@@ -12,9 +12,9 @@ fn tx_with_signed_coin_snapshot() {
             owner: [2u8; 32].into(),
             amount: 11,
             asset_id: [5u8; 32].into(),
-            tx_pointer: TxPointer::new(46, 5),
+            tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: 4,
-            maturity: 2,
+            maturity: 2.into(),
             predicate: (),
             predicate_data: (),
         }))
@@ -33,9 +33,9 @@ fn tx_with_predicate_coin_snapshot() {
             owner: [2u8; 32].into(),
             amount: 11,
             asset_id: [5u8; 32].into(),
-            tx_pointer: TxPointer::new(46, 5),
+            tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: (),
-            maturity: 2,
+            maturity: 2.into(),
             predicate: vec![3u8; 10],
             predicate_data: vec![4u8; 12],
         }))
@@ -53,7 +53,7 @@ fn tx_with_contract_snapshot() {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             balance_root: [2u8; 32].into(),
             state_root: [3u8; 32].into(),
-            tx_pointer: TxPointer::new(46, 5),
+            tx_pointer: TxPointer::new(46.into(), 5),
             contract_id: [5u8; 32].into(),
         }))
         .finalize_as_transaction();

@@ -27,7 +27,7 @@ pub fn generate_bytes<R>(rng: &mut R) -> Vec<u8>
 where
     R: Rng,
 {
-    let len = rng.gen_range(0..512);
+    let len = rng.gen_range(1..512);
 
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());

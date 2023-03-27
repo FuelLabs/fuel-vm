@@ -11,7 +11,7 @@ use fuel_tx::field::{Outputs, ReceiptsRoot};
 use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{AssetId, Bytes32, ContractId, Word};
+use fuel_types::{AssetId, BlockHeight, Bytes32, ContractId, Word};
 
 use core::mem;
 
@@ -169,7 +169,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.params().tx_offset()
     }
 
-    pub(crate) fn get_block_height(&self) -> Result<u32, PanicReason> {
+    pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {
         self.context().block_height().ok_or(PanicReason::TransactionValidity)
     }
 }

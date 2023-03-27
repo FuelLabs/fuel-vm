@@ -2,7 +2,7 @@
 
 use fuel_storage::{MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate, StorageRead, StorageSize};
 use fuel_tx::{Contract, StorageSlot};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
+use fuel_types::{Address, AssetId, BlockHeight, Bytes32, ContractId, Salt, Word};
 
 use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState};
 use std::borrow::Cow;
@@ -25,7 +25,7 @@ pub trait InterpreterStorage:
 
     /// Provide the current block height in which the transactions should be
     /// executed.
-    fn block_height(&self) -> Result<u32, Self::DataError>;
+    fn block_height(&self) -> Result<BlockHeight, Self::DataError>;
 
     /// Return the timestamp of a given block
     ///
@@ -33,7 +33,7 @@ pub trait InterpreterStorage:
     /// passed - under the assumption that the block height is consistent, the storage should
     /// necessarily have the timestamp for the block, unless some I/O error prevents it from
     /// fetching it.
-    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError>;
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError>;
 
     /// Provide the block hash from a given height.
     fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
@@ -199,11 +199,11 @@ where
 {
     type DataError = S::DataError;
 
-    fn block_height(&self) -> Result<u32, Self::DataError> {
+    fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         <S as InterpreterStorage>::block_height(self.deref())
     }
 
-    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         <S as InterpreterStorage>::timestamp(self.deref(), height)
     }
 

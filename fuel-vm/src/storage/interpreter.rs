@@ -1,6 +1,6 @@
 //! Trait definitions for storage backend
 
-use fuel_storage::{MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate};
+use fuel_storage::{MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate, StorageRead, StorageSize};
 use fuel_tx::{Contract, StorageSlot};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, Salt, Word};
 
@@ -14,9 +14,11 @@ use std::ops::{Deref, DerefMut};
 /// have full functionality
 pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
+    + StorageSize<ContractsRawCode, Error = Self::DataError>
+    + StorageRead<ContractsRawCode, Error = Self::DataError>
     + StorageMutate<ContractsInfo, Error = Self::DataError>
-    + MerkleRootStorage<ContractId, ContractsAssets, Error = Self::DataError>
     + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
+    + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
     type DataError: StdError + Into<io::Error>;
@@ -39,20 +41,6 @@ pub trait InterpreterStorage:
     /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
 
-    /// Deploy a contract into the storage
-    fn deploy_contract(
-        &mut self,
-        salt: &Salt,
-        slots: &[StorageSlot],
-        contract: &Contract,
-    ) -> Result<(), Self::DataError> {
-        let storage_root = Contract::initial_state_root(slots.iter());
-        let root = contract.root();
-        let id = contract.id(salt, &root, &storage_root);
-
-        self.deploy_contract_with_id(salt, slots, contract, &root, &id)
-    }
-
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
         &mut self,
@@ -74,6 +62,17 @@ pub trait InterpreterStorage:
     /// given contract.
     fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
         StorageInspect::<ContractsRawCode>::get(self, id)
+    }
+
+    /// Fetch the size of a previously inserted contract code from the chain state for a
+    /// given contract.
+    fn storage_contract_size(&self, id: &ContractId) -> Result<Option<usize>, Self::DataError> {
+        StorageSize::<ContractsRawCode>::size_of_value(self, id)
+    }
+
+    /// Read contract bytes from storage into the buffer.
+    fn read_contract(&self, id: &ContractId, writer: &mut [u8]) -> Result<Option<Word>, Self::DataError> {
+        Ok(StorageRead::<ContractsRawCode>::read(self, id, writer)?.map(|r| r as Word))
     }
 
     /// Append a contract to the chain, provided its identifier.
@@ -163,13 +162,16 @@ pub trait InterpreterStorage:
         start_key: &Bytes32,
         range: Word,
     ) -> Result<Option<()>, Self::DataError>;
+}
 
+/// Storage operations for contract assets.
+pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets> {
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,
         id: &ContractId,
         asset_id: &AssetId,
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, Self::Error> {
         let balance = self
             .storage::<ContractsAssets>()
             .get(&(id, asset_id).into())?
@@ -184,10 +186,12 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         asset_id: &AssetId,
         value: Word,
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, Self::Error> {
         StorageMutate::<ContractsAssets>::insert(self, &(contract, asset_id).into(), &value)
     }
 }
+
+impl<S> ContractsAssetsStorage for &mut S where S: ContractsAssetsStorage {}
 
 impl<S> InterpreterStorage for &mut S
 where
@@ -209,6 +213,14 @@ where
 
     fn coinbase(&self) -> Result<Address, Self::DataError> {
         <S as InterpreterStorage>::coinbase(self.deref())
+    }
+
+    fn storage_contract_size(&self, id: &ContractId) -> Result<Option<usize>, Self::DataError> {
+        <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
+    }
+
+    fn read_contract(&self, id: &ContractId, writer: &mut [u8]) -> Result<Option<Word>, Self::DataError> {
+        <S as InterpreterStorage>::read_contract(self.deref(), id, writer)
     }
 
     fn merkle_contract_state_range(

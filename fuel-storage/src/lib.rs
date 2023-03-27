@@ -1,10 +1,15 @@
 #![no_std]
+#![deny(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 mod impls;
 
 extern crate alloc;
 
-use alloc::borrow::{Cow, ToOwned};
+use alloc::{
+    borrow::{Cow, ToOwned},
+    vec::Vec,
+};
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -68,6 +73,66 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     /// Return `Ok(Some(Value))` if the value was present. If the key wasn't found, return
     /// `Ok(None)`.
     fn remove(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error>;
+}
+
+/// Base storage trait for Fuel infrastructure.
+///
+/// Allows checking the size of the value stored at a given key.
+/// Checking the size of a value is a cheap operation and should not require
+/// copying the value into a buffer.
+pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
+    /// Return the number of bytes stored at this key.
+    fn size_of_value(&self, key: &Type::Key) -> Result<Option<usize>, Self::Error>;
+}
+
+/// Base storage trait for Fuel infrastructure.
+///
+/// Allows reading the raw bytes of the value stored at a given key
+/// into a provided buffer.
+///
+/// This trait should skip any deserialization and simply copy the raw bytes.
+pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> {
+    /// Read the value stored at the given key into the provided buffer if the value exists.
+    ///
+    /// Does not perform any deserialization.
+    ///
+    /// Returns None if the value does not exist.
+    /// Otherwise, returns the number of bytes read.
+    fn read(&self, key: &Type::Key, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
+
+    /// Same as `read` but allocates a new buffer and returns it.
+    ///
+    /// Checks the size of the value and allocates a buffer of that size.
+    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
+}
+
+/// Base storage trait for Fuel infrastructure.
+///
+/// Allows writing the raw bytes of the value stored to a given key
+/// from a provided buffer.
+///
+/// This trait should skip any serialization and simply copy the raw bytes
+/// to the storage.
+pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
+    /// Write the value to the given key from the provided buffer.
+    ///
+    /// Does not perform any serialization.
+    ///
+    /// Returns the number of bytes written.
+    fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, Self::Error>;
+
+    /// Write the value to the given key from the provided buffer and
+    /// return the previous value if it existed.
+    ///
+    /// Does not perform any serialization.
+    ///
+    /// Returns the number of bytes written and the previous value if it existed.
+    fn replace(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<Type>;
+
+    /// Removes a value from the storage and returning it without deserializing it.
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. The type should implement the

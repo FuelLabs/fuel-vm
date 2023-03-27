@@ -75,18 +75,26 @@ fn from_tx_works() {
         predicate_data.clone(),
     );
 
-    let b = Input::message_predicate(
+    let b = Input::message_coin_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate.clone(),
+        predicate_data.clone(),
+    );
+
+    let c = Input::message_data_predicate(
         rng.gen(),
-        vec![],
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        vec![0xff; 10],
         predicate.clone(),
         predicate_data,
     );
 
-    let inputs = vec![a, b];
+    let inputs = vec![a, b, c];
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])

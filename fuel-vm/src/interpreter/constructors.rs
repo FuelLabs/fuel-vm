@@ -8,7 +8,9 @@ use crate::storage::MemoryStorage;
 use crate::{consts::*, gas::GasCosts};
 
 #[cfg(feature = "profile-any")]
-use crate::profiler::{ProfileReceiver, Profiler};
+use crate::profiler::ProfileReceiver;
+
+use crate::profiler::Profiler;
 
 use fuel_tx::ConsensusParameters;
 
@@ -24,9 +26,9 @@ where
     pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; VM_MAX_RAM as usize],
+            memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
             frames: vec![],
-            receipts: vec![],
+            receipts: Default::default(),
             tx: Default::default(),
             initial_balances: Default::default(),
             storage,
@@ -34,7 +36,6 @@ where
             context: Context::default(),
             balances: RuntimeBalances::default(),
             gas_costs,
-            #[cfg(feature = "profile-any")]
             profiler: Profiler::default(),
             params,
             panic_context: PanicContext::None,

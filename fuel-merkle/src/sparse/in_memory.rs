@@ -7,6 +7,7 @@ use crate::{
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle
 /// tree, where the storage key is `Bytes32` and the value is the [`Buffer`](crate::sparse::Buffer)
 /// (raw presentation of the [`Node`](crate::sparse::Node)).
+#[derive(Debug)]
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
@@ -19,6 +20,7 @@ impl Mappable for NodesTable {
 type Storage = StorageMap<NodesTable>;
 type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
+#[derive(Debug)]
 pub struct MerkleTree {
     tree: SparseMerkleTree,
 }

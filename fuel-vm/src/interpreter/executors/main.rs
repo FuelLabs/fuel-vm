@@ -1,8 +1,7 @@
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
-use crate::crypto;
-use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed, RuntimeError};
+use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
 use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
@@ -16,7 +15,6 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_types::bytes::SerializableVec;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -95,47 +93,6 @@ impl<T> Interpreter<PredicateStorage, T> {
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
-    Tx: ExecutableTransaction,
-{
-    pub(crate) fn run_call(&mut self) -> Result<ProgramState, RuntimeError> {
-        loop {
-            if self.registers[RegId::PC] >= VM_MAX_RAM {
-                return Err(PanicReason::MemoryOverflow.into());
-            }
-
-            let state = self.execute().map_err(|e| {
-                e.panic_reason()
-                    .map(RuntimeError::Recoverable)
-                    .unwrap_or_else(|| RuntimeError::Halt(e.into()))
-            })?;
-
-            match state {
-                ExecuteState::Return(r) => {
-                    return Ok(ProgramState::Return(r));
-                }
-
-                ExecuteState::ReturnData(d) => {
-                    return Ok(ProgramState::ReturnData(d));
-                }
-
-                ExecuteState::Revert(r) => {
-                    return Ok(ProgramState::Revert(r));
-                }
-
-                ExecuteState::Proceed => (),
-
-                #[cfg(feature = "debug")]
-                ExecuteState::DebugEvent(d) => {
-                    return Ok(ProgramState::RunProgram(d));
-                }
-            }
-        }
-    }
-}
-
-impl<S, Tx> Interpreter<S, Tx>
-where
-    S: InterpreterStorage,
 {
     fn _deploy(
         create: &mut Create,
@@ -177,7 +134,7 @@ where
             false,
             remaining_gas,
             &initial_balances,
-            &RuntimeBalances::from(initial_balances.clone()),
+            &RuntimeBalances::try_from(initial_balances.clone())?,
             params,
         )?;
         Ok(())
@@ -203,8 +160,8 @@ where
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
-                if let Input::Contract { contract_id, .. } = input {
-                    !self.check_contract_exists(contract_id).unwrap_or(false)
+                if let Input::Contract(contract) = input {
+                    !self.check_contract_exists(&contract.contract_id).unwrap_or(false)
                 } else {
                     false
                 }
@@ -280,16 +237,8 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            let receipts_root = if self.receipts().is_empty() {
-                EMPTY_RECEIPTS_MERKLE_ROOT.into()
-            } else {
-                crypto::ephemeral_merkle_root(self.receipts().iter().map(|r| r.clone().to_bytes()))
-            };
-
-            // TODO optimize
             if let Some(script) = self.tx.as_script_mut() {
-                // TODO: also set this on the serialized tx in memory to keep serialized form consistent
-                // https://github.com/FuelLabs/fuel-vm/issues/97
+                let receipts_root = self.receipts.root();
                 *script.receipts_root_mut() = receipts_root;
             }
 
@@ -317,24 +266,36 @@ where
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 
-            match self.execute()? {
-                ExecuteState::Return(r) => {
-                    return Ok(ProgramState::Return(r));
-                }
+            // Check whether the instruction will be executed in a call context
+            let in_call = !self.frames.is_empty();
 
-                ExecuteState::ReturnData(d) => {
-                    return Ok(ProgramState::ReturnData(d));
-                }
+            let state = self.execute()?;
 
-                ExecuteState::Revert(r) => {
+            if in_call {
+                // Only reverts should terminate execution from a call context
+                if let ExecuteState::Revert(r) = state {
                     return Ok(ProgramState::Revert(r));
                 }
+            } else {
+                match state {
+                    ExecuteState::Return(r) => {
+                        return Ok(ProgramState::Return(r));
+                    }
 
-                ExecuteState::Proceed => (),
+                    ExecuteState::ReturnData(d) => {
+                        return Ok(ProgramState::ReturnData(d));
+                    }
 
-                #[cfg(feature = "debug")]
-                ExecuteState::DebugEvent(d) => {
-                    return Ok(ProgramState::RunProgram(d));
+                    ExecuteState::Revert(r) => {
+                        return Ok(ProgramState::Revert(r));
+                    }
+
+                    ExecuteState::Proceed => (),
+
+                    #[cfg(feature = "debug")]
+                    ExecuteState::DebugEvent(d) => {
+                        return Ok(ProgramState::RunProgram(d));
+                    }
                 }
             }
         }
@@ -360,7 +321,7 @@ where
         interpreter
             .transact(tx)
             .map(ProgramState::from)
-            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts))
+            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts.into()))
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided

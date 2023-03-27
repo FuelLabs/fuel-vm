@@ -4,7 +4,10 @@ use crate::transaction::{
 };
 use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
+use fuel_types::{
+    bytes::{SizedBytes, WORD_SIZE},
+    mem_layout, MemLayout, MemLocType,
+};
 use fuel_types::{Bytes32, Word};
 
 #[cfg(feature = "std")]
@@ -75,6 +78,13 @@ pub struct Mint {
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     pub(crate) metadata: Option<MintMetadata>,
 }
+
+mem_layout!(
+    MintLayout for Mint
+    repr: u8 = WORD_SIZE,
+    tx_pointer: TxPointer = {TxPointer::LEN},
+    outputs_len: Word = WORD_SIZE
+);
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
@@ -202,40 +212,55 @@ mod field {
 
 #[cfg(feature = "std")]
 impl io::Read for Mint {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
+    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
+        let serialized_size = self.serialized_size();
+        if full_buf.len() < serialized_size {
             return Err(bytes::eof());
         }
 
-        let buf = bytes::store_number_unchecked(buf, crate::TransactionRepr::Mint as Word);
+        let buf: &mut [_; Self::LEN] = full_buf
+            .get_mut(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
+
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.repr), crate::TransactionRepr::Mint as u8);
         let Mint {
-            tx_pointer, outputs, ..
+            tx_pointer,
+            outputs,
+            metadata: _,
         } = self;
 
-        let skip = tx_pointer.read(buf)?;
-        let buf = &mut buf[skip..];
-        let mut buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
+        let n = tx_pointer.read(&mut buf[Self::LAYOUT.tx_pointer.range()])?;
+        if n != Self::LAYOUT.tx_pointer.size() {
+            return Err(bytes::eof());
+        }
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
 
+        let mut buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
         for output in outputs {
             let output_len = output.read(buf)?;
             buf = &mut buf[output_len..];
         }
 
-        Ok(n)
+        Ok(serialized_size)
     }
 }
 
 #[cfg(feature = "std")]
 impl io::Write for Mint {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
         let mut n = crate::consts::TRANSACTION_MINT_FIXED_SIZE;
-        if buf.len() < n {
+        if full_buf.len() < n {
             return Err(bytes::eof());
         }
 
-        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
-        let identifier = crate::TransactionRepr::try_from(identifier)?;
+        let buf: &[_; Self::LEN] = full_buf
+            .get(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
+
+        let identifier = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.repr));
+        let identifier = crate::TransactionRepr::try_from(identifier as Word)?;
         if identifier != crate::TransactionRepr::Mint {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -244,10 +269,10 @@ impl io::Write for Mint {
         }
 
         // Safety: buffer size is checked
-        let tx_pointer = TxPointer::from_bytes(buf)?;
-        let buf = &buf[tx_pointer.serialized_size()..];
-        let (outputs_len, mut buf) = unsafe { bytes::restore_usize_unchecked(buf) };
+        let tx_pointer = TxPointer::from_bytes(&buf[Self::LAYOUT.tx_pointer.range()])?;
+        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
 
+        let mut buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
         let mut outputs = vec![Output::default(); outputs_len];
         for output in outputs.iter_mut() {
             let output_len = output.write(buf)?;

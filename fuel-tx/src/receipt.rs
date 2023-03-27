@@ -1,20 +1,26 @@
+use crate::receipt::sizes::{
+    CallSizesLayout, LogDataSizesLayout, LogSizesLayout, MessageOutSizesLayout, PanicSizesLayout,
+    ReturnDataSizesLayout, ReturnSizesLayout, RevertSizesLayout, ScriptResultSizesLayout, TransferOutSizesLayout,
+    TransferSizesLayout,
+};
+use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Nonce, Word};
 
 #[cfg(feature = "std")]
 mod receipt_std;
 
 mod receipt_repr;
 mod script_result;
+mod sizes;
 
 use receipt_repr::ReceiptRepr;
 
+use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
-
-use crate::Output;
 
 #[derive(Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -111,11 +117,10 @@ pub enum Receipt {
     },
 
     MessageOut {
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         len: Word,
         digest: Bytes32,
         data: Vec<u8>,
@@ -295,38 +300,34 @@ impl Receipt {
         data: Vec<u8>,
     ) -> Self {
         let nonce = Output::message_nonce(txid, idx);
-        let message_id = Output::message_id(&sender, &recipient, &nonce, amount, &data);
         let digest = Output::message_digest(&data);
 
-        Self::message_out(message_id, sender, recipient, amount, nonce, digest, data)
+        Self::message_out(sender, recipient, amount, nonce, digest, data)
     }
 
     pub fn message_out(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         digest: Bytes32,
         data: Vec<u8>,
     ) -> Self {
         let len = bytes::padded_len(&data) as Word;
 
-        Self::message_out_with_len(message_id, sender, recipient, amount, nonce, len, digest, data)
+        Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data)
     }
 
     pub const fn message_out_with_len(
-        message_id: MessageId,
         sender: Address,
         recipient: Address,
         amount: Word,
-        nonce: Bytes32,
+        nonce: Nonce,
         len: Word,
         digest: Bytes32,
         data: Vec<u8>,
     ) -> Self {
         Self::MessageOut {
-            message_id,
             sender,
             recipient,
             amount,
@@ -544,9 +545,16 @@ impl Receipt {
         }
     }
 
-    pub const fn message_id(&self) -> Option<&MessageId> {
+    pub fn message_id(&self) -> Option<MessageId> {
         match self {
-            Self::MessageOut { message_id, .. } => Some(message_id),
+            Self::MessageOut {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                data,
+                ..
+            } => Some(compute_message_id(sender, recipient, nonce, *amount, data.as_slice())),
             _ => None,
         }
     }
@@ -565,7 +573,7 @@ impl Receipt {
         }
     }
 
-    pub const fn nonce(&self) -> Option<&Bytes32> {
+    pub const fn nonce(&self) -> Option<&Nonce> {
         match self {
             Self::MessageOut { nonce, .. } => Some(nonce),
             _ => None,
@@ -580,71 +588,18 @@ impl Receipt {
     }
 
     fn variant_len_without_data(variant: ReceiptRepr) -> usize {
-        ContractId::LEN // id
-            + WORD_SIZE // pc
-            + WORD_SIZE // is
-            + match variant {
-            ReceiptRepr::Call => {
-                ContractId::LEN // to
-                    + WORD_SIZE // amount
-                    + AssetId::LEN // asset_id
-                    + WORD_SIZE // gas
-                    + WORD_SIZE // param1
-                    + WORD_SIZE // param2
-            }
-
-            ReceiptRepr::Return => WORD_SIZE, // val
-
-            ReceiptRepr::ReturnData => {
-                WORD_SIZE // ptr
-                    + WORD_SIZE // len
-                    + Bytes32::LEN // digest
-            }
-
-            ReceiptRepr::Panic => WORD_SIZE, // reason
-            ReceiptRepr::Revert => WORD_SIZE, // ra
-
-            ReceiptRepr::Log => {
-                WORD_SIZE // ra
-                    + WORD_SIZE // rb
-                    + WORD_SIZE // rc
-                    + WORD_SIZE // rd
-            }
-
-            ReceiptRepr::LogData => {
-                WORD_SIZE // ra
-                    + WORD_SIZE // rb
-                    + WORD_SIZE // ptr
-                    + WORD_SIZE // len
-                    + Bytes32::LEN // digest
-            }
-
-            ReceiptRepr::Transfer => {
-                ContractId::LEN // to
-                    + WORD_SIZE // amount
-                    + AssetId::LEN // digest
-            }
-
-            ReceiptRepr::TransferOut => {
-                Address::LEN // to
-                    + WORD_SIZE // amount
-                    + AssetId::LEN // digest
-            }
-
-            ReceiptRepr::ScriptResult => {
-                WORD_SIZE // status
-                    + WORD_SIZE // gas_used
-            }
-
-            ReceiptRepr::MessageOut => {
-                MessageId::LEN // message_id
-                    + Address::LEN // sender
-                    + Address::LEN // recipient
-                    + WORD_SIZE // amount
-                    + Bytes32::LEN // nonce
-                    + WORD_SIZE // len
-                    + Bytes32::LEN // digest
-            }
+        match variant {
+            ReceiptRepr::Call => CallSizesLayout::LEN,
+            ReceiptRepr::Return => ReturnSizesLayout::LEN,
+            ReceiptRepr::ReturnData => ReturnDataSizesLayout::LEN,
+            ReceiptRepr::Panic => PanicSizesLayout::LEN,
+            ReceiptRepr::Revert => RevertSizesLayout::LEN,
+            ReceiptRepr::Log => LogSizesLayout::LEN,
+            ReceiptRepr::LogData => LogDataSizesLayout::LEN,
+            ReceiptRepr::Transfer => TransferSizesLayout::LEN,
+            ReceiptRepr::TransferOut => TransferOutSizesLayout::LEN,
+            ReceiptRepr::ScriptResult => ScriptResultSizesLayout::LEN,
+            ReceiptRepr::MessageOut => MessageOutSizesLayout::LEN,
         }
     }
 }
@@ -660,7 +615,7 @@ impl SizedBytes for Receipt {
             .map(|data| WORD_SIZE + padded_len_usize(data.len()))
             .unwrap_or(0);
 
-        Self::variant_len_without_data(ReceiptRepr::from(self)) + WORD_SIZE + data_len
+        Self::variant_len_without_data(ReceiptRepr::from(self)) + data_len
     }
 }
 

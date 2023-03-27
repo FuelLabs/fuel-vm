@@ -4,7 +4,7 @@ use crate::storage::{Mappable, StorageInspect, StorageMutate};
 use alloc::borrow::Cow;
 use hashbrown::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StorageMap<Type>
 where
     Type: Mappable,

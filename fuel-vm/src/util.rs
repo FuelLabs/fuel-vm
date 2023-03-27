@@ -75,7 +75,7 @@ pub mod test_helpers {
     use crate::gas::GasCosts;
     use crate::memory_client::MemoryClient;
     use crate::state::StateTransition;
-    use crate::storage::{InterpreterStorage, MemoryStorage};
+    use crate::storage::{ContractsAssetsStorage, MemoryStorage};
     use crate::transactor::Transactor;
     use anyhow::anyhow;
 
@@ -163,11 +163,6 @@ pub mod test_helpers {
             self
         }
 
-        pub fn message_output(&mut self) -> &mut TestBuilder {
-            self.builder.add_output(Output::message(Address::zeroed(), 0));
-            self
-        }
-
         pub fn variable_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
             self.builder
                 .add_output(Output::variable(Address::zeroed(), 0, asset_id));
@@ -179,7 +174,7 @@ pub mod test_helpers {
                 .builder
                 .inputs()
                 .iter()
-                .find_position(|input| matches!(input, Input::Contract {contract_id, ..} if contract_id == id))
+                .find_position(|input| matches!(input, Input::Contract(contract) if &contract.contract_id == id))
                 .expect("expected contract input with matching contract id");
 
             self.builder

@@ -8,8 +8,11 @@ use crate::transaction::{
 };
 use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness};
 use derivative::Derivative;
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
 use fuel_types::{bytes, AssetId, Salt, Word};
+use fuel_types::{
+    bytes::{SizedBytes, WORD_SIZE},
+    mem_layout, MemLayout, MemLocType,
+};
 
 #[cfg(feature = "std")]
 use std::io;
@@ -19,6 +22,9 @@ use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 use fuel_types::bytes::SerializableVec;
+
+#[cfg(all(test, feature = "std"))]
+mod ser_de_tests;
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -38,6 +44,21 @@ pub struct Create {
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     pub(crate) metadata: Option<CommonMetadata>,
 }
+
+mem_layout!(
+    CreateLayout for Create
+    repr: u8 = WORD_SIZE,
+    gas_price: Word = WORD_SIZE,
+    gas_limit: Word = WORD_SIZE,
+    maturity: Word = WORD_SIZE,
+    bytecode_length: Word = WORD_SIZE,
+    bytecode_witness_index: u8 = WORD_SIZE,
+    storage_slots_len: Word = WORD_SIZE,
+    inputs_len: Word = WORD_SIZE,
+    outputs_len: Word = WORD_SIZE,
+    witnesses_len: Word = WORD_SIZE,
+    salt: Salt = {Salt::LEN}
+);
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
@@ -116,13 +137,16 @@ impl FormatValidityChecks for Create {
         // TODO The computed contract ADDRESS (see below) is not equal to the
         // contractADDRESS of the one OutputType.ContractCreated output
 
-        self.inputs.iter().enumerate().try_for_each(|(index, input)| {
-            if let Input::Contract { .. } = input {
-                return Err(CheckError::TransactionCreateInputContract { index });
-            }
-
-            Ok(())
-        })?;
+        self.inputs
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| match input {
+                Input::Contract(_) => Err(CheckError::TransactionCreateInputContract { index }),
+                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Err(CheckError::TransactionCreateMessageData { index })
+                }
+                _ => Ok(()),
+            })?;
 
         let mut contract_created = false;
         self.outputs
@@ -463,13 +487,21 @@ mod field {
 
 #[cfg(feature = "std")]
 impl io::Read for Create {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
-        if buf.len() < n {
+        if full_buf.len() < n {
             return Err(bytes::eof());
         }
+        let buf: &mut [_; Self::LEN] = full_buf
+            .get_mut(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
 
-        let buf = bytes::store_number_unchecked(buf, crate::TransactionRepr::Create as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.repr),
+            crate::TransactionRepr::Create as u8,
+        );
         let Create {
             gas_price,
             gas_limit,
@@ -484,26 +516,39 @@ impl io::Read for Create {
             ..
         } = self;
 
-        let mut buf = {
-            let buf = bytes::store_number_unchecked(buf, *gas_price);
-            let buf = bytes::store_number_unchecked(buf, *gas_limit);
-            let buf = bytes::store_number_unchecked(buf, *maturity);
-            let buf = bytes::store_number_unchecked(buf, *bytecode_length);
-            let buf = bytes::store_number_unchecked(buf, *bytecode_witness_index);
-            let buf = bytes::store_number_unchecked(buf, storage_slots.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, inputs.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, outputs.len() as Word);
-            let buf = bytes::store_number_unchecked(buf, witnesses.len() as Word);
-            let mut buf = bytes::store_array_unchecked(buf, salt);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length), *bytecode_length);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.bytecode_witness_index),
+            *bytecode_witness_index,
+        );
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.storage_slots_len),
+            storage_slots.len() as Word,
+        );
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.inputs_len), inputs.len() as Word);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.witnesses_len), witnesses.len() as Word);
+        bytes::store_at(buf, Self::layout(Self::LAYOUT.salt), salt);
 
-            for storage_slot in storage_slots.iter_mut() {
-                let storage_len = storage_slot.read(buf)?;
-                buf = &mut buf[storage_len..];
+        let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
+        let mut slot_len = 0;
+        for (storage_slot, buf) in storage_slots
+            .iter_mut()
+            .zip(buf.chunks_exact_mut(StorageSlot::SLOT_SIZE))
+        {
+            let storage_len = storage_slot.read(buf)?;
+            slot_len += storage_len;
+            if storage_len != StorageSlot::SLOT_SIZE {
+                return Err(bytes::eof());
             }
+        }
 
-            buf
-        };
-
+        let mut buf = full_buf.get_mut(Self::LEN + slot_len..).ok_or(bytes::eof())?;
         for input in self.inputs.iter_mut() {
             let input_len = input.read(buf)?;
             buf = &mut buf[input_len..];
@@ -525,14 +570,15 @@ impl io::Read for Create {
 
 #[cfg(feature = "std")]
 impl io::Write for Create {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
+        let buf: &[_; Self::LEN] = full_buf
+            .get(..Self::LEN)
+            .and_then(|slice| slice.try_into().ok())
+            .ok_or(bytes::eof())?;
         let mut n = crate::consts::TRANSACTION_CREATE_FIXED_SIZE;
-        if buf.len() < n {
-            return Err(bytes::eof());
-        }
 
-        let (identifier, buf): (Word, _) = unsafe { bytes::restore_number_unchecked(buf) };
-        let identifier = crate::TransactionRepr::try_from(identifier)?;
+        let identifier = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.repr));
+        let identifier = crate::TransactionRepr::try_from(identifier as Word)?;
         if identifier != crate::TransactionRepr::Create {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -540,22 +586,22 @@ impl io::Write for Create {
             ));
         }
 
-        // Safety: buffer size is checked
-        let (gas_price, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (gas_limit, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (maturity, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (bytecode_length, buf) = unsafe { bytes::restore_number_unchecked(buf) };
-        let (bytecode_witness_index, buf) = unsafe { bytes::restore_u8_unchecked(buf) };
-        let (storage_slots_len, buf) = unsafe { bytes::restore_u16_unchecked(buf) };
-        let (inputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (outputs_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (witnesses_len, buf) = unsafe { bytes::restore_usize_unchecked(buf) };
-        let (salt, mut buf) = unsafe { bytes::restore_array_unchecked(buf) };
+        let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
+        let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
+        let maturity = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.maturity));
+        let bytecode_length = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length));
+        let bytecode_witness_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.bytecode_witness_index));
+        let storage_slots_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.storage_slots_len));
+        let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
+        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
+        let witnesses_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
+        let salt = bytes::restore_at(buf, Self::layout(Self::LAYOUT.salt));
 
         let salt = salt.into();
 
-        let mut storage_slots = vec![StorageSlot::default(); storage_slots_len as usize];
-        n += StorageSlot::SLOT_SIZE * storage_slots_len as usize;
+        let mut buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
+        let mut storage_slots = vec![StorageSlot::default(); storage_slots_len];
+        n += StorageSlot::SLOT_SIZE * storage_slots_len;
         for storage_slot in storage_slots.iter_mut() {
             let _ = storage_slot.write(buf)?;
             buf = &buf[StorageSlot::SLOT_SIZE..];

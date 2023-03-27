@@ -260,6 +260,12 @@ macro_rules! impl_instructions {
             Self(pack::bytes_from_ra_rb_rc_rd(ra, rb, rc, rd))
         }
     };
+    (impl_op_new [RegId RegId RegId Imm06]) => {
+        /// Construct the instruction from its parts.
+        pub fn new(ra: RegId, rb: RegId, rc: RegId, imm: Imm06) -> Self {
+            Self(pack::bytes_from_ra_rb_rc_imm06(ra, rb, rc, imm))
+        }
+    };
     (impl_op_new [RegId RegId Imm12]) => {
         /// Construct the instruction from its parts.
         pub fn new(ra: RegId, rb: RegId, imm: Imm12) -> Self {
@@ -282,6 +288,72 @@ macro_rules! impl_instructions {
         /// Construct the instruction.
         #[allow(clippy::new_without_default)]
         pub fn new() -> Self {
+            Self([0; 3])
+        }
+    };
+
+    // Recursively generate a test constructor for each opcode
+    (impl_opcode_test_construct $doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*] $($rest:tt)*) => {
+        #[cfg(test)]
+        impl crate::_op::$Op {
+            impl_instructions!(impl_opcode_test_construct_fn [$($field)*]);
+        }
+        impl_instructions!(impl_opcode_test_construct $($rest)*);
+    };
+    (impl_opcode_test_construct) => {};
+
+    (impl_opcode_test_construct_fn [RegId]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, _rb: RegId, _rc: RegId, _rd: RegId, _imm: u32) -> Self {
+            Self(pack::bytes_from_ra(ra))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId RegId]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, rb: RegId, _rc: RegId, _rd: RegId, _imm: u32) -> Self {
+            Self(pack::bytes_from_ra_rb(ra, rb))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId RegId RegId]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, rb: RegId, rc: RegId, _rd: RegId, _imm: u32) -> Self {
+            Self(pack::bytes_from_ra_rb_rc(ra, rb, rc))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId RegId RegId RegId]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, rb: RegId, rc: RegId, rd: RegId, _imm: u32) -> Self {
+            Self(pack::bytes_from_ra_rb_rc_rd(ra, rb, rc, rd))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId RegId RegId Imm06]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, rb: RegId, rc: RegId, _rd: RegId, imm: u32) -> Self {
+            Self(pack::bytes_from_ra_rb_rc_imm06(ra, rb, rc, Imm06::from(imm as u8)))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId RegId Imm12]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, rb: RegId, _rc: RegId, _rd: RegId, imm: u32) -> Self {
+            Self(pack::bytes_from_ra_rb_imm12(ra, rb, Imm12::from(imm as u16)))
+        }
+    };
+    (impl_opcode_test_construct_fn [RegId Imm18]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(ra: RegId, _rb: RegId, _rc: RegId, _rd: RegId, imm: u32) -> Self {
+            Self(pack::bytes_from_ra_imm18(ra, Imm18::from(imm)))
+        }
+    };
+    (impl_opcode_test_construct_fn [Imm24]) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        pub fn test_construct(_ra: RegId, _rb: RegId, _rc: RegId, _rd: RegId, imm: u32) -> Self {
+            Self(pack::bytes_from_imm24(Imm24::from(imm)))
+        }
+    };
+    (impl_opcode_test_construct_fn []) => {
+        /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+        #[allow(clippy::new_without_default)]
+        pub fn test_construct(_ra: RegId, _rb: RegId, _rc: RegId, _rd: RegId, _imm: u32) -> Self {
             Self([0; 3])
         }
     };
@@ -312,6 +384,13 @@ macro_rules! impl_instructions {
         /// Access the ID for register D.
         pub fn rd(&self) -> RegId {
             unpack::rd_from_bytes(self.0)
+        }
+    };
+    (impl_op_accessors [RegId RegId RegId Imm06]) => {
+        impl_instructions!(impl_op_accessors [RegId RegId RegId]);
+        /// Access the 6-bit immediate value.
+        pub fn imm06(&self) -> Imm06 {
+            unpack::imm06_from_bytes(self.0)
         }
     };
     (impl_op_accessors [RegId RegId Imm12]) => {
@@ -361,6 +440,12 @@ macro_rules! impl_instructions {
             unpack::ra_rb_rc_rd_from_bytes(self.0)
         }
     };
+    (impl_op_unpack [RegId RegId RegId Imm06]) => {
+        /// Convert the instruction into its parts.
+        pub fn unpack(self) -> (RegId, RegId, RegId, Imm06) {
+            unpack::ra_rb_rc_imm06_from_bytes(self.0)
+        }
+    };
     (impl_op_unpack [RegId RegId Imm12]) => {
         /// Convert the instruction into its parts.
         pub fn unpack(self) -> (RegId, RegId, Imm12) {
@@ -404,6 +489,12 @@ macro_rules! impl_instructions {
         #[doc = $doc]
         pub fn $op<A: CheckRegId, B: CheckRegId, C: CheckRegId, D: CheckRegId>(ra: A, rb: B, rc: C, rd: D) -> Instruction {
             $Op::new(ra.check(), rb.check(), rc.check(), rd.check()).into()
+        }
+    };
+    (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId RegId Imm06]) => {
+        #[doc = $doc]
+        pub fn $op<A: CheckRegId, B: CheckRegId, C: CheckRegId>(ra: A, rb: B, rc: C, imm: u8) -> Instruction {
+            $Op::new(ra.check(), rb.check(), rc.check(), check_imm06(imm)).into()
         }
     };
     (impl_op_constructor $doc:literal $Op:ident $op:ident [RegId RegId Imm12]) => {
@@ -454,6 +545,12 @@ macro_rules! impl_instructions {
         pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
             let (ra, rb, rc, rd) = self.unpack();
             [Some(ra), Some(rb), Some(rc), Some(rd)]
+        }
+    };
+    (impl_op_reg_ids [RegId RegId RegId Imm06]) => {
+        pub(super) fn reg_ids(&self) -> [Option<RegId>; 4] {
+            let (ra, rb, rc, _) = self.unpack();
+            [Some(ra), Some(rb), Some(rc), None]
         }
     };
     (impl_op_reg_ids [RegId RegId Imm12]) => {
@@ -510,6 +607,17 @@ macro_rules! impl_instructions {
                 .field("rb", &u8::from(rb))
                 .field("rc", &u8::from(rc))
                 .field("rd", &u8::from(rd))
+                .finish()
+        }
+    };
+    (impl_op_debug_fmt $Op:ident [RegId RegId RegId Imm06]) => {
+        fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+            let (ra, rb, rc, imm) = self.unpack();
+            f.debug_struct(stringify!($Op))
+                .field("ra", &u8::from(ra))
+                .field("rb", &u8::from(rb))
+                .field("rc", &u8::from(rc))
+                .field("imm", &u8::from(imm))
                 .finish()
         }
     };
@@ -593,7 +701,7 @@ macro_rules! impl_instructions {
     };
     (impl_op) => {};
 
-    // Implement `TryFrom<u8>` for `Opcode`.
+    // Implement functions for all opcode variants
     (impl_opcode $($doc:literal $ix:literal $Op:ident $op:ident [$($field:ident)*])*) => {
         impl core::convert::TryFrom<u8> for Opcode {
             type Error = InvalidOpcode;
@@ -603,6 +711,18 @@ macro_rules! impl_instructions {
                         $ix => Ok(Opcode::$Op),
                     )*
                     _ => Err(InvalidOpcode),
+                }
+            }
+        }
+
+        impl Opcode {
+            /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+            #[cfg(test)]
+            pub fn test_construct(self, ra: RegId, rb: RegId, rc: RegId, rd: RegId, imm: u32) -> Instruction {
+                match self {
+                    $(
+                        Self::$Op => Instruction::$Op(crate::_op::$Op::test_construct(ra, rb, rc, rd, imm)),
+                    )*
                 }
             }
         }
@@ -674,5 +794,6 @@ macro_rules! impl_instructions {
         impl_instructions!(decl_instruction_enum $($tts)*);
         impl_instructions!(impl_opcode $($tts)*);
         impl_instructions!(impl_instruction $($tts)*);
+        impl_instructions!(impl_opcode_test_construct $($tts)*);
     };
 }

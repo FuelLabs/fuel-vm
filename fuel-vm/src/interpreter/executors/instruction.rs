@@ -1,11 +1,12 @@
 use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::{ExecutableTransaction, Interpreter};
-use crate::state::{ExecuteState, ProgramState};
+use crate::interpreter::flow::{JumpArgs, JumpMode};
+use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
+use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
 use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
-use fuel_types::{bytes, Word};
+use fuel_types::Word;
 
 use std::ops::Div;
 
@@ -20,7 +21,7 @@ where
         let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
             .chunks_exact(WORD_SIZE)
             .next()
-            .map(|b| unsafe { bytes::from_slice_unchecked(b) })
+            .map(|b| b.try_into().expect("Has to be correct size slice"))
             .map(Word::from_be_bytes)
             .map(fuel_asm::raw_instructions_from_word)
             .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
@@ -122,8 +123,7 @@ where
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs.exp)?;
                 let (a, b, c) = exp.unpack();
-                let expo = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
+                self.alu_boolean_overflow(a.into(), alu::exp, r!(b), r!(c))?;
             }
 
             Instruction::EXPI(expi) => {
@@ -235,8 +235,17 @@ where
             Instruction::SLL(sll) => {
                 self.gas_charge(self.gas_costs.sll)?;
                 let (a, b, c) = sll.unpack();
-                let rhs = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
+
+                self.alu_error(
+                    a.into(),
+                    |l, r| {
+                        l.checked_shl(u32::try_from(r).expect("value out of range"))
+                            .unwrap_or_default()
+                    },
+                    r!(b),
+                    r!(c),
+                    u32::try_from(r!(c)).is_err(),
+                )?;
             }
 
             Instruction::SLLI(slli) => {
@@ -249,8 +258,16 @@ where
             Instruction::SRL(srl) => {
                 self.gas_charge(self.gas_costs.srl)?;
                 let (a, b, c) = srl.unpack();
-                let rhs = u32::try_from(r!(c)).expect("value out of range");
-                self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
+                self.alu_error(
+                    a.into(),
+                    |l, r| {
+                        l.checked_shr(u32::try_from(r).expect("value out of range"))
+                            .unwrap_or_default()
+                    },
+                    r!(b),
+                    r!(c),
+                    u32::try_from(r!(c)).is_err(),
+                )?;
             }
 
             Instruction::SRLI(srli) => {
@@ -287,31 +304,107 @@ where
             Instruction::JI(ji) => {
                 self.gas_charge(self.gas_costs.ji)?;
                 let imm = ji.unpack();
-                self.jump(imm.into())?;
+                self.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
             }
 
             Instruction::JNEI(jnei) => {
                 self.gas_charge(self.gas_costs.jnei)?;
                 let (a, b, imm) = jnei.unpack();
-                self.jump_not_equal(r!(a), r!(b), imm.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(imm.into()),
+                )?;
             }
 
             Instruction::JNZI(jnzi) => {
                 self.gas_charge(self.gas_costs.jnzi)?;
                 let (a, imm) = jnzi.unpack();
-                self.jump_not_zero(r!(a), imm.into())?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != 0)
+                        .to_address(imm.into()),
+                )?;
             }
 
             Instruction::JMP(jmp) => {
                 self.gas_charge(self.gas_costs.jmp)?;
                 let a = jmp.unpack();
-                self.jump(r!(a))?;
+                self.jump(JumpArgs::new(JumpMode::Absolute).to_address(r!(a)))?;
             }
 
             Instruction::JNE(jne) => {
                 self.gas_charge(self.gas_costs.jne)?;
                 let (a, b, c) = jne.unpack();
-                self.jump_not_equal(r!(a), r!(b), r!(c))?;
+                self.jump(
+                    JumpArgs::new(JumpMode::Absolute)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c)),
+                )?;
+            }
+
+            Instruction::JMPF(jmpf) => {
+                self.gas_charge(self.gas_costs.jmpf)?;
+                let (a, offset) = jmpf.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .to_address(r!(a))
+                        .plus_fixed(offset.into()),
+                )?;
+            }
+
+            Instruction::JMPB(jmpb) => {
+                self.gas_charge(self.gas_costs.jmpb)?;
+                let (a, offset) = jmpb.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .to_address(r!(a))
+                        .plus_fixed(offset.into()),
+                )?;
+            }
+
+            Instruction::JNZF(jnzf) => {
+                self.gas_charge(self.gas_costs.jnzf)?;
+                let (a, b, offset) = jnzf.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .with_condition(r!(a) != 0)
+                        .to_address(r!(b))
+                        .plus_fixed(offset.into()),
+                )?;
+            }
+
+            Instruction::JNZB(jnzb) => {
+                self.gas_charge(self.gas_costs.jnzb)?;
+                let (a, b, offset) = jnzb.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .with_condition(r!(a) != 0)
+                        .to_address(r!(b))
+                        .plus_fixed(offset.into()),
+                )?;
+            }
+
+            Instruction::JNEF(jnef) => {
+                self.gas_charge(self.gas_costs.jnef)?;
+                let (a, b, c, offset) = jnef.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeForwards)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c))
+                        .plus_fixed(offset.into()),
+                )?;
+            }
+
+            Instruction::JNEB(jneb) => {
+                self.gas_charge(self.gas_costs.jneb)?;
+                let (a, b, c, offset) = jneb.unpack();
+                self.jump(
+                    JumpArgs::new(JumpMode::RelativeBackwards)
+                        .with_condition(r!(a) != r!(b))
+                        .to_address(r!(c))
+                        .plus_fixed(offset.into()),
+                )?;
             }
 
             Instruction::RET(ret) => {
@@ -339,7 +432,7 @@ where
 
             Instruction::SMO(smo) => {
                 let (a, b, c, d) = smo.unpack();
-                self.dependent_gas_charge(self.gas_costs.smo, r!(b))?;
+                self.dependent_gas_charge(self.gas_costs.smo, r!(c))?;
                 self.message_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 
@@ -355,10 +448,22 @@ where
                 self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
             }
 
+            Instruction::CFE(cfe) => {
+                self.gas_charge(self.gas_costs.cfei)?;
+                let a = cfe.unpack();
+                self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
+            }
+
             Instruction::CFSI(cfsi) => {
                 self.gas_charge(self.gas_costs.cfsi)?;
                 let imm = cfsi.unpack();
                 self.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
+            }
+
+            Instruction::CFS(cfs) => {
+                self.gas_charge(self.gas_costs.cfsi)?;
+                let a = cfs.unpack();
+                self.stack_pointer_overflow(Word::overflowing_sub, r!(a))?;
             }
 
             Instruction::LB(lb) => {
@@ -429,7 +534,7 @@ where
             Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs.bhei)?;
                 let a = bhei.unpack();
-                self.set_block_height(a.into())?;
+                self.block_height(a.into())?;
             }
 
             Instruction::BHSH(bhsh) => {
@@ -446,11 +551,9 @@ where
 
             Instruction::CALL(call) => {
                 let (a, b, c, d) = call.unpack();
-                let state = self.call(r!(a), r!(b), r!(c), r!(d))?;
-                // raise revert state to halt execution for the callee
-                if let ProgramState::Revert(ra) = state {
-                    return Ok(ExecuteState::Revert(ra));
-                }
+
+                // Enter call context
+                self.prepare_call(a, b, c, d)?;
             }
 
             Instruction::CB(cb) => {

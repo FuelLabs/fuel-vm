@@ -4,6 +4,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
 #![warn(missing_docs)]
+#![warn(unsafe_code)]
+#![deny(unused_crate_dependencies)]
 
 mod args;
 mod instruction_result;
@@ -15,6 +17,9 @@ mod pack;
 mod panic_reason;
 mod unpack;
 
+#[cfg(test)]
+mod encoding_tests;
+
 #[doc(no_inline)]
 pub use args::{GMArgs, GTFArgs};
 pub use fuel_types::{RegisterId, Word};
@@ -24,6 +29,10 @@ pub use panic_reason::PanicReason;
 /// Represents a 6-bit register ID, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RegId(u8);
+
+/// Represents a 6-bit immediate value, guaranteed to be masked by construction.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Imm06(u8);
 
 /// Represents a 12-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -44,6 +53,19 @@ pub type RawInstruction = u32;
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidOpcode;
 
+bitflags::bitflags! {
+    /// Possible values for the FLAG instruction.
+    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#flags
+    pub struct Flags: Word {
+        /// If set, arithmetic errors result in setting $err instead of panicking.
+        /// This includes cases where result of a computation is undefined, like
+        /// division by zero. Arithmetic overflows still cause a panic, but that be
+        /// controlled with [`Flags::WRAPPING`].
+        const UNSAFEMATH = 0x01;
+        /// If set, arithmetic overflows result in setting $of instead of panicking.
+        const WRAPPING = 0x02;
+    }
+}
 /// Type is convertible to a [`RegId`]
 pub trait CheckRegId {
     /// Convert to a [`RegId`], or panic
@@ -222,6 +244,18 @@ impl_instructions! {
     0x72 MOVI movi [RegId Imm18]
     "Conditional jump against zero."
     0x73 JNZI jnzi [RegId Imm18]
+    "Unconditional dynamic relative jump forwards, with a constant offset."
+    0x74 JMPF jmpf [RegId Imm18]
+    "Unconditional dynamic relative jump backwards, with a constant offset."
+    0x75 JMPB jmpb [RegId Imm18]
+    "Dynamic relative jump forwards, conditional against zero, with a constant offset."
+    0x76 JNZF jnzf [RegId RegId Imm12]
+    "Dynamic relative jump backwards, conditional against zero, with a constant offset."
+    0x77 JNZB jnzb [RegId RegId Imm12]
+    "Dynamic relative jump forwards, conditional on comparsion, with a constant offset."
+    0x78 JNEF jnef [RegId RegId RegId Imm06]
+    "Dynamic relative jump backwards, conditional on comparsion, with a constant offset."
+    0x79 JNEB jneb [RegId RegId RegId Imm06]
 
     "Jump."
     0x90 JI ji [Imm24]
@@ -229,6 +263,10 @@ impl_instructions! {
     0x91 CFEI cfei [Imm24]
     "Shrink the current call frame's stack by an immediate value."
     0x92 CFSI cfsi [Imm24]
+    "Extend the current call frame's stack"
+    0x93 CFE cfe [RegId]
+    "Shrink the current call frame's stack"
+    0x94 CFS cfs [RegId]
 }
 
 impl Instruction {
@@ -298,12 +336,40 @@ impl RegId {
     }
 }
 
+impl Imm06 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0011_1111);
+
+    /// Construct an immediate value.
+    ///
+    /// The given value will be masked to 6 bits.
+    pub const fn new(u: u8) -> Self {
+        Self(u & Self::MAX.0)
+    }
+
+    /// Construct an immediate value.
+    ///
+    /// Returns `None` if the value is outside the 6-bit value range.
+    pub fn new_checked(u: u8) -> Option<Self> {
+        let imm = Self::new(u);
+        (imm.0 == u).then_some(imm)
+    }
+
+    /// A const alternative to the `Into<u8>` implementation.
+    pub const fn to_u8(self) -> u8 {
+        self.0
+    }
+}
+
 impl Imm12 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 12 bits.
     pub const fn new(u: u16) -> Self {
-        Self(u & 0b_0000_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -321,11 +387,14 @@ impl Imm12 {
 }
 
 impl Imm18 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_0000_0011_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 18 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_0000_0011_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -343,11 +412,14 @@ impl Imm18 {
 }
 
 impl Imm24 {
+    /// Max value for the type
+    pub const MAX: Self = Self(0b_0000_0000_1111_1111_1111_1111_1111_1111);
+
     /// Construct an immediate value.
     ///
     /// The given value will be masked to 24 bits.
     pub const fn new(u: u32) -> Self {
-        Self(u & 0b_0000_0000_1111_1111_1111_1111_1111_1111)
+        Self(u & Self::MAX.0)
     }
 
     /// Construct an immediate value.
@@ -376,7 +448,7 @@ impl Opcode {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
             | XOR | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
             | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
-            | JNZI | JI | JMP | JNE | CFEI | CFSI | GTF => true,
+            | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }
@@ -387,6 +459,12 @@ impl Opcode {
 impl From<u8> for RegId {
     fn from(u: u8) -> Self {
         RegId::new(u)
+    }
+}
+
+impl From<u8> for Imm06 {
+    fn from(u: u8) -> Self {
+        Imm06::new(u)
     }
 }
 
@@ -414,6 +492,12 @@ impl From<RegId> for u8 {
     }
 }
 
+impl From<Imm06> for u8 {
+    fn from(Imm06(u): Imm06) -> Self {
+        u
+    }
+}
+
 impl From<Imm12> for u16 {
     fn from(Imm12(u): Imm12) -> Self {
         u
@@ -437,6 +521,30 @@ impl From<Imm24> for u32 {
 impl From<RegId> for usize {
     fn from(r: RegId) -> usize {
         u8::from(r).into()
+    }
+}
+
+impl From<Imm06> for u16 {
+    fn from(imm: Imm06) -> Self {
+        u8::from(imm).into()
+    }
+}
+
+impl From<Imm06> for u32 {
+    fn from(imm: Imm06) -> Self {
+        u8::from(imm).into()
+    }
+}
+
+impl From<Imm06> for u64 {
+    fn from(imm: Imm06) -> Self {
+        u8::from(imm).into()
+    }
+}
+
+impl From<Imm06> for u128 {
+    fn from(imm: Imm06) -> Self {
+        u8::from(imm).into()
     }
 }
 
@@ -579,6 +687,10 @@ where
 }
 
 // Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
+
+fn check_imm06(u: u8) -> Imm06 {
+    Imm06::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 6-bit immediate"))
+}
 
 fn check_imm12(u: u16) -> Imm12 {
     Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))

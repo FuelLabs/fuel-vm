@@ -29,6 +29,7 @@ use crate::storage::ContractsRawCode;
 use crate::storage::ContractsState;
 
 use super::balances::Balance;
+use super::receipts::ReceiptsCtx;
 use super::ExecutableTransaction;
 use super::Interpreter;
 use super::PanicContext;
@@ -307,7 +308,11 @@ impl<S, Tx> Interpreter<S, Tx> {
         diff.changes.extend(registers);
         let frames = capture_vec_state(self.frames.iter(), other.frames.iter(), Change::Frame);
         diff.changes.extend(frames);
-        let receipts = capture_vec_state(self.receipts.iter(), other.receipts.iter(), Change::Receipt);
+        let receipts = capture_vec_state(
+            self.receipts.as_ref().iter(),
+            other.receipts.as_ref().iter(),
+            Change::Receipt,
+        );
         diff.changes.extend(receipts);
         let balances = capture_map_state(self.balances.as_ref(), other.balances.as_ref(), Change::Balance);
         diff.changes.extend(balances);
@@ -362,7 +367,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         match change {
             Change::Register(Previous(VecState { index, value })) => self.registers[*index] = *value,
             Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
-            Change::Receipt(Previous(value)) => invert_vec(&mut self.receipts, value),
+            Change::Receipt(Previous(value)) => invert_receipts_ctx(&mut self.receipts, value),
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
             Change::Memory(Previous(Memory { start, bytes })) => {
                 self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
@@ -421,6 +426,11 @@ fn invert_map<K: Hash + PartialEq + Eq + Clone, V: Clone + PartialEq>(
             map.remove(key);
         }
     }
+}
+
+fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>) {
+    let mut ctx_mut = ctx.lock();
+    invert_vec(ctx_mut.receipts_mut(), value);
 }
 
 impl<S, Tx> PartialEq for Interpreter<S, Tx>

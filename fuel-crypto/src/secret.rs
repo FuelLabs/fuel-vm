@@ -15,43 +15,12 @@ impl SecretKey {
     /// Memory length of the type
     pub const LEN: usize = Bytes32::LEN;
 
-    /// Add a conversion from arbitrary slices into owned
+    /// Construct a `SecretKey` directly from its bytes.
     ///
-    /// # Safety
-    ///
-    /// There is no guarantee the provided bytes will fit the field. The field
-    /// security can be checked with [`SecretKey::is_in_field`].
-    pub unsafe fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
+    /// This constructor expects the given bytes to be a valid secret key. Validity is unchecked.
+    #[cfg(feature = "std")]
+    fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
-    }
-
-    /// Add a conversion from arbitrary slices into owned
-    ///
-    /// # Safety
-    ///
-    /// This function will not panic if the length of the slice is smaller than
-    /// `Self::LEN`. Instead, it will cause undefined behavior and read random
-    /// disowned bytes.
-    ///
-    /// There is no guarantee the provided bytes will fit the field.
-    pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-        Self(Bytes32::from_slice_unchecked(bytes))
-    }
-
-    /// Copy-free reference cast
-    ///
-    /// There is no guarantee the provided bytes will fit the field.
-    ///
-    /// # Safety
-    ///
-    /// Inputs smaller than `Self::LEN` will cause undefined behavior.
-    pub unsafe fn as_ref_unchecked(bytes: &[u8]) -> &Self {
-        // The interpreter will frequently make references to keys and values using
-        // logically checked slices.
-        //
-        // This function will avoid unnecessary copy to owned slices for the interpreter
-        // access
-        &*(bytes.as_ptr() as *const Self)
     }
 }
 
@@ -133,23 +102,13 @@ mod use_std {
             //
             // We don't call `Secp256k1SecretKey::new` here because the `rand` requirements
             // are outdated and inconsistent.
-
-            use secp256k1::ffi::{self, CPtr};
-
             let mut secret = Bytes32::zeroed();
-
             loop {
                 rng.fill(secret.as_mut());
-
-                // Safety: FFI call
-                let overflow =
-                    unsafe { ffi::secp256k1_ec_seckey_verify(ffi::secp256k1_context_no_precomp, secret.as_c_ptr()) };
-
-                if overflow != 0 {
+                if secret_key_bytes_valid(&secret).is_ok() {
                     break;
                 }
             }
-
             Self(secret)
         }
 
@@ -168,34 +127,8 @@ mod use_std {
         pub fn new_from_mnemonic(d: DerivationPath, m: Mnemonic<W>) -> Result<Self, Error> {
             let derived_priv_key = m.derive_key(d, None)?;
             let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
-
-            // Safety: this slice will always be of the expected length (`Bytes32`)
-            // because it will be a `Secp256k` secret key, coming from
-            // `coins_bip32::prelude::SigningKey`, which is a 256-bit (32-byte) scalar.
-            Ok(unsafe { SecretKey::from_slice_unchecked(key.to_bytes().as_ref()) })
-        }
-
-        /// Check if the provided slice represents a scalar that fits the field.
-        ///
-        /// # Safety
-        ///
-        /// This function extends the unsafety of
-        /// [`SecretKey::as_ref_unchecked`].
-        pub unsafe fn is_slice_in_field_unchecked(slice: &[u8]) -> bool {
-            use secp256k1::ffi::{self, CPtr};
-
-            let secret = Self::as_ref_unchecked(slice);
-
-            // Safety: FFI call
-            let overflow = ffi::secp256k1_ec_seckey_verify(ffi::secp256k1_context_no_precomp, secret.as_c_ptr());
-
-            overflow != 0
-        }
-
-        /// Check if the secret key representation fits the scalar field.
-        pub fn is_in_field(&self) -> bool {
-            // Safety: struct is guaranteed to reference itself with correct len
-            unsafe { Self::is_slice_in_field_unchecked(self.as_ref()) }
+            let bytes: [u8; Self::LEN] = key.to_bytes().into();
+            Ok(SecretKey::from_bytes_unchecked(bytes))
         }
 
         /// Return the curve representation of this secret.
@@ -211,9 +144,7 @@ mod use_std {
         type Error = Error;
 
         fn try_from(b: Bytes32) -> Result<Self, Self::Error> {
-            let secret = SecretKey(b);
-
-            secret.is_in_field().then_some(secret).ok_or(Error::InvalidSecretKey)
+            secret_key_bytes_valid(&b).map(|_| Self(b))
         }
     }
 
@@ -241,7 +172,10 @@ mod use_std {
         fn borrow(&self) -> &Secp256k1SecretKey {
             // Safety: field checked. The memory representation of the secp256k1 key is
             // `[u8; 32]`
-            unsafe { &*(self.as_ref().as_ptr() as *const Secp256k1SecretKey) }
+            #[allow(unsafe_code)]
+            unsafe {
+                &*(self.as_ref().as_ptr() as *const Secp256k1SecretKey)
+            }
         }
     }
 
@@ -259,5 +193,10 @@ mod use_std {
         fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SecretKey {
             SecretKey::random(rng)
         }
+    }
+
+    /// Check if the secret key byte representation is within the curve.
+    fn secret_key_bytes_valid(bytes: &[u8; SecretKey::LEN]) -> Result<(), Error> {
+        secp256k1::SecretKey::from_slice(bytes).map(|_| ()).map_err(Into::into)
     }
 }

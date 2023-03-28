@@ -2,7 +2,7 @@ use fuel_asm::{op, GMArgs, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
     field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
-    Script, TransactionBuilder,
+    Finalizable, Receipt, Script, TransactionBuilder,
 };
 use fuel_types::bytes;
 use fuel_vm::consts::*;
@@ -173,6 +173,40 @@ fn metadata() {
     let contract_call = Hasher::hash(contract_call.as_ref());
     let digest = receipts[4].digest().expect("GetCaller should return contract Id");
     assert_eq!(&contract_call, digest);
+}
+
+#[test]
+fn get_metadata_chain_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_limit = 1_000_000;
+    let height = 0;
+    let params = ConsensusParameters {
+        chain_id: rng.gen(),
+        ..Default::default()
+    };
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::new(Default::default(), params, gas_costs.clone());
+
+    #[rustfmt::skip]
+        let get_chain_id = vec![
+        op::gm_args(0x10, GMArgs::GetChainId),
+        op::ret(0x10),
+    ];
+
+    let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
+        .gas_limit(gas_limit)
+        .finalize()
+        .into_checked(height, &params, &gas_costs)
+        .unwrap();
+
+    let receipts = client.transact(script);
+
+    if let Receipt::Return { val, .. } = receipts[0].clone() {
+        assert_eq!(val, params.chain_id);
+    } else {
+        panic!("expected return receipt, instead of {:?}", receipts[0])
+    }
 }
 
 #[test]

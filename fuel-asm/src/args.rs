@@ -5,6 +5,7 @@ use fuel_types::{Immediate12, Immediate18};
 const GM_IS_CALLER_EXTERNAL: u8 = 0x01;
 const GM_GET_CALLER: u8 = 0x02;
 const GM_GET_VERIFYING_PREDICATE: u8 = 0x03;
+const GM_GET_CHAIN_ID: u8 = 0x04;
 
 /// Argument list for GM (get metadata) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
@@ -22,6 +23,9 @@ pub enum GMArgs {
 
     /// Get index of current predicate.
     GetVerifyingPredicate = GM_GET_VERIFYING_PREDICATE,
+
+    /// Get the Chain ID this VM is operating within
+    GetChainId = GM_GET_CHAIN_ID,
 }
 
 impl TryFrom<Immediate18> for GMArgs {
@@ -32,6 +36,7 @@ impl TryFrom<Immediate18> for GMArgs {
             GM_IS_CALLER_EXTERNAL => Ok(Self::IsCallerExternal),
             GM_GET_CALLER => Ok(Self::GetCaller),
             GM_GET_VERIFYING_PREDICATE => Ok(Self::GetVerifyingPredicate),
+            GM_GET_CHAIN_ID => Ok(Self::GetChainId),
             _ => Err(PanicReason::InvalidMetadataIdentifier),
         }
     }
@@ -428,6 +433,7 @@ fn encode_gm_args() {
         GMArgs::IsCallerExternal,
         GMArgs::GetCaller,
         GMArgs::GetVerifyingPredicate,
+        GMArgs::GetChainId,
     ];
 
     args.into_iter().for_each(|a| {

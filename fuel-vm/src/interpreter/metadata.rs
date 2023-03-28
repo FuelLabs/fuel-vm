@@ -10,7 +10,7 @@ use fuel_asm::{GMArgs, GTFArgs, PanicReason, RegId};
 use fuel_tx::field::{
     BytecodeLength, BytecodeWitnessIndex, ReceiptsRoot, Salt, Script as ScriptField, ScriptData, StorageSlots,
 };
-use fuel_tx::{Input, InputRepr, Output, OutputRepr, UtxoId};
+use fuel_tx::{ConsensusParameters, Input, InputRepr, Output, OutputRepr, UtxoId};
 use fuel_types::{Immediate12, Immediate18, RegisterId, Word};
 
 #[cfg(test)]
@@ -23,7 +23,7 @@ where
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.frames, pc, result, imm)
+        metadata(&self.context, &self.params, &self.frames, pc, result, imm)
     }
 
     pub(crate) fn get_transaction_field(
@@ -45,6 +45,7 @@ where
 
 pub(crate) fn metadata(
     context: &Context,
+    params: &ConsensusParameters,
     frames: &[CallFrame],
     pc: RegMut<PC>,
     result: &mut Word,
@@ -60,6 +61,10 @@ pub(crate) fn metadata(
                     .predicate()
                     .map(|p| p.idx() as Word)
                     .ok_or(PanicReason::TransactionValidity)?;
+            }
+
+            GMArgs::GetChainId => {
+                *result = params.chain_id;
             }
 
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
@@ -79,6 +84,9 @@ pub(crate) fn metadata(
                 *result = parent;
             }
 
+            GMArgs::GetChainId => {
+                *result = params.chain_id;
+            }
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
         }
     }

@@ -2,9 +2,9 @@ use fuel_asm::{op, GMArgs, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
     field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
-    Script, TransactionBuilder,
+    Finalizable, Receipt, Script, TransactionBuilder,
 };
-use fuel_types::bytes;
+use fuel_types::{bytes, BlockHeight};
 use fuel_vm::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
@@ -176,6 +176,40 @@ fn metadata() {
 }
 
 #[test]
+fn get_metadata_chain_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_limit = 1_000_000;
+    let height = BlockHeight::default();
+    let params = ConsensusParameters {
+        chain_id: rng.gen(),
+        ..Default::default()
+    };
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::new(Default::default(), params, gas_costs.clone());
+
+    #[rustfmt::skip]
+        let get_chain_id = vec![
+        op::gm_args(0x10, GMArgs::GetChainId),
+        op::ret(0x10),
+    ];
+
+    let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
+        .gas_limit(gas_limit)
+        .finalize()
+        .into_checked(height, &params, &gas_costs)
+        .unwrap();
+
+    let receipts = client.transact(script);
+
+    if let Receipt::Return { val, .. } = receipts[0].clone() {
+        assert_eq!(val, params.chain_id);
+    } else {
+        panic!("expected return receipt, instead of {:?}", receipts[0])
+    }
+}
+
+#[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -198,7 +232,8 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_checked(height, &params, client.gas_costs());
+        .with_params(params)
+        .finalize_checked(height, client.gas_costs());
 
     client.deploy(tx);
 
@@ -207,7 +242,7 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -232,7 +267,7 @@ fn get_transaction_fields() {
     rng.fill(m_data.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&m_predicate);
+    let owner = Input::predicate_owner(&m_predicate, &params);
     let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,
@@ -267,7 +302,8 @@ fn get_transaction_fields() {
         .add_input(message_predicate)
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height, &params, client.gas_costs());
+        .with_params(params)
+        .finalize_checked(height, client.gas_costs());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -725,7 +761,8 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .finalize_checked_basic(height, &params);
+        .with_params(params)
+        .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
     let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

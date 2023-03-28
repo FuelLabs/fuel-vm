@@ -12,7 +12,7 @@ fn input_coin_message_signature() {
         let rng = &mut StdRng::seed_from_u64(8586);
 
         fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), CheckError> {
-            let txhash = tx.id();
+            let txhash = tx.id(&ConsensusParameters::DEFAULT);
             let outputs = tx.outputs();
             let witnesses = tx.witnesses();
 
@@ -42,8 +42,9 @@ fn input_coin_message_signature() {
 
             f(&mut tx, &public);
 
-            tx.sign_inputs(&secret);
-            keys.iter().for_each(|sk| tx.sign_inputs(sk));
+            tx.sign_inputs(&secret, &ConsensusParameters::DEFAULT);
+            keys.iter()
+                .for_each(|sk| tx.sign_inputs(sk, &ConsensusParameters::DEFAULT));
 
             check_inputs(tx)
         }
@@ -108,7 +109,7 @@ fn coin_predicate() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::coin_predicate(
         rng.gen(),
@@ -124,7 +125,7 @@ fn coin_predicate() {
     .unwrap();
 
     let predicate = vec![];
-    let owner = (*Contract::root_from_code(&predicate)).into();
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     let err = Input::coin_predicate(
         rng.gen(),
@@ -220,7 +221,7 @@ fn message_metadata() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::message_data_predicate(
         rng.gen(),
@@ -248,7 +249,7 @@ fn message_metadata() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_data_predicate(
@@ -327,7 +328,7 @@ fn message_message_coin() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
 
     Input::message_coin_predicate(
         rng.gen(),
@@ -353,7 +354,7 @@ fn message_message_coin() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = (*Contract::root_from_code(&predicate)).into();
+    let recipient = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_coin_predicate(

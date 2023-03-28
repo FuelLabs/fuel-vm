@@ -1,5 +1,5 @@
 use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
-use fuel_tx::TransactionBuilder;
+use fuel_tx::{ConsensusParameters, TransactionBuilder};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use fuel_vm::prelude::*;
@@ -27,7 +27,7 @@ where
     let height = Default::default();
     let params = ConsensusParameters::default();
 
-    let owner = Input::predicate_owner(&predicate);
+    let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
         utxo_id,
         owner,
@@ -54,7 +54,7 @@ where
 
     builder.add_input(input);
 
-    let tx = builder.finalize_checked_basic(height, &params);
+    let tx = builder.with_params(params).finalize_checked_basic(height);
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default()).is_ok()
 }
 
@@ -143,7 +143,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
 
-        let owner = Input::predicate_owner(&predicate);
+        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
         let input = Input::coin_predicate(
             rng.gen(),
             owner,
@@ -158,7 +158,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let tx = builder.finalize_checked_basic(Default::default(), &ConsensusParameters::default());
+    let tx = builder.finalize_checked_basic(Default::default());
     Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
@@ -220,7 +220,8 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default(), &params)
+        .with_params(params)
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -235,7 +236,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate);
+    let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -250,7 +251,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -293,7 +294,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -311,7 +312,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
-    let owner = Input::predicate_owner(&predicate);
+    let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -326,7 +327,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -369,7 +370,7 @@ fn gas_used_by_predicates_more_than_limit() {
     );
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -393,7 +394,7 @@ fn gas_used_by_predicates_more_than_limit() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate);
+    let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -408,7 +409,7 @@ fn gas_used_by_predicates_more_than_limit() {
     builder.add_input(input);
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default(), &ConsensusParameters::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default());
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);

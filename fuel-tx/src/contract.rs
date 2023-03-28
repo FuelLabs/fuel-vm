@@ -1,17 +1,19 @@
 use crate::{CheckError, StorageSlot, Transaction};
 
+use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
 use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
-use fuel_types::{Bytes32, Bytes8, ContractId, Salt};
+use fuel_types::{fmt_truncated_hex, Bytes32, Bytes8, ContractId, Salt};
 
 use alloc::vec::Vec;
 use core::iter;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
+#[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Deployable representation of a contract code.
-pub struct Contract(Vec<u8>);
+pub struct Contract(#[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>);
 
 impl Contract {
     /// Calculate the code root of the contract, using [`Self::root_from_code`].

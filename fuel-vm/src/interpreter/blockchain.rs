@@ -481,7 +481,8 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     a: Word,
     b: Word,
 ) -> Result<(), RuntimeError> {
-    let hash = storage.block_hash(b as u32).map_err(|e| e.into())?;
+    let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
+    let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
     try_mem_write(a as usize, hash.as_ref(), owner, memory)?;
 

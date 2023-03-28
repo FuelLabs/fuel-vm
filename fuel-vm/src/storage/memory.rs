@@ -288,7 +288,7 @@ impl InterpreterStorage for MemoryStorage {
         Ok((GENESIS + (*height as Word * INTERVAL)).0)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Infallible> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Infallible> {
         Ok(Hasher::hash(block_height.to_be_bytes()))
     }
 

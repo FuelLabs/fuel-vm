@@ -334,7 +334,7 @@ where
         self.0.timestamp(height)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
         self.0.block_hash(block_height)
     }
 

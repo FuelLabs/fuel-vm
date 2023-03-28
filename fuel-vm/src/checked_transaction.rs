@@ -6,7 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
-use fuel_types::Word;
+use fuel_types::BlockHeight;
 
 use core::borrow::Borrow;
 
@@ -149,7 +149,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Returns transaction that passed all `Checks`.
     fn into_checked(
         self,
-        block_height: Word,
+        block_height: BlockHeight,
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
     ) -> Result<Checked<Self>, CheckError>
@@ -162,7 +162,11 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
-    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError>;
+    fn into_checked_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, CheckError>;
 }
 
 /// Performs predicate verification for a transaction
@@ -318,7 +322,11 @@ impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError> {
+    fn into_checked_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script.into_checked_basic(block_height, params)?.into();
@@ -351,7 +359,7 @@ mod tests {
 
     #[test]
     fn checked_tx_has_default() {
-        let height = 1;
+        let height = 1.into();
 
         Checked::<Transaction>::default()
             .transaction()
@@ -371,7 +379,7 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -393,7 +401,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -413,7 +421,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -437,7 +445,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -472,7 +480,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -610,8 +618,8 @@ mod tests {
                 input_amount,
                 asset,
                 rng.gen(),
-                0,
-                0,
+                Default::default(),
+                Default::default(),
             ))
             .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
@@ -621,7 +629,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -647,7 +655,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -672,7 +680,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -694,7 +702,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -711,7 +719,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -727,16 +735,30 @@ mod tests {
             .gas_price(1)
             .gas_limit(100)
             // base asset
-            .add_unsigned_coin_input(secret, rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                input_amount,
+                AssetId::default(),
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             // arbitrary spending asset
-            .add_unsigned_coin_input(secret, rng.gen(), input_amount, any_asset, rng.gen(), 0)
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                input_amount,
+                any_asset,
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
             .add_output(Output::change(rng.gen(), 0, any_asset))
             .finalize();
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -751,7 +773,7 @@ mod tests {
 
     #[test]
     fn basic_check_marks_basic_flag() {
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
 
         let tx = Transaction::default();
@@ -763,7 +785,7 @@ mod tests {
     #[test]
     fn signatures_check_marks_signatures_flag() {
         let mut rng = StdRng::seed_from_u64(1);
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
 
         let tx = valid_coin_tx(&mut rng, 1, 100000, 1000000, 10);
@@ -781,7 +803,7 @@ mod tests {
     #[test]
     fn predicates_check_marks_predicate_flag() {
         let mut rng = StdRng::seed_from_u64(1);
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
         let gas_costs = GasCosts::default();
 
@@ -839,7 +861,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, rng.gen(), 0)
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, rng.gen(), Default::default())
             .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), output_amount, asset))
@@ -861,7 +883,7 @@ mod tests {
                 fee_input_amount,
                 asset,
                 rng.gen(),
-                0,
+                Default::default(),
                 predicate,
                 vec![],
             ))
@@ -897,7 +919,14 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
+            .add_unsigned_coin_input(
+                rng.gen(),
+                rng.gen(),
+                input_amount,
+                AssetId::default(),
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
     }

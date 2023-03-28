@@ -52,7 +52,7 @@ fn from_tx_works() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let params = ConsensusParameters::default();
-    let height = 1;
+    let height = 1.into();
 
     #[rustfmt::skip]
     let predicate: Vec<u8> = vec![

@@ -6,7 +6,7 @@ use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Tr
 use crate::Signable;
 
 use fuel_crypto::SecretKey;
-use fuel_types::{Nonce, Salt, Word};
+use fuel_types::{BlockHeight, Nonce, Salt, Word};
 
 use alloc::vec::Vec;
 
@@ -57,7 +57,7 @@ where
     }
 
     /// Set the maturity
-    fn set_maturity(&mut self, maturity: Word) {
+    fn set_maturity(&mut self, maturity: BlockHeight) {
         *self.maturity_mut() = maturity;
     }
 }
@@ -144,7 +144,7 @@ impl TransactionBuilder<Create> {
 }
 
 impl TransactionBuilder<Mint> {
-    pub fn mint(block_height: u32, tx_index: u16) -> Self {
+    pub fn mint(block_height: BlockHeight, tx_index: u16) -> Self {
         let tx = Mint {
             tx_pointer: TxPointer::new(block_height, tx_index),
             outputs: Default::default(),
@@ -207,7 +207,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn maturity(&mut self, maturity: Word) -> &mut Self {
+    pub fn maturity(&mut self, maturity: BlockHeight) -> &mut Self {
         self.tx.set_maturity(maturity);
 
         self
@@ -221,7 +221,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         amount: Word,
         asset_id: fuel_types::AssetId,
         tx_pointer: TxPointer,
-        maturity: Word,
+        maturity: BlockHeight,
     ) -> &mut Self {
         let pk = secret.public_key();
 

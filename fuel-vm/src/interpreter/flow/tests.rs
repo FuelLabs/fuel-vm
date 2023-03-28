@@ -30,7 +30,9 @@ impl Default for Input {
                 ggas: 40,
                 ..Default::default()
             },
-            context: Context::Script { block_height: 0 },
+            context: Context::Script {
+                block_height: Default::default(),
+            },
             balance: Default::default(),
             input_contracts: vec![Default::default()],
             storage_balance: Default::default(),
@@ -119,7 +121,9 @@ impl Default for Output {
                 700,
             )]
             .into(),
-            context: Context::Call { block_height: 0 },
+            context: Context::Call {
+                block_height: Default::default(),
+            },
             script: None,
         }
     }
@@ -142,7 +146,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 21, ggas: 21 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 712, ssp: 712, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 10 },
@@ -158,7 +162,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 30,
         },
         reg: RegInput{hp: 1000, sp: 200, ssp: 200, fp: 0, pc: 0, is: 0, bal: 0, cgas: 201, ggas: 201 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         input_contracts: vec![ContractId::from([1u8; 32])],
         memory: mem(&[(2000, vec![2; 32]), (2032, Call::new(ContractId::from([1u8; 32]), 4, 5).into())]),
         storage_contract: vec![(ContractId::from([1u8; 32]), vec![0u8; 100])],
@@ -189,7 +193,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
@@ -208,7 +212,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 10,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
@@ -227,7 +231,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Call{ block_height: 0u32 },
+        context: Context::Call{ block_height: Default::default() },
         storage_balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
@@ -246,7 +250,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Tries to forward more coins than the contract has"
 )]
@@ -259,7 +263,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "call_params_mem_address overflow"
 )]
@@ -272,7 +276,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Script{ block_height: 0u32 },
+        context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "asset_id_mem_address overflow"
 )]
@@ -285,7 +289,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
-        context: Context::Call{ block_height: 0u32 },
+        context: Context::Call{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Transfer too many coins internally"
@@ -316,7 +320,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
     let memory = PrepareCallMemory::try_from((mem.as_mut(), &params))?;
     let mut runtime_balances = RuntimeBalances::try_from_iter(balance).expect("Balance should be valid");
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)
             .write(&id, code)
@@ -395,7 +399,7 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
 )]
 fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedMemRange) -> Result<Word, RuntimeError> {
     let frame_bytes = call_frame.to_bytes();
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)

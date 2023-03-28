@@ -34,9 +34,9 @@ fn prevent_contract_id_redeployment() {
 
     let mut create = Transaction::create(
         gas_price,
-        0,
-        0,
-        0,
+        Default::default(),
+        Default::default(),
+        Default::default(),
         salt,
         vec![],
         vec![],
@@ -47,9 +47,16 @@ fn prevent_contract_id_redeployment() {
         ],
         vec![program],
     );
-    create.add_unsigned_coin_input(rng.gen(), &Default::default(), input_amount, asset_id, rng.gen(), 0);
+    create.add_unsigned_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        asset_id,
+        rng.gen(),
+        Default::default(),
+    );
     let create = create
-        .into_checked_basic(1, &ConsensusParameters::default())
+        .into_checked_basic(1.into(), &ConsensusParameters::default())
         .expect("failed to generate checked tx");
 
     // deploy contract
@@ -70,8 +77,8 @@ fn mint_burn() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();

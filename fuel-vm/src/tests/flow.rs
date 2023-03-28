@@ -17,8 +17,8 @@ fn can_execute_empty_script_transaction() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     let empty_script = vec![];
@@ -58,8 +58,8 @@ fn code_copy() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
@@ -155,9 +155,9 @@ fn call() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
+    let maturity = Default::default();
     let salt: Salt = rng.gen();
-    let height = 0;
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
     let gas_costs = GasCosts::default();
 
@@ -256,8 +256,8 @@ fn call_frame_code_offset() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
     let gas_costs = GasCosts::default();
 
@@ -426,8 +426,8 @@ fn repeated_nested_calls() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
@@ -513,8 +513,8 @@ fn revert() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     let salt: Salt = rng.gen();
@@ -702,8 +702,8 @@ fn retd_from_top_of_heap() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     const REG_SIZE: u8 = RegId::WRITABLE.to_u8();
@@ -737,8 +737,8 @@ fn logd_from_top_of_heap() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     const REG_SIZE: RegId = RegId::WRITABLE;

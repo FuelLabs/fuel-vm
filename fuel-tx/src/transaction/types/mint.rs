@@ -6,7 +6,7 @@ use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, MemLayout, MemLocType,
+    mem_layout, BlockHeight, MemLayout, MemLocType,
 };
 use fuel_types::{Bytes32, Word};
 
@@ -110,11 +110,15 @@ impl FormatValidityChecks for Mint {
         Ok(())
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         if self.outputs().len() > parameters.max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax);
         }
-        if self.tx_pointer().block_height() as u64 != block_height {
+        if self.tx_pointer().block_height() != block_height {
             return Err(CheckError::TransactionMintIncorrectBlockHeight);
         }
 

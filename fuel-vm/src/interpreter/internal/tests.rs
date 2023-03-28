@@ -18,8 +18,8 @@ fn external_balance() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
 
     let script = op::ret(0x01).to_bytes().to_vec();
     let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
@@ -35,7 +35,7 @@ fn external_balance() {
         .gas_limit(gas_limit)
         .gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height as Word, &Default::default());
+        .finalize_checked(height, &Default::default());
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -56,8 +56,8 @@ fn variable_output_updates_in_memory() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let asset_id_to_update: AssetId = rng.gen();
     let amount_to_set: Word = 100;
     let owner: Address = rng.gen();

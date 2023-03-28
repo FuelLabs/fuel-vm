@@ -7,8 +7,8 @@ fn jump_if_not_zero_immediate_jump() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
@@ -47,8 +47,8 @@ fn jump_if_not_zero_immediate_no_jump() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
@@ -87,8 +87,8 @@ fn jump_dynamic() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
@@ -119,8 +119,8 @@ fn jump_dynamic_condition_true() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]
@@ -151,8 +151,8 @@ fn jump_dynamic_condition_false() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::DEFAULT;
 
     #[rustfmt::skip]

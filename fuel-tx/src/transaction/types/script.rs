@@ -8,7 +8,7 @@ use crate::transaction::{
 };
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, Bytes32, Word};
+use fuel_types::{bytes, BlockHeight, Bytes32, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
     mem_layout, MemLayout, MemLocType,
@@ -36,7 +36,7 @@ pub(crate) struct ScriptMetadata {
 pub struct Script {
     pub(crate) gas_price: Word,
     pub(crate) gas_limit: Word,
-    pub(crate) maturity: Word,
+    pub(crate) maturity: BlockHeight,
     pub(crate) script: Vec<u8>,
     pub(crate) script_data: Vec<u8>,
     pub(crate) inputs: Vec<Input>,
@@ -53,7 +53,7 @@ mem_layout!(
     repr: u8 = WORD_SIZE,
     gas_price: Word = WORD_SIZE,
     gas_limit: Word = WORD_SIZE,
-    maturity: Word = WORD_SIZE,
+    maturity: u32 = WORD_SIZE,
     script_len: Word = WORD_SIZE,
     script_data_len: Word = WORD_SIZE,
     inputs_len: Word = WORD_SIZE,
@@ -145,7 +145,11 @@ impl FormatValidityChecks for Script {
         Ok(())
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         check_common_part(self, block_height, parameters)?;
 
         if self.script.len() > parameters.max_script_length as usize {
@@ -228,12 +232,12 @@ mod field {
 
     impl Maturity for Script {
         #[inline(always)]
-        fn maturity(&self) -> &Word {
+        fn maturity(&self) -> &BlockHeight {
             &self.maturity
         }
 
         #[inline(always)]
-        fn maturity_mut(&mut self) -> &mut Word {
+        fn maturity_mut(&mut self) -> &mut BlockHeight {
             &mut self.maturity
         }
 
@@ -510,7 +514,7 @@ impl io::Read for Script {
 
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.script_len), script.len() as Word);
         bytes::store_number_at(
             buf,
@@ -568,7 +572,7 @@ impl io::Write for Script {
 
         let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
         let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.maturity));
+        let maturity = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
         let script_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
         let script_data_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
         let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));

@@ -18,7 +18,7 @@ mem_layout!(
     asset_id: AssetId = {AssetId::LEN},
     tx_pointer: TxPointer = {TxPointer::LEN},
     witness_index: u8 = WORD_SIZE,
-    maturity: Word = WORD_SIZE,
+    maturity: u32 = WORD_SIZE,
     predicate_len: Word = WORD_SIZE,
     predicate_data_len: Word = WORD_SIZE
 );

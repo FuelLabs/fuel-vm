@@ -13,8 +13,8 @@ fn backtrace() {
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 

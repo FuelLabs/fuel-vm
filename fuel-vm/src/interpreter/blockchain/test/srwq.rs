@@ -23,7 +23,9 @@ impl StateReadQWord {
             ssp: 0,
             hp: u64::MAX / 2 + 1,
             prev_hp: u64::MAX,
-            context: crate::context::Context::Call { block_height: 0 },
+            context: crate::context::Context::Call {
+                block_height: Default::default(),
+            },
         };
         Self::new(destination_memory_address, origin_key_memory_address, num_slots, r)
     }
@@ -91,7 +93,7 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
         storage_slots,
         mut memory,
     } = input;
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
@@ -113,42 +115,42 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
 }
 
 #[test_case(
-    0, 0, 1, OwnershipRegisters::test(0..100, 100..200, Context::Call{ block_height: 0})
+    0, 0, 1, OwnershipRegisters::test(0..100, 100..200, Context::Call{ block_height: Default::default()})
     => matches Ok(())
     ; "Ownership check passes when destination is within allocated stack"
 )]
 #[test_case(
-    2, 0, 1, OwnershipRegisters::test(0..1, 3..4, Context::Call{ block_height: 0})
+    2, 0, 1, OwnershipRegisters::test(0..1, 3..4, Context::Call{ block_height: Default::default()})
     => matches Err(_)
     ; "Ownership check fails when destination is in-between stack and heap"
 )]
 #[test_case(
-    2, 0, 1, OwnershipRegisters::test(0..4, 5..6, Context::Call {block_height: 0})
+    2, 0, 1, OwnershipRegisters::test(0..4, 5..6, Context::Call {block_height: Default::default()})
     => matches Err(_)
     ; "Ownership check fails when stack is too small"
 )]
 #[test_case(
-    3, 0, 1, OwnershipRegisters::test(0..1, 2..35, Context::Call{ block_height: 0})
+    3, 0, 1, OwnershipRegisters::test(0..1, 2..35, Context::Call{ block_height: Default::default()})
     => matches Ok(_)
     ; "Ownership check passes when heap is large enough"
 )]
 #[test_case(
-    VM_MAX_RAM, 0, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: 0})
+    VM_MAX_RAM, 0, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: Default::default()})
     => matches Err(_)
     ; "Ownership check fails when destination range exceeds VM MAX"
 )]
 #[test_case(
-    4, VM_MAX_RAM, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: 0})
+    4, VM_MAX_RAM, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: Default::default()})
     => matches Err(_)
     ; "Fail when start key memory range exceeds VM_MAX_RAM"
 )]
 #[test_case(
-    4, u64::MAX, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: 0})
+    4, u64::MAX, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call{ block_height: Default::default()})
     => matches Err(_)
     ; "Fail when start key memory range exceeds u64::MAX"
 )]
 #[test_case(
-    4, 0, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Script { block_height: 0})
+    4, 0, 1, OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Script { block_height: Default::default()})
     => matches Err(_)
     ; "Fail when context is not inside of a call"
 )]

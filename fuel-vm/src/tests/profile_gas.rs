@@ -11,8 +11,8 @@ fn profile_gas() {
 
     let gas_price = 1;
     let gas_limit = 1_000;
-    let maturity = 0;
-    let height = 0;
+    let maturity = Default::default();
+    let height = Default::default();
     let params = ConsensusParameters::default();
 
     // Deploy contract with loops
@@ -29,7 +29,14 @@ fn profile_gas() {
         ];
 
         let tx_deploy = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+            .add_unsigned_coin_input(
+                rng.gen(),
+                rng.gen(),
+                1,
+                Default::default(),
+                rng.gen(),
+                Default::default(),
+            )
             .gas_limit(gas_limit)
             .gas_price(gas_price)
             .maturity(maturity)

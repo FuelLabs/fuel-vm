@@ -231,6 +231,7 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
+            self.builder.with_params(self.params);
             self.builder.finalize_checked(self.block_height, &self.gas_costs)
         }
 

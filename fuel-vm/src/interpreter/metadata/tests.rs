@@ -1,4 +1,5 @@
 use fuel_tx::Script;
+use fuel_types::BlockHeight;
 use test_case::test_case;
 
 use super::*;
@@ -42,8 +43,8 @@ fn test_get_transaction_field() {
 }
 
 #[test_case(Context::Predicate { program: Default::default() }, 2 => (); "can fetch inside predicate")]
-#[test_case(Context::Script { block_height: 0 }, 3 => (); "can fetch inside script")]
-#[test_case(Context::Call { block_height: 0 }, 4 => (); "can fetch inside call")]
+#[test_case(Context::Script { block_height: BlockHeight::default() }, 3 => (); "can fetch inside script")]
+#[test_case(Context::Call { block_height: BlockHeight::default() }, 4 => (); "can fetch inside call")]
 fn get_chain_id(context: Context, chain_id: u64) {
     let mut frames = vec![];
     let mut pc = 4;

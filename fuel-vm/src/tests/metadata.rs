@@ -4,7 +4,7 @@ use fuel_tx::{
     field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
     Finalizable, Receipt, Script, TransactionBuilder,
 };
-use fuel_types::bytes;
+use fuel_types::{bytes, BlockHeight};
 use fuel_vm::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
@@ -179,7 +179,7 @@ fn metadata() {
 fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
-    let height = 0;
+    let height = BlockHeight::default();
     let params = ConsensusParameters {
         chain_id: rng.gen(),
         ..Default::default()

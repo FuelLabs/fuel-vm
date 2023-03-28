@@ -3,9 +3,11 @@ use alloc::vec::Vec;
 use coin::*;
 use consts::*;
 use contract::*;
+use core::fmt;
+use core::fmt::Formatter;
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, BlockHeight, Nonce};
+use fuel_types::{bytes, fmt_truncated_hex, BlockHeight, Nonce};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 use message::*;
 
@@ -24,7 +26,7 @@ pub use repr::InputRepr;
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
 
-pub trait AsField<Type> {
+pub trait AsField<Type>: AsFieldFmt {
     fn as_field(&self) -> Option<&Type>;
 
     fn as_mut_field(&mut self) -> Option<&mut Type>;
@@ -41,6 +43,12 @@ impl<Type> AsField<Type> for () {
     }
 }
 
+impl AsFieldFmt for () {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("()")
+    }
+}
+
 impl AsField<u8> for u8 {
     #[inline(always)]
     fn as_field(&self) -> Option<&u8> {
@@ -49,6 +57,12 @@ impl AsField<u8> for u8 {
 
     fn as_mut_field(&mut self) -> Option<&mut u8> {
         Some(self)
+    }
+}
+
+impl AsFieldFmt for u8 {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
     }
 }
 
@@ -61,6 +75,23 @@ impl AsField<Vec<u8>> for Vec<u8> {
     fn as_mut_field(&mut self) -> Option<&mut Vec<u8>> {
         Some(self)
     }
+}
+
+impl AsFieldFmt for Vec<u8> {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        fmt_truncated_hex::<16>(self, f)
+    }
+}
+
+pub trait AsFieldFmt {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
+}
+
+pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
+where
+    T: AsFieldFmt,
+{
+    field.fmt_as_field(f)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]

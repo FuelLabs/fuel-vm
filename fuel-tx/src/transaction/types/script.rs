@@ -12,7 +12,7 @@ use derivative::Derivative;
 use fuel_types::{bytes, BlockHeight, Bytes32, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, MemLayout, MemLocType,
+    fmt_truncated_hex, mem_layout, MemLayout, MemLocType,
 };
 
 #[cfg(feature = "std")]
@@ -27,14 +27,16 @@ pub(crate) struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
-#[derive(Debug, Clone, Derivative)]
+#[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derivative(Eq, PartialEq, Hash)]
+#[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) gas_price: Word,
     pub(crate) gas_limit: Word,
     pub(crate) maturity: BlockHeight,
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script: Vec<u8>,
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,

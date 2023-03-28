@@ -1,5 +1,7 @@
+use crate::input::fmt_as_field;
 use crate::input::sizes::MessageSizes;
 use crate::transaction::types::input::AsField;
+use derivative::Derivative;
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Nonce, Word};
 
@@ -121,7 +123,8 @@ pub mod specifications {
 /// - [`specifications::MessageData`] with [`specifications::Signed`] usage rules.
 /// - [`specifications::MessageData`] with [`specifications::Predicate`] usage rules.
 /// - [`specifications::Full`].
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
+#[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message<Specification>
 where
@@ -133,9 +136,13 @@ where
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Nonce,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate: Specification::Predicate,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
 }
 

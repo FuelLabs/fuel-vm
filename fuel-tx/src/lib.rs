@@ -9,6 +9,7 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+extern crate core;
 
 pub mod consts;
 mod tx_pointer;

@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::InstructionResult;
 use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+use fuel_types::{fmt_truncated_hex, Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 #[cfg(feature = "std")]
 mod receipt_std;
@@ -16,9 +16,9 @@ pub use script_result::ScriptExecutionResult;
 
 use crate::Output;
 
-#[derive(Debug, Clone, Derivative)]
+#[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derivative(Eq, PartialEq, Hash)]
+#[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {
         id: ContractId,
@@ -44,6 +44,7 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         data: Vec<u8>,
         pc: Word,
         is: Word,
@@ -82,6 +83,7 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         data: Vec<u8>,
         pc: Word,
         is: Word,
@@ -118,6 +120,7 @@ pub enum Receipt {
         nonce: Bytes32,
         len: Word,
         digest: Bytes32,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         data: Vec<u8>,
     },
 }

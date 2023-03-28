@@ -6,6 +6,8 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(feature = "alloc")]
+mod fmt;
 mod types;
 
 pub use types::*;

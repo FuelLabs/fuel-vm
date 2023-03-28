@@ -5,16 +5,19 @@
 use crate::call::CallFrame;
 use crate::consts::*;
 use crate::interpreter::{InitialBalances, Interpreter};
+use derivative::Derivative;
 
 use fuel_tx::ScriptExecutionResult;
-use fuel_types::{ContractId, Word};
+use fuel_types::{fmt_truncated_hex, ContractId, Word};
 
-#[derive(Debug)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 /// Runtime description derived from a VM error.
 pub struct Backtrace {
     call_stack: Vec<CallFrame>,
     contract: ContractId,
     registers: [Word; VM_REGISTER_COUNT],
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     memory: Vec<u8>,
     result: ScriptExecutionResult,
     initial_balances: InitialBalances,

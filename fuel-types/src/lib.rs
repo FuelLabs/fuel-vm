@@ -10,10 +10,12 @@ extern crate alloc;
 extern crate core;
 
 mod array_types;
+mod fmt;
 mod layout;
 mod numeric_types;
 
 pub use array_types::*;
+pub use fmt::*;
 pub use layout::*;
 pub use numeric_types::*;
 

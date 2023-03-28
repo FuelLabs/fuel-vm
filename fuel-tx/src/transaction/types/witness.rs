@@ -1,4 +1,5 @@
 use fuel_types::bytes::{self, WORD_SIZE};
+use fuel_types::fmt_truncated_hex;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -8,12 +9,15 @@ use rand::{
 
 use alloc::vec::Vec;
 
+use derivative::Derivative;
 #[cfg(feature = "std")]
 use std::io;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
+#[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Witness {
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     data: Vec<u8>,
 }
 

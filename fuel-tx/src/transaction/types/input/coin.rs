@@ -1,6 +1,8 @@
+use crate::input::fmt_as_field;
 use crate::input::sizes::CoinSizes;
 use crate::transaction::types::input::AsField;
 use crate::{TxPointer, UtxoId};
+use derivative::Derivative;
 use fuel_types::bytes::{Deserializable, SizedBytes};
 use fuel_types::{bytes, Address, AssetId, BlockHeight, MemLayout, MemLocType, Word};
 
@@ -76,7 +78,8 @@ impl CoinSpecification for Full {
 /// - [`Full`] - is used during the deserialization of the coin.
 ///     It should be transformed into [`Signed`] or [`Predicate`] sub-coin.
 ///     If the `predicate` is empty, it is [`Signed`], else [`Predicate`].
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
+#[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Coin<Specification>
 where
@@ -87,9 +90,12 @@ where
     pub amount: Word,
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     pub maturity: BlockHeight,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate: Specification::Predicate,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
 }
 

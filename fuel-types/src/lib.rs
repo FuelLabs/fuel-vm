@@ -10,11 +10,13 @@ extern crate alloc;
 extern crate core;
 
 mod array_types;
+#[cfg(feature = "alloc")]
 mod fmt;
 mod layout;
 mod numeric_types;
 
 pub use array_types::*;
+#[cfg(feature = "alloc")]
 pub use fmt::*;
 pub use layout::*;
 pub use numeric_types::*;

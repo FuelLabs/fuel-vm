@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{Outputs, TxPointer as TxPointerField},
     validity::FormatValidityChecks,
 };
@@ -15,10 +16,9 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use fuel_crypto::Hasher;
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::{self, Deserializable, SerializableVec};
+use fuel_types::bytes::{self, Deserializable};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {
@@ -95,12 +95,7 @@ impl crate::UniqueIdentifier for Mint {
         }
 
         let mut clone = self.clone();
-        let mut hasher = Hasher::default();
-        // chain ID
-        hasher.input(params.chain_id.to_be_bytes());
-        // transaction bytes
-        hasher.input(clone.to_bytes().as_slice());
-        hasher.finalize()
+        compute_transaction_id(params, &mut clone)
     }
 }
 

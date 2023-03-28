@@ -1,4 +1,5 @@
 use fuel_types::bytes::Deserializable;
+use fuel_types::bytes::SerializableVec;
 use fuel_types::Bytes32;
 
 use super::*;

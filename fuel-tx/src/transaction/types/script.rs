@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{
         GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
     },
@@ -19,10 +20,6 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use fuel_crypto::Hasher;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::SerializableVec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -103,12 +100,7 @@ impl crate::UniqueIdentifier for Script {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        let mut hasher = Hasher::default();
-        // chain ID
-        hasher.input(params.chain_id.to_be_bytes());
-        // transaction bytes
-        hasher.input(clone.to_bytes().as_slice());
-        hasher.finalize()
+        compute_transaction_id(params, &mut clone)
     }
 }
 

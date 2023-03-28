@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{
         BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs, Salt as SaltField,
         StorageSlots, Witnesses,
@@ -19,9 +20,6 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::SerializableVec;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -62,7 +60,7 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self) -> fuel_types::Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> fuel_types::Bytes32 {
         if let Some(CommonMetadata { id, .. }) = self.metadata {
             return id;
         }
@@ -74,7 +72,7 @@ impl crate::UniqueIdentifier for Create {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        compute_transaction_id(params, &mut clone)
     }
 }
 
@@ -98,15 +96,15 @@ impl Chargeable for Create {
 
 impl FormatValidityChecks for Create {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
 
         Ok(())
     }
@@ -190,9 +188,9 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
-        self.metadata = Some(CommonMetadata::compute(self));
+        self.metadata = Some(CommonMetadata::compute(self, parameters));
     }
 }
 

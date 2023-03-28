@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{
         GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
     },
@@ -19,9 +20,6 @@ use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::SerializableVec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -85,7 +83,7 @@ impl Default for Script {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
-    fn id(&self) -> Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
         if let Some(ScriptMetadata {
             common: CommonMetadata { id, .. },
             ..
@@ -102,7 +100,7 @@ impl crate::UniqueIdentifier for Script {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        compute_transaction_id(params, &mut clone)
     }
 }
 
@@ -126,15 +124,15 @@ impl Chargeable for Script {
 
 impl FormatValidityChecks for Script {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
 
         Ok(())
     }
@@ -172,10 +170,10 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
-            common: CommonMetadata::compute(self),
+            common: CommonMetadata::compute(self, parameters),
             script_data_offset: self.script_data_offset(),
         });
     }

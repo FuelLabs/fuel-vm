@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{Outputs, TxPointer as TxPointerField},
     validity::FormatValidityChecks,
 };
@@ -17,7 +18,7 @@ use std::io;
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::{self, Deserializable, SerializableVec};
+use fuel_types::bytes::{self, Deserializable};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {
@@ -28,7 +29,7 @@ pub(crate) struct MintMetadata {
 
 #[cfg(feature = "std")]
 impl MintMetadata {
-    fn compute<Tx>(tx: &Tx) -> Self
+    fn compute<Tx>(tx: &Tx, parameters: &ConsensusParameters) -> Self
     where
         Tx: crate::UniqueIdentifier,
         Tx: Outputs,
@@ -36,7 +37,7 @@ impl MintMetadata {
     {
         use itertools::Itertools;
 
-        let id = tx.id();
+        let id = tx.id(parameters);
 
         let mut offset = tx.outputs_offset();
 
@@ -88,19 +89,19 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
-    fn id(&self) -> Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
         if let Some(MintMetadata { id, .. }) = self.metadata {
             return id;
         }
 
         let mut clone = self.clone();
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        compute_transaction_id(params, &mut clone)
     }
 }
 
 impl FormatValidityChecks for Mint {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, _: &ConsensusParameters) -> Result<(), CheckError> {
         Ok(())
     }
 
@@ -139,9 +140,9 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
-        self.metadata = Some(MintMetadata::compute(self));
+        self.metadata = Some(MintMetadata::compute(self, parameters));
     }
 }
 

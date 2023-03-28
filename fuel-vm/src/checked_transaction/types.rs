@@ -77,7 +77,7 @@ pub mod create {
             block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
+            self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
             // validate fees and compute free balances
@@ -117,7 +117,7 @@ pub mod mint {
             block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
+            self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
             Ok(Checked::basic(self, ()))
@@ -159,7 +159,7 @@ pub mod script {
             block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute();
+            self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
             // validate fees and compute free balances

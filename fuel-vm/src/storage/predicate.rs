@@ -74,7 +74,7 @@ impl InterpreterStorage for PredicateStorage {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn block_hash(&self, _block_height: u32) -> Result<Bytes32, InterpreterError> {
+    fn block_hash(&self, _block_height: BlockHeight) -> Result<Bytes32, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 

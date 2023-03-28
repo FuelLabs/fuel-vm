@@ -36,7 +36,7 @@ pub trait InterpreterStorage:
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError>;
 
     /// Provide the block hash from a given height.
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError>;
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError>;
 
     /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<Address, Self::DataError>;
@@ -207,7 +207,7 @@ where
         <S as InterpreterStorage>::timestamp(self.deref(), height)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
         <S as InterpreterStorage>::block_hash(self.deref(), block_height)
     }
 

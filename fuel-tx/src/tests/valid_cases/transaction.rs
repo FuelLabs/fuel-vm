@@ -787,7 +787,8 @@ mod inputs {
                 predicate,
                 vec![],
             ))
-            .finalize(&PARAMS);
+            .with_params(PARAMS)
+            .finalize();
 
         assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
@@ -812,7 +813,8 @@ mod inputs {
                 predicate,
                 vec![],
             ))
-            .finalize(&PARAMS);
+            .with_params(PARAMS)
+            .finalize();
 
         assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
@@ -838,7 +840,8 @@ mod inputs {
                 predicate,
                 vec![],
             ))
-            .finalize(&PARAMS);
+            .with_params(PARAMS)
+            .finalize();
 
         assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }
@@ -862,7 +865,8 @@ mod inputs {
                 predicate,
                 vec![],
             ))
-            .finalize(&PARAMS);
+            .with_params(PARAMS)
+            .finalize();
 
         assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
     }

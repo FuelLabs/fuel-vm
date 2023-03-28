@@ -39,7 +39,7 @@ where
 mod use_std {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field, Buildable, ConsensusParameters, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction,
+        field, Buildable, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction,
         TransactionBuilder,
     };
     use fuel_types::bytes::Deserializable;

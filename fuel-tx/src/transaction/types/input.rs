@@ -164,6 +164,7 @@ impl Input {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         })
     }
 
@@ -186,6 +187,7 @@ impl Input {
             maturity,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         })
     }
 
@@ -221,6 +223,7 @@ impl Input {
             data: (),
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         })
     }
 
@@ -231,6 +234,7 @@ impl Input {
         nonce: Nonce,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
+        predicate_gas_used: Word,
     ) -> Self {
         Self::MessageCoinPredicate(MessageCoinPredicate {
             sender,
@@ -241,6 +245,7 @@ impl Input {
             data: (),
             predicate,
             predicate_data,
+            predicate_gas_used,
         })
     }
 
@@ -261,6 +266,7 @@ impl Input {
             data,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         })
     }
 
@@ -283,6 +289,7 @@ impl Input {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         })
     }
 
@@ -414,6 +421,16 @@ impl Input {
         }
     }
 
+    pub fn predicate_gas_used(&self) -> Option<Word> {
+        match self {
+            Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => Some(*predicate_gas_used),
+            Input::CoinSigned(_) | Input::MessageCoinSigned(_) | Input::MessageDataSigned(_) => Some(0),
+            Input::Contract(_) => None,
+        }
+    }
+
     pub fn message_id(&self) -> Option<MessageId> {
         match self {
             Self::MessageCoinSigned(message) => Some(message.message_id()),
@@ -463,7 +480,7 @@ impl Input {
 
     /// Return a tuple containing the predicate and its data if the input is of
     /// type `CoinPredicate` or `MessageCoinPredicate` or `MessageDataPredicate`
-    pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
+    pub fn predicate(&self) -> Option<(&[u8], &[u8], &Word)> {
         match self {
             Input::CoinPredicate(CoinPredicate {
                 predicate,
@@ -480,8 +497,9 @@ impl Input {
             | Input::MessageDataPredicate(MessageDataPredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
-            }) => Some((predicate.as_slice(), predicate_data.as_slice())),
+            }) => Some((predicate.as_slice(), predicate_data.as_slice(), predicate_gas_used)),
 
             _ => None,
         }

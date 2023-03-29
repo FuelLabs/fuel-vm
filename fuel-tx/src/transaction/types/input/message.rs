@@ -29,9 +29,11 @@ pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
+    type PredicateGasUsed: AsField<Word>;
 }
 
 pub mod specifications {
+    use fuel_types::Word;
     use super::{Empty, MessageSpecification};
 
     /// The type means that the message should be signed by the `recipient`, and the
@@ -61,6 +63,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Empty;
         type PredicateData = Empty;
+        type PredicateGasUsed = Empty;
     }
 
     impl MessageSpecification for MessageData<Predicate> {
@@ -68,6 +71,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 
     /// The spendable message acts as a standard coin.
@@ -80,6 +84,7 @@ pub mod specifications {
         type Data = Empty;
         type Predicate = Empty;
         type PredicateData = Empty;
+        type PredicateGasUsed = Empty;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
@@ -87,6 +92,7 @@ pub mod specifications {
         type Data = Empty;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 
     /// The type is used to represent the full message. It is used during the deserialization of
@@ -144,6 +150,8 @@ where
     pub predicate: Specification::Predicate,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
+    pub predicate_gas_used: Specification::PredicateGasUsed,
 }
 
 impl<Specification> Message<Specification>
@@ -217,6 +225,7 @@ where
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         } = self;
         type S = MessageSizes;
         const LEN: usize = MessageSizes::LEN;
@@ -258,6 +267,7 @@ where
             0
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let buf = full_buf.get_mut(LEN..).ok_or(bytes::eof())?;
         let buf = if let Some(data) = data.as_field() {
@@ -314,6 +324,9 @@ where
         let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
+        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        self.predicate_gas_used = predicate_gas_used;
+
         let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
         n += size;
         if let Some(data_field) = self.data.as_mut_field() {
@@ -361,6 +374,7 @@ impl FullMessage {
             data,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -373,6 +387,7 @@ impl FullMessage {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -385,6 +400,7 @@ impl FullMessage {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 
@@ -407,6 +423,7 @@ impl FullMessage {
             data: (),
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -418,6 +435,7 @@ impl FullMessage {
             nonce,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -430,6 +448,7 @@ impl FullMessage {
             data: (),
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 }

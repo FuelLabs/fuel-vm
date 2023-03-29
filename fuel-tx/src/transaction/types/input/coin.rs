@@ -25,6 +25,7 @@ pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
+    type PredicateGasUsed: AsField<Word>;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -35,6 +36,7 @@ impl CoinSpecification for Signed {
     type Witness = u8;
     type Predicate = Empty;
     type PredicateData = Empty;
+    type PredicateGasUsed = Empty;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -45,6 +47,7 @@ impl CoinSpecification for Predicate {
     type Witness = Empty;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
+    type PredicateGasUsed = Word;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,6 +58,7 @@ impl CoinSpecification for Full {
     type Witness = u8;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
+    type PredicateGasUsed = Word;
 }
 
 /// It is a full representation of the coin from the specification:
@@ -97,6 +101,7 @@ where
     pub predicate: Specification::Predicate,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
+    pub predicate_gas_used: Specification::PredicateGasUsed,
 }
 
 impl<Specification> Coin<Specification>
@@ -152,6 +157,7 @@ where
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         } = self;
 
         type S = CoinSizes;
@@ -199,6 +205,8 @@ where
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
 
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
+
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let buf = if let Some(predicate) = predicate.as_field() {
             let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, predicate.as_slice())?;
@@ -257,6 +265,9 @@ where
         let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
+        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        self.predicate_gas_used = predicate_gas_used;
+
         let (size, predicate, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
         n += size;
         if let Some(predicate_field) = self.predicate.as_mut_field() {
@@ -300,6 +311,7 @@ impl Coin<Full> {
             maturity,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -313,6 +325,7 @@ impl Coin<Full> {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -326,6 +339,7 @@ impl Coin<Full> {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 }

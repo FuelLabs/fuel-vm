@@ -3,8 +3,8 @@ use std::fmt::Debug;
 
 use fuel_storage::StorageRead;
 use fuel_storage::StorageSize;
-use fuel_types::Bytes32;
 use fuel_types::ContractId;
+use fuel_types::{BlockHeight, Bytes32};
 
 use crate::storage::ContractsAssetsStorage;
 use crate::storage::{ContractsAssetKey, ContractsStateKey, InterpreterStorage};
@@ -326,15 +326,15 @@ where
 {
     type DataError = <S as InterpreterStorage>::DataError;
 
-    fn block_height(&self) -> Result<u32, Self::DataError> {
+    fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         self.0.block_height()
     }
 
-    fn timestamp(&self, height: u32) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         self.0.timestamp(height)
     }
 
-    fn block_hash(&self, block_height: u32) -> Result<Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
         self.0.block_hash(block_height)
     }
 

@@ -1,12 +1,12 @@
 use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
 use crate::transaction::{field, Chargeable, Create, Executable, Script};
-use crate::{Cacheable, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
 
 #[cfg(feature = "std")]
 use crate::Signable;
 
 use fuel_crypto::SecretKey;
-use fuel_types::{Salt, Word};
+use fuel_types::{BlockHeight, Nonce, Salt, Word};
 
 use alloc::vec::Vec;
 
@@ -57,7 +57,7 @@ where
     }
 
     /// Set the maturity
-    fn set_maturity(&mut self, maturity: Word) {
+    fn set_maturity(&mut self, maturity: BlockHeight) {
         *self.maturity_mut() = maturity;
     }
 }
@@ -88,6 +88,7 @@ pub struct TransactionBuilder<Tx> {
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
+    parameters: ConsensusParameters,
 
     // We take the key by reference so this lib won't have the responsibility to properly zeroize
     // the keys
@@ -143,7 +144,7 @@ impl TransactionBuilder<Create> {
 }
 
 impl TransactionBuilder<Mint> {
-    pub fn mint(block_height: u32, tx_index: u16) -> Self {
+    pub fn mint(block_height: BlockHeight, tx_index: u16) -> Self {
         let tx = Mint {
             tx_pointer: TxPointer::new(block_height, tx_index),
             outputs: Default::default(),
@@ -165,7 +166,17 @@ impl<Tx> TransactionBuilder<Tx> {
             should_prepare_script,
             should_prepare_predicate,
             sign_keys,
+            parameters: ConsensusParameters::DEFAULT,
         }
+    }
+
+    pub fn get_params(&self) -> &ConsensusParameters {
+        &self.parameters
+    }
+
+    pub fn with_params(&mut self, parameters: ConsensusParameters) -> &mut Self {
+        self.parameters = parameters;
+        self
     }
 }
 
@@ -196,7 +207,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn maturity(&mut self, maturity: Word) -> &mut Self {
+    pub fn maturity(&mut self, maturity: BlockHeight) -> &mut Self {
         self.tx.set_maturity(maturity);
 
         self
@@ -210,7 +221,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         amount: Word,
         asset_id: fuel_types::AssetId,
         tx_pointer: TxPointer,
-        maturity: Word,
+        maturity: BlockHeight,
     ) -> &mut Self {
         let pk = secret.public_key();
 
@@ -226,7 +237,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         &mut self,
         secret: SecretKey,
         sender: fuel_types::Address,
-        nonce: Word,
+        nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
     ) -> &mut Self {
@@ -264,6 +275,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self
     }
+
     #[cfg(feature = "std")]
     fn prepare_finalize(&mut self) {
         if self.should_prepare_predicate {
@@ -281,9 +293,9 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k));
+        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k, &self.parameters));
 
-        tx.precompute();
+        tx.precompute(&self.parameters);
 
         tx
     }
@@ -294,7 +306,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute();
+        tx.precompute(&self.parameters);
 
         tx
     }
@@ -317,7 +329,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute();
+        tx.precompute(&self.parameters);
         tx
     }
 

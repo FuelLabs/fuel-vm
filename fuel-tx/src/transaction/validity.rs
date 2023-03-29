@@ -1,7 +1,7 @@
-use super::{Input, Output, Transaction, Witness};
+use crate::{Input, Output, Transaction, Witness};
 use core::hash::Hash;
 
-use fuel_types::{AssetId, Word};
+use fuel_types::{AssetId, BlockHeight};
 
 #[cfg(feature = "std")]
 use fuel_types::Bytes32;
@@ -12,6 +12,8 @@ use itertools::Itertools;
 
 mod error;
 
+use crate::input::coin::{CoinPredicate, CoinSigned};
+use crate::input::message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned};
 use crate::transaction::consensus_parameters::ConsensusParameters;
 use crate::transaction::{field, Executable};
 pub use error::CheckError;
@@ -27,22 +29,33 @@ impl Input {
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         self.check_without_signature(index, outputs, witnesses, parameters)?;
-        self.check_signature(index, txhash, witnesses)?;
+        self.check_signature(index, txhash, witnesses, parameters)?;
 
         Ok(())
     }
 
     #[cfg(feature = "std")]
-    pub fn check_signature(&self, index: usize, txhash: &Bytes32, witnesses: &[Witness]) -> Result<(), CheckError> {
+    pub fn check_signature(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        witnesses: &[Witness],
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         match self {
-            Self::CoinSigned {
+            Self::CoinSigned(CoinSigned {
                 witness_index, owner, ..
-            }
-            | Self::MessageSigned {
+            })
+            | Self::MessageCoinSigned(MessageCoinSigned {
                 witness_index,
                 recipient: owner,
                 ..
-            } => {
+            })
+            | Self::MessageDataSigned(MessageDataSigned {
+                witness_index,
+                recipient: owner,
+                ..
+            }) => {
                 let witness = witnesses
                     .get(*witness_index as usize)
                     .ok_or(CheckError::InputWitnessIndexBounds { index })?
@@ -66,12 +79,19 @@ impl Input {
                 Ok(())
             }
 
-            Self::CoinPredicate { owner, predicate, .. }
-            | Self::MessagePredicate {
+            Self::CoinPredicate(CoinPredicate { owner, predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate {
                 recipient: owner,
                 predicate,
                 ..
-            } if !Input::is_predicate_owner_valid(owner, predicate) => Err(CheckError::InputPredicateOwner { index }),
+            })
+            | Self::MessageDataPredicate(MessageDataPredicate {
+                recipient: owner,
+                predicate,
+                ..
+            }) if !Input::is_predicate_owner_valid(owner, predicate, parameters) => {
+                Err(CheckError::InputPredicateOwner { index })
+            }
 
             _ => Ok(()),
         }
@@ -85,25 +105,33 @@ impl Input {
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         match self {
-            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
                 Err(CheckError::InputPredicateEmpty { index })
             }
 
-            Self::CoinPredicate { predicate, .. } | Self::MessagePredicate { predicate, .. }
+            Self::CoinPredicate(CoinPredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.len() > parameters.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
 
-            Self::CoinPredicate { predicate_data, .. } | Self::MessagePredicate { predicate_data, .. }
+            Self::CoinPredicate(CoinPredicate { predicate_data, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate_data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate_data, .. })
                 if predicate_data.len() > parameters.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
 
-            Self::CoinSigned { witness_index, .. } | Self::MessageSigned { witness_index, .. }
+            Self::CoinSigned(CoinSigned { witness_index, .. })
+            | Self::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+            | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
                 Err(CheckError::InputWitnessIndexBounds { index })
@@ -122,14 +150,15 @@ impl Input {
                 Err(CheckError::InputContractAssociatedOutputContract { index })
             }
 
-            Self::MessageSigned { data, .. } | Self::MessagePredicate { data, .. }
-                if data.len() > parameters.max_message_data_length as usize =>
+            Self::MessageDataSigned(MessageDataSigned { data, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
+                if data.is_empty() || data.len() > parameters.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }
 
-            // TODO If h is the block height the UTXO being spent was created, transaction is
-            // invalid if `blockheight() < h + maturity`.
+            // TODO: If h is the block height the UTXO being spent was created, transaction is
+            //  invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
         }
     }
@@ -160,33 +189,41 @@ pub trait FormatValidityChecks {
     #[cfg(feature = "std")]
     /// Performs all stateless transaction validity checks. This includes the validity
     /// of fields according to rules in the specification and validity of signatures.
-    fn check(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check(&self, block_height: BlockHeight, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
-        self.check_signatures()?;
+        self.check_signatures(parameters)?;
 
         Ok(())
     }
 
     #[cfg(feature = "std")]
     /// Validates that all required signatures are set in the transaction and that they are valid.
-    fn check_signatures(&self) -> Result<(), CheckError>;
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError>;
 
     /// Validates the transactions according to rules from the specification:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError>;
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError>;
 }
 
 impl FormatValidityChecks for Transaction {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => script.check_signatures(),
-            Transaction::Create(create) => create.check_signatures(),
-            Transaction::Mint(mint) => mint.check_signatures(),
+            Transaction::Script(script) => script.check_signatures(parameters),
+            Transaction::Create(create) => create.check_signatures(parameters),
+            Transaction::Mint(mint) => mint.check_signatures(parameters),
         }
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => script.check_without_signatures(block_height, parameters),
             Transaction::Create(create) => create.check_without_signatures(block_height, parameters),
@@ -197,7 +234,7 @@ impl FormatValidityChecks for Transaction {
 
 pub(crate) fn check_common_part<T>(
     tx: &T,
-    block_height: Word,
+    block_height: BlockHeight,
     parameters: &ConsensusParameters,
 ) -> Result<(), CheckError>
 where
@@ -263,7 +300,7 @@ where
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
-    if let Some(message_id) = next_duplicate(duplicated_message_id).copied() {
+    if let Some(message_id) = next_duplicate(duplicated_message_id) {
         return Err(CheckError::DuplicateMessageInputId { message_id });
     }
 

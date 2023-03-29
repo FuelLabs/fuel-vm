@@ -5,7 +5,7 @@ use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::Bytes32;
 use fuel_types::ContractId;
-use fuel_types::MessageId;
+use fuel_types::Nonce;
 
 pub struct CallSizes;
 mem_layout!(
@@ -127,11 +127,10 @@ pub struct MessageOutSizes;
 mem_layout!(
     MessageOutSizesLayout for MessageOutSizes
     repr: u8 = WORD_SIZE,
-    message_id: MessageId = {MessageId::LEN},
     sender: Address = {Address::LEN},
     recipient: Address = {Address::LEN},
     amount: Word = WORD_SIZE,
-    nonce: Bytes32 = {Bytes32::LEN},
+    nonce: Nonce = {Nonce::LEN},
     len: Word = WORD_SIZE,
     digest: Bytes32 = {Bytes32::LEN},
     data_len: Word = WORD_SIZE

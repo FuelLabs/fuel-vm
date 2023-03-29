@@ -3,19 +3,29 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
+#![deny(unused_crate_dependencies)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 extern crate core;
 
+mod array_types;
+#[cfg(feature = "alloc")]
+mod fmt;
 mod layout;
-mod types;
+mod numeric_types;
 
+pub use array_types::*;
+#[cfg(feature = "alloc")]
+pub use fmt::*;
 pub use layout::*;
-pub use types::*;
+pub use numeric_types::*;
 
 /// Word-aligned bytes serialization functions.
 pub mod bytes;
+
+#[cfg(test)]
+mod tests;
 
 /// Register ID type
 pub type RegisterId = usize;
@@ -34,3 +44,12 @@ pub type Immediate18 = u32;
 
 /// 24-bits immediate value type
 pub type Immediate24 = u32;
+
+pub(crate) const fn hex_val(c: u8) -> Option<u8> {
+    match c {
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'0'..=b'9' => Some(c - b'0'),
+        _ => None,
+    }
+}

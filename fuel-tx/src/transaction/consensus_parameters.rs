@@ -32,8 +32,8 @@ pub struct ConsensusParameters {
     pub gas_per_byte: u64,
     /// Maximum length of message data, in bytes.
     pub max_message_data_length: u64,
-    /// Maximum gas per predicate
-    pub max_gas_per_predicate: u64,
+    /// The unique identifier of this chain
+    pub chain_id: u64,
 }
 
 impl ConsensusParameters {
@@ -52,8 +52,7 @@ impl ConsensusParameters {
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
         max_message_data_length: 1024 * 1024,
-        //TODO: set this to a reasonable value
-        max_gas_per_predicate: 100_000_000,
+        chain_id: 0,
     };
 
     /// Transaction memory offset in VM runtime
@@ -79,7 +78,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -97,7 +96,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -116,7 +115,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -134,7 +133,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -153,7 +152,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -171,7 +170,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -190,7 +189,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -208,7 +207,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -227,7 +226,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -245,7 +244,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -264,7 +263,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -282,7 +281,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -301,7 +300,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -319,7 +318,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -338,7 +337,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -356,7 +355,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -375,7 +374,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -393,7 +392,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -412,7 +411,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -430,7 +429,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -449,7 +448,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -467,7 +466,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -485,7 +484,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_price_factor,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -503,7 +502,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 
@@ -522,7 +521,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_price_factor,
             gas_per_byte,
-            max_gas_per_predicate,
+            chain_id,
             ..
         } = self;
 
@@ -540,44 +539,7 @@ impl ConsensusParameters {
             gas_price_factor,
             gas_per_byte,
             max_message_data_length,
-            max_gas_per_predicate,
-        }
-    }
-
-    /// Replace the max gas per predicate with the given argument
-    pub const fn with_max_gas_per_predicate(self, max_gas_per_predicate: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_gas_per_predicate,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            max_gas_per_predicate,
+            chain_id,
         }
     }
 }
@@ -607,5 +569,5 @@ pub mod default_parameters {
     pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
     pub const MAX_MESSAGE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_message_data_length;
-    pub const MAX_GAS_PER_PREDICATE: u64 = ConsensusParameters::DEFAULT.max_gas_per_predicate;
+    pub const CHAIN_ID: u64 = ConsensusParameters::DEFAULT.chain_id;
 }

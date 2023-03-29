@@ -10,7 +10,7 @@ use fuel_asm::{GMArgs, GTFArgs, PanicReason, RegId};
 use fuel_tx::field::{
     BytecodeLength, BytecodeWitnessIndex, ReceiptsRoot, Salt, Script as ScriptField, ScriptData, StorageSlots,
 };
-use fuel_tx::{Input, InputRepr, Output, OutputRepr, UtxoId};
+use fuel_tx::{ConsensusParameters, Input, InputRepr, Output, OutputRepr, UtxoId};
 use fuel_types::{Immediate12, Immediate18, RegisterId, Word};
 
 #[cfg(test)]
@@ -23,7 +23,7 @@ where
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.frames, pc, result, imm)
+        metadata(&self.context, &self.params, &self.frames, pc, result, imm)
     }
 
     pub(crate) fn get_transaction_field(
@@ -45,6 +45,7 @@ where
 
 pub(crate) fn metadata(
     context: &Context,
+    params: &ConsensusParameters,
     frames: &[CallFrame],
     pc: RegMut<PC>,
     result: &mut Word,
@@ -60,6 +61,10 @@ pub(crate) fn metadata(
                     .predicate()
                     .map(|p| p.idx() as Word)
                     .ok_or(PanicReason::TransactionValidity)?;
+            }
+
+            GMArgs::GetChainId => {
+                *result = params.chain_id;
             }
 
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
@@ -79,6 +84,9 @@ pub(crate) fn metadata(
                 *result = parent;
             }
 
+            GMArgs::GetChainId => {
+                *result = params.chain_id;
+            }
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
         }
     }
@@ -108,7 +116,7 @@ impl<Tx> GTFInput<'_, Tx> {
             // General
             GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice => tx.price(),
             GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit => tx.limit(),
-            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => *tx.maturity(),
+            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => **tx.maturity() as Word,
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => tx.inputs().len() as Word,
             GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount => tx.outputs().len() as Word,
             GTFArgs::ScriptWitnessesCound | GTFArgs::CreateWitnessesCount => tx.witnesses().len() as Word,
@@ -187,12 +195,12 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|i| i.is_coin())
                 .and_then(Input::witness_index)
                 .ok_or(PanicReason::InputNotFound)? as Word,
-            GTFArgs::InputCoinMaturity => tx
+            GTFArgs::InputCoinMaturity => *tx
                 .inputs()
                 .get(b)
                 .filter(|i| i.is_coin())
                 .and_then(Input::maturity)
-                .ok_or(PanicReason::InputNotFound)?,
+                .ok_or(PanicReason::InputNotFound)? as Word,
             GTFArgs::InputCoinPredicateLength => tx
                 .inputs()
                 .get(b)
@@ -277,16 +285,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
                     .ok_or(PanicReason::InputNotFound)?) as Word
             }
-            GTFArgs::InputMessageId => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_message())
-                    .map(Input::repr)
-                    .and_then(|r| r.message_id_offset())
-                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
             GTFArgs::InputMessageSender => {
                 (ofs + tx
                     .inputs()
@@ -313,12 +311,16 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|i| i.is_message())
                 .and_then(Input::amount)
                 .ok_or(PanicReason::InputNotFound)?,
-            GTFArgs::InputMessageNonce => tx
-                .inputs()
-                .get(b)
-                .filter(|i| i.is_message())
-                .and_then(Input::nonce)
-                .ok_or(PanicReason::InputNotFound)?,
+            GTFArgs::InputMessageNonce => {
+                (ofs + tx
+                    .inputs()
+                    .get(b)
+                    .filter(|i| i.is_message())
+                    .map(Input::repr)
+                    .and_then(|r| r.message_nonce_offset())
+                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
+                    .ok_or(PanicReason::InputNotFound)?) as Word
+            }
             GTFArgs::InputMessageWitnessIndex => tx
                 .inputs()
                 .get(b)
@@ -431,22 +433,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
                     .ok_or(PanicReason::OutputNotFound)?) as Word
             }
-            GTFArgs::OutputMessageRecipient => {
-                (ofs + tx
-                    .outputs()
-                    .get(b)
-                    .filter(|o| o.is_message())
-                    .map(Output::repr)
-                    .and_then(|r| r.recipient_offset())
-                    .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::OutputNotFound)?) as Word
-            }
-            GTFArgs::OutputMessageAmount => tx
-                .outputs()
-                .get(b)
-                .filter(|o| o.is_message())
-                .and_then(Output::amount)
-                .ok_or(PanicReason::OutputNotFound)?,
             GTFArgs::OutputContractCreatedContractId => {
                 (ofs + tx
                     .outputs()

@@ -8,7 +8,7 @@ use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -45,14 +45,18 @@ pub struct RuntimeBalances {
     state: HashMap<AssetId, Balance>,
 }
 
-impl From<InitialBalances> for RuntimeBalances {
-    fn from(balances: InitialBalances) -> Self {
-        Self::try_from_iter(balances.into_iter()).expect(
-r#"This is a bug!
+impl TryFrom<InitialBalances> for RuntimeBalances {
+    type Error = CheckError;
 
-A checked transaction shouldn't produce a malformed initial free balances set.
-
-Please, file a report mentioning an incorrect transaction validation implementation that allowed a type-safe checked transaction to be created from a malformed inputs set."#)
+    fn try_from(initial_balances: InitialBalances) -> Result<Self, CheckError> {
+        let mut balances: BTreeMap<_, _> = initial_balances.non_retryable.into();
+        if let Some(retryable_amount) = initial_balances.retryable {
+            let entry = balances.entry(AssetId::BASE).or_default();
+            *entry = entry
+                .checked_add(*retryable_amount)
+                .ok_or(CheckError::ArithmeticOverflow)?;
+        }
+        Self::try_from_iter(balances.into_iter())
     }
 }
 

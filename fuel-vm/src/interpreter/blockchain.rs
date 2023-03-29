@@ -1,28 +1,29 @@
-use super::contract::{balance, contract_size};
+use super::contract::{balance, balance_decrease, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
-    absolute_output_mem_range, append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract,
-    internal_contract_bounds, set_message_output, tx_id, AppendReceipt,
+    append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
+    tx_id, AppendReceipt,
 };
 use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
+use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
 use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, CheckedMemValue};
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
+use crate::interpreter::receipts::ReceiptsCtx;
+use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 use crate::{arith, consts::*};
 
 use fuel_asm::PanicReason;
 use fuel_storage::{StorageInspect, StorageSize};
-use fuel_tx::{Output, Receipt};
-use fuel_types::bytes::{self, Deserializable};
+use fuel_tx::Receipt;
+use fuel_types::{bytes, BlockHeight};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
-use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
-use crate::interpreter::PanicContext;
 use std::borrow::Borrow;
 use std::ops::Range;
 
@@ -241,11 +242,13 @@ where
             receipts: &mut self.receipts,
             tx: &mut self.tx,
             balances: &mut self.balances,
+            storage: &mut self.storage,
+            current_contract: self.frames.last().map(|frame| frame.to()).copied(),
             fp: fp.as_ref(),
             pc,
             recipient_mem_address: a,
-            call_abi_len: b,
-            message_output_idx: c,
+            msg_data_ptr: b,
+            msg_data_len: c,
             amount_coins_to_send: d,
         };
         input.message_output()
@@ -295,7 +298,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         let memory_offset_end = checked_add_usize(memory_offset, length)?;
 
         // Validate arguments
-        if memory_offset_end > *self.hp as usize
+        if memory_offset_end >= *self.hp as usize
             || contract_id_end as Word > VM_MAX_RAM
             || length > MEM_MAX_ACCESS_SIZE as usize
             || length > self.contract_max_size as usize
@@ -478,7 +481,8 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     a: Word,
     b: Word,
 ) -> Result<(), RuntimeError> {
-    let hash = storage.block_hash(b as u32).map_err(|e| e.into())?;
+    let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
+    let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
     try_mem_write(a as usize, hash.as_ref(), owner, memory)?;
 
@@ -488,7 +492,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
 pub(crate) fn block_height(context: &Context, pc: RegMut<PC>, result: &mut Word) -> Result<(), RuntimeError> {
     context
         .block_height()
-        .map(|h| h as Word)
+        .map(|h| *h as Word)
         .map(|h| *result = h)
         .ok_or(PanicReason::TransactionValidity)?;
 
@@ -651,97 +655,94 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
 
 pub(crate) fn timestamp(
     storage: &impl InterpreterStorage,
-    block_height: u32,
+    block_height: BlockHeight,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
 ) -> Result<(), RuntimeError> {
-    (b <= block_height as Word)
+    let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
+    (b <= block_height)
         .then_some(())
         .ok_or(PanicReason::TransactionValidity)?;
-
-    let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?;
 
     *result = storage.timestamp(b).map_err(|e| e.into())?;
 
     inc_pc(pc)
 }
-
-struct MessageOutputCtx<'vm, Tx> {
+struct MessageOutputCtx<'vm, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
-    receipts: &'vm mut Vec<Receipt>,
+    receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
+    storage: &'vm mut S,
+    current_contract: Option<ContractId>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
 }
 
-impl<Tx> MessageOutputCtx<'_, Tx> {
+impl<Tx, S> MessageOutputCtx<'_, Tx, S>
+where
+    S: ContractsAssetsStorage + ?Sized,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
     {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
-        let memory_constraint = recipient_address.end() as Word
-            ..(arith::checked_add_word(recipient_address.end() as Word, self.max_message_data_length)?
-                .min(MEM_MAX_ACCESS_SIZE));
-        let call_abi = CheckedMemRange::new_with_constraint(
-            recipient_address.end() as Word,
-            self.call_abi_len as usize,
-            memory_constraint,
-        )?;
+
+        if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
+            return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        }
+
+        if self.msg_data_len > self.max_message_data_length {
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
+        }
+
+        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 
-        if recipient == Address::zeroed() {
-            return Err(PanicReason::ZeroedMessageOutputRecipient.into());
-        }
-
-        let output = absolute_output_mem_range(self.tx, self.tx_offset, self.message_output_idx as usize, None)?
-            .ok_or(PanicReason::OutputNotFound)?;
-        let output = Output::from_bytes(output.read(self.memory))?;
-
-        // amount isn't checked because we are allowed to send zero balances with a message
-        if !matches!(output, Output::Message { recipient, .. } if recipient == Address::zeroed()) {
-            return Err(PanicReason::NonZeroMessageOutputRecipient.into());
-        }
-
         // validations passed, perform the mutations
 
-        base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        if let Some(source_contract) = self.current_contract {
+            balance_decrease(
+                self.storage,
+                &source_contract,
+                &AssetId::BASE,
+                self.amount_coins_to_send,
+            )?;
+        } else {
+            base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
+        }
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
-        let call_abi = call_abi.read(self.memory).to_vec();
+        let msg_data = msg_data_range.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
-        let message = Output::message(recipient, self.amount_coins_to_send);
         let receipt = Receipt::message_out_from_tx_output(
             txid,
-            self.message_output_idx,
+            self.receipts.len() as Word,
             *sender,
             recipient,
             self.amount_coins_to_send,
-            call_abi,
+            msg_data,
         );
-
-        set_message_output(
-            self.tx,
-            self.memory,
-            self.tx_offset,
-            self.message_output_idx as usize,
-            message,
-        )?;
 
         append_receipt(
             AppendReceipt {

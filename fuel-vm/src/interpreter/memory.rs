@@ -8,6 +8,7 @@ use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
 use std::ops;
+use std::ops::Range;
 
 pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
 
@@ -117,7 +118,7 @@ impl MemoryRange {
     {
         use ops::Bound::*;
 
-        let heap = vm.registers()[RegId::HP].saturating_add(1);
+        let heap = vm.registers()[RegId::HP];
 
         self.start = match self.start {
             Included(start) => Included(heap.saturating_add(start)),
@@ -272,7 +273,7 @@ where
 {
     let (result, overflow) = f(*sp, v);
 
-    if overflow || result > *hp {
+    if overflow || result >= *hp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *sp = result;
@@ -335,8 +336,8 @@ pub(crate) fn store_byte(
     c: Word,
 ) -> Result<(), RuntimeError> {
     let (ac, overflow) = a.overflowing_add(c);
-
-    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(ac) || owner.has_ownership_heap(ac)) {
+    let range = ac..(ac + 1);
+    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range)) {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         memory[ac as usize] = b as u8;
@@ -483,44 +484,56 @@ impl OwnershipRegisters {
         }
     }
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (a, ab) = range.boundaries(self);
+        let (start_incl, end_excl) = range.boundaries(self);
 
-        let a_is_stack = a < self.sp;
-        let a_is_heap = a > self.hp;
+        let range = start_incl..end_excl;
 
-        let ab_is_stack = ab <= self.sp;
-        let ab_is_heap = ab >= self.hp;
+        if range.is_empty() {
+            return false;
+        }
 
-        a < ab
-            && (a_is_stack && ab_is_stack && self.has_ownership_stack(a) && self.has_ownership_stack_exclusive(ab)
-                || a_is_heap && ab_is_heap && self.has_ownership_heap(a) && self.has_ownership_heap_exclusive(ab))
+        if (self.ssp..self.sp).contains(&start_incl) {
+            return self.has_ownership_stack(&range);
+        }
+
+        self.has_ownership_heap(&range)
     }
 
-    pub(crate) const fn has_ownership_stack(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.ssp <= a && a < self.sp
+    /// Zero-length range is never owned
+    pub(crate) fn has_ownership_stack(&self, range: &Range<Word>) -> bool {
+        if range.is_empty() {
+            return false;
+        }
+
+        if range.end > VM_MAX_RAM {
+            return false;
+        }
+
+        (self.ssp..self.sp).contains(&range.start) && (self.ssp..=self.sp).contains(&range.end)
     }
 
-    pub(crate) const fn has_ownership_stack_exclusive(&self, a: Word) -> bool {
-        a <= VM_MAX_RAM && self.ssp <= a && a <= self.sp
-    }
-
-    pub(crate) fn has_ownership_heap(&self, a: Word) -> bool {
+    /// Zero-length range is never owned
+    pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
         // TODO implement fp->hp and (addr, size) validations
         // fp->hp
         // it means $hp from the previous context, i.e. what's saved in the
         // "Saved registers from previous context" of the call frame at
         // $fp`
-        let external = self.context.is_external();
+        if range.is_empty() {
+            return false;
+        }
 
-        self.hp < a && (external && a < VM_MAX_RAM || !external && a <= self.prev_hp)
-    }
+        if range.start < self.hp {
+            return false;
+        }
 
-    pub(crate) fn has_ownership_heap_exclusive(&self, a: Word) -> bool {
-        // TODO reflect the pending changes from `has_ownership_heap`
-        let external = self.context.is_external();
+        let heap_end = if self.context.is_external() {
+            VM_MAX_RAM
+        } else {
+            self.prev_hp
+        };
 
-        self.hp < a
-            && (external && a <= VM_MAX_RAM || !external && self.prev_hp.checked_add(1).map_or(false, |f| a <= f))
+        self.hp != heap_end && range.end <= heap_end
     }
 }
 

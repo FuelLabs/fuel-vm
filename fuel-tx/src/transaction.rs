@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, Bytes32, Salt, Word};
+use fuel_types::{Address, AssetId, BlockHeight, Bytes32, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -23,10 +23,15 @@ pub use consensus_parameters::ConsensusParameters;
 pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
-pub use types::{Create, Input, InputRepr, Mint, Output, OutputRepr, Script, StorageSlot, UtxoId, Witness};
+pub use types::*;
 pub use validity::{CheckError, FormatValidityChecks};
 
 use crate::TxPointer;
+
+use crate::input::coin::{CoinPredicate, CoinSigned};
+use crate::input::contract::Contract;
+use crate::input::message::MessageDataPredicate;
+use input::*;
 
 #[cfg(feature = "std")]
 pub use id::{Signable, UniqueIdentifier};
@@ -35,7 +40,7 @@ pub use id::{Signable, UniqueIdentifier};
 pub type TxId = Bytes32;
 
 /// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Transaction {
     Script(Script),
@@ -53,7 +58,7 @@ impl Transaction {
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,
-        maturity: Word,
+        maturity: BlockHeight,
         script: Vec<u8>,
         script_data: Vec<u8>,
         inputs: Vec<Input>,
@@ -79,7 +84,7 @@ impl Transaction {
     pub fn create(
         gas_price: Word,
         gas_limit: Word,
-        maturity: Word,
+        maturity: BlockHeight,
         bytecode_witness_index: u8,
         salt: Salt,
         storage_slots: Vec<StorageSlot>,
@@ -207,8 +212,12 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::CoinPredicate { asset_id, .. } | Input::CoinSigned { asset_id, .. } => Some(asset_id),
-                Input::MessagePredicate { .. } | Input::MessageSigned { .. } => Some(&AssetId::BASE),
+                Input::CoinPredicate(CoinPredicate { asset_id, .. })
+                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+                Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_)
+                | Input::MessageDataSigned(_) => Some(&AssetId::BASE),
                 _ => None,
             })
             .collect_vec()
@@ -235,7 +244,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::Contract { contract_id, .. } => Some(contract_id),
+                Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
             .unique()
@@ -245,18 +254,18 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Checks that all owners of inputs in the predicates are valid.
     #[cfg(feature = "std")]
-    fn check_predicate_owners(&self) -> bool {
+    fn check_predicate_owners(&self, parameters: &ConsensusParameters) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::CoinPredicate { owner, predicate, .. } => Some((owner, predicate)),
-                Input::MessagePredicate {
+                Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
+                Input::MessageDataPredicate(MessageDataPredicate {
                     recipient, predicate, ..
-                } => Some((recipient, predicate)),
+                }) => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, predicate, parameters)
             })
     }
 
@@ -275,7 +284,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: Word,
+        maturity: BlockHeight,
     ) {
         let owner = Input::owner(owner);
 
@@ -298,14 +307,16 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         &mut self,
         sender: Address,
         recipient: Address,
-        nonce: Word,
+        nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
     ) {
-        let message_id = Input::compute_message_id(&sender, &recipient, nonce, amount, &data);
-
         let witness_index = self.witnesses().len() as u8;
-        let input = Input::message_signed(message_id, sender, recipient, amount, nonce, witness_index, data);
+        let input = if data.is_empty() {
+            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
+        } else {
+            Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
+        };
 
         self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
@@ -366,7 +377,7 @@ impl From<Mint> for Transaction {
 /// used to write generic code based on the different combinations of the fields.
 pub mod field {
     use crate::{Input, Output, StorageSlot, Witness};
-    use fuel_types::{Bytes32, Word};
+    use fuel_types::{BlockHeight, Bytes32, Word};
 
     use alloc::vec::Vec;
 
@@ -391,8 +402,8 @@ pub mod field {
     }
 
     pub trait Maturity {
-        fn maturity(&self) -> &Word;
-        fn maturity_mut(&mut self) -> &mut Word;
+        fn maturity(&self) -> &BlockHeight;
+        fn maturity_mut(&mut self) -> &mut BlockHeight;
         fn maturity_offset(&self) -> usize {
             Self::maturity_offset_static()
         }
@@ -517,21 +528,47 @@ mod tests {
     #[test]
     fn metered_data_excludes_witnesses() {
         // test script
-        let script_with_no_witnesses = Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![]);
-        let script_with_witnesses =
-            Transaction::script(0, 0, 0, vec![], vec![], vec![], vec![], vec![[0u8; 64].to_vec().into()]);
+        let script_with_no_witnesses = Transaction::script(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
+        let script_with_witnesses = Transaction::script(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![[0u8; 64].to_vec().into()],
+        );
 
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
             script_with_no_witnesses.metered_bytes_size()
         );
         // test create
-        let create_with_no_witnesses =
-            Transaction::create(0, 0, 0, 0, Default::default(), vec![], vec![], vec![], vec![]);
+        let create_with_no_witnesses = Transaction::create(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            0,
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        );
         let create_with_witnesses = Transaction::create(
-            0,
-            0,
-            0,
+            Default::default(),
+            Default::default(),
+            Default::default(),
             0,
             Default::default(),
             vec![],

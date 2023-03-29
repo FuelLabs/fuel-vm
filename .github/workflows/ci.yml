@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+  merge_group:
   release:
     types: [published]
 
@@ -14,11 +15,11 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.67.0
+  RUST_VERSION: 1.67.1
 
 jobs:
   cargo:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
     strategy:
       fail-fast: false
       matrix:
@@ -51,6 +52,8 @@ jobs:
             args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
+          - command: make
+            args: check
           - command: test
             args: --all-targets --all-features
           - command: test
@@ -72,6 +75,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
           components: "clippy, rustfmt"
+      - name: Install Cargo Make
+        uses: davidB/rust-cargo-make@v1
+        with:
+          version: "0.36.4"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
 
   cargo-toml-fmt-check:
@@ -89,25 +96,10 @@ jobs:
       - name: Run Cargo.toml linter
         run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
 
-  cargo-unused-deps-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-      - uses: Swatinem/rust-cache@v1
-      - name: Install cargo-udeps
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-udeps
-      - run: cargo udeps --all-targets --all-features
-
   verifications-complete:
     needs:
       - cargo
       - cargo-toml-fmt-check
-      - cargo-unused-deps-check
     runs-on: ubuntu-latest
     steps:
       - run: true
@@ -134,7 +126,7 @@ jobs:
       - verifications-complete
       - publish-check
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
 
     steps:
       - uses: actions/checkout@v2

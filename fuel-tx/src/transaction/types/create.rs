@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{
         BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs, Salt as SaltField,
         StorageSlots, Witnesses,
@@ -8,7 +9,7 @@ use crate::transaction::{
 };
 use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, AssetId, Salt, Word};
+use fuel_types::{bytes, AssetId, BlockHeight, Salt, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
     mem_layout, MemLayout, MemLocType,
@@ -20,9 +21,6 @@ use std::io;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
-use fuel_types::bytes::SerializableVec;
-
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
 
@@ -32,7 +30,7 @@ mod ser_de_tests;
 pub struct Create {
     pub(crate) gas_price: Word,
     pub(crate) gas_limit: Word,
-    pub(crate) maturity: Word,
+    pub(crate) maturity: BlockHeight,
     pub(crate) bytecode_length: Word,
     pub(crate) bytecode_witness_index: u8,
     pub(crate) storage_slots: Vec<StorageSlot>,
@@ -50,7 +48,7 @@ mem_layout!(
     repr: u8 = WORD_SIZE,
     gas_price: Word = WORD_SIZE,
     gas_limit: Word = WORD_SIZE,
-    maturity: Word = WORD_SIZE,
+    maturity: u32 = WORD_SIZE,
     bytecode_length: Word = WORD_SIZE,
     bytecode_witness_index: u8 = WORD_SIZE,
     storage_slots_len: Word = WORD_SIZE,
@@ -62,7 +60,7 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self) -> fuel_types::Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> fuel_types::Bytes32 {
         if let Some(CommonMetadata { id, .. }) = self.metadata {
             return id;
         }
@@ -74,7 +72,7 @@ impl crate::UniqueIdentifier for Create {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        compute_transaction_id(params, &mut clone)
     }
 }
 
@@ -98,20 +96,24 @@ impl Chargeable for Create {
 
 impl FormatValidityChecks for Create {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
 
         Ok(())
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         check_common_part(self, block_height, parameters)?;
 
         let bytecode_witness_len = self
@@ -137,13 +139,16 @@ impl FormatValidityChecks for Create {
         // TODO The computed contract ADDRESS (see below) is not equal to the
         // contractADDRESS of the one OutputType.ContractCreated output
 
-        self.inputs.iter().enumerate().try_for_each(|(index, input)| {
-            if let Input::Contract { .. } = input {
-                return Err(CheckError::TransactionCreateInputContract { index });
-            }
-
-            Ok(())
-        })?;
+        self.inputs
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| match input {
+                Input::Contract(_) => Err(CheckError::TransactionCreateInputContract { index }),
+                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Err(CheckError::TransactionCreateMessageData { index })
+                }
+                _ => Ok(()),
+            })?;
 
         let mut contract_created = false;
         self.outputs
@@ -183,9 +188,9 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
-        self.metadata = Some(CommonMetadata::compute(self));
+        self.metadata = Some(CommonMetadata::compute(self, parameters));
     }
 }
 
@@ -234,12 +239,12 @@ mod field {
 
     impl Maturity for Create {
         #[inline(always)]
-        fn maturity(&self) -> &Word {
+        fn maturity(&self) -> &BlockHeight {
             &self.maturity
         }
 
         #[inline(always)]
-        fn maturity_mut(&mut self) -> &mut Word {
+        fn maturity_mut(&mut self) -> &mut BlockHeight {
             &mut self.maturity
         }
 
@@ -520,7 +525,7 @@ impl io::Read for Create {
 
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length), *bytecode_length);
         bytes::store_number_at(
             buf,
@@ -590,7 +595,7 @@ impl io::Write for Create {
 
         let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
         let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.maturity));
+        let maturity = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
         let bytecode_length = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length));
         let bytecode_witness_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.bytecode_witness_index));
         let storage_slots_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.storage_slots_len));

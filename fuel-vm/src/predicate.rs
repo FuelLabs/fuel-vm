@@ -62,7 +62,7 @@ fn from_tx_works() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let params = ConsensusParameters::default();
-    let height = 1;
+    let height = 1.into();
 
     #[rustfmt::skip]
     let predicate: Vec<u8> = vec![
@@ -85,23 +85,32 @@ fn from_tx_works() {
         predicate_data.clone(),
     );
 
-    let b = Input::message_predicate(
+    let b = Input::message_coin_predicate(
         rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate.clone(),
+        predicate_data.clone(),
+    );
+
+    let c = Input::message_data_predicate(
         rng.gen(),
-        vec![],
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        vec![0xff; 10],
         predicate.clone(),
         predicate_data,
     );
 
-    let inputs = vec![a, b];
+    let inputs = vec![a, b, c];
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])
+            .with_params(params)
             .add_input(i)
-            .finalize_checked_basic(height, &params);
+            .finalize_checked_basic(height);
 
         // assert invalid idx wont panic
         let idx = 1;

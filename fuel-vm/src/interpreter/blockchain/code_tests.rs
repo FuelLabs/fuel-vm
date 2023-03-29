@@ -6,7 +6,7 @@ use fuel_tx::Contract;
 
 #[test]
 fn test_load_contract() -> Result<(), RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let hp = 2000;
@@ -47,7 +47,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_code_copy() -> Result<(), RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
 
@@ -76,7 +76,9 @@ fn test_code_copy() -> Result<(), RuntimeError> {
             ssp: 1000,
             hp: 2000,
             prev_hp: VM_MAX_RAM - 1,
-            context: Context::Call { block_height: 0 },
+            context: Context::Call {
+                block_height: Default::default(),
+            },
         },
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;

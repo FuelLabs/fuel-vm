@@ -26,8 +26,17 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     let params = ConsensusParameters::default();
     let script = op::ret(0x10).to_bytes().to_vec();
-    let block_height = 0;
-    let tx = Transaction::script(0, params.max_gas_per_tx, 0, script, vec![], vec![], vec![], vec![]);
+    let block_height = Default::default();
+    let tx = Transaction::script(
+        0,
+        params.max_gas_per_tx,
+        Default::default(),
+        script,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    );
     let tx = tx
         .into_checked(block_height, &params, vm.gas_costs())
         .expect("failed to check tx");
@@ -117,6 +126,12 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::JNZI => false,
         Opcode::JMP => false,
         Opcode::JNE => false,
+        Opcode::JMPF => false,
+        Opcode::JMPB => false,
+        Opcode::JNZF => false,
+        Opcode::JNZB => false,
+        Opcode::JNEF => false,
+        Opcode::JNEB => false,
         Opcode::RET => false,
         Opcode::RETD => false,
         Opcode::CFEI => false,
@@ -161,6 +176,8 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::GM => true,
         Opcode::GTF => true,
         Opcode::TIME => true,
+        Opcode::CFE => false,
+        Opcode::CFS => false,
     }
 }
 
@@ -202,6 +219,12 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::JNZI => false,
         Opcode::JMP => false,
         Opcode::JNE => false,
+        Opcode::JMPF => false,
+        Opcode::JMPB => false,
+        Opcode::JNZF => false,
+        Opcode::JNZB => false,
+        Opcode::JNEF => false,
+        Opcode::JNEB => false,
         Opcode::RET => false,
         Opcode::RETD => false,
         Opcode::CFEI => false,
@@ -246,5 +269,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::GM => false,
         Opcode::GTF => false,
         Opcode::TIME => false,
+        Opcode::CFE => false,
+        Opcode::CFS => false,
     }
 }

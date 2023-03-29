@@ -88,7 +88,7 @@ pub mod test_helpers {
         TransactionBuilder, Witness,
     };
     use fuel_types::bytes::{Deserializable, SerializableVec, SizedBytes};
-    use fuel_types::{Address, AssetId, ContractId, Immediate12, Salt, Word};
+    use fuel_types::{Address, AssetId, BlockHeight, ContractId, Immediate12, Salt, Word};
     use itertools::Itertools;
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
@@ -107,7 +107,7 @@ pub mod test_helpers {
         storage: MemoryStorage,
         params: ConsensusParameters,
         gas_costs: GasCosts,
-        block_height: u32,
+        block_height: BlockHeight,
     }
 
     impl TestBuilder {
@@ -121,11 +121,11 @@ pub mod test_helpers {
                 storage: MemoryStorage::default(),
                 params: ConsensusParameters::default(),
                 gas_costs: Default::default(),
-                block_height: 0,
+                block_height: Default::default(),
             }
         }
 
-        pub fn get_block_height(&self) -> u32 {
+        pub fn get_block_height(&self) -> BlockHeight {
             self.block_height
         }
 
@@ -163,11 +163,6 @@ pub mod test_helpers {
             self
         }
 
-        pub fn message_output(&mut self) -> &mut TestBuilder {
-            self.builder.add_output(Output::message(Address::zeroed(), 0));
-            self
-        }
-
         pub fn variable_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
             self.builder
                 .add_output(Output::variable(Address::zeroed(), 0, asset_id));
@@ -179,7 +174,7 @@ pub mod test_helpers {
                 .builder
                 .inputs()
                 .iter()
-                .find_position(|input| matches!(input, Input::Contract {contract_id, ..} if contract_id == id))
+                .find_position(|input| matches!(input, Input::Contract(contract) if &contract.contract_id == id))
                 .expect("expected contract input with matching contract id");
 
             self.builder
@@ -189,8 +184,14 @@ pub mod test_helpers {
         }
 
         pub fn coin_input(&mut self, asset_id: AssetId, amount: Word) -> &mut TestBuilder {
-            self.builder
-                .add_unsigned_coin_input(self.rng.gen(), self.rng.gen(), amount, asset_id, self.rng.gen(), 0);
+            self.builder.add_unsigned_coin_input(
+                self.rng.gen(),
+                self.rng.gen(),
+                amount,
+                asset_id,
+                self.rng.gen(),
+                Default::default(),
+            );
             self
         }
 
@@ -220,7 +221,7 @@ pub mod test_helpers {
             self
         }
 
-        pub fn block_height(&mut self, block_height: u32) -> &mut TestBuilder {
+        pub fn block_height(&mut self, block_height: BlockHeight) -> &mut TestBuilder {
             self.block_height = block_height;
             self
         }
@@ -230,8 +231,8 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
-            self.builder
-                .finalize_checked(self.block_height as Word, &self.params, &self.gas_costs)
+            self.builder.with_params(self.params);
+            self.builder.finalize_checked(self.block_height, &self.gas_costs)
         }
 
         pub fn build_get_balance_tx(
@@ -292,7 +293,7 @@ pub mod test_helpers {
             let tx = Transaction::create(
                 self.gas_price,
                 self.gas_limit,
-                0,
+                Default::default(),
                 0,
                 salt,
                 storage_slots,
@@ -300,7 +301,7 @@ pub mod test_helpers {
                 vec![Output::contract_created(contract_id, storage_root)],
                 vec![program],
             )
-            .into_checked(self.block_height as Word, &self.params, &self.gas_costs)
+            .into_checked(self.block_height, &self.params, &self.gas_costs)
             .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -394,8 +395,8 @@ pub mod test_helpers {
         let gas_price = 0;
         let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         let gas_limit = params.max_gas_per_tx;
-        let maturity = 0;
-        let height = 0;
+        let maturity = Default::default();
+        let height = Default::default();
 
         // setup contract with state tests
         let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
@@ -406,8 +407,9 @@ pub mod test_helpers {
         let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .with_params(params)
             .add_output(Output::contract_created(contract_id, state_root))
-            .finalize_checked(height, &params, client.gas_costs());
+            .finalize_checked(height, client.gas_costs());
 
         client.deploy(contract_deployer).expect("valid contract deployment");
 
@@ -431,6 +433,7 @@ pub mod test_helpers {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
+            .with_params(params)
             .add_input(Input::contract(
                 Default::default(),
                 Default::default(),
@@ -439,7 +442,7 @@ pub mod test_helpers {
                 contract_id,
             ))
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, &params, client.gas_costs());
+            .finalize_checked(height, client.gas_costs());
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

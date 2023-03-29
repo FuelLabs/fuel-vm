@@ -5,7 +5,7 @@ use crate::storage::InterpreterStorage;
 
 use fuel_asm::Word;
 use fuel_storage::{Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMutate, StorageRead, StorageSize};
-use fuel_types::{Address, Bytes32, ContractId};
+use fuel_types::{Address, BlockHeight, Bytes32, ContractId};
 
 use super::{interpreter::ContractsAssetsStorage, ContractsRawCode};
 
@@ -66,15 +66,15 @@ impl ContractsAssetsStorage for PredicateStorage {}
 impl InterpreterStorage for PredicateStorage {
     type DataError = InterpreterError;
 
-    fn block_height(&self) -> Result<u32, InterpreterError> {
+    fn block_height(&self) -> Result<BlockHeight, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn timestamp(&self, _height: u32) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, _height: BlockHeight) -> Result<Word, Self::DataError> {
         Err(InterpreterError::PredicateFailure)
     }
 
-    fn block_hash(&self, _block_height: u32) -> Result<Bytes32, InterpreterError> {
+    fn block_hash(&self, _block_height: BlockHeight) -> Result<Bytes32, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 

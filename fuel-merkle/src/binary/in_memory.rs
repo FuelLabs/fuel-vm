@@ -7,6 +7,7 @@ use crate::{
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
 /// value is the [`Node`](crate::binary::Node).
+#[derive(Debug, Clone)]
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
@@ -19,6 +20,7 @@ impl Mappable for NodesTable {
 type Storage = StorageMap<NodesTable>;
 type BinaryMerkleTree = binary::MerkleTree<NodesTable, Storage>;
 
+#[derive(Debug, Clone)]
 pub struct MerkleTree {
     tree: BinaryMerkleTree,
 }
@@ -40,6 +42,10 @@ impl MerkleTree {
 
     pub fn prove(&self, proof_index: u64) -> Option<(Bytes32, ProofSet)> {
         self.tree.prove(proof_index).ok()
+    }
+
+    pub fn reset(&mut self) {
+        self.tree.reset();
     }
 }
 

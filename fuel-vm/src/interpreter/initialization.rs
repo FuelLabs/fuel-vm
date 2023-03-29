@@ -36,12 +36,12 @@ where
         self.registers[RegId::SSP] = 0;
 
         // Set heap area
-        self.registers[RegId::HP] = VM_MAX_RAM - 1;
+        self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id().as_ref())
+        self.push_stack(self.transaction().id(&self.params).as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        RuntimeBalances::from(initial_balances).to_vm(self);
+        RuntimeBalances::try_from(initial_balances)?.to_vm(self);
 
         let tx_size = self.transaction().serialized_size() as Word;
 

@@ -1,4 +1,5 @@
 use crate::transaction::{
+    compute_transaction_id,
     field::{
         GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
     },
@@ -8,10 +9,10 @@ use crate::transaction::{
 };
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, Bytes32, Word};
+use fuel_types::{bytes, BlockHeight, Bytes32, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, MemLayout, MemLocType,
+    fmt_truncated_hex, mem_layout, MemLayout, MemLocType,
 };
 
 #[cfg(feature = "std")]
@@ -20,23 +21,22 @@ use std::io;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
-use fuel_types::bytes::SerializableVec;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
     pub common: CommonMetadata,
     pub script_data_offset: usize,
 }
 
-#[derive(Debug, Clone, Derivative)]
+#[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derivative(Eq, PartialEq, Hash)]
+#[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) gas_price: Word,
     pub(crate) gas_limit: Word,
-    pub(crate) maturity: Word,
+    pub(crate) maturity: BlockHeight,
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script: Vec<u8>,
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
@@ -52,7 +52,7 @@ mem_layout!(
     repr: u8 = WORD_SIZE,
     gas_price: Word = WORD_SIZE,
     gas_limit: Word = WORD_SIZE,
-    maturity: Word = WORD_SIZE,
+    maturity: u32 = WORD_SIZE,
     script_len: Word = WORD_SIZE,
     script_data_len: Word = WORD_SIZE,
     inputs_len: Word = WORD_SIZE,
@@ -85,7 +85,7 @@ impl Default for Script {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
-    fn id(&self) -> Bytes32 {
+    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
         if let Some(ScriptMetadata {
             common: CommonMetadata { id, .. },
             ..
@@ -102,7 +102,7 @@ impl crate::UniqueIdentifier for Script {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        fuel_crypto::Hasher::hash(clone.to_bytes().as_slice())
+        compute_transaction_id(params, &mut clone)
     }
 }
 
@@ -126,20 +126,24 @@ impl Chargeable for Script {
 
 impl FormatValidityChecks for Script {
     #[cfg(feature = "std")]
-    fn check_signatures(&self) -> Result<(), CheckError> {
+    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id();
+        let id = self.id(parameters);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
 
         Ok(())
     }
 
-    fn check_without_signatures(&self, block_height: Word, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_without_signatures(
+        &self,
+        block_height: BlockHeight,
+        parameters: &ConsensusParameters,
+    ) -> Result<(), CheckError> {
         check_common_part(self, block_height, parameters)?;
 
         if self.script.len() > parameters.max_script_length as usize {
@@ -168,10 +172,10 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self) {
+    fn precompute(&mut self, parameters: &ConsensusParameters) {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
-            common: CommonMetadata::compute(self),
+            common: CommonMetadata::compute(self, parameters),
             script_data_offset: self.script_data_offset(),
         });
     }
@@ -222,12 +226,12 @@ mod field {
 
     impl Maturity for Script {
         #[inline(always)]
-        fn maturity(&self) -> &Word {
+        fn maturity(&self) -> &BlockHeight {
             &self.maturity
         }
 
         #[inline(always)]
-        fn maturity_mut(&mut self) -> &mut Word {
+        fn maturity_mut(&mut self) -> &mut BlockHeight {
             &mut self.maturity
         }
 
@@ -504,7 +508,7 @@ impl io::Read for Script {
 
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), *maturity);
+        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.script_len), script.len() as Word);
         bytes::store_number_at(
             buf,
@@ -562,7 +566,7 @@ impl io::Write for Script {
 
         let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
         let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.maturity));
+        let maturity = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
         let script_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
         let script_data_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
         let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));

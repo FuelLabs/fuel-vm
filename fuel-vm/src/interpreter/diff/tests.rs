@@ -1,7 +1,5 @@
 use fuel_asm::op;
-use fuel_tx::field::Outputs;
 use fuel_tx::Script;
-use fuel_types::Address;
 use fuel_types::AssetId;
 use fuel_types::ContractId;
 use test_case::test_case;
@@ -204,11 +202,12 @@ fn reset_vm_memory() {
 
 #[test]
 fn reset_vm_txns() {
+    use fuel_tx::field::Outputs;
     let a = Interpreter::<_, Script>::with_memory_storage();
     let mut b = Interpreter::<_, Script>::with_memory_storage();
-    b.tx.outputs_mut().push(fuel_tx::Output::Message {
-        recipient: Address::zeroed(),
-        amount: 1,
+    b.tx.outputs_mut().push(fuel_tx::Output::ContractCreated {
+        contract_id: Default::default(),
+        state_root: Default::default(),
     });
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);

@@ -5,6 +5,7 @@ use fuel_types::{Immediate12, Immediate18};
 const GM_IS_CALLER_EXTERNAL: u8 = 0x01;
 const GM_GET_CALLER: u8 = 0x02;
 const GM_GET_VERIFYING_PREDICATE: u8 = 0x03;
+const GM_GET_CHAIN_ID: u8 = 0x04;
 
 /// Argument list for GM (get metadata) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
@@ -22,6 +23,9 @@ pub enum GMArgs {
 
     /// Get index of current predicate.
     GetVerifyingPredicate = GM_GET_VERIFYING_PREDICATE,
+
+    /// Get the Chain ID this VM is operating within
+    GetChainId = GM_GET_CHAIN_ID,
 }
 
 impl TryFrom<Immediate18> for GMArgs {
@@ -32,6 +36,7 @@ impl TryFrom<Immediate18> for GMArgs {
             GM_IS_CALLER_EXTERNAL => Ok(Self::IsCallerExternal),
             GM_GET_CALLER => Ok(Self::GetCaller),
             GM_GET_VERIFYING_PREDICATE => Ok(Self::GetVerifyingPredicate),
+            GM_GET_CHAIN_ID => Ok(Self::GetChainId),
             _ => Err(PanicReason::InvalidMetadataIdentifier),
         }
     }
@@ -91,7 +96,8 @@ const GTF_INPUT_CONTRACT_BALANCE_ROOT: u16 = 0x110;
 const GTF_INPUT_CONTRACT_STATE_ROOT: u16 = 0x111;
 const GTF_INPUT_CONTRACT_TX_POINTER: u16 = 0x112;
 const GTF_INPUT_CONTRACT_ID: u16 = 0x113;
-const GTF_INPUT_MESSAGE_ID: u16 = 0x114;
+// TODO: Add `GTF_INPUT_COIN_PREDICATE_GAS_USED` above, `GTF_INPUT_MESSAGE_SENDER` should
+//  have `0x115`
 const GTF_INPUT_MESSAGE_SENDER: u16 = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT: u16 = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT: u16 = 0x117;
@@ -110,10 +116,8 @@ const GTF_OUTPUT_COIN_ASSET_ID: u16 = 0x204;
 const GTF_OUTPUT_CONTRACT_INPUT_INDEX: u16 = 0x205;
 const GTF_OUTPUT_CONTRACT_BALANCE_ROOT: u16 = 0x206;
 const GTF_OUTPUT_CONTRACT_STATE_ROOT: u16 = 0x207;
-const GTF_OUTPUT_MESSAGE_RECIPIENT: u16 = 0x208;
-const GTF_OUTPUT_MESSAGE_AMOUNT: u16 = 0x209;
-const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID: u16 = 0x20A;
-const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT: u16 = 0x20B;
+const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID: u16 = 0x208;
+const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT: u16 = 0x209;
 const GTF_WITNESS_DATA_LENGTH: u16 = 0x301;
 const GTF_WITNESS_DATA: u16 = 0x302;
 
@@ -269,9 +273,6 @@ pub enum GTFArgs {
     /// Set `$rA` to `Memory address of tx.inputs[$rB].contractID`
     InputContractId = GTF_INPUT_CONTRACT_ID,
 
-    /// Set `$rA` to `Memory address of tx.inputs[$rB].messageID`
-    InputMessageId = GTF_INPUT_MESSAGE_ID,
-
     /// Set `$rA` to `Memory address of tx.inputs[$rB].sender`
     InputMessageSender = GTF_INPUT_MESSAGE_SENDER,
 
@@ -325,12 +326,6 @@ pub enum GTFArgs {
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
     OutputContractStateRoot = GTF_OUTPUT_CONTRACT_STATE_ROOT,
-
-    /// Set `$rA` to `Memory address of tx.outputs[$rB].recipient`
-    OutputMessageRecipient = GTF_OUTPUT_MESSAGE_RECIPIENT,
-
-    /// Set `$rA` to `tx.outputs[$rB].amount`
-    OutputMessageAmount = GTF_OUTPUT_MESSAGE_AMOUNT,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].contractID`
     OutputContractCreatedContractId = GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID,
@@ -398,7 +393,6 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_CONTRACT_STATE_ROOT => Ok(Self::InputContractStateRoot),
             GTF_INPUT_CONTRACT_TX_POINTER => Ok(Self::InputContractTxPointer),
             GTF_INPUT_CONTRACT_ID => Ok(Self::InputContractId),
-            GTF_INPUT_MESSAGE_ID => Ok(Self::InputMessageId),
             GTF_INPUT_MESSAGE_SENDER => Ok(Self::InputMessageSender),
             GTF_INPUT_MESSAGE_RECIPIENT => Ok(Self::InputMessageRecipient),
             GTF_INPUT_MESSAGE_AMOUNT => Ok(Self::InputMessageAmount),
@@ -417,8 +411,6 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_OUTPUT_CONTRACT_INPUT_INDEX => Ok(Self::OutputContractInputIndex),
             GTF_OUTPUT_CONTRACT_BALANCE_ROOT => Ok(Self::OutputContractBalanceRoot),
             GTF_OUTPUT_CONTRACT_STATE_ROOT => Ok(Self::OutputContractStateRoot),
-            GTF_OUTPUT_MESSAGE_RECIPIENT => Ok(Self::OutputMessageRecipient),
-            GTF_OUTPUT_MESSAGE_AMOUNT => Ok(Self::OutputMessageAmount),
             GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID => Ok(Self::OutputContractCreatedContractId),
             GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT => Ok(Self::OutputContractCreatedStateRoot),
             GTF_WITNESS_DATA_LENGTH => Ok(Self::WitnessDataLength),
@@ -441,6 +433,7 @@ fn encode_gm_args() {
         GMArgs::IsCallerExternal,
         GMArgs::GetCaller,
         GMArgs::GetVerifyingPredicate,
+        GMArgs::GetChainId,
     ];
 
     args.into_iter().for_each(|a| {
@@ -503,7 +496,6 @@ fn encode_gtf_args() {
         GTFArgs::InputContractStateRoot,
         GTFArgs::InputContractTxPointer,
         GTFArgs::InputContractId,
-        GTFArgs::InputMessageId,
         GTFArgs::InputMessageSender,
         GTFArgs::InputMessageRecipient,
         GTFArgs::InputMessageAmount,
@@ -522,8 +514,6 @@ fn encode_gtf_args() {
         GTFArgs::OutputContractInputIndex,
         GTFArgs::OutputContractBalanceRoot,
         GTFArgs::OutputContractStateRoot,
-        GTFArgs::OutputMessageRecipient,
-        GTFArgs::OutputMessageAmount,
         GTFArgs::OutputContractCreatedContractId,
         GTFArgs::OutputContractCreatedStateRoot,
         GTFArgs::WitnessDataLength,

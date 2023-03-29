@@ -1,52 +1,47 @@
-use crate::interpreter::memory::Memory;
-use crate::interpreter::InitialBalances;
+use crate::interpreter::contract::balance as contract_balance;
+use crate::{interpreter::memory::Memory, storage::MemoryStorage};
 
 use super::*;
-use fuel_tx::field::Outputs;
+
 use fuel_tx::Create;
-use fuel_types::bytes::SizedBytes;
 use test_case::test_case;
 
 struct Input {
     /// A
     recipient_mem_address: Word,
     /// B
-    call_abi_len: Word,
+    msg_data_ptr: Word,
     /// C
-    message_output_idx: Word,
+    msg_data_len: Word,
     /// D
     amount_coins_to_send: Word,
+    internal: bool,
     max_message_data_length: Word,
-    message_output: fuel_tx::Output,
     memory: Vec<(usize, Vec<u8>)>,
-    balance: InitialBalances,
+    /// Initial balance of the zeroed AssedId, same for both default contract and external context
+    initial_balance: Word,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 struct Output {
-    receipts: Vec<Receipt>,
-}
-
-fn output_bytes(mut output: fuel_tx::Output) -> Vec<u8> {
-    let mut buf = vec![0u8; output.serialized_size()];
-    std::io::Read::read(&mut output, &mut buf).unwrap();
-    buf
+    receipts: ReceiptsCtx,
+    /// Resulting internal (contract) balance of zeroed AssetId with zeroed  ContractId
+    internal_balance: Word,
+    /// Resulting external balance of zeroed AssetId
+    external_balance: Word,
 }
 
 impl Default for Input {
     fn default() -> Self {
         Self {
             recipient_mem_address: Default::default(),
-            call_abi_len: Default::default(),
-            message_output_idx: Default::default(),
+            msg_data_ptr: Default::default(),
+            msg_data_len: Default::default(),
             amount_coins_to_send: Default::default(),
-            message_output: fuel_tx::Output::message(Address::zeroed(), 0),
-            memory: vec![
-                (112, output_bytes(fuel_tx::Output::message(Address::zeroed(), 0))),
-                (400, Address::from([1u8; 32]).to_vec()),
-            ],
+            internal: false,
+            memory: vec![(400, Address::from([1u8; 32]).to_vec())],
             max_message_data_length: 100,
-            balance: Default::default(),
+            initial_balance: 0,
         }
     }
 }
@@ -54,18 +49,29 @@ impl Default for Input {
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        call_abi_len: 1,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 1,
         amount_coins_to_send: 0,
         ..Default::default()
     } => matches Ok(Output { .. })
-    ; "sanity test"
+    ; "sanity test (external)"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 0,
+        msg_data_len: 1,
+        amount_coins_to_send: 0,
+        internal: true,
+        ..Default::default()
+    } => matches Ok(Output { .. })
+    ; "sanity test (internal)"
 )]
 #[test_case(
     Input {
         recipient_mem_address: 0,
-        call_abi_len: 0,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 0,
         amount_coins_to_send: 0,
         ..Default::default()
     } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
@@ -73,9 +79,9 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: Word::MAX,
-        call_abi_len: 1,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: Word::MAX,
+        msg_data_len: 1,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
@@ -84,101 +90,121 @@ impl Default for Input {
 )]
 #[test_case(
     Input {
-        recipient_mem_address: VM_MAX_RAM - 64,
-        call_abi_len: 100,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: VM_MAX_RAM - 64,
+        msg_data_len: 100,
         amount_coins_to_send: 0,
         max_message_data_length: Word::MAX,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
     ; "address + call abi length overflows memory"
 )]
 #[test_case(
     Input {
-        recipient_mem_address: 400,
-        call_abi_len: 101,
-        message_output_idx: 0,
+        recipient_mem_address: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 101,
         amount_coins_to_send: 0,
         max_message_data_length: 100,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    } => Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
     ; "call abi length > max message data length"
 )]
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 1,
-        amount_coins_to_send: 0,
-        max_message_data_length: 100,
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::OutputNotFound))
-    ; "message index out of bounds"
-)]
-#[test_case(
-    Input {
-        recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
+        msg_data_ptr: 0,
+        msg_data_len: 10,
         amount_coins_to_send: 30,
-        balance: [(AssetId::zeroed(), 29)].into_iter().collect(),
+        initial_balance: 29,
         ..Default::default()
     } => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))
-    ; "amount coins to send > balance"
-)]
-// TODO: Test the above on an internal context
-#[test_case(
-    Input {
-        recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        message_output: fuel_tx::Output::coin(Address::zeroed(), 0, Default::default()),
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::NonZeroMessageOutputRecipient))
-    ; "wrong output type"
-)]
-#[test_case(
-    Input {
-        recipient_mem_address: 4000,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::ZeroedMessageOutputRecipient))
-    ; "receipt address in memory == 0"
+    ; "amount coins to send > balance from external context"
 )]
 #[test_case(
     Input {
         recipient_mem_address: 400,
-        call_abi_len: 10,
-        message_output_idx: 0,
-        amount_coins_to_send: 0,
-        message_output: fuel_tx::Output::message(Address::from([1u8; 32]), 0),
+        msg_data_ptr: 0,
+        msg_data_len: 10,
+        amount_coins_to_send: 30,
+        initial_balance: 29,
+        internal: true,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::NonZeroMessageOutputRecipient))
-    ; "output message not zeroed out"
+    } => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))
+    ; "amount coins to send > balance from internal context"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 29,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 9, internal_balance: 29, .. })
+    ; "coins sent succesfully from external context"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 29,
+        internal: true,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 29, internal_balance: 9, .. })
+    ; "coins sent succesfully from internal context"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 20,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 0, internal_balance: 20, .. })
+    ; "spend all coins succesfully from external context"
+)]
+#[test_case(
+    Input {
+        recipient_mem_address: 400,
+        msg_data_ptr: 432,
+        msg_data_len: 10,
+        amount_coins_to_send: 20,
+        initial_balance: 20,
+        internal: true,
+        ..Default::default()
+    } => matches Ok(Output { external_balance: 20, internal_balance: 0, .. })
+    ; "spend all coins succesfully from internal context"
 )]
 fn test_smo(
     Input {
         recipient_mem_address,
-        call_abi_len,
-        message_output_idx,
+        msg_data_len,
+        msg_data_ptr,
         amount_coins_to_send,
-        message_output,
+        internal,
         memory: mem,
         max_message_data_length,
-        balance,
+        initial_balance,
     }: Input,
 ) -> Result<Output, RuntimeError> {
+    let asset = AssetId::zeroed();
+
     let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
-    let mut receipts = Vec::default();
+    let mut receipts = Default::default();
     let mut tx = Create::default();
-    *tx.outputs_mut() = vec![message_output];
-    let mut balances = RuntimeBalances::from(balance);
+    let mut storage = MemoryStorage::new(Default::default(), Address::default());
+    storage
+        .merkle_contract_asset_id_balance_insert(&ContractId::default(), &asset, initial_balance)
+        .unwrap();
+    let mut balances =
+        RuntimeBalances::try_from_iter([(asset, initial_balance)].into_iter()).expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
     let input = MessageOutputCtx {
@@ -188,12 +214,21 @@ fn test_smo(
         receipts: &mut receipts,
         tx: &mut tx,
         balances: &mut balances,
+        storage: &mut storage,
+        current_contract: if internal { Some(ContractId::default()) } else { None },
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         recipient_mem_address,
-        call_abi_len,
-        message_output_idx,
+        msg_data_len,
+        msg_data_ptr,
         amount_coins_to_send,
     };
-    input.message_output().map(|_| Output { receipts })
+
+    input.message_output()?;
+
+    Ok(Output {
+        receipts,
+        internal_balance: contract_balance(&storage, &ContractId::default(), &asset).unwrap(),
+        external_balance: balances.balance(&asset).unwrap(),
+    })
 }

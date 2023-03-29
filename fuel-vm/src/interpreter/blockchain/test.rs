@@ -46,7 +46,7 @@ fn test_state_read_word(
     insert: impl Into<Option<Word>>,
     key: Word,
 ) -> Result<(Word, Word), RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
@@ -54,14 +54,20 @@ fn test_state_read_word(
     let mut result = 0;
     let mut got_result = 0;
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
 
     if let Some(insert) = insert.into() {
         let fp = 0;
-        let context = Context::Call { block_height: 0 };
+        let context = Context::Call {
+            block_height: Default::default(),
+        };
         let input = StateWordCtx {
             storage: &mut storage,
             memory: &mut memory,
@@ -96,21 +102,27 @@ fn test_state_read_word(
 #[test_case(true, 0, false, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> Result<Word, RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;
     let mut result = 0;
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
 
     if insert {
         let fp = 0;
-        let context = Context::Call { block_height: 0 };
+        let context = Context::Call {
+            block_height: Default::default(),
+        };
         let input = StateWordCtx {
             storage: &mut storage,
             memory: &mut memory,

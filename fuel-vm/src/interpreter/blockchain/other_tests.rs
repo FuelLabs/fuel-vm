@@ -15,7 +15,7 @@ use test_case::test_case;
 #[test_case(false, 0, 100, 101 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn too much")]
 #[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
 fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
@@ -27,9 +27,13 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
             .unwrap();
     }
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
     let mut pc = 4;
     burn(
@@ -61,7 +65,7 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test_case(true, 0, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't mint from external context")]
 #[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
 fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
@@ -73,9 +77,13 @@ fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
             .unwrap();
     }
     let context = if external {
-        Context::Script { block_height: 0 }
+        Context::Script {
+            block_height: Default::default(),
+        }
     } else {
-        Context::Call { block_height: 0 }
+        Context::Call {
+            block_height: Default::default(),
+        }
     };
     let mut pc = 4;
     mint(
@@ -97,14 +105,16 @@ fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 
 #[test]
 fn test_block_hash() {
-    let storage = MemoryStorage::new(0, Default::default());
+    let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     let mut pc = 4;
     block_hash(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 40).unwrap();
@@ -114,7 +124,9 @@ fn test_block_hash() {
 
 #[test]
 fn test_block_height() {
-    let context = Context::Script { block_height: 20 };
+    let context = Context::Script {
+        block_height: 20.into(),
+    };
     let mut pc = 4;
     let mut result = 0;
     block_height(&context, RegMut::new(&mut pc), &mut result).unwrap();
@@ -124,14 +136,16 @@ fn test_block_height() {
 
 #[test]
 fn test_coinbase() {
-    let storage = MemoryStorage::new(0, Default::default());
+    let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     let mut pc = 4;
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
@@ -141,7 +155,7 @@ fn test_coinbase() {
 
 #[test]
 fn test_code_root() {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let owner = OwnershipRegisters {
@@ -149,7 +163,9 @@ fn test_code_root() {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     let mut pc = 4;
     code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).expect_err("Contract is not found");
@@ -167,7 +183,9 @@ fn test_code_root() {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script { block_height: 0 },
+        context: Context::Script {
+            block_height: Default::default(),
+        },
     };
     code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).unwrap();
     assert_eq!(pc, 8);
@@ -176,7 +194,7 @@ fn test_code_root() {
 
 #[test]
 fn test_code_size() {
-    let mut storage = MemoryStorage::new(0, Default::default());
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
@@ -226,14 +244,14 @@ fn test_code_size() {
 
 #[test]
 fn test_timestamp() {
-    let storage = MemoryStorage::new(0, Default::default());
+    let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut pc = 4;
     let mut result = 0;
-    timestamp(&storage, 0, RegMut::new(&mut pc), &mut result, 1)
+    timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 1)
         .expect_err("Height is greater then current block height");
     timestamp(
         &storage,
-        u32::MAX,
+        u32::MAX.into(),
         RegMut::new(&mut pc),
         &mut result,
         u32::MAX as Word + 1,
@@ -241,9 +259,9 @@ fn test_timestamp() {
     .expect_err("Height doesn't fit into a u32");
     assert_eq!(pc, 4);
 
-    timestamp(&storage, 0, RegMut::new(&mut pc), &mut result, 0).unwrap();
+    timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 0).unwrap();
     assert_eq!(pc, 8);
 
-    timestamp(&storage, 20, RegMut::new(&mut pc), &mut result, 19).unwrap();
+    timestamp(&storage, 20.into(), RegMut::new(&mut pc), &mut result, 19).unwrap();
     assert_eq!(pc, 12);
 }

@@ -6,7 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
-use fuel_types::Word;
+use fuel_types::BlockHeight;
 
 use core::borrow::Borrow;
 
@@ -91,9 +91,9 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Performs check of signatures, if not yet done.
-    pub fn check_signatures(mut self) -> Result<Self, CheckError> {
+    pub fn check_signatures(mut self, parameters: &ConsensusParameters) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
-            self.transaction.check_signatures()?;
+            self.transaction.check_signatures(parameters)?;
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
@@ -149,7 +149,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Returns transaction that passed all `Checks`.
     fn into_checked(
         self,
-        block_height: Word,
+        block_height: BlockHeight,
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
     ) -> Result<Checked<Self>, CheckError>
@@ -157,12 +157,16 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         Checked<Self>: CheckPredicates,
     {
         self.into_checked_basic(block_height, params)?
-            .check_signatures()?
+            .check_signatures(params)?
             .check_predicates(params, gas_costs)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
-    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError>;
+    fn into_checked_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, CheckError>;
 }
 
 /// Performs predicate verification for a transaction
@@ -318,7 +322,11 @@ impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(self, block_height: Word, params: &ConsensusParameters) -> Result<Checked<Self>, CheckError> {
+    fn into_checked_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script.into_checked_basic(block_height, params)?.into();
@@ -351,7 +359,7 @@ mod tests {
 
     #[test]
     fn checked_tx_has_default() {
-        let height = 1;
+        let height = 1.into();
 
         Checked::<Transaction>::default()
             .transaction()
@@ -371,14 +379,14 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify transaction getter works
         assert_eq!(checked.transaction(), &tx);
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().non_retryable_balances[&AssetId::default()],
             input_amount - checked.metadata().fee.total() - output_amount
         );
     }
@@ -388,18 +396,17 @@ mod tests {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        let output_amount = 0;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
+        let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().non_retryable_balances[&AssetId::default()],
             input_amount - checked.metadata().fee.total()
         );
     }
@@ -409,21 +416,81 @@ mod tests {
         // ensure message outputs aren't deducted from available balance
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        // set a large message output amount
-        let output_amount = u64::MAX;
         let gas_price = 100;
         let gas_limit = 1000;
-        let tx = signed_message_tx(rng, gas_price, gas_limit, input_amount, output_amount);
+        let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
         assert_eq!(
-            checked.metadata().initial_free_balances[&AssetId::default()],
+            checked.metadata().non_retryable_balances[&AssetId::default()],
             input_amount - checked.metadata().fee.total()
         );
+    }
+
+    #[test]
+    fn message_data_signed_message_is_not_used_to_cover_fees() {
+        // simple test to ensure a tx that only has a message input can cover fees
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let input_amount = 100;
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            .finalize();
+
+        let err = tx
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .expect_err("Expected valid transaction");
+
+        // verify available balance was decreased by max fee
+        assert!(matches!(
+            err,
+            CheckError::InsufficientFeeAmount {
+                expected: _,
+                provided: 0
+            }
+        ));
+    }
+
+    #[test]
+    fn message_data_predicate_message_is_not_used_to_cover_fees() {
+        // simple test to ensure a tx that only has a message input can cover fees
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let input_amount = 100;
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .add_input(Input::message_data_predicate(
+                rng.gen(),
+                rng.gen(),
+                input_amount,
+                rng.gen(),
+                vec![0xff; 10],
+                vec![0xaa; 10],
+                vec![0xbb; 10],
+            ))
+            .finalize();
+
+        let err = tx
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .expect_err("Expected valid transaction");
+
+        // verify available balance was decreased by max fee
+        assert!(matches!(
+            err,
+            CheckError::InsufficientFeeAmount {
+                expected: _,
+                provided: 0
+            }
+        ));
     }
 
     // use quickcheck to fuzz any rounding or precision errors in the max fee w/ coin input
@@ -497,7 +564,7 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount, 0);
+        let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -523,7 +590,7 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_tx(rng, gas_price, gas_limit, input_amount, 0);
+        let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         if let Ok(valid) = is_valid_min_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -551,8 +618,8 @@ mod tests {
                 input_amount,
                 asset,
                 rng.gen(),
-                0,
-                0,
+                Default::default(),
+                Default::default(),
             ))
             .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
@@ -562,7 +629,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -588,7 +655,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -613,7 +680,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -635,7 +702,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -652,7 +719,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(0, &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -668,16 +735,30 @@ mod tests {
             .gas_price(1)
             .gas_limit(100)
             // base asset
-            .add_unsigned_coin_input(secret, rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                input_amount,
+                AssetId::default(),
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             // arbitrary spending asset
-            .add_unsigned_coin_input(secret, rng.gen(), input_amount, any_asset, rng.gen(), 0)
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                input_amount,
+                any_asset,
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
             .add_output(Output::change(rng.gen(), 0, any_asset))
             .finalize();
 
         let checked = tx
-            .into_checked(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -692,7 +773,7 @@ mod tests {
 
     #[test]
     fn basic_check_marks_basic_flag() {
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
 
         let tx = Transaction::default();
@@ -704,7 +785,7 @@ mod tests {
     #[test]
     fn signatures_check_marks_signatures_flag() {
         let mut rng = StdRng::seed_from_u64(1);
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
 
         let tx = valid_coin_tx(&mut rng, 1, 100000, 1000000, 10);
@@ -713,7 +794,7 @@ mod tests {
             .into_checked_basic(block_height, &params)
             .unwrap()
             // Sets Checks::Signatures
-            .check_signatures()
+            .check_signatures(&params)
             .unwrap();
 
         assert!(checked.checks().contains(Checks::Basic | Checks::Signatures));
@@ -722,7 +803,7 @@ mod tests {
     #[test]
     fn predicates_check_marks_predicate_flag() {
         let mut rng = StdRng::seed_from_u64(1);
-        let block_height = 1;
+        let block_height = 1.into();
         let params = ConsensusParameters::default();
         let gas_costs = GasCosts::default();
 
@@ -780,7 +861,7 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, rng.gen(), 0)
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, asset, rng.gen(), Default::default())
             .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
             .add_output(Output::contract(1, rng.gen(), rng.gen()))
             .add_output(Output::coin(rng.gen(), output_amount, asset))
@@ -792,7 +873,7 @@ mod tests {
     fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
-        let owner = Input::predicate_owner(&predicate);
+        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
@@ -802,7 +883,7 @@ mod tests {
                 fee_input_amount,
                 asset,
                 rng.gen(),
-                0,
+                Default::default(),
                 predicate,
                 vec![],
             ))
@@ -811,42 +892,26 @@ mod tests {
     }
 
     // used to verify message inputs can cover fees
-    fn signed_message_tx(
-        rng: &mut StdRng,
-        gas_price: u64,
-        gas_limit: u64,
-        input_amount: u64,
-        output_amount: u64,
-    ) -> Script {
+    fn signed_message_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![])
-            .add_output(Output::message(rng.gen(), output_amount))
             .finalize()
     }
 
-    fn predicate_message_tx(
-        rng: &mut StdRng,
-        gas_price: u64,
-        gas_limit: u64,
-        input_amount: u64,
-        output_amount: u64,
-    ) -> Script {
+    fn predicate_message_coin_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, input_amount: u64) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_input(Input::message_predicate(
-                rng.gen(),
+            .add_input(Input::message_coin_predicate(
                 rng.gen(),
                 rng.gen(),
                 input_amount,
                 rng.gen(),
                 vec![],
                 vec![],
-                vec![],
             ))
-            .add_output(Output::message(rng.gen(), output_amount))
             .finalize()
     }
 
@@ -854,7 +919,14 @@ mod tests {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), input_amount, AssetId::default(), rng.gen(), 0)
+            .add_unsigned_coin_input(
+                rng.gen(),
+                rng.gen(),
+                input_amount,
+                AssetId::default(),
+                rng.gen(),
+                Default::default(),
+            )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
     }

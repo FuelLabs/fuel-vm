@@ -66,6 +66,23 @@ impl AsFieldFmt for u8 {
     }
 }
 
+impl AsField<u64> for u64 {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&u64> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut u64> {
+        Some(self)
+    }
+}
+
+impl AsFieldFmt for u64 {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
+    }
+}
+
 impl AsField<Vec<u8>> for Vec<u8> {
     #[inline(always)]
     fn as_field(&self) -> Option<&Vec<u8>> {

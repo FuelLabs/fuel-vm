@@ -588,6 +588,7 @@ impl ConsensusParameters {
             max_predicate_data_length,
             gas_price_factor,
             gas_per_byte,
+            max_message_data_length,
             chain_id,
             ..
         } = self;

@@ -33,7 +33,7 @@ bitflags::bitflags! {
     }
 }
 
-impl core::fmt::Display for Estimates {
+impl core::fmt::Display for Checks {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "{:032b}", self.bits)
     }
@@ -175,7 +175,7 @@ where
     <Tx as IntoEstimated>::Metadata: crate::interpreter::CheckedMetadata,
 {
     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
-        if !self.checks_bitmask.contains(Estimates::Predicates) {
+        if !self.checks_bitmask.contains(Estimated::Predicates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
             let estimated = Interpreter::<PredicateStorage>::estimate_predicates(self.clone(), *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Estimates);

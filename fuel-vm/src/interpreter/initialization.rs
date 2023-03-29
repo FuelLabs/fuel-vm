@@ -10,6 +10,7 @@ use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use std::io;
+use crate::estimated_transaction::{Estimated, IntoEstimated};
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -97,18 +98,6 @@ where
         };
 
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
-        tx.prepare_init_predicate();
-
-        self._init(tx, metadata.balances(), 0).is_ok()
-    }
-{
-    /// Initialize the VM for a predicate context
-    pub fn init_predicate_estimation(&mut self, estimated: Estimated<Tx>) -> bool {
-        self.context = Context::PredicateEstimation {
-            program: Default::default(),
-        };
-
-        let (mut tx, metadata): (Tx, Tx::Metadata) = estimated.into();
         tx.prepare_init_predicate();
 
         self._init(tx, metadata.balances(), 0).is_ok()

@@ -3,7 +3,7 @@
 use crate::interpreter::MemoryRange;
 
 use fuel_asm::Word;
-use fuel_tx::{field, ConsensusParameters, Input};
+use fuel_tx::{field, ConsensusParameters};
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]

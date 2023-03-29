@@ -101,6 +101,7 @@ where
     pub predicate: Specification::Predicate,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
 }
 
@@ -202,6 +203,13 @@ where
             0
         };
 
+        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+            *predicate_gas_used
+        } else {
+            // Witness index zeroed for coin predicate
+            0
+        };
+
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
 
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
@@ -266,7 +274,9 @@ where
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
         let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
-        self.predicate_gas_used = predicate_gas_used;
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            *predicate_gas_used_field = predicate_gas_used;
+        }
 
         let (size, predicate, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
         n += size;

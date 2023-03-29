@@ -109,6 +109,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 }
 
@@ -267,6 +268,12 @@ where
             0
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
+
+        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+            *predicate_gas_used
+        } else {
+            0
+        };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let buf = full_buf.get_mut(LEN..).ok_or(bytes::eof())?;
@@ -325,7 +332,9 @@ where
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
         let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
-        self.predicate_gas_used = predicate_gas_used;
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            *predicate_gas_used_field = predicate_gas_used;
+        }
 
         let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
         n += size;

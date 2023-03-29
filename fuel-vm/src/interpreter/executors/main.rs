@@ -16,6 +16,7 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
+use fuel_tx::input::AsField;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -76,6 +77,8 @@ impl<T> Interpreter<PredicateStorage, T> {
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
         let tx_gas_limit = checked.transaction().limit();
 
+        let cumulative_gas_used: Word = 0;
+
         vm.init_predicate(checked);
 
         for predicate in predicates {
@@ -84,6 +87,8 @@ impl<T> Interpreter<PredicateStorage, T> {
 
             vm.context = Context::PredicateVerification { program: predicate };
             vm.set_gas(predicate.gas_used());
+
+            cumulative_gas_used.checked_add(predicate.gas_used())?;
 
             if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                 return Err(PredicateVerificationFailed::False);
@@ -95,9 +100,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         }
 
         Ok(PredicatesChecked {
-            gas_used: tx_gas_limit
-                .checked_sub(remaining_gas)
-                .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?,
+            gas_used: cumulative_gas_used
         })
     }
     /// Initialize the VM with the provided transaction and check all predicates defined in the
@@ -130,9 +133,9 @@ impl<T> Interpreter<PredicateStorage, T> {
         #[allow(clippy::needless_collect)]
         let mut cumulative_gas_used = 0;
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
-        const tx_gas_limit: u64 = estimated.transaction().limit();
+        let tx_gas_limit: u64 = estimated.transaction().limit();
 
-        const predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate { params.max_gas_per_predicate } else { tx_gas_limit };
+        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate { params.max_gas_per_predicate } else { tx_gas_limit };
 
         // for inputNum in estimated.transaction().inputs().len() {
         for (idx, input) in estimated.transaction().inputs_mut().iter_mut().enumerate() {
@@ -145,18 +148,18 @@ impl<T> Interpreter<PredicateStorage, T> {
                     return Err(PredicateVerificationFailed::False);
                 }
 
-                const gas_used: u64 = tx_gas_limit
-                    .checked_sub(remaining_gas)
+                let gas_used: u64 = tx_gas_limit
+                    .checked_sub(vm.remaining_gas())
                     .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
 
                 cumulative_gas_used += gas_used;
 
                 match input {
-                    Input::CoinPredicate { predicate_gas_used, .. } => {
-                        *predicate_gas_used = gas_used;
-                    }
-                    Input::MessagePredicate { predicate_gas_used, .. } => {
-                        *predicate_gas_used = gas_used;
+                    Input::CoinPredicate(input)
+                    | Input::MessageCoinPredicate(input)
+                    | Input::MessageDataPredicate(input)=> {
+                        let predicate_gas_used_field = input.predicate_gas_used.as_mut_field();
+                        *predicate_gas_used_field = gas_used;
                     }
                     _ => {}
                 }

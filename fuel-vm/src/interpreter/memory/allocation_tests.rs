@@ -40,6 +40,7 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
     Ok(())
 }
 
+#[test_case(true, 1, 20, 0 => Ok(()); "Can copy zero bytes")]
 #[test_case(true, 1, 20, 10 => Ok(()); "Can copy some bytes")]
 #[test_case(true, 10, 20, 10 => Ok(()); "Can copy some bytes in close range")]
 #[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "b <= a < bc")]

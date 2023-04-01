@@ -49,11 +49,11 @@ impl core::ops::Deref for RetryableAmount {
 pub mod create {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked,
     };
     use crate::checked_transaction::NonRetryableFreeBalances;
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{BlockHeight, Word};
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -69,14 +69,14 @@ pub mod create {
         pub gas_used_by_predicates: Word,
     }
 
-    impl IntoChecked for Create {
+    impl IntoEstimated for Create {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_estimated_basic(
             mut self,
             block_height: BlockHeight,
             params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Estimated<Self>, CheckError> {
             self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
@@ -98,29 +98,29 @@ pub mod create {
                 gas_used_by_predicates: 0,
             };
 
-            Ok(Checked::basic(self, metadata))
+            Ok(Estimated::basic(self, metadata))
         }
     }
 }
 
 /// For [`fuel_tx::Mint`]
 pub mod mint {
-    use super::super::{Checked, IntoChecked};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::BlockHeight;
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
-    impl IntoChecked for Mint {
+    impl IntoEstimated for Mint {
         type Metadata = ();
 
-        fn into_checked_basic(
+        fn into_estimated_basic(
             mut self,
             block_height: BlockHeight,
             params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Estimated<Self>, CheckError> {
             self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
-            Ok(Checked::basic(self, ()))
+            Ok(Estimated::basic(self, ()))
         }
     }
 }
@@ -129,11 +129,11 @@ pub mod mint {
 pub mod script {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked,
     };
     use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{BlockHeight, Word};
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -151,14 +151,14 @@ pub mod script {
         pub gas_used_by_predicates: Word,
     }
 
-    impl IntoChecked for Script {
+    impl IntoEstimated for Script {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_estimated_basic(
             mut self,
             block_height: BlockHeight,
             params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Estimated<Self>, CheckError> {
             self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 
@@ -177,7 +177,7 @@ pub mod script {
                 gas_used_by_predicates: 0,
             };
 
-            Ok(Checked::basic(self, metadata))
+            Ok(Estimated::basic(self, metadata))
         }
     }
 }

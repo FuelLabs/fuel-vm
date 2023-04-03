@@ -1,7 +1,7 @@
 //! Implementation for different transaction types, groupd in submodules.
 
-pub use self::create::CheckedMetadata as CreateCheckedMetadata;
-pub use self::script::CheckedMetadata as ScriptCheckedMetadata;
+pub use self::create::EstimatedMetadata as CreateEstimatedMetadata;
+pub use self::script::EstimatedMetadata as ScriptEstimatedMetadata;
 use fuel_types::{AssetId, Word};
 use std::collections::BTreeMap;
 
@@ -57,7 +57,7 @@ pub mod create {
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-    pub struct CheckedMetadata {
+    pub struct EstimatedMetadata {
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
@@ -70,7 +70,7 @@ pub mod create {
     }
 
     impl IntoEstimated for Create {
-        type Metadata = CheckedMetadata;
+        type EstimatedMetadata = EstimatedMetadata;
 
         fn into_estimated_basic(
             mut self,
@@ -91,7 +91,7 @@ pub mod create {
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
             );
 
-            let metadata = CheckedMetadata {
+            let metadata = EstimatedMetadata {
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 fee,
@@ -110,7 +110,7 @@ pub mod mint {
     use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     impl IntoEstimated for Mint {
-        type Metadata = ();
+        type EstimatedMetadata = ();
 
         fn into_estimated_basic(
             mut self,
@@ -137,7 +137,7 @@ pub mod script {
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-    pub struct CheckedMetadata {
+    pub struct EstimatedMetadata {
         /// See [`NonRetryableFreeBalances`].
         pub non_retryable_balances: NonRetryableFreeBalances,
         /// See [`RetryableAmount`].
@@ -152,7 +152,7 @@ pub mod script {
     }
 
     impl IntoEstimated for Script {
-        type Metadata = CheckedMetadata;
+        type EstimatedMetadata = EstimatedMetadata;
 
         fn into_estimated_basic(
             mut self,
@@ -169,7 +169,7 @@ pub mod script {
                 fee,
             } = initial_free_balances(&self, params)?;
 
-            let metadata = CheckedMetadata {
+            let metadata = EstimatedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount(retryable_balance),
                 block_height,

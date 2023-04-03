@@ -150,7 +150,7 @@ impl<S, Tx> Transactor<S, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {

@@ -40,7 +40,7 @@ impl RuntimePredicate {
         tx.inputs_predicate_offset_at(idx)
             .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self { program, gasUsed: tx.inputs_predicate_gas_used_at(idx)?, idx })
+            .map(|program| Self { program, gasUsed: tx.inputs_predicate_gas_used_at(idx).unwrap(), idx })
     }
 
     pub fn set_gas_used(&mut self, gas_used: Word) {

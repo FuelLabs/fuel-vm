@@ -4,7 +4,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use crate::interpreter::{CheckedMetadata, EstimatedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -16,7 +16,8 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_tx::input::AsField;
+use fuel_tx::input::coin::CoinPredicate;
+use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -60,7 +61,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners(&params) {
             return Err(PredicateVerificationFailed::InvalidOwner);
@@ -88,7 +89,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             vm.context = Context::PredicateVerification { program: predicate };
             vm.set_gas(predicate.gas_used());
 
-            cumulative_gas_used.checked_add(predicate.gas_used())?;
+            cumulative_gas_used.checked_add(predicate.gas_used());
 
             if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                 return Err(PredicateVerificationFailed::False);
@@ -121,9 +122,9 @@ impl<T> Interpreter<PredicateStorage, T> {
     ) -> Result<PredicatesEstimated, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        <Tx as IntoEstimated>::Metadata: CheckedMetadata,
+        <Tx as IntoEstimated>::EstimatedMetadata: EstimatedMetadata,
     {
-        if !estimated.transaction().check_predicate_owners() {
+        if !estimated.transaction().check_predicate_owners(&params) {
             return Err(PredicateVerificationFailed::InvalidOwner);
         }
 
@@ -155,11 +156,10 @@ impl<T> Interpreter<PredicateStorage, T> {
                 cumulative_gas_used += gas_used;
 
                 match input {
-                    Input::CoinPredicate(input)
-                    | Input::MessageCoinPredicate(input)
-                    | Input::MessageDataPredicate(input)=> {
-                        let predicate_gas_used_field = input.predicate_gas_used.as_mut_field();
-                        *predicate_gas_used_field = gas_used;
+                    Input::CoinPredicate(CoinPredicate {predicate_gas_used, ..})
+                    | Input::MessageCoinPredicate(MessageCoinPredicate {predicate_gas_used, ..})
+                    | Input::MessageDataPredicate(MessageDataPredicate {predicate_gas_used, ..})=> {
+                        *predicate_gas_used = gas_used;
                     }
                     _ => {}
                 }
@@ -388,7 +388,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
 {
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the

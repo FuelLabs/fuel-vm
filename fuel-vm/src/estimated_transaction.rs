@@ -14,7 +14,7 @@ pub mod types;
 
 pub use types::*;
 
-use crate::{gas::GasCosts, interpreter::CheckedMetadata as CheckedMetadataAccessTrait, prelude::*};
+use crate::{gas::GasCosts, interpreter::EstimatedMetadata as EstimatedMetadataAccessTrait, prelude::*};
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -56,12 +56,12 @@ impl core::fmt::Display for Checks {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Estimated<Tx: IntoEstimated> {
     transaction: Tx,
-    metadata: Tx::Metadata,
+    metadata: Tx::EstimatedMetadata,
     checks_bitmask: Checks,
 }
 
 impl<Tx: IntoEstimated> Estimated<Tx> {
-    fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
+    fn new(transaction: Tx, metadata: Tx::EstimatedMetadata, checks_bitmask: Checks) -> Self {
         Estimated {
             transaction,
             metadata,
@@ -69,7 +69,7 @@ impl<Tx: IntoEstimated> Estimated<Tx> {
         }
     }
 
-    pub(crate) fn basic(transaction: Tx, metadata: Tx::Metadata) -> Self {
+    pub(crate) fn basic(transaction: Tx, metadata: Tx::EstimatedMetadata) -> Self {
         Estimated::new(transaction, metadata, Checks::Basic)
     }
 
@@ -79,7 +79,7 @@ impl<Tx: IntoEstimated> Estimated<Tx> {
     }
 
     /// Returns the metadata generated during the check for transaction.
-    pub fn metadata(&self) -> &Tx::Metadata {
+    pub fn metadata(&self) -> &Tx::EstimatedMetadata {
         &self.metadata
     }
 
@@ -89,9 +89,9 @@ impl<Tx: IntoEstimated> Estimated<Tx> {
     }
 
     /// Performs check of signatures, if not yet done.
-    pub fn check_signatures(mut self) -> Result<Self, CheckError> {
+    pub fn check_signatures(mut self, parameters: &ConsensusParameters) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
-            self.transaction.check_signatures()?;
+            self.transaction.check_signatures(parameters)?;
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
@@ -110,7 +110,7 @@ where
     }
 }
 
-impl<Tx: IntoEstimated> From<Estimated<Tx>> for (Tx, Tx::Metadata) {
+impl<Tx: IntoEstimated> From<Estimated<Tx>> for (Tx, Tx::EstimatedMetadata) {
     fn from(estimated: Estimated<Tx>) -> Self {
         let Estimated {
             transaction, metadata, ..
@@ -142,7 +142,7 @@ impl<Tx: IntoEstimated> Borrow<Tx> for Estimated<Tx> {
 /// Performs estimation for a transaction
 pub trait IntoEstimated: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
-    type Metadata: Sized;
+    type EstimatedMetadata: Sized;
 
     /// Returns transaction that passed all `Checks`.
     fn into_estimated(
@@ -155,7 +155,7 @@ pub trait IntoEstimated: FormatValidityChecks + Sized {
         Estimated<Self>: EstimatePredicates,
     {
         self.into_estimated_basic(block_height, params)?
-            .check_signatures()?
+            .check_signatures(params)?
             .estimate_predicates(params, gas_costs)
     }
 
@@ -172,7 +172,7 @@ pub trait EstimatePredicates: Sized {
 impl<Tx: ExecutableTransaction> EstimatePredicates for Estimated<Tx>
 where
     Self: Clone,
-    <Tx as IntoEstimated>::Metadata: crate::interpreter::CheckedMetadata,
+    <Tx as IntoEstimated>::EstimatedMetadata: crate::interpreter::EstimatedMetadata,
 {
     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Estimates) {
@@ -227,16 +227,16 @@ impl From<Estimated<Transaction>> for EstimatedTransaction {
 
         // # Dev note: Avoid wildcard pattern to be sure that all variants are covered.
         match (transaction, metadata) {
-            (Transaction::Script(transaction), CheckedMetadata::Script(metadata)) => {
+            (Transaction::Script(transaction), EstimatedMetadata::Script(metadata)) => {
                 Self::Script(Estimated::new(transaction, metadata, checks_bitmask))
             }
-            (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => {
+            (Transaction::Create(transaction), EstimatedMetadata::Create(metadata)) => {
                 Self::Create(Estimated::new(transaction, metadata, checks_bitmask))
             }
-            (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => {
+            (Transaction::Mint(transaction), EstimatedMetadata::Mint(metadata)) => {
                 Self::Mint(Estimated::new(transaction, metadata, checks_bitmask))
             }
-            // The code should produce the `CheckedMetadata` for the corresponding transaction
+            // The code should produce the `EstimatedMetadata` for the corresponding transaction
             // variant. It is done in the implementation of the `IntoEstimated` trait for
             // `Transaction`. With the current implementation, the patterns below are unreachable.
             (Transaction::Script(_), _) => unreachable!(),
@@ -289,32 +289,32 @@ impl From<EstimatedTransaction> for Estimated<Transaction> {
 /// The `IntoEstimated` metadata for `EstimatedTransaction`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(missing_docs)]
-pub enum CheckedMetadata {
-    Script(<Script as IntoEstimated>::Metadata),
-    Create(<Create as IntoEstimated>::Metadata),
-    Mint(<Mint as IntoEstimated>::Metadata),
+pub enum EstimatedMetadata {
+    Script(<Script as IntoEstimated>::EstimatedMetadata),
+    Create(<Create as IntoEstimated>::EstimatedMetadata),
+    Mint(<Mint as IntoEstimated>::EstimatedMetadata),
 }
 
-impl From<<Script as IntoEstimated>::Metadata> for CheckedMetadata {
-    fn from(metadata: <Script as IntoEstimated>::Metadata) -> Self {
+impl From<<Script as IntoEstimated>::EstimatedMetadata> for EstimatedMetadata {
+    fn from(metadata: <Script as IntoEstimated>::EstimatedMetadata) -> Self {
         Self::Script(metadata)
     }
 }
 
-impl From<<Create as IntoEstimated>::Metadata> for CheckedMetadata {
-    fn from(metadata: <Create as IntoEstimated>::Metadata) -> Self {
+impl From<<Create as IntoEstimated>::EstimatedMetadata> for EstimatedMetadata {
+    fn from(metadata: <Create as IntoEstimated>::EstimatedMetadata) -> Self {
         Self::Create(metadata)
     }
 }
 
-impl From<<Mint as IntoEstimated>::Metadata> for CheckedMetadata {
-    fn from(metadata: <Mint as IntoEstimated>::Metadata) -> Self {
+impl From<<Mint as IntoEstimated>::EstimatedMetadata> for EstimatedMetadata {
+    fn from(metadata: <Mint as IntoEstimated>::EstimatedMetadata) -> Self {
         Self::Mint(metadata)
     }
 }
 
 impl IntoEstimated for Transaction {
-    type Metadata = CheckedMetadata;
+    type EstimatedMetadata = EstimatedMetadata;
 
     fn into_estimated_basic(self, block_height: BlockHeight, params: &ConsensusParameters) -> Result<Estimated<Self>, CheckError> {
         let (transaction, metadata) = match self {

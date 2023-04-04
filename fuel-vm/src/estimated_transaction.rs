@@ -383,7 +383,7 @@ mod tests {
 
         let estimated = tx
             .clone()
-            .into_estimated(0, &ConsensusParameters::DEFAULT, &Default::default())
+            .into_estimated(0.into(), &ConsensusParameters::DEFAULT, &Default::default())
             .expect("Expected valid transaction");
 
         // verify transaction getter works

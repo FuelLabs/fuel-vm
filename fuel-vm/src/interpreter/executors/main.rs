@@ -75,9 +75,6 @@ impl<T> Interpreter<PredicateStorage, T> {
             .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
             .collect();
 
-        // Since we reuse the vm objects otherwise, we need to keep the actual gas here
-        let tx_gas_limit = checked.transaction().limit();
-
         let cumulative_gas_used: Word = 0;
 
         vm.init_predicate(checked);
@@ -86,10 +83,11 @@ impl<T> Interpreter<PredicateStorage, T> {
             // VM is cloned because the state should be reset for every predicate verification
             let mut vm = vm.clone();
 
+            let gasUsed = predicate.gas_used();
             vm.context = Context::PredicateVerification { program: predicate };
-            vm.set_gas(predicate.gas_used());
+            vm.set_gas(gasUsed);
 
-            cumulative_gas_used.checked_add(predicate.gas_used());
+            cumulative_gas_used.checked_add(gasUsed);
 
             if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                 return Err(PredicateVerificationFailed::False);
@@ -116,7 +114,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
     pub fn estimate_predicates<Tx>(
-        estimated: Estimated<Tx>,
+        mut estimated: Estimated<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
     ) -> Result<PredicatesEstimated, PredicateVerificationFailed>
@@ -138,10 +136,11 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate { params.max_gas_per_predicate } else { tx_gas_limit };
 
+        let estimatedClone = estimated.clone();
         // for inputNum in estimated.transaction().inputs().len() {
-        for (idx, input) in estimated.transaction().inputs_mut().iter_mut().enumerate() {
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, estimated.transaction(), idx) {
-                vm.init_predicate_estimation(&estimated);
+        for (idx, input) in estimated.transaction_mut().inputs_mut().iter_mut().enumerate() {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, estimatedClone.clone().transaction(), idx) {
+                vm.init_predicate_estimation(estimatedClone.clone());
                 vm.context = Context::PredicateEstimation { program: predicate };
                 vm.set_gas(predicate_gas_limit);
 

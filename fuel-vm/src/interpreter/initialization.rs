@@ -75,7 +75,7 @@ where
     <Tx as IntoEstimated>::EstimatedMetadata: EstimatedMetadata,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate_estimation(&mut self, estimated: &Estimated<Tx>) -> bool {
+    pub fn init_predicate_estimation(&mut self, estimated: Estimated<Tx>) -> bool {
         self.context = Context::PredicateEstimation {
             program: Default::default(),
         };

@@ -78,6 +78,11 @@ impl<Tx: IntoEstimated> Estimated<Tx> {
         &self.transaction
     }
 
+    /// Returns reference on inner transaction.
+    pub fn transaction_mut(&mut self) -> &mut Tx {
+        &mut self.transaction
+    }
+
     /// Returns the metadata generated during the check for transaction.
     pub fn metadata(&self) -> &Tx::EstimatedMetadata {
         &self.metadata
@@ -142,7 +147,7 @@ impl<Tx: IntoEstimated> Borrow<Tx> for Estimated<Tx> {
 /// Performs estimation for a transaction
 pub trait IntoEstimated: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
-    type EstimatedMetadata: Sized;
+    type EstimatedMetadata: Sized + Clone;
 
     /// Returns transaction that passed all `Checks`.
     fn into_estimated(

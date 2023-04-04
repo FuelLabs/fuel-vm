@@ -33,8 +33,8 @@ pub trait MessageSpecification: private::Seal {
 }
 
 pub mod specifications {
-    use fuel_types::Word;
     use super::{Empty, MessageSpecification};
+    use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
     /// signature(witness) should be stored under the `witness_index` index in the `witnesses`

@@ -9,9 +9,9 @@ use fuel_asm::RegId;
 use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
-use std::io;
 use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::interpreter::CheckedMetadata;
+use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

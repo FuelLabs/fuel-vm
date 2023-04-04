@@ -95,7 +95,8 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
         if let Some(predicate_gas_used) = i.input_predicate_data() {
             cases.predicate_data_coin = cases.predicate_data_coin || i.is_coin() && !predicate_gas_used.is_empty();
-            cases.predicate_data_message = cases.predicate_data_message || i.is_message() && !predicate_gas_used.is_empty();
+            cases.predicate_data_message =
+                cases.predicate_data_message || i.is_message() && !predicate_gas_used.is_empty();
 
             let ofs = input_ofs + i.predicate_data_offset().expect("input contains predicate data");
             let predicate_gas_used_p = &bytes[ofs..ofs + predicate_gas_used.len()];

@@ -4,7 +4,7 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
-use fuel_types::{BlockHeight};
+use fuel_types::BlockHeight;
 
 use core::borrow::Borrow;
 
@@ -165,7 +165,11 @@ pub trait IntoEstimated: FormatValidityChecks + Sized {
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
-    fn into_estimated_basic(self, block_height: BlockHeight, params: &ConsensusParameters) -> Result<Estimated<Self>, CheckError>;
+    fn into_estimated_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Estimated<Self>, CheckError>;
 }
 
 /// Performs predicate verification for a transaction
@@ -182,7 +186,8 @@ where
     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Estimates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
-            let estimated = Interpreter::<PredicateStorage>::estimate_predicates(self.clone(), *params, gas_costs.clone())?;
+            let estimated =
+                Interpreter::<PredicateStorage>::estimate_predicates(self.clone(), *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Estimates);
             self.metadata.set_gas_used_by_predicates(estimated.gas_used());
         }
@@ -321,7 +326,11 @@ impl From<<Mint as IntoEstimated>::EstimatedMetadata> for EstimatedMetadata {
 impl IntoEstimated for Transaction {
     type EstimatedMetadata = EstimatedMetadata;
 
-    fn into_estimated_basic(self, block_height: BlockHeight, params: &ConsensusParameters) -> Result<Estimated<Self>, CheckError> {
+    fn into_estimated_basic(
+        self,
+        block_height: BlockHeight,
+        params: &ConsensusParameters,
+    ) -> Result<Estimated<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script.into_estimated_basic(block_height, params)?.into();

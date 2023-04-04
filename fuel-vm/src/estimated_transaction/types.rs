@@ -47,13 +47,11 @@ impl core::ops::Deref for RetryableAmount {
 
 /// For [`fuel_tx::Create`]
 pub mod create {
-    use super::super::{
-        balances::{initial_free_balances, AvailableBalances},
-    };
+    use super::super::balances::{initial_free_balances, AvailableBalances};
     use crate::checked_transaction::NonRetryableFreeBalances;
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{BlockHeight, Word};
-    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -105,9 +103,9 @@ pub mod create {
 
 /// For [`fuel_tx::Mint`]
 pub mod mint {
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::BlockHeight;
-    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     impl IntoEstimated for Mint {
         type EstimatedMetadata = ();
@@ -127,13 +125,11 @@ pub mod mint {
 
 /// For [`fuel_tx::Script`]
 pub mod script {
-    use super::super::{
-        balances::{initial_free_balances, AvailableBalances},
-    };
+    use super::super::balances::{initial_free_balances, AvailableBalances};
     use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
+    use crate::estimated_transaction::{Estimated, IntoEstimated};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{BlockHeight, Word};
-    use crate::estimated_transaction::{Estimated, IntoEstimated};
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]

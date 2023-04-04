@@ -42,12 +42,18 @@ impl Default for Context {
 impl Context {
     /// Check if the context is predicate
     pub const fn is_predicate(&self) -> bool {
-        matches!(self, Self::PredicateEstimation { .. } | Self::PredicateVerification { .. })
+        matches!(
+            self,
+            Self::PredicateEstimation { .. } | Self::PredicateVerification { .. }
+        )
     }
 
     /// Return `true` if the context is external; `false` otherwise.
     pub const fn is_external(&self) -> bool {
-        matches!(self, Self::PredicateEstimation { .. } | Self::PredicateVerification { .. } | Self::Script { .. })
+        matches!(
+            self,
+            Self::PredicateEstimation { .. } | Self::PredicateVerification { .. } | Self::Script { .. }
+        )
     }
 
     /// Return `true` if the context is internal; `false` otherwise.

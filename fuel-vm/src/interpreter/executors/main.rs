@@ -1,10 +1,12 @@
 use crate::checked_transaction::{Checked, IntoChecked};
-use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
+use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::gas::GasCosts;
-use crate::interpreter::{CheckedMetadata, EstimatedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use crate::interpreter::{
+    CheckedMetadata, EstimatedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances,
+};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -12,12 +14,12 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::{PanicReason, RegId};
+use fuel_tx::input::coin::CoinPredicate;
+use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_tx::input::coin::CoinPredicate;
-use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -99,7 +101,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         }
 
         Ok(PredicatesChecked {
-            gas_used: cumulative_gas_used
+            gas_used: cumulative_gas_used,
         })
     }
     /// Initialize the VM with the provided transaction and check all predicates defined in the
@@ -134,7 +136,11 @@ impl<T> Interpreter<PredicateStorage, T> {
         // Since we reuse the vm objects otherwise, we need to keep the actual gas here
         let tx_gas_limit: u64 = estimated.transaction().limit();
 
-        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate { params.max_gas_per_predicate } else { tx_gas_limit };
+        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
+            params.max_gas_per_predicate
+        } else {
+            tx_gas_limit
+        };
 
         let estimatedClone = estimated.clone();
         // for inputNum in estimated.transaction().inputs().len() {
@@ -155,9 +161,9 @@ impl<T> Interpreter<PredicateStorage, T> {
                 cumulative_gas_used += gas_used;
 
                 match input {
-                    Input::CoinPredicate(CoinPredicate {predicate_gas_used, ..})
-                    | Input::MessageCoinPredicate(MessageCoinPredicate {predicate_gas_used, ..})
-                    | Input::MessageDataPredicate(MessageDataPredicate {predicate_gas_used, ..})=> {
+                    Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+                    | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+                    | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
                         *predicate_gas_used = gas_used;
                     }
                     _ => {}

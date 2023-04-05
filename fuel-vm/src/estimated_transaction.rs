@@ -196,7 +196,7 @@ where
 }
 
 impl EstimatePredicates for Estimated<Mint> {
-    fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
+    fn estimate_predicates(mut self, _: &ConsensusParameters, _: &GasCosts) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Estimates);
         Ok(self)
     }

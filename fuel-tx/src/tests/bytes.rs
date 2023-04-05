@@ -108,6 +108,7 @@ fn input() {
             rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
+            rng.gen(),
         ),
         Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_data_signed(
@@ -126,6 +127,7 @@ fn input() {
             generate_bytes(rng),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
+            rng.gen(),
         ),
         Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_coin_predicate(
@@ -135,6 +137,7 @@ fn input() {
             rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
+            rng.gen(),
         ),
     ]);
 }
@@ -669,6 +672,7 @@ fn create_input_data_offset() {
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let predicate_data = generate_bytes(rng);
+    let predicate_gas_used: u64 = rng.gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
@@ -681,6 +685,7 @@ fn create_input_data_offset() {
         rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
+        predicate_gas_used,
     );
 
     let data = generate_bytes(rng);
@@ -692,6 +697,7 @@ fn create_input_data_offset() {
         data,
         predicate.clone(),
         predicate_data,
+        predicate_gas_used,
     );
 
     let mut buffer = vec![0u8; 4096];
@@ -790,6 +796,7 @@ fn script_input_coin_data_offset() {
     }
 
     let predicate_data = generate_bytes(rng);
+    let predicate_gas_used = rng.gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
@@ -802,6 +809,7 @@ fn script_input_coin_data_offset() {
         rng.gen(),
         predicate.clone(),
         predicate_data,
+        predicate_gas_used,
     );
 
     let mut buffer = vec![0u8; 4096];

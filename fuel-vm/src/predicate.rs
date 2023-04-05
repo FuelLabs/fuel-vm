@@ -10,7 +10,7 @@ use fuel_tx::{field, ConsensusParameters};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RuntimePredicate {
     program: MemoryRange,
-    gasUsed: Word,
+    gas_used: Word,
     idx: usize,
 }
 
@@ -22,7 +22,7 @@ impl RuntimePredicate {
 
     /// Index of the transaction input that maps to this predicate
     pub const fn gas_used(&self) -> Word {
-        self.gasUsed
+        self.gas_used
     }
 
     /// Index of the transaction input that maps to this predicate
@@ -42,13 +42,14 @@ impl RuntimePredicate {
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
             .map(|program| Self {
                 program,
-                gasUsed: tx.inputs_predicate_gas_used_at(idx).unwrap(),
+                gas_used: tx.inputs_predicate_gas_used_at(idx).unwrap(),
                 idx,
             })
     }
 
+    /// Set the gas used by the predicate
     pub fn set_gas_used(&mut self, gas_used: Word) {
-        self.gasUsed = gas_used;
+        self.gas_used = gas_used;
     }
 }
 

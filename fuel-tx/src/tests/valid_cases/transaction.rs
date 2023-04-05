@@ -786,6 +786,7 @@ mod inputs {
                 rng.gen(),
                 predicate,
                 vec![],
+                rng.gen(),
             ))
             .with_params(PARAMS)
             .finalize();
@@ -812,6 +813,7 @@ mod inputs {
                 rng.gen(),
                 predicate,
                 vec![],
+                rng.gen(),
             ))
             .with_params(PARAMS)
             .finalize();
@@ -839,6 +841,7 @@ mod inputs {
                 vec![],
                 predicate,
                 vec![],
+                rng.gen(),
             ))
             .with_params(PARAMS)
             .finalize();
@@ -864,6 +867,7 @@ mod inputs {
                 vec![],
                 predicate,
                 vec![],
+                rng.gen(),
             ))
             .with_params(PARAMS)
             .finalize();

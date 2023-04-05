@@ -120,6 +120,7 @@ fn coin_predicate() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .unwrap();
@@ -136,6 +137,7 @@ fn coin_predicate() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .err()
@@ -156,6 +158,7 @@ fn coin_predicate() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .err()
@@ -231,6 +234,7 @@ fn message_metadata() {
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect("failed to validate empty message input");
@@ -260,6 +264,7 @@ fn message_metadata() {
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("Expected failure");
@@ -282,6 +287,7 @@ fn message_metadata() {
         data,
         generate_nonempty_padded_bytes(rng),
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("expected max data length error");
@@ -298,6 +304,7 @@ fn message_metadata() {
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("expected max predicate length error");
@@ -314,6 +321,7 @@ fn message_metadata() {
         generate_bytes(rng),
         generate_bytes(rng),
         predicate_data,
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("expected max predicate data length error");
@@ -337,6 +345,7 @@ fn message_message_coin() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect("failed to validate empty message input");
@@ -364,6 +373,7 @@ fn message_message_coin() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("Expected failure");
@@ -379,6 +389,7 @@ fn message_message_coin() {
         rng.gen(),
         predicate,
         generate_bytes(rng),
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("expected max predicate length error");
@@ -394,6 +405,7 @@ fn message_message_coin() {
         rng.gen(),
         generate_bytes(rng),
         predicate_data,
+        rng.gen(),
     )
     .check(1, &txhash, &[], &[], &Default::default())
     .expect_err("expected max predicate data length error");

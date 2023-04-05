@@ -15,6 +15,7 @@ fn test_input_serialization() {
         vec![7u8; DATA_SIZE],
         vec![8u8; DATA_SIZE],
         vec![9u8; DATA_SIZE],
+        100_000,
     );
     const S: MessageSizesLayout = MessageSizes::LAYOUT;
     assert_eq!(

@@ -1508,9 +1508,7 @@ fn timestamp_works() {
 }
 
 #[rstest::rstest]
-fn block_height_works(
-    #[values(0, 1, 2, 10, 100)] current_height: u32,
-) {
+fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let current_height: BlockHeight = current_height.into();
 
     let mut client = MemoryClient::default();
@@ -1551,13 +1549,9 @@ fn block_height_works(
 }
 
 #[rstest::rstest]
-fn block_hash_works(
-    #[values(0, 1, 2, 10, 100)] current_height: u32,
-    #[values(0, 1, 2, 10, 100)] test_height: u32,
-) {
+fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0, 1, 2, 10, 100)] test_height: u32) {
     let current_height: BlockHeight = current_height.into();
     let test_height: BlockHeight = test_height.into();
-
 
     let mut client = MemoryClient::default();
 
@@ -1602,7 +1596,6 @@ fn block_hash_works(
     assert_eq!(data, &*expected);
 }
 
-
 #[rstest::rstest]
 fn block_proposer_works() {
     let mut client = MemoryClient::default();
@@ -1613,10 +1606,7 @@ fn block_proposer_works() {
 
     let params = *client.params();
 
-    let expected = client
-        .as_ref()
-        .coinbase()
-        .expect("failed to calculate block hash");
+    let expected = client.as_ref().coinbase().expect("failed to calculate block hash");
 
     #[rustfmt::skip]
     let script = vec![

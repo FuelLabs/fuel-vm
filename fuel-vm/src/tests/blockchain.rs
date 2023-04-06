@@ -1597,7 +1597,7 @@ fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0,
 }
 
 #[rstest::rstest]
-fn block_proposer_works() {
+fn coinbase_works() {
     let mut client = MemoryClient::default();
 
     let gas_price = 0;

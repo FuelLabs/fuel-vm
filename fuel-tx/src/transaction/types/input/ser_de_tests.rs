@@ -29,6 +29,7 @@ fn test_input_serialization() {
             + S.data_len.size()
             + S.predicate_len.size()
             + S.predicate_data_len.size()
+            + S.predicate_gas_used.size()
             + DATA_SIZE
             + DATA_SIZE
             + DATA_SIZE
@@ -64,6 +65,9 @@ fn test_input_serialization() {
     r.start = r.end;
     r.end += 8;
     assert_eq!(bytes[r.clone()], 16u64.to_be_bytes());
+    r.start = r.end;
+    r.end += 8;
+    assert_eq!(bytes[r.clone()], 100_000u64.to_be_bytes());
     r.start = r.end;
     r.end += DATA_SIZE;
     assert_eq!(bytes[r.clone()], [7u8; DATA_SIZE]);

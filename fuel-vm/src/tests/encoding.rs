@@ -3,9 +3,9 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
+use fuel_types::Word;
 use std::fmt;
 use std::io::{self, Read, Write};
-use fuel_types::Word;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where

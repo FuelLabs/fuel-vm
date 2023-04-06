@@ -88,6 +88,7 @@ fn from_tx_works() {
         rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
+        rng.gen(),
     );
 
     let b = Input::message_coin_predicate(
@@ -97,6 +98,7 @@ fn from_tx_works() {
         rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
+        rng.gen(),
     );
 
     let c = Input::message_data_predicate(
@@ -107,6 +109,7 @@ fn from_tx_works() {
         vec![0xff; 10],
         predicate.clone(),
         predicate_data,
+        rng.gen(),
     );
 
     let inputs = vec![a, b, c];

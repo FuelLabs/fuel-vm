@@ -26,6 +26,7 @@ where
     let maturity = Default::default();
     let height = Default::default();
     let params = ConsensusParameters::default();
+    let predicate_gas_used = rng.gen();
 
     let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
@@ -37,6 +38,7 @@ where
         maturity,
         predicate,
         predicate_data,
+        predicate_gas_used,
     );
 
     let gas_price = 0;
@@ -153,6 +155,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             Default::default(),
             predicate,
             vec![],
+            rng.gen(),
         );
 
         builder.add_input(input);
@@ -246,6 +249,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         Default::default(),
         predicate,
         vec![],
+        rng.gen(),
     );
 
     builder.add_input(input);
@@ -322,6 +326,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         Default::default(),
         predicate,
         vec![],
+        rng.gen(),
     );
 
     builder.add_input(input);
@@ -404,6 +409,7 @@ fn gas_used_by_predicates_more_than_limit() {
         Default::default(),
         predicate,
         vec![],
+        rng.gen(),
     );
 
     builder.add_input(input);

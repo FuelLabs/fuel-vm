@@ -476,6 +476,7 @@ mod tests {
                 vec![0xff; 10],
                 vec![0xaa; 10],
                 vec![0xbb; 10],
+                rng.gen(),
             ))
             .finalize();
 
@@ -886,6 +887,7 @@ mod tests {
                 Default::default(),
                 predicate,
                 vec![],
+                rng.gen(),
             ))
             .add_output(Output::change(rng.gen(), 0, asset))
             .finalize()
@@ -911,6 +913,7 @@ mod tests {
                 rng.gen(),
                 vec![],
                 vec![],
+                rng.gen(),
             ))
             .finalize()
     }

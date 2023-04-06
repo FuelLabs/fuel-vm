@@ -6,7 +6,7 @@ use super::*;
 
 #[test]
 fn test_metadata() {
-    let context = Context::Predicate {
+    let context = Context::PredicateVerification {
         program: Default::default(),
     };
     let frames = vec![];
@@ -42,7 +42,7 @@ fn test_get_transaction_field() {
     assert_eq!(result, 0);
 }
 
-#[test_case(Context::Predicate { program: Default::default() }, 2 => (); "can fetch inside predicate")]
+#[test_case(Context::PredicateVerification { program: Default::default() }, 2 => (); "can fetch inside predicate verification")]
 #[test_case(Context::Script { block_height: BlockHeight::default() }, 3 => (); "can fetch inside script")]
 #[test_case(Context::Call { block_height: BlockHeight::default() }, 4 => (); "can fetch inside call")]
 fn get_chain_id(context: Context, chain_id: u64) {

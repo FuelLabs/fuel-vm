@@ -252,6 +252,7 @@ fn get_transaction_fields() {
         100.into(),
         predicate.clone(),
         predicate_data.clone(),
+        100_000,
     );
 
     let contract_input_index = 2;
@@ -276,6 +277,7 @@ fn get_transaction_fields() {
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
+        100_000,
     );
 
     let asset = rng.gen();

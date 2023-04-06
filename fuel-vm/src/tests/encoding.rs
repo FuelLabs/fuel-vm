@@ -5,6 +5,7 @@ use rand::{Rng, SeedableRng};
 
 use std::fmt;
 use std::io::{self, Read, Write};
+use fuel_types::Word;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
@@ -111,6 +112,7 @@ fn input() {
             (u32::MAX >> 1).into(),
             vec![0xdd; 50],
             vec![0xee; 23],
+            Word::MAX,
         ),
         Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
@@ -121,6 +123,7 @@ fn input() {
             (u32::MAX >> 1).into(),
             vec![0xdd; 50],
             vec![],
+            Word::MAX,
         ),
         Input::message_coin_signed([0xaa; 32].into(), [0xbb; 32].into(), Word::MAX, [0xcc; 32].into(), 0xff),
         Input::message_coin_predicate(
@@ -130,6 +133,7 @@ fn input() {
             [0xcc; 32].into(),
             vec![0xee; 50],
             vec![0xff; 23],
+            Word::MAX,
         ),
         Input::message_coin_predicate(
             [0xaa; 32].into(),
@@ -138,6 +142,7 @@ fn input() {
             [0xcc; 32].into(),
             vec![0xee; 50],
             vec![],
+            Word::MAX,
         ),
         Input::message_data_signed(
             [0xaa; 32].into(),
@@ -155,6 +160,7 @@ fn input() {
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![0xff; 23],
+            Word::MAX,
         ),
         Input::message_data_predicate(
             [0xaa; 32].into(),
@@ -164,6 +170,7 @@ fn input() {
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![],
+            Word::MAX,
         ),
         Input::contract(
             UtxoId::new([0xaa; 32].into(), 0),

@@ -485,23 +485,17 @@ impl OwnershipRegisters {
     }
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
         let (start_incl, end_excl) = range.boundaries(self);
-
         let range = start_incl..end_excl;
-
-        if range.is_empty() {
-            return false;
-        }
-
-        if (self.ssp..self.sp).contains(&start_incl) {
-            return self.has_ownership_stack(&range);
-        }
-
-        self.has_ownership_heap(&range)
+        self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
     }
 
-    /// Zero-length range is never owned
+    /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_stack(&self, range: &Range<Word>) -> bool {
-        if range.is_empty() {
+        if range.is_empty() && range.start == self.ssp {
+            return true;
+        }
+
+        if !(self.ssp..self.sp).contains(&range.start) {
             return false;
         }
 
@@ -509,20 +503,16 @@ impl OwnershipRegisters {
             return false;
         }
 
-        (self.ssp..self.sp).contains(&range.start) && (self.ssp..=self.sp).contains(&range.end)
+        (self.ssp..=self.sp).contains(&range.end)
     }
 
-    /// Zero-length range is never owned
+    /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
         // TODO implement fp->hp and (addr, size) validations
         // fp->hp
         // it means $hp from the previous context, i.e. what's saved in the
         // "Saved registers from previous context" of the call frame at
         // $fp`
-        if range.is_empty() {
-            return false;
-        }
-
         if range.start < self.hp {
             return false;
         }

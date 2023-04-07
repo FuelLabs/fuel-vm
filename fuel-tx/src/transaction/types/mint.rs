@@ -90,12 +90,16 @@ mem_layout!(
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
     fn id(&self, params: &ConsensusParameters) -> Bytes32 {
-        if let Some(MintMetadata { id, .. }) = self.metadata {
+        if let Some(id) = self.cached_id() {
             return id;
         }
 
         let mut clone = self.clone();
         compute_transaction_id(params, &mut clone)
+    }
+
+    fn cached_id(&self) -> Option<Bytes32> {
+        self.metadata.as_ref().map(|m| m.id)
     }
 }
 

@@ -7,7 +7,7 @@ use crate::transaction::{
     metadata::CommonMetadata,
     validity::{check_common_part, FormatValidityChecks},
 };
-use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, Witness};
+use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, TxId, Witness};
 use derivative::Derivative;
 use fuel_types::{bytes, AssetId, BlockHeight, Salt, Word};
 use fuel_types::{
@@ -60,8 +60,8 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self, params: &ConsensusParameters) -> fuel_types::Bytes32 {
-        if let Some(CommonMetadata { id, .. }) = self.metadata {
+    fn id(&self, params: &ConsensusParameters) -> TxId {
+        if let Some(id) = self.cached_id() {
             return id;
         }
 
@@ -73,6 +73,10 @@ impl crate::UniqueIdentifier for Create {
         clone.witnesses_mut().clear();
 
         compute_transaction_id(params, &mut clone)
+    }
+
+    fn cached_id(&self) -> Option<TxId> {
+        self.metadata.as_ref().map(|m| m.id)
     }
 }
 

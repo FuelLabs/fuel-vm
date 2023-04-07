@@ -82,27 +82,36 @@ impl<T> Interpreter<PredicateStorage, T> {
         vm.init_predicate(checked);
 
         for predicate in predicates {
-            // VM is cloned because the state should be reset for every predicate verification
-            let mut vm = vm.clone();
-
-            let gas_used = predicate.gas_used();
-            vm.context = Context::PredicateVerification { program: predicate };
-            vm.set_gas(gas_used);
-
-            cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("gas overflow");
-
-            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                return Err(PredicateVerificationFailed::False);
+            let gas_used: Word = predicate.gas_used();
+            let result = Self::check_predicate(&vm, predicate);
+            if result.is_err() {
+                return Err(result.err().unwrap());
             }
-
-            if vm.registers[RegId::GGAS] != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch);
-            }
+            cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("cumulative gas overflow");
         }
 
         Ok(PredicatesChecked {
             gas_used: cumulative_gas_used,
         })
+    }
+
+    fn check_predicate<Tx>(vm: &Interpreter<PredicateStorage, Tx>, predicate: RuntimePredicate) -> Result<(), PredicateVerificationFailed> where Tx: ExecutableTransaction {
+        // VM is cloned because the state should be reset for every predicate verification
+        let mut vm = vm.clone();
+
+        let gas_used = predicate.gas_used();
+        vm.context = Context::PredicateVerification { program: predicate };
+        vm.set_gas(gas_used);
+
+        if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+            return Err(PredicateVerificationFailed::False);
+        }
+
+        if vm.registers[RegId::GGAS] != 0 {
+            return Err(PredicateVerificationFailed::GasMismatch);
+        }
+
+        Ok(())
     }
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs and then set their gas used to the actual gas consumed.
@@ -145,7 +154,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         let estimated_clone = estimated.clone();
         // for inputNum in estimated.transaction().inputs().len() {
         for (idx, input) in estimated.transaction_mut().inputs_mut().iter_mut().enumerate() {
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, estimated_clone.clone().transaction(), idx) {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, estimated_clone.transaction(), idx) {
                 vm.init_predicate_estimation(estimated_clone.clone());
                 vm.context = Context::PredicateEstimation { program: predicate };
                 vm.set_gas(predicate_gas_limit);

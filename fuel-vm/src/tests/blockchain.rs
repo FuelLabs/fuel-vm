@@ -1,7 +1,7 @@
 use fuel_asm::RegId;
 use fuel_crypto::{Hasher, SecretKey};
 use fuel_tx::{field::Outputs, Input, Output, Receipt, TransactionBuilder};
-use fuel_types::{bytes, AssetId};
+use fuel_types::{bytes, AssetId, BlockHeight};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -1505,4 +1505,132 @@ fn timestamp_works() {
             assert_eq!(ra, expected);
         }
     }
+}
+
+#[rstest::rstest]
+fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
+    let current_height: BlockHeight = current_height.into();
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+
+    let params = *client.params();
+
+    client.as_mut().set_block_height(current_height);
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::bhei(0x20),         // perform the instruction
+        op::log(0x20, 0, 0, 0), // log output
+        op::ret(RegId::ONE)
+    ];
+
+    let script = script.into_iter().collect();
+    let script_data = vec![];
+
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .finalize_checked(current_height, client.gas_costs());
+
+    let receipts = client.transact(tx);
+    let Some(Receipt::Log { ra, .. }) = receipts.first() else {
+        panic!("expected log receipt");
+    };
+
+    let r: u32 = (*ra).try_into().unwrap();
+    let result: BlockHeight = r.into();
+    assert_eq!(result, current_height);
+}
+
+#[rstest::rstest]
+fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0, 1, 2, 10, 100)] test_height: u32) {
+    let current_height: BlockHeight = current_height.into();
+    let test_height: BlockHeight = test_height.into();
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+
+    let params = *client.params();
+
+    client.as_mut().set_block_height(current_height);
+
+    let expected = client
+        .as_ref()
+        .block_hash(test_height)
+        .expect("failed to calculate block hash");
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::movi(0x10, 32),                 // allocation size
+        op::aloc(0x10),                     // allocate memory
+        op::movi(0x11, test_height.into()), // set the argument
+        op::bhsh(RegId::HP, 0x11),          // perform the instruction
+        op::logd(0, 0, RegId::HP, 0x10),    // log output
+        op::ret(RegId::ONE)
+    ];
+
+    let script = script.into_iter().collect();
+    let script_data = vec![];
+
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .finalize_checked(current_height, client.gas_costs());
+
+    let receipts = client.transact(tx);
+    let Some(Receipt::LogData { data, .. }) = receipts.first() else {
+        panic!("expected log receipt");
+    };
+
+    assert_eq!(data, &*expected);
+}
+
+#[rstest::rstest]
+fn coinbase_works() {
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+
+    let params = *client.params();
+
+    let expected = client.as_ref().coinbase().expect("failed to calculate block hash");
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::movi(0x10, 32),                 // allocation size
+        op::aloc(0x10),                     // allocate memory
+        op::cb(RegId::HP),                  // perform the instruction
+        op::logd(0, 0, RegId::HP, 0x10),    // log output
+        op::ret(RegId::ONE)
+    ];
+
+    let script = script.into_iter().collect();
+    let script_data = vec![];
+
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .finalize_checked(10.into(), client.gas_costs());
+
+    let receipts = client.transact(tx);
+    let Some(Receipt::LogData { data, .. }) = receipts.first() else {
+        panic!("expected log receipt");
+    };
+
+    assert_eq!(data, &*expected);
 }

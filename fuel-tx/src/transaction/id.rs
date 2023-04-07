@@ -8,6 +8,10 @@ use fuel_types::Bytes32;
 pub trait UniqueIdentifier {
     /// The unique identifier of the transaction is based on its content.
     fn id(&self, params: &ConsensusParameters) -> Bytes32;
+
+    /// The cached unique identifier of the transaction.
+    /// Returns None if transaction was not precomputed.
+    fn cached_id(&self) -> Option<Bytes32>;
 }
 
 impl UniqueIdentifier for Transaction {
@@ -16,6 +20,14 @@ impl UniqueIdentifier for Transaction {
             Transaction::Script(script) => script.id(params),
             Transaction::Create(create) => create.id(params),
             Self::Mint(mint) => mint.id(params),
+        }
+    }
+
+    fn cached_id(&self) -> Option<Bytes32> {
+        match self {
+            Transaction::Script(script) => script.cached_id(),
+            Transaction::Create(create) => create.cached_id(),
+            Self::Mint(mint) => mint.cached_id(),
         }
     }
 }

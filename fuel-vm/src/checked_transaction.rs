@@ -100,6 +100,15 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 }
 
+impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
+    /// Returns the transaction ID from the computed metadata
+    pub fn id(&self) -> TxId {
+        self.transaction
+            .cached_id()
+            .expect("Transaction metadata should be computed for checked transactions")
+    }
+}
+
 #[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked + Default> Default for Checked<Tx>
 where

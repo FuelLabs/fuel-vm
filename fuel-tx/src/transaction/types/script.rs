@@ -86,11 +86,7 @@ impl Default for Script {
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
     fn id(&self, params: &ConsensusParameters) -> Bytes32 {
-        if let Some(ScriptMetadata {
-            common: CommonMetadata { id, .. },
-            ..
-        }) = self.metadata
-        {
+        if let Some(id) = self.cached_id() {
             return id;
         }
 
@@ -103,6 +99,10 @@ impl crate::UniqueIdentifier for Script {
         clone.witnesses_mut().clear();
 
         compute_transaction_id(params, &mut clone)
+    }
+
+    fn cached_id(&self) -> Option<Bytes32> {
+        self.metadata.as_ref().map(|m| m.common.id)
     }
 }
 

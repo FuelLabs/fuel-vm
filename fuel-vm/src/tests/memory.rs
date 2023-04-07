@@ -47,6 +47,23 @@ fn test_lw() {
 }
 
 #[test]
+fn test_lw_unaglined() {
+    let ops = vec![
+        op::movi(0x10, 9),
+        op::movi(0x11, 1),
+        op::aloc(0x10),
+        op::move_(0x10, RegId::HP),
+        op::sw(0x10, 0x11, 0),
+        op::lw(0x13, 0x10, 0),
+        op::ret(RegId::ONE),
+    ];
+    let vm = setup(ops);
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let result = vm.registers()[0x13_usize];
+    assert_eq!(1, result);
+}
+
+#[test]
 fn test_lb() {
     let ops = vec![
         op::movi(0x10, 8),
@@ -59,6 +76,26 @@ fn test_lb() {
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let result = vm.registers()[0x13_usize] as u8;
+    assert_eq!(1, result);
+}
+
+#[test]
+fn test_aloc_sb_lb_last_byte_of_memory() {
+    let ops = vec![
+        op::move_(0x20, RegId::HP),
+        op::movi(0x10, 1),
+        op::aloc(0x10),
+        op::move_(0x21, RegId::HP),
+        op::sb(RegId::HP, 0x10, 0),
+        op::lb(0x13, RegId::HP, 0),
+        op::ret(RegId::ONE),
+    ];
+    let vm = setup(ops);
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let r1 = vm.registers()[0x20_usize];
+    let r2 = vm.registers()[0x21_usize];
+    assert_eq!(r1 - 1, r2);
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
 }
@@ -180,4 +217,158 @@ fn dynamic_call_frame_ops() {
         shrunken_sp,
         initial_sp + STACK_EXTEND_AMOUNT as u64 - STACK_SHRINK_AMOUNT as u64
     );
+}
+
+#[rstest::rstest]
+fn test_mcl_and_mcli(
+    #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
+    #[values(true, false)] half: bool, // Clear only first count/2 bytes
+    #[values(true, false)] mcli: bool, // Test mcli instead of mcl
+) {
+    // Allocate count + 1 bytes of memory, so we can check that the last byte is not cleared
+    let mut ops = vec![op::movi(0x10, count + 1), op::aloc(0x10), op::movi(0x11, 1)];
+    // Fill with ones
+    for i in 0..(count + 1) {
+        ops.push(op::sb(RegId::HP, 0x11, i as u16));
+    }
+    // Clear it, or only half if specified
+    if mcli {
+        if half {
+            ops.push(op::mcli(RegId::HP, count / 2));
+        } else {
+            ops.push(op::mcli(RegId::HP, count));
+        }
+    } else {
+        ops.push(op::movi(0x10, count));
+        if half {
+            ops.push(op::divi(0x10, 0x10, 2));
+        }
+        ops.push(op::mcl(RegId::HP, 0x10));
+    }
+    // Log the result and return
+    ops.push(op::movi(0x10, count + 1));
+    ops.push(op::logd(0, 0, RegId::HP, 0x10));
+    ops.push(op::ret(RegId::ONE));
+
+    let vm = setup(ops);
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+
+    if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let c = count as usize;
+        assert_eq!(data.len(), c + 1);
+        if half {
+            assert!(data[..c / 2] == vec![0u8; c / 2]);
+            assert!(data[c / 2..] == vec![1u8; c - c / 2 + 1]);
+        } else {
+            assert!(data[..c] == vec![0u8; c]);
+            assert!(data[c] == 1);
+        }
+    } else {
+        panic!("Expected LogData receipt");
+    }
+}
+
+#[rstest::rstest]
+fn test_mcp_and_mcpi(
+    #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
+    #[values(true, false)] mcpi: bool, // Test mcpi instead of mcp
+) {
+    // Allocate (count + 1) * 2 bytes of memory, so we can check that the last byte is not copied
+    let mut ops = vec![
+        op::movi(0x10, (count + 1) * 2),
+        op::aloc(0x10),
+        op::movi(0x11, 1),
+        op::movi(0x12, 2),
+    ];
+    // Fill count + 1 bytes with ones, and the next count + 1 bytes with twos
+    for i in 0..(count + 1) * 2 {
+        ops.push(op::sb(RegId::HP, if i < count + 1 { 0x11 } else { 0x12 }, i as u16));
+    }
+    // Compute dst address
+    ops.push(op::addi(0x11, RegId::HP, (count + 1) as u16));
+    // Copy count bytes
+    if mcpi {
+        ops.push(op::mcpi(0x11, RegId::HP, count as u16));
+    } else {
+        ops.push(op::movi(0x10, count));
+        ops.push(op::mcp(0x11, RegId::HP, 0x10));
+    }
+    // Log the result and return
+    ops.push(op::movi(0x10, (count + 1) * 2));
+    ops.push(op::logd(0, 0, RegId::HP, 0x10));
+    ops.push(op::ret(RegId::ONE));
+
+    let vm = setup(ops);
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+
+    if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let c = count as usize;
+        assert_eq!(data.len(), (c + 1) * 2);
+        let mut expected = vec![1u8; c * 2 + 1];
+        expected.push(2);
+        assert!(data == &expected);
+    } else {
+        panic!("Expected LogData receipt");
+    }
+}
+
+#[rstest::rstest]
+fn test_meq(
+    #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
+    #[values("equal", "last-not-equal", "first-not-equal")] pattern: &str,
+) {
+    // Allocate count * 2 bytes of memory
+    let mut ops = vec![
+        op::movi(0x10, count * 2),
+        op::aloc(0x10),
+        op::movi(0x11, 1),
+        op::movi(0x12, 2),
+    ];
+    // Fill count*2 bytes with ones, and then patch with given pattern
+    for i in 0..(count * 2) {
+        ops.push(op::sb(RegId::HP, 0x11, i as u16));
+    }
+    if count != 0 {
+        match pattern {
+            "equal" => {
+                // Do nothing
+            }
+            "last-not-equal" => {
+                ops.push(op::sb(RegId::HP, 0x12, (count * 2 - 1) as u16));
+            }
+            "first-not-equal" => {
+                ops.push(op::sb(RegId::HP, 0x12, 0));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // Compare
+    ops.push(op::movi(0x10, count));
+    ops.push(op::addi(0x11, RegId::HP, count as u16));
+    ops.push(op::meq(0x10, RegId::HP, 0x11, 0x10));
+    // Log the result and return
+    ops.push(op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    ops.push(op::ret(RegId::ONE));
+
+    let vm = setup(ops);
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+
+    if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
+        if count == 0 {
+            assert_eq!(*ra, 1); // Empty ranges always equal
+            return;
+        }
+        match pattern {
+            "equal" => {
+                assert_eq!(*ra, 1);
+            }
+            "last-not-equal" | "first-not-equal" => {
+                assert_eq!(*ra, 0);
+            }
+            _ => unreachable!(),
+        }
+    } else {
+        panic!("Expected LogData receipt");
+    }
 }

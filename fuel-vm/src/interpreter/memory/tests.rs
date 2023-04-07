@@ -116,11 +116,11 @@ fn stack_alloc_ownership() {
 
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..0
-    => false ; "empty mem range"
+    => true ; "empty mem range"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 0..0
-    => false ; "empty mem range (external)"
+    => true ; "empty mem range (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..1

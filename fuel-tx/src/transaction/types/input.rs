@@ -2,7 +2,7 @@ use crate::{TxPointer, UtxoId};
 
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes;
-use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
+use fuel_types::{fmt_truncated_hex, Address, AssetId, Bytes32, ContractId, MessageId, Word};
 
 use core::mem;
 
@@ -11,6 +11,7 @@ use fuel_types::bytes::{Deserializable, SizedBytes, WORD_SIZE};
 
 use alloc::vec::Vec;
 
+use derivative::Derivative;
 #[cfg(feature = "std")]
 use std::io;
 
@@ -21,8 +22,9 @@ use consts::*;
 
 pub use repr::InputRepr;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derivative(Debug)]
 pub enum Input {
     CoinSigned {
         utxo_id: UtxoId,
@@ -41,7 +43,9 @@ pub enum Input {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         maturity: Word,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         predicate: Vec<u8>,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         predicate_data: Vec<u8>,
     },
 
@@ -60,6 +64,7 @@ pub enum Input {
         amount: Word,
         nonce: Word,
         witness_index: u8,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         data: Vec<u8>,
     },
 
@@ -69,8 +74,11 @@ pub enum Input {
         recipient: Address,
         amount: Word,
         nonce: Word,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         data: Vec<u8>,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         predicate: Vec<u8>,
+        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
         predicate_data: Vec<u8>,
     },
 }

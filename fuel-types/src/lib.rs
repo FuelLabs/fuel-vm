@@ -12,6 +12,9 @@ mod types;
 
 pub use types::*;
 
+#[cfg(feature = "alloc")]
+pub use fmt::*;
+
 /// Word-aligned bytes serialization functions.
 pub mod bytes;
 

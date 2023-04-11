@@ -9,7 +9,7 @@ use crate::transaction::{
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, Bytes32, Word};
+use fuel_types::{bytes, fmt_truncated_hex, Bytes32, Word};
 
 #[cfg(feature = "std")]
 use std::io;

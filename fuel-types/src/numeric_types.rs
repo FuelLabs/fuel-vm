@@ -234,11 +234,43 @@ macro_rules! key_methods {
                 D: serde::Deserializer<'de>,
             {
                 use serde::de::Error;
-                let s: &str = serde::Deserialize::deserialize(deserializer)?;
-                s.parse().map_err(D::Error::custom)
+
+                #[derive(serde::Deserialize)]
+                #[serde(untagged)]
+                enum MaybeStringed {
+                    String(String),
+                    Direct($t),
+                }
+
+                Ok(Self(match MaybeStringed::deserialize(deserializer)? {
+                    MaybeStringed::String(s) => s.parse::<$t>().map_err(Error::custom)?,
+                    MaybeStringed::Direct(i) => i,
+                }))
             }
         }
     };
 }
 
 key!(BlockHeight, u32);
+
+#[cfg(test)]
+mod tests {
+    use super::BlockHeight;
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_block_height_serde() {
+        assert!(serde_json::from_str::<BlockHeight>("0").unwrap().0 == 0);
+        assert!(serde_json::from_str::<BlockHeight>("\"0\"").unwrap().0 == 0);
+        assert!(serde_json::from_str::<BlockHeight>("12345678").unwrap().0 == 12345678);
+        assert!(serde_json::from_str::<BlockHeight>("\"12345678\"").unwrap().0 == 12345678);
+
+        assert!(serde_json::from_str::<BlockHeight>("").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("incorrect").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("0x12345678").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("12345678901234567890").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("\"incorrect\"").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("\"0x0\"").is_err());
+        assert!(serde_json::from_str::<BlockHeight>("\"0x\"0\"").is_err());
+    }
+}

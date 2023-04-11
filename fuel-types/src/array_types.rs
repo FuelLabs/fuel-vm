@@ -18,6 +18,7 @@ use crate::hex_val;
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
         /// FuelVM atomic array type.
         #[repr(transparent)]
         pub struct $i([u8; $s]);
@@ -36,6 +37,7 @@ macro_rules! key {
 macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
         /// FuelVM atomic type.
         #[repr(transparent)]
         pub struct $i([u8; $s]);

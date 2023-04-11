@@ -18,6 +18,8 @@ macro_rules! key {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic numeric type.
         #[repr(transparent)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+        #[cfg_attr(feature = "serde", serde(transparent))]
         pub struct $i($t);
 
         key_methods!($i, $t);
@@ -213,29 +215,6 @@ macro_rules! key_methods {
             #[inline(always)]
             fn sub(self, rhs: $i) -> $i {
                 $i(self.0.wrapping_sub(rhs.0))
-            }
-        }
-
-        #[cfg(feature = "serde")]
-        impl serde::Serialize for $i {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                use alloc::format;
-                serializer.serialize_str(&format!("{:x}", &self))
-            }
-        }
-
-        #[cfg(feature = "serde")]
-        impl<'de> serde::Deserialize<'de> for $i {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                use serde::de::Error;
-                let s: &str = serde::Deserialize::deserialize(deserializer)?;
-                s.parse().map_err(D::Error::custom)
             }
         }
     };

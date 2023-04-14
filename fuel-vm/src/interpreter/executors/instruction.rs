@@ -5,7 +5,7 @@ use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
 
-use fuel_asm::{Instruction, PanicReason, RawInstruction, RegId};
+use fuel_asm::{widemath, Instruction, PanicReason, RawInstruction, RegId};
 use fuel_types::Word;
 
 use std::ops::Div;
@@ -140,6 +140,83 @@ where
                 self.gas_charge(self.gas_costs.lt)?;
                 let (a, b, c) = lt.unpack();
                 self.alu_set(a.into(), (r!(b) < r!(c)) as Word)?;
+            }
+
+            Instruction::WDCM(wdcm) => {
+                self.gas_charge(self.gas_costs.wdcm)?;
+                let (a, b, c, imm) = wdcm.unpack();
+                let args = widemath::CompareArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WQCM(wdcm) => {
+                self.gas_charge(self.gas_costs.wqcm)?;
+                let (a, b, c, imm) = wdcm.unpack();
+                let args = widemath::CompareArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WDOP(wdop) => {
+                self.gas_charge(self.gas_costs.wdcm)?;
+                let (a, b, c, imm) = wdop.unpack();
+                let args = widemath::MathArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_op_u128(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WQOP(wqop) => {
+                self.gas_charge(self.gas_costs.wqcm)?;
+                let (a, b, c, imm) = wqop.unpack();
+                let args = widemath::MathArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_op_u256(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WDML(wdml) => {
+                self.gas_charge(self.gas_costs.wdml)?;
+                let (a, b, c, imm) = wdml.unpack();
+                let args = widemath::MulArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_mul_u128(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WQML(wqml) => {
+                self.gas_charge(self.gas_costs.wqml)?;
+                let (a, b, c, imm) = wqml.unpack();
+                let args = widemath::MulArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_mul_u256(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WDDV(wddv) => {
+                self.gas_charge(self.gas_costs.wddv)?;
+                let (a, b, c, imm) = wddv.unpack();
+                let args = widemath::DivArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_div_u128(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WQDV(wqdv) => {
+                self.gas_charge(self.gas_costs.wqdv)?;
+                let (a, b, c, imm) = wqdv.unpack();
+                let args = widemath::DivArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                self.alu_wideint_div_u256(r!(a), r!(b), r!(c), args)?;
+            }
+
+            Instruction::WDAM(wdam) => {
+                self.gas_charge(self.gas_costs.wdam)?;
+                let (a, b, c, d) = wdam.unpack();
+                self.alu_wideint_addmod_u128(r!(a), r!(b), r!(c), r!(d))?;
+            }
+            Instruction::WQAM(wqam) => {
+                self.gas_charge(self.gas_costs.wqam)?;
+                let (a, b, c, d) = wqam.unpack();
+                self.alu_wideint_addmod_u256(r!(a), r!(b), r!(c), r!(d))?;
+            }
+            Instruction::WDMM(wdmm) => {
+                self.gas_charge(self.gas_costs.wdmm)?;
+                let (a, b, c, d) = wdmm.unpack();
+                self.alu_wideint_mulmod_u128(r!(a), r!(b), r!(c), r!(d))?;
+            }
+            Instruction::WQMM(wqmm) => {
+                self.gas_charge(self.gas_costs.wqmm)?;
+                let (a, b, c, d) = wqmm.unpack();
+                self.alu_wideint_mulmod_u256(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::MLOG(mlog) => {

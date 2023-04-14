@@ -2,6 +2,8 @@ use crate::PanicReason;
 
 use fuel_types::{Immediate12, Immediate18};
 
+pub mod widemath;
+
 const GM_IS_CALLER_EXTERNAL: u8 = 0x01;
 const GM_GET_CALLER: u8 = 0x02;
 const GM_GET_VERIFYING_PREDICATE: u8 = 0x03;

@@ -174,16 +174,10 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder.finalize_checked_basic(Default::default()).transaction().clone()
-        .into_checked_basic(Default::default(), &ConsensusParameters::DEFAULT).expect("failed to convert into checked basic")
+    let tx_with_predicate = builder
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed");
-
-
-    // let tx_with_predicate = builder
-    //     .finalize_checked_basic(Default::default())
-    //     .check_predicates(&params, &GasCosts::default())
-    //     .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
     let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();

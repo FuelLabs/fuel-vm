@@ -31,16 +31,6 @@ impl PredicatesChecked {
         self.gas_used
     }
 }
-/// Predicates were estimated succesfully
-#[derive(Debug, Clone, Copy)]
-pub struct PredicatesEstimated {
-    gas_used: Word,
-}
-impl PredicatesEstimated {
-    pub fn gas_used(&self) -> Word {
-        self.gas_used
-    }
-}
 
 // FIXME replace for a type-safe transaction
 impl<T> Interpreter<PredicateStorage, T> {

@@ -56,10 +56,10 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
     pub fn check_predicates<Tx>(
-        checked: Checked<Tx>,
+        checked: &mut Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
-        estimate_gas: bool,
+        malleable_gas: bool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -73,9 +73,9 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let mut cumulative_gas_used: Word = 0;
 
-        vm.init_predicate(checked);
+        vm.init_predicate(checked.clone());
 
-        if estimate_gas {
+        if malleable_gas {
             let tx_gas_limit: u64 = checked.clone().transaction().limit();
 
             let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
@@ -85,8 +85,8 @@ impl<T> Interpreter<PredicateStorage, T> {
             };
 
             let checked_clone = checked.clone();
-            // for inputNum in estimated.transaction().inputs().len() {
-            for (idx, input) in checked.transaction_mut().inputs_mut().iter_mut().enumerate() {
+
+            for (idx, input) in checked.transaction().inputs_mut().iter_mut().enumerate() {
                 if let Some(predicate) = RuntimePredicate::from_tx(&params, checked_clone.transaction(), idx) {
                     vm.init_predicate_estimation(checked_clone.clone());
                     vm.context = Context::PredicateEstimation { program: predicate };

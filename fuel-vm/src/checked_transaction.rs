@@ -81,7 +81,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Returns reference on inner transaction.
-    pub fn transaction_mut(&mut self) -> &Tx {
+    pub fn transaction_mut(&mut self) -> &mut Tx {
         &mut self.transaction
     }
 
@@ -121,7 +121,7 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &Default::default(), &Default::default())
+            .into_checked(Default::default(), &Default::default(), &Default::default(), true)
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -198,7 +198,7 @@ where
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts, estimate_gas: bool) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
-            let checked = Interpreter::<PredicateStorage>::check_predicates( self, *params, gas_costs.clone(), estimate_gas)?;
+            let checked = Interpreter::<PredicateStorage>::check_predicates( &mut self, *params, gas_costs.clone(), estimate_gas)?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
@@ -371,7 +371,6 @@ mod tests {
     use quickcheck_macros::quickcheck;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
-    use crate::estimated_transaction::IntoEstimated;
 
     #[test]
     fn checked_tx_has_default() {
@@ -395,7 +394,7 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -417,7 +416,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -437,7 +436,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -461,7 +460,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -497,7 +496,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -646,7 +645,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -672,7 +671,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default(), true)
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -697,7 +696,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default(), true)
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -719,7 +718,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default(), true)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -736,7 +735,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &params, &Default::default(), true)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -775,7 +774,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::DEFAULT, &Default::default(), true)
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -825,14 +824,12 @@ mod tests {
         let gas_costs = GasCosts::default();
 
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
-        let binding = tx.into_estimated(block_height, &params.clone(), &gas_costs.clone()).unwrap();
-        let estimated_tx = binding.transaction().clone();
-        let checked = estimated_tx
+        let checked = tx
             // Sets Checks::Basic
             .into_checked_basic(block_height, &params)
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&params, &gas_costs)
+            .check_predicates(&params, &gas_costs, true)
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic | Checks::Predicates));
     }

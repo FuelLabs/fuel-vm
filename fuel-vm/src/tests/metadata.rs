@@ -58,7 +58,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -104,7 +104,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -151,7 +151,7 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &params, &gas_costs, true)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)
@@ -197,7 +197,7 @@ fn get_metadata_chain_id() {
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
         .finalize()
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &params, &gas_costs, true)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -233,7 +233,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height, client.gas_costs(), true);
 
     client.deploy(tx);
 
@@ -305,7 +305,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height, client.gas_costs(), true);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

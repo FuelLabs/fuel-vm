@@ -33,7 +33,7 @@ fn can_execute_empty_script_transaction() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     let receipts = client.transact(tx);
@@ -95,7 +95,7 @@ fn code_copy() {
         vec![output],
         vec![program.clone()],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     client.deploy(tx);
@@ -129,7 +129,7 @@ fn code_copy() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     let script_data_mem = client.tx_offset() + tx.transaction().script_data_offset();
@@ -191,7 +191,7 @@ fn call() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate a checked tx");
 
     assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
@@ -221,7 +221,7 @@ fn call() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate a checked tx");
 
     let params = ConsensusParameters::default();
@@ -337,7 +337,7 @@ fn call_frame_code_offset() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate a checked tx");
 
     let mut vm = Interpreter::with_storage(storage, params, Default::default());
@@ -455,7 +455,7 @@ fn repeated_nested_calls() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate checked tx");
 
     client.deploy(tx);
@@ -481,7 +481,7 @@ fn repeated_nested_calls() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate checked tx");
 
     let mut receipts = client.transact(tx).to_vec();
@@ -563,7 +563,7 @@ fn revert() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     // Deploy the contract into the blockchain
@@ -626,7 +626,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     // Assert the initial state of `key` is empty
@@ -676,7 +676,7 @@ fn revert() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .into_checked(height, &params, client.gas_costs(), true)
     .expect("failed to generate a checked tx");
 
     // Assert the state of `key` is reverted to `val`
@@ -719,7 +719,7 @@ fn retd_from_top_of_heap() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, client.gas_costs())
+        .into_checked(height, &params, client.gas_costs(), true)
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -755,7 +755,7 @@ fn logd_from_top_of_heap() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, client.gas_costs())
+        .into_checked(height, &params, client.gas_costs(), true)
         .expect("failed to generate a checked tx");
 
     client.transact(tx);

@@ -43,7 +43,7 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate checked tx");
 
     client.deploy(tx_deploy);
@@ -85,7 +85,7 @@ fn backtrace() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate checked tx");
 
     client.deploy(tx_deploy);
@@ -120,7 +120,7 @@ fn backtrace() {
         vec![output_undefined, output_call],
         vec![],
     )
-    .into_checked(height, &params, &gas_costs)
+    .into_checked(height, &params, &gas_costs, true)
     .expect("failed to generate checked tx");
 
     client.transact(tx_script);

@@ -23,7 +23,7 @@ fn memcopy() {
     );
 
     let tx = tx
-        .into_checked(Default::default(), &params, vm.gas_costs())
+        .into_checked(Default::default(), &params, vm.gas_costs(), true)
         .expect("default tx should produce a valid checked transaction");
 
     vm.init_script(tx).expect("Failed to init VM");

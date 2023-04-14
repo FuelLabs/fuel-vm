@@ -56,8 +56,8 @@ where
 
     builder.add_input(input);
 
-    let tx = builder.with_params(params).finalize_checked_basic(height);
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default()).is_ok()
+    let mut tx = builder.with_params(params).finalize_checked_basic(height);
+    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), true).is_ok()
 }
 
 #[test]
@@ -142,7 +142,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -174,11 +174,9 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.add_input(input);
 
-    let estimated_tx = builder.finalize_estimated(Default::default(), &GasCosts::default());
-
-    let tx_with_predicate = estimated_tx.transaction()
+    let tx_with_predicate = builder.finalize_checked_basic(Default::default()).transaction().clone()
         .into_checked_basic(Default::default(), &ConsensusParameters::DEFAULT).expect("failed to convert into checked basic")
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed");
 
 
@@ -246,8 +244,8 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let tx = builder.finalize_checked_basic(Default::default());
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
+    let mut tx = builder.finalize_checked_basic(Default::default());
+    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), true)
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }
@@ -310,7 +308,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let tx_without_predicate = builder
         .with_params(params)
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let predicate: Vec<u8> = vec![
@@ -341,7 +339,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed");
 
     let mut client = MemoryClient::default();
@@ -384,7 +382,7 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -424,7 +422,7 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default());
+        .check_predicates(&params, &GasCosts::default(), true);
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);
 }

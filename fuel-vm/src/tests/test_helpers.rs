@@ -18,7 +18,12 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
     let tx = Transaction::script(0, 1_000_000, Default::default(), script, vec![], vec![], vec![], vec![])
-        .into_checked(Default::default(), &ConsensusParameters::DEFAULT, client.gas_costs(), true)
+        .into_checked(
+            Default::default(),
+            &ConsensusParameters::DEFAULT,
+            client.gas_costs(),
+            true,
+        )
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

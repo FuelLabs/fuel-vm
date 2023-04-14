@@ -414,9 +414,10 @@ fn gas_used_by_predicates_more_than_limit() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true);
+    let tx_with_predicate =
+        builder
+            .finalize_checked_basic(Default::default())
+            .check_predicates(&params, &GasCosts::default(), true);
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);
 }

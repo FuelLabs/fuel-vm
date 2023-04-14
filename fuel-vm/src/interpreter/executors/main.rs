@@ -3,9 +3,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
-use crate::interpreter::{
-    CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances,
-};
+use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -124,7 +122,9 @@ impl<T> Interpreter<PredicateStorage, T> {
                 if vm.registers[RegId::GGAS] != 0 {
                     return Err(PredicateVerificationFailed::GasMismatch);
                 }
-                cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("cumulative gas overflow");
+                cumulative_gas_used = cumulative_gas_used
+                    .checked_add(gas_used)
+                    .expect("cumulative gas overflow");
             }
         }
 

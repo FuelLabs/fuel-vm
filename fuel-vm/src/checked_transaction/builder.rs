@@ -8,7 +8,7 @@ use fuel_types::BlockHeight;
 /// Extension trait for [`fuel_tx::TransactionBuilder`] adding finalization methods
 pub trait TransactionBuilderExt<Tx>
 where
-    Tx: IntoChecked + Clone
+    Tx: IntoChecked + Clone,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
     fn finalize_checked(&mut self, height: BlockHeight, gas_costs: &GasCosts, estimate_gas: bool) -> Checked<Tx>;

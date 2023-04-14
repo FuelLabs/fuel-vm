@@ -50,7 +50,6 @@ pub use memory::MemoryRange;
 use crate::checked_transaction::{
     CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
 };
-use crate::estimated_transaction::{CreateEstimatedMetadata, IntoEstimated, ScriptEstimatedMetadata};
 
 use self::memory::Memory;
 use self::receipts::ReceiptsCtx;
@@ -191,7 +190,6 @@ pub trait ExecutableTransaction:
     + Chargeable
     + Executable
     + IntoChecked
-    + IntoEstimated
     + UniqueIdentifier
     + field::Maturity
     + field::Inputs
@@ -381,18 +379,6 @@ pub trait CheckedMetadata {
     fn set_gas_used_by_predicates(&mut self, gas_used: Word);
 }
 
-/// Methods that should be implemented by the checked metadata of supported transactions.
-pub trait EstimatedMetadata {
-    /// Returns the initial balances from the checked metadata of the transaction.
-    fn balances(self) -> InitialBalances;
-
-    /// Get gas used by predicates. Returns zero if the predicates haven't been checked.
-    fn gas_used_by_predicates(&self) -> Word;
-
-    /// Set gas used by predicates after checking them.
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word);
-}
-
 impl CheckedMetadata for ScriptCheckedMetadata {
     fn balances(self) -> InitialBalances {
         InitialBalances {
@@ -411,40 +397,6 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
-    fn balances(self) -> InitialBalances {
-        InitialBalances {
-            non_retryable: self.free_balances,
-            retryable: None,
-        }
-    }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
-    }
-}
-
-impl EstimatedMetadata for ScriptEstimatedMetadata {
-    fn balances(self) -> InitialBalances {
-        InitialBalances {
-            non_retryable: self.non_retryable_balances,
-            retryable: Some(self.retryable_balance),
-        }
-    }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
-    }
-}
-
-impl EstimatedMetadata for CreateEstimatedMetadata {
     fn balances(self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.free_balances,

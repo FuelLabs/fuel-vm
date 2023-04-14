@@ -1,4 +1,4 @@
-use super::{EstimatedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
@@ -9,7 +9,6 @@ use fuel_asm::RegId;
 use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
-use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::interpreter::CheckedMetadata;
 use std::io;
 
@@ -72,15 +71,15 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
-    <Tx as IntoEstimated>::EstimatedMetadata: EstimatedMetadata,
+    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate_estimation(&mut self, estimated: Estimated<Tx>) -> bool {
+    pub fn init_predicate_estimation(&mut self, checked: Checked<Tx>) -> bool {
         self.context = Context::PredicateEstimation {
             program: Default::default(),
         };
 
-        let (mut tx, metadata): (Tx, Tx::EstimatedMetadata) = estimated.into();
+        let (mut tx, metadata): (Tx, Tx::CheckedMetadata) = checked.into();
         tx.prepare_init_predicate();
 
         self._init(tx, metadata.balances(), 0).is_ok()

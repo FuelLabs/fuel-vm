@@ -2,10 +2,9 @@ use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
-use crate::estimated_transaction::{Estimated, IntoEstimated};
 use crate::gas::GasCosts;
 use crate::interpreter::{
-    CheckedMetadata, EstimatedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances,
+    CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances,
 };
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
@@ -60,6 +59,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         checked: Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
+        estimate_gas: bool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -71,116 +71,74 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
 
-        // Needed for now because checked is only freed once the value is collected into a Vec
-        #[allow(clippy::needless_collect)]
-        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
-            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
-            .collect();
-
         let mut cumulative_gas_used: Word = 0;
 
         vm.init_predicate(checked);
 
-        for predicate in predicates {
-            let gas_used: Word = predicate.gas_used();
-            let result = Self::check_predicate(&vm, predicate);
-            if result.is_err() {
-                return Err(result.err().unwrap());
+        if estimate_gas {
+            let tx_gas_limit: u64 = checked.clone().transaction().limit();
+
+            let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
+                params.max_gas_per_predicate
+            } else {
+                tx_gas_limit
+            };
+
+            let checked_clone = checked.clone();
+            // for inputNum in estimated.transaction().inputs().len() {
+            for (idx, input) in checked.transaction_mut().inputs_mut().iter_mut().enumerate() {
+                if let Some(predicate) = RuntimePredicate::from_tx(&params, checked_clone.transaction(), idx) {
+                    vm.init_predicate_estimation(checked_clone.clone());
+                    vm.context = Context::PredicateEstimation { program: predicate };
+                    vm.set_gas(predicate_gas_limit);
+
+                    if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                        return Err(PredicateVerificationFailed::False);
+                    }
+
+                    let gas_used: u64 = tx_gas_limit
+                        .checked_sub(vm.remaining_gas())
+                        .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+
+                    cumulative_gas_used += gas_used;
+
+                    match input {
+                        Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+                        | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+                        | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
+                            *predicate_gas_used = gas_used;
+                        }
+                        _ => {}
+                    }
+                }
             }
-            cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("cumulative gas overflow");
-        }
-
-        Ok(PredicatesChecked {
-            gas_used: cumulative_gas_used,
-        })
-    }
-
-    fn check_predicate<Tx>(vm: &Interpreter<PredicateStorage, Tx>, predicate: RuntimePredicate) -> Result<(), PredicateVerificationFailed> where Tx: ExecutableTransaction {
-        // VM is cloned because the state should be reset for every predicate verification
-        let mut vm = vm.clone();
-
-        let gas_used = predicate.gas_used();
-        vm.context = Context::PredicateVerification { program: predicate };
-        vm.set_gas(gas_used);
-
-        if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-            return Err(PredicateVerificationFailed::False);
-        }
-
-        if vm.registers[RegId::GGAS] != 0 {
-            return Err(PredicateVerificationFailed::GasMismatch);
-        }
-
-        Ok(())
-    }
-    /// Initialize the VM with the provided transaction and check all predicates defined in the
-    /// inputs and then set their gas used to the actual gas consumed.
-    ///
-    /// The storage provider is not used since contract opcodes are not allowed for predicates.
-    /// This way, its possible, for the sake of simplicity, it is possible to use
-    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
-    ///
-    /// # Debug
-    ///
-    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
-    /// VM state required to trace the execution steps.
-    pub fn estimate_predicates<Tx>(
-        mut estimated: Estimated<Tx>,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
-    ) -> Result<PredicatesEstimated, PredicateVerificationFailed>
-    where
-        Tx: ExecutableTransaction,
-        <Tx as IntoEstimated>::EstimatedMetadata: EstimatedMetadata,
-    {
-        if !estimated.transaction().check_predicate_owners(&params) {
-            return Err(PredicateVerificationFailed::InvalidOwner);
-        }
-
-        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
-
-        // Needed for now because checked is only freed once the value is collected into a Vec
-        #[allow(clippy::needless_collect)]
-        let mut cumulative_gas_used = 0;
-        // Since we reuse the vm objects otherwise, we need to keep the actual gas here
-        let tx_gas_limit: u64 = estimated.transaction().limit();
-
-        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
-            params.max_gas_per_predicate
         } else {
-            tx_gas_limit
-        };
+            // Needed for now because checked is only freed once the value is collected into a Vec
+            #[allow(clippy::needless_collect)]
+            let predicates: Vec<_> = (0..checked.transaction().inputs().len())
+                .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
+                .collect();
 
-        let estimated_clone = estimated.clone();
-        // for inputNum in estimated.transaction().inputs().len() {
-        for (idx, input) in estimated.transaction_mut().inputs_mut().iter_mut().enumerate() {
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, estimated_clone.transaction(), idx) {
-                vm.init_predicate_estimation(estimated_clone.clone());
-                vm.context = Context::PredicateEstimation { program: predicate };
-                vm.set_gas(predicate_gas_limit);
+            for predicate in predicates {
+                // VM is cloned because the state should be reset for every predicate verification
+                let mut vm = vm.clone();
+
+                let gas_used = predicate.gas_used();
+                vm.context = Context::PredicateVerification { program: predicate };
+                vm.set_gas(gas_used);
 
                 if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                     return Err(PredicateVerificationFailed::False);
                 }
 
-                let gas_used: u64 = tx_gas_limit
-                    .checked_sub(vm.remaining_gas())
-                    .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
-
-                cumulative_gas_used += gas_used;
-
-                match input {
-                    Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
-                    | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
-                    | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
-                        *predicate_gas_used = gas_used;
-                    }
-                    _ => {}
+                if vm.registers[RegId::GGAS] != 0 {
+                    return Err(PredicateVerificationFailed::GasMismatch);
                 }
+                cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("cumulative gas overflow");
             }
         }
 
-        Ok(PredicatesEstimated {
+        Ok(PredicatesChecked {
             gas_used: cumulative_gas_used,
         })
     }

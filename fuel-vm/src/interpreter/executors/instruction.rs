@@ -198,6 +198,18 @@ where
                 self.alu_wideint_div_u256(r!(a), r!(b), r!(c), args)?;
             }
 
+            Instruction::WDMD(wdmd) => {
+                self.gas_charge(self.gas_costs.wdmd)?;
+                let (a, b, c, d) = wdmd.unpack();
+                self.alu_wideint_muldiv_u128(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
+            Instruction::WQMD(wqmd) => {
+                self.gas_charge(self.gas_costs.wqmd)?;
+                let (a, b, c, d) = wqmd.unpack();
+                self.alu_wideint_muldiv_u256(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
             Instruction::WDAM(wdam) => {
                 self.gas_charge(self.gas_costs.wdam)?;
                 let (a, b, c, d) = wdam.unpack();

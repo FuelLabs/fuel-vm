@@ -284,14 +284,18 @@ impl_instructions! {
     0xa6 WDDV wddv [RegId RegId RegId Imm06]
     "Divide 256bit"
     0xa7 WQDV wqdv [RegId RegId RegId Imm06]
+    "Fused multiply-divide 128bit"
+    0xa8 WDMD wdmd [RegId RegId RegId RegId]
+    "Fused multiply-divide 256bit"
+    0xa9 WQMD wqmd [RegId RegId RegId RegId]
     "AddMod 128bit"
-    0xa8 WDAM wdam [RegId RegId RegId RegId]
+    0xaa WDAM wdam [RegId RegId RegId RegId]
     "AddMod 256bit"
-    0xa9 WQAM wqam [RegId RegId RegId RegId]
+    0xab WQAM wqam [RegId RegId RegId RegId]
     "MulMod 128bit"
-    0xaa WDMM wdmm [RegId RegId RegId RegId]
+    0xac WDMM wdmm [RegId RegId RegId RegId]
     "MulMod 256bit"
-    0xab WQMM wqmm [RegId RegId RegId RegId]
+    0xad WQMM wqmm [RegId RegId RegId RegId]
 }
 
 impl Instruction {
@@ -471,10 +475,10 @@ impl Opcode {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
-            | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDAM | WQAM | WDMM | WQMM | RET | ALOC
-            | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI | ORI
-            | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
-            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
+            | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
+            | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI
+            | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }

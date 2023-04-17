@@ -85,6 +85,8 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqml: 4,
         wddv: 4,
         wqdv: 8,
+        wdmd: 5,
+        wqmd: 10,
         wdam: 2,
         wqam: 4,
         wdmm: 4,

@@ -236,6 +236,59 @@ macro_rules! wideint_ops {
 
                     inc_pc(pc)
                 }
+
+                pub(crate) fn [<alu_wideint_muldiv_ $t:lower>](
+                    &mut self,
+                    dest_addr: Word,
+                    b: Word,
+                    c: Word,
+                    d: Word,
+                ) -> Result<(), RuntimeError> {
+                    let owner_regs = self.ownership_registers();
+                    let (SystemRegisters { mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
+
+                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
+                    let rhs: $t = $t::from_be_bytes(read_bytes(&self.memory, c)?);
+                    let divider: $t = $t::from_be_bytes(read_bytes(&self.memory, d)?);
+
+                    const S: usize = core::mem::size_of::<$t>();
+
+                    let mut buffer = [0u8; S];
+                    buffer[..].copy_from_slice(&lhs.to_le_bytes());
+                    let lhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
+                    buffer[..].copy_from_slice(&rhs.to_le_bytes());
+                    let rhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
+
+                    // TODO: optimize this, especially for divider == 0
+                    let one = primitive_types::[<$t:upper>]::one();
+                    let divider = if divider == 0 {
+                        one.full_mul(one) << (S * 8)
+                    } else {
+                        let mut buffer = [0u8; 2 * S];
+                        buffer[S..].copy_from_slice(&divider.to_le_bytes());
+                        primitive_types::[<$t:upper>]::from_little_endian(&buffer)
+                        .full_mul(one)
+                    };
+
+                    let result = lhs.full_mul(rhs) / divider;
+
+                    let mut buffer = [0u8; 2 * S];
+                    result.to_little_endian(&mut buffer);
+                    let truncated: [u8; S] = buffer[S..].try_into().unwrap_or_else(|_| unreachable!());
+                    let result = $t::from_le_bytes(truncated);
+
+                    if buffer[..S] != [0u8; S] {
+                        *of = 1;
+                    } else {
+                        *of = 0;
+                    }
+
+                    *err = 0;
+
+                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+
+                    inc_pc(pc)
+                }
             }
 
             pub(crate) fn [<cmp_ $t:lower>](
@@ -268,8 +321,12 @@ macro_rules! wideint_ops {
                     MathOp::XOR => { (lhs ^ rhs, false) }
                     MathOp::AND => {(lhs & rhs, false) }
                     MathOp::NOT => { (!lhs, false) }
-                    MathOp::SHL => { $t::overflowing_shl(lhs, rhs.try_into().unwrap()) } // TODO
-                    MathOp::SHR => { $t::overflowing_shr(lhs, rhs.try_into().unwrap()) } // TODO
+                    MathOp::SHL => {
+                        $t::overflowing_shl(lhs, rhs.try_into().unwrap())
+                    }
+                    MathOp::SHR => {
+                        $t::overflowing_shr(lhs, rhs.try_into().unwrap())
+                    }
                 };
 
                 if overflow && !is_wrapping(flag) {

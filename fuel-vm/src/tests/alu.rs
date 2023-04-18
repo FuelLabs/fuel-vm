@@ -351,6 +351,15 @@ fn muli() {
         false,
     );
 }
+#[test]
+fn mldv() {
+    alu(
+        &[(0x10, u64::MAX), (0x11, 3), (0x12, 6)],
+        op::mldv(0x13, 0x10, 0x11, 0x12),
+        0x13,
+        u64::MAX / 2,
+    );
+}
 
 #[test]
 fn sll() {

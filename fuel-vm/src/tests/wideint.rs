@@ -392,6 +392,39 @@ fn multiply_ok_u256(
     }
 }
 
+#[rstest::rstest]
+fn multiply_two_directs_u256(
+    #[values(0, 1, 2, 5, 7)] a: u32,
+    #[values(0, 1, 2, 5, 7)] b: u32,
+) {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, a));
+    ops.push(op::movi(0x21, b));
+    ops.extend(make_u256(0x22, 0u64.into()));
+    ops.push(op::wqml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: false,
+            indirect_rhs: false,
+        },
+    ));
+    ops.push(op::movi(0x23, 32));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let result = U256::from_be_bytes(bytes);
+        assert_eq!(result, U256::from(a * b));
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
 #[test]
 fn divide_by_zero_u256() {
     let mut ops = Vec::new();

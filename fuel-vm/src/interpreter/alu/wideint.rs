@@ -7,11 +7,6 @@ use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTran
 use crate::interpreter::memory::{read_bytes, write_bytes};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
-pub(crate) struct WideIntCommonReg<'a> {
-    of: RegMut<'a, OF>,
-    err: RegMut<'a, ERR>,
-}
-
 macro_rules! wideint_ops {
     ($t:ident) => {
         paste::paste! {
@@ -53,8 +48,7 @@ macro_rules! wideint_ops {
                     args: MathArgs,
                 ) -> Result<(), RuntimeError> {
                     let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, of, err, pc, .. }, _) = split_registers(&mut self.registers);
-                    let common = WideIntCommonReg { of, err };
+                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
                     // LHS argument is always indirect, load it
                     let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
@@ -66,8 +60,16 @@ macro_rules! wideint_ops {
                         c.into()
                     };
 
-                    let result = [<op_ $t:lower>](flag.as_ref(), common, lhs, rhs, args)?;
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+                    let (wrapped, overflow) = [<op_overflowing_ $t:lower>](lhs, rhs, args);
+
+                    if overflow && !is_wrapping(flag.into()) {
+                        return Err(PanicReason::ArithmeticOverflow.into());
+                    }
+
+                    *of = overflow as Word;
+                    *err = 0;
+
+                    write_bytes(&mut self.memory, owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -306,15 +308,13 @@ macro_rules! wideint_ops {
                 }
             }
 
-            /// Returns the data to be written to the destination address
-            pub(crate) fn [<op_ $t:lower>] (
-                flag: Reg<FLAG>,
-                mut common: WideIntCommonReg,
+            /// Returns (wrapped, overflow) just like overflowing_* operations of Rust integers
+            pub(crate) fn [<op_overflowing_ $t:lower>] (
                 lhs: $t,
                 rhs: $t,
                 args: MathArgs,
-            ) -> Result<$t, RuntimeError> {
-                let (wrapped, overflow) = match args.op {
+            ) -> ($t, bool) {
+                match args.op {
                     MathOp::ADD => { $t::overflowing_add(lhs, rhs) }
                     MathOp::SUB => { $t::overflowing_sub(lhs, rhs) }
                     MathOp::OR => { (lhs | rhs, false) }
@@ -322,21 +322,20 @@ macro_rules! wideint_ops {
                     MathOp::AND => {(lhs & rhs, false) }
                     MathOp::NOT => { (!lhs, false) }
                     MathOp::SHL => {
-                        $t::overflowing_shl(lhs, rhs.try_into().unwrap())
+                        if let Ok(rhs) = rhs.try_into() {
+                            ($t::checked_shl(lhs, rhs).unwrap_or_default(), false)
+                        } else {
+                            ($t::default(), false) // Zero
+                        }
                     }
                     MathOp::SHR => {
-                        $t::overflowing_shr(lhs, rhs.try_into().unwrap())
+                        if let Ok(rhs) = rhs.try_into() {
+                            ($t::checked_shr(lhs, rhs).unwrap_or_default(), false)
+                        } else {
+                            ($t::default(), false) // Zero
+                        }
                     }
-                };
-
-                if overflow && !is_wrapping(flag) {
-                    return Err(PanicReason::ArithmeticOverflow.into());
                 }
-
-                *common.of = overflow as Word;
-                *common.err = 0;
-
-                Ok(wrapped)
             }
         }
     };

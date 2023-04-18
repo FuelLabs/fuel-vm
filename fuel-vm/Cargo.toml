@@ -41,7 +41,7 @@ num-integer = "0.1.45"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rayon = "1.7"
-rstest = "0.16"
+rstest = "0.17"
 serde_json = "1.0"
 test-case = "2.2"
 

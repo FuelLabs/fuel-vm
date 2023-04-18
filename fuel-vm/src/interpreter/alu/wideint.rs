@@ -8,13 +8,31 @@ use crate::interpreter::memory::{read_bytes, write_bytes};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
 macro_rules! wideint_ops {
-    ($t:ident) => {
+    ($t:ident, $wider_t:ident) => {
         paste::paste! {
             // Conversion helpers
+
+            /// Converts `primitive_types` version of the current type
             fn [<to_prim_ $t:lower>](value: $t) -> primitive_types::[<$t:upper>] {
                 let mut buffer = [0u8; core::mem::size_of::<$t>()];
                 buffer[..].copy_from_slice(&value.to_le_bytes());
                 primitive_types::[<$t:upper>]::from_little_endian(&buffer)
+            }
+
+            /// Converts `primitive_types` version that has double the size of the current type
+            fn [<to_wider_prim_ $t:lower>](value: $t) -> primitive_types::[<$wider_t:upper>] {
+                let mut buffer = [0u8; 2 * core::mem::size_of::<$t>()];
+                buffer[..core::mem::size_of::<$t>()].copy_from_slice(&value.to_le_bytes());
+                primitive_types::[<$wider_t:upper>]::from_little_endian(&buffer)
+            }
+
+            /// Drops higher half of the value and converts to `u128` or `ethnum::U256`
+            fn [<truncate_from_prim_ $t:lower>](value: primitive_types::[<$wider_t:upper>]) -> $t {
+                const S: usize = ::core::mem::size_of::<$t>();
+                let mut buffer = [0u8; 2 * S];
+                value.to_little_endian(&mut buffer);
+                let truncated: [u8; S] = buffer[..S].try_into().unwrap_or_else(|_| unreachable!());
+                $t::from_le_bytes(truncated)
             }
 
             impl<S, Tx> Interpreter<S, Tx>
@@ -178,15 +196,13 @@ macro_rules! wideint_ops {
                             return Err(PanicReason::ErrorFlag.into());
                         }
                     } else {
-                        let (wrapped, carry) = lhs.overflowing_add(rhs);
-                        if carry {
-                            // TODO: benchmark this against a single wider-int modulo
-                            let mod_base = wrapped % modulus;
-                            let mod_max = $t::MAX % modulus;
-                            (mod_base + mod_max + 1) % modulus // TODO: can this overflow?
-                        } else {
-                            wrapped % modulus
-                        }
+                        // Use wider types to avoid overflow
+                        let lhs = [<to_wider_prim_ $t:lower>](lhs);
+                        let rhs = [<to_wider_prim_ $t:lower>](rhs);
+                        let modulus = [<to_wider_prim_ $t:lower>](modulus);
+
+                        // Trunacte never loses data as modulus is still in domain of the original type
+                        [<truncate_from_prim_ $t:lower>]((lhs + rhs) % modulus)
                     };
 
                     *of = 0;
@@ -218,19 +234,14 @@ macro_rules! wideint_ops {
                             return Err(PanicReason::ErrorFlag.into());
                         }
                     } else {
-                        const S: usize = core::mem::size_of::<$t>();
-
                         let lhs = [<to_prim_ $t:lower>](lhs);
                         let rhs = [<to_prim_ $t:lower>](rhs);
-                        let modulus = [<to_prim_ $t:lower>](modulus);
+                        let modulus = [<to_wider_prim_ $t:lower>](modulus);
 
-                        let result = lhs.full_mul(rhs) % modulus.full_mul(1u64.into());
+                        let result = lhs.full_mul(rhs) % modulus;
 
                         // This never loses data, since the modulus type has same width as the result
-                        let mut buffer = [0u8; 2 * core::mem::size_of::<$t>()];
-                        result.to_little_endian(&mut buffer);
-                        let truncated: [u8; S] = buffer[..S].try_into().unwrap_or_else(|_| unreachable!());
-                        $t::from_le_bytes(truncated)
+                        [<truncate_from_prim_ $t:lower>](result)
                     };
 
                     *of = 0;
@@ -261,21 +272,21 @@ macro_rules! wideint_ops {
                     let rhs = [<to_prim_ $t:lower>](rhs);
 
                     // TODO: optimize this, especially for divider == 0
-                    let one = primitive_types::[<$t:upper>]::one();
                     let divider = if divider == 0 {
-                        one.full_mul(one) << (S * 8)
+                        primitive_types::[<$wider_t:upper>]::one() << (S * 8)
                     } else {
-                        [<to_prim_ $t:lower>](divider).full_mul(one)
+                        [<to_wider_prim_ $t:lower>](divider)
                     };
 
                     let result = lhs.full_mul(rhs) / divider;
 
                     let mut buffer = [0u8; 2 * S];
                     result.to_little_endian(&mut buffer);
-                    let truncated: [u8; S] = buffer[S..].try_into().unwrap_or_else(|_| unreachable!());
-                    let result = $t::from_le_bytes(truncated);
+                    let lower_half: [u8; S] = buffer[..S].try_into().unwrap_or_else(|_| unreachable!());
+                    let higher_half: [u8; S] = buffer[S..].try_into().unwrap_or_else(|_| unreachable!());
+                    let result = $t::from_le_bytes(lower_half);
 
-                    if buffer[..S] != [0u8; S] {
+                    if higher_half != [0u8; S] {
                         *of = 1;
                     } else {
                         *of = 0;
@@ -337,7 +348,7 @@ macro_rules! wideint_ops {
     };
 }
 
-wideint_ops!(u128);
-wideint_ops!(U256);
+wideint_ops!(u128, U256);
+wideint_ops!(U256, U512);
 
 // TODO: benchmark primitive_types against ethnum for each operation

@@ -5,6 +5,7 @@ use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 mod wideint;
+mod muldiv;
 
 #[cfg(test)]
 mod tests;

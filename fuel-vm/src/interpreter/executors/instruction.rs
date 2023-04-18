@@ -295,6 +295,12 @@ where
                 self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), imm.into())?;
             }
 
+            Instruction::MLDV(mldv) => {
+                self.gas_charge(self.gas_costs.mldv)?;
+                let (a, b, c, d) = mldv.unpack();
+                self.alu_muldiv(a.into(), r!(b), r!(c), r!(d))?;
+            }
+
             Instruction::NOOP(_noop) => {
                 self.gas_charge(self.gas_costs.noop)?;
                 self.alu_clear()?;

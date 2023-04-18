@@ -271,14 +271,12 @@ macro_rules! wideint_ops {
                     let lhs = [<to_prim_ $t:lower>](lhs);
                     let rhs = [<to_prim_ $t:lower>](rhs);
 
-                    // TODO: optimize this, especially for divider == 0
-                    let divider = if divider == 0 {
-                        primitive_types::[<$wider_t:upper>]::one() << (S * 8)
+                    let product = lhs.full_mul(rhs);
+                    let result = if divider == 0 {
+                        product >> (S * 8)
                     } else {
-                        [<to_wider_prim_ $t:lower>](divider)
+                        product / [<to_wider_prim_ $t:lower>](divider)
                     };
-
-                    let result = lhs.full_mul(rhs) / divider;
 
                     let mut buffer = [0u8; 2 * S];
                     result.to_little_endian(&mut buffer);

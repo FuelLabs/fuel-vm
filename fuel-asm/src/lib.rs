@@ -124,6 +124,8 @@ impl_instructions! {
     0x20 SUB sub [RegId RegId RegId]
     "Bitwise XORs two registers."
     0x21 XOR xor [RegId RegId RegId]
+    "Fused multiply-divide with arbitrary precision intermediate step."
+    0x22 MLDV mldv [RegId RegId RegId RegId]
 
     "Return from context."
     0x24 RET ret [RegId]
@@ -477,8 +479,8 @@ impl Opcode {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
             | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
             | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
-            | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI
-            | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
+            | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }

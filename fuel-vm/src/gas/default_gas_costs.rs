@@ -55,6 +55,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         mroo: 2,
         mul: 1,
         muli: 1,
+        mldv: 2,
         noop: 1,
         not: 1,
         or: 1,

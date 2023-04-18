@@ -5,6 +5,7 @@ use crate::Imm06;
 /// Comparison mode used by WDCM and WQCM instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::FromRepr)]
 #[repr(u8)]
+#[must_use]
 pub enum CompareMode {
     /// Equality (`==`)
     EQ = 0,
@@ -22,6 +23,7 @@ pub enum CompareMode {
 
 /// Arguments for WDCM and WQCM instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub struct CompareArgs {
     /// Comparison mode
     pub mode: CompareMode,
@@ -51,6 +53,7 @@ impl CompareArgs {
 /// The operation performed by WDOP and WQOP instructions, determined as
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::FromRepr)]
 #[repr(u8)]
+#[must_use]
 pub enum MathOp {
     /// Add
     ADD = 0,
@@ -72,6 +75,7 @@ pub enum MathOp {
 
 /// Additional arguments for WDOP and WQOP instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub struct MathArgs {
     /// The operation to perform
     pub op: MathOp,
@@ -97,6 +101,7 @@ impl MathArgs {
 
 /// Additional arguments for WDML and WQML instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub struct MulArgs {
     /// Load LHSS from register if true, otherwise zero-extend register value
     pub indirect_lhs: bool,
@@ -129,6 +134,7 @@ impl MulArgs {
 
 /// Additional arguments for WMDV and WDDV instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
 pub struct DivArgs {
     /// Load RHS from register if true, otherwise zero-extend register value
     pub indirect_rhs: bool,

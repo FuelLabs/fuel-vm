@@ -20,6 +20,7 @@ strum = { version = "0.24", default-features = false, features = ["derive"] }
 [dev-dependencies]
 bincode = { workspace = true }
 fuel-asm = { path = ".", features = ["serde"] }
+rstest = "0.16"
 
 [features]
 default = ["fuel-types/default", "std"]

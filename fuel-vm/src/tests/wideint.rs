@@ -2,7 +2,7 @@ use ethnum::U256;
 
 use fuel_asm::{
     op,
-    widemath::{CompareArgs, CompareMode, DivArgs, MathArgs, MathOp, MulArgs},
+    wideint::{CompareArgs, CompareMode, DivArgs, MathArgs, MathOp, MulArgs},
     Flags, Instruction, PanicReason, RegId,
 };
 use fuel_tx::Receipt;

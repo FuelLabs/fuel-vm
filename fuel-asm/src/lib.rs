@@ -21,7 +21,7 @@ mod unpack;
 mod encoding_tests;
 
 #[doc(no_inline)]
-pub use args::{widemath, GMArgs, GTFArgs};
+pub use args::{wideint, GMArgs, GTFArgs};
 pub use fuel_types::{RegisterId, Word};
 pub use instruction_result::InstructionResult;
 pub use panic_reason::PanicReason;

@@ -21,7 +21,7 @@ pub enum CompareMode {
 }
 
 /// Arguments for WDCM and WQCM instructions.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompareArgs {
     /// Comparison mode
     pub mode: CompareMode,
@@ -71,7 +71,7 @@ pub enum MathOp {
 }
 
 /// Additional arguments for WDOP and WQOP instructions.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MathArgs {
     /// The operation to perform
     pub op: MathOp,
@@ -96,7 +96,7 @@ impl MathArgs {
 }
 
 /// Additional arguments for WDML and WQML instructions.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MulArgs {
     /// Load LHSS from register if true, otherwise zero-extend register value
     pub indirect_lhs: bool,
@@ -128,7 +128,7 @@ impl MulArgs {
 }
 
 /// Additional arguments for WMDV and WDDV instructions.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DivArgs {
     /// Load RHS from register if true, otherwise zero-extend register value
     pub indirect_rhs: bool,
@@ -149,5 +149,87 @@ impl DivArgs {
             return None;
         }
         Some(Self { indirect_rhs })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[rstest::rstest]
+    fn encode_decode_compare(
+        #[values(CompareMode::EQ, CompareMode::NE, CompareMode::GTE)] mode: CompareMode,
+        #[values(true, false)] indirect_rhs: bool,
+    ) {
+        let orig = CompareArgs { mode, indirect_rhs };
+        let decoded = CompareArgs::from_imm(orig.to_imm()).expect("decode error");
+        assert_eq!(orig, decoded);
+    }
+
+    #[test]
+    fn decode_encode_compare() {
+        for imm in 0..Imm06::MAX.0 {
+            let bits = Imm06::try_from(imm).unwrap();
+            if let Some(decoded) = CompareArgs::from_imm(bits) {
+                assert_eq!(decoded.to_imm().0, imm);
+            }
+        }
+    }
+
+    #[rstest::rstest]
+    fn encode_decode_mathop(
+        #[values(MathOp::ADD, MathOp::SUB, MathOp::SHR)] op: MathOp,
+        #[values(true, false)] indirect_rhs: bool,
+    ) {
+        let orig = MathArgs { op, indirect_rhs };
+        let decoded = MathArgs::from_imm(orig.to_imm()).expect("decode error");
+        assert_eq!(orig, decoded);
+    }
+
+    #[test]
+    fn decode_encode_mathop() {
+        for imm in 0..Imm06::MAX.0 {
+            let bits = Imm06::try_from(imm).unwrap();
+            if let Some(decoded) = MathArgs::from_imm(bits) {
+                assert_eq!(decoded.to_imm().0, imm);
+            }
+        }
+    }
+
+    #[rstest::rstest]
+    fn encode_decode_mul(#[values(true, false)] indirect_lhs: bool, #[values(true, false)] indirect_rhs: bool) {
+        let orig = MulArgs {
+            indirect_lhs,
+            indirect_rhs,
+        };
+        let decoded = MulArgs::from_imm(orig.to_imm()).expect("decode error");
+        assert_eq!(orig, decoded);
+    }
+
+    #[test]
+    fn decode_encode_mul() {
+        for imm in 0..Imm06::MAX.0 {
+            let bits = Imm06::try_from(imm).unwrap();
+            if let Some(decoded) = MulArgs::from_imm(bits) {
+                assert_eq!(decoded.to_imm().0, imm);
+            }
+        }
+    }
+
+    #[rstest::rstest]
+    fn encode_decode_div(#[values(true, false)] indirect_rhs: bool) {
+        let orig = DivArgs { indirect_rhs };
+        let decoded = DivArgs::from_imm(orig.to_imm()).expect("decode error");
+        assert_eq!(orig, decoded);
+    }
+
+    #[test]
+    fn decode_encode_div() {
+        for imm in 0..Imm06::MAX.0 {
+            let bits = Imm06::try_from(imm).unwrap();
+            if let Some(decoded) = DivArgs::from_imm(bits) {
+                assert_eq!(decoded.to_imm().0, imm);
+            }
+        }
     }
 }

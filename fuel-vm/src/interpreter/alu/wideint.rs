@@ -1,6 +1,6 @@
 use ethnum::U256;
 
-use fuel_asm::{widemath::*, PanicReason};
+use fuel_asm::{wideint::*, PanicReason};
 use fuel_types::{RegisterId, Word};
 
 use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTransaction, Interpreter};

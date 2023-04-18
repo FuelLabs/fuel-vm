@@ -2,7 +2,7 @@
 //! unique `Opcode` variant.
 
 use super::{
-    widemath::{CompareArgs, DivArgs, MathArgs, MulArgs},
+    wideint::{CompareArgs, DivArgs, MathArgs, MulArgs},
     CheckRegId, GMArgs, GTFArgs, Imm12, Imm18, Instruction, RegId,
 };
 

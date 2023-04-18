@@ -10,6 +10,13 @@ use crate::{constraints::reg_key::*, error::RuntimeError};
 macro_rules! wideint_ops {
     ($t:ident) => {
         paste::paste! {
+            // Conversion helpers
+            fn [<to_prim_ $t:lower>](value: $t) -> primitive_types::[<$t:upper>] {
+                let mut buffer = [0u8; core::mem::size_of::<$t>()];
+                buffer[..].copy_from_slice(&value.to_le_bytes());
+                primitive_types::[<$t:upper>]::from_little_endian(&buffer)
+            }
+
             impl<S, Tx> Interpreter<S, Tx>
             where
                 Tx: ExecutableTransaction,
@@ -213,21 +220,16 @@ macro_rules! wideint_ops {
                     } else {
                         const S: usize = core::mem::size_of::<$t>();
 
-                        let mut buffer = [0u8; S];
-                        buffer[..].copy_from_slice(&lhs.to_le_bytes());
-                        let lhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
-                        buffer[..].copy_from_slice(&rhs.to_le_bytes());
-                        let rhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
+                        let lhs = [<to_prim_ $t:lower>](lhs);
+                        let rhs = [<to_prim_ $t:lower>](rhs);
+                        let modulus = [<to_prim_ $t:lower>](modulus);
 
-                        let mut buffer = [0u8; 2 * S];
-                        buffer[S..].copy_from_slice(&modulus.to_le_bytes());
-                        let modulus = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
+                        let result = lhs.full_mul(rhs) % modulus.full_mul(1u64.into());
 
-                        let result = lhs.full_mul(rhs) % modulus;
+                        // This never loses data, since the modulus type has same width as the result
+                        let mut buffer = [0u8; 2 * core::mem::size_of::<$t>()];
                         result.to_little_endian(&mut buffer);
-
-                        // This never loses data, since the modulus type has same witdth as the result
-                        let truncated: [u8; S] = buffer[S..].try_into().unwrap_or_else(|_| unreachable!());
+                        let truncated: [u8; S] = buffer[..S].try_into().unwrap_or_else(|_| unreachable!());
                         $t::from_le_bytes(truncated)
                     };
 
@@ -255,21 +257,15 @@ macro_rules! wideint_ops {
 
                     const S: usize = core::mem::size_of::<$t>();
 
-                    let mut buffer = [0u8; S];
-                    buffer[..].copy_from_slice(&lhs.to_le_bytes());
-                    let lhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
-                    buffer[..].copy_from_slice(&rhs.to_le_bytes());
-                    let rhs = primitive_types::[<$t:upper>]::from_little_endian(&buffer);
+                    let lhs = [<to_prim_ $t:lower>](lhs);
+                    let rhs = [<to_prim_ $t:lower>](rhs);
 
                     // TODO: optimize this, especially for divider == 0
                     let one = primitive_types::[<$t:upper>]::one();
                     let divider = if divider == 0 {
                         one.full_mul(one) << (S * 8)
                     } else {
-                        let mut buffer = [0u8; 2 * S];
-                        buffer[S..].copy_from_slice(&divider.to_le_bytes());
-                        primitive_types::[<$t:upper>]::from_little_endian(&buffer)
-                        .full_mul(one)
+                        [<to_prim_ $t:lower>](divider).full_mul(one)
                     };
 
                     let result = lhs.full_mul(rhs) / divider;

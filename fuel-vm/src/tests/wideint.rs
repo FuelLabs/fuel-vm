@@ -393,10 +393,7 @@ fn multiply_ok_u256(
 }
 
 #[rstest::rstest]
-fn multiply_two_directs_u256(
-    #[values(0, 1, 2, 5, 7)] a: u32,
-    #[values(0, 1, 2, 5, 7)] b: u32,
-) {
+fn multiply_two_directs_u256(#[values(0, 1, 2, 5, 7)] a: u32, #[values(0, 1, 2, 5, 7)] b: u32) {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, a));
     ops.push(op::movi(0x21, b));

@@ -9,7 +9,13 @@ where
     Tx: ExecutableTransaction,
 {
     /// Stores the overflowed wrapped value into RegId::OF
-    pub(crate) fn alu_muldiv(&mut self, ra: RegisterId, lhs: Word, rhs: Word, divider: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn alu_muldiv(
+        &mut self,
+        ra: RegisterId,
+        lhs: Word,
+        rhs: Word,
+        divider: Word,
+    ) -> Result<(), RuntimeError> {
         let (
             SystemRegisters {
                 flag,
@@ -65,7 +71,6 @@ pub(crate) fn muldiv(lhs: u64, rhs: u64, divider: u64) -> MulDivResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[rstest::rstest]
     #[case(0, 0, 1, 0)]

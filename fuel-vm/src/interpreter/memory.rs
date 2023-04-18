@@ -17,7 +17,7 @@ mod tests;
 
 #[cfg(test)]
 mod allocation_tests;
-#[allow(clippy::derived_hash_with_manual_eq)]
+#[allow(clippy::derive_hash_xor_eq)]
 #[derive(Debug, Clone, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Memory range representation for the VM.

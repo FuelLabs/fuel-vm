@@ -80,6 +80,11 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.transaction
     }
 
+    /// Returns reference on inner transaction.
+    pub fn transaction_mut(&mut self) -> &mut Tx {
+        &mut self.transaction
+    }
+
     /// Returns the metadata generated during the check for transaction.
     pub fn metadata(&self) -> &Tx::CheckedMetadata {
         &self.metadata
@@ -116,7 +121,7 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &Default::default(), &Default::default(), true)
+            .into_checked(Default::default(), &Default::default(), &Default::default())
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -161,14 +166,13 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         block_height: BlockHeight,
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
-        estimate_gas: bool,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
         self.into_checked_basic(block_height, params)?
             .check_signatures(params)?
-            .check_predicates(params, gas_costs, estimate_gas)
+            .check_predicates(params, gas_costs)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -188,7 +192,7 @@ pub trait CheckPredicates: Sized {
 /// Performs predicate verification for a transaction
 pub trait EstimatePredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn estimate_predicates(&mut self, block_height: BlockHeight, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError>;
+    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError>;
 }
 
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
@@ -212,15 +216,11 @@ where
     Self: Clone,
     <Tx as IntoChecked>::CheckedMetadata: crate::interpreter::CheckedMetadata,
 {
-    fn estimate_predicates(&mut self, block_height: BlockHeight, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
-        if !self.checks_bitmask.contains(Checks::Predicates) {
-            // TODO: Optimize predicate verification to work with references where it is possible.
-            let checked = Interpreter::<PredicateStorage>::check_predicates(&mut self, *params, gas_costs.clone(), true)?;
-            self.checks_bitmask.insert(Checks::Predicates);
-            self.metadata.set_gas_used_by_predicates(checked.gas_used());
-            // TODO: Optimize predicate verification to work with references where it is possible.
-        }
-        Ok(())
+    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
+        let mut checked_tx = self.into_checked_basic(BlockHeight::max(Default::default(), Default::default()), params)?;
+        // TODO: Optimize predicate verification to work with references where it is possible.
+        Interpreter::<PredicateStorage>::check_predicates(&mut checked_tx, *params, gas_costs.clone(), true)?;
+        Ok(checked_tx.transaction().clone())
     }
 }
 
@@ -235,9 +235,9 @@ impl CheckPredicates for Checked<Transaction> {
     fn check_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
-            CheckedTransaction::Script(tx) => CheckPredicates::check_predicates(tx, params, gas_costs, estimate_gas)?.into(),
-            CheckedTransaction::Create(tx) => CheckPredicates::check_predicates(tx, params, gas_costs, estimate_gas)?.into(),
-            CheckedTransaction::Mint(tx) => CheckPredicates::check_predicates(tx, params, gas_costs, estimate_gas)?.into(),
+            CheckedTransaction::Script(tx) => CheckPredicates::check_predicates(tx, params, gas_costs)?.into(),
+            CheckedTransaction::Create(tx) => CheckPredicates::check_predicates(tx, params, gas_costs)?.into(),
+            CheckedTransaction::Mint(tx) => CheckPredicates::check_predicates(tx, params, gas_costs)?.into(),
         };
         Ok(checked_transaction.into())
     }
@@ -389,7 +389,6 @@ mod tests {
     use quickcheck_macros::quickcheck;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
-    use crate::estimated_transaction::IntoEstimated;
 
     #[test]
     fn checked_tx_has_default() {
@@ -843,9 +842,8 @@ mod tests {
         let gas_costs = GasCosts::default();
 
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
-        let binding = tx.into_estimated(block_height, &params.clone(), &gas_costs.clone()).unwrap();
-        let estimated_tx = binding.transaction().clone();
-        let checked = estimated_tx
+        let tx = tx.estimate
+        let checked = tx
             // Sets Checks::Basic
             .into_checked_basic(block_height, &params)
             .unwrap()

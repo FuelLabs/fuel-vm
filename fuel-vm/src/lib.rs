@@ -13,7 +13,6 @@ pub mod consts;
 pub mod context;
 pub mod crypto;
 pub mod error;
-pub mod estimated_transaction;
 pub mod gas;
 pub mod interpreter;
 pub mod memory_client;

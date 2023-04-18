@@ -56,8 +56,8 @@ where
 
     builder.add_input(input);
 
-    let tx = builder.with_params(params).finalize_checked_basic(height);
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default()).is_ok()
+    let mut tx = builder.with_params(params).finalize_checked_basic(height);
+    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), false).is_ok()
 }
 
 #[test]
@@ -174,18 +174,10 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.add_input(input);
 
-    let estimated_tx = builder.finalize_estimated(Default::default(), &GasCosts::default());
-
-    let tx_with_predicate = estimated_tx.transaction()
-        .into_checked_basic(Default::default(), &ConsensusParameters::DEFAULT).expect("failed to convert into checked basic")
+    let tx_with_predicate = builder
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
-
-
-    // let tx_with_predicate = builder
-    //     .finalize_checked_basic(Default::default())
-    //     .check_predicates(&params, &GasCosts::default())
-    //     .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
     let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
@@ -246,8 +238,8 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let tx = builder.finalize_checked_basic(Default::default());
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
+    let mut tx = builder.finalize_checked_basic(Default::default());
+    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), false)
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }

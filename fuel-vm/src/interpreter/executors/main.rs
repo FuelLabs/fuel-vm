@@ -31,16 +31,6 @@ impl PredicatesChecked {
         self.gas_used
     }
 }
-/// Predicates were estimated succesfully
-#[derive(Debug, Clone, Copy)]
-pub struct PredicatesEstimated {
-    gas_used: Word,
-}
-impl PredicatesEstimated {
-    pub fn gas_used(&self) -> Word {
-        self.gas_used
-    }
-}
 
 // FIXME replace for a type-safe transaction
 impl<T> Interpreter<PredicateStorage, T> {
@@ -86,7 +76,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
             let checked_clone = checked.clone();
 
-            for (idx, input) in checked.transaction().inputs_mut().iter_mut().enumerate() {
+            for (idx, input) in checked.transaction_mut().inputs_mut().iter_mut().enumerate() {
                 if let Some(predicate) = RuntimePredicate::from_tx(&params, checked_clone.transaction(), idx) {
                     vm.init_predicate_estimation(checked_clone.clone());
                     vm.context = Context::PredicateEstimation { program: predicate };

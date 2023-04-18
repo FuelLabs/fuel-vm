@@ -496,6 +496,7 @@ fn divide_ok_u256(
 #[case(9u64.into(), 9u64.into(), 4u64.into(), 20u64.into())]
 #[case(U256::MAX, 5u64.into(), 10u64.into(), U256::MAX / 2)]
 #[case(U256::MAX, 2u64.into(), 6u64.into(), U256::MAX / 3)]
+#[case(U256::MAX, U256::MAX, U256::MAX, U256::MAX)]
 #[case(U256::MAX, u128::MAX.into(), 0u64.into(), 340282366920938463463374607431768211454u128.into())]
 fn fused_mul_div_u256(#[case] lhs: U256, #[case] rhs: U256, #[case] divisor: U256, #[case] expected: U256) {
     let mut ops = Vec::new();

@@ -58,9 +58,8 @@ macro_rules! wideint_ops {
                         c.into()
                     };
 
-                    let result = [<cmp_ $t:lower>](lhs, rhs, args.mode);
                     let dest: &mut Word = &mut w[ra.try_into()?];
-                    *dest = result as Word;
+                    *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
                     inc_pc(pc)
                 }
@@ -302,14 +301,15 @@ macro_rules! wideint_ops {
                 lhs: $t,
                 rhs: $t,
                 mode: CompareMode,
-            ) -> bool {
+            ) -> Word {
                 match mode {
-                    CompareMode::EQ => lhs == rhs,
-                    CompareMode::NE => lhs != rhs,
-                    CompareMode::GT => lhs > rhs,
-                    CompareMode::LT => lhs < rhs,
-                    CompareMode::GTE => lhs >= rhs,
-                    CompareMode::LTE => lhs <= rhs,
+                    CompareMode::EQ => (lhs == rhs) as Word,
+                    CompareMode::NE => (lhs != rhs) as Word,
+                    CompareMode::GT => (lhs > rhs) as Word,
+                    CompareMode::LT => (lhs < rhs) as Word,
+                    CompareMode::GTE => (lhs >= rhs) as Word,
+                    CompareMode::LTE => (lhs <= rhs) as Word,
+                    CompareMode::LZC => lhs.leading_zeros() as Word,
                 }
             }
 

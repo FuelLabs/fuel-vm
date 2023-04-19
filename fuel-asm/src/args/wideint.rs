@@ -19,6 +19,8 @@ pub enum CompareMode {
     LTE = 4,
     /// Greater than or equals (`>=`)
     GTE = 5,
+    /// Number of leading zeroes in lhs (`lzcnt`) (discards rhs)
+    LZC = 6,
 }
 
 /// Arguments for WDCM and WQCM instructions.

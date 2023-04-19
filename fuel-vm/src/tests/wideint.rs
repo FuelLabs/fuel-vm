@@ -63,14 +63,15 @@ fn cmp_u128(
 
     if let Receipt::Log { ra, .. } = receipts.first().unwrap() {
         let expected = match mode {
-            CompareMode::EQ => a == b,
-            CompareMode::NE => a != b,
-            CompareMode::LT => a < b,
-            CompareMode::GT => a > b,
-            CompareMode::LTE => a <= b,
-            CompareMode::GTE => a >= b,
+            CompareMode::EQ => (a == b) as u64,
+            CompareMode::NE => (a != b) as u64,
+            CompareMode::LT => (a < b) as u64,
+            CompareMode::GT => (a > b) as u64,
+            CompareMode::LTE => (a <= b) as u64,
+            CompareMode::GTE => (a >= b) as u64,
+            CompareMode::LZC => a.leading_zeros() as u64,
         };
-        assert_eq!(*ra, expected as u64);
+        assert_eq!(*ra, expected);
     } else {
         panic!("Expected log receipt");
     }
@@ -111,14 +112,15 @@ fn cmp_u256(
 
     if let Receipt::Log { ra, .. } = receipts.first().unwrap() {
         let expected = match mode {
-            CompareMode::EQ => a == b,
-            CompareMode::NE => a != b,
-            CompareMode::LT => a < b,
-            CompareMode::GT => a > b,
-            CompareMode::LTE => a <= b,
-            CompareMode::GTE => a >= b,
+            CompareMode::EQ => (a == b) as u64,
+            CompareMode::NE => (a != b) as u64,
+            CompareMode::LT => (a < b) as u64,
+            CompareMode::GT => (a > b) as u64,
+            CompareMode::LTE => (a <= b) as u64,
+            CompareMode::GTE => (a >= b) as u64,
+            CompareMode::LZC => a.leading_zeros() as u64,
         };
-        assert_eq!(*ra, expected as u64);
+        assert_eq!(*ra, expected);
     } else {
         panic!("Expected log receipt");
     }

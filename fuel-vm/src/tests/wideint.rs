@@ -41,7 +41,7 @@ fn cmp_u128(
         CompareMode::GT,
         CompareMode::LTE,
         CompareMode::GTE,
-        CompareMode::LZC,
+        CompareMode::LZC
     )]
     mode: CompareMode,
 ) {
@@ -91,7 +91,7 @@ fn cmp_u256(
         CompareMode::GT,
         CompareMode::LTE,
         CompareMode::GTE,
-        CompareMode::LZC,
+        CompareMode::LZC
     )]
     mode: CompareMode,
 ) {
@@ -399,9 +399,8 @@ fn multiply_ok_u256(
 #[rstest::rstest]
 fn multiply_single_indirect_u256(
     #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into(), u128::MAX.into())] a: U256,
-    #[values(0, 1, 2, 5, 7)] b: u32
+    #[values(0, 1, 2, 5, 7)] b: u32,
 ) {
-
     let mut ops_lhs = Vec::new();
     ops_lhs.extend(make_u256(0x20, a));
     ops_lhs.push(op::movi(0x21, b));
@@ -435,7 +434,6 @@ fn multiply_single_indirect_u256(
     ops_rhs.push(op::movi(0x23, 32));
     ops_rhs.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
     ops_rhs.push(op::ret(RegId::ONE));
-
 
     let lhs_receipts = run_script(ops_lhs);
     let rhs_receipts = run_script(ops_rhs);

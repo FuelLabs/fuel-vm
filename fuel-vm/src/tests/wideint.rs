@@ -40,7 +40,8 @@ fn cmp_u128(
         CompareMode::LT,
         CompareMode::GT,
         CompareMode::LTE,
-        CompareMode::GTE
+        CompareMode::GTE,
+        CompareMode::LZC,
     )]
     mode: CompareMode,
 ) {
@@ -89,7 +90,8 @@ fn cmp_u256(
         CompareMode::LT,
         CompareMode::GT,
         CompareMode::LTE,
-        CompareMode::GTE
+        CompareMode::GTE,
+        CompareMode::LZC,
     )]
     mode: CompareMode,
 ) {
@@ -389,6 +391,71 @@ fn multiply_ok_u256(
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a * b);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
+fn multiply_single_indirect_u256(
+    #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into(), u128::MAX.into())] a: U256,
+    #[values(0, 1, 2, 5, 7)] b: u32
+) {
+
+    let mut ops_lhs = Vec::new();
+    ops_lhs.extend(make_u256(0x20, a));
+    ops_lhs.push(op::movi(0x21, b));
+    ops_lhs.extend(make_u256(0x22, 0u64.into()));
+    ops_lhs.push(op::wqml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: true,
+            indirect_rhs: false,
+        },
+    ));
+    ops_lhs.push(op::movi(0x23, 32));
+    ops_lhs.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops_lhs.push(op::ret(RegId::ONE));
+
+    let mut ops_rhs = Vec::new();
+    ops_rhs.push(op::movi(0x20, b));
+    ops_rhs.extend(make_u256(0x21, a));
+    ops_rhs.extend(make_u256(0x22, 0u64.into()));
+    ops_rhs.push(op::wqml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: false,
+            indirect_rhs: true,
+        },
+    ));
+    ops_rhs.push(op::movi(0x23, 32));
+    ops_rhs.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops_rhs.push(op::ret(RegId::ONE));
+
+
+    let lhs_receipts = run_script(ops_lhs);
+    let rhs_receipts = run_script(ops_rhs);
+
+    dbg!(&lhs_receipts);
+
+    let expected = a * U256::from(b);
+
+    if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
+        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let result = U256::from_be_bytes(bytes);
+        assert_eq!(result, expected);
+    } else {
+        panic!("Expected logd receipt");
+    }
+
+    if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
+        let bytes: [u8; 32] = data.clone().try_into().unwrap();
+        let result = U256::from_be_bytes(bytes);
+        assert_eq!(result, expected);
     } else {
         panic!("Expected logd receipt");
     }

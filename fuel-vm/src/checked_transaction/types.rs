@@ -129,9 +129,9 @@ pub mod mint {
 pub mod script {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked,
+        Checked, IntoChecked, ExecutableTransaction
     };
-    use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
+    use crate::checked_transaction::{EstimatePredicates, NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{BlockHeight, Word};
 
@@ -159,6 +159,32 @@ pub mod script {
             block_height: BlockHeight,
             params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
+            self.precompute(params);
+            self.check_without_signatures(block_height, params)?;
+
+            // validate fees and compute free balances
+            let AvailableBalances {
+                non_retryable_balances,
+                retryable_balance,
+                fee,
+            } = initial_free_balances(&self, params)?;
+
+            let metadata = CheckedMetadata {
+                non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
+                retryable_balance: RetryableAmount(retryable_balance),
+                block_height,
+                fee,
+                gas_used_by_predicates: 0,
+            };
+
+            Ok(Checked::basic(self, metadata))
+        }
+    }
+
+    impl EstimatePredicates for Script {
+        fn estimate_predicates(&mut self, block_height: BlockHeight, params: &ConsensusParameters) -> Script {
+            let tx: ExecutableTransaction = self.into();
+
             self.precompute(params);
             self.check_without_signatures(block_height, params)?;
 

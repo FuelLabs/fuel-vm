@@ -47,9 +47,7 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
-use crate::checked_transaction::{
-    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
-};
+use crate::checked_transaction::{CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata};
 
 use self::memory::Memory;
 use self::receipts::ReceiptsCtx;
@@ -190,6 +188,7 @@ pub trait ExecutableTransaction:
     + Chargeable
     + Executable
     + IntoChecked
+    + EstimatePredicates
     + UniqueIdentifier
     + field::Maturity
     + field::Inputs

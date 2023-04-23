@@ -55,11 +55,8 @@ where
             .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
     }
 
-    #[tracing::instrument(name = "instruction", skip(self))]
     fn _instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
         let instruction = Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
-
-        tracing::trace!("Instruction: {:?}", instruction);
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68

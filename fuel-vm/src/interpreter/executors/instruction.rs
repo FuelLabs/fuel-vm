@@ -145,56 +145,56 @@ where
             Instruction::WDCM(wdcm) => {
                 self.gas_charge(self.gas_costs.wdcm)?;
                 let (a, b, c, imm) = wdcm.unpack();
-                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WQCM(wdcm) => {
                 self.gas_charge(self.gas_costs.wqcm)?;
                 let (a, b, c, imm) = wdcm.unpack();
-                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WDOP(wdop) => {
                 self.gas_charge(self.gas_costs.wdcm)?;
                 let (a, b, c, imm) = wdop.unpack();
-                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQOP(wqop) => {
                 self.gas_charge(self.gas_costs.wqcm)?;
                 let (a, b, c, imm) = wqop.unpack();
-                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u256(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WDML(wdml) => {
                 self.gas_charge(self.gas_costs.wdml)?;
                 let (a, b, c, imm) = wdml.unpack();
-                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQML(wqml) => {
                 self.gas_charge(self.gas_costs.wqml)?;
                 let (a, b, c, imm) = wqml.unpack();
-                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u256(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WDDV(wddv) => {
                 self.gas_charge(self.gas_costs.wddv)?;
                 let (a, b, c, imm) = wddv.unpack();
-                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQDV(wqdv) => {
                 self.gas_charge(self.gas_costs.wqdv)?;
                 let (a, b, c, imm) = wqdv.unpack();
-                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::ErrorFlag)?;
+                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u256(r!(a), r!(b), r!(c), args)?;
             }
 

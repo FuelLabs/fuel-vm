@@ -438,8 +438,6 @@ fn multiply_single_indirect_u256(
     let lhs_receipts = run_script(ops_lhs);
     let rhs_receipts = run_script(ops_rhs);
 
-    dbg!(&lhs_receipts);
-
     let expected = a * U256::from(b);
 
     if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {

@@ -7,23 +7,35 @@ use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTran
 use crate::interpreter::memory::{read_bytes, write_bytes};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
+// This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
+// It takes two type parameters: the current type and type that has double-width of it.
+// The appropriate type is chosen based on benchmarks for each operation.
+// Currently, `primitive_types` is used for anything requiring division, modulo or 512-bit precision.
+// Otherwise, `ethnum` is used for 256-bit operations, and the builtin `u128` for 128-bit operations.
 macro_rules! wideint_ops {
     ($t:ident, $wider_t:ident) => {
         paste::paste! {
             // Conversion helpers
 
-            /// Converts `primitive_types` version of the current type
+            /// Converts to `primitive_types` version of the current type
             fn [<to_prim_ $t:lower>](value: $t) -> primitive_types::[<$t:upper>] {
                 let mut buffer = [0u8; core::mem::size_of::<$t>()];
                 buffer[..].copy_from_slice(&value.to_le_bytes());
                 primitive_types::[<$t:upper>]::from_little_endian(&buffer)
             }
 
-            /// Converts `primitive_types` version that has double the size of the current type
+            /// Converts to `primitive_types` version that has double the size of the current type
             fn [<to_wider_prim_ $t:lower>](value: $t) -> primitive_types::[<$wider_t:upper>] {
                 let mut buffer = [0u8; 2 * core::mem::size_of::<$t>()];
                 buffer[..core::mem::size_of::<$t>()].copy_from_slice(&value.to_le_bytes());
                 primitive_types::[<$wider_t:upper>]::from_little_endian(&buffer)
+            }
+
+            /// Converts to `u128` or `ethnum::U256`
+            fn [<from_prim_ $t:lower>](value: primitive_types::[<$t:upper>]) -> $t {
+                let mut buffer = [0u8; ::core::mem::size_of::<$t>()];
+                value.to_little_endian(&mut buffer);
+                $t::from_le_bytes(buffer)
             }
 
             /// Drops higher half of the value and converts to `u128` or `ethnum::U256`
@@ -155,8 +167,11 @@ macro_rules! wideint_ops {
                         c.into()
                     };
 
-                    let result = match $t::checked_div(lhs, rhs) {
-                        Some(d) => d,
+                    let lhs = [<to_prim_ $t:lower>](lhs);
+                    let rhs = [<to_prim_ $t:lower>](rhs);
+
+                    let result = match lhs.checked_div(rhs) {
+                        Some(d) => [<from_prim_ $t:lower>](d),
                         None => {
                             if is_unsafe_math(flag.into()) {
                                 $t::default() // Zero
@@ -348,5 +363,3 @@ macro_rules! wideint_ops {
 
 wideint_ops!(u128, U256);
 wideint_ops!(U256, U512);
-
-// TODO: benchmark primitive_types against ethnum for each operation

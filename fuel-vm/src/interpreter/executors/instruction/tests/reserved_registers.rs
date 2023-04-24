@@ -1,6 +1,6 @@
 use super::*;
 use crate::checked_transaction::IntoChecked;
-use fuel_asm::PanicReason::OutOfGas;
+use fuel_asm::PanicReason;
 use fuel_tx::{ConsensusParameters, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
@@ -49,11 +49,14 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         // This assumes that writeable register is validated before other properties of the instruction.
         match res.as_ref().map_err(|e| e.panic_reason()) {
             // expected failure
-            Err(Some(ReservedRegisterNotWritable)) => {}
+            Err(Some(PanicReason::ReservedRegisterNotWritable)) => {}
             // Some opcodes may run out of gas if they access too much data.
             // Simply discard these results as an alternative to structural fuzzing that avoids
             // out of gas errors.
-            Err(Some(OutOfGas)) => return TestResult::discard(),
+            Err(Some(PanicReason::OutOfGas)) => return TestResult::discard(),
+            // Some opcodes parse the immediate value as a part of the instruction itself,
+            // and thus fail before the destination register writability check occurs.
+            Err(Some(PanicReason::InvalidImmediateValue)) => return TestResult::discard(),
             _ => {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",

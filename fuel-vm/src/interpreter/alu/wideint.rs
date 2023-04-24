@@ -59,6 +59,7 @@ macro_rules! wideint_ops {
                     args: CompareArgs,
                 ) -> Result<(), RuntimeError> {
                     let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+                    let dest: &mut Word = &mut w[ra.try_into()?];
 
                     // LHS argument is always indirect, load it
                     let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
@@ -70,7 +71,6 @@ macro_rules! wideint_ops {
                         c.into()
                     };
 
-                    let dest: &mut Word = &mut w[ra.try_into()?];
                     *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
                     inc_pc(pc)

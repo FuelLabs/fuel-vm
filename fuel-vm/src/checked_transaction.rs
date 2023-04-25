@@ -18,7 +18,6 @@ pub use types::*;
 
 use crate::{gas::GasCosts, interpreter::CheckedMetadata as CheckedMetadataAccessTrait, prelude::*};
 use crate::checked_transaction::balances::{AvailableBalances, initial_free_balances};
-use crate::error::PredicateVerificationFailed;
 use crate::interpreter::InitialBalances;
 
 bitflags::bitflags! {
@@ -558,7 +557,7 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, false);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -584,7 +583,7 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount);
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, false);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -852,10 +851,10 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
         let params = ConsensusParameters::default();
-        let gas_costs = GasCosts::default();
+        let gas_costs = GasCosts::free();
 
-        let mut tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
-        tx.estimate_predicates(&params, &gas_costs).unwrap();
+        let mut tx = predicate_tx(&mut rng, 1, 1000000, 1000000, true);
+
         let checked = tx
             // Sets Checks::Basic
             .into_checked_basic(block_height, &params)
@@ -918,7 +917,7 @@ mod tests {
     }
 
     // used when proptesting to avoid expensive crypto signatures
-    fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
+    fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64, predicate_gas_used_zeroed: bool) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
         let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
@@ -934,7 +933,7 @@ mod tests {
                 Default::default(),
                 predicate,
                 vec![],
-                rng.gen(),
+                predicate_gas_used_zeroed.then_some(0).unwrap_or_else(|| rng.gen()),
             ))
             .add_output(Output::change(rng.gen(), 0, asset))
             .finalize()

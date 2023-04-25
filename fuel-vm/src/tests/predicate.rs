@@ -2,13 +2,12 @@ use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
 use fuel_tx::{ConsensusParameters, TransactionBuilder};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::prelude::*;
+use crate::prelude::*;
 
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
-use fuel_vm::checked_transaction::CheckPredicates;
+use crate::checked_transaction::CheckPredicates;
 use crate::checked_transaction::EstimatePredicates;
-use crate::gas::GasCosts;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
@@ -60,7 +59,7 @@ where
 
     let mut checked = builder.with_params(params).finalize_checked_basic(height);
     let mut tx = checked.transaction_mut();
-    tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
+    // tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
     Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), Default::default()).is_ok()
 }
 
@@ -147,8 +146,8 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let mut checked = builder
         .finalize_checked_basic(Default::default());
 
-    let mut tx = checked.transaction_mut();
-    tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
+    let tx = checked.transaction_mut();
+    // tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
 
     let tx_without_predicate = checked
         .check_predicates(&params, &GasCosts::default())
@@ -248,7 +247,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     }
 
     let mut tx = builder.finalize_checked_basic(Default::default());
-    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), false)
+    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }

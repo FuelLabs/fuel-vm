@@ -51,13 +51,9 @@ pub mod create {
         balances::{initial_free_balances, AvailableBalances},
         Checked, IntoChecked,
     };
-    use crate::checked_transaction::{EstimatePredicates, NonRetryableFreeBalances, RetryableAmount};
+    use crate::checked_transaction::NonRetryableFreeBalances;
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{BlockHeight, Word};
-    use crate::error::PredicateVerificationFailed;
-    use crate::gas::GasCosts;
-    use crate::interpreter::{InitialBalances, Interpreter};
-    use crate::storage::PredicateStorage;
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -131,9 +127,6 @@ pub mod mint {
     use super::super::{Checked, IntoChecked};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::BlockHeight;
-    use crate::checked_transaction::EstimatePredicates;
-    use crate::error::PredicateVerificationFailed;
-    use crate::gas::GasCosts;
 
     impl IntoChecked for Mint {
         type CheckedMetadata = ();
@@ -161,15 +154,11 @@ pub mod mint {
 pub mod script {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked, ExecutableTransaction
+        Checked, IntoChecked
     };
-    use crate::checked_transaction::{EstimatePredicates, NonRetryableFreeBalances, RetryableAmount};
+    use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{BlockHeight, Word};
-    use crate::error::PredicateVerificationFailed;
-    use crate::gas::GasCosts;
-    use crate::interpreter::{InitialBalances, Interpreter};
-    use crate::prelude::PredicateStorage;
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]

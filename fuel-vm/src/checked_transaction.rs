@@ -17,6 +17,9 @@ pub mod types;
 pub use types::*;
 
 use crate::{gas::GasCosts, interpreter::CheckedMetadata as CheckedMetadataAccessTrait, prelude::*};
+use crate::checked_transaction::balances::{AvailableBalances, initial_free_balances};
+use crate::error::PredicateVerificationFailed;
+use crate::interpreter::InitialBalances;
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -192,7 +195,7 @@ pub trait CheckPredicates: Sized {
 /// Performs predicate verification for a transaction
 pub trait EstimatePredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError>;
+    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError>;
 }
 
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
@@ -203,7 +206,7 @@ where
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
-            let checked = Interpreter::<PredicateStorage>::check_predicates( &mut self, *params, gas_costs.clone(), false)?;
+            let checked = Interpreter::<PredicateStorage>::check_predicates( &self, *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
@@ -213,14 +216,24 @@ where
 
 impl<Tx: ExecutableTransaction> EstimatePredicates for Tx
 where
-    Self: Clone,
-    <Tx as IntoChecked>::CheckedMetadata: crate::interpreter::CheckedMetadata,
+    Self: Clone
 {
-    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
-        let mut checked_tx = self.into_checked_basic(BlockHeight::max(Default::default(), Default::default()), params)?;
+    fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError> {
+        // validate fees and compute free balances
+        let AvailableBalances {
+            non_retryable_balances,
+            retryable_balance,
+            fee,
+        } = initial_free_balances(&self, params)?;
+
+        let balances: InitialBalances = InitialBalances {
+            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+            retryable: Some(RetryableAmount(retryable_balance)),
+        };
+
         // TODO: Optimize predicate verification to work with references where it is possible.
-        Interpreter::<PredicateStorage>::check_predicates(&mut checked_tx, *params, gas_costs.clone(), true)?;
-        Ok(checked_tx.transaction().clone())
+        Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())?;
+        Ok(true)
     }
 }
 
@@ -841,8 +854,8 @@ mod tests {
         let params = ConsensusParameters::default();
         let gas_costs = GasCosts::default();
 
-        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
-        let tx = tx.estimate
+        let mut tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
+        tx.estimate_predicates(&params, &gas_costs).unwrap();
         let checked = tx
             // Sets Checks::Basic
             .into_checked_basic(block_height, &params)

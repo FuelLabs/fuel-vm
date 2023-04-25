@@ -1,5 +1,5 @@
 use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
-use crate::checked_transaction::{Checked, IntoChecked};
+use crate::checked_transaction::{Checked, IntoChecked, NonRetryableFreeBalances, RetryableAmount};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, InterpreterError};
@@ -70,19 +70,18 @@ where
 
 impl<S, Tx> Interpreter<S, Tx>
 where
-    Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+    Tx: ExecutableTransaction
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate_estimation(&mut self, checked: Checked<Tx>) -> bool {
+    pub fn init_predicate_estimation(&mut self, transaction: Tx, balances: InitialBalances) -> bool {
         self.context = Context::PredicateEstimation {
             program: Default::default(),
         };
 
-        let (mut tx, metadata): (Tx, Tx::CheckedMetadata) = checked.into();
-        tx.prepare_init_predicate();
+        let mut transaction = transaction.clone();
+        transaction.prepare_init_predicate();
 
-        self._init(tx, metadata.balances(), 0).is_ok()
+        self._init(transaction, balances, 0).is_ok()
     }
 }
 

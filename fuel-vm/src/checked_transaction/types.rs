@@ -51,9 +51,13 @@ pub mod create {
         balances::{initial_free_balances, AvailableBalances},
         Checked, IntoChecked,
     };
-    use crate::checked_transaction::NonRetryableFreeBalances;
+    use crate::checked_transaction::{EstimatePredicates, NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, Create, FormatValidityChecks, TransactionFee};
     use fuel_types::{BlockHeight, Word};
+    use crate::error::PredicateVerificationFailed;
+    use crate::gas::GasCosts;
+    use crate::interpreter::{InitialBalances, Interpreter};
+    use crate::storage::PredicateStorage;
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -101,6 +105,25 @@ pub mod create {
             Ok(Checked::basic(self, metadata))
         }
     }
+
+    // impl EstimatePredicates for Create {
+    //     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
+    //         // validate fees and compute free balances
+    //         let AvailableBalances {
+    //             non_retryable_balances,
+    //             retryable_balance,
+    //             fee,
+    //         } = initial_free_balances(&self, params).unwrap();
+    //
+    //         let balances: InitialBalances = InitialBalances {
+    //             non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+    //             retryable: Some(RetryableAmount(retryable_balance)),
+    //         };
+    //
+    //         Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())
+    //
+    //     }
+    // }
 }
 
 /// For [`fuel_tx::Mint`]
@@ -108,6 +131,9 @@ pub mod mint {
     use super::super::{Checked, IntoChecked};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::BlockHeight;
+    use crate::checked_transaction::EstimatePredicates;
+    use crate::error::PredicateVerificationFailed;
+    use crate::gas::GasCosts;
 
     impl IntoChecked for Mint {
         type CheckedMetadata = ();
@@ -123,6 +149,12 @@ pub mod mint {
             Ok(Checked::basic(self, ()))
         }
     }
+
+    // impl EstimatePredicates for Mint {
+    //     fn estimate_predicates(mut self, _params: &ConsensusParameters, _gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
+    //         Ok(true)
+    //     }
+    // }
 }
 
 /// For [`fuel_tx::Script`]
@@ -134,6 +166,10 @@ pub mod script {
     use crate::checked_transaction::{EstimatePredicates, NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};
     use fuel_types::{BlockHeight, Word};
+    use crate::error::PredicateVerificationFailed;
+    use crate::gas::GasCosts;
+    use crate::interpreter::{InitialBalances, Interpreter};
+    use crate::prelude::PredicateStorage;
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -181,29 +217,21 @@ pub mod script {
         }
     }
 
-    impl EstimatePredicates for Script {
-        fn estimate_predicates(&mut self, block_height: BlockHeight, params: &ConsensusParameters) -> Script {
-            let tx: ExecutableTransaction = self.into();
-
-            self.precompute(params);
-            self.check_without_signatures(block_height, params)?;
-
-            // validate fees and compute free balances
-            let AvailableBalances {
-                non_retryable_balances,
-                retryable_balance,
-                fee,
-            } = initial_free_balances(&self, params)?;
-
-            let metadata = CheckedMetadata {
-                non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
-                retryable_balance: RetryableAmount(retryable_balance),
-                block_height,
-                fee,
-                gas_used_by_predicates: 0,
-            };
-
-            Ok(Checked::basic(self, metadata))
-        }
-    }
+    // impl EstimatePredicates for Script {
+    //     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
+    //         // validate fees and compute free balances
+    //         let AvailableBalances {
+    //             non_retryable_balances,
+    //             retryable_balance,
+    //             fee,
+    //         } = initial_free_balances(&self, params).unwrap();
+    //
+    //         let balances: InitialBalances = InitialBalances {
+    //             non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+    //             retryable: Some(RetryableAmount(retryable_balance)),
+    //         };
+    //
+    //         Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())
+    //     }
+    // }
 }

@@ -7,6 +7,8 @@ use fuel_vm::prelude::*;
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 use fuel_vm::checked_transaction::CheckPredicates;
+use crate::checked_transaction::EstimatePredicates;
+use crate::gas::GasCosts;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
@@ -56,8 +58,10 @@ where
 
     builder.add_input(input);
 
-    let mut tx = builder.with_params(params).finalize_checked_basic(height);
-    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), false).is_ok()
+    let mut checked = builder.with_params(params).finalize_checked_basic(height);
+    let mut tx = checked.transaction_mut();
+    tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
+    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), Default::default()).is_ok()
 }
 
 #[test]
@@ -140,8 +144,13 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         Default::default(),
     );
 
-    let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
+    let mut checked = builder
+        .finalize_checked_basic(Default::default());
+
+    let mut tx = checked.transaction_mut();
+    tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
+
+    let tx_without_predicate = checked
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 

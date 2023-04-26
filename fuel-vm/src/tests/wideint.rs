@@ -308,6 +308,31 @@ fn incr_wrapping_u256() {
 }
 
 #[test]
+fn multiply_overflow_u128() {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, u128::MAX));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x20,
+        MulArgs {
+            indirect_lhs: true,
+            indirect_rhs: true,
+        },
+    ));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
+        assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
+    } else {
+        panic!("Expected panic receipt");
+    }
+}
+
+#[test]
 fn multiply_overflow_u256() {
     let mut ops = Vec::new();
     ops.extend(make_u256(0x20, U256::MAX));
@@ -329,6 +354,37 @@ fn multiply_overflow_u256() {
         assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
     } else {
         panic!("Expected panic receipt");
+    }
+}
+
+#[test]
+fn multiply_overflow_wrapping_u128() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u128(0x20, u128::MAX));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x20,
+        MulArgs {
+            indirect_lhs: true,
+            indirect_rhs: true,
+        },
+    ));
+    ops.push(op::movi(0x23, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, u128::MAX.wrapping_mul(u128::MAX));
+    } else {
+        panic!("Expected logd receipt");
     }
 }
 
@@ -364,6 +420,39 @@ fn multiply_overflow_wrapping_u256() {
 }
 
 #[rstest::rstest]
+fn multiply_ok_u128(
+    #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into())] a: u128,
+    #[values(1u64.into(), 2u64.into(), u64::MAX.into())] b: u128,
+) {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, a));
+    ops.extend(make_u128(0x21, b));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: true,
+            indirect_rhs: true,
+        },
+    ));
+    ops.push(op::movi(0x23, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, a * b);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
 fn multiply_ok_u256(
     #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into(), u128::MAX.into())] a: U256,
     #[values(1u64.into(), 2u64.into(), u64::MAX.into(), u128::MAX.into())] b: U256,
@@ -391,6 +480,67 @@ fn multiply_ok_u256(
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a * b);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
+fn multiply_single_indirect_u128(
+    #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into())] a: u128,
+    #[values(0, 1, 2, 5, 7)] b: u32,
+) {
+    let mut ops_lhs = Vec::new();
+    ops_lhs.extend(make_u128(0x20, a));
+    ops_lhs.push(op::movi(0x21, b));
+    ops_lhs.extend(make_u128(0x22, 0u64.into()));
+    ops_lhs.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: true,
+            indirect_rhs: false,
+        },
+    ));
+    ops_lhs.push(op::movi(0x23, 16));
+    ops_lhs.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops_lhs.push(op::ret(RegId::ONE));
+
+    let mut ops_rhs = Vec::new();
+    ops_rhs.push(op::movi(0x20, b));
+    ops_rhs.extend(make_u128(0x21, a));
+    ops_rhs.extend(make_u128(0x22, 0u64.into()));
+    ops_rhs.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: false,
+            indirect_rhs: true,
+        },
+    ));
+    ops_rhs.push(op::movi(0x23, 16));
+    ops_rhs.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops_rhs.push(op::ret(RegId::ONE));
+
+    let lhs_receipts = run_script(ops_lhs);
+    let rhs_receipts = run_script(ops_rhs);
+
+    let expected = a * u128::from(b);
+
+    if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, expected);
+    } else {
+        panic!("Expected logd receipt");
+    }
+
+    if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, expected);
     } else {
         panic!("Expected logd receipt");
     }
@@ -458,6 +608,36 @@ fn multiply_single_indirect_u256(
 }
 
 #[rstest::rstest]
+fn multiply_two_directs_u128(#[values(0, 1, 2, 5, 7)] a: u32, #[values(0, 1, 2, 5, 7)] b: u32) {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, a));
+    ops.push(op::movi(0x21, b));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wdml_args(
+        0x22,
+        0x20,
+        0x21,
+        MulArgs {
+            indirect_lhs: false,
+            indirect_rhs: false,
+        },
+    ));
+    ops.push(op::movi(0x23, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, u128::from(a * b));
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
 fn multiply_two_directs_u256(#[values(0, 1, 2, 5, 7)] a: u32, #[values(0, 1, 2, 5, 7)] b: u32) {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, a));
@@ -488,6 +668,23 @@ fn multiply_two_directs_u256(#[values(0, 1, 2, 5, 7)] a: u32, #[values(0, 1, 2, 
 }
 
 #[test]
+fn divide_by_zero_u128() {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wddv_args(0x22, 0x20, 0x22, DivArgs { indirect_rhs: true }));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
+        assert_eq!(*reason.reason(), PanicReason::ErrorFlag);
+    } else {
+        panic!("Expected panic receipt");
+    }
+}
+
+#[test]
 fn divide_by_zero_u256() {
     let mut ops = Vec::new();
     ops.extend(make_u256(0x20, 1u64.into()));
@@ -501,6 +698,29 @@ fn divide_by_zero_u256() {
         assert_eq!(*reason.reason(), PanicReason::ErrorFlag);
     } else {
         panic!("Expected panic receipt");
+    }
+}
+
+#[test]
+fn divide_by_zero_unsafemath_u128() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wddv_args(0x22, 0x20, 0x22, DivArgs { indirect_rhs: true }));
+    ops.push(op::movi(0x23, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, 0);
+    } else {
+        panic!("Expected logd receipt");
     }
 }
 
@@ -528,6 +748,31 @@ fn divide_by_zero_unsafemath_u256() {
 }
 
 #[rstest::rstest]
+fn divide_ok_u128(
+    #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into())] a: u128,
+    #[values(1u64.into(), 2u64.into(), u64::MAX.into())] b: u128,
+) {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, a));
+    ops.extend(make_u128(0x21, b));
+    ops.extend(make_u128(0x22, 0u64.into()));
+    ops.push(op::wddv_args(0x22, 0x20, 0x21, DivArgs { indirect_rhs: true }));
+    ops.push(op::movi(0x23, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x22, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let result = u128::from_be_bytes(bytes);
+        assert_eq!(result, a / b);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
 fn divide_ok_u256(
     #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into())] a: U256,
     #[values(1u64.into(), 2u64.into(), u64::MAX.into())] b: U256,
@@ -547,6 +792,38 @@ fn divide_ok_u256(
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a / b);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
+#[case(0u64.into(), 0u64.into(), 1u64.into(), 0u64.into())]
+#[case(0u64.into(), 5u64.into(), 1u64.into(), 0u64.into())]
+#[case(9u64.into(), 9u64.into(), 1u64.into(), 81u64.into())]
+#[case(9u64.into(), 9u64.into(), 2u64.into(), 40u64.into())]
+#[case(9u64.into(), 9u64.into(), 3u64.into(), 27u64.into())]
+#[case(9u64.into(), 9u64.into(), 4u64.into(), 20u64.into())]
+#[case(u128::MAX, 5u64.into(), 10u64.into(), u128::MAX / 2)]
+#[case(u128::MAX, 2u64.into(), 6u64.into(), u128::MAX / 3)]
+#[case(u128::MAX, u128::MAX, u128::MAX, u128::MAX)]
+fn fused_mul_div_u128(#[case] lhs: u128, #[case] rhs: u128, #[case] divisor: u128, #[case] expected: u128) {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, lhs));
+    ops.extend(make_u128(0x21, rhs));
+    ops.extend(make_u128(0x22, divisor));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::movi(0x24, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x23, 0x24));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let v = u128::from_be_bytes(bytes);
+        assert_eq!(v, expected);
     } else {
         panic!("Expected logd receipt");
     }
@@ -593,6 +870,38 @@ fn fused_mul_div_u256(#[case] lhs: U256, #[case] rhs: U256, #[case] divisor: U25
 #[case(99u64.into(), 1u64.into(), 100u64.into(), 0u64.into())]
 #[case(99u64.into(), 2u64.into(), 100u64.into(), 1u64.into())]
 #[case(99u64.into(), 99u64.into(), 100u64.into(), 98u64.into())]
+#[case(u128::MAX, u128::MAX, 7u64.into(), 6u64.into())]
+#[case(u128::MAX, 2u64.into(), u128::MAX, 2u64.into())]
+fn addmod_u128(#[case] lhs: u128, #[case] rhs: u128, #[case] modulus: u128, #[case] expected: u128) {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, lhs));
+    ops.extend(make_u128(0x21, rhs));
+    ops.extend(make_u128(0x22, modulus));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdam(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::movi(0x24, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x23, 0x24));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let v = u128::from_be_bytes(bytes);
+        assert_eq!(v, expected);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
+#[case(99u64.into(), 99u64.into(), 1u64.into(), 0u64.into())]
+#[case(0u64.into(), 0u64.into(), 100u64.into(), 0u64.into())]
+#[case(1u64.into(), 0u64.into(), 100u64.into(), 1u64.into())]
+#[case(1u64.into(), 1u64.into(), 100u64.into(), 2u64.into())]
+#[case(99u64.into(), 1u64.into(), 100u64.into(), 0u64.into())]
+#[case(99u64.into(), 2u64.into(), 100u64.into(), 1u64.into())]
+#[case(99u64.into(), 99u64.into(), 100u64.into(), 98u64.into())]
 #[case(U256::MAX, U256::MAX, 7u64.into(), 2u64.into())]
 #[case(5u64.into(), 2u64.into(), 5u64.into(), 2u64.into())]
 #[case(U256::MAX, 2u64.into(), U256::MAX, 2u64.into())]
@@ -612,6 +921,41 @@ fn addmod_u256(#[case] lhs: U256, #[case] rhs: U256, #[case] modulus: U256, #[ca
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
+        assert_eq!(v, expected);
+    } else {
+        panic!("Expected logd receipt");
+    }
+}
+
+#[rstest::rstest]
+#[case(99u64.into(), 99u64.into(), 1u64.into(), 0u64.into())]
+#[case(0u64.into(), 0u64.into(), 100u64.into(), 0u64.into())]
+#[case(1u64.into(), 1u64.into(), 100u64.into(), 1u64.into())]
+#[case(1u64.into(), 2u64.into(), 100u64.into(), 2u64.into())]
+#[case(50u64.into(), 2u64.into(), 100u64.into(), 0u64.into())]
+#[case(50u64.into(), 3u64.into(), 100u64.into(), 50u64.into())]
+#[case(99u64.into(), 99u64.into(), 100u64.into(), 1u64.into())]
+#[case(1234u64.into(), 5678u64.into(), 100u64.into(), 52u64.into())]
+// #[case(u128::MAX, u128::MAX, 7u64.into(), 1u64.into())]
+// #[case(u128::MAX, u128::MAX, 100u64.into(), 25u64.into())]
+// #[case(u128::MAX, 2u64.into(), u128::MAX, 0u64.into())]
+// #[case(u128::MAX, 3u64.into(), u128::MAX, 0u64.into())]
+fn mulmod_u128(#[case] lhs: u128, #[case] rhs: u128, #[case] modulus: u128, #[case] expected: u128) {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, lhs));
+    ops.extend(make_u128(0x21, rhs));
+    ops.extend(make_u128(0x22, modulus));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmm(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::movi(0x24, 16));
+    ops.push(op::logd(RegId::ZERO, RegId::ZERO, 0x23, 0x24));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let bytes: [u8; 16] = data.clone().try_into().unwrap();
+        let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
     } else {
         panic!("Expected logd receipt");

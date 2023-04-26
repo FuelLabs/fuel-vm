@@ -1,7 +1,7 @@
 //! Extension trait for [`fuel_tx::TransactionBuilder`]
 
 use super::{Checked, IntoChecked};
-use crate::checked_transaction::{CheckPredicates, EstimatePredicates};
+use crate::checked_transaction::{CheckPredicates};
 use crate::prelude::*;
 use fuel_types::BlockHeight;
 

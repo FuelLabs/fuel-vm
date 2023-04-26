@@ -35,7 +35,7 @@ fn external_balance() {
         .gas_limit(gas_limit)
         .gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, &Default::default(), true);
+        .finalize_checked(height, &Default::default());
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -78,7 +78,7 @@ fn variable_output_updates_in_memory() {
         vec![variable_output],
         vec![Witness::default()],
     )
-    .into_checked(height, vm.params(), vm.gas_costs(), true)
+    .into_checked(height, vm.params(), vm.gas_costs())
     .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");

@@ -134,7 +134,7 @@ fn state_read_write() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -194,7 +194,7 @@ fn state_read_write() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     // Assert the initial state of `key` is empty
@@ -244,7 +244,7 @@ fn state_read_write() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     // Mutate the state
@@ -326,7 +326,7 @@ fn load_external_contract_code() {
         vec![output0],
         vec![program.clone()],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -378,7 +378,7 @@ fn load_external_contract_code() {
         vec![output1],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -395,7 +395,7 @@ fn load_external_contract_code() {
         vec![output1],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -456,7 +456,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
         vec![output0],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -479,7 +479,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
             vec![],
             vec![],
         )
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
@@ -514,7 +514,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
             vec![output1],
             vec![],
         )
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to check tx");
 
         // Patch the code with correct jump address
@@ -531,7 +531,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
             vec![output1],
             vec![],
         )
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to check tx");
     }
 
@@ -964,7 +964,7 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
@@ -1024,7 +1024,7 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
     // Assert the initial state of `key` is empty
@@ -1353,7 +1353,7 @@ fn smo_instruction_works() {
                 asset_id: Default::default(),
             })
             .with_params(*params)
-            .finalize_checked(block_height, client.gas_costs(), true);
+            .finalize_checked(block_height, client.gas_costs());
 
         let non_retryable_free_balance = tx.metadata().non_retryable_balances[&AssetId::BASE];
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
@@ -1478,7 +1478,7 @@ fn timestamp_works() {
             .gas_limit(gas_limit)
             .maturity(maturity)
             .with_params(params)
-            .finalize_checked(block_height, client.gas_costs(), true);
+            .finalize_checked(block_height, client.gas_costs());
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
@@ -1536,7 +1536,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .with_params(params)
-        .finalize_checked(current_height, client.gas_costs(), true);
+        .finalize_checked(current_height, client.gas_costs());
 
     let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
@@ -1586,7 +1586,7 @@ fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0,
         .gas_limit(gas_limit)
         .maturity(maturity)
         .with_params(params)
-        .finalize_checked(current_height, client.gas_costs(), true);
+        .finalize_checked(current_height, client.gas_costs());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
@@ -1625,7 +1625,7 @@ fn coinbase_works() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .with_params(params)
-        .finalize_checked(10.into(), client.gas_costs(), true);
+        .finalize_checked(10.into(), client.gas_costs());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {

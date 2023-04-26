@@ -118,7 +118,7 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &Default::default(), &Default::default(), true)
+            .into_checked(Default::default(), &Default::default(), &Default::default())
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -423,7 +423,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect("Expected valid transaction");
 
@@ -450,7 +449,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect("Expected valid transaction");
 
@@ -475,7 +473,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect("Expected valid transaction");
 
@@ -504,7 +501,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect_err("Expected valid transaction");
 
@@ -545,7 +541,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect_err("Expected valid transaction");
 
@@ -699,7 +694,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect_err("Expected invalid transaction");
 
@@ -726,7 +720,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default(), true)
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -751,7 +745,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default(), true)
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("insufficient fee amount expected");
 
         let provided = match err {
@@ -773,7 +767,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default(), true)
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -790,7 +784,7 @@ mod tests {
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default(), true)
+            .into_checked(Default::default(), &params, &Default::default())
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -833,7 +827,6 @@ mod tests {
                 Default::default(),
                 &ConsensusParameters::DEFAULT,
                 &Default::default(),
-                true,
             )
             .expect_err("Expected valid transaction");
 

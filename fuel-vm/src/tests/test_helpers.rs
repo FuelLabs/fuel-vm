@@ -22,7 +22,6 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
             Default::default(),
             &ConsensusParameters::DEFAULT,
             client.gas_costs(),
-            true,
         )
         .expect("failed to generate a checked tx");
     client.transact(tx);

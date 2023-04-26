@@ -44,10 +44,9 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
     /// VM state required to trace the execution steps.
     pub fn check_predicates<Tx>(
-        checked: &mut Checked<Tx>,
+        checked: &Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
-        estimate_gas: bool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -63,74 +62,94 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         vm.init_predicate(checked.clone());
 
-        if estimate_gas {
-            let tx_gas_limit: u64 = checked.clone().transaction().limit();
+        // Needed for now because checked is only freed once the value is collected into a Vec
+        #[allow(clippy::needless_collect)]
+        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
+            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
+            .collect();
 
-            let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
-                params.max_gas_per_predicate
-            } else {
-                tx_gas_limit
-            };
+        for predicate in predicates {
+            // VM is cloned because the state should be reset for every predicate verification
+            let mut vm = vm.clone();
 
-            let checked_clone = checked.clone();
-            // for inputNum in estimated.transaction().inputs().len() {
-            for (idx, input) in checked.transaction_mut().inputs_mut().iter_mut().enumerate() {
-                if let Some(predicate) = RuntimePredicate::from_tx(&params, checked_clone.transaction(), idx) {
-                    vm.init_predicate_estimation(checked_clone.clone());
-                    vm.context = Context::PredicateEstimation { program: predicate };
-                    vm.set_gas(predicate_gas_limit);
+            let gas_used = predicate.gas_used();
+            vm.context = Context::PredicateVerification { program: predicate };
+            vm.set_gas(gas_used);
 
-                    if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                        return Err(PredicateVerificationFailed::False);
-                    }
-
-                    let gas_used: u64 = tx_gas_limit
-                        .checked_sub(vm.remaining_gas())
-                        .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
-
-                    cumulative_gas_used += gas_used;
-
-                    match input {
-                        Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
-                        | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
-                        | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
-                            *predicate_gas_used = gas_used;
-                        }
-                        _ => {}
-                    }
-                }
+            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                return Err(PredicateVerificationFailed::False);
             }
-        } else {
-            // Needed for now because checked is only freed once the value is collected into a Vec
-            #[allow(clippy::needless_collect)]
-            let predicates: Vec<_> = (0..checked.transaction().inputs().len())
-                .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
-                .collect();
 
-            for predicate in predicates {
-                // VM is cloned because the state should be reset for every predicate verification
-                let mut vm = vm.clone();
-
-                let gas_used = predicate.gas_used();
-                vm.context = Context::PredicateVerification { program: predicate };
-                vm.set_gas(gas_used);
-
-                if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                    return Err(PredicateVerificationFailed::False);
-                }
-
-                if vm.registers[RegId::GGAS] != 0 {
-                    return Err(PredicateVerificationFailed::GasMismatch);
-                }
-                cumulative_gas_used = cumulative_gas_used
-                    .checked_add(gas_used)
-                    .expect("cumulative gas overflow");
+            if vm.registers[RegId::GGAS] != 0 {
+                return Err(PredicateVerificationFailed::GasMismatch);
             }
+            cumulative_gas_used = cumulative_gas_used
+                .checked_add(gas_used)
+                .expect("cumulative gas overflow");
         }
 
         Ok(PredicatesChecked {
             gas_used: cumulative_gas_used,
         })
+    }
+    /// Initialize the VM with the provided transaction and check all predicates defined in the
+    /// inputs.
+    ///
+    /// The storage provider is not used since contract opcodes are not allowed for predicates.
+    /// This way, its possible, for the sake of simplicity, it is possible to use
+    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
+    ///
+    /// # Debug
+    ///
+    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
+    /// VM state required to trace the execution steps.
+    pub fn estimate_predicates<Tx>(
+        transaction: &mut Tx,
+        balances: InitialBalances,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<bool, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+
+        let tx_gas_limit: u64 = transaction.limit();
+
+        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
+            params.max_gas_per_predicate
+        } else {
+            tx_gas_limit
+        };
+
+        let transaction_clone = transaction.clone();
+
+        for (idx, input) in transaction.inputs_mut().iter_mut().enumerate() {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, &transaction_clone, idx) {
+                vm.init_predicate_estimation(transaction_clone.clone(), balances.clone());
+                vm.context = Context::PredicateEstimation { program: predicate };
+                vm.set_gas(predicate_gas_limit);
+
+                if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                    return Err(PredicateVerificationFailed::False);
+                }
+
+                let gas_used: u64 = tx_gas_limit
+                    .checked_sub(vm.remaining_gas())
+                    .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+
+                match input {
+                    Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+                    | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+                    | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
+                        *predicate_gas_used = gas_used;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(true)
     }
 }
 

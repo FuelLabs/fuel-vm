@@ -2,11 +2,12 @@ use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
 use fuel_tx::{ConsensusParameters, TransactionBuilder};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::prelude::*;
+use crate::prelude::*;
 
+use crate::checked_transaction::CheckPredicates;
+use crate::checked_transaction::EstimatePredicates;
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
-use fuel_vm::checked_transaction::CheckPredicates;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
@@ -26,7 +27,7 @@ where
     let maturity = Default::default();
     let height = Default::default();
     let params = ConsensusParameters::default();
-    let predicate_gas_used = rng.gen();
+    let predicate_gas_used = 0;
 
     let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
@@ -56,8 +57,8 @@ where
 
     builder.add_input(input);
 
-    let mut tx = builder.with_params(params).finalize_checked_basic(height);
-    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), true).is_ok()
+    let checked = builder.with_params(params).finalize_checked_basic(height);
+    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), GasCosts::free()).is_ok()
 }
 
 #[test]
@@ -142,7 +143,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true)
+        .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -174,9 +175,17 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true)
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&params, &GasCosts::default())
+        .expect("Predicate estimation failed");
+
+    let checked = transaction
+        .into_checked_basic(Default::default(), &params)
+        .expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
+        .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
@@ -238,8 +247,16 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let mut tx = builder.finalize_checked_basic(Default::default());
-    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default(), true)
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&Default::default(), &GasCosts::default())
+        .map_err(|_| ())?;
+
+    let tx = transaction
+        .into_checked_basic(Default::default(), &Default::default())
+        .expect("Should successfully create checked tranaction with predicate");
+
+    Interpreter::<PredicateStorage>::check_predicates(&tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }
@@ -302,7 +319,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let tx_without_predicate = builder
         .with_params(params)
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true)
+        .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let predicate: Vec<u8> = vec![
@@ -331,9 +348,17 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true)
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&params, &GasCosts::default())
+        .expect("Predicate estimation failed");
+
+    let checked = transaction
+        .into_checked_basic(Default::default(), &params)
+        .expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
+        .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
     let mut client = MemoryClient::default();
@@ -376,7 +401,7 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default(), true)
+        .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -409,15 +434,14 @@ fn gas_used_by_predicates_more_than_limit() {
         Default::default(),
         predicate,
         vec![],
-        rng.gen(),
+        gas_limit + 1,
     );
 
     builder.add_input(input);
 
-    let tx_with_predicate =
-        builder
-            .finalize_checked_basic(Default::default())
-            .check_predicates(&params, &GasCosts::default(), true);
+    let tx_with_predicate = builder
+        .finalize_checked_basic(Default::default())
+        .check_predicates(&params, &GasCosts::default());
 
-    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);
+    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateVerificationFailed);
 }

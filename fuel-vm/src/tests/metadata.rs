@@ -1,3 +1,4 @@
+use crate::consts::*;
 use fuel_asm::{op, GMArgs, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
@@ -5,10 +6,10 @@ use fuel_tx::{
     Finalizable, Receipt, Script, TransactionBuilder,
 };
 use fuel_types::{bytes, BlockHeight};
-use fuel_vm::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::prelude::*;
+use crate::prelude::GasCosts;
+use crate::prelude::*;
 
 #[test]
 fn metadata() {
@@ -58,7 +59,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs, true)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -104,7 +105,7 @@ fn metadata() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, &gas_costs, true)
+    .into_checked(height, &params, &gas_costs)
     .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -151,7 +152,7 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .into_checked(height, &params, &gas_costs, true)
+        .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
     let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)
@@ -197,7 +198,7 @@ fn get_metadata_chain_id() {
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
         .finalize()
-        .into_checked(height, &params, &gas_costs, true)
+        .into_checked(height, &params, &gas_costs)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -233,7 +234,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs(), true);
+        .finalize_checked(height, client.gas_costs());
 
     client.deploy(tx);
 
@@ -252,7 +253,7 @@ fn get_transaction_fields() {
         100.into(),
         predicate.clone(),
         predicate_data.clone(),
-        100_000,
+        0,
     );
 
     let contract_input_index = 2;
@@ -277,7 +278,7 @@ fn get_transaction_fields() {
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
-        100_000,
+        0,
     );
 
     let asset = rng.gen();
@@ -305,7 +306,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs(), true);
+        .finalize_checked(height, &GasCosts::free());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

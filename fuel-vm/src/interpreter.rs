@@ -48,7 +48,8 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
+    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount,
+    ScriptCheckedMetadata,
 };
 
 use self::memory::Memory;
@@ -190,6 +191,7 @@ pub trait ExecutableTransaction:
     + Chargeable
     + Executable
     + IntoChecked
+    + EstimatePredicates
     + UniqueIdentifier
     + field::Maturity
     + field::Inputs

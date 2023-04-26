@@ -117,7 +117,7 @@ fn mint_burn() {
         vec![output],
         vec![program],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.deploy(tx);
@@ -142,7 +142,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_offset = client.tx_offset() + tx.transaction().script_data_offset();
@@ -160,7 +160,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_check_balance: Vec<u8> = asset_id
@@ -188,7 +188,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let script_data_offset = client.tx_offset() + tx_check_balance.transaction().script_data_offset();
@@ -204,7 +204,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
@@ -232,7 +232,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     let storage_balance = client.transact(tx_check_balance.clone())[0]
@@ -263,7 +263,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.transact(tx);
@@ -287,7 +287,7 @@ fn mint_burn() {
         vec![output],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate checked tx");
 
     client.transact(tx);

@@ -29,7 +29,7 @@ fn jump_if_not_zero_immediate_jump() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -69,7 +69,7 @@ fn jump_if_not_zero_immediate_no_jump() {
         vec![],
         vec![],
     )
-    .into_checked(height, &params, client.gas_costs(), true)
+    .into_checked(height, &params, client.gas_costs())
     .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -101,7 +101,7 @@ fn jump_dynamic() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -133,7 +133,7 @@ fn jump_dynamic_condition_true() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);
@@ -165,7 +165,7 @@ fn jump_dynamic_condition_false() {
     .collect::<Vec<u8>>();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, client.gas_costs(), true)
+        .into_checked(height, &params, client.gas_costs())
         .expect("failed to generate a checked tx");
 
     client.transact(tx);

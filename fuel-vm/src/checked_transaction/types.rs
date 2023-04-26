@@ -101,25 +101,6 @@ pub mod create {
             Ok(Checked::basic(self, metadata))
         }
     }
-
-    // impl EstimatePredicates for Create {
-    //     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
-    //         // validate fees and compute free balances
-    //         let AvailableBalances {
-    //             non_retryable_balances,
-    //             retryable_balance,
-    //             fee,
-    //         } = initial_free_balances(&self, params).unwrap();
-    //
-    //         let balances: InitialBalances = InitialBalances {
-    //             non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-    //             retryable: Some(RetryableAmount(retryable_balance)),
-    //         };
-    //
-    //         Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())
-    //
-    //     }
-    // }
 }
 
 /// For [`fuel_tx::Mint`]
@@ -142,12 +123,6 @@ pub mod mint {
             Ok(Checked::basic(self, ()))
         }
     }
-
-    // impl EstimatePredicates for Mint {
-    //     fn estimate_predicates(mut self, _params: &ConsensusParameters, _gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
-    //         Ok(true)
-    //     }
-    // }
 }
 
 /// For [`fuel_tx::Script`]
@@ -205,22 +180,4 @@ pub mod script {
             Ok(Checked::basic(self, metadata))
         }
     }
-
-    // impl EstimatePredicates for Script {
-    //     fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, PredicateVerificationFailed> {
-    //         // validate fees and compute free balances
-    //         let AvailableBalances {
-    //             non_retryable_balances,
-    //             retryable_balance,
-    //             fee,
-    //         } = initial_free_balances(&self, params).unwrap();
-    //
-    //         let balances: InitialBalances = InitialBalances {
-    //             non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-    //             retryable: Some(RetryableAmount(retryable_balance)),
-    //         };
-    //
-    //         Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())
-    //     }
-    // }
 }

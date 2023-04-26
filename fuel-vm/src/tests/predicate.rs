@@ -245,7 +245,8 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
 
 
     let mut transaction = builder.finalize();
-    transaction.estimate_predicates(&Default::default(), &GasCosts::default()).expect("Predicate estimation failed");
+    transaction.estimate_predicates(&Default::default(), &GasCosts::default())
+        .map_err(|_| ())?;
 
     let mut tx = transaction.into_checked_basic(Default::default(), &Default::default()).expect("Should successfully create checked tranaction with predicate");
 
@@ -423,18 +424,14 @@ fn gas_used_by_predicates_more_than_limit() {
         Default::default(),
         predicate,
         vec![],
-        rng.gen(),
+        gas_limit + 1,
     );
 
     builder.add_input(input);
 
-    let mut transaction = builder.finalize();
-    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
-
-    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
-
-    let tx_with_predicate = checked
+    let tx_with_predicate = builder
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default());
 
-    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);
+    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateVerificationFailed);
 }

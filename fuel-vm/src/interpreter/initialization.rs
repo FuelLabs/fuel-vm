@@ -78,7 +78,7 @@ where
             program: Default::default(),
         };
 
-        let mut transaction = transaction.clone();
+        let mut transaction = transaction;
         transaction.prepare_init_predicate();
 
         self._init(transaction, balances, 0).is_ok()

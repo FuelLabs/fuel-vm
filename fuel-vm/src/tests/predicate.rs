@@ -247,9 +247,9 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     transaction.estimate_predicates(&Default::default(), &GasCosts::default())
         .map_err(|_| ())?;
 
-    let mut tx = transaction.into_checked_basic(Default::default(), &Default::default()).expect("Should successfully create checked tranaction with predicate");
+    let tx = transaction.into_checked_basic(Default::default(), &Default::default()).expect("Should successfully create checked tranaction with predicate");
 
-    Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default())
+    Interpreter::<PredicateStorage>::check_predicates(&tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }

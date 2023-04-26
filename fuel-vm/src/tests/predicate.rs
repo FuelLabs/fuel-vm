@@ -143,7 +143,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -243,7 +243,6 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-
     let mut transaction = builder.finalize();
     transaction.estimate_predicates(&Default::default(), &GasCosts::default())
         .map_err(|_| ())?;
@@ -313,7 +312,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let tx_without_predicate = builder
         .with_params(params)
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let predicate: Vec<u8> = vec![
@@ -391,7 +390,7 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(&params, &GasCosts::default(), true)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -429,9 +428,10 @@ fn gas_used_by_predicates_more_than_limit() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default());
+    let tx_with_predicate =
+        builder
+            .finalize_checked_basic(Default::default())
+            .check_predicates(&params, &GasCosts::default(), true);
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateVerificationFailed);
 }

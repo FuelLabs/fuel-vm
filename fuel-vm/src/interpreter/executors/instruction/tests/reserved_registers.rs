@@ -38,7 +38,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         vec![],
     );
     let tx = tx
-        .into_checked(block_height, &params, vm.gas_costs())
+        .into_checked(block_height, &params, vm.gas_costs(), true)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");

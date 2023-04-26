@@ -68,7 +68,7 @@ fn breakpoint_script() {
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(height, &params, vm.gas_costs(), true)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -132,7 +132,7 @@ fn single_stepping() {
     .collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(height, &params, vm.gas_costs(), true)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

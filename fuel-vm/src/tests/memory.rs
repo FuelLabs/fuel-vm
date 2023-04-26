@@ -21,7 +21,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let script = program.into_iter().collect();
 
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &params, &gas_costs, true)
         .expect("failed to check tx");
 
     let mut vm = Transactor::new(storage, Default::default(), Default::default());
@@ -131,7 +131,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
 
     let script = ops.into_iter().collect();
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &params, &gas_costs, true)
         .expect("failed to check tx");
 
     let mut vm = Transactor::new(storage, Default::default(), Default::default());
@@ -186,7 +186,7 @@ fn dynamic_call_frame_ops() {
 
     let script = ops.into_iter().collect();
     let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &params, &gas_costs, true)
         .expect("failed to check tx");
 
     let mut vm = Transactor::new(storage, Default::default(), Default::default());

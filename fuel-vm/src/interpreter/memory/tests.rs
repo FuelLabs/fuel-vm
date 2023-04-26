@@ -158,6 +158,26 @@ fn stack_alloc_ownership() {
     OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default() }), 0..1
     => true; "in stack range (external)"
 )]
+#[test_case(
+    OwnershipRegisters::test(0..0, 9..10, Context::Script { block_height: 10.into() }), 1..9
+    => false; "not owned in Script context"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, 9..10, Context::Call { block_height: 15.into() }), 1..9
+    => false; "not owned in Call context"
+)]
+#[test_case(
+    OwnershipRegisters::test(1_000_000..1_100_000, 5_900_000..6_300_000, Context::Script { block_height: 0.into() }),
+    999_000..7_100_200 => false; "crosses heap and stack range"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
+    0..20 => true; "start inclusive and end exclusive"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
+    20..41 => false; "start exclusive and end inclusive"
+)]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
     let range = MemoryRange::new(range.start, range.end - range.start);
     reg.has_ownership_range(&range)

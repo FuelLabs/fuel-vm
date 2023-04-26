@@ -5,10 +5,11 @@ use fuel_tx::{
     Finalizable, Receipt, Script, TransactionBuilder,
 };
 use fuel_types::{bytes, BlockHeight};
-use fuel_vm::consts::*;
+use crate::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::prelude::*;
+use crate::prelude::*;
+use crate::prelude::GasCosts;
 
 #[test]
 fn metadata() {
@@ -252,7 +253,7 @@ fn get_transaction_fields() {
         100.into(),
         predicate.clone(),
         predicate_data.clone(),
-        100_000,
+        0,
     );
 
     let contract_input_index = 2;
@@ -277,7 +278,7 @@ fn get_transaction_fields() {
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
-        100_000,
+        0,
     );
 
     let asset = rng.gen();
@@ -305,7 +306,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height, &GasCosts::free());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

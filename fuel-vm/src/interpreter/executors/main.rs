@@ -3,7 +3,7 @@ use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
 use crate::gas::GasCosts;
-use crate::interpreter::{balances, CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
+use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::predicate::RuntimePredicate;
 use crate::state::{ExecuteState, ProgramState};
 use crate::state::{StateTransition, StateTransitionRef};
@@ -17,8 +17,7 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_types::{BlockHeight, Word};
-use crate::interpreter;
+use fuel_types::Word;
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]

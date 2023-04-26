@@ -16,7 +16,7 @@ use fuel_tx::{
     TransactionFee, TransactionRepr, UniqueIdentifier,
 };
 use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{AssetId, BlockHeight, ContractId, Word};
+use fuel_types::{AssetId, ContractId, Word};
 
 mod alu;
 mod balances;

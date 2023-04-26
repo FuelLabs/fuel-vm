@@ -82,11 +82,6 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.transaction
     }
 
-    /// Returns reference on inner transaction.
-    pub fn transaction_mut(&mut self) -> &mut Tx {
-        &mut self.transaction
-    }
-
     /// Returns the metadata generated during the check for transaction.
     pub fn metadata(&self) -> &Tx::CheckedMetadata {
         &self.metadata
@@ -194,7 +189,7 @@ pub trait CheckPredicates: Sized {
 /// Performs predicate verification for a transaction
 pub trait EstimatePredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn estimate_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError>;
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError>;
 }
 
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
@@ -217,13 +212,13 @@ impl<Tx: ExecutableTransaction> EstimatePredicates for Tx
 where
     Self: Clone
 {
-    fn estimate_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError> {
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError> {
         // validate fees and compute free balances
         let AvailableBalances {
             non_retryable_balances,
             retryable_balance,
-            fee,
-        } = initial_free_balances(&self, params)?;
+            ..
+        } = initial_free_balances(self, params)?;
 
         let balances: InitialBalances = InitialBalances {
             non_retryable: NonRetryableFreeBalances(non_retryable_balances),
@@ -231,7 +226,7 @@ where
         };
 
         // TODO: Optimize predicate verification to work with references where it is possible.
-        Interpreter::<PredicateStorage>::estimate_predicates(&mut self, balances, *params, gas_costs.clone())?;
+        Interpreter::<PredicateStorage>::estimate_predicates( self, balances, *params, gas_costs.clone())?;
         Ok(true)
     }
 }
@@ -853,7 +848,7 @@ mod tests {
         let params = ConsensusParameters::default();
         let gas_costs = GasCosts::free();
 
-        let mut tx = predicate_tx(&mut rng, 1, 1000000, 1000000, true);
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, true);
 
         let checked = tx
             // Sets Checks::Basic

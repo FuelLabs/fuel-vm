@@ -27,7 +27,7 @@ where
     let maturity = Default::default();
     let height = Default::default();
     let params = ConsensusParameters::default();
-    let predicate_gas_used = rng.gen();
+    let predicate_gas_used = 0;
 
     let owner = Input::predicate_owner(&predicate, &params);
     let input = Input::coin_predicate(
@@ -57,10 +57,8 @@ where
 
     builder.add_input(input);
 
-    let mut checked = builder.with_params(params).finalize_checked_basic(height);
-    let mut tx = checked.transaction_mut();
-    // tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
-    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), Default::default()).is_ok()
+    let checked = builder.with_params(params).finalize_checked_basic(height);
+    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), GasCosts::free()).is_ok()
 }
 
 #[test]
@@ -143,13 +141,8 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         Default::default(),
     );
 
-    let mut checked = builder
-        .finalize_checked_basic(Default::default());
-
-    let tx = checked.transaction_mut();
-    // tx.estimate_predicates(&params, &GasCosts::default()).unwrap();
-
-    let tx_without_predicate = checked
+    let tx_without_predicate = builder
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -182,8 +175,12 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
+    let mut transaction = builder.finalize();
+    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
+
+    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -246,7 +243,12 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         builder.add_input(input);
     }
 
-    let mut tx = builder.finalize_checked_basic(Default::default());
+
+    let mut transaction = builder.finalize();
+    transaction.estimate_predicates(&Default::default(), &GasCosts::default()).expect("Predicate estimation failed");
+
+    let mut tx = transaction.into_checked_basic(Default::default(), &Default::default()).expect("Should successfully create checked tranaction with predicate");
+
     Interpreter::<PredicateStorage>::check_predicates(&mut tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
@@ -339,8 +341,12 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
+    let mut transaction = builder.finalize();
+    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
+
+    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
 
@@ -422,8 +428,12 @@ fn gas_used_by_predicates_more_than_limit() {
 
     builder.add_input(input);
 
-    let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
+    let mut transaction = builder.finalize();
+    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
+
+    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default());
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateExhaustedGas);

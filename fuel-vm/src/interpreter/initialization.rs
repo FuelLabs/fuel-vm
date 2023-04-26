@@ -1,5 +1,5 @@
 use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
-use crate::checked_transaction::{Checked, IntoChecked, NonRetryableFreeBalances, RetryableAmount};
+use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, InterpreterError};

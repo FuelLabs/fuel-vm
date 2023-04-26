@@ -47,7 +47,10 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
-use crate::checked_transaction::{CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata};
+use crate::checked_transaction::{
+    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount,
+    ScriptCheckedMetadata,
+};
 
 use self::memory::Memory;
 use self::receipts::ReceiptsCtx;

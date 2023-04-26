@@ -1,3 +1,4 @@
+use crate::consts::*;
 use fuel_asm::{op, GMArgs, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
@@ -5,11 +6,10 @@ use fuel_tx::{
     Finalizable, Receipt, Script, TransactionBuilder,
 };
 use fuel_types::{bytes, BlockHeight};
-use crate::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use crate::prelude::*;
 use crate::prelude::GasCosts;
+use crate::prelude::*;
 
 #[test]
 fn metadata() {

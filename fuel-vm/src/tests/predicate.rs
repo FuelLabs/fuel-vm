@@ -4,10 +4,10 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use crate::prelude::*;
 
-use core::iter;
-use fuel_asm::PanicReason::OutOfGas;
 use crate::checked_transaction::CheckPredicates;
 use crate::checked_transaction::EstimatePredicates;
+use core::iter;
+use fuel_asm::PanicReason::OutOfGas;
 
 fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
@@ -176,9 +176,13 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     builder.add_input(input);
 
     let mut transaction = builder.finalize();
-    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
+    transaction
+        .estimate_predicates(&params, &GasCosts::default())
+        .expect("Predicate estimation failed");
 
-    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
+    let checked = transaction
+        .into_checked_basic(Default::default(), &params)
+        .expect("Should successfully create checked tranaction with predicate");
 
     let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
@@ -244,10 +248,13 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     }
 
     let mut transaction = builder.finalize();
-    transaction.estimate_predicates(&Default::default(), &GasCosts::default())
+    transaction
+        .estimate_predicates(&Default::default(), &GasCosts::default())
         .map_err(|_| ())?;
 
-    let tx = transaction.into_checked_basic(Default::default(), &Default::default()).expect("Should successfully create checked tranaction with predicate");
+    let tx = transaction
+        .into_checked_basic(Default::default(), &Default::default())
+        .expect("Should successfully create checked tranaction with predicate");
 
     Interpreter::<PredicateStorage>::check_predicates(&tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
@@ -342,9 +349,13 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     builder.add_input(input);
 
     let mut transaction = builder.finalize();
-    transaction.estimate_predicates(&params, &GasCosts::default()).expect("Predicate estimation failed");
+    transaction
+        .estimate_predicates(&params, &GasCosts::default())
+        .expect("Predicate estimation failed");
 
-    let checked = transaction.into_checked_basic(Default::default(), &params).expect("Should successfully create checked tranaction with predicate");
+    let checked = transaction
+        .into_checked_basic(Default::default(), &params)
+        .expect("Should successfully create checked tranaction with predicate");
 
     let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
@@ -428,10 +439,9 @@ fn gas_used_by_predicates_more_than_limit() {
 
     builder.add_input(input);
 
-    let tx_with_predicate =
-        builder
-            .finalize_checked_basic(Default::default())
-            .check_predicates(&params, &GasCosts::default());
+    let tx_with_predicate = builder
+        .finalize_checked_basic(Default::default())
+        .check_predicates(&params, &GasCosts::default());
 
     assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateVerificationFailed);
 }

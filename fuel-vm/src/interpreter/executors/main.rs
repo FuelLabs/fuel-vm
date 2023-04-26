@@ -83,7 +83,9 @@ impl<T> Interpreter<PredicateStorage, T> {
             if vm.registers[RegId::GGAS] != 0 {
                 return Err(PredicateVerificationFailed::GasMismatch);
             }
-            cumulative_gas_used = cumulative_gas_used.checked_add(gas_used).expect("cumulative gas overflow");
+            cumulative_gas_used = cumulative_gas_used
+                .checked_add(gas_used)
+                .expect("cumulative gas overflow");
         }
 
         Ok(PredicatesChecked {
@@ -107,8 +109,8 @@ impl<T> Interpreter<PredicateStorage, T> {
         params: ConsensusParameters,
         gas_costs: GasCosts,
     ) -> Result<bool, PredicateVerificationFailed>
-        where
-            Tx: ExecutableTransaction
+    where
+        Tx: ExecutableTransaction,
     {
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
 

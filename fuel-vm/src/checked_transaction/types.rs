@@ -154,7 +154,7 @@ pub mod mint {
 pub mod script {
     use super::super::{
         balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked
+        Checked, IntoChecked,
     };
     use crate::checked_transaction::{NonRetryableFreeBalances, RetryableAmount};
     use fuel_tx::{Cacheable, CheckError, ConsensusParameters, FormatValidityChecks, Script, TransactionFee};

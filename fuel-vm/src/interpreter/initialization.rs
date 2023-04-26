@@ -70,7 +70,7 @@ where
 
 impl<S, Tx> Interpreter<S, Tx>
 where
-    Tx: ExecutableTransaction
+    Tx: ExecutableTransaction,
 {
     /// Initialize the VM for a predicate context
     pub fn init_predicate_estimation(&mut self, transaction: Tx, balances: InitialBalances) -> bool {

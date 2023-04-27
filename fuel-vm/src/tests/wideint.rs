@@ -7,7 +7,7 @@ use fuel_asm::{
 };
 use fuel_tx::Receipt;
 
-use super::test_helpers::run_script;
+use super::test_helpers::{assert_panics, run_script};
 
 /// Allocates a byte array from heap and initializes it. Then points `reg` to it.
 fn aloc_bytearray<const S: usize>(reg: u8, v: [u8; S]) -> Vec<Instruction> {
@@ -826,6 +826,78 @@ fn fused_mul_div_u128(#[case] lhs: u128, #[case] rhs: u128, #[case] divisor: u12
         assert_eq!(v, expected);
     } else {
         panic!("Expected logd receipt");
+    }
+}
+
+#[test]
+fn fused_mul_div_overflow_u128() {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, u128::MAX));
+    ops.extend(make_u128(0x21, 3u64.into()));
+    ops.extend(make_u128(0x22, 2u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ArithmeticOverflow);
+}
+
+#[test]
+fn fused_mul_div_overflow_u256() {
+    let mut ops = Vec::new();
+    ops.extend(make_u256(0x20, U256::MAX));
+    ops.extend(make_u256(0x21, 3u64.into()));
+    ops.extend(make_u256(0x22, 2u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ArithmeticOverflow);
+}
+
+#[test]
+fn fused_mul_div_overflow_wrapping_u128() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u128(0x20, u128::MAX));
+    ops.extend(make_u128(0x21, 3u64.into()));
+    ops.extend(make_u128(0x22, 2u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::log(RegId::OF, 0x00, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::Log { ra, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 1);
+    } else {
+        panic!("Expected log receipt");
+    }
+}
+
+#[test]
+fn fused_mul_div_overflow_wrapping_u256() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u256(0x20, U256::MAX));
+    ops.extend(make_u256(0x21, 3u64.into()));
+    ops.extend(make_u256(0x22, 2u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::log(RegId::OF, 0x00, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+
+    if let Receipt::Log { ra, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 1);
+    } else {
+        panic!("Expected log receipt");
     }
 }
 

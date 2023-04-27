@@ -206,7 +206,7 @@ where
         let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
             *predicate_gas_used
         } else {
-            // Witness index zeroed for coin predicate
+            // predicate gas used zeroed for coin predicate
             0
         };
 

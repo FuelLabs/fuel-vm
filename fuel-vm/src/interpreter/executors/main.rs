@@ -62,30 +62,26 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         vm.init_predicate(checked.clone());
 
-        // Needed for now because checked is only freed once the value is collected into a Vec
-        #[allow(clippy::needless_collect)]
-        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
-            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
-            .collect();
+        for (idx, input) in checked.transaction().inputs().iter().enumerate() {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, checked.transaction(), idx) {
+                // VM is cloned because the state should be reset for every predicate verification
+                let mut vm = vm.clone();
 
-        for predicate in predicates {
-            // VM is cloned because the state should be reset for every predicate verification
-            let mut vm = vm.clone();
+                let gas_used = input.predicate_gas_used().unwrap();
+                vm.context = Context::PredicateVerification { program: predicate.clone() };
+                vm.set_gas(gas_used);
 
-            let gas_used = predicate.gas_used();
-            vm.context = Context::PredicateVerification { program: predicate };
-            vm.set_gas(gas_used);
+                if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
+                    return Err(PredicateVerificationFailed::False);
+                }
 
-            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                return Err(PredicateVerificationFailed::False);
+                if vm.registers[RegId::GGAS] != 0 {
+                    return Err(PredicateVerificationFailed::GasMismatch);
+                }
+                cumulative_gas_used = cumulative_gas_used
+                    .checked_add(gas_used)
+                    .expect("cumulative gas overflow");
             }
-
-            if vm.registers[RegId::GGAS] != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch);
-            }
-            cumulative_gas_used = cumulative_gas_used
-                .checked_add(gas_used)
-                .expect("cumulative gas overflow");
         }
 
         Ok(PredicatesChecked {

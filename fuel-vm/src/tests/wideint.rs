@@ -934,6 +934,70 @@ fn fused_mul_div_u256(#[case] lhs: U256, #[case] rhs: U256, #[case] divisor: U25
     }
 }
 
+#[test]
+fn addmod_by_zero_u128() {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ErrorFlag);
+}
+
+#[test]
+fn addmod_by_zero_u256() {
+    let mut ops = Vec::new();
+    ops.extend(make_u256(0x20, 1u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ErrorFlag);
+}
+
+#[test]
+fn addmod_by_zero_unsafemath_u128() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::log(RegId::OF, RegId::ERR, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    if let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 0); // of
+        assert_eq!(*rb, 1); // err
+    } else {
+        panic!("Expected log receipt");
+    }
+}
+
+#[test]
+fn addmod_by_zero_unsafemath_u256() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u256(0x20, 1u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::log(RegId::OF, RegId::ERR, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    if let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 0); // of
+        assert_eq!(*rb, 1); // err
+    } else {
+        panic!("Expected log receipt");
+    }
+}
+
 #[rstest::rstest]
 #[case(99u64.into(), 99u64.into(), 1u64.into(), 0u64.into())]
 #[case(0u64.into(), 0u64.into(), 100u64.into(), 0u64.into())]
@@ -996,6 +1060,70 @@ fn addmod_u256(#[case] lhs: U256, #[case] rhs: U256, #[case] modulus: U256, #[ca
         assert_eq!(v, expected);
     } else {
         panic!("Expected logd receipt");
+    }
+}
+
+#[test]
+fn mulmod_by_zero_u128() {
+    let mut ops = Vec::new();
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmm(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ErrorFlag);
+}
+
+#[test]
+fn mulmod_by_zero_u256() {
+    let mut ops = Vec::new();
+    ops.extend(make_u256(0x20, 1u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqmm(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::ErrorFlag);
+}
+
+#[test]
+fn mulmod_by_zero_unsafemath_u128() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u128(0x20, 1u64.into()));
+    ops.extend(make_u128(0x23, 0u64.into()));
+    ops.push(op::wdmm(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::log(RegId::OF, RegId::ERR, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    if let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 0); // of
+        assert_eq!(*rb, 1); // err
+    } else {
+        panic!("Expected log receipt");
+    }
+}
+
+#[test]
+fn mulmod_by_zero_unsafemath_u256() {
+    let mut ops = Vec::new();
+    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
+    ops.push(op::flag(0x20));
+    ops.extend(make_u256(0x20, 1u64.into()));
+    ops.extend(make_u256(0x23, 0u64.into()));
+    ops.push(op::wqmm(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::log(RegId::OF, RegId::ERR, 0x00, 0x00));
+    ops.push(op::ret(RegId::ONE));
+
+    let receipts = run_script(ops);
+    if let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() {
+        assert_eq!(*ra, 0); // of
+        assert_eq!(*rb, 1); // err
+    } else {
+        panic!("Expected log receipt");
     }
 }
 

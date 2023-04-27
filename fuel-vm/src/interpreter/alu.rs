@@ -4,6 +4,9 @@ use crate::{constraints::reg_key::*, error::RuntimeError};
 use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
+mod muldiv;
+mod wideint;
+
 #[cfg(test)]
 mod tests;
 
@@ -148,7 +151,7 @@ where
     F: FnOnce(B, C) -> Word,
 {
     if err_bool && !is_unsafe_math(flag) {
-        return Err(PanicReason::ErrorFlag.into());
+        return Err(PanicReason::ArithmeticError.into());
     }
 
     *common.of = 0;

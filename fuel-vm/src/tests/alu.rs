@@ -205,7 +205,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
         .reason()
         .expect("Failed to fetch instruction result");
 
-    assert_eq!(&PanicReason::ErrorFlag, result.reason());
+    assert_eq!(&PanicReason::ArithmeticError, result.reason());
 
     // TODO avoid magic constants
     // https://github.com/FuelLabs/fuel-asm/issues/60
@@ -349,6 +349,15 @@ fn muli() {
         0x10,
         Word::MAX as u128 * 2,
         false,
+    );
+}
+#[test]
+fn mldv() {
+    alu(
+        &[(0x10, u64::MAX), (0x11, 3), (0x12, 6)],
+        op::mldv(0x13, 0x10, 0x11, 0x12),
+        0x13,
+        u64::MAX / 2,
     );
 }
 

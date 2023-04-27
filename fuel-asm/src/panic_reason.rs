@@ -18,6 +18,7 @@ pub enum PanicReason {
     /// Attempt to write outside interpreter memory boundaries.
     MemoryOverflow = 0x04,
     /// Overflow while executing arithmetic operation.
+    /// These errors are ignored using the WRAPPING flag.
     ArithmeticOverflow = 0x05,
     /// Designed contract was not found in the storage.
     ContractNotFound = 0x06,
@@ -77,8 +78,12 @@ pub enum PanicReason {
     ContractMismatch = 0x21,
     /// Attempting to send message data longer than `MAX_MESSAGE_DATA_LENGTH`
     MessageDataTooLong = 0x22,
+    /// Mathimatically invalid arguments where given to an arithmetic instruction.
+    /// For instance, division by zero produces this.
+    /// These errors are ignored using the UNSAFEMATH flag.
+    ArithmeticError = 0x23,
     /// The byte can't be mapped to any known `PanicReason`.
-    UnknownPanicReason = 0x23,
+    UnknownPanicReason = 0x24,
 }
 
 impl fmt::Display for PanicReason {
@@ -140,6 +145,7 @@ impl From<u8> for PanicReason {
             0x20 => ContractIdAlreadyDeployed,
             0x21 => ContractMismatch,
             0x22 => MessageDataTooLong,
+            0x23 => ArithmeticError,
             _ => UnknownPanicReason,
         }
     }
@@ -166,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        const LAST_PANIC_REASON: u8 = 0x23;
+        const LAST_PANIC_REASON: u8 = 0x24;
         for i in 0..LAST_PANIC_REASON {
             let reason = PanicReason::from(i);
             let i2 = reason as u8;

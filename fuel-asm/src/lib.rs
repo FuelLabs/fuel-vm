@@ -21,7 +21,7 @@ mod unpack;
 mod encoding_tests;
 
 #[doc(no_inline)]
-pub use args::{GMArgs, GTFArgs};
+pub use args::{wideint, GMArgs, GTFArgs};
 pub use fuel_types::{RegisterId, Word};
 pub use instruction_result::InstructionResult;
 pub use panic_reason::PanicReason;
@@ -124,6 +124,8 @@ impl_instructions! {
     0x20 SUB sub [RegId RegId RegId]
     "Bitwise XORs two registers."
     0x21 XOR xor [RegId RegId RegId]
+    "Fused multiply-divide with arbitrary precision intermediate step."
+    0x22 MLDV mldv [RegId RegId RegId RegId]
 
     "Return from context."
     0x24 RET ret [RegId]
@@ -267,6 +269,35 @@ impl_instructions! {
     0x93 CFE cfe [RegId]
     "Shrink the current call frame's stack"
     0x94 CFS cfs [RegId]
+
+    "Compare 128bit integers"
+    0xa0 WDCM wdcm [RegId RegId RegId Imm06]
+    "Compare 256bit integers"
+    0xa1 WQCM wqcm [RegId RegId RegId Imm06]
+    "Simple 128bit operations"
+    0xa2 WDOP wdop [RegId RegId RegId Imm06]
+    "Simple 256bit operations"
+    0xa3 WQOP wqop [RegId RegId RegId Imm06]
+    "Multiply 128bit"
+    0xa4 WDML wdml [RegId RegId RegId Imm06]
+    "Multiply 256bit"
+    0xa5 WQML wqml [RegId RegId RegId Imm06]
+    "Divide 128bit"
+    0xa6 WDDV wddv [RegId RegId RegId Imm06]
+    "Divide 256bit"
+    0xa7 WQDV wqdv [RegId RegId RegId Imm06]
+    "Fused multiply-divide 128bit"
+    0xa8 WDMD wdmd [RegId RegId RegId RegId]
+    "Fused multiply-divide 256bit"
+    0xa9 WQMD wqmd [RegId RegId RegId RegId]
+    "AddMod 128bit"
+    0xaa WDAM wdam [RegId RegId RegId RegId]
+    "AddMod 256bit"
+    0xab WQAM wqam [RegId RegId RegId RegId]
+    "MulMod 128bit"
+    0xac WDMM wdmm [RegId RegId RegId RegId]
+    "MulMod 256bit"
+    0xad WQMM wqmm [RegId RegId RegId RegId]
 }
 
 impl Instruction {
@@ -446,8 +477,9 @@ impl Opcode {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
-            | XOR | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
-            | MODI | MULI | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
+            | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
+            | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
+            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
             | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }

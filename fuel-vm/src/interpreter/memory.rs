@@ -307,24 +307,10 @@ pub(crate) fn load_word(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8
-    let (bc, overflow) = b.overflowing_add(c * 8);
-    let (bcw, of) = bc.overflowing_add(8);
-    let overflow = overflow || of;
-
-    let bc = bc as usize;
-    let bcw = bcw as usize;
-
-    if overflow || bcw > VM_MAX_RAM as RegisterId {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        // Safe conversion of sized slice
-        *result = <[u8; 8]>::try_from(&memory[bc..bcw])
-            .map(Word::from_be_bytes)
-            .unwrap_or_else(|_| unreachable!());
-
-        inc_pc(pc)
-    }
+    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
+    let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
+    *result = Word::from_be_bytes(read_bytes(memory, addr)?);
+    inc_pc(pc)
 }
 
 pub(crate) fn store_byte(
@@ -354,19 +340,10 @@ pub(crate) fn store_word(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8
-    let (ac, overflow) = a.overflowing_add(c * 8);
-    let (acw, of) = ac.overflowing_add(8);
-    let overflow = overflow || of;
-
-    let range = MemoryRange::new(ac, 8);
-    if overflow || acw > VM_MAX_RAM || !owner.has_ownership_range(&range) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[ac as usize..acw as usize].copy_from_slice(&b.to_be_bytes());
-
-        inc_pc(pc)
-    }
+    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
+    let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
+    write_bytes(memory, owner, addr, b.to_be_bytes())?;
+    inc_pc(pc)
 }
 
 pub(crate) fn malloc(mut hp: RegMut<HP>, sp: Reg<SP>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
@@ -567,4 +544,35 @@ pub(crate) fn try_zeroize(
             memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
         })
         .ok_or_else(|| PanicReason::MemoryOwnership.into())
+}
+
+/// Reads a constant-sized byte array from memory, performing overflow and memory range checks.
+pub(crate) fn read_bytes<const COUNT: usize>(memory: &[u8; MEM_SIZE], addr: Word) -> Result<[u8; COUNT], RuntimeError> {
+    let addr = addr as usize;
+    let (end, overflow) = addr.overflowing_add(COUNT);
+
+    if overflow || end > VM_MAX_RAM as RegisterId {
+        return Err(PanicReason::MemoryOverflow.into());
+    }
+
+    Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
+}
+
+/// Writes a constant-sized byte array to memory, performing overflow, memory range and ownership checks.
+pub(crate) fn write_bytes<const COUNT: usize>(
+    memory: &mut [u8; MEM_SIZE],
+    owner: OwnershipRegisters,
+    addr: Word,
+    bytes: [u8; COUNT],
+) -> Result<(), RuntimeError> {
+    let range = MemoryRange::new(addr, COUNT as Word);
+    let addr = addr as usize;
+    let (end, overflow) = addr.overflowing_add(COUNT);
+
+    if overflow || (end as Word) > VM_MAX_RAM || !owner.has_ownership_range(&range) {
+        return Err(PanicReason::MemoryOverflow.into());
+    }
+
+    memory[addr..end].copy_from_slice(&bytes);
+    Ok(())
 }

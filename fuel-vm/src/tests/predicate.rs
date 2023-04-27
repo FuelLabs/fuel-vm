@@ -58,7 +58,7 @@ where
     builder.add_input(input);
 
     let checked = builder.with_params(params).finalize_checked_basic(height);
-    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), GasCosts::free()).is_ok()
+    Interpreter::<PredicateStorage>::check_predicates(checked, Default::default(), GasCosts::free()).is_ok()
 }
 
 #[test]
@@ -256,7 +256,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         .into_checked_basic(Default::default(), &Default::default())
         .expect("Should successfully create checked tranaction with predicate");
 
-    Interpreter::<PredicateStorage>::check_predicates(&tx, Default::default(), Default::default())
+    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), Default::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }

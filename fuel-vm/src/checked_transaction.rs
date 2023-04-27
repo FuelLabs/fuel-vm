@@ -200,7 +200,7 @@ where
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             // TODO: Optimize predicate verification to work with references where it is possible.
-            let checked = Interpreter::<PredicateStorage>::check_predicates(&self, *params, gas_costs.clone())?;
+            let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }

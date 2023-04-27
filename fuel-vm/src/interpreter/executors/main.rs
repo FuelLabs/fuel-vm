@@ -82,8 +82,12 @@ impl<T> Interpreter<PredicateStorage, T> {
                 }
                 cumulative_gas_used = cumulative_gas_used
                     .checked_add(gas_used)
-                    .expect("cumulative gas overflow");
+                    .ok_or_else(|| PredicateVerificationFailed::OutOfGas)?;
             }
+        }
+
+        if cumulative_gas_used > checked.transaction().limit() {
+            return Err(PredicateVerificationFailed::OutOfGas);
         }
 
         Ok(PredicatesChecked {
@@ -91,7 +95,8 @@ impl<T> Interpreter<PredicateStorage, T> {
         })
     }
     /// Initialize the VM with the provided transaction and check all predicates defined in the
-    /// inputs.
+    /// inputs. Set the predicate_gas_used to be the actual gas consumed during execution for
+    /// each predicate.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for predicates.
     /// This way, its possible, for the sake of simplicity, it is possible to use

@@ -31,7 +31,6 @@ where
         let (result, overflow) = muldiv(lhs, rhs, divider);
 
         if overflow != 0 && !is_wrapping(flag.into()) {
-            println!("!!");
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 

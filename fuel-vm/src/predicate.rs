@@ -34,10 +34,7 @@ impl RuntimePredicate {
         tx.inputs_predicate_offset_at(idx)
             .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
             .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self {
-                program,
-                idx,
-            })
+            .map(|program| Self { program, idx })
     }
 }
 

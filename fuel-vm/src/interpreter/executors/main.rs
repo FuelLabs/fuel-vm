@@ -68,7 +68,9 @@ impl<T> Interpreter<PredicateStorage, T> {
                 let mut vm = vm.clone();
 
                 let gas_used = input.predicate_gas_used().unwrap();
-                vm.context = Context::PredicateVerification { program: predicate.clone() };
+                vm.context = Context::PredicateVerification {
+                    program: predicate.clone(),
+                };
                 vm.set_gas(gas_used);
 
                 if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {

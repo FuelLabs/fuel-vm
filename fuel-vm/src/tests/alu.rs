@@ -205,7 +205,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
         .reason()
         .expect("Failed to fetch instruction result");
 
-    assert_eq!(&PanicReason::ErrorFlag, result.reason());
+    assert_eq!(&PanicReason::ArithmeticError, result.reason());
 
     // TODO avoid magic constants
     // https://github.com/FuelLabs/fuel-asm/issues/60

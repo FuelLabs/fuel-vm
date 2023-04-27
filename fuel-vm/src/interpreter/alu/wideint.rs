@@ -180,7 +180,7 @@ macro_rules! wideint_ops {
                                 *err = 1;
                                 $t::default() // Zero
                             } else {
-                                return Err(PanicReason::ErrorFlag.into());
+                                return Err(PanicReason::ArithmeticError.into());
                             }
                         }
                     };
@@ -211,7 +211,7 @@ macro_rules! wideint_ops {
                             *err = 1;
                             $t::default() // Zero
                         } else {
-                            return Err(PanicReason::ErrorFlag.into());
+                            return Err(PanicReason::ArithmeticError.into());
                         }
                     } else {
                         *err = 0;
@@ -251,7 +251,7 @@ macro_rules! wideint_ops {
                             *err = 1;
                             $t::default() // Zero
                         } else {
-                            return Err(PanicReason::ErrorFlag.into());
+                            return Err(PanicReason::ArithmeticError.into());
                         }
                     } else {
                         *err = 0;

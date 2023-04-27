@@ -678,7 +678,7 @@ fn divide_by_zero_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ErrorFlag);
+        assert_eq!(*reason.reason(), PanicReason::ArithmeticError);
     } else {
         panic!("Expected panic receipt");
     }
@@ -695,7 +695,7 @@ fn divide_by_zero_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ErrorFlag);
+        assert_eq!(*reason.reason(), PanicReason::ArithmeticError);
     } else {
         panic!("Expected panic receipt");
     }
@@ -943,7 +943,7 @@ fn addmod_by_zero_u128() {
     ops.push(op::ret(RegId::ONE));
 
     let receipts = run_script(ops);
-    assert_panics(&receipts, PanicReason::ErrorFlag);
+    assert_panics(&receipts, PanicReason::ArithmeticError);
 }
 
 #[test]
@@ -955,7 +955,7 @@ fn addmod_by_zero_u256() {
     ops.push(op::ret(RegId::ONE));
 
     let receipts = run_script(ops);
-    assert_panics(&receipts, PanicReason::ErrorFlag);
+    assert_panics(&receipts, PanicReason::ArithmeticError);
 }
 
 #[test]
@@ -1072,7 +1072,7 @@ fn mulmod_by_zero_u128() {
     ops.push(op::ret(RegId::ONE));
 
     let receipts = run_script(ops);
-    assert_panics(&receipts, PanicReason::ErrorFlag);
+    assert_panics(&receipts, PanicReason::ArithmeticError);
 }
 
 #[test]
@@ -1084,7 +1084,7 @@ fn mulmod_by_zero_u256() {
     ops.push(op::ret(RegId::ONE));
 
     let receipts = run_script(ops);
-    assert_panics(&receipts, PanicReason::ErrorFlag);
+    assert_panics(&receipts, PanicReason::ArithmeticError);
 }
 
 #[test]

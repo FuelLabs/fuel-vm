@@ -151,7 +151,7 @@ where
     F: FnOnce(B, C) -> Word,
 {
     if err_bool && !is_unsafe_math(flag) {
-        return Err(PanicReason::ErrorFlag.into());
+        return Err(PanicReason::ArithmeticError.into());
     }
 
     *common.of = 0;

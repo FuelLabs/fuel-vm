@@ -67,7 +67,7 @@ fn test_add(
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b0, 10, 0, true => Err(RuntimeError::Recoverable(PanicReason::ErrorFlag));
+    0b0, 10, 0, true => Err(RuntimeError::Recoverable(PanicReason::ArithmeticError));
     "div 10 0 error flag"
 )]
 #[test_case(

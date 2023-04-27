@@ -101,6 +101,7 @@ fn panic_reason_description() {
         PanicReason::ExpectedOutputVariable,
         PanicReason::ExpectedParentInternalContext,
         PanicReason::IllegalJump,
+        PanicReason::ArithmeticError,
     ];
 
     let pd = InstructionResult::error(PanicReason::Success, op::noop().into());

@@ -21,3 +21,4 @@ mod profile_gas;
 mod serde_profile;
 mod spec;
 mod validation;
+mod wideint;

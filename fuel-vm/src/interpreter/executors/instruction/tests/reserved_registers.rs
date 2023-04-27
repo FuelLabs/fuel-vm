@@ -1,6 +1,6 @@
 use super::*;
 use crate::checked_transaction::IntoChecked;
-use fuel_asm::PanicReason::OutOfGas;
+use fuel_asm::PanicReason;
 use fuel_tx::{ConsensusParameters, Transaction};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
@@ -49,11 +49,14 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         // This assumes that writeable register is validated before other properties of the instruction.
         match res.as_ref().map_err(|e| e.panic_reason()) {
             // expected failure
-            Err(Some(ReservedRegisterNotWritable)) => {}
+            Err(Some(PanicReason::ReservedRegisterNotWritable)) => {}
             // Some opcodes may run out of gas if they access too much data.
             // Simply discard these results as an alternative to structural fuzzing that avoids
             // out of gas errors.
-            Err(Some(OutOfGas)) => return TestResult::discard(),
+            Err(Some(PanicReason::OutOfGas)) => return TestResult::discard(),
+            // Some opcodes parse the immediate value as a part of the instruction itself,
+            // and thus fail before the destination register writability check occurs.
+            Err(Some(PanicReason::InvalidImmediateValue)) => return TestResult::discard(),
             _ => {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
@@ -110,6 +113,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::MOVI => true,
         Opcode::MUL => true,
         Opcode::MULI => true,
+        Opcode::MLDV => true,
         Opcode::NOT => true,
         Opcode::OR => true,
         Opcode::ORI => true,
@@ -119,6 +123,20 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::SRLI => true,
         Opcode::SUB => true,
         Opcode::SUBI => true,
+        Opcode::WDCM => true,
+        Opcode::WQCM => true,
+        Opcode::WDOP => false,
+        Opcode::WQOP => false,
+        Opcode::WDML => false,
+        Opcode::WQML => false,
+        Opcode::WDDV => false,
+        Opcode::WQDV => false,
+        Opcode::WDMD => false,
+        Opcode::WQMD => false,
+        Opcode::WDAM => false,
+        Opcode::WQAM => false,
+        Opcode::WDMM => false,
+        Opcode::WQMM => false,
         Opcode::XOR => true,
         Opcode::XORI => true,
         Opcode::JI => false,
@@ -203,6 +221,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::MOVI => false,
         Opcode::MUL => false,
         Opcode::MULI => false,
+        Opcode::MLDV => false,
         Opcode::NOT => false,
         Opcode::OR => false,
         Opcode::ORI => false,
@@ -212,6 +231,20 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::SRLI => false,
         Opcode::SUB => false,
         Opcode::SUBI => false,
+        Opcode::WDCM => false,
+        Opcode::WQCM => false,
+        Opcode::WDOP => false,
+        Opcode::WQOP => false,
+        Opcode::WDML => false,
+        Opcode::WQML => false,
+        Opcode::WDDV => false,
+        Opcode::WQDV => false,
+        Opcode::WDMD => false,
+        Opcode::WQMD => false,
+        Opcode::WDAM => false,
+        Opcode::WQAM => false,
+        Opcode::WDMM => false,
+        Opcode::WQMM => false,
         Opcode::XOR => false,
         Opcode::XORI => false,
         Opcode::JI => false,

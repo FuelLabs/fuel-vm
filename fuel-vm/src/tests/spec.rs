@@ -44,7 +44,7 @@ fn spec_unsafemath_flag(
             panic!("No log data");
         }
     } else {
-        assert_panics(&receipts, PanicReason::ErrorFlag);
+        assert_panics(&receipts, PanicReason::ArithmeticError);
     }
 }
 

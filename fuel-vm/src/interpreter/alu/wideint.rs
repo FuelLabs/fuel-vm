@@ -215,7 +215,7 @@ macro_rules! wideint_ops {
                         let rhs = [<to_wider_prim_ $t:lower>](rhs);
                         let modulus = [<to_wider_prim_ $t:lower>](modulus);
 
-                        // Trunacte never loses data as modulus is still in domain of the original type
+                        // Truncate never loses data as modulus is still in domain of the original type
                         [<truncate_from_prim_ $t:lower>]((lhs + rhs) % modulus)
                     };
 

@@ -171,9 +171,13 @@ macro_rules! wideint_ops {
                     let rhs = [<to_prim_ $t:lower>](rhs);
 
                     let result = match lhs.checked_div(rhs) {
-                        Some(d) => [<from_prim_ $t:lower>](d),
+                        Some(d) => {
+                            *err = 0;
+                            [<from_prim_ $t:lower>](d)
+                        },
                         None => {
                             if is_unsafe_math(flag.into()) {
+                                *err = 1;
                                 $t::default() // Zero
                             } else {
                                 return Err(PanicReason::ErrorFlag.into());
@@ -182,7 +186,6 @@ macro_rules! wideint_ops {
                     };
 
                     *of = 0;
-                    *err = 0;
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
@@ -205,11 +208,14 @@ macro_rules! wideint_ops {
 
                     let result: $t = if modulus == 0 {
                         if is_unsafe_math(flag.into()) {
+                            *err = 1;
                             $t::default() // Zero
                         } else {
                             return Err(PanicReason::ErrorFlag.into());
                         }
                     } else {
+                        *err = 0;
+
                         // Use wider types to avoid overflow
                         let lhs = [<to_wider_prim_ $t:lower>](lhs);
                         let rhs = [<to_wider_prim_ $t:lower>](rhs);
@@ -220,7 +226,6 @@ macro_rules! wideint_ops {
                     };
 
                     *of = 0;
-                    *err = 0;
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
@@ -243,11 +248,14 @@ macro_rules! wideint_ops {
 
                     let result: $t = if modulus == 0 {
                         if is_unsafe_math(flag.into()) {
+                            *err = 1;
                             $t::default() // Zero
                         } else {
                             return Err(PanicReason::ErrorFlag.into());
                         }
                     } else {
+                        *err = 0;
+
                         let lhs = [<to_prim_ $t:lower>](lhs);
                         let rhs = [<to_prim_ $t:lower>](rhs);
                         let modulus = [<to_wider_prim_ $t:lower>](modulus);
@@ -259,7 +267,6 @@ macro_rules! wideint_ops {
                     };
 
                     *of = 0;
-                    *err = 0;
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
@@ -274,7 +281,7 @@ macro_rules! wideint_ops {
                     d: Word,
                 ) -> Result<(), RuntimeError> {
                     let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
+                    let (SystemRegisters { mut of, mut err, pc, flag, .. }, _) = split_registers(&mut self.registers);
 
                     let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
                     let rhs: $t = $t::from_be_bytes(read_bytes(&self.memory, c)?);
@@ -298,12 +305,11 @@ macro_rules! wideint_ops {
                     let higher_half: [u8; S] = buffer[S..].try_into().unwrap_or_else(|_| unreachable!());
                     let result = $t::from_le_bytes(lower_half);
 
-                    if higher_half != [0u8; S] {
-                        *of = 1;
-                    } else {
-                        *of = 0;
+                    let overflows = higher_half != [0u8; S];
+                    if overflows && !is_wrapping(flag.into()) {
+                        return Err(PanicReason::ArithmeticOverflow.into());
                     }
-
+                    *of = overflows as Word;
                     *err = 0;
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;

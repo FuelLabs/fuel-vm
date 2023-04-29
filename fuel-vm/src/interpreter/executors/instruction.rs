@@ -328,15 +328,13 @@ where
                 self.gas_charge(self.gas_costs.sll)?;
                 let (a, b, c) = sll.unpack();
 
-                self.alu_error(
+                self.alu_set(
                     a.into(),
-                    |l, r| {
-                        l.checked_shl(u32::try_from(r).expect("value out of range"))
-                            .unwrap_or_default()
+                    if let Ok(c) = r!(c).try_into() {
+                        Word::checked_shl(r!(b), c).unwrap_or_default()
+                    } else {
+                        0
                     },
-                    r!(b),
-                    r!(c),
-                    u32::try_from(r!(c)).is_err(),
                 )?;
             }
 
@@ -350,15 +348,13 @@ where
             Instruction::SRL(srl) => {
                 self.gas_charge(self.gas_costs.srl)?;
                 let (a, b, c) = srl.unpack();
-                self.alu_error(
+                self.alu_set(
                     a.into(),
-                    |l, r| {
-                        l.checked_shr(u32::try_from(r).expect("value out of range"))
-                            .unwrap_or_default()
+                    if let Ok(c) = r!(c).try_into() {
+                        Word::checked_shr(r!(b), c).unwrap_or_default()
+                    } else {
+                        0
                     },
-                    r!(b),
-                    r!(c),
-                    u32::try_from(r!(c)).is_err(),
                 )?;
             }
 

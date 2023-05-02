@@ -237,6 +237,9 @@ pub enum PredicateVerificationFailed {
     /// The predicate wasn't successfully evaluated to true
     #[error("Predicate failed to evaluate")]
     False,
+    /// The predicate gas used was not specified before execution
+    #[error("Predicate failed to evaluate")]
+    GasNotSpecified,
     /// An unexpected error occurred.
     #[error(transparent)]
     Io(#[from] io::Error),

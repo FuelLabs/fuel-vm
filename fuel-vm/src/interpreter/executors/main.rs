@@ -72,10 +72,16 @@ impl<T> Interpreter<PredicateStorage, T> {
                 // VM is cloned because the state should be reset for every predicate verification
                 let mut vm = vm.clone();
 
-                let gas_used = input.predicate_gas_used().unwrap();
                 vm.context = Context::PredicateVerification {
                     program: predicate.clone(),
                 };
+
+                let gas_used = if let Some(x) = input.predicate_gas_used() {
+                    x
+                } else {
+                    return Err(PredicateVerificationFailed::GasNotSpecified);
+                };
+
                 vm.set_gas(gas_used);
 
                 if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {

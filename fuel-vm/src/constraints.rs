@@ -104,8 +104,8 @@ impl CheckedMemRange {
             return Ok(Self(address..address));
         }
 
-        let (end, of) = (address as usize).overflowing_add(size);
-        let range = address as usize..end;
+        let (end, of) = address.overflowing_add(size);
+        let range = address..end;
         if of || !constraint.contains(&((range.end - 1) as Word)) {
             return Err(PanicReason::MemoryOverflow.into());
         }

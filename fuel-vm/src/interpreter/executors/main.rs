@@ -62,7 +62,12 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         vm.init_predicate(checked.clone());
 
-        for (idx, input) in checked.transaction().inputs().iter().enumerate().filter(|(_, input)| matches!(input, Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::DataPredicate(_))  {
+        for (idx, input) in checked.transaction().inputs().iter().enumerate().filter(|(_, input)| {
+            matches!(
+                input,
+                Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::MessageDataPredicate(_)
+            )
+        }) {
             if let Some(predicate) = RuntimePredicate::from_tx(&params, checked.transaction(), idx) {
                 // VM is cloned because the state should be reset for every predicate verification
                 let mut vm = vm.clone();

@@ -549,6 +549,13 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
         op::movi(0x11, cases[9].len() as Immediate18),
@@ -653,6 +660,13 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateData),
         op::movi(0x11, cases[18].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x04),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),

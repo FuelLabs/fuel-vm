@@ -74,8 +74,8 @@ impl Default for Input {
         msg_data_len: 0,
         amount_coins_to_send: 0,
         ..Default::default()
-    } => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    ; "Call abi can't be zero"
+    } => matches Ok(Output { .. })
+    ; "message data can be zero-length"
 )]
 #[test_case(
     Input {

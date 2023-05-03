@@ -75,7 +75,7 @@ impl Default for Input {
         amount_coins_to_send: 0,
         ..Default::default()
     } => matches Ok(Output { .. })
-    ; "Call abi can't be zero"
+    ; "message data can be zero-length"
 )]
 #[test_case(
     Input {

@@ -1,6 +1,8 @@
 use fuel_types::bytes::WORD_SIZE;
 use fuel_types::{AssetId, Bytes32};
 
+const MAX_GAS: u64 = 100_000_000;
+
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -45,14 +47,13 @@ impl ConsensusParameters {
         max_inputs: 255,
         max_outputs: 255,
         max_witnesses: 255,
-        max_gas_per_tx: 100_000_000,
+        max_gas_per_tx: MAX_GAS,
         max_script_length: 1024 * 1024,
         max_script_data_length: 1024 * 1024,
         max_storage_slots: 255,
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
-        //TODO: set this to a reasonable value
-        max_gas_per_predicate: 100_000_000,
+        max_gas_per_predicate: MAX_GAS,
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
         max_message_data_length: 1024 * 1024,

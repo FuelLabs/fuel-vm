@@ -8,6 +8,7 @@ use rand::{Rng, SeedableRng};
 use fuel_vm::consts::*;
 use fuel_vm::prelude::*;
 
+use fuel_asm::PanicReason::ErrorFlag;
 use fuel_asm::{
     op, Instruction,
     PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership},
@@ -1262,7 +1263,7 @@ fn message_output_b_gt_msg_len() {
         op::smo(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(message_output, MemoryOverflow);
+    check_expected_reason_for_instructions(message_output, ErrorFlag);
 }
 
 #[test]

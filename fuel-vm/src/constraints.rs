@@ -81,7 +81,7 @@ impl CheckedMemRange {
 
     /// Create a new memory range.
     pub fn new(address: Word, size: usize) -> Result<Self, RuntimeError> {
-        Self::new_inner(address, size, Self::DEFAULT_CONSTRAINT)
+        Self::new_inner(address as usize, size, Self::DEFAULT_CONSTRAINT)
     }
 
     /// Create a new memory range with a custom constraint.
@@ -94,15 +94,18 @@ impl CheckedMemRange {
         if constraint.end > VM_MAX_RAM {
             return Err(Bug::new(BugId::ID009, BugVariant::InvalidMemoryConstraint).into());
         }
-        Self::new_inner(address, size, constraint)
+        Self::new_inner(address as usize, size, constraint)
     }
 
-    /// Create a new memory range, checks that the range is not empty
-    /// and that it fits into the constraint.
-    fn new_inner(address: Word, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
-        let (end, of) = (address as usize).overflowing_add(size);
-        let range = address as usize..end;
-        if of || range.is_empty() || !constraint.contains(&((range.end - 1) as Word)) {
+    /// Create a new memory range, checks that the range fits into the constraint.
+    fn new_inner(address: usize, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
+        if size == 0 {
+            return Ok(Self(address..address));
+        }
+
+        let (end, of) = address.overflowing_add(size);
+        let range = address..end;
+        if of || !constraint.contains(&((range.end - 1) as Word)) {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self(range))
@@ -151,7 +154,7 @@ impl<const LEN: usize> CheckedMemConstLen<LEN> {
     /// Panics if constraints end > `VM_MAX_RAM`.
     pub fn new_with_constraint(address: Word, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
         assert!(constraint.end <= VM_MAX_RAM, "Constraint end must be <= VM_MAX_RAM.");
-        Ok(Self(CheckedMemRange::new_inner(address, LEN, constraint)?))
+        Ok(Self(CheckedMemRange::new_inner(address as usize, LEN, constraint)?))
     }
 
     /// Get the memory slice for this range.

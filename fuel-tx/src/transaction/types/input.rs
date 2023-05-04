@@ -495,7 +495,7 @@ impl Input {
         }
     }
 
-    /// Return a tuple containing the predicate and its data if the input is of
+    /// Return a tuple containing the predicate, its data and used gas if the input is of
     /// type `CoinPredicate` or `MessageCoinPredicate` or `MessageDataPredicate`
     pub fn predicate(&self) -> Option<(&[u8], &[u8], &Word)> {
         match self {

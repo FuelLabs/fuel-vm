@@ -278,7 +278,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let mut transaction = builder.finalize();
 
-    //unestimated transaction should fail as it's predicates are not estimated
+    // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
         .into_checked(Default::default(), &params, &GasCosts::default())

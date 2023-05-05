@@ -128,13 +128,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     {
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
 
-        let tx_gas_limit: u64 = transaction.limit();
-
-        let predicate_gas_limit: u64 = if tx_gas_limit > params.max_gas_per_predicate {
-            params.max_gas_per_predicate
-        } else {
-            tx_gas_limit
-        };
+        let predicate_gas_limit: u64 = params.max_gas_per_predicate;
 
         let transaction_clone = transaction.clone();
 

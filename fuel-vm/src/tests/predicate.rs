@@ -284,7 +284,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_checked(Default::default(), &params, &GasCosts::default())
         .is_err());
 
-    //create checked transaction to get access to balances from metadata
+    // create checked transaction to get access to balances from metadata
     let unestimated_checked = transaction
         .clone()
         .into_checked_basic(Default::default(), &params)

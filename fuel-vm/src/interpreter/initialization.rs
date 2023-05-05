@@ -88,7 +88,7 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
     pub fn init_predicate(&mut self, checked: Checked<Tx>) -> bool {
@@ -96,7 +96,7 @@ where
             program: Default::default(),
         };
 
-        let (mut tx, metadata): (Tx, Tx::CheckedMetadata) = checked.into();
+        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
         self._init(tx, metadata.balances(), 0).is_ok()
@@ -107,7 +107,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM with a given transaction, backed by a storage provider that allows
     /// execution of contract opcodes.
@@ -119,7 +119,7 @@ where
         self.context = Context::Script { block_height };
 
         let gas_used_by_predicates = checked.metadata().gas_used_by_predicates();
-        let (mut tx, metadata): (Tx, Tx::CheckedMetadata) = checked.into();
+        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 
         self._init(tx, metadata.balances(), gas_used_by_predicates)

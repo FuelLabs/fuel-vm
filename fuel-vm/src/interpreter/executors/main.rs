@@ -50,7 +50,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+        <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         if !checked.transaction().check_predicate_owners(&params) {
             return Err(PredicateVerificationFailed::InvalidOwner);
@@ -377,7 +377,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the

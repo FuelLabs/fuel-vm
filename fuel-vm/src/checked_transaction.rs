@@ -60,12 +60,12 @@ impl core::fmt::Display for Checks {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Checked<Tx: IntoChecked> {
     transaction: Tx,
-    metadata: Tx::CheckedMetadata,
+    metadata: Tx::Metadata,
     checks_bitmask: Checks,
 }
 
 impl<Tx: IntoChecked> Checked<Tx> {
-    fn new(transaction: Tx, metadata: Tx::CheckedMetadata, checks_bitmask: Checks) -> Self {
+    fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
         Checked {
             transaction,
             metadata,
@@ -73,7 +73,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
         }
     }
 
-    pub(crate) fn basic(transaction: Tx, metadata: Tx::CheckedMetadata) -> Self {
+    pub(crate) fn basic(transaction: Tx, metadata: Tx::Metadata) -> Self {
         Checked::new(transaction, metadata, Checks::Basic)
     }
 
@@ -83,7 +83,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Returns the metadata generated during the check for transaction.
-    pub fn metadata(&self) -> &Tx::CheckedMetadata {
+    pub fn metadata(&self) -> &Tx::Metadata {
         &self.metadata
     }
 
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::CheckedMetadata) {
+impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::Metadata) {
     fn from(checked: Checked<Tx>) -> Self {
         let Checked {
             transaction, metadata, ..
@@ -155,7 +155,7 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
 /// Performs checks for a transaction
 pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
-    type CheckedMetadata: Sized + Clone;
+    type Metadata: Sized + Clone;
 
     /// Returns transaction that passed all `Checks`.
     fn into_checked(
@@ -195,7 +195,7 @@ pub trait EstimatePredicates: Sized {
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
 where
     Self: Clone,
-    <Tx as IntoChecked>::CheckedMetadata: crate::interpreter::CheckedMetadata,
+    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,
 {
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
@@ -336,31 +336,31 @@ impl From<CheckedTransaction> for Checked<Transaction> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(missing_docs)]
 pub enum CheckedMetadata {
-    Script(<Script as IntoChecked>::CheckedMetadata),
-    Create(<Create as IntoChecked>::CheckedMetadata),
-    Mint(<Mint as IntoChecked>::CheckedMetadata),
+    Script(<Script as IntoChecked>::Metadata),
+    Create(<Create as IntoChecked>::Metadata),
+    Mint(<Mint as IntoChecked>::Metadata),
 }
 
-impl From<<Script as IntoChecked>::CheckedMetadata> for CheckedMetadata {
-    fn from(metadata: <Script as IntoChecked>::CheckedMetadata) -> Self {
+impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Script as IntoChecked>::Metadata) -> Self {
         Self::Script(metadata)
     }
 }
 
-impl From<<Create as IntoChecked>::CheckedMetadata> for CheckedMetadata {
-    fn from(metadata: <Create as IntoChecked>::CheckedMetadata) -> Self {
+impl From<<Create as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Create as IntoChecked>::Metadata) -> Self {
         Self::Create(metadata)
     }
 }
 
-impl From<<Mint as IntoChecked>::CheckedMetadata> for CheckedMetadata {
-    fn from(metadata: <Mint as IntoChecked>::CheckedMetadata) -> Self {
+impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Mint as IntoChecked>::Metadata) -> Self {
         Self::Mint(metadata)
     }
 }
 
 impl IntoChecked for Transaction {
-    type CheckedMetadata = CheckedMetadata;
+    type Metadata = CheckedMetadata;
 
     fn into_checked_basic(
         self,

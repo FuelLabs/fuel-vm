@@ -70,7 +70,7 @@ pub mod create {
     }
 
     impl IntoChecked for Create {
-        type CheckedMetadata = CheckedMetadata;
+        type Metadata = CheckedMetadata;
 
         fn into_checked_basic(
             mut self,
@@ -110,7 +110,7 @@ pub mod mint {
     use fuel_types::BlockHeight;
 
     impl IntoChecked for Mint {
-        type CheckedMetadata = ();
+        type Metadata = ();
 
         fn into_checked_basic(
             mut self,
@@ -152,7 +152,7 @@ pub mod script {
     }
 
     impl IntoChecked for Script {
-        type CheckedMetadata = CheckedMetadata;
+        type Metadata = CheckedMetadata;
 
         fn into_checked_basic(
             mut self,

@@ -324,7 +324,7 @@ pub mod test_helpers {
         pub fn execute_tx<Tx>(&mut self, checked: Checked<Tx>) -> anyhow::Result<StateTransition<Tx>>
         where
             Tx: ExecutableTransaction,
-            <Tx as IntoChecked>::CheckedMetadata: CheckedMetadata,
+            <Tx as IntoChecked>::Metadata: CheckedMetadata,
         {
             self.storage.set_block_height(self.block_height);
             let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());

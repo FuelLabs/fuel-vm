@@ -11,7 +11,7 @@ use fuel_storage::{
     StorageWrite,
 };
 use fuel_tx::Contract;
-use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Salt, Word};
+use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Word};
 use itertools::Itertools;
 use tai64::Tai64;
 
@@ -19,6 +19,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::Read;
 
+use super::ContractInfo;
 use super::interpreter::ContractsAssetsStorage;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -26,7 +27,7 @@ struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, Bytes32>,
-    contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
+    contract_code_root: BTreeMap<ContractId, ContractInfo>,
 }
 
 #[derive(Debug, Clone)]
@@ -123,8 +124,8 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &[u8]) -> Result<Option<Contract>, Infallible> {
-        Ok(self.memory.contracts.insert(*key, value.into()))
+    fn insert(&mut self, key: &ContractId, value: &Contract) -> Result<Option<Contract>, Infallible> {
+        Ok(self.memory.contracts.insert(*key, value.clone()))
     }
 
     fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
@@ -176,7 +177,7 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 impl StorageInspect<ContractsInfo> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
+    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, ContractInfo>>, Infallible> {
         Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
     }
 
@@ -186,11 +187,11 @@ impl StorageInspect<ContractsInfo> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsInfo> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, Infallible> {
+    fn insert(&mut self, key: &ContractId, value: &ContractInfo) -> Result<Option<ContractInfo>, Infallible> {
         Ok(self.memory.contract_code_root.insert(*key, *value))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, Infallible> {
+    fn remove(&mut self, key: &ContractId) -> Result<Option<ContractInfo>, Infallible> {
         Ok(self.memory.contract_code_root.remove(key))
     }
 }

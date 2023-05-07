@@ -22,12 +22,14 @@ use std::io;
 use alloc::vec::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ScriptMetadata {
+pub struct ScriptMetadata {
     pub common: CommonMetadata,
     pub script_data_offset: usize,
 }
 
 #[derive(Clone, Derivative)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
@@ -42,6 +44,7 @@ pub struct Script {
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
     pub(crate) receipts_root: Bytes32,
+    #[cfg_attr(feature = "rkyv", with(rkyv::with::Skip))]
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     pub(crate) metadata: Option<ScriptMetadata>,

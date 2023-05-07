@@ -11,6 +11,8 @@ use core::iter;
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Deployable representation of a contract code.
 pub struct Contract(#[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>);

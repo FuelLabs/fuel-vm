@@ -19,19 +19,28 @@ pub struct ContractsRawCode;
 impl Mappable for ContractsRawCode {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
-    type Value = [u8];
+    type Value = Self::OwnedValue;
     type OwnedValue = Contract;
 }
 
 /// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 
+/// Additional contract info, This is the Value field of `ContractsInfo` table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
+pub struct ContractInfo {
+    /// The salt used during creation of the contract for uniques.
+    pub salt: Salt,
+    /// The root hash of the contract's code.
+    pub root: Bytes32,
+}
+
 impl Mappable for ContractsInfo {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
-    /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Bytes32` - is the root hash of the contract's code.
-    type Value = (Salt, Bytes32);
+    type Value = ContractInfo;
     type OwnedValue = Self::Value;
 }
 

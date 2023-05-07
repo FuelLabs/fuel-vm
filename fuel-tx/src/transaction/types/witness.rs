@@ -15,6 +15,8 @@ use std::io;
 
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]

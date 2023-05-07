@@ -6,6 +6,7 @@ use fuel_storage::StorageSize;
 use fuel_types::ContractId;
 use fuel_types::{BlockHeight, Bytes32};
 
+use crate::storage::ContractInfo;
 use crate::storage::ContractsAssetsStorage;
 use crate::storage::{ContractsAssetKey, ContractsStateKey, InterpreterStorage};
 
@@ -18,7 +19,7 @@ use super::*;
 pub(super) enum StorageDelta {
     State(MappableDelta<ContractsStateKey, Bytes32>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
-    Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
+    Info(MappableDelta<ContractId, ContractInfo>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
 
@@ -27,7 +28,7 @@ pub(super) enum StorageDelta {
 pub(super) enum StorageState {
     State(MappableState<ContractsStateKey, Bytes32>),
     Assets(MappableState<ContractsAssetKey, u64>),
-    Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
+    Info(MappableState<ContractId, ContractInfo>),
     RawCode(MappableState<ContractId, Contract>),
 }
 
@@ -176,7 +177,7 @@ where
                     }
                     StorageState::RawCode(MappableState { key, value }) => {
                         if let Some(value) = value {
-                            StorageMutate::<ContractsRawCode>::insert(&mut self.storage, key, value.as_ref()).unwrap();
+                            StorageMutate::<ContractsRawCode>::insert(&mut self.storage, key, &value).unwrap();
                         }
                     }
                 }
@@ -393,20 +394,20 @@ impl StorageType for ContractsAssets {
 impl StorageType for ContractsInfo {
     fn record_insert(
         key: &ContractId,
-        value: &(fuel_types::Salt, Bytes32),
-        existing: Option<(fuel_types::Salt, Bytes32)>,
+        value: &ContractInfo,
+        existing: Option<ContractInfo>,
     ) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
     }
 
-    fn record_remove(key: &ContractId, value: (fuel_types::Salt, Bytes32)) -> StorageDelta {
+    fn record_remove(key: &ContractId, value: ContractInfo) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Remove(*key, value))
     }
 }
 
 impl StorageType for ContractsRawCode {
-    fn record_insert(key: &ContractId, value: &[u8], existing: Option<Contract>) -> StorageDelta {
-        StorageDelta::RawCode(MappableDelta::Insert(*key, value.into(), existing))
+    fn record_insert(key: &ContractId, value: &Contract, existing: Option<Contract>) -> StorageDelta {
+        StorageDelta::RawCode(MappableDelta::Insert(*key, value.clone(), existing))
     }
 
     fn record_remove(key: &ContractId, value: Contract) -> StorageDelta {

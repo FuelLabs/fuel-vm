@@ -10,6 +10,8 @@ use std::error::Error as StdError;
 use std::io;
 use std::ops::{Deref, DerefMut};
 
+use super::ContractInfo;
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -83,7 +85,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         contract: &Contract,
     ) -> Result<Option<Contract>, Self::DataError> {
-        StorageMutate::<ContractsRawCode>::insert(self, id, contract.as_ref())
+        StorageMutate::<ContractsRawCode>::insert(self, id, contract)
     }
 
     /// Check if a provided contract exists in the chain.
@@ -93,7 +95,7 @@ pub trait InterpreterStorage:
 
     /// Fetch a previously inserted salt+root tuple from the chain state for a
     /// given contract.
-    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, ContractInfo>>, Self::DataError> {
         StorageInspect::<ContractsInfo>::get(self, id)
     }
 
@@ -103,8 +105,8 @@ pub trait InterpreterStorage:
         id: &ContractId,
         salt: &Salt,
         root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
+    ) -> Result<Option<ContractInfo>, Self::DataError> {
+        StorageMutate::<ContractsInfo>::insert(self, id, &ContractInfo {salt: *salt, root: *root})
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.

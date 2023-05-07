@@ -9,6 +9,8 @@ use fuel_types::{bytes, Bytes32, ContractId, MemLayout, MemLocType, Word};
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract {
     pub utxo_id: UtxoId,

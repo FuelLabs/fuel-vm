@@ -25,6 +25,8 @@ use alloc::vec::Vec;
 mod ser_de_tests;
 
 #[derive(Default, Debug, Clone, Derivative)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
@@ -38,6 +40,7 @@ pub struct Create {
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
     pub(crate) salt: Salt,
+    #[cfg_attr(feature = "rkyv", with(rkyv::with::Skip))]
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     pub(crate) metadata: Option<CommonMetadata>,

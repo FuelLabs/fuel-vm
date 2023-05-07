@@ -15,7 +15,7 @@ use crate::gas::DependentCost;
 use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
-use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
+use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage, ContractInfo};
 use crate::{arith, consts::*};
 
 use fuel_asm::PanicReason;
@@ -534,7 +534,7 @@ where
 
     let contract_id = ContractId::from_bytes_ref(contract_id.read(memory));
 
-    let (_, root) = storage
+    let ContractInfo{ root, ..} = storage
         .storage_contract_root(contract_id)
         .transpose()
         .ok_or(PanicReason::ContractNotFound)?

@@ -23,6 +23,8 @@ use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv", archive(check_bytes))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {

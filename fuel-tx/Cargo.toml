@@ -23,6 +23,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 strum = "0.24"
 strum_macros = "0.24"
+rkyv = { version = "0.7", optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
@@ -43,6 +44,7 @@ alloc = ["fuel-types/alloc", "itertools/use_alloc"]
 builder = ["alloc", "internals"]
 internals = []
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
+rkyv = ["dep:rkyv", "rkyv/validation"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default"]
 # serde is requiring alloc because its mandatory for serde_json. to avoid adding a new feature only for serde_json, we just require `alloc` here since as of the moment we don't have a use case of serde without alloc.
-serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "serde_json"]
+serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "serde_json", "rkyv"] # Todo: really requires rkyv?

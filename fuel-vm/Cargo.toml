@@ -28,11 +28,13 @@ itertools = "0.10"
 paste = "1.0"
 primitive-types = { version = "0.12", default-features = false }
 rand = { version = "0.8", optional = true }
+rkyv = { version = "0.7", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = "0.10"
 strum = { version = "0.24", features = ["derive"], optional = true }
 tai64 = "4.0"
 thiserror = "1.0"
+
 
 [dev-dependencies]
 fuel-tx = { workspace = true, features = ["builder"] }
@@ -54,5 +56,6 @@ profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
+rkyv =["dep:rkyv", "fuel-asm/rkyv", "fuel-types/rkyv", "fuel-tx/rkyv", "fuel-crypto/rkyv"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
 test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]

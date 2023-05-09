@@ -98,7 +98,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         }
 
         if cumulative_gas_used > checked.transaction().limit() {
-            return Err(PredicateVerificationFailed::OutOfGas);
+            return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
         }
 
         Ok(PredicatesChecked {

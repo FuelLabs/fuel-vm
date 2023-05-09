@@ -128,6 +128,7 @@ fn get_verifying_predicate() {
     }
 }
 
+// TODO: Remove to fuel-vm/src/interpreter/main/tests.rs
 #[test]
 fn estimate_gas_gives_proper_gas_used() {
     let rng = &mut StdRng::seed_from_u64(2322u64);

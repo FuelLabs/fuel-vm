@@ -10,6 +10,7 @@ use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use crate::interpreter::CheckedMetadata;
+use crate::predicate::RuntimePredicate;
 use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -73,7 +74,12 @@ where
     Tx: ExecutableTransaction,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate_estimation(&mut self, transaction: Tx, balances: InitialBalances) -> bool {
+    pub fn init_predicate_estimation(
+        &mut self,
+        transaction: Tx,
+        balances: InitialBalances,
+        predicate: RuntimePredicate,
+    ) -> Result<(), InterpreterError> {
         self.context = Context::PredicateEstimation {
             program: Default::default(),
         };
@@ -81,7 +87,10 @@ where
         let mut transaction = transaction;
         transaction.prepare_init_predicate();
 
-        self._init(transaction, balances, 0).is_ok()
+        self._init(transaction, balances, 0)?;
+        self.context = Context::PredicateEstimation { program: predicate };
+        self.set_gas(self.params.max_gas_per_predicate);
+        Ok(())
     }
 }
 
@@ -91,7 +100,7 @@ where
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate(&mut self, checked: Checked<Tx>) -> bool {
+    pub fn init_predicate_verification(&mut self, checked: Checked<Tx>) -> bool {
         self.context = Context::PredicateVerification {
             program: Default::default(),
         };
@@ -112,7 +121,7 @@ where
     /// Initialize the VM with a given transaction, backed by a storage provider that allows
     /// execution of contract opcodes.
     ///
-    /// For predicate estimation and verification, check [`Self::init_predicate`]
+    /// For predicate estimation and verification, check [`Self::init_predicate_verification`]
     pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
         let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
 

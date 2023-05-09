@@ -60,7 +60,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let mut cumulative_gas_used: Word = 0;
 
-        vm.init_predicate(checked.clone());
+        vm.init_predicate_verification(checked.clone());
 
         for (idx, input) in checked.transaction().inputs().iter().enumerate().filter(|(_, input)| {
             matches!(
@@ -127,26 +127,19 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
     {
         let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
-
-        let predicate_gas_limit: u64 = params.max_gas_per_predicate;
-
-        let transaction_clone = transaction.clone();
-
-        for (idx, input) in transaction.inputs_mut().iter_mut().enumerate() {
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, &transaction_clone, idx) {
-                vm.init_predicate_estimation(transaction_clone.clone(), balances.clone());
-                vm.context = Context::PredicateEstimation { program: predicate };
-                vm.set_gas(predicate_gas_limit);
+        for idx in 0..transaction.inputs().len() {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, &*transaction, idx) {
+                vm.init_predicate_estimation(transaction.clone(), balances.clone(), predicate)?;
 
                 if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
                     return Err(PredicateVerificationFailed::False);
                 }
 
-                let gas_used: u64 = predicate_gas_limit
+                let gas_used = predicate_gas_limit
                     .checked_sub(vm.remaining_gas())
                     .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
 
-                match input {
+                match &mut transaction.inputs_mut()[idx] {
                     Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
                     | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
                     | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {

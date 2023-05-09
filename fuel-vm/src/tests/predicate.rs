@@ -129,91 +129,6 @@ fn get_verifying_predicate() {
 }
 
 #[test]
-fn gas_used_by_predicates_causes_out_of_gas_during_script() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let params = ConsensusParameters::default();
-
-    let gas_price = 1_000;
-    let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .collect::<Vec<u8>>();
-    let script_data = vec![];
-
-    let mut builder = TransactionBuilder::script(script, script_data);
-    builder
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(Default::default());
-
-    let coin_amount = 10_000_000;
-
-    builder.add_unsigned_coin_input(
-        rng.gen(),
-        rng.gen(),
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-    );
-
-    let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
-        .expect("Predicate check failed even if we don't have any predicates");
-
-    let mut client = MemoryClient::default();
-
-    client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
-    let gas_without_predicate = receipts_without_predicate[1]
-        .gas_used()
-        .expect("Should retrieve gas used");
-
-    builder.gas_limit(gas_without_predicate);
-
-    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .flat_map(|op| u32::from(op).to_be_bytes())
-        .collect();
-    let owner = Input::predicate_owner(&predicate, &params);
-    let input = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-        predicate,
-        vec![],
-        rng.gen(),
-    );
-
-    builder.add_input(input);
-
-    let mut transaction = builder.finalize();
-    transaction
-        .estimate_predicates(&params, &GasCosts::default())
-        .expect("Predicate estimation failed");
-
-    let checked = transaction
-        .into_checked_basic(Default::default(), &params)
-        .expect("Should successfully create checked tranaction with predicate");
-
-    let tx_with_predicate = checked
-        .check_predicates(&params, &GasCosts::default())
-        .expect("Predicate check failed");
-
-    client.transact(tx_with_predicate);
-    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
-
-    //No panic for transaction without gas limit
-    assert_eq!(receipts_without_predicate[1].reason(), None);
-    //Panic with out of gas for transaction with predicate
-    assert_eq!(receipts_with_predicate[0].reason().unwrap().reason(), &OutOfGas);
-}
-
-#[test]
 fn estimate_gas_gives_proper_gas_used() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = ConsensusParameters::default();
@@ -477,6 +392,91 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
 
     assert!(receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used());
+}
+
+#[test]
+fn gas_used_by_predicates_causes_out_of_gas_during_script() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let params = ConsensusParameters::default();
+
+    let gas_price = 1_000;
+    let gas_limit = 1_000_000;
+    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
+        .into_iter()
+        .collect::<Vec<u8>>();
+    let script_data = vec![];
+
+    let mut builder = TransactionBuilder::script(script, script_data);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(Default::default());
+
+    let coin_amount = 10_000_000;
+
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
+
+    let tx_without_predicate = builder
+        .finalize_checked_basic(Default::default())
+        .check_predicates(&params, &GasCosts::default())
+        .expect("Predicate check failed even if we don't have any predicates");
+
+    let mut client = MemoryClient::default();
+
+    client.transact(tx_without_predicate);
+    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let gas_without_predicate = receipts_without_predicate[1]
+        .gas_used()
+        .expect("Should retrieve gas used");
+
+    builder.gas_limit(gas_without_predicate);
+
+    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
+        .into_iter()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect();
+    let owner = Input::predicate_owner(&predicate, &params);
+    let input = Input::coin_predicate(
+        rng.gen(),
+        owner,
+        coin_amount,
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+        predicate,
+        vec![],
+        rng.gen(),
+    );
+
+    builder.add_input(input);
+
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&params, &GasCosts::default())
+        .expect("Predicate estimation failed");
+
+    let checked = transaction
+        .into_checked_basic(Default::default(), &params)
+        .expect("Should successfully create checked tranaction with predicate");
+
+    let tx_with_predicate = checked
+        .check_predicates(&params, &GasCosts::default())
+        .expect("Predicate check failed");
+
+    client.transact(tx_with_predicate);
+    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
+
+    //No panic for transaction without gas limit
+    assert_eq!(receipts_without_predicate[1].reason(), None);
+    //Panic with out of gas for transaction with predicate
+    assert_eq!(receipts_with_predicate[0].reason().unwrap().reason(), &OutOfGas);
 }
 
 #[test]

@@ -137,7 +137,8 @@ impl<T> Interpreter<PredicateStorage, T> {
                     return Err(PredicateVerificationFailed::False);
                 }
 
-                let gas_used = params.max_gas_per_predicate
+                let gas_used = params
+                    .max_gas_per_predicate
                     .checked_sub(vm.remaining_gas())
                     .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
 

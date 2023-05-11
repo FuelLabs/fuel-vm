@@ -341,6 +341,15 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
         self
     }
+
+    /// Prepare the transaction for VM initialization for predicate verification
+    fn prepare_init_estimate_predicate(&mut self) -> &mut Self {
+        self.inputs_mut().iter_mut().for_each(|i| i.prepare_init_predicate());
+
+        self.outputs_mut().iter_mut().for_each(|o| o.prepare_init_predicate());
+
+        self
+    }
 }
 
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}

@@ -665,6 +665,11 @@ impl Input {
     pub fn prepare_init_predicate(&mut self) {
         self.prepare_sign()
     }
+
+    /// Prepare the output for VM predicate execution
+    pub fn prepare_init_estimate_predicate(&mut self) {
+        self.prepare_sign()
+    }
 }
 
 #[cfg(feature = "std")]

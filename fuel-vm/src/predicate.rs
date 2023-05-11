@@ -120,7 +120,7 @@ fn from_tx_works() {
 
         let mut interpreter = Interpreter::without_storage();
 
-        assert!(interpreter.init_predicate(tx));
+        assert!(interpreter.init_predicate_verification(tx));
 
         let pad = bytes::padded_len(&predicate) - predicate.len();
 

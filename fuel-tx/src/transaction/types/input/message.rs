@@ -163,6 +163,12 @@ where
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
     pub fn prepare_sign(&mut self) {}
 
+    pub fn prepare_estimate_sign(&mut self) {
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            core::mem::take(predicate_gas_used_field);
+        }
+    }
+
     pub fn message_id(&self) -> MessageId {
         let Self {
             sender,

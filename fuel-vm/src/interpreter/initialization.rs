@@ -85,7 +85,7 @@ where
         };
 
         let mut transaction = transaction;
-        transaction.prepare_init_predicate();
+        transaction.prepare_init_estimate_predicate();
 
         self._init(transaction, balances, 0)?;
         self.context = Context::PredicateEstimation { program: predicate };

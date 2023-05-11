@@ -626,6 +626,19 @@ impl Input {
         }
     }
 
+    /// Empties fields that should be zero during the signing.
+    pub(crate) fn prepare_estimate_sign(&mut self) {
+        match self {
+            Input::CoinSigned(coin) => coin.prepare_sign(),
+            Input::CoinPredicate(coin) => coin.prepare_estimate_sign(),
+            Input::Contract(contract) => contract.prepare_sign(),
+            Input::MessageCoinSigned(message) => message.prepare_sign(),
+            Input::MessageCoinPredicate(message) => message.prepare_estimate_sign(),
+            Input::MessageDataSigned(message) => message.prepare_sign(),
+            Input::MessageDataPredicate(message) => message.prepare_estimate_sign(),
+        }
+    }
+
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,
@@ -668,7 +681,7 @@ impl Input {
 
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_estimate_predicate(&mut self) {
-        self.prepare_sign()
+        self.prepare_estimate_sign()
     }
 }
 

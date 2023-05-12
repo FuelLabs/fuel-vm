@@ -105,9 +105,8 @@ where
             program: Default::default(),
         };
         let mut tx = checked.transaction().clone();
-        let balances = checked.metadata().balances().clone();
+        let balances = checked.metadata().balances();
 
-        // let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
         self._init(tx, balances, 0).is_ok()

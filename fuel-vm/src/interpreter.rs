@@ -385,7 +385,7 @@ impl CheckedMetadata for ScriptCheckedMetadata {
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.non_retryable_balances.clone(),
-            retryable: Some(self.retryable_balance.into()),
+            retryable: Some(self.retryable_balance),
         }
     }
 

@@ -4,10 +4,8 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use crate::prelude::*;
 
-use crate::checked_transaction::script::CheckedMetadata;
 use crate::checked_transaction::CheckPredicates;
 use crate::checked_transaction::EstimatePredicates;
-use crate::interpreter::InitialBalances;
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 
@@ -126,100 +124,6 @@ fn get_verifying_predicate() {
 
         assert!(execute_predicate(predicate, vec![], idx as usize, false));
     }
-}
-
-// TODO: Remove to fuel-vm/src/interpreter/main/tests.rs
-#[test]
-fn estimate_gas_gives_proper_gas_used() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let params = ConsensusParameters::default();
-
-    let gas_price = 1_000;
-    let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .collect::<Vec<u8>>();
-    let script_data = vec![];
-
-    let mut builder = TransactionBuilder::script(script, script_data);
-    builder
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(Default::default());
-
-    let coin_amount = 10_000_000;
-
-    builder.add_unsigned_coin_input(
-        rng.gen(),
-        rng.gen(),
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-    );
-
-    let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
-        .expect("Predicate check failed even if we don't have any predicates");
-
-    let mut client = MemoryClient::default();
-
-    client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
-    let gas_without_predicate = receipts_without_predicate[1]
-        .gas_used()
-        .expect("Should retrieve gas used");
-
-    builder.gas_limit(gas_without_predicate);
-
-    let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .flat_map(|op| u32::from(op).to_be_bytes())
-        .collect();
-    let owner = Input::predicate_owner(&predicate, &params);
-    let input = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-        predicate,
-        vec![],
-        rng.gen(),
-    );
-
-    builder.add_input(input);
-
-    let mut transaction = builder.finalize();
-
-    // unestimated transaction should fail as it's predicates are not estimated
-    assert!(transaction
-        .clone()
-        .into_checked(Default::default(), &params, &GasCosts::default())
-        .is_err());
-
-    // create checked transaction to get access to balances from metadata
-    let unestimated_checked = transaction
-        .clone()
-        .into_checked_basic(Default::default(), &params)
-        .expect("Should successfully create checked tranaction with predicate");
-
-    let metadata: &CheckedMetadata = unestimated_checked.metadata();
-
-    let balances: InitialBalances = InitialBalances {
-        non_retryable: metadata.clone().non_retryable_balances,
-        retryable: Some(metadata.clone().retryable_balance),
-    };
-
-    Interpreter::<PredicateStorage>::estimate_predicates(&mut transaction, balances, params, GasCosts::default())
-        .expect("Should successfully estimate predicates");
-
-    //transaction should pass checking after estimation
-    assert!(transaction
-        .into_checked(Default::default(), &params, &GasCosts::default())
-        .is_ok());
 }
 
 /// Returns the amount of gas used if verification succeeds

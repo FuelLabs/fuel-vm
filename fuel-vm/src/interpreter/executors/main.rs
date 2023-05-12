@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;

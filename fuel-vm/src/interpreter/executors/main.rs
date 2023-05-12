@@ -17,6 +17,7 @@ use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
+use fuel_tx::field::Inputs;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -177,6 +178,18 @@ where
         let root = contract.root();
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
+        let mut cumulative_predicate_gas: Word = 0;
+
+        for input in create.inputs().iter().filter(|input| {
+            matches!(
+                input,
+                Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::MessageDataPredicate(_)
+            )
+        }) {
+            if let Some(predicate_gas_used) = input.predicate_gas_used() {
+                cumulative_predicate_gas = cumulative_predicate_gas.checked_add(predicate_gas_used).ok_or_else(|| InterpreterError::PredicateFailure)?;
+            }
+        }
 
         // TODO: Move this check to `fuel-tx`.
         if !create
@@ -199,7 +212,7 @@ where
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
 
-        let remaining_gas = create.limit();
+        let remaining_gas = create.limit() - cumulative_predicate_gas;
         Self::finalize_outputs(
             create,
             false,

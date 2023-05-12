@@ -1,4 +1,4 @@
-use fuel_asm::op;
+use fuel_asm::{op, InstructionResult};
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
 use fuel_types::{bytes, Immediate24};
@@ -201,7 +201,7 @@ fn receipt() {
         Receipt::transfer_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(PanicReason::Success, op::noop().into()),
+            InstructionResult::success(op::noop().into()),
             rng.gen(),
             rng.gen(),
         ),

@@ -52,7 +52,7 @@ impl InterpreterError {
     /// Return the specified panic reason that caused this error, if applicable.
     pub const fn panic_reason(&self) -> Option<PanicReason> {
         match self {
-            Self::PanicInstruction(result) => Some(*result.reason()),
+            Self::PanicInstruction(result) => *result.reason(),
             Self::Panic(reason) => Some(*reason),
             _ => None,
         }

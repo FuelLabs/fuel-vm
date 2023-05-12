@@ -104,7 +104,7 @@ fn panic_reason_description() {
         PanicReason::ArithmeticError,
     ];
 
-    let pd = InstructionResult::error(PanicReason::Success, op::noop().into());
+    let pd = InstructionResult::success(op::noop().into());
     let w = Word::from(pd);
     let pd_p = InstructionResult::from(w);
     assert_eq!(pd, pd_p);
@@ -122,8 +122,8 @@ fn panic_reason_description() {
         let r_p = PanicReason::from(b);
         let w = Word::from(r as u8);
         let r_q = PanicReason::from(u8::try_from(w).unwrap());
-        assert_eq!(r, r_p);
-        assert_eq!(r, r_q);
+        assert_eq!(Some(r), r_p);
+        assert_eq!(Some(r), r_q);
 
         let op = op::ji(imm24);
         let pd = InstructionResult::error(r, op.into());

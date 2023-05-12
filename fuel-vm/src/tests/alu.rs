@@ -71,7 +71,7 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
         .reason()
         .expect("Failed to fetch instruction result");
 
-    assert_eq!(&PanicReason::ArithmeticOverflow, result.reason());
+    assert_eq!(&Some(PanicReason::ArithmeticOverflow), result.reason());
 
     // TODO avoid magic constants
     // https://github.com/FuelLabs/fuel-asm/issues/60
@@ -205,7 +205,7 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
         .reason()
         .expect("Failed to fetch instruction result");
 
-    assert_eq!(&PanicReason::ArithmeticError, result.reason());
+    assert_eq!(&Some(PanicReason::ArithmeticError), result.reason());
 
     // TODO avoid magic constants
     // https://github.com/FuelLabs/fuel-asm/issues/60
@@ -267,7 +267,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
         .map(|r| *r.reason())
         .expect("Expected panic reason");
 
-    assert_eq!(PanicReason::ReservedRegisterNotWritable, result);
+    assert_eq!(Some(PanicReason::ReservedRegisterNotWritable), result);
 }
 
 #[test]

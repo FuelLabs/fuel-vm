@@ -545,9 +545,9 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
     } = receipts.get(0).expect("No receipt")
     {
         assert_eq!(
-            &expected_reason,
+            &Some(expected_reason),
             reason.reason(),
-            "Expected {}, found {}",
+            "Expected {:?}, found {:?}",
             expected_reason,
             reason.reason()
         );

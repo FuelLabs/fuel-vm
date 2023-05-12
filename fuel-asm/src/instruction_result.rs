@@ -5,18 +5,29 @@ use crate::{Instruction, PanicReason, RawInstruction, Word};
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Describe a panic reason with the instruction that generated it
 pub struct InstructionResult {
-    reason: PanicReason,
+    reason: Option<PanicReason>,
     instruction: RawInstruction,
 }
 
 impl InstructionResult {
+    /// Represents a successful instruction.
+    pub const fn success(instruction: RawInstruction) -> Self {
+        Self {
+            reason: None,
+            instruction,
+        }
+    }
+
     /// Represents an error described by a reason and an instruction.
     pub const fn error(reason: PanicReason, instruction: RawInstruction) -> Self {
-        Self { reason, instruction }
+        Self {
+            reason: Some(reason),
+            instruction,
+        }
     }
 
     /// Underlying panic reason
-    pub const fn reason(&self) -> &PanicReason {
+    pub const fn reason(&self) -> &Option<PanicReason> {
         &self.reason
     }
 
@@ -27,7 +38,7 @@ impl InstructionResult {
 
     /// This result represents success?
     pub const fn is_success(&self) -> bool {
-        matches!(self.reason, PanicReason::Success)
+        self.reason.is_none()
     }
 
     /// This result represents error?
@@ -42,7 +53,7 @@ const INSTR_OFFSET: Word = REASON_OFFSET - (Instruction::SIZE * 8) as Word;
 
 impl From<InstructionResult> for Word {
     fn from(r: InstructionResult) -> Word {
-        let reason = Word::from(r.reason as u8);
+        let reason = if let Some(r) = r.reason { Word::from(r as u8) } else { 0 };
         let instruction = Word::from(r.instruction);
         (reason << REASON_OFFSET) | (instruction << INSTR_OFFSET)
     }

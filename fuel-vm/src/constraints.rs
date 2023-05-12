@@ -105,7 +105,7 @@ impl CheckedMemRange {
 
         let (end, of) = address.overflowing_add(size);
         let range = address..end;
-        if of || !constraint.contains(&((range.end - 1) as Word)) {
+        if of || range.is_empty() || !constraint.contains(&((range.end - 1) as Word)) {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self(range))

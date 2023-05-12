@@ -212,7 +212,7 @@ fn incr_overflow_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticOverflow));
     } else {
         panic!("Expected panic receipt");
     }
@@ -239,7 +239,7 @@ fn incr_overflow_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticOverflow));
     } else {
         panic!("Expected panic receipt");
     }
@@ -326,7 +326,7 @@ fn multiply_overflow_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticOverflow));
     } else {
         panic!("Expected panic receipt");
     }
@@ -351,7 +351,7 @@ fn multiply_overflow_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticOverflow);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticOverflow));
     } else {
         panic!("Expected panic receipt");
     }
@@ -678,7 +678,7 @@ fn divide_by_zero_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticError);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticError));
     } else {
         panic!("Expected panic receipt");
     }
@@ -695,7 +695,7 @@ fn divide_by_zero_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::Panic { reason, .. } = receipts.first().unwrap() {
-        assert_eq!(*reason.reason(), PanicReason::ArithmeticError);
+        assert_eq!(reason.reason(), &Some(PanicReason::ArithmeticError));
     } else {
         panic!("Expected panic receipt");
     }

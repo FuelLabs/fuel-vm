@@ -337,7 +337,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     //No panic for transaction without gas limit
     assert_eq!(receipts_without_predicate[1].reason(), None);
     //Panic with out of gas for transaction with predicate
-    assert_eq!(receipts_with_predicate[0].reason().unwrap().reason(), &OutOfGas);
+    assert_eq!(receipts_with_predicate[0].reason().unwrap().reason(), &Some(OutOfGas));
 }
 
 #[test]

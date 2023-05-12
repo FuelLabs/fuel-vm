@@ -66,7 +66,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         }
     } else if matches!(
         res,
-        Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
+        Err(InterpreterError::PanicInstruction(r)) if r.reason() == &Some(ReservedRegisterNotWritable)
     ) {
         // throw err if a ReservedRegisterNotWritable err was detected outside our writes_to_ra/b check
         // This would likely happen if the opcode wasn't properly marked as true in `writes_to_ra/b`

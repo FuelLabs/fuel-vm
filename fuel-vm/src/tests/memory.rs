@@ -142,7 +142,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
     if cause_error {
         let _ = receipts.pop().unwrap(); // Script result unneeded, the panic receipt below is enough
         if let Receipt::Panic { reason, .. } = receipts.pop().unwrap() {
-            assert!(matches!(reason.reason(), PanicReason::MemoryOverflow));
+            assert!(matches!(reason.reason(), Some(PanicReason::MemoryOverflow)));
         } else {
             panic!("Expected tx panic when cause_error is set");
         }

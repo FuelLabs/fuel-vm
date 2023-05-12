@@ -215,7 +215,10 @@ where
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
 
-        let remaining_gas = create.limit() - cumulative_predicate_gas;
+        let remaining_gas = create
+            .limit()
+            .checked_sub(cumulative_predicate_gas)
+            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
         Self::finalize_outputs(
             create,
             false,

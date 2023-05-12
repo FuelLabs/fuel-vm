@@ -100,15 +100,17 @@ where
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM for a predicate context
-    pub fn init_predicate_verification(&mut self, checked: Checked<Tx>) -> bool {
+    pub fn init_predicate_verification(&mut self, checked: &Checked<Tx>) -> bool {
         self.context = Context::PredicateVerification {
             program: Default::default(),
         };
+        let mut tx = checked.transaction().clone();
+        let balances = checked.metadata().balances().clone();
 
-        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
+        // let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
-        self._init(tx, metadata.balances(), 0).is_ok()
+        self._init(tx, balances, 0).is_ok()
     }
 }
 

@@ -61,7 +61,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let mut cumulative_gas_used: Word = 0;
 
-        vm.init_predicate_verification(checked.clone());
+        vm.init_predicate_verification(&checked);
 
         for (idx, input) in checked.transaction().inputs().iter().enumerate().filter(|(_, input)| {
             matches!(

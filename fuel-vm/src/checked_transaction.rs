@@ -155,7 +155,7 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
 /// Performs checks for a transaction
 pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
-    type Metadata: Sized + Clone;
+    type Metadata: Sized;
 
     /// Returns transaction that passed all `Checks`.
     fn into_checked(

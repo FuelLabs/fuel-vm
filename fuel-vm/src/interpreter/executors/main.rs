@@ -11,13 +11,13 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::{PanicReason, RegId};
+use fuel_tx::field::Inputs;
 use fuel_tx::input::coin::CoinPredicate;
 use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_tx::{
     field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
     Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
 };
-use fuel_tx::field::Inputs;
 use fuel_types::Word;
 
 /// Predicates were checked succesfully
@@ -180,6 +180,7 @@ where
         let id = contract.id(salt, &root, &storage_root);
         let mut cumulative_predicate_gas: Word = 0;
 
+        //calculate cumulative predicate gas for inputs
         for input in create.inputs().iter().filter(|input| {
             matches!(
                 input,
@@ -187,7 +188,9 @@ where
             )
         }) {
             if let Some(predicate_gas_used) = input.predicate_gas_used() {
-                cumulative_predicate_gas = cumulative_predicate_gas.checked_add(predicate_gas_used).ok_or_else(|| InterpreterError::PredicateFailure)?;
+                cumulative_predicate_gas = cumulative_predicate_gas
+                    .checked_add(predicate_gas_used)
+                    .ok_or_else(|| InterpreterError::PredicateFailure)?;
             }
         }
 

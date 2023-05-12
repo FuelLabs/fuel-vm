@@ -2,9 +2,9 @@ use fuel_asm::{op, RegId};
 use fuel_tx::{ConsensusParameters, TransactionBuilder};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use crate::prelude::*;
-use crate::interpreter::CheckedMetadata;
 use crate::checked_transaction::CheckPredicates;
+use crate::interpreter::CheckedMetadata;
+use crate::prelude::*;
 
 #[test]
 fn estimate_gas_gives_proper_gas_used() {

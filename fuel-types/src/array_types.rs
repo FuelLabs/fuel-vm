@@ -309,6 +309,18 @@ impl AssetId {
     pub const BASE: AssetId = AssetId::zeroed();
 }
 
+impl From<ContractId> for AssetId {
+    fn from(contract_id: ContractId) -> Self {
+        AssetId::new(*contract_id)
+    }
+}
+
+impl From<AssetId> for ContractId {
+    fn from(asset_id: AssetId) -> Self {
+        ContractId::new(*asset_id)
+    }
+}
+
 impl From<u64> for Nonce {
     fn from(value: u64) -> Self {
         let mut default = [0u8; 32];

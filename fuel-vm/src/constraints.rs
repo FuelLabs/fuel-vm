@@ -99,13 +99,13 @@ impl CheckedMemRange {
 
     /// Create a new memory range, checks that the range fits into the constraint.
     fn new_inner(address: usize, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
-        if size == 0 {
-            return Ok(Self(address..address));
-        }
-
         let (end, of) = address.overflowing_add(size);
         let range = address..end;
-        if of || range.is_empty() || !constraint.contains(&((range.end - 1) as Word)) {
+
+        if of
+            || range.start != 0 && !constraint.contains(&((range.start - 1) as Word))
+            || range.end != 0 && !constraint.contains(&((range.end - 1) as Word))
+        {
             return Err(PanicReason::MemoryOverflow.into());
         }
         Ok(Self(range))

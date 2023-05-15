@@ -42,6 +42,7 @@ fn test_get_transaction_field() {
     assert_eq!(result, 0);
 }
 
+#[test_case(Context::PredicateEstimation { program: Default::default() }, 2 => (); "can fetch inside predicate estimation")]
 #[test_case(Context::PredicateVerification { program: Default::default() }, 2 => (); "can fetch inside predicate verification")]
 #[test_case(Context::Script { block_height: BlockHeight::default() }, 3 => (); "can fetch inside script")]
 #[test_case(Context::Call { block_height: BlockHeight::default() }, 4 => (); "can fetch inside call")]

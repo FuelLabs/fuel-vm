@@ -66,483 +66,80 @@ impl ConsensusParameters {
     }
 
     /// Replace the max contract size with the given argument
-    pub const fn with_contract_max_size(self, contract_max_size: u64) -> Self {
-        let Self {
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_contract_max_size(mut self, contract_max_size: u64) -> Self {
+        self.contract_max_size = contract_max_size;
+        self
     }
 
     /// Replace the max inputs with the given argument
-    pub const fn with_max_inputs(self, max_inputs: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_inputs(mut self, max_inputs: u64) -> Self {
+        self.max_inputs = max_inputs;
+        self
     }
 
     /// Replace the max outputs with the given argument
-    pub const fn with_max_outputs(self, max_outputs: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_outputs(mut self, max_outputs: u64) -> Self {
+        self.max_outputs = max_outputs;
+        self
     }
 
     /// Replace the max witnesses with the given argument
-    pub const fn with_max_witnesses(self, max_witnesses: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_witnesses(mut self, max_witnesses: u64) -> Self {
+        self.max_witnesses = max_witnesses;
+        self
     }
 
     /// Replace the max gas per transaction with the given argument
-    pub const fn with_max_gas_per_tx(self, max_gas_per_tx: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_gas_per_tx(mut self, max_gas_per_tx: u64) -> Self {
+        self.max_gas_per_tx = max_gas_per_tx;
+        self
     }
 
     /// Replace the max script length with the given argument
-    pub const fn with_max_script_length(self, max_script_length: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_script_length(mut self, max_script_length: u64) -> Self {
+        self.max_script_length = max_script_length;
+        self
     }
 
     /// Replace the max script data length with the given argument
-    pub const fn with_max_script_data_length(self, max_script_data_length: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_script_data_length(mut self, max_script_data_length: u64) -> Self {
+        self.max_script_data_length = max_script_data_length;
+        self
     }
 
     /// Replace the max storage slots with the given argument
-    pub const fn with_max_storage_slots(self, max_storage_slots: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_storage_slots(mut self, max_storage_slots: u64) -> Self {
+        self.max_storage_slots = max_storage_slots;
+        self
     }
 
     /// Replace the max predicate length with the given argument
-    pub const fn with_max_predicate_length(self, max_predicate_length: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_predicate_length(mut self, max_predicate_length: u64) -> Self {
+        self.max_predicate_length = max_predicate_length;
+        self
     }
 
     /// Replace the max predicate data length with the given argument
-    pub const fn with_max_predicate_data_length(self, max_predicate_data_length: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_predicate_data_length(mut self, max_predicate_data_length: u64) -> Self {
+        self.max_predicate_data_length = max_predicate_data_length;
+        self
     }
 
     /// Replace the gas price factor with the given argument
-    pub const fn with_gas_price_factor(self, gas_price_factor: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
+        self.gas_price_factor = gas_price_factor;
+        self
     }
 
-    pub const fn with_gas_per_byte(self, gas_per_byte: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            max_message_data_length,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_gas_per_byte(mut self, gas_per_byte: u64) -> Self {
+        self.gas_per_byte = gas_per_byte;
+        self
     }
 
     /// Replace the max message data length with the given argument
-    pub const fn with_max_message_data_length(self, max_message_data_length: u64) -> Self {
-        let Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            chain_id,
-            ..
-        } = self;
-
-        Self {
-            contract_max_size,
-            max_inputs,
-            max_outputs,
-            max_witnesses,
-            max_gas_per_tx,
-            max_script_length,
-            max_script_data_length,
-            max_storage_slots,
-            max_predicate_length,
-            max_predicate_data_length,
-            gas_price_factor,
-            gas_per_byte,
-            max_message_data_length,
-            chain_id,
-        }
+    pub const fn with_max_message_data_length(mut self, max_message_data_length: u64) -> Self {
+        self.max_message_data_length = max_message_data_length;
+        self
     }
 }
 

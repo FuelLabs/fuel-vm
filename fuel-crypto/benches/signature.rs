@@ -100,7 +100,7 @@ fn signatures(c: &mut Criterion) {
 
     let mut group_sign = c.benchmark_group("sign");
 
-    group_sign.bench_with_input("fuel-crypto", &(fc_key, fc_message), |b, (key, message)| {
+    group_sign.bench_with_input("fuel-crypto-sign", &(fc_key, fc_message), |b, (key, message)| {
         b.iter(|| fuel_crypto::Signature::sign(black_box(key), black_box(message)))
     });
 
@@ -139,7 +139,7 @@ fn signatures(c: &mut Criterion) {
     let mut group_verify = c.benchmark_group("verify");
 
     group_verify.bench_with_input(
-        "fuel-crypto",
+        "fuel-crypto-verify",
         &(fc_public, fc_signature, fc_message),
         |b, (public, signature, message)| b.iter(|| signature.verify(black_box(public), black_box(message))),
     );
@@ -168,9 +168,11 @@ fn signatures(c: &mut Criterion) {
 
     let mut group_recover = c.benchmark_group("recover");
 
-    group_recover.bench_with_input("fuel-crypto", &(fc_signature, fc_message), |b, (signature, message)| {
-        b.iter(|| signature.recover(black_box(message)))
-    });
+    group_recover.bench_with_input(
+        "fuel-crypto-recover",
+        &(fc_signature, fc_message),
+        |b, (signature, message)| b.iter(|| signature.recover(black_box(message))),
+    );
 
     group_recover.bench_with_input(
         "secp256k1",

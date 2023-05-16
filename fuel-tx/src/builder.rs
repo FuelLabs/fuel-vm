@@ -288,7 +288,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize(&mut self) -> Tx {
+    fn finalize_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
@@ -301,7 +301,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize_without_signature(&mut self) -> Tx {
+    pub fn finalize_without_signature_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
@@ -341,22 +341,22 @@ impl Finalizable<Mint> for TransactionBuilder<Mint> {
 #[cfg(feature = "std")]
 impl Finalizable<Create> for TransactionBuilder<Create> {
     fn finalize(&mut self) -> Create {
-        self._finalize()
+        self.finalize_inner()
     }
 
     fn finalize_without_signature(&mut self) -> Create {
-        self._finalize_without_signature()
+        self.finalize_without_signature_inner()
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Script> for TransactionBuilder<Script> {
     fn finalize(&mut self) -> Script {
-        self._finalize()
+        self.finalize_inner()
     }
 
     fn finalize_without_signature(&mut self) -> Script {
-        self._finalize_without_signature()
+        self.finalize_without_signature_inner()
     }
 }
 

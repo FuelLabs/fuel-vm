@@ -8,7 +8,7 @@
 #![deny(unused_crate_dependencies)]
 
 mod args;
-mod instruction_result;
+mod panic_instruction;
 // This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
 #[macro_use]
 pub mod macros;
@@ -23,7 +23,7 @@ mod encoding_tests;
 #[doc(no_inline)]
 pub use args::{wideint, GMArgs, GTFArgs};
 pub use fuel_types::{RegisterId, Word};
-pub use instruction_result::InstructionResult;
+pub use panic_instruction::PanicInstruction;
 pub use panic_reason::PanicReason;
 
 /// Represents a 6-bit register ID, guaranteed to be masked by construction.

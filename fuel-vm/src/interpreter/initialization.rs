@@ -16,7 +16,7 @@ where
     Tx: ExecutableTransaction,
 {
     /// Initialize the VM with a given transaction
-    fn _init(
+    fn init_inner(
         &mut self,
         tx: Tx,
         initial_balances: InitialBalances,
@@ -81,7 +81,7 @@ where
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_predicate();
 
-        self._init(tx, metadata.balances(), 0).is_ok()
+        self.init_inner(tx, metadata.balances(), 0).is_ok()
     }
 }
 
@@ -104,6 +104,6 @@ where
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
 
-        self._init(tx, metadata.balances(), gas_used_by_predicates)
+        self.init_inner(tx, metadata.balances(), gas_used_by_predicates)
     }
 }

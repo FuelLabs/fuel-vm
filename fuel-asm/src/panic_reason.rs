@@ -7,8 +7,6 @@ use core::{convert, fmt};
 #[non_exhaustive]
 /// Panic reason representation for the interpreter.
 pub enum PanicReason {
-    /// 0 is reserved for success, while any non-zero value indicates a failure.
-    Success = 0x00,
     /// Found `RVRT` instruction.
     Revert = 0x01,
     /// Execution ran out of gas.
@@ -82,8 +80,10 @@ pub enum PanicReason {
     /// For instance, division by zero produces this.
     /// These errors are ignored using the UNSAFEMATH flag.
     ArithmeticError = 0x23,
+    /// The contract instruction is not allowed in predicates.
+    ContractInstructionNotAllowed = 0x24,
     /// The byte can't be mapped to any known `PanicReason`.
-    UnknownPanicReason = 0x24,
+    UnknownPanicReason = 0x25,
 }
 
 impl fmt::Display for PanicReason {
@@ -106,11 +106,21 @@ impl From<convert::Infallible> for PanicReason {
     }
 }
 
-impl From<u8> for PanicReason {
-    fn from(b: u8) -> Self {
+/// Failed to parse a `u8` as a valid panic reason.
+#[derive(Debug, Eq, PartialEq)]
+pub struct InvalidPanicReason;
+
+impl TryFrom<u8> for PanicReason {
+    type Error = InvalidPanicReason;
+
+    /// Converts the `u8` into a `PanicReason`.
+    fn try_from(b: u8) -> Result<Self, Self::Error> {
+        if b == 0 {
+            return Err(InvalidPanicReason);
+        }
+
         use PanicReason::*;
-        match b {
-            0x00 => Success,
+        let reason = match b {
             0x01 => Revert,
             0x02 => OutOfGas,
             0x03 => TransactionValidity,
@@ -146,8 +156,20 @@ impl From<u8> for PanicReason {
             0x21 => ContractMismatch,
             0x22 => MessageDataTooLong,
             0x23 => ArithmeticError,
+            0x24 => ContractInstructionNotAllowed,
             _ => UnknownPanicReason,
-        }
+        };
+
+        Ok(reason)
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<InvalidPanicReason> for std::io::Error {
+    fn from(_: InvalidPanicReason) -> Self {
+        use std::io;
+
+        io::Error::new(io::ErrorKind::InvalidInput, "Panic reason can't be zero")
     }
 }
 
@@ -172,14 +194,17 @@ mod tests {
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        const LAST_PANIC_REASON: u8 = 0x24;
-        for i in 0..LAST_PANIC_REASON {
-            let reason = PanicReason::from(i);
+        const LAST_PANIC_REASON: u8 = PanicReason::UnknownPanicReason as u8;
+        let reason = PanicReason::try_from(0);
+        assert!(reason.is_err());
+
+        for i in 1..LAST_PANIC_REASON {
+            let reason = PanicReason::try_from(i).unwrap();
             let i2 = reason as u8;
             assert_eq!(i, i2);
         }
         for i in LAST_PANIC_REASON..=255 {
-            let reason = PanicReason::from(i);
+            let reason = PanicReason::try_from(i).unwrap();
             let i2 = reason as u8;
             assert_eq!(PanicReason::UnknownPanicReason as u8, i2);
         }

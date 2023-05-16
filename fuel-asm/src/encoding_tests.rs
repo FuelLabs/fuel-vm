@@ -102,39 +102,27 @@ fn panic_reason_description() {
         PanicReason::ExpectedParentInternalContext,
         PanicReason::IllegalJump,
         PanicReason::ArithmeticError,
+        PanicReason::ContractInstructionNotAllowed,
     ];
-
-    let pd = InstructionResult::error(PanicReason::Success, op::noop().into());
-    let w = Word::from(pd);
-    let pd_p = InstructionResult::from(w);
-    assert_eq!(pd, pd_p);
-
-    #[cfg(feature = "serde")]
-    {
-        let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-        let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
-
-        assert_eq!(pd_s, pd);
-    }
 
     for r in reasons {
         let b = r as u8;
-        let r_p = PanicReason::from(b);
+        let r_p = PanicReason::try_from(b).expect("Should get panic reason");
         let w = Word::from(r as u8);
-        let r_q = PanicReason::from(u8::try_from(w).unwrap());
+        let r_q = PanicReason::try_from(u8::try_from(w).unwrap()).expect("Should get panic reason");
         assert_eq!(r, r_p);
         assert_eq!(r, r_q);
 
         let op = op::ji(imm24);
-        let pd = InstructionResult::error(r, op.into());
+        let pd = PanicInstruction::error(r, op.into());
         let w = Word::from(pd);
-        let pd_p = InstructionResult::from(w);
+        let pd_p = PanicInstruction::try_from(w).expect("Should get panic reason");
         assert_eq!(pd, pd_p);
 
         #[cfg(feature = "serde")]
         {
             let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-            let pd_s: InstructionResult = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+            let pd_s: PanicInstruction = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
             assert_eq!(pd_s, pd);
         }

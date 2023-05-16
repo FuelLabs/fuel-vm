@@ -18,7 +18,7 @@ use crate::interpreter::PanicContext;
 use crate::profiler::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 
-use fuel_asm::{Instruction, InstructionResult, RegId};
+use fuel_asm::{Instruction, PanicInstruction, RegId};
 use fuel_crypto::Hasher;
 use fuel_storage::{StorageAsRef, StorageInspect, StorageRead, StorageSize};
 use fuel_tx::{ConsensusParameters, PanicReason, Receipt, Script};
@@ -88,7 +88,7 @@ where
         revert(append, current_contract, self.registers.pc(), self.registers.is(), a)
     }
 
-    pub(crate) fn append_panic_receipt(&mut self, result: InstructionResult) {
+    pub(crate) fn append_panic_receipt(&mut self, result: PanicInstruction) {
         let pc = self.registers[RegId::PC];
         let is = self.registers[RegId::IS];
 
@@ -275,7 +275,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    fn _prepare_call(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+    fn prepare_call_inner(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let params = PrepareCallParams {
             call_params_mem_address: a,
             amount_of_coins_to_forward: b,
@@ -334,7 +334,7 @@ where
             .copied()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
 
-        self._prepare_call(a, b, c, d)
+        self.prepare_call_inner(a, b, c, d)
     }
 }
 

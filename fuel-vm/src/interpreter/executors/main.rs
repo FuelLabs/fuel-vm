@@ -94,7 +94,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
 {
-    fn _deploy(
+    fn deploy_inner(
         create: &mut Create,
         storage: &mut S,
         initial_balances: InitialBalances,
@@ -155,7 +155,7 @@ where
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
         let state = if let Some(create) = self.tx.as_create_mut() {
-            Self::_deploy(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
+            Self::deploy_inner(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
@@ -349,7 +349,7 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (mut create, metadata) = tx.into();
-        Self::_deploy(&mut create, &mut self.storage, metadata.balances(), &self.params)?;
+        Self::deploy_inner(&mut create, &mut self.storage, metadata.balances(), &self.params)?;
         Ok(create)
     }
 }

@@ -384,13 +384,13 @@ pub mod test_helpers {
     pub fn check_expected_reason_for_instructions(instructions: Vec<Instruction>, expected_reason: PanicReason) {
         let client = MemoryClient::default();
 
-        check_expected_reason_for_instructions_with_client(client, instructions, Some(expected_reason));
+        check_expected_reason_for_instructions_with_client(client, instructions, expected_reason);
     }
 
     fn check_expected_reason_for_instructions_with_client(
         mut client: MemoryClient,
         instructions: Vec<Instruction>,
-        expected_reason: Option<PanicReason>,
+        expected_reason: PanicReason,
     ) {
         let gas_price = 0;
         let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
@@ -450,7 +450,7 @@ pub mod test_helpers {
     pub fn check_reason_for_transaction(
         mut client: MemoryClient,
         checked_tx: Checked<Script>,
-        expected_reason: Option<PanicReason>,
+        expected_reason: PanicReason,
     ) {
         let receipts = client.transact(checked_tx);
 
@@ -459,7 +459,7 @@ pub mod test_helpers {
                 assert_eq!(
                     &expected_reason,
                     reason.reason(),
-                    "Expected {:?}, found {:?}",
+                    "Expected {}, found {}",
                     expected_reason,
                     reason.reason()
                 );

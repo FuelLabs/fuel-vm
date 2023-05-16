@@ -1,6 +1,6 @@
 use super::{Receipt, ReceiptRepr};
 
-use fuel_asm::InstructionResult;
+use fuel_asm::PanicInstruction;
 use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
 use fuel_types::{MemLayout, MemLocType, Word};
 
@@ -365,7 +365,7 @@ impl io::Write for Receipt {
 
                 let id = id.into();
 
-                *self = Self::panic(id, InstructionResult::from(reason), pc, is);
+                *self = Self::panic(id, PanicInstruction::try_from(reason)?, pc, is);
             }
 
             ReceiptRepr::Revert => {

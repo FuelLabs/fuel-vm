@@ -106,11 +106,17 @@ impl From<convert::Infallible> for PanicReason {
     }
 }
 
-impl PanicReason {
+/// Failed to parse a `u8` as a valid panic reason.
+#[derive(Debug, Eq, PartialEq)]
+pub struct InvalidPanicReason;
+
+impl TryFrom<u8> for PanicReason {
+    type Error = InvalidPanicReason;
+
     /// Converts the `u8` into a `PanicReason`.
-    pub fn from(b: u8) -> Option<Self> {
+    fn try_from(b: u8) -> Result<Self, Self::Error> {
         if b == 0 {
-            return None;
+            return Err(InvalidPanicReason);
         }
 
         use PanicReason::*;
@@ -154,7 +160,16 @@ impl PanicReason {
             _ => UnknownPanicReason,
         };
 
-        Some(reason)
+        Ok(reason)
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<InvalidPanicReason> for std::io::Error {
+    fn from(_: InvalidPanicReason) -> Self {
+        use std::io;
+
+        io::Error::new(io::ErrorKind::InvalidInput, "Panic reason can't be zero")
     }
 }
 
@@ -180,16 +195,16 @@ mod tests {
     #[test]
     fn test_u8_panic_reason_round_trip() {
         const LAST_PANIC_REASON: u8 = PanicReason::UnknownPanicReason as u8;
-        let reason = PanicReason::from(0);
-        assert_eq!(reason, None);
+        let reason = PanicReason::try_from(0);
+        assert!(reason.is_err());
 
         for i in 1..LAST_PANIC_REASON {
-            let reason = PanicReason::from(i).unwrap();
+            let reason = PanicReason::try_from(i).unwrap();
             let i2 = reason as u8;
             assert_eq!(i, i2);
         }
         for i in LAST_PANIC_REASON..=255 {
-            let reason = PanicReason::from(i).unwrap();
+            let reason = PanicReason::try_from(i).unwrap();
             let i2 = reason as u8;
             assert_eq!(PanicReason::UnknownPanicReason as u8, i2);
         }

@@ -16,7 +16,7 @@ extern crate core;
 pub mod consts;
 mod tx_pointer;
 
-pub use fuel_asm::{InstructionResult, PanicReason};
+pub use fuel_asm::{PanicInstruction, PanicReason};
 pub use fuel_types::{Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, MessageId, Salt, Word};
 pub use tx_pointer::TxPointer;
 

@@ -48,11 +48,7 @@ pub fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     let n = receipts.len();
     assert!(n >= 2, "Invalid receipts len");
     if let Receipt::Panic { reason: pr, .. } = receipts.get(n - 2).unwrap() {
-        assert_eq!(
-            pr.reason(),
-            &Some(reason),
-            "Panic reason differs for the expected reason"
-        );
+        assert_eq!(*pr.reason(), reason, "Panic reason differs for the expected reason");
     } else {
         unreachable!("No script receipt for a paniced tx");
     }

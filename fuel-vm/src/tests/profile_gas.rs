@@ -66,7 +66,7 @@ fn profile_gas() {
                     .map(|r| *r.reason())
                     .expect("Expected a panic reason.");
                 assert!(
-                    matches!(panic_reason, Some(PanicReason::OutOfGas)),
+                    matches!(panic_reason, PanicReason::OutOfGas),
                     "Expected out-of-gas error, got {panic_reason:?}"
                 );
             } else {

@@ -496,8 +496,8 @@ fn repeated_nested_calls() {
 
     if let Receipt::Panic { reason: pr, .. } = receipts.pop().expect("Missing panic reason receipt") {
         assert_eq!(
-            pr.reason(),
-            &Some(PanicReason::OutOfGas),
+            *pr.reason(),
+            PanicReason::OutOfGas,
             "Panic reason differs for the expected reason"
         );
     } else {

@@ -177,7 +177,7 @@ where
                     }
                     StorageState::RawCode(MappableState { key, value }) => {
                         if let Some(value) = value {
-                            StorageMutate::<ContractsRawCode>::insert(&mut self.storage, key, &value).unwrap();
+                            StorageMutate::<ContractsRawCode>::insert(&mut self.storage, key, value).unwrap();
                         }
                     }
                 }

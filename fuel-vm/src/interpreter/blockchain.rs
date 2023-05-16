@@ -326,7 +326,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
 
         // fetch the storage contract
         let contract = super::contract::contract(self.storage, contract_id)?;
-        let contract = contract.as_ref().as_ref();
+        let contract = contract.as_ref();
 
         if contract_offset > contract.len() {
             return Err(PanicReason::MemoryOverflow.into());

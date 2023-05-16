@@ -77,7 +77,7 @@ where
     }
 }
 
-pub(crate) fn contract<'s, S>(storage: &'s S, contract: &ContractId) -> Result<Contract, RuntimeError>
+pub(crate) fn contract<S>(storage: &S, contract: &ContractId) -> Result<Contract, RuntimeError>
 where
     S: InterpreterStorage,
 {

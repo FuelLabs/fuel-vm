@@ -103,8 +103,8 @@ impl CheckedMemRange {
         let range = address..end;
 
         if of
-            || range.start != 0 && !constraint.contains(&((range.start - 1) as Word))
-            || range.end != 0 && !constraint.contains(&((range.end - 1) as Word))
+            || !constraint.contains(&(range.start as Word))
+            || size != 0 && !constraint.contains(&((range.end - 1) as Word))
         {
             return Err(PanicReason::MemoryOverflow.into());
         }

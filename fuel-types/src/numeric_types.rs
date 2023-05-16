@@ -35,6 +35,8 @@ macro_rules! key {
 
 macro_rules! key_methods {
     ($i:ident, $t:ty) => {
+        const SIZE: usize = core::mem::size_of::<$t>();
+
         impl $i {
             /// Number constructor.
             pub const fn new(number: $t) -> Self {
@@ -42,7 +44,7 @@ macro_rules! key_methods {
             }
 
             /// Convert to array of big endian bytes.
-            pub fn to_bytes(self) -> [u8; 4] {
+            pub fn to_bytes(self) -> [u8; SIZE] {
                 self.0.to_be_bytes()
             }
 
@@ -56,8 +58,6 @@ macro_rules! key_methods {
                 self.0 as usize
             }
         }
-
-        const SIZE: usize = core::mem::size_of::<$t>();
 
         #[cfg(feature = "random")]
         impl rand::Fill for $i {

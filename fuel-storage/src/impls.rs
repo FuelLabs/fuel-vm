@@ -2,12 +2,12 @@ use crate::{
     Mappable, MerkleRoot, MerkleRootStorage, StorageInspect, StorageMut, StorageMutate, StorageRead, StorageRef,
     StorageSize, StorageWrite,
 };
-use alloc::{borrow::Cow, vec::Vec};
+use alloc::vec::Vec;
 
 impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'a T {
     type Error = T::Error;
 
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
+    fn get(&self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
         <T as StorageInspect<Type>>::get(self, key)
     }
 
@@ -19,7 +19,7 @@ impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> 
 impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'a mut T {
     type Error = T::Error;
 
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
+    fn get(&self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
         <T as StorageInspect<Type>>::get(self, key)
     }
 
@@ -78,7 +78,7 @@ impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable> MerkleRo
 
 impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     #[inline(always)]
-    pub fn get(self, key: &Type::Key) -> Result<Option<Cow<'a, Type::OwnedValue>>, T::Error> {
+    pub fn get(self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, T::Error> {
         self.0.get(key)
     }
 
@@ -112,7 +112,7 @@ impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
 
 impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
-    pub fn get(self, key: &Type::Key) -> Result<Option<Cow<'a, Type::OwnedValue>>, T::Error> {
+    pub fn get(self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, T::Error> {
         // Workaround, because compiler doesn't convert the lifetime to `'a` by default.
         let self_: &'a T = self.0;
         self_.get(key)

@@ -15,7 +15,7 @@ use crate::gas::DependentCost;
 use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
-use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage, ContractInfo};
+use crate::storage::{ContractInfo, ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
 use crate::{arith, consts::*};
 
 use fuel_asm::PanicReason;
@@ -24,7 +24,6 @@ use fuel_tx::Receipt;
 use fuel_types::{bytes, BlockHeight};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
-use std::borrow::Borrow;
 use std::ops::Range;
 
 #[cfg(test)]
@@ -461,7 +460,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        let contract = super::contract::contract(self.storage, contract)?.into_owned();
+        let contract = super::contract::contract(self.storage, contract)?;
 
         if contract.as_ref().len() < d {
             try_zeroize(a, d, self.owner, self.memory)?;
@@ -534,12 +533,11 @@ where
 
     let contract_id = ContractId::from_bytes_ref(contract_id.read(memory));
 
-    let ContractInfo{ root, ..} = storage
+    let ContractInfo { root, .. } = storage
         .storage_contract_root(contract_id)
         .transpose()
         .ok_or(PanicReason::ContractNotFound)?
-        .map_err(RuntimeError::from_io)?
-        .into_owned();
+        .map_err(RuntimeError::from_io)?;
 
     try_mem_write(a as usize, root.as_ref(), owner, memory)?;
 
@@ -611,8 +609,10 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let value = storage
         .merkle_contract_state(contract, key)
         .map_err(RuntimeError::from_io)?
-        .map(|state| bytes::from_array(state.as_ref().borrow()))
-        .map(Word::from_be_bytes);
+        .map(|state| {
+            let raw: [u8; WORD_SIZE] = (*state)[..WORD_SIZE].try_into().unwrap();
+            Word::from_le_bytes(raw)
+        });
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;
@@ -818,7 +818,7 @@ fn state_read_qword(
         .map_err(RuntimeError::from_io)?
         .into_iter()
         .flat_map(|bytes| match bytes {
-            Some(bytes) => **bytes,
+            Some(bytes) => *bytes,
             None => {
                 all_set = false;
                 *Bytes32::zeroed()

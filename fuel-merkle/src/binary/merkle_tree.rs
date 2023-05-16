@@ -149,8 +149,7 @@ where
         let primitive = self
             .storage
             .get(&leaf_position.in_order_index())?
-            .ok_or(MerkleTreeError::LoadError(proof_index))?
-            .into_owned();
+            .ok_or(MerkleTreeError::LoadError(proof_index))?;
         let leaf_node = Node::from(primitive);
         proof_set.push(*leaf_node.hash());
 
@@ -172,8 +171,7 @@ where
             let key = side_position.in_order_index();
             let primitive = StorageInspectInfallible::get(&scratch_storage, &key)
                 .or(StorageInspect::get(&self.storage, &key)?)
-                .ok_or(MerkleTreeError::LoadError(key))?
-                .into_owned();
+                .ok_or(MerkleTreeError::LoadError(key))?;
             let node = Node::from(primitive);
             proof_set.push(*node.hash());
         }
@@ -276,12 +274,7 @@ where
         let peaks = &self.peak_positions();
         for peak in peaks.iter() {
             let key = peak.in_order_index();
-            let node = self
-                .storage
-                .get(&key)?
-                .ok_or(MerkleTreeError::LoadError(key))?
-                .into_owned()
-                .into();
+            let node = self.storage.get(&key)?.ok_or(MerkleTreeError::LoadError(key))?.into();
             let next = Box::new(Subtree::<Node>::new(node, current_head));
             current_head = Some(next);
         }

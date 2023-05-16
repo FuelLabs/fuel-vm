@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::error::InterpreterError;
 use crate::storage::InterpreterStorage;
 
@@ -20,7 +18,7 @@ pub struct PredicateStorage;
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
     type Error = InterpreterError;
 
-    fn get(&self, _key: &Type::Key) -> Result<Option<Cow<'_, Type::OwnedValue>>, InterpreterError> {
+    fn get(&self, _key: &Type::Key) -> Result<Option<Type::OwnedValue>, InterpreterError> {
         Err(InterpreterError::PredicateFailure)
     }
 
@@ -87,7 +85,7 @@ impl InterpreterStorage for PredicateStorage {
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Bytes32>>, Self::DataError> {
         Err(InterpreterError::PredicateFailure)
     }
 

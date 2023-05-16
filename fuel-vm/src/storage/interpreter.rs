@@ -5,7 +5,6 @@ use fuel_tx::{Contract, StorageSlot};
 use fuel_types::{Address, AssetId, BlockHeight, Bytes32, ContractId, Salt, Word};
 
 use crate::storage::{ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState};
-use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::io;
 use std::ops::{Deref, DerefMut};
@@ -62,7 +61,7 @@ pub trait InterpreterStorage:
 
     /// Fetch a previously inserted contract code from the chain state for a
     /// given contract.
-    fn storage_contract(&self, id: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
+    fn storage_contract(&self, id: &ContractId) -> Result<Option<Contract>, Self::DataError> {
         StorageInspect::<ContractsRawCode>::get(self, id)
     }
 
@@ -95,7 +94,7 @@ pub trait InterpreterStorage:
 
     /// Fetch a previously inserted salt+root tuple from the chain state for a
     /// given contract.
-    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<Cow<'_, ContractInfo>>, Self::DataError> {
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<ContractInfo>, Self::DataError> {
         StorageInspect::<ContractsInfo>::get(self, id)
     }
 
@@ -106,15 +105,18 @@ pub trait InterpreterStorage:
         salt: &Salt,
         root: &Bytes32,
     ) -> Result<Option<ContractInfo>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(self, id, &ContractInfo {salt: *salt, root: *root})
+        StorageMutate::<ContractsInfo>::insert(
+            self,
+            id,
+            &ContractInfo {
+                salt: *salt,
+                root: *root,
+            },
+        )
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.
-    fn merkle_contract_state(
-        &self,
-        id: &ContractId,
-        key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    fn merkle_contract_state(&self, id: &ContractId, key: &Bytes32) -> Result<Option<Bytes32>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -145,7 +147,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Bytes32>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns None if any of the keys in the range were previously unset.
@@ -174,10 +176,7 @@ pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets>
         id: &ContractId,
         asset_id: &AssetId,
     ) -> Result<Option<Word>, Self::Error> {
-        let balance = self
-            .storage::<ContractsAssets>()
-            .get(&(id, asset_id).into())?
-            .map(Cow::into_owned);
+        let balance = self.storage::<ContractsAssets>().get(&(id, asset_id).into())?;
 
         Ok(balance)
     }
@@ -230,7 +229,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Bytes32>>, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_range(self.deref(), id, start_key, range)
     }
 

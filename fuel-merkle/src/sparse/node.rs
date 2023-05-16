@@ -301,7 +301,6 @@ where
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
-            .into_owned()
             .try_into()
             .map(|node| Self::new(self.storage, node))
             .map_err(StorageNodeError::DeserializeError)?)
@@ -321,7 +320,6 @@ where
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
-            .into_owned()
             .try_into()
             .map(|node| Self::new(self.storage, node))
             .map_err(StorageNodeError::DeserializeError)?)

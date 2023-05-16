@@ -6,10 +6,7 @@ mod impls;
 
 extern crate alloc;
 
-use alloc::{
-    borrow::{Cow, ToOwned},
-    vec::Vec,
-};
+use alloc::{borrow::ToOwned, vec::Vec};
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -51,8 +48,8 @@ pub trait Mappable {
 pub trait StorageInspect<Type: Mappable> {
     type Error;
 
-    /// Retrieve `Cow<Value>` such as `Key->Value`.
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
+    /// Retrieve `Value` such as `Key->Value`.
+    fn get(&self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;

@@ -28,7 +28,7 @@ default = ["std", "serde?/default"]
 alloc = ["hex/alloc"]
 random = ["rand"]
 rkyv = ["dep:rkyv", "fuel-types/rkyv"]
-serde = ["dep:serde", "rkyv", "alloc"] # TODO: should we really include rkyv here
+serde = ["dep:serde", "alloc"]
 std = ["alloc", "serde?/std", "hex?/std"]
 unsafe = []
 

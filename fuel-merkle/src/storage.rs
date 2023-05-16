@@ -1,11 +1,10 @@
-use alloc::borrow::Cow;
 use core::convert::Infallible;
 
 // Re-export fuel-storage traits
 pub use fuel_storage::{Mappable, StorageInspect, StorageMutate};
 
 pub trait StorageInspectInfallible<Type: Mappable> {
-    fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>>;
+    fn get(&self, key: &Type::Key) -> Option<Type::OwnedValue>;
     fn contains_key(&self, key: &Type::Key) -> bool;
 }
 
@@ -19,7 +18,7 @@ where
     S: StorageInspect<Type, Error = Infallible>,
     Type: Mappable,
 {
-    fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>> {
+    fn get(&self, key: &Type::Key) -> Option<Type::OwnedValue> {
         <Self as StorageInspect<Type>>::get(self, key).expect("Expected get() to be infallible")
     }
 

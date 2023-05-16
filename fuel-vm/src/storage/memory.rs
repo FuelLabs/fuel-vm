@@ -15,12 +15,11 @@ use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Word};
 use itertools::Itertools;
 use tai64::Tai64;
 
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::Read;
 
-use super::ContractInfo;
 use super::interpreter::ContractsAssetsStorage;
+use super::ContractInfo;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -64,13 +63,11 @@ impl MemoryStorage {
     }
 
     /// Fetch a mapping from the contract state.
-    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
-        const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
-
+    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Bytes32 {
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
             .expect("Infallible")
-            .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
+            .unwrap_or_default()
     }
 
     /// Set the transacted state to the memory state.
@@ -114,8 +111,8 @@ impl Default for MemoryStorage {
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Infallible> {
-        Ok(self.memory.contracts.get(key).map(Cow::Borrowed))
+    fn get(&self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
+        Ok(self.memory.contracts.get(key).cloned())
     }
 
     fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
@@ -177,8 +174,8 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 impl StorageInspect<ContractsInfo> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, ContractInfo>>, Infallible> {
-        Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
+    fn get(&self, key: &ContractId) -> Result<Option<ContractInfo>, Infallible> {
+        Ok(self.memory.contract_code_root.get(key).cloned())
     }
 
     fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
@@ -199,8 +196,8 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
 impl StorageInspect<ContractsAssets> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &<ContractsAssets as Mappable>::Key) -> Result<Option<Cow<'_, Word>>, Infallible> {
-        Ok(self.memory.balances.get(key).map(Cow::Borrowed))
+    fn get(&self, key: &<ContractsAssets as Mappable>::Key) -> Result<Option<Word>, Infallible> {
+        Ok(self.memory.balances.get(key).copied())
     }
 
     fn contains_key(&self, key: &<ContractsAssets as Mappable>::Key) -> Result<bool, Infallible> {
@@ -236,8 +233,8 @@ impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
 impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &<ContractsState as Mappable>::Key) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
-        Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
+    fn get(&self, key: &<ContractsState as Mappable>::Key) -> Result<Option<Bytes32>, Infallible> {
+        Ok(self.memory.contract_state.get(key).copied())
     }
 
     fn contains_key(&self, key: &<ContractsState as Mappable>::Key) -> Result<bool, Infallible> {
@@ -302,7 +299,7 @@ impl InterpreterStorage for MemoryStorage {
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Bytes32>>, Self::DataError> {
         let start: ContractsStateKey = (id, start_key).into();
         let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
         let mut iter = self.memory.contract_state.range(start..end);
@@ -324,7 +321,7 @@ impl InterpreterStorage for MemoryStorage {
                 }
                 std::cmp::Ordering::Equal => {
                     next_item = iter.next();
-                    Some(Cow::Borrowed(v))
+                    Some(*v)
                 }
                 std::cmp::Ordering::Greater => None,
             },

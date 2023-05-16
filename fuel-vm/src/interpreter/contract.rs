@@ -15,8 +15,6 @@ use fuel_storage::{StorageInspect, StorageSize};
 use fuel_tx::{Contract, Output, Receipt};
 use fuel_types::{Address, AssetId, ContractId};
 
-use std::borrow::Cow;
-
 #[cfg(test)]
 mod tests;
 
@@ -79,7 +77,7 @@ where
     }
 }
 
-pub(crate) fn contract<'s, S>(storage: &'s S, contract: &ContractId) -> Result<Cow<'s, Contract>, RuntimeError>
+pub(crate) fn contract<'s, S>(storage: &'s S, contract: &ContractId) -> Result<Contract, RuntimeError>
 where
     S: InterpreterStorage,
 {

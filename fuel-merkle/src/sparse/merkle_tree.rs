@@ -78,10 +78,7 @@ where
             let tree = Self::new(storage);
             Ok(tree)
         } else {
-            let primitive = storage
-                .get(root)?
-                .ok_or_else(|| MerkleTreeError::LoadError(*root))?
-                .into_owned();
+            let primitive = storage.get(root)?.ok_or_else(|| MerkleTreeError::LoadError(*root))?;
             let tree = Self {
                 root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
                 storage,
@@ -152,7 +149,6 @@ where
         }
 
         if let Some(primitive) = self.storage.get(key)? {
-            let primitive = primitive.into_owned();
             let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
             let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
             self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;

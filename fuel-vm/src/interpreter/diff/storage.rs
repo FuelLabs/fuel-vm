@@ -247,10 +247,7 @@ where
 {
     type Error = <S as StorageInspect<Type>>::Error;
 
-    fn get(
-        &self,
-        key: &<Type as Mappable>::Key,
-    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error> {
+    fn get(&self, key: &<Type as Mappable>::Key) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
 
@@ -348,7 +345,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Bytes32>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
@@ -392,11 +389,7 @@ impl StorageType for ContractsAssets {
 }
 
 impl StorageType for ContractsInfo {
-    fn record_insert(
-        key: &ContractId,
-        value: &ContractInfo,
-        existing: Option<ContractInfo>,
-    ) -> StorageDelta {
+    fn record_insert(key: &ContractId, value: &ContractInfo, existing: Option<ContractInfo>) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
     }
 

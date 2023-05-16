@@ -1,7 +1,6 @@
 use crate::alloc::borrow::ToOwned;
 use crate::storage::{Mappable, StorageInspect, StorageMutate};
 
-use alloc::borrow::Cow;
 use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
@@ -40,10 +39,9 @@ where
 {
     type Error = core::convert::Infallible;
 
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error> {
+    fn get(&self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
         let result = self.map.get(key);
-        let value = result.map(Cow::Borrowed);
-        Ok(value)
+        Ok(result.cloned())
     }
 
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
@@ -96,7 +94,7 @@ mod test {
         let mut store = StorageMap::<TestTable>::new();
         let _ = store.insert(&key, &TestValue(0));
 
-        assert_eq!(store.get(&key).unwrap(), Some(Cow::Borrowed(&TestValue(0))));
+        assert_eq!(store.get(&key).unwrap(), Some(TestValue(0)));
     }
     #[test]
     fn test_get_returns_none_for_invalid_key() {
@@ -115,7 +113,7 @@ mod test {
         let _ = store.insert(&key, &TestValue(0));
         let _ = store.insert(&key, &TestValue(1));
 
-        assert_eq!(store.get(&key).unwrap(), Some(Cow::Borrowed(&TestValue(1))));
+        assert_eq!(store.get(&key).unwrap(), Some(TestValue(1)));
     }
 
     #[test]

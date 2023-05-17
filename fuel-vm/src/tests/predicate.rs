@@ -9,7 +9,7 @@ use crate::checked_transaction::EstimatePredicates;
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 
-fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize, check_gas: bool) -> bool
+fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
 where
     P: IntoIterator<Item = Instruction>,
 {
@@ -57,17 +57,8 @@ where
 
     builder.add_input(input);
 
-    let mut transaction = builder.finalize();
-    let gas_costs = if check_gas {
-        GasCosts::default()
-    } else {
-        GasCosts::free()
-    };
-    if check_gas {
-        transaction
-            .estimate_predicates(&params, &gas_costs)
-            .expect("Should successfully estimate predicates");
-    }
+    let transaction = builder.finalize();
+    let gas_costs = GasCosts::free();
 
     let checked = transaction
         .into_checked_basic(height, &Default::default())
@@ -80,7 +71,7 @@ fn predicate_minimal() {
     let predicate = iter::once(op::ret(0x01));
     let data = vec![];
 
-    assert!(execute_predicate(predicate, data, 7, false));
+    assert!(execute_predicate(predicate, data, 7));
 }
 
 #[test]
@@ -105,8 +96,8 @@ fn predicate() {
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0, false));
-    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0, false));
+    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
+    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));
 }
 
 #[test]
@@ -122,7 +113,7 @@ fn get_verifying_predicate() {
             op::ret(0x10),
         ];
 
-        assert!(execute_predicate(predicate, vec![], idx as usize, false));
+        assert!(execute_predicate(predicate, vec![], idx as usize));
     }
 }
 

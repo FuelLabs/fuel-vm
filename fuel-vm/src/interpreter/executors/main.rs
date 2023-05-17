@@ -221,13 +221,8 @@ where
         let id = contract.id(salt, &root, &storage_root);
         let mut cumulative_predicate_gas: Word = 0;
 
-        //calculate cumulative predicate gas for inputs
-        for input in create.inputs().iter().filter(|input| {
-            matches!(
-                input,
-                Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::MessageDataPredicate(_)
-            )
-        }) {
+        // Calculate cumulative predicate gas for inputs
+        for input in create.inputs() {
             if let Some(predicate_gas_used) = input.predicate_gas_used() {
                 cumulative_predicate_gas = cumulative_predicate_gas
                     .checked_add(predicate_gas_used)

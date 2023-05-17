@@ -120,7 +120,16 @@ fn from_tx_works() {
 
         let mut interpreter = Interpreter::without_storage();
 
-        assert!(interpreter.init_predicate_verification(&tx));
+        assert!(interpreter
+            .init_predicate(
+                fuel_vm::context::Context::PredicateVerification {
+                    program: Default::default()
+                },
+                tx.transaction(),
+                Default::default(),
+                tx.transaction().limit()
+            )
+            .is_ok());
 
         let pad = bytes::padded_len(&predicate) - predicate.len();
 

@@ -72,7 +72,7 @@ where
     let checked = transaction
         .into_checked_basic(height, &Default::default())
         .expect("Should successfully convert into Checked");
-    Interpreter::<PredicateStorage>::check_predicates(checked, Default::default(), gas_costs).is_ok()
+    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), gas_costs).is_ok()
 }
 
 #[test]
@@ -168,7 +168,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             AssetId::default(),
             rng.gen(),
             Default::default(),
-            100,
+            rng.gen(),
             predicate,
             vec![],
         );
@@ -177,15 +177,18 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     }
 
     let mut transaction = builder.finalize();
+    let mut params = ConsensusParameters::default();
+    params.max_gas_per_tx = 10000;
+    params.max_gas_per_predicate = 10000;
     transaction
-        .estimate_predicates(&Default::default(), &GasCosts::default())
+        .estimate_predicates(&params, &GasCosts::default())
         .map_err(|_| ())?;
 
     let tx = transaction
         .into_checked_basic(Default::default(), &Default::default())
         .expect("Should successfully create checked tranaction with predicate");
 
-    Interpreter::<PredicateStorage>::check_predicates(tx, Default::default(), GasCosts::default())
+    Interpreter::<PredicateStorage>::check_predicates(&tx, params, GasCosts::default())
         .map(|r| r.gas_used())
         .map_err(|_| ())
 }

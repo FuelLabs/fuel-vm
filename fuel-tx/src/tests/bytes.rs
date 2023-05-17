@@ -1,4 +1,4 @@
-use fuel_asm::op;
+use fuel_asm::{op, PanicInstruction};
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
 use fuel_types::{bytes, Immediate24};
@@ -204,19 +204,13 @@ fn receipt() {
         Receipt::transfer_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(PanicReason::Success, op::noop().into()),
+            PanicInstruction::error(PanicReason::Revert, op::ji(rng.gen::<Immediate24>() & 0xffffff).into()),
             rng.gen(),
             rng.gen(),
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(PanicReason::Revert, op::ji(rng.gen::<Immediate24>() & 0xffffff).into()),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::OutOfGas,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -225,7 +219,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::TransactionValidity,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -234,7 +228,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::MemoryOverflow,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -243,7 +237,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ArithmeticOverflow,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -252,7 +246,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ContractNotFound,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -261,7 +255,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::MemoryOwnership,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -270,7 +264,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::NotEnoughBalance,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -279,7 +273,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ExpectedInternalContext,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -288,7 +282,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::AssetIdNotFound,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -297,7 +291,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::InputNotFound,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -306,7 +300,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::OutputNotFound,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -315,7 +309,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::WitnessNotFound,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -324,7 +318,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::TransactionMaturity,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -333,7 +327,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::InvalidMetadataIdentifier,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -342,7 +336,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::MalformedCallStructure,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -351,7 +345,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ReservedRegisterNotWritable,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -360,7 +354,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ErrorFlag,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -369,7 +363,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::InvalidImmediateValue,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -378,7 +372,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ExpectedCoinInput,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -387,7 +381,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::MaxMemoryAccess,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -396,7 +390,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::MemoryWriteOverlap,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -405,7 +399,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ContractNotInInputs,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -414,7 +408,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::InternalBalanceOverflow,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -423,7 +417,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ContractMaxSize,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -432,7 +426,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ExpectedUnallocatedStack,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -441,7 +435,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::TransferAmountCannotBeZero,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -450,7 +444,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ExpectedOutputVariable,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -459,7 +453,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ExpectedParentInternalContext,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -468,7 +462,7 @@ fn receipt() {
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ContractNotInInputs,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),

@@ -51,17 +51,17 @@ where
             }
         }
 
-        self._instruction(raw.into())
+        self.instruction_inner(raw.into())
             .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
     }
 
-    fn _instruction(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
+    fn instruction_inner(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
         let instruction = Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68
         if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
-            return Err(PanicReason::TransactionValidity.into());
+            return Err(PanicReason::ContractInstructionNotAllowed.into());
         }
 
         // Short-hand for retrieving the value from the register with the given ID.

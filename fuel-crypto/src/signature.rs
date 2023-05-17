@@ -128,7 +128,7 @@ mod use_std {
     impl Signature {
         // Internal API - this isn't meant to be made public because some assumptions and pre-checks
         // are performed prior to this call
-        pub(crate) fn to_secp(&mut self) -> SecpRecoverableSignature {
+        fn to_secp(&mut self) -> SecpRecoverableSignature {
             let v = (self.as_mut()[32] >> 7) as i32;
 
             self.truncate_recovery_id();
@@ -143,7 +143,7 @@ mod use_std {
             signature
         }
 
-        pub(crate) fn from_secp(signature: SecpRecoverableSignature) -> Self {
+        fn from_secp(signature: SecpRecoverableSignature) -> Self {
             let (v, mut signature) = signature.serialize_compact();
 
             let v = v.to_i32();
@@ -154,7 +154,7 @@ mod use_std {
 
         /// Truncate the recovery id from the signature, producing a valid `secp256k1`
         /// representation.
-        pub(crate) fn truncate_recovery_id(&mut self) {
+        fn truncate_recovery_id(&mut self) {
             self.as_mut()[32] &= 0x7f;
         }
 
@@ -193,13 +193,13 @@ mod use_std {
         /// It takes the signature as owned because this operation is not idempotent. The taken
         /// signature will not be recoverable. Signatures are meant to be single use, so this
         /// avoids unnecessary copy.
-        pub fn verify(self, pk: &PublicKey, message: &Message) -> Result<(), Error> {
-            // TODO evaluate if its worthy to use native verify
-            //
-            // https://github.com/FuelLabs/fuel-crypto/issues/4
-
-            self.recover(message)
-                .and_then(|pk_p| (pk == &pk_p).then_some(()).ok_or(Error::InvalidSignature))
+        pub fn verify(mut self, pk: &PublicKey, message: &Message) -> Result<(), Error> {
+            let signature = self.to_secp().to_standard();
+            let message = message.to_secp();
+            let pk = pk.to_secp()?;
+            RECOVER_SECP
+                .verify_ecdsa(&message, &signature, &pk)
+                .map_err(|_| Error::InvalidSignature)
         }
     }
 }

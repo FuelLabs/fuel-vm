@@ -1,6 +1,6 @@
 //! Runtime interpreter error implementation
 
-use fuel_asm::{InstructionResult, PanicReason, RawInstruction};
+use fuel_asm::{PanicInstruction, PanicReason, RawInstruction};
 use fuel_tx::CheckError;
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
     #[error("Execution error: {0:?}")]
-    PanicInstruction(InstructionResult),
+    PanicInstruction(PanicInstruction),
     /// The VM execution resulted in a well-formed panic. This panic wasn't
     /// caused by an instruction contained in the transaction or a called
     /// contract.
@@ -44,7 +44,7 @@ impl InterpreterError {
     /// Describe the error as recoverable or halt.
     pub fn from_runtime(error: RuntimeError, instruction: RawInstruction) -> Self {
         match error {
-            RuntimeError::Recoverable(reason) => Self::PanicInstruction(InstructionResult::error(reason, instruction)),
+            RuntimeError::Recoverable(reason) => Self::PanicInstruction(PanicInstruction::error(reason, instruction)),
             _ => Self::from(error),
         }
     }
@@ -68,7 +68,7 @@ impl InterpreterError {
 
     /// Return the underlying `InstructionResult` if this instance is
     /// `PanicInstruction`; returns `None` otherwise.
-    pub fn instruction_result(&self) -> Option<InstructionResult> {
+    pub fn instruction_result(&self) -> Option<PanicInstruction> {
         match self {
             Self::PanicInstruction(r) => Some(*r),
             _ => None,

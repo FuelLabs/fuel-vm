@@ -19,9 +19,9 @@ mem_layout!(
     tx_pointer: TxPointer = {TxPointer::LEN},
     witness_index: u8 = WORD_SIZE,
     maturity: u32 = WORD_SIZE,
+    predicate_gas_used: Word = WORD_SIZE,
     predicate_len: Word = WORD_SIZE,
-    predicate_data_len: Word = WORD_SIZE,
-    predicate_gas_used: Word = WORD_SIZE
+    predicate_data_len: Word = WORD_SIZE
 );
 
 pub struct ContractSizes;
@@ -43,10 +43,10 @@ mem_layout!(
     amount: Word = WORD_SIZE,
     nonce: Nonce = {Nonce::LEN},
     witness_index: u8 = WORD_SIZE,
+    predicate_gas_used: Word = WORD_SIZE,
     data_len: Word = WORD_SIZE,
     predicate_len: Word = WORD_SIZE,
-    predicate_data_len: Word = WORD_SIZE,
-    predicate_gas_used: Word = WORD_SIZE
+    predicate_data_len: Word = WORD_SIZE
 );
 
 #[test]

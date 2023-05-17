@@ -513,10 +513,10 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
+                rng.gen(),
                 vec![0xff; 10],
                 vec![0xaa; 10],
                 vec![0xbb; 10],
-                rng.gen(),
             ))
             .finalize();
 
@@ -552,7 +552,8 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, false);
+        let predicate_gas_used = rng.gen();
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -578,7 +579,8 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, false);
+        let predicate_gas_used = rng.gen();
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -848,7 +850,7 @@ mod tests {
         let params = ConsensusParameters::default();
         let gas_costs = GasCosts::free();
 
-        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, true);
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
         let checked = tx
             // Sets Checks::Basic
@@ -917,7 +919,7 @@ mod tests {
         gas_price: u64,
         gas_limit: u64,
         fee_input_amount: u64,
-        predicate_gas_used_zeroed: bool,
+        predicate_gas_used: u64,
     ) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
@@ -932,9 +934,9 @@ mod tests {
                 asset,
                 rng.gen(),
                 Default::default(),
+                predicate_gas_used,
                 predicate,
                 vec![],
-                predicate_gas_used_zeroed.then_some(0).unwrap_or_else(|| rng.gen()),
             ))
             .add_output(Output::change(rng.gen(), 0, asset))
             .finalize()
@@ -958,9 +960,9 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
-                vec![],
-                vec![],
                 rng.gen(),
+                vec![],
+                vec![],
             ))
             .finalize()
     }

@@ -167,9 +167,9 @@ impl Input {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         maturity: BlockHeight,
+        predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
-        predicate_gas_used: Word,
     ) -> Self {
         Self::CoinPredicate(CoinPredicate {
             utxo_id,
@@ -179,9 +179,9 @@ impl Input {
             tx_pointer,
             witness_index: (),
             maturity,
+            predicate_gas_used,
             predicate,
             predicate_data,
-            predicate_gas_used,
         })
     }
 
@@ -202,9 +202,9 @@ impl Input {
             tx_pointer,
             witness_index,
             maturity,
+            predicate_gas_used: (),
             predicate: (),
             predicate_data: (),
-            predicate_gas_used: (),
         })
     }
 
@@ -237,10 +237,10 @@ impl Input {
             amount,
             nonce,
             witness_index,
+            predicate_gas_used: (),
             data: (),
             predicate: (),
             predicate_data: (),
-            predicate_gas_used: (),
         })
     }
 
@@ -249,9 +249,9 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
+        predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
-        predicate_gas_used: Word,
     ) -> Self {
         Self::MessageCoinPredicate(MessageCoinPredicate {
             sender,
@@ -259,10 +259,10 @@ impl Input {
             amount,
             nonce,
             witness_index: (),
+            predicate_gas_used,
             data: (),
             predicate,
             predicate_data,
-            predicate_gas_used,
         })
     }
 
@@ -292,10 +292,10 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
+        predicate_gas_used: Word,
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
-        predicate_gas_used: Word,
     ) -> Self {
         Self::MessageDataPredicate(MessageDataPredicate {
             sender,
@@ -303,10 +303,10 @@ impl Input {
             amount,
             nonce,
             witness_index: (),
+            predicate_gas_used,
             data,
             predicate,
             predicate_data,
-            predicate_gas_used,
         })
     }
 
@@ -443,8 +443,9 @@ impl Input {
             Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => Some(*predicate_gas_used),
-            Input::CoinSigned(_) | Input::MessageCoinSigned(_) | Input::MessageDataSigned(_) => Some(0),
-            Input::Contract(_) => None,
+            Input::CoinSigned(_) | Input::MessageCoinSigned(_) | Input::MessageDataSigned(_) | Input::Contract(_) => {
+                None
+            }
         }
     }
 
@@ -626,19 +627,6 @@ impl Input {
         }
     }
 
-    /// Empties fields that should be zero during the signing.
-    pub(crate) fn prepare_estimate_sign(&mut self) {
-        match self {
-            Input::CoinSigned(coin) => coin.prepare_sign(),
-            Input::CoinPredicate(coin) => coin.prepare_estimate_sign(),
-            Input::Contract(contract) => contract.prepare_sign(),
-            Input::MessageCoinSigned(message) => message.prepare_sign(),
-            Input::MessageCoinPredicate(message) => message.prepare_estimate_sign(),
-            Input::MessageDataSigned(message) => message.prepare_sign(),
-            Input::MessageDataPredicate(message) => message.prepare_estimate_sign(),
-        }
-    }
-
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,
@@ -677,11 +665,6 @@ impl Input {
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_predicate(&mut self) {
         self.prepare_sign()
-    }
-
-    /// Prepare the output for VM predicate execution
-    pub fn prepare_init_estimate_predicate(&mut self) {
-        self.prepare_estimate_sign()
     }
 }
 

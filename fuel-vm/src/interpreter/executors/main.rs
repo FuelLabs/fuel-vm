@@ -34,7 +34,6 @@ impl PredicatesChecked {
     }
 }
 
-// FIXME replace for a type-safe transaction
 impl<T> Interpreter<PredicateStorage, T> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs.
@@ -109,6 +108,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             gas_used: cumulative_gas_used,
         })
     }
+
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs. Set the predicate_gas_used to be the actual gas consumed during execution for
     /// each predicate.

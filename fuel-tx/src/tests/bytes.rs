@@ -106,9 +106,9 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
-            rng.gen(),
         ),
         Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_data_signed(
@@ -124,10 +124,10 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_bytes(rng),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
-            rng.gen(),
         ),
         Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_coin_predicate(
@@ -135,9 +135,9 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
-            rng.gen(),
         ),
     ]);
 }
@@ -677,9 +677,9 @@ fn create_input_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         predicate.clone(),
         predicate_data.clone(),
-        predicate_gas_used,
     );
 
     let data = generate_bytes(rng);
@@ -688,10 +688,10 @@ fn create_input_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         data,
         predicate.clone(),
         predicate_data,
-        predicate_gas_used,
     );
 
     let mut buffer = vec![0u8; 4096];
@@ -801,9 +801,9 @@ fn script_input_coin_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         predicate.clone(),
         predicate_data,
-        predicate_gas_used,
     );
 
     let mut buffer = vec![0u8; 4096];

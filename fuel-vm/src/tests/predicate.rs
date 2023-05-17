@@ -37,9 +37,9 @@ where
         asset_id,
         tx_pointer,
         maturity,
+        predicate_gas_used,
         predicate,
         predicate_data,
-        predicate_gas_used,
     );
 
     let gas_price = 0;
@@ -168,9 +168,9 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             AssetId::default(),
             rng.gen(),
             Default::default(),
+            100,
             predicate,
             vec![],
-            rng.gen(),
         );
 
         builder.add_input(input);
@@ -270,9 +270,9 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         AssetId::default(),
         rng.gen(),
         Default::default(),
+        rng.gen(),
         predicate,
         vec![],
-        rng.gen(),
     );
 
     builder.add_input(input);
@@ -355,9 +355,9 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         AssetId::default(),
         rng.gen(),
         Default::default(),
+        rng.gen(),
         predicate,
         vec![],
-        rng.gen(),
     );
 
     builder.add_input(input);
@@ -446,9 +446,9 @@ fn gas_used_by_predicates_more_than_limit() {
         AssetId::default(),
         rng.gen(),
         Default::default(),
+        gas_limit + 1,
         predicate,
         vec![],
-        gas_limit + 1,
     );
 
     builder.add_input(input);

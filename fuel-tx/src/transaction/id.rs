@@ -484,9 +484,9 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.gen(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
-                    rng.gen(),
                 ),
                 Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
                 Input::message_coin_signed(
@@ -501,9 +501,9 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
-                    rng.gen(),
                 ),
                 Input::message_data_signed(
                     rng.gen(),
@@ -518,10 +518,10 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
-                    rng.gen(),
                 ),
             ],
         ];

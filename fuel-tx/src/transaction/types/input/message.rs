@@ -146,13 +146,13 @@ where
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
+    pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate: Specification::Predicate,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
-    pub predicate_gas_used: Specification::PredicateGasUsed,
 }
 
 impl<Specification> Message<Specification>
@@ -161,9 +161,7 @@ where
 {
     /// It is empty, because specification says nothing:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
-    pub fn prepare_sign(&mut self) {}
-
-    pub fn prepare_estimate_sign(&mut self) {
+    pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             core::mem::take(predicate_gas_used_field);
         }
@@ -254,6 +252,13 @@ where
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
 
+        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+            *predicate_gas_used
+        } else {
+            0
+        };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
+
         let data_size = if let Some(data) = data.as_field() {
             data.len()
         } else {
@@ -274,13 +279,6 @@ where
             0
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
-
-        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
-            *predicate_gas_used
-        } else {
-            0
-        };
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let buf = full_buf.get_mut(LEN..).ok_or(bytes::eof())?;
         let buf = if let Some(data) = data.as_field() {
@@ -333,14 +331,14 @@ where
             *witness_index_field = witness_index;
         }
 
-        let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
-        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
-        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
-
         let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             *predicate_gas_used_field = predicate_gas_used;
         }
+
+        let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
+        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
         let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
         n += size;

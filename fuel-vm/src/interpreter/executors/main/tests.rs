@@ -62,9 +62,9 @@ fn estimate_gas_gives_proper_gas_used() {
         AssetId::default(),
         rng.gen(),
         Default::default(),
+        rng.gen(),
         predicate,
         vec![],
-        rng.gen(),
     );
 
     builder.add_input(input);

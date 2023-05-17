@@ -182,9 +182,9 @@ mod use_std {
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
-                            self.rng.gen(),
                         );
 
                         builder.add_input(input);
@@ -217,9 +217,9 @@ mod use_std {
                             recipient,
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
-                            self.rng.gen(),
                         );
 
                         builder.add_input(input);
@@ -240,10 +240,10 @@ mod use_std {
                             recipient,
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             generate_bytes(&mut self.rng),
                             predicate,
                             generate_bytes(&mut self.rng),
-                            self.rng.gen(),
                         );
 
                         builder.add_input(input);

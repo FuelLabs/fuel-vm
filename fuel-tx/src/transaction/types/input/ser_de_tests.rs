@@ -12,10 +12,10 @@ fn test_input_serialization() {
         Address::from([3u8; 32]),
         5,
         Nonce::from([6u8; 32]),
+        100_000,
         vec![7u8; DATA_SIZE],
         vec![8u8; DATA_SIZE],
         vec![9u8; DATA_SIZE],
-        100_000,
     );
     const S: MessageSizesLayout = MessageSizes::LAYOUT;
     assert_eq!(
@@ -26,10 +26,10 @@ fn test_input_serialization() {
             + S.amount.size()
             + S.nonce.size()
             + S.witness_index.size()
+            + S.predicate_gas_used.size()
             + S.data_len.size()
             + S.predicate_len.size()
             + S.predicate_data_len.size()
-            + S.predicate_gas_used.size()
             + DATA_SIZE
             + DATA_SIZE
             + DATA_SIZE
@@ -58,16 +58,16 @@ fn test_input_serialization() {
     assert_eq!(bytes[r.clone()], 0u64.to_be_bytes());
     r.start = r.end;
     r.end += 8;
-    assert_eq!(bytes[r.clone()], 16u64.to_be_bytes());
-    r.start = r.end;
-    r.end += 8;
-    assert_eq!(bytes[r.clone()], 16u64.to_be_bytes());
-    r.start = r.end;
-    r.end += 8;
-    assert_eq!(bytes[r.clone()], 16u64.to_be_bytes());
-    r.start = r.end;
-    r.end += 8;
     assert_eq!(bytes[r.clone()], 100_000u64.to_be_bytes());
+    r.start = r.end;
+    r.end += 8;
+    assert_eq!(bytes[r.clone()], (DATA_SIZE as u64).to_be_bytes());
+    r.start = r.end;
+    r.end += 8;
+    assert_eq!(bytes[r.clone()], (DATA_SIZE as u64).to_be_bytes());
+    r.start = r.end;
+    r.end += 8;
+    assert_eq!(bytes[r.clone()], (DATA_SIZE as u64).to_be_bytes());
     r.start = r.end;
     r.end += DATA_SIZE;
     assert_eq!(bytes[r.clone()], [7u8; DATA_SIZE]);

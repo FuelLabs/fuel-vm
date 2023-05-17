@@ -85,9 +85,9 @@ where
         };
 
         let mut transaction = transaction;
-        transaction.prepare_init_estimate_predicate();
+        transaction.prepare_init_predicate();
 
-        self._init(transaction, balances, 0)?;
+        self.init_inner(transaction, balances, 0)?;
         self.context = Context::PredicateEstimation { program: predicate };
         self.set_gas(self.params.max_gas_per_predicate);
         Ok(())

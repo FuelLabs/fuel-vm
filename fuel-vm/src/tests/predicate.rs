@@ -168,9 +168,11 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
     }
 
     let mut transaction = builder.finalize();
-    let mut params = ConsensusParameters::default();
-    params.max_gas_per_tx = 10000;
-    params.max_gas_per_predicate = 10000;
+    let mut params = ConsensusParameters {
+        max_gas_per_tx: 10000,
+        max_gas_per_predicate: 10000,
+        ..Default::default()
+    };
     transaction
         .estimate_predicates(&params, &GasCosts::default())
         .map_err(|_| ())?;

@@ -1,0 +1,6 @@
+---
+source: fuel-tx/src/contract.rs
+assertion_line: 161
+expression: root
+---
+0xa76dcae4273663c47ad70ea4b7a0910966a940fc69f49c7dbf1f8a91a9343398

@@ -4,10 +4,14 @@ use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
 use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
-use fuel_types::{fmt_truncated_hex, Bytes32, Bytes8, ContractId, Salt};
+use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 
 use alloc::vec::Vec;
 use core::iter;
+
+/// See https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id
+const LEAF_SIZE: usize = 16 * 1024;
+const PADDING_BYTE: u8 = 0u8;
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
@@ -29,25 +33,23 @@ impl Contract {
         B: AsRef<[u8]>,
     {
         let mut tree = BinaryMerkleTree::new();
+        let mut bytes = bytes.as_ref().iter().cloned().collect::<Vec<_>>();
 
-        bytes
-            .as_ref()
-            .chunks(Bytes8::LEN)
-            .map(|c| {
-                if c.len() == Bytes8::LEN {
-                    Bytes8::new(c.try_into().expect("checked len chunk"))
-                } else {
-                    // Potential collision with non-padded input. Consider adding an extra leaf
-                    // for padding?
-                    let mut b = [0u8; 8];
-
-                    let l = c.len();
-                    b[..l].copy_from_slice(c);
-
-                    b.into()
-                }
-            })
-            .for_each(|l| tree.push(l.as_ref()));
+        // If the bytecode is not a multiple of 16 KiB, the final leaf should be
+        // zero-padded rounding up to the nearest multiple of 8 bytes.
+        let len = bytes.len();
+        let padding_size = {
+            if len % LEAF_SIZE == 0 {
+                0
+            } else {
+                len % 8
+            }
+        };
+        let padding = iter::repeat(PADDING_BYTE).take(padding_size);
+        for byte in padding {
+            bytes.push(byte)
+        }
+        bytes.chunks(LEAF_SIZE).for_each(|leaf| tree.push(leaf));
 
         tree.root().into()
     }

@@ -153,9 +153,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                     }
                 };
 
-                if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                    return Err(PredicateVerificationFailed::False);
-                }
+                let is_successful = matches!(vm.verify_predicate()?, ProgramState::Return(0x01));
 
                 let gas_used = available_gas
                     .checked_sub(vm.remaining_gas())
@@ -166,6 +164,10 @@ impl<T> Interpreter<PredicateStorage, T> {
 
                 match &mut kind {
                     PredicateRunKind::Verifying(_) => {
+                        if !is_successful {
+                            return Err(PredicateVerificationFailed::False);
+                        }
+
                         if vm.remaining_gas() != 0 {
                             return Err(PredicateVerificationFailed::GasMismatch);
                         }

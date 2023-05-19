@@ -189,7 +189,7 @@ pub trait CheckPredicates: Sized {
 /// Performs predicate verification for a transaction
 pub trait EstimatePredicates: Sized {
     /// Define predicate verification logic (if any)
-    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError>;
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError>;
 }
 
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
@@ -208,7 +208,7 @@ where
 }
 
 impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
-    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<bool, CheckError> {
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError> {
         // validate fees and compute free balances
         let AvailableBalances {
             non_retryable_balances,
@@ -221,9 +221,18 @@ impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
             retryable: Some(RetryableAmount(retryable_balance)),
         };
 
-        // TODO: Optimize predicate verification to work with references where it is possible.
         Interpreter::<PredicateStorage>::estimate_predicates(self, balances, *params, gas_costs.clone())?;
-        Ok(true)
+        Ok(())
+    }
+}
+
+impl EstimatePredicates for Transaction {
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError> {
+        match self {
+            Transaction::Script(script) => script.estimate_predicates(params, gas_costs),
+            Transaction::Create(create) => create.estimate_predicates(params, gas_costs),
+            Transaction::Mint(_) => Ok(()),
+        }
     }
 }
 

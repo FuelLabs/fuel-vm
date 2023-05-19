@@ -15,9 +15,9 @@ fn tx_with_signed_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: 4,
             maturity: 2.into(),
+            predicate_gas_used: (),
             predicate: (),
             predicate_data: (),
-            predicate_gas_used: (),
         }))
         .finalize_as_transaction();
 
@@ -37,9 +37,9 @@ fn tx_with_predicate_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: (),
             maturity: 2.into(),
+            predicate_gas_used: 100_000,
             predicate: vec![3u8; 10],
             predicate_data: vec![4u8; 12],
-            predicate_gas_used: 100_000,
         }))
         .finalize_as_transaction();
 
@@ -74,10 +74,10 @@ fn tx_with_signed_message_coin() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
+            predicate_gas_used: (),
             data: (),
             predicate: (),
             predicate_data: (),
-            predicate_gas_used: (),
         }))
         .finalize_as_transaction();
 
@@ -95,10 +95,10 @@ fn tx_with_predicate_message_coin() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: (),
+            predicate_gas_used: 100_000,
             data: (),
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
-            predicate_gas_used: 100_000,
         }))
         .finalize_as_transaction();
 
@@ -116,10 +116,10 @@ fn tx_with_signed_message_data() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
+            predicate_gas_used: (),
             data: vec![7u8; 10],
             predicate: (),
             predicate_data: (),
-            predicate_gas_used: (),
         }))
         .finalize_as_transaction();
 
@@ -137,10 +137,10 @@ fn tx_with_predicate_message_data() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: (),
+            predicate_gas_used: 100_000,
             data: vec![6u8; 10],
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
-            predicate_gas_used: 100_000,
         }))
         .finalize_as_transaction();
 

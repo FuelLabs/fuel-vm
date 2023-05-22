@@ -91,7 +91,7 @@ impl RuntimeBalances {
         self.state.get(asset).map(Balance::value)
     }
 
-    fn _set_memory_balance(balance: &Balance, memory: &mut [u8; MEM_SIZE]) -> Result<Word, RuntimeError> {
+    fn set_memory_balance_inner(balance: &Balance, memory: &mut [u8; MEM_SIZE]) -> Result<Word, RuntimeError> {
         let value = balance.value();
         let offset = balance.offset();
 
@@ -114,7 +114,7 @@ impl RuntimeBalances {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_add(value))
-            .map(|balance| Self::_set_memory_balance(balance, memory))
+            .map(|balance| Self::set_memory_balance_inner(balance, memory))
             .map_or((value == 0).then_some(0), |r| r.ok())
     }
 
@@ -124,7 +124,7 @@ impl RuntimeBalances {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_sub(value))
-            .map(|balance| Self::_set_memory_balance(balance, memory))
+            .map(|balance| Self::set_memory_balance_inner(balance, memory))
             .map_or((value == 0).then_some(0), |r| r.ok())
     }
 

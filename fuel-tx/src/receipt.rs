@@ -6,7 +6,7 @@ use crate::receipt::sizes::{
 use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
-use fuel_asm::InstructionResult;
+use fuel_asm::PanicInstruction;
 use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
 use fuel_types::{fmt_truncated_hex, Address, AssetId, Bytes32, ContractId, MessageId, Nonce, Word};
 
@@ -60,7 +60,7 @@ pub enum Receipt {
 
     Panic {
         id: ContractId,
-        reason: InstructionResult,
+        reason: PanicInstruction,
         pc: Word,
         is: Word,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
@@ -188,7 +188,7 @@ impl Receipt {
         }
     }
 
-    pub const fn panic(id: ContractId, reason: InstructionResult, pc: Word, is: Word) -> Self {
+    pub const fn panic(id: ContractId, reason: PanicInstruction, pc: Word, is: Word) -> Self {
         Self::Panic {
             id,
             reason,
@@ -498,7 +498,7 @@ impl Receipt {
         }
     }
 
-    pub const fn reason(&self) -> Option<InstructionResult> {
+    pub const fn reason(&self) -> Option<PanicInstruction> {
         match self {
             Self::Panic { reason, .. } => Some(*reason),
             _ => None,

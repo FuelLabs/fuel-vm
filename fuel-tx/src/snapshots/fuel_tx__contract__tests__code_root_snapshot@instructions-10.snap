@@ -1,5 +1,5 @@
 ---
-source: src/contract.rs
+source: fuel-tx/src/contract.rs
 expression: root
 ---
-0xdfd9ba908fe30fa53247b1b8c4a37b02a62e8470c24b9d8bf2e01e91dd21edb9
+0xa76dcae4273663c47ad70ea4b7a0910966a940fc69f49c7dbf1f8a91a9343398

@@ -33,7 +33,7 @@ impl Contract {
         B: AsRef<[u8]>,
     {
         let mut tree = BinaryMerkleTree::new();
-        let mut bytes = bytes.as_ref().iter().cloned().collect::<Vec<_>>();
+        let mut bytes = bytes.as_ref().to_vec();
 
         // If the bytecode is not a multiple of 16 KiB, the final leaf should be
         // zero-padded rounding up to the nearest multiple of 8 bytes.

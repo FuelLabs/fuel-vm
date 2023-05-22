@@ -194,4 +194,24 @@ mod tests {
         let default_root = Contract::default_state_root();
         insta::assert_debug_snapshot!(default_root);
     }
+
+    #[test]
+    fn multi_leaf_state_root_snapshot() {
+        let mut rng = StdRng::seed_from_u64(0xF00D);
+        // 5 full leaves and a partial 6th leaf with 4 bytes of data
+        let code_len = 5 * LEAF_SIZE + 4;
+        let mut code = alloc::vec![0u8; code_len];
+        rng.fill_bytes(code.as_mut_slice());
+
+        // compute root
+        let root = Contract::root_from_code(code);
+
+        // take root snapshot
+        insta::with_settings!(
+            {snapshot_suffix => "multi-leaf-state-root"},
+            {
+                insta::assert_debug_snapshot!(root);
+            }
+        );
+    }
 }

@@ -32,7 +32,7 @@ rkyv = { version = "0.7", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = "0.10"
 strum = { version = "0.24", features = ["derive"], optional = true }
-tai64 = {git = "https://github.com/Dentosal/rustcrypto-formats", branch = "tai64-rkyv-support"}
+tai64 = { git = "https://github.com/Dentosal/rustcrypto-formats", branch = "tai64-rkyv-support", features = ["rkyv"] }
 thiserror = "1.0"
 
 

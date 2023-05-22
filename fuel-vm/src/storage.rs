@@ -57,8 +57,6 @@ impl Mappable for ContractsAssets {
 }
 
 /// The storage table for contract's hashed key-value state.
-///
-/// Lifetime is for optimization to avoid `clone`.
 pub struct ContractsState;
 
 impl Mappable for ContractsState {

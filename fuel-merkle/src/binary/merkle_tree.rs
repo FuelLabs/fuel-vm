@@ -423,17 +423,17 @@ mod test {
         let s_node_9 = storage_map.get(&9).unwrap().unwrap();
         let s_node_3 = storage_map.get(&3).unwrap().unwrap();
 
-        assert_eq!(*Node::from(s_leaf_0.into_owned()).hash(), leaf_0);
-        assert_eq!(*Node::from(s_leaf_1.into_owned()).hash(), leaf_1);
-        assert_eq!(*Node::from(s_leaf_2.into_owned()).hash(), leaf_2);
-        assert_eq!(*Node::from(s_leaf_3.into_owned()).hash(), leaf_3);
-        assert_eq!(*Node::from(s_leaf_4.into_owned()).hash(), leaf_4);
-        assert_eq!(*Node::from(s_leaf_5.into_owned()).hash(), leaf_5);
-        assert_eq!(*Node::from(s_leaf_6.into_owned()).hash(), leaf_6);
-        assert_eq!(*Node::from(s_node_1.into_owned()).hash(), node_1);
-        assert_eq!(*Node::from(s_node_5.into_owned()).hash(), node_5);
-        assert_eq!(*Node::from(s_node_9.into_owned()).hash(), node_9);
-        assert_eq!(*Node::from(s_node_3.into_owned()).hash(), node_3);
+        assert_eq!(*Node::from(s_leaf_0).hash(), leaf_0);
+        assert_eq!(*Node::from(s_leaf_1).hash(), leaf_1);
+        assert_eq!(*Node::from(s_leaf_2).hash(), leaf_2);
+        assert_eq!(*Node::from(s_leaf_3).hash(), leaf_3);
+        assert_eq!(*Node::from(s_leaf_4).hash(), leaf_4);
+        assert_eq!(*Node::from(s_leaf_5).hash(), leaf_5);
+        assert_eq!(*Node::from(s_leaf_6).hash(), leaf_6);
+        assert_eq!(*Node::from(s_node_1).hash(), node_1);
+        assert_eq!(*Node::from(s_node_5).hash(), node_5);
+        assert_eq!(*Node::from(s_node_9).hash(), node_9);
+        assert_eq!(*Node::from(s_node_3).hash(), node_3);
     }
 
     #[test]

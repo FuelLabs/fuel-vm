@@ -402,7 +402,7 @@ fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedM
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-        .insert(call_frame.to(), &code)
+        .insert(call_frame.to(), &code.clone().into())
         .unwrap();
     let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let end = write_call_to_memory(&call_frame, frame_bytes, code_mem_range, memory.as_mut(), &storage)?;

@@ -426,7 +426,6 @@ mod tests {
         mem.merkle_contract_state_range(&ContractId::default(), &(*start).into(), range)
             .unwrap()
             .into_iter()
-            .map(|v| v.map(|v| v.into_owned()))
             .collect()
     }
 }

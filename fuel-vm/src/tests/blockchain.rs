@@ -200,7 +200,7 @@ fn state_read_write() {
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
-    assert_eq!(Bytes32::default(), state.into_owned());
+    assert_eq!(Bytes32::default(), state);
 
     client.deploy(tx_deploy);
     client.transact(tx_add_word);
@@ -282,7 +282,7 @@ fn state_read_write() {
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
     let state = client.as_ref().contract_state(&contract, &key);
-    assert_eq!(bytes, state.into_owned());
+    assert_eq!(bytes, state);
 }
 
 #[test]
@@ -1030,7 +1030,7 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
-    assert_eq!(Bytes32::default(), state.into_owned());
+    assert_eq!(Bytes32::default(), state);
 
     client.deploy(tx_deploy);
     client.transact(tx_add_word);

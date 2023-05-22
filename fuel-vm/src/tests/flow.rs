@@ -631,7 +631,7 @@ fn revert() {
 
     // Assert the initial state of `key` is empty
     let state = client.as_ref().contract_state(&contract, &key);
-    assert_eq!(Bytes32::default(), state.into_owned());
+    assert_eq!(Bytes32::default(), state);
 
     client.transact(tx);
 

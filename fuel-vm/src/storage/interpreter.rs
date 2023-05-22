@@ -9,8 +9,6 @@ use std::error::Error as StdError;
 use std::io;
 use std::ops::{Deref, DerefMut};
 
-use super::ContractInfo;
-
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -94,7 +92,7 @@ pub trait InterpreterStorage:
 
     /// Fetch a previously inserted salt+root tuple from the chain state for a
     /// given contract.
-    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<ContractInfo>, Self::DataError> {
+    fn storage_contract_root(&self, id: &ContractId) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
         StorageInspect::<ContractsInfo>::get(self, id)
     }
 
@@ -104,14 +102,11 @@ pub trait InterpreterStorage:
         id: &ContractId,
         salt: &Salt,
         root: &Bytes32,
-    ) -> Result<Option<ContractInfo>, Self::DataError> {
+    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
         StorageMutate::<ContractsInfo>::insert(
             self,
             id,
-            &ContractInfo {
-                salt: *salt,
-                root: *root,
-            },
+            &(*salt, *root),
         )
     }
 

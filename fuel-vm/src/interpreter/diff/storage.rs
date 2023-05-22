@@ -4,9 +4,9 @@ use std::fmt::Debug;
 use fuel_storage::StorageRead;
 use fuel_storage::StorageSize;
 use fuel_types::ContractId;
+use fuel_types::Salt;
 use fuel_types::{BlockHeight, Bytes32};
 
-use crate::storage::ContractInfo;
 use crate::storage::ContractsAssetsStorage;
 use crate::storage::{ContractsAssetKey, ContractsStateKey, InterpreterStorage};
 
@@ -19,7 +19,7 @@ use super::*;
 pub(super) enum StorageDelta {
     State(MappableDelta<ContractsStateKey, Bytes32>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
-    Info(MappableDelta<ContractId, ContractInfo>),
+    Info(MappableDelta<ContractId, (Salt, Bytes32)>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
 
@@ -28,7 +28,7 @@ pub(super) enum StorageDelta {
 pub(super) enum StorageState {
     State(MappableState<ContractsStateKey, Bytes32>),
     Assets(MappableState<ContractsAssetKey, u64>),
-    Info(MappableState<ContractId, ContractInfo>),
+    Info(MappableState<ContractId, (Salt, Bytes32)>),
     RawCode(MappableState<ContractId, Contract>),
 }
 
@@ -389,11 +389,11 @@ impl StorageType for ContractsAssets {
 }
 
 impl StorageType for ContractsInfo {
-    fn record_insert(key: &ContractId, value: &ContractInfo, existing: Option<ContractInfo>) -> StorageDelta {
+    fn record_insert(key: &ContractId, value: &(Salt, Bytes32), existing: Option<(Salt, Bytes32)>) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
     }
 
-    fn record_remove(key: &ContractId, value: ContractInfo) -> StorageDelta {
+    fn record_remove(key: &ContractId, value: (Salt, Bytes32)) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Remove(*key, value))
     }
 }

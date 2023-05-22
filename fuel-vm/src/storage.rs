@@ -26,21 +26,12 @@ impl Mappable for ContractsRawCode {
 /// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 
-/// Additional contract info, This is the Value field of `ContractsInfo` table.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
-#[cfg_attr(feature = "rkyv", archive(check_bytes))]
-pub struct ContractInfo {
-    /// The salt used during creation of the contract for uniques.
-    pub salt: Salt,
-    /// The root hash of the contract's code.
-    pub root: Bytes32,
-}
-
 impl Mappable for ContractsInfo {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
-    type Value = ContractInfo;
+    /// The salt used during creation of the contract for uniqueness,
+    /// and the root hash of the contract's code.
+    type Value = (Salt, Bytes32);
     type OwnedValue = Self::Value;
 }
 

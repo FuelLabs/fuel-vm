@@ -23,8 +23,7 @@ pub type MerkleRoot = [u8; 32];
 ///     /// The `[u8; 32]` is a primitive type, so we can't optimize it more.
 ///     type Key = Self::OwnedKey;
 ///     type OwnedKey = [u8; 32];
-///     /// It is optimized to use slice instead of vector.
-///     type Value = [u8];
+///     type Value = Self::OwnedValue;
 ///     type OwnedValue = Vec<u8>;
 /// }
 /// ```
@@ -161,7 +160,7 @@ pub struct StorageRef<'a, T: 'a + ?Sized, Type: Mappable>(&'a T, core::marker::P
 /// impl Mappable for Contracts {
 ///     type Key = Self::OwnedKey;
 ///     type OwnedKey = [u8; 32];
-///     type Value = [u8];
+///     type Value = Self::OwnedValue;
 ///     type OwnedValue = Vec<u8>;
 /// }
 ///
@@ -218,7 +217,7 @@ pub struct StorageMut<'a, T: 'a + ?Sized, Type: Mappable>(&'a mut T, core::marke
 /// impl Mappable for Contracts {
 ///     type Key = Self::OwnedKey;
 ///     type OwnedKey = [u8; 32];
-///     type Value = [u8];
+///     type Value = Self::OwnedValue;
 ///     type OwnedValue = Vec<u8>;
 /// }
 ///

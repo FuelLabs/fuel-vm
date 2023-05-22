@@ -610,7 +610,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
         .merkle_contract_state(contract, key)
         .map_err(RuntimeError::from_io)?
         .map(|state| bytes::from_array(&*state))
-        .map(Word::from_le_bytes);
+        .map(Word::from_be_bytes);
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;

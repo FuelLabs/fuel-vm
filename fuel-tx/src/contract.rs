@@ -43,14 +43,7 @@ impl Contract {
 
         // If the bytecode is not a multiple of 16 KiB, the final leaf should be
         // zero-padded rounding up to the nearest multiple of 8 bytes.
-        let len = bytes.len();
-        let padding_size = {
-            if len % LEAF_SIZE == 0 {
-                0
-            } else {
-                len % 8
-            }
-        };
+        let padding_size = bytes.len() % 8;
         let padding = iter::repeat(PADDING_BYTE).take(padding_size);
         for byte in padding {
             bytes.push(byte)

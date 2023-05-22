@@ -266,7 +266,16 @@ macro_rules! key_methods {
                 S: serde::Serializer,
             {
                 use alloc::format;
-                serializer.serialize_str(&format!("{:x}", &self))
+                use serde::ser::SerializeTuple;
+                if serializer.is_human_readable() {
+                    serializer.serialize_str(&format!("{:x}", &self))
+                } else {
+                    let mut seq = serializer.serialize_tuple($s)?;
+                    for elem in self.0 {
+                        seq.serialize_element(&elem)?;
+                    }
+                    seq.end()
+                }
             }
         }
 
@@ -277,8 +286,13 @@ macro_rules! key_methods {
                 D: serde::Deserializer<'de>,
             {
                 use serde::de::Error;
-                let s: &str = serde::Deserialize::deserialize(deserializer)?;
-                s.parse().map_err(D::Error::custom)
+                if deserializer.is_human_readable() {
+                    let s: &str = serde::Deserialize::deserialize(deserializer)?;
+                    s.parse().map_err(D::Error::custom)
+                } else {
+                    let s: [u8; $s] = deserializer.deserialize_tuple($s, U8ArrayVisitor)?;
+                    Ok(Self(s))
+                }
             }
         }
     };
@@ -314,5 +328,31 @@ impl From<u64> for Nonce {
         let mut default = [0u8; 32];
         default[..8].copy_from_slice(&value.to_be_bytes());
         default.into()
+    }
+}
+
+/// A visitor for deserializing a fixed-size byte array.
+#[cfg(feature = "serde")]
+struct U8ArrayVisitor<const S: usize>;
+
+#[cfg(feature = "serde")]
+impl<'de, const S: usize> serde::de::Visitor<'de> for U8ArrayVisitor<S> {
+    type Value = [u8; S];
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a byte array")
+    }
+
+    fn visit_seq<A>(self, mut items: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut result = [0u8; S];
+        for i in 0..S {
+            result[i] = items
+                .next_element()?
+                .ok_or_else(|| serde::de::Error::invalid_length(i, &self))?;
+        }
+        Ok(result)
     }
 }

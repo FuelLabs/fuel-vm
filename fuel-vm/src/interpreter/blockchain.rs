@@ -609,10 +609,8 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let value = storage
         .merkle_contract_state(contract, key)
         .map_err(RuntimeError::from_io)?
-        .map(|state| {
-            let raw: [u8; WORD_SIZE] = (*state)[..WORD_SIZE].try_into().unwrap();
-            Word::from_le_bytes(raw)
-        });
+        .map(|state| bytes::from_array(&*state))
+        .map(Word::from_le_bytes);
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;

@@ -11,7 +11,7 @@ use fuel_storage::{
     StorageWrite,
 };
 use fuel_tx::Contract;
-use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Word, Salt};
+use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Salt, Word};
 use itertools::Itertools;
 use tai64::Tai64;
 

@@ -103,11 +103,7 @@ pub trait InterpreterStorage:
         salt: &Salt,
         root: &Bytes32,
     ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(
-            self,
-            id,
-            &(*salt, *root),
-        )
+        StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.

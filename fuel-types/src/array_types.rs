@@ -348,8 +348,8 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for U8ArrayVisitor<S> {
         A: serde::de::SeqAccess<'de>,
     {
         let mut result = [0u8; S];
-        for i in 0..S {
-            result[i] = items
+        for (i, b) in result.iter_mut().enumerate() {
+            *b = items
                 .next_element()?
                 .ok_or_else(|| serde::de::Error::invalid_length(i, &self))?;
         }

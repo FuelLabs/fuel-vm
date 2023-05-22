@@ -9,8 +9,14 @@ use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 use alloc::vec::Vec;
 use core::iter;
 
+/// The target size of Merkle tree leaves in bytes. Contract code will will be divided into chunks
+/// of this size and pushed to the Merkle tree.
+///
 /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id
 const LEAF_SIZE: usize = 16 * 1024;
+/// In the event that contract code cannot be divided evenly by the `LEAF_SIZE`, the remainder must
+/// be padded to the nearest multiple of 8 bytes. Padding is achieved by repeating the
+/// `PADDING_BYTE`.
 const PADDING_BYTE: u8 = 0u8;
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]

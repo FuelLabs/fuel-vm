@@ -375,7 +375,8 @@ mod tests {
         let original: Address = rng.gen();
         let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
         let expected_vec = original.0.to_vec();
-        assert_eq!(serialized, expected_vec);
+        assert_eq!(serialized[0], 32);
+        assert_eq!(&serialized[1..], &expected_vec);
         let recreated: Address = postcard::from_bytes(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }

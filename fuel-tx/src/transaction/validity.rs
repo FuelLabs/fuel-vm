@@ -260,6 +260,18 @@ where
         Err(CheckError::TransactionWitnessesMax)?
     }
 
+    let any_spendable_input = tx.inputs().iter().find(|input| match input {
+        Input::CoinSigned(_)
+        | Input::CoinPredicate(_)
+        | Input::MessageCoinSigned(_)
+        | Input::MessageCoinPredicate(_) => true,
+        Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) | Input::Contract(_) => false,
+    });
+
+    if any_spendable_input.is_none() {
+        Err(CheckError::NoSpendableInput)?
+    }
+
     tx.input_asset_ids_unique().try_for_each(|input_asset_id| {
         // check for duplicate change outputs
         if tx

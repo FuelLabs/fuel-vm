@@ -43,23 +43,17 @@ fn metadata() {
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_metadata = contract.id(&salt, &contract_root, &state_root);
-
     let output = Output::contract_created(contract_metadata, state_root);
 
-    let bytecode_witness = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, &gas_costs)
-    .expect("failed to check tx");
+    let tx = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_output(output)
+        .finalize()
+        .into_checked(height, &params, &gas_costs)
+        .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
     assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
@@ -92,20 +86,15 @@ fn metadata() {
 
     let output = Output::contract_created(contract_call, state_root);
 
-    let bytecode_witness = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, &gas_costs)
-    .expect("failed to check tx");
+    let tx = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_output(output)
+        .finalize()
+        .into_checked(height, &params, &gas_costs)
+        .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
     assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
@@ -150,7 +139,16 @@ fn metadata() {
     #[allow(clippy::iter_cloned_collect)] // collection is also perfomring a type conversion
     let script = script.iter().copied().collect::<Vec<u8>>();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_input(inputs[0].clone())
+        .add_input(inputs[1].clone())
+        .add_output(outputs[0])
+        .add_output(outputs[1])
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .finalize()
         .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
@@ -195,7 +193,9 @@ fn get_metadata_chain_id() {
     ];
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
+        .with_params(params)
         .gas_limit(gas_limit)
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), height)
         .finalize()
         .into_checked(height, &params, &gas_costs)
         .unwrap();
@@ -232,6 +232,7 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
+        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), height)
         .with_params(params)
         .finalize_checked(height, client.gas_costs());
 

@@ -159,8 +159,6 @@ impl<Specification> Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    /// It is empty, because specification says nothing:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
     pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             core::mem::take(predicate_gas_used_field);

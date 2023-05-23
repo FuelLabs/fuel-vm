@@ -743,9 +743,9 @@ fn tx_id_bytecode_len() {
         vec![w_c],
     );
 
-    let id_a = tx_a.id(&PARAMS);
-    let id_b = tx_b.id(&PARAMS);
-    let id_c = tx_c.id(&PARAMS);
+    let id_a = tx_a.id(&PARAMS.chain_id);
+    let id_b = tx_b.id(&PARAMS.chain_id);
+    let id_c = tx_c.id(&PARAMS.chain_id);
 
     // bytecode with different length should produce different id
     assert_ne!(id_a, id_b);
@@ -771,7 +771,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an owner of the coin
-        let owner: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+        let owner: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
 
         let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
             .gas_limit(PARAMS.max_gas_per_tx)
@@ -790,7 +790,7 @@ mod inputs {
             .with_params(PARAMS)
             .finalize();
 
-        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
+        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT.chain_id));
     }
 
     #[test]
@@ -816,7 +816,7 @@ mod inputs {
             .with_params(PARAMS)
             .finalize();
 
-        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
+        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT.chain_id));
     }
 
     #[test]
@@ -825,7 +825,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an recipient(owner) of the message
-        let recipient: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+        let recipient: Address = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
 
         let tx = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
             .gas_limit(PARAMS.max_gas_per_tx)
@@ -843,7 +843,7 @@ mod inputs {
             .with_params(PARAMS)
             .finalize();
 
-        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
+        assert!(tx.check_predicate_owners(&ConsensusParameters::DEFAULT.chain_id));
     }
 
     #[test]
@@ -868,6 +868,6 @@ mod inputs {
             .with_params(PARAMS)
             .finalize();
 
-        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT));
+        assert!(!tx.check_predicate_owners(&ConsensusParameters::DEFAULT.chain_id));
     }
 }

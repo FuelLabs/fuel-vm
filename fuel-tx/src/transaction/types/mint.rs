@@ -7,7 +7,7 @@ use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, BlockHeight, MemLayout, MemLocType,
+    mem_layout, BlockHeight, ChainId, MemLayout, MemLocType,
 };
 use fuel_types::{Bytes32, Word};
 
@@ -29,7 +29,7 @@ pub(crate) struct MintMetadata {
 
 #[cfg(feature = "std")]
 impl MintMetadata {
-    fn compute<Tx>(tx: &Tx, parameters: &ConsensusParameters) -> Self
+    fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
     where
         Tx: crate::UniqueIdentifier,
         Tx: Outputs,
@@ -37,7 +37,7 @@ impl MintMetadata {
     {
         use itertools::Itertools;
 
-        let id = tx.id(parameters);
+        let id = tx.id(chain_id);
 
         let mut offset = tx.outputs_offset();
 
@@ -89,13 +89,13 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
-    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
+    fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
             return id;
         }
 
         let mut clone = self.clone();
-        compute_transaction_id(params, &mut clone)
+        compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
@@ -105,7 +105,7 @@ impl crate::UniqueIdentifier for Mint {
 
 impl FormatValidityChecks for Mint {
     #[cfg(feature = "std")]
-    fn check_signatures(&self, _: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_signatures(&self, _: &ChainId) -> Result<(), CheckError> {
         Ok(())
     }
 
@@ -144,9 +144,9 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, parameters: &ConsensusParameters) {
+    fn precompute(&mut self, chain_id: &ChainId) {
         self.metadata = None;
-        self.metadata = Some(MintMetadata::compute(self, parameters));
+        self.metadata = Some(MintMetadata::compute(self, chain_id));
     }
 }
 

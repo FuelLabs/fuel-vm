@@ -356,3 +356,30 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for U8ArrayVisitor<S> {
         Ok(result)
     }
 }
+
+#[cfg(all(test, feature = "serde"))]
+mod tests {
+    use rand::{rngs::StdRng, SeedableRng};
+
+    use super::*;
+
+    /// serde_json uses human-readable serialization by default
+    #[test]
+    fn test_human_readable() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+        let original: Address = rng.gen();
+        let serialized = serde_json::to_string(&original).expect("Serialization failed");
+        let recreated: Address = serde_json::from_str(&serialized).expect("Deserialization failed");
+        assert_eq!(original, recreated);
+    }
+
+    /// postcard uses non-human-readable serialization
+    #[test]
+    fn test_not_human_readable() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+        let original: Address = rng.gen();
+        let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
+        let recreated: Address = postcard::from_bytes(&serialized).expect("Deserialization failed");
+        assert_eq!(original, recreated);
+    }
+}

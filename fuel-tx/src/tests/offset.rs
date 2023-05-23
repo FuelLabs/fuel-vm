@@ -391,7 +391,7 @@ fn iow_offset() {
             let bytes = tx.to_bytes();
 
             let mut tx_p = tx.clone();
-            tx_p.precompute(&ConsensusParameters::DEFAULT);
+            tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id);
 
             tx.inputs().iter().enumerate().for_each(|(x, i)| {
                 let offset = tx.inputs_offset_at(x).unwrap();

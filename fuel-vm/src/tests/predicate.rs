@@ -27,7 +27,7 @@ where
     let height = Default::default();
     let params = ConsensusParameters::default();
 
-    let owner = Input::predicate_owner(&predicate, &params);
+    let owner = Input::predicate_owner(&predicate, &params.chain_id);
     let input = Input::coin_predicate(
         utxo_id,
         owner,
@@ -143,7 +143,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
 
-        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
         let input = Input::coin_predicate(
             rng.gen(),
             owner,
@@ -236,7 +236,7 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate, &params);
+    let owner = Input::predicate_owner(&predicate, &params.chain_id);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -312,7 +312,7 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
-    let owner = Input::predicate_owner(&predicate, &params);
+    let owner = Input::predicate_owner(&predicate, &params.chain_id);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -394,7 +394,7 @@ fn gas_used_by_predicates_more_than_limit() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate, &params);
+    let owner = Input::predicate_owner(&predicate, &params.chain_id);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,

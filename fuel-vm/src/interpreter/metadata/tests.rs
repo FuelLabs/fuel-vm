@@ -51,7 +51,7 @@ fn get_chain_id(context: Context, chain_id: u64) {
     let mut result = 1;
     let imm = GMArgs::GetChainId as Immediate18;
     let mut params = ConsensusParameters::DEFAULT;
-    params.chain_id = chain_id;
+    params.chain_id = chain_id.into();
 
     if context.is_internal() {
         frames.push(CallFrame::default());

@@ -48,7 +48,7 @@ fn gas_factor_rounds_correctly() {
         })
         .expect("failed to fetch change");
 
-    let initial_balance = input - fee.total();
+    let initial_balance = input - fee.max_fee();
 
     let gas_used = profiler.total_gas();
 

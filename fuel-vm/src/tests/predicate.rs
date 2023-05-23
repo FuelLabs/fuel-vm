@@ -119,6 +119,7 @@ fn get_verifying_predicate() {
 
 /// Returns the amount of gas used if verification succeeds
 fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u64, ()> {
+    const GAS_LIMIT: Word = 10000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;
@@ -159,7 +160,7 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             AssetId::default(),
             rng.gen(),
             Default::default(),
-            rng.gen(),
+            GAS_LIMIT,
             predicate,
             vec![],
         );
@@ -169,8 +170,8 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
 
     let mut transaction = builder.finalize();
     let params = ConsensusParameters {
-        max_gas_per_tx: 10000,
-        max_gas_per_predicate: 10000,
+        max_gas_per_tx: GAS_LIMIT,
+        max_gas_per_predicate: GAS_LIMIT,
         ..Default::default()
     };
     transaction

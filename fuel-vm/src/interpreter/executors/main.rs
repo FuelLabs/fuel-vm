@@ -14,7 +14,6 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::{PanicReason, RegId};
-use fuel_tx::field::Inputs;
 use fuel_tx::input::coin::CoinPredicate;
 use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_tx::{
@@ -53,13 +52,6 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// inputs.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for predicates.
-    /// This way, its possible, for the sake of simplicity, it is possible to use
-    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
-    ///
-    /// # Debug
-    ///
-    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
-    /// VM state required to trace the execution steps.
     pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
         params: ConsensusParameters,
@@ -74,18 +66,11 @@ impl<T> Interpreter<PredicateStorage, T> {
         Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params, gas_costs)
     }
 
-    /// Initialize the VM with the provided transaction and check all predicates defined in the
-    /// inputs. Set the predicate_gas_used to be the actual gas consumed during execution for
+    /// Initialize the VM with the provided transaction, check all predicates defined in the
+    /// inputs and set the predicate_gas_used to be the actual gas consumed during execution for
     /// each predicate.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for predicates.
-    /// This way, its possible, for the sake of simplicity, it is possible to use
-    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
-    ///
-    /// # Debug
-    ///
-    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
-    /// VM state required to trace the execution steps.
     pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         balances: InitialBalances,
@@ -223,16 +208,7 @@ where
         let root = contract.root();
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
-        let mut cumulative_predicate_gas: Word = 0;
-
-        // Calculate cumulative predicate gas for inputs
-        for input in create.inputs() {
-            if let Some(predicate_gas_used) = input.predicate_gas_used() {
-                cumulative_predicate_gas = cumulative_predicate_gas
-                    .checked_add(predicate_gas_used)
-                    .ok_or_else(|| InterpreterError::PredicateFailure)?;
-            }
-        }
+        let cumulative_predicate_gas = create.gas_used_by_predicates();
 
         // TODO: Move this check to `fuel-tx`.
         if !create

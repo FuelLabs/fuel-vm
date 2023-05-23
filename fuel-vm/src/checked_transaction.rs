@@ -198,7 +198,6 @@ where
 {
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            // TODO: Optimize predicate verification to work with references where it is possible.
             let checked = Interpreter::<PredicateStorage>::check_predicates(&self, *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
@@ -432,7 +431,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total() - output_amount
+            input_amount - checked.metadata().fee.max_fee() - output_amount
         );
     }
 
@@ -452,7 +451,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total()
+            input_amount - checked.metadata().fee.max_fee()
         );
     }
 
@@ -472,7 +471,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total()
+            input_amount - checked.metadata().fee.max_fee()
         );
     }
 
@@ -518,7 +517,7 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
-                rng.gen(),
+                Default::default(),
                 vec![0xff; 10],
                 vec![0xaa; 10],
                 vec![0xbb; 10],
@@ -881,7 +880,7 @@ mod tests {
         let fee_remainder = (total.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.fee.total())
+        Ok(rounded_fee == available_balances.fee.max_fee())
     }
 
     fn is_valid_min_fee<Tx>(tx: &Tx, params: &ConsensusParameters) -> Result<bool, CheckError>
@@ -889,14 +888,16 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances = balances::initial_free_balances(tx, params)?;
-        // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
+        // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte < u64::MAX
+        let bytes = (tx.metered_bytes_size() as u128 + tx.gas_used_by_predicates() as u128)
+            * params.gas_per_byte as u128
+            * tx.price() as u128;
         // use different division mechanism than impl
         let fee = bytes / params.gas_price_factor as u128;
         let fee_remainder = (bytes.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.fee.bytes())
+        Ok(rounded_fee == available_balances.fee.min_fee())
     }
 
     fn valid_coin_tx(
@@ -965,7 +966,7 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
-                rng.gen(),
+                Default::default(),
                 vec![],
                 vec![],
             ))

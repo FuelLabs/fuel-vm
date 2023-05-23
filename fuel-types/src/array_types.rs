@@ -285,7 +285,6 @@ macro_rules! key_methods {
                     let s: &str = serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
-
                     let bytes = deserializer.deserialize_bytes(BytesVisitor {})?;
                     Ok(Self(bytes))
                 }
@@ -339,8 +338,7 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
         write!(formatter, "an array of {S} bytes")
     }
 
-    fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E>
-    {
+    fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E> {
         let mut result = [0u8; S];
         result.copy_from_slice(items);
         Ok(result)

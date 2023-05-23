@@ -266,15 +266,10 @@ macro_rules! key_methods {
                 S: serde::Serializer,
             {
                 use alloc::format;
-                use serde::ser::SerializeTuple;
                 if serializer.is_human_readable() {
                     serializer.serialize_str(&format!("{:x}", &self))
                 } else {
-                    let mut seq = serializer.serialize_tuple($s)?;
-                    for elem in self.0 {
-                        seq.serialize_element(&elem)?;
-                    }
-                    seq.end()
+                    serializer.serialize_bytes(&self.0)
                 }
             }
         }
@@ -290,8 +285,9 @@ macro_rules! key_methods {
                     let s: &str = serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
-                    let s: [u8; $s] = deserializer.deserialize_tuple($s, U8ArrayVisitor)?;
-                    Ok(Self(s))
+
+                    let bytes = deserializer.deserialize_bytes(BytesVisitor {})?;
+                    Ok(Self(bytes))
                 }
             }
         }
@@ -333,30 +329,25 @@ impl From<u64> for Nonce {
 
 /// A visitor for deserializing a fixed-size byte array.
 #[cfg(feature = "serde")]
-struct U8ArrayVisitor<const S: usize>;
+struct BytesVisitor<const S: usize>;
 
 #[cfg(feature = "serde")]
-impl<'de, const S: usize> serde::de::Visitor<'de> for U8ArrayVisitor<S> {
+impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
     type Value = [u8; S];
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a byte array")
+        write!(formatter, "an array of {S} bytes")
     }
 
-    fn visit_seq<A>(self, mut items: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
+    fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E>
     {
         let mut result = [0u8; S];
-        for (i, b) in result.iter_mut().enumerate() {
-            *b = items
-                .next_element()?
-                .ok_or_else(|| serde::de::Error::invalid_length(i, &self))?;
-        }
+        result.copy_from_slice(items);
         Ok(result)
     }
 }
 
+/// Roundtrip encode/decode tests
 #[cfg(all(test, feature = "serde"))]
 mod tests {
     use rand::{rngs::StdRng, SeedableRng};
@@ -380,6 +371,27 @@ mod tests {
         let original: Address = rng.gen();
         let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
         let recreated: Address = postcard::from_bytes(&serialized).expect("Deserialization failed");
+        assert_eq!(original, recreated);
+    }
+
+    /// postcard uses non-human-readable serialization
+    #[test]
+    fn test_not_human_readable_incorrect_deser() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+        let original: Address = rng.gen();
+        let mut serialized = postcard::to_stdvec(&original).expect("Serialization failed");
+        serialized.pop();
+        let res: Result<Address, _> = postcard::from_bytes(&serialized);
+        res.expect_err("Deserialization should have failed");
+    }
+
+    /// bincode uses non-human-readable serialization
+    #[test]
+    fn test_bincode() {
+        let rng = &mut StdRng::seed_from_u64(8586);
+        let original: Address = rng.gen();
+        let serialized = bincode::serialize(&original).expect("Serialization failed");
+        let recreated: Address = bincode::deserialize(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }
 }

@@ -136,6 +136,7 @@ impl FormatValidityChecks for Create {
             return Err(CheckError::TransactionCreateStorageSlotMax);
         }
 
+        // Verify storage slots are sorted
         if !self.storage_slots.as_slice().windows(2).all(|s| s[0] <= s[1]) {
             return Err(CheckError::TransactionCreateStorageSlotOrder);
         }
@@ -206,6 +207,7 @@ impl SizedBytes for Create {
 
 mod field {
     use super::*;
+    use crate::field::StorageSlotRef;
 
     impl GasPrice for Create {
         #[inline(always)]
@@ -320,8 +322,10 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_mut(&mut self) -> &mut Vec<StorageSlot> {
-            &mut self.storage_slots
+        fn storage_slots_mut(&mut self) -> StorageSlotRef {
+            StorageSlotRef {
+                storage_slots: &mut self.storage_slots,
+            }
         }
 
         #[inline(always)]

@@ -202,13 +202,16 @@ where
         initial_balances: InitialBalances,
         params: &ConsensusParameters,
     ) -> Result<(), InterpreterError> {
+        let remaining_gas = create
+            .limit()
+            .checked_sub(create.gas_used_by_predicates())
+            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
         let salt = create.salt();
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
         let root = contract.root();
         let storage_root = Contract::initial_state_root(storage_slots.iter());
         let id = contract.id(salt, &root, &storage_root);
-        let cumulative_predicate_gas = create.gas_used_by_predicates();
 
         // TODO: Move this check to `fuel-tx`.
         if !create
@@ -230,11 +233,6 @@ where
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
-
-        let remaining_gas = create
-            .limit()
-            .checked_sub(cumulative_predicate_gas)
-            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
         Self::finalize_outputs(
             create,
             false,

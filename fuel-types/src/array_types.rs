@@ -369,6 +369,10 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(8586);
         let original: Address = rng.gen();
         let serialized = serde_json::to_string(&original).expect("Serialization failed");
+        assert_eq!(
+            serialized,
+            "\"7bbd8a4ea06e94461b959ab18d35802bbac3cf47e2bf29195f7db2ce41630cd7\""
+        );
         let recreated: Address = serde_json::from_str(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }
@@ -379,6 +383,8 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(8586);
         let original: Address = rng.gen();
         let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
+        let expected_vec = original.0.to_vec();
+        assert_eq!(serialized, expected_vec);
         let recreated: Address = postcard::from_bytes(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }

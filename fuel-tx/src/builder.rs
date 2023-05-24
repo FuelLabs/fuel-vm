@@ -9,6 +9,7 @@ use fuel_crypto::SecretKey;
 use fuel_types::{BlockHeight, Nonce, Salt, Word};
 
 use alloc::vec::Vec;
+use std::collections::HashMap;
 
 pub trait BuildableAloc
 where
@@ -92,7 +93,8 @@ pub struct TransactionBuilder<Tx> {
 
     // We take the key by reference so this lib won't have the responsibility to properly zeroize
     // the keys
-    sign_keys: Vec<SecretKey>,
+    // Maps signing keys -> witness indexes
+    sign_keys: HashMap<SecretKey, u8>,
 }
 
 impl TransactionBuilder<Script> {
@@ -161,7 +163,7 @@ impl<Tx> TransactionBuilder<Tx> {
     fn with_tx(tx: Tx) -> Self {
         let should_prepare_script = false;
         let should_prepare_predicate = false;
-        let sign_keys = Vec::new();
+        let sign_keys = HashMap::new();
 
         Self {
             tx,
@@ -193,8 +195,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn sign_keys(&self) -> &[SecretKey] {
-        self.sign_keys.as_slice()
+    pub fn sign_keys(&self) -> impl Iterator<Item = &SecretKey> {
+        self.sign_keys.keys()
     }
 
     pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
@@ -227,9 +229,10 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     ) -> &mut Self {
         let pk = secret.public_key();
 
-        self.sign_keys.push(secret);
+        let witness_index = self.upsert_secret(secret);
+
         self.tx
-            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, tx_pointer, maturity);
+            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, tx_pointer, maturity, witness_index);
 
         self
     }
@@ -244,12 +247,12 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         data: Vec<u8>,
     ) -> &mut Self {
         let pk = secret.public_key();
-        self.sign_keys.push(secret);
-
         let recipient = Input::owner(&pk);
 
+        let witness_index = self.upsert_secret(secret);
+
         self.tx
-            .add_unsigned_message_input(sender, recipient, nonce, amount, data);
+            .add_unsigned_message_input(sender, recipient, nonce, amount, data, witness_index);
 
         self
     }
@@ -278,6 +281,20 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
+    #[cfg(feature = "std")]
+    fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
+        let witness_len = self.witnesses().len() as u8;
+
+        let witness_index = self.sign_keys.entry(secret_key).or_insert_with(|| {
+            // if this private key hasn't been used before,
+            // add a new witness entry and return its index
+            self.tx.witnesses_mut().push(Witness::default());
+            witness_len
+        });
+        *witness_index
+    }
+
     #[cfg(feature = "std")]
     fn prepare_finalize(&mut self) {
         if self.should_prepare_predicate {
@@ -297,7 +314,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self.sign_keys
             .iter()
-            .for_each(|k| tx.sign_inputs(k, &self.parameters.chain_id));
+            .for_each(|(k, _)| tx.sign_inputs(k, &self.parameters.chain_id));
 
         tx.precompute(&self.parameters.chain_id);
 

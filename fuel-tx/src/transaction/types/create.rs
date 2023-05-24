@@ -694,7 +694,7 @@ mod tests {
         let storage_slots = (0..10u64)
             .map(|i| {
                 slot_data[..8].copy_from_slice(&i.to_be_bytes());
-                StorageSlot::from(&slot_data.clone().into())
+                StorageSlot::from(&slot_data.into())
             })
             .collect::<Vec<StorageSlot>>();
 

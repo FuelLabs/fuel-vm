@@ -620,7 +620,7 @@ fn create() {
         .expect("Failed to validate the transaction");
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = storage_slots.clone();
+    let mut storage_slots_max = storage_slots;
 
     let s = StorageSlot::new([255u8; 32].into(), Default::default());
     storage_slots_max.push(s);

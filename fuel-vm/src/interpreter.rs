@@ -48,7 +48,8 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
+    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount,
+    ScriptCheckedMetadata,
 };
 
 use self::memory::Memory;
@@ -190,6 +191,7 @@ pub trait ExecutableTransaction:
     + Chargeable
     + Executable
     + IntoChecked
+    + EstimatePredicates
     + UniqueIdentifier
     + field::Maturity
     + field::Inputs
@@ -370,7 +372,7 @@ pub struct InitialBalances {
 /// Methods that should be implemented by the checked metadata of supported transactions.
 pub trait CheckedMetadata {
     /// Returns the initial balances from the checked metadata of the transaction.
-    fn balances(self) -> InitialBalances;
+    fn balances(&self) -> InitialBalances;
 
     /// Get gas used by predicates. Returns zero if the predicates haven't been checked.
     fn gas_used_by_predicates(&self) -> Word;
@@ -380,9 +382,9 @@ pub trait CheckedMetadata {
 }
 
 impl CheckedMetadata for ScriptCheckedMetadata {
-    fn balances(self) -> InitialBalances {
+    fn balances(&self) -> InitialBalances {
         InitialBalances {
-            non_retryable: self.non_retryable_balances,
+            non_retryable: self.non_retryable_balances.clone(),
             retryable: Some(self.retryable_balance),
         }
     }
@@ -397,9 +399,9 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
-    fn balances(self) -> InitialBalances {
+    fn balances(&self) -> InitialBalances {
         InitialBalances {
-            non_retryable: self.free_balances,
+            non_retryable: self.free_balances.clone(),
             retryable: None,
         }
     }

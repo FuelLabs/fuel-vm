@@ -96,6 +96,16 @@ impl Chargeable for Create {
         // is defined. Witness data should still be excluded.
         self.witnesses_offset()
     }
+
+    fn gas_used_by_predicates(&self) -> Word {
+        let mut cumulative_predicate_gas: Word = 0;
+        for input in self.inputs() {
+            if let Some(predicate_gas_used) = input.predicate_gas_used() {
+                cumulative_predicate_gas = cumulative_predicate_gas.saturating_add(predicate_gas_used);
+            }
+        }
+        cumulative_predicate_gas
+    }
 }
 
 impl FormatValidityChecks for Create {

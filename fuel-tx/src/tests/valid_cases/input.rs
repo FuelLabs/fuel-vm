@@ -157,8 +157,8 @@ fn duplicate_secrets_reuse_witness() {
 
     assert_eq!(
         create.witnesses().len(),
-        1,
-        "Script should only have one witness as only one private key is used"
+        2,
+        "Create should only have two witnesses (bytecode + signature) as only one private key is used"
     )
 }
 

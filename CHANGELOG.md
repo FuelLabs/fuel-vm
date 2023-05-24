@@ -15,6 +15,8 @@ Description of the upcoming release here.
 - [#454](https://github.com/FuelLabs/fuel-vm/pull/454): VM native array-backed types `Address`, `AssetId`, `ContractId`, `Bytes4`, `Bytes8`, `Bytes20`, `Bytes32`, `Nonce`, `MessageId`, `Salt` now use more compact representation instead of hex-encoded string when serialized using serde format that sets `is_human_readable` to false.
 - [#456](https://github.com/FuelLabs/fuel-vm/pull/456): Added a new type - `ChainId` to represent the identifier of the chain. 
 It is a wrapper around the `u64`, so any `u64` can be converted into this type via `.into()` or `ChainId::new(...)`.
+- [#459](https://github.com/FuelLabs/fuel-vm/pull/459) Require witness index to be specified when adding an unsigned coin to a transaction.
+This allows for better reuse of witness data when using the transaction builder and helper methods to make transactions compact.
 
 ### Changed
 

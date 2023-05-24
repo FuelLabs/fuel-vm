@@ -119,7 +119,9 @@ impl TransactionBuilder<Script> {
 }
 
 impl TransactionBuilder<Create> {
-    pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
+    pub fn create(bytecode: Witness, salt: Salt, mut storage_slots: Vec<StorageSlot>) -> Self {
+        // sort the storage slots before initializing the builder
+        storage_slots.sort();
         let mut tx = Create {
             gas_price: Default::default(),
             gas_limit: Default::default(),
@@ -293,9 +295,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k, &self.parameters));
+        self.sign_keys
+            .iter()
+            .for_each(|k| tx.sign_inputs(k, &self.parameters.chain_id));
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
 
         tx
     }
@@ -306,7 +310,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
 
         tx
     }
@@ -329,7 +333,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
         tx
     }
 

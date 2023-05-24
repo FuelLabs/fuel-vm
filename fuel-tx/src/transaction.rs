@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, BlockHeight, Bytes32, Nonce, Salt, Word};
+use fuel_types::{Address, AssetId, BlockHeight, Bytes32, ChainId, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -87,7 +87,7 @@ impl Transaction {
         maturity: BlockHeight,
         bytecode_witness_index: u8,
         salt: Salt,
-        storage_slots: Vec<StorageSlot>,
+        mut storage_slots: Vec<StorageSlot>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -98,6 +98,9 @@ impl Transaction {
             .get(bytecode_witness_index as usize)
             .map(|witness| witness.as_ref().len() as Word / 4)
             .unwrap_or(0);
+
+        // sort incoming storage slots
+        storage_slots.sort();
 
         Create {
             gas_price,
@@ -254,7 +257,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Checks that all owners of inputs in the predicates are valid.
     #[cfg(feature = "std")]
-    fn check_predicate_owners(&self, parameters: &ConsensusParameters) -> bool {
+    fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
@@ -265,7 +268,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate, parameters)
+                result && Input::is_predicate_owner_valid(owner, predicate, chain_id)
             })
     }
 
@@ -380,6 +383,7 @@ pub mod field {
     use fuel_types::{BlockHeight, Bytes32, Word};
 
     use alloc::vec::Vec;
+    use std::ops::{Deref, DerefMut};
 
     pub trait GasPrice {
         fn gas_price(&self) -> &Word;
@@ -479,7 +483,7 @@ pub mod field {
 
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
-        fn storage_slots_mut(&mut self) -> &mut Vec<StorageSlot>;
+        fn storage_slots_mut(&mut self) -> StorageSlotRef;
         fn storage_slots_offset(&self) -> usize {
             Self::storage_slots_offset_static()
         }
@@ -488,6 +492,39 @@ pub mod field {
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;
+    }
+
+    /// Reference object for mutating storage slots which will automatically
+    /// sort the slots when dropped.
+    pub struct StorageSlotRef<'a> {
+        pub(crate) storage_slots: &'a mut Vec<StorageSlot>,
+    }
+
+    impl<'a> AsMut<Vec<StorageSlot>> for StorageSlotRef<'a> {
+        fn as_mut(&mut self) -> &mut Vec<StorageSlot> {
+            self.storage_slots
+        }
+    }
+
+    impl<'a> Deref for StorageSlotRef<'a> {
+        type Target = [StorageSlot];
+
+        fn deref(&self) -> &Self::Target {
+            self.storage_slots.deref()
+        }
+    }
+
+    impl<'a> DerefMut for StorageSlotRef<'a> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.storage_slots.deref_mut()
+        }
+    }
+
+    /// Ensure the storage slots are sorted after being set
+    impl<'a> Drop for StorageSlotRef<'a> {
+        fn drop(&mut self) {
+            self.storage_slots.sort()
+        }
     }
 
     pub trait Inputs {

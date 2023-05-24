@@ -9,7 +9,7 @@ use crate::transaction::{
 };
 use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, TxId, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, AssetId, BlockHeight, Salt, Word};
+use fuel_types::{bytes, AssetId, BlockHeight, ChainId, Salt, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
     mem_layout, MemLayout, MemLocType,
@@ -60,7 +60,7 @@ mem_layout!(
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self, params: &ConsensusParameters) -> TxId {
+    fn id(&self, chain_id: &ChainId) -> TxId {
         if let Some(id) = self.cached_id() {
             return id;
         }
@@ -72,7 +72,7 @@ impl crate::UniqueIdentifier for Create {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(params, &mut clone)
+        compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<TxId> {
@@ -100,15 +100,15 @@ impl Chargeable for Create {
 
 impl FormatValidityChecks for Create {
     #[cfg(feature = "std")]
-    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id(parameters);
+        let id = self.id(chain_id);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, chain_id))?;
 
         Ok(())
     }
@@ -136,7 +136,8 @@ impl FormatValidityChecks for Create {
             return Err(CheckError::TransactionCreateStorageSlotMax);
         }
 
-        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] <= s[1]) {
+        // Verify storage slots are sorted
+        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] < s[1]) {
             return Err(CheckError::TransactionCreateStorageSlotOrder);
         }
 
@@ -192,9 +193,9 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, parameters: &ConsensusParameters) {
+    fn precompute(&mut self, chain_id: &ChainId) {
         self.metadata = None;
-        self.metadata = Some(CommonMetadata::compute(self, parameters));
+        self.metadata = Some(CommonMetadata::compute(self, chain_id));
     }
 }
 
@@ -206,6 +207,7 @@ impl SizedBytes for Create {
 
 mod field {
     use super::*;
+    use crate::field::StorageSlotRef;
 
     impl GasPrice for Create {
         #[inline(always)]
@@ -320,8 +322,10 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_mut(&mut self) -> &mut Vec<StorageSlot> {
-            &mut self.storage_slots
+        fn storage_slots_mut(&mut self) -> StorageSlotRef {
+            StorageSlotRef {
+                storage_slots: &mut self.storage_slots,
+            }
         }
 
         #[inline(always)]
@@ -675,5 +679,72 @@ impl TryFrom<&Create> for Contract {
             .get(*bytecode_witness_index as usize)
             .map(|c| c.as_ref().into())
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fuel_types::Bytes32;
+
+    #[test]
+    fn storage_slots_sorting() {
+        // Test that storage slots must be sorted correctly
+        let mut slot_data = [0u8; 64];
+
+        let storage_slots = (0..10u64)
+            .map(|i| {
+                slot_data[..8].copy_from_slice(&i.to_be_bytes());
+                StorageSlot::from(&slot_data.into())
+            })
+            .collect::<Vec<StorageSlot>>();
+
+        let mut storage_slots_reverse = storage_slots;
+
+        storage_slots_reverse.reverse();
+
+        let err = Create {
+            gas_price: 0,
+            gas_limit: 0,
+            maturity: Default::default(),
+            bytecode_length: 0,
+            bytecode_witness_index: 0,
+            storage_slots: storage_slots_reverse,
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![Witness::default()],
+            salt: Default::default(),
+            metadata: None,
+        }
+        .check(0.into(), &ConsensusParameters::default())
+        .expect_err("Expected erroneous transaction");
+
+        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+    }
+
+    #[test]
+    fn storage_slots_no_duplicates() {
+        let storage_slots = vec![
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+        ];
+
+        let err = Create {
+            gas_price: 0,
+            gas_limit: 0,
+            maturity: Default::default(),
+            bytecode_length: 0,
+            bytecode_witness_index: 0,
+            storage_slots,
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![Witness::default()],
+            salt: Default::default(),
+            metadata: None,
+        }
+        .check(0.into(), &ConsensusParameters::default())
+        .expect_err("Expected erroneous transaction");
+
+        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
     }
 }

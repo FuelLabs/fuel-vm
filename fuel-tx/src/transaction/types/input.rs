@@ -1,4 +1,4 @@
-use crate::{ConsensusParameters, TxPointer, UtxoId};
+use crate::{TxPointer, UtxoId};
 use alloc::vec::Vec;
 use coin::*;
 use consts::*;
@@ -7,7 +7,7 @@ use core::fmt;
 use core::fmt::Formatter;
 use fuel_crypto::{Hasher, PublicKey};
 use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{bytes, fmt_truncated_hex, BlockHeight, Nonce};
+use fuel_types::{bytes, fmt_truncated_hex, BlockHeight, ChainId, Nonce};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, MessageId, Word};
 use message::*;
 
@@ -597,7 +597,7 @@ impl Input {
         compute_message_id(sender, recipient, nonce, amount, data)
     }
 
-    pub fn predicate_owner<P>(predicate: P, params: &ConsensusParameters) -> Address
+    pub fn predicate_owner<P>(predicate: P, chain_id: &ChainId) -> Address
     where
         P: AsRef<[u8]>,
     {
@@ -608,18 +608,18 @@ impl Input {
         let mut hasher = Hasher::default();
 
         hasher.input(ContractId::SEED);
-        hasher.input(params.chain_id.to_be_bytes());
+        hasher.input(chain_id.to_be_bytes());
         hasher.input(root);
 
         (*hasher.digest()).into()
     }
 
     #[cfg(feature = "std")]
-    pub fn is_predicate_owner_valid<P>(owner: &Address, predicate: P, params: &ConsensusParameters) -> bool
+    pub fn is_predicate_owner_valid<P>(owner: &Address, predicate: P, chain_id: &ChainId) -> bool
     where
         P: AsRef<[u8]>,
     {
-        owner == &Self::predicate_owner(predicate, params)
+        owner == &Self::predicate_owner(predicate, chain_id)
     }
 
     /// Prepare the output for VM predicate execution

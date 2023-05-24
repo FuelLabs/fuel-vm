@@ -759,6 +759,7 @@ mod inputs {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
+                rng.gen(),
                 predicate,
                 vec![],
             ))
@@ -779,6 +780,7 @@ mod inputs {
             .gas_price(rng.gen())
             .maturity(rng.gen())
             .add_input(Input::coin_predicate(
+                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
@@ -811,6 +813,7 @@ mod inputs {
                 recipient,
                 rng.gen(),
                 rng.gen(),
+                rng.gen(),
                 vec![],
                 predicate,
                 vec![],
@@ -832,6 +835,7 @@ mod inputs {
             .gas_price(rng.gen())
             .maturity(rng.gen())
             .add_input(Input::message_data_predicate(
+                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),

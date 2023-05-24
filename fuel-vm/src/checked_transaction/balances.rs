@@ -50,7 +50,7 @@ where
     *base_asset_balance = fee
         .checked_deduct_total(*base_asset_balance)
         .ok_or(CheckError::InsufficientFeeAmount {
-            expected: fee.total(),
+            expected: fee.max_fee(),
             provided: *base_asset_balance,
         })?;
 

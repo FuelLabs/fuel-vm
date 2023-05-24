@@ -1,3 +1,4 @@
+use crate::consts::*;
 use fuel_asm::{op, GMArgs, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::{
@@ -5,10 +6,10 @@ use fuel_tx::{
     Finalizable, Receipt, Script, TransactionBuilder,
 };
 use fuel_types::{bytes, BlockHeight};
-use fuel_vm::consts::*;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-use fuel_vm::prelude::*;
+use crate::prelude::GasCosts;
+use crate::prelude::*;
 
 #[test]
 fn metadata() {
@@ -251,6 +252,7 @@ fn get_transaction_fields() {
         rng.gen(),
         rng.gen(),
         100.into(),
+        0,
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -274,6 +276,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
+        0,
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
@@ -304,7 +307,7 @@ fn get_transaction_fields() {
         .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height, &GasCosts::free());
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -547,6 +550,13 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
         op::movi(0x11, cases[9].len() as Immediate18),
@@ -651,6 +661,13 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateData),
         op::movi(0x11, cases[18].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x04),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),

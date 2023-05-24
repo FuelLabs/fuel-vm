@@ -22,7 +22,7 @@ const MULTIPLE: usize = 8;
 
 /// See https://stackoverflow.com/a/9194117
 fn next_multiple<const N: usize>(x: usize) -> usize {
-    ((x + N - 1) / N) * N
+    x + (N - x % N) % N
 }
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]

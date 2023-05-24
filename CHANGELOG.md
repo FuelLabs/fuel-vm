@@ -61,6 +61,7 @@ and `Input::predicate_owner` use `ChainId` instead of the `ConsensusParameters`.
 It is a less strict requirement than before because you can get `ChainId` 
 from `ConsensusParameters.chain_id`, and it makes the API cleaner. 
 It affects all downstream functions that use listed methods.
+- [#450](https://github.com/FuelLabs/fuel-vm/pull/450): The Merkle root of a contract's code is now calculated by partitioning the code into chunks of 16 KiB, instead of 8 bytes. If the last leaf is does not a full 16 KiB, it is padded with `0` up to the nearest multiple of 8 bytes. This affects the `ContractId` and `PredicateId` calculations, breaking all code that used hardcoded values.
 
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/386): Several methods of the `TransactionFee` are renamed `total` -> `max_fee` 
     and `bytes` -> `min_fee`. The `TransactionFee::min_fee` take into account the gas used by predicates.

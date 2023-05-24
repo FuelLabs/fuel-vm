@@ -53,6 +53,9 @@ It is a less strict requirement than before because you can get `ChainId`
 from `ConsensusParameters.chain_id`, and it makes the API cleaner. 
 It affects all downstream functions that use listed methods.
 
+- [#386](https://github.com/FuelLabs/fuel-vm/pull/386): Several methods of the `TransactionFee` are renamed `total` -> `max_fee` 
+    and `bytes` -> `min_fee`. The `TransactionFee::min_fee` take into account the gas used by predicates.
+
 ### Fixed
 
 - Some fix here 1

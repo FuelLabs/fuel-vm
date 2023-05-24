@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, BlockHeight, Bytes32, Nonce, Salt, Word};
+use fuel_types::{Address, AssetId, BlockHeight, Bytes32, ChainId, Nonce, Salt, Word};
 
 use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
@@ -254,7 +254,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Checks that all owners of inputs in the predicates are valid.
     #[cfg(feature = "std")]
-    fn check_predicate_owners(&self, parameters: &ConsensusParameters) -> bool {
+    fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
@@ -265,7 +265,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate, parameters)
+                result && Input::is_predicate_owner_valid(owner, predicate, chain_id)
             })
     }
 

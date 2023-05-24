@@ -293,9 +293,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k, &self.parameters));
+        self.sign_keys
+            .iter()
+            .for_each(|k| tx.sign_inputs(k, &self.parameters.chain_id));
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
 
         tx
     }
@@ -306,7 +308,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
 
         tx
     }
@@ -329,7 +331,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.parameters.chain_id);
         tx
     }
 

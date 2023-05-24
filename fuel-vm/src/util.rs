@@ -80,11 +80,11 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use crate::interpreter::{CheckedMetadata, ExecutableTransaction};
-    use crate::prelude::Call;
+    use crate::prelude::{Backtrace, Call};
     use fuel_asm::{op, GTFArgs, Instruction, PanicReason, RegId};
     use fuel_tx::field::Outputs;
     use fuel_tx::{
-        ConsensusParameters, Contract, Create, Input, Output, Receipt, Script, StorageSlot, Transaction,
+        ConsensusParameters, Contract, Create, Finalizable, Input, Output, Receipt, Script, StorageSlot, Transaction,
         TransactionBuilder, Witness,
     };
     use fuel_types::bytes::{Deserializable, SerializableVec, SizedBytes};
@@ -195,6 +195,11 @@ pub mod test_helpers {
             self
         }
 
+        pub fn fee_input(&mut self) -> &mut TestBuilder {
+            self.builder.add_random_fee_input();
+            self
+        }
+
         pub fn contract_input(&mut self, contract_id: ContractId) -> &mut TestBuilder {
             self.builder.add_input(Input::contract(
                 self.rng.gen(),
@@ -263,6 +268,7 @@ pub mod test_helpers {
                 .gas_price(0)
                 .gas_limit(1_000_000)
                 .contract_input(*contract_id)
+                .fee_input()
                 .contract_output(contract_id)
                 .build()
         }
@@ -290,22 +296,18 @@ pub mod test_helpers {
             let contract_root = contract.root();
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
-            let tx = Transaction::create(
-                self.gas_price,
-                self.gas_limit,
-                Default::default(),
-                0,
-                salt,
-                storage_slots,
-                vec![],
-                vec![Output::contract_created(contract_id, storage_root)],
-                vec![program],
-            )
-            .into_checked(self.block_height, &self.params, &self.gas_costs)
-            .expect("failed to check tx");
+            let tx = TransactionBuilder::create(program, salt, storage_slots)
+                .gas_price(self.gas_price)
+                .gas_limit(self.gas_limit)
+                .maturity(Default::default())
+                .add_random_fee_input()
+                .add_output(Output::contract_created(contract_id, storage_root))
+                .finalize()
+                .into_checked(self.block_height, &self.params, &self.gas_costs)
+                .expect("failed to check tx");
 
             // setup a contract in current test state
-            let state = self.execute_tx(tx).expect("Expected vm execution to be successful");
+            let state = self.deploy(tx).expect("Expected vm execution to be successful");
 
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
@@ -321,13 +323,16 @@ pub mod test_helpers {
             }
         }
 
-        pub fn execute_tx<Tx>(&mut self, checked: Checked<Tx>) -> anyhow::Result<StateTransition<Tx>>
+        fn execute_tx_inner<Tx>(
+            &mut self,
+            transactor: &mut Transactor<MemoryStorage, Tx>,
+            checked: Checked<Tx>,
+        ) -> anyhow::Result<StateTransition<Tx>>
         where
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
         {
             self.storage.set_block_height(self.block_height);
-            let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());
 
             transactor.transact(checked);
 
@@ -336,6 +341,7 @@ pub mod test_helpers {
             if let Some(e) = transactor.error() {
                 return Err(anyhow!("{:?}", e));
             }
+            let is_reverted = transactor.is_reverted();
 
             let state = transactor.to_owned_state_transition().unwrap();
 
@@ -348,6 +354,9 @@ pub mod test_helpers {
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);
+            if is_reverted {
+                return Ok(state);
+            }
 
             // save storage between client instances
             self.storage = storage;
@@ -355,11 +364,38 @@ pub mod test_helpers {
             Ok(state)
         }
 
+        pub fn deploy(&mut self, checked: Checked<Create>) -> anyhow::Result<StateTransition<Create>> {
+            let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());
+
+            self.execute_tx_inner(&mut transactor, checked)
+        }
+
+        pub fn execute_tx(&mut self, checked: Checked<Script>) -> anyhow::Result<StateTransition<Script>> {
+            let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());
+
+            self.execute_tx_inner(&mut transactor, checked)
+        }
+
+        pub fn execute_tx_with_backtrace(
+            &mut self,
+            checked: Checked<Script>,
+        ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
+            let mut transactor = Transactor::new(self.storage.clone(), self.params, self.gas_costs.clone());
+            let state = self.execute_tx_inner(&mut transactor, checked)?;
+            let backtrace = transactor.backtrace();
+
+            Ok((state, backtrace))
+        }
+
         /// Build test tx and execute it
         pub fn execute(&mut self) -> StateTransition<Script> {
             let tx = self.build();
 
             self.execute_tx(tx).expect("expected successful vm execution")
+        }
+
+        pub fn get_storage(&self) -> &MemoryStorage {
+            &self.storage
         }
 
         pub fn execute_get_outputs(&mut self) -> Vec<Output> {
@@ -409,6 +445,7 @@ pub mod test_helpers {
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .with_params(params)
             .add_output(Output::contract_created(contract_id, state_root))
+            .add_random_fee_input()
             .finalize_checked(height, client.gas_costs());
 
         client.deploy(contract_deployer).expect("valid contract deployment");
@@ -441,6 +478,7 @@ pub mod test_helpers {
                 Default::default(),
                 contract_id,
             ))
+            .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
             .finalize_checked(height, client.gas_costs());
 

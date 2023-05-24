@@ -302,8 +302,10 @@ fn message_metadata() {
     let mut tx = Script::default();
 
     let input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, generate_bytes(rng));
+    let fee_input = Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 1);
 
     tx.add_input(input);
+    tx.add_input(fee_input);
 
     let block_height = rng.gen();
     let err = tx
@@ -497,8 +499,18 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let message_input = Input::message_data_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, generate_bytes(rng));
     let message_id = message_input.message_id().unwrap();
+    let fee = Input::coin_signed(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+    );
 
     let err = TransactionBuilder::script(vec![], vec![])
+        .add_input(fee)
         .add_input(message_input.clone())
         // duplicate input
         .add_input(message_input)
@@ -514,6 +526,15 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let contract_id = rng.gen();
+    let fee = Input::coin_signed(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+    );
 
     let a = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let b = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
@@ -522,6 +543,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let p = Output::contract(1, rng.gen(), rng.gen());
 
     let err = TransactionBuilder::script(vec![], vec![])
+        .add_input(fee)
         .add_input(a)
         .add_input(b)
         .add_output(o)
@@ -540,6 +562,7 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
 
     let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
+    let fee = Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0, rng.gen());
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());
@@ -547,8 +570,10 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     TransactionBuilder::script(vec![], vec![])
         .add_input(a)
         .add_input(b)
+        .add_input(fee)
         .add_output(o)
         .add_output(p)
+        .add_witness(rng.gen())
         .finalize()
         .check_without_signatures(Default::default(), &Default::default())
         .expect("Duplicated UTXO id is valid for contract input");

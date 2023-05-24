@@ -15,32 +15,23 @@ fn gas_limit() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    Transaction::script(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        maturity,
-        generate_bytes(rng),
-        generate_bytes(rng),
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate transaction");
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate transaction");
 
-    Transaction::create(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        maturity,
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![vec![0xfau8].into()],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate transaction");
+    TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate transaction");
 
     let err = Transaction::script(
         rng.gen(),
@@ -80,32 +71,23 @@ fn maturity() {
 
     let block_height = 1000.into();
 
-    Transaction::script(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        block_height,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate script");
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(block_height)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate script");
 
-    Transaction::create(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        1000.into(),
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![rng.gen()],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate tx create");
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(block_height)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate tx create");
 
     let err = Transaction::script(
         rng.gen(),
@@ -463,6 +445,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -476,6 +459,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), not_empty_data)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
@@ -575,12 +559,20 @@ fn create() {
         rng.gen(),
         PARAMS.max_gas_per_tx,
         maturity,
-        0,
+        1,
         rng.gen(),
         vec![],
+        vec![Input::coin_signed(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            0,
+            rng.gen(),
+        )],
         vec![],
-        vec![],
-        vec![],
+        vec![Default::default()],
     )
     .check_without_signatures(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");

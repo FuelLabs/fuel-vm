@@ -695,6 +695,7 @@ impl TryFrom<&Create> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builder::Finalizable;
     use fuel_types::Bytes32;
 
     #[test]
@@ -709,25 +710,14 @@ mod tests {
             })
             .collect::<Vec<StorageSlot>>();
 
-        let mut storage_slots_reverse = storage_slots;
+        let mut tx = crate::TransactionBuilder::create(vec![].into(), Salt::zeroed(), storage_slots)
+            .add_random_fee_input()
+            .finalize();
+        tx.storage_slots.reverse();
 
-        storage_slots_reverse.reverse();
-
-        let err = Create {
-            gas_price: 0,
-            gas_limit: 0,
-            maturity: Default::default(),
-            bytecode_length: 0,
-            bytecode_witness_index: 0,
-            storage_slots: storage_slots_reverse,
-            inputs: vec![],
-            outputs: vec![],
-            witnesses: vec![Witness::default()],
-            salt: Default::default(),
-            metadata: None,
-        }
-        .check(0.into(), &ConsensusParameters::default())
-        .expect_err("Expected erroneous transaction");
+        let err = tx
+            .check(0.into(), &ConsensusParameters::default())
+            .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
     }
@@ -739,21 +729,11 @@ mod tests {
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
 
-        let err = Create {
-            gas_price: 0,
-            gas_limit: 0,
-            maturity: Default::default(),
-            bytecode_length: 0,
-            bytecode_witness_index: 0,
-            storage_slots,
-            inputs: vec![],
-            outputs: vec![],
-            witnesses: vec![Witness::default()],
-            salt: Default::default(),
-            metadata: None,
-        }
-        .check(0.into(), &ConsensusParameters::default())
-        .expect_err("Expected erroneous transaction");
+        let err = crate::TransactionBuilder::create(vec![].into(), Salt::zeroed(), storage_slots)
+            .add_random_fee_input()
+            .finalize()
+            .check(0.into(), &ConsensusParameters::default())
+            .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
     }

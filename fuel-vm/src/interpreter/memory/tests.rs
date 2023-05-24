@@ -1,26 +1,18 @@
 use std::ops::Range;
 
 use super::*;
-use crate::checked_transaction::Checked;
 use crate::prelude::*;
 use fuel_asm::op;
-use fuel_tx::Script;
 use test_case::test_case;
 
 #[test]
 fn memcopy() {
     let mut vm = Interpreter::with_memory_storage();
     let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
-    let tx = Transaction::script(
-        0,
-        params.max_gas_per_tx,
-        Default::default(),
-        op::ret(0x10).to_bytes().to_vec(),
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
+        .gas_limit(params.max_gas_per_tx)
+        .add_random_fee_input()
+        .finalize();
 
     let tx = tx
         .into_checked(Default::default(), &params, vm.gas_costs())
@@ -77,8 +69,14 @@ fn memrange() {
     let m_p = MemoryRange::new(0, 1024);
     assert_eq!(m, m_p);
 
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .gas_limit(1000000)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &Default::default(), &Default::default())
+        .expect("Empty script should be valid");
     let mut vm = Interpreter::with_memory_storage();
-    vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
+    vm.init_script(tx).expect("Failed to init VM");
 
     let bytes = 1024;
     vm.instruction(op::addi(0x10, RegId::ZERO, bytes as Immediate12))
@@ -105,7 +103,13 @@ fn memrange() {
 fn stack_alloc_ownership() {
     let mut vm = Interpreter::with_memory_storage();
 
-    vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .gas_limit(1000000)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &Default::default(), &Default::default())
+        .expect("Empty script should be valid");
+    vm.init_script(tx).expect("Failed to init VM");
 
     vm.instruction(op::move_(0x10, RegId::SP)).unwrap();
     vm.instruction(op::cfei(2)).unwrap();

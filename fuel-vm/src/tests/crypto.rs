@@ -6,8 +6,8 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha3::{Digest, Keccak256};
 
-use fuel_vm::prelude::*;
-use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
+use crate::prelude::*;
+use crate::util::test_helpers::check_expected_reason_for_instructions;
 
 #[test]
 fn ecrecover() {
@@ -57,6 +57,7 @@ fn ecrecover() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .with_params(params)
+        .add_random_fee_input()
         .finalize_checked(height, &gas_costs);
 
     let receipts = client.transact(tx);
@@ -174,6 +175,7 @@ fn sha256() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(height, &gas_costs);
 
@@ -267,6 +269,7 @@ fn keccak256() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(height, client.gas_costs());
 

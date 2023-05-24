@@ -1,7 +1,7 @@
 use super::*;
 use crate::checked_transaction::IntoChecked;
 use fuel_asm::PanicReason;
-use fuel_tx::{ConsensusParameters, Transaction};
+use fuel_tx::{ConsensusParameters, Finalizable, TransactionBuilder};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -27,16 +27,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let params = ConsensusParameters::default();
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
-    let tx = Transaction::script(
-        0,
-        params.max_gas_per_tx,
-        Default::default(),
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(params.max_gas_per_tx)
+        .add_random_fee_input()
+        .finalize();
     let tx = tx
         .into_checked(block_height, &params, vm.gas_costs())
         .expect("failed to check tx");

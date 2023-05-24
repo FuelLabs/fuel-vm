@@ -237,6 +237,21 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    #[cfg(all(feature = "rand", feature = "std"))]
+    pub fn add_random_fee_input(&mut self) -> &mut Self {
+        use rand::Rng;
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
+        self.add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            Default::default(),
+        )
+    }
+
     #[cfg(feature = "std")]
     pub fn add_unsigned_message_input(
         &mut self,

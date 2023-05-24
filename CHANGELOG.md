@@ -38,7 +38,11 @@ Description of the upcoming release here.
     value like `0` and call the `estimate_predicates` method to actualize 
     the `predicate_gas_used` after.
 
-- [#454](https://github.com/FuelLabs/fuel-vm/pull/454): VM native array-backed types `Address`, `AssetId`, `ContractId`, `Bytes4`, `Bytes8`, `Bytes20`, `Bytes32`, `Nonce`, `MessageId`, `Salt` now use more compact representation instead of hex-encoded string when serialized using serde format that sets `is_human_readable` to false.
+- [#454](https://github.com/FuelLabs/fuel-vm/pull/454): VM native array-backed types 
+`Address`, `AssetId`, `ContractId`, `Bytes4`, `Bytes8`, `Bytes20`, `Bytes32`, 
+`Nonce`, `MessageId`, `Salt` now use more compact representation instead of 
+hex-encoded string when serialized using serde format that sets 
+`is_human_readable` to false.
 
 - [#456](https://github.com/FuelLabs/fuel-vm/pull/456): Added a new type - `ChainId` to represent the identifier of the chain. 
 It is a wrapper around the `u64`, so any `u64` can be converted into this type via `.into()` or `ChainId::new(...)`.
@@ -65,4 +69,9 @@ It affects all downstream functions that use listed methods.
 
 #### Breaking
 
-- [#458](https://github.com/FuelLabs/fuel-vm/pull/458): The storage slots with the same key inside of the `Create` transaction are forbidden.
+- [#457](https://github.com/FuelLabs/fuel-vm/pull/457): Transactions got one more validity rule: 
+Each `Script` or `Create` transaction requires at least one input coin or message to be spendable. 
+It may break code/tests that previously didn't set any spendable inputs. 
+Note: `Message` with non-empty `data` field is not spendable.
+
+- [#458](https://github.com/FuelLabs/fuel-vm/pull/458): The storage slots with the same key inside the `Create` transaction are forbidden.

@@ -25,6 +25,7 @@ pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
+    type PredicateGasUsed: AsField<Word>;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -35,6 +36,7 @@ impl CoinSpecification for Signed {
     type Witness = u8;
     type Predicate = Empty;
     type PredicateData = Empty;
+    type PredicateGasUsed = Empty;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -45,6 +47,7 @@ impl CoinSpecification for Predicate {
     type Witness = Empty;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
+    type PredicateGasUsed = Word;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,6 +58,7 @@ impl CoinSpecification for Full {
     type Witness = u8;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
+    type PredicateGasUsed = Word;
 }
 
 /// It is a full representation of the coin from the specification:
@@ -94,6 +98,8 @@ where
     pub witness_index: Specification::Witness,
     pub maturity: BlockHeight,
     #[derivative(Debug(format_with = "fmt_as_field"))]
+    pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate: Specification::Predicate,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_data: Specification::PredicateData,
@@ -107,6 +113,9 @@ where
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.tx_pointer);
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            core::mem::take(predicate_gas_used_field);
+        }
     }
 }
 
@@ -152,6 +161,7 @@ where
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         } = self;
 
         type S = CoinSizes;
@@ -181,8 +191,17 @@ where
             // Witness index zeroed for coin predicate
             0
         };
+
+        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+            *predicate_gas_used
+        } else {
+            // predicate gas used zeroed for coin predicate
+            0
+        };
+
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
         bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), **maturity);
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let predicate_len = if let Some(predicate) = predicate.as_field() {
             predicate.len()
@@ -254,6 +273,11 @@ where
         let maturity = bytes::restore_u32_at(buf, S::layout(S::LAYOUT.maturity)).into();
         self.maturity = maturity;
 
+        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            *predicate_gas_used_field = predicate_gas_used;
+        }
+
         let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
@@ -300,6 +324,7 @@ impl Coin<Full> {
             maturity,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -313,6 +338,7 @@ impl Coin<Full> {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -326,6 +352,7 @@ impl Coin<Full> {
             maturity,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 }

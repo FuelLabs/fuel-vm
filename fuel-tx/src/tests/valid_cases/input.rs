@@ -178,6 +178,7 @@ fn coin_predicate() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -190,6 +191,7 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -210,6 +212,7 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -288,6 +291,7 @@ fn message_metadata() {
         recipient,
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -317,6 +321,7 @@ fn message_metadata() {
         recipient,
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -339,6 +344,7 @@ fn message_metadata() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         data,
         generate_nonempty_padded_bytes(rng),
         generate_bytes(rng),
@@ -355,6 +361,7 @@ fn message_metadata() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -367,6 +374,7 @@ fn message_metadata() {
     let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
 
     let err = Input::message_data_predicate(
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -393,6 +401,7 @@ fn message_message_coin() {
     Input::message_coin_predicate(
         rng.gen(),
         recipient,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         predicate,
@@ -422,6 +431,7 @@ fn message_message_coin() {
         recipient,
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -437,6 +447,7 @@ fn message_message_coin() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -448,6 +459,7 @@ fn message_message_coin() {
     let predicate_data = vec![0xff; PARAMS.max_predicate_data_length as usize + 1];
 
     let err = Input::message_coin_predicate(
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),

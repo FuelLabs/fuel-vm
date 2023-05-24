@@ -180,15 +180,15 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     ) -> Result<Checked<Self>, CheckError>;
 }
 
-/// Performs predicate verification for a transaction
+/// Provides predicate verification functionality for the transaction.
 pub trait CheckPredicates: Sized {
-    /// Define predicate verification logic (if any)
+    /// Performs predicates verification of the transaction.
     fn check_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError>;
 }
 
-/// Performs predicate verification for a transaction
+/// Provides predicate estimation functionality for the transaction.
 pub trait EstimatePredicates: Sized {
-    /// Define predicate verification logic (if any)
+    /// Estimates predicates of the transaction.
     fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError>;
 }
 

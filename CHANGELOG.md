@@ -12,9 +12,34 @@ Description of the upcoming release here.
 
 #### Breaking
 
+- [#386](https://github.com/FuelLabs/fuel-vm/pull/386): The coin and message inputs 
+    got a new field - `predicate_gas_used`. So it breaks the constructor API 
+    of these inputs.
+
+    The value of this field is zero for non-predicate inputs, but for the 
+    predicates, it indicates the exact amount of gas used by the predicate 
+    to execute. If after the execution of the predicate remaining gas is not 
+    zero, then the predicate execution failed.
+    
+    This field is malleable but will be used by the VM, and each predicate 
+    should be estimated before performing the verification logic. 
+    The `Transaction`, `Create`, and `Script` types implement the 
+    `EstimatePredicates` for these purposes.
+
+    ```rust
+    /// Provides predicate estimation functionality for the transaction.
+    pub trait EstimatePredicates: Sized {
+        /// Estimates predicates of the transaction.
+        fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError>;
+    }
+    ```
+
+    During the creation of the `Input`, the best strategy is to use a default 
+    value like `0` and call the `estimate_predicates` method to actualize 
+    the `predicate_gas_used` after.
+
 - [#456](https://github.com/FuelLabs/fuel-vm/pull/456): Added a new type - `ChainId` to represent the identifier of the chain. 
 It is a wrapper around the `u64`, so any `u64` can be converted into this type via `.into()` or `ChainId::new(...)`.
-
 
 ### Changed
 

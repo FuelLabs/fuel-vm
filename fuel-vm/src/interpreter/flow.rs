@@ -4,7 +4,7 @@ use super::internal::{
     append_receipt, current_contract, external_asset_id_balance_sub, inc_pc, internal_contract_or_default,
     set_frame_pointer, AppendReceipt,
 };
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances, VmMemory};
 use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::constraints::reg_key::*;
@@ -283,7 +283,7 @@ where
             amount_of_gas_to_forward: d,
         };
         let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
-        let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
+        let memory = PrepareCallMemory::try_from((&mut self.memory, &params))?;
         let input_contracts = self.tx.input_contracts().copied().collect();
 
         PrepareCallCtx {
@@ -385,7 +385,7 @@ impl<'a> PrepareCallRegisters<'a> {
 }
 
 struct PrepareCallMemory<'a> {
-    memory: &'a mut [u8; MEM_SIZE],
+    memory: &'a mut VmMemory,
     call_params: CheckedMemValue<Call>,
     asset_id: CheckedMemValue<AssetId>,
 }
@@ -536,7 +536,7 @@ fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
     code_mem_range: CheckedMemRange,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     storage: &S,
 ) -> Result<Word, RuntimeError>
 where
@@ -651,9 +651,9 @@ impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, Pr
     }
 }
 
-impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
+impl<'mem> TryFrom<(&'mem mut VmMemory, &PrepareCallParams)> for PrepareCallMemory<'mem> {
     type Error = RuntimeError;
-    fn try_from((memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
+    fn try_from((memory, params): (&'mem mut VmMemory, &PrepareCallParams)) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,
             call_params: CheckedMemValue::new::<{ Call::LEN }>(params.call_params_mem_address)?,

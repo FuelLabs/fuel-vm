@@ -45,13 +45,12 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
-pub use memory::MemoryRange;
+pub use memory::{MemoryRange, VmMemory};
 
 use crate::checked_transaction::{
     CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
 };
 
-use self::memory::Memory;
 use self::receipts::ReceiptsCtx;
 
 /// VM interpreter.
@@ -65,7 +64,7 @@ use self::receipts::ReceiptsCtx;
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Memory<MEM_SIZE>,
+    memory: VmMemory,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
@@ -96,8 +95,8 @@ pub(crate) enum PanicContext {
 
 impl<S, Tx> Interpreter<S, Tx> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &[u8] {
-        self.memory.as_slice()
+    pub fn memory(&self) -> &VmMemory {
+        &self.memory
     }
 
     /// Returns the current state of the registers

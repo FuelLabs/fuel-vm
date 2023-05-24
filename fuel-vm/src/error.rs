@@ -118,6 +118,7 @@ impl PartialEq for InterpreterError {
 }
 
 #[derive(Debug, Error)]
+#[must_use = "RuntimeError should always be handled"]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {

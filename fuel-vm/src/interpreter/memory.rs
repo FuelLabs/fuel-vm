@@ -1,578 +1,361 @@
-use super::internal::inc_pc;
-use super::{ExecutableTransaction, Interpreter};
-use crate::constraints::reg_key::*;
-use crate::error::RuntimeError;
-use crate::{consts::*, context::Context};
-
-use fuel_asm::{PanicReason, RegId};
-use fuel_types::{RegisterId, Word};
-
-use std::ops;
-use std::ops::Range;
-
-pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
-
+#[cfg(test)]
+mod allocation_tests;
+mod ownership;
+mod range;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-mod allocation_tests;
-#[allow(clippy::derive_hash_xor_eq)]
-#[derive(Debug, Clone, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// Memory range representation for the VM.
-///
-/// `start` is inclusive, and `end` is exclusive.
-pub struct MemoryRange {
-    start: ops::Bound<Word>,
-    end: ops::Bound<Word>,
-    len: Word,
+pub use self::ownership::OwnershipRegisters;
+pub use self::range::MemoryRange;
+
+use std::{io, ops::RangeInclusive};
+
+use derivative::Derivative;
+use fuel_asm::PanicReason;
+use fuel_types::fmt_truncated_hex;
+
+use crate::{consts::MEM_SIZE, prelude::RuntimeError};
+
+/// Page size, in bytes.
+pub const VM_PAGE_SIZE: usize = 16 * (1 << 10); // 16 KiB
+
+/// A single page of memory.
+pub type MemoryPage = [u8; VM_PAGE_SIZE];
+
+/// A zeroed page of memory.
+pub const ZERO_PAGE: MemoryPage = [0u8; VM_PAGE_SIZE];
+
+static_assertions::const_assert!(VM_PAGE_SIZE < MEM_SIZE);
+static_assertions::const_assert!(MEM_SIZE % VM_PAGE_SIZE == 0);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct PageIndex(usize);
+
+impl PageIndex {
+    /// The page just past the last byte of memory.
+    const ZERO: Self = Self(0);
+
+    /// The page just past the last byte of memory.
+    const LIMIT: Self = Self::from_addr(MEM_SIZE).0;
+
+    /// Returns page index of an address, and the offset on that page
+    const fn from_addr(addr: usize) -> (Self, usize) {
+        (Self(addr / VM_PAGE_SIZE), addr % VM_PAGE_SIZE)
+    }
 }
 
-impl Default for MemoryRange {
-    fn default() -> Self {
+/// The memory of a single VM instance.
+/// Note that even though the memory is divided into stack and heap pages,
+/// those names are only descriptive and do not imply any special behavior.
+/// When doing reads, both stack and heap pages are treated the same.
+#[derive(Clone, Derivative)]
+#[derivative(Debug)]
+pub struct VmMemory {
+    /// Stack pages are allocated in from the beginning of the address space.
+    // #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    stack_pages: Vec<MemoryPage>,
+    /// Heap pages are allocated in from the end of the address space, in reverse order.
+    // #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    heap_pages: Vec<MemoryPage>,
+}
+impl VmMemory {
+    /// Create a new empty VM memory instance.
+    pub const fn new() -> Self {
         Self {
-            start: ops::Bound::Included(0),
-            end: ops::Bound::Excluded(0),
-            len: 0,
-        }
-    }
-}
-
-impl MemoryRange {
-    /// Create a new memory range represented as `[address, address + size[`.
-    pub const fn new(address: Word, size: Word) -> Self {
-        let start = ops::Bound::Included(address);
-        let end = ops::Bound::Excluded(address.saturating_add(size));
-        let len = size;
-
-        Self { start, end, len }
-    }
-
-    /// Beginning of the memory range.
-    pub const fn start(&self) -> Word {
-        use ops::Bound::*;
-
-        match self.start {
-            Included(start) => start,
-            Excluded(start) => start.saturating_add(1),
-            Unbounded => 0,
+            stack_pages: Vec::new(),
+            heap_pages: Vec::new(),
         }
     }
 
-    /// End of the memory range.
-    pub const fn end(&self) -> Word {
-        use ops::Bound::*;
+    fn heap_start_page(&self) -> PageIndex {
+        PageIndex(MEM_SIZE / VM_PAGE_SIZE - self.heap_pages.len())
+    }
 
-        match self.end {
-            Included(end) => end.saturating_add(1),
-            Excluded(end) => end,
-            Unbounded => VM_MAX_RAM,
+    fn is_all_memory_allocated(&self) -> bool {
+        self.stack_pages.len() + self.heap_pages.len() == MEM_SIZE / VM_PAGE_SIZE
+    }
+
+    /// Attempts to allocate a page of memory from the stack.
+    /// Does nothing if all memory is already allocated.
+    fn alloc_stack_page(&mut self) {
+        if !self.is_all_memory_allocated() {
+            self.stack_pages.push(ZERO_PAGE);
         }
     }
 
-    /// Bytes count of this memory range.
-    pub const fn len(&self) -> Word {
-        self.len
-    }
-
-    /// Return `true` if the length is `0`.
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    /// Return the boundaries of the slice with exclusive end `[a, b[`
-    ///
-    /// Remap the unbound boundaries to stack or heap when applicable.
-    pub fn boundaries(&self, registers: &OwnershipRegisters) -> (Word, Word) {
-        use ops::Bound::*;
-
-        let stack = registers.sp;
-        let heap = registers.hp.saturating_add(1);
-        match (self.start, self.end) {
-            (Included(start), Included(end)) => (start, end.saturating_add(1)),
-            (Included(start), Excluded(end)) => (start, end),
-            (Excluded(start), Included(end)) => (start.saturating_add(1), end.saturating_add(1)),
-            (Excluded(start), Excluded(end)) => (start.saturating_add(1), end),
-            (Unbounded, Unbounded) => (0, VM_MAX_RAM),
-
-            (Included(start), Unbounded) if is_stack_address(&registers.sp, start) => (start, stack),
-            (Included(start), Unbounded) => (start, VM_MAX_RAM),
-
-            (Excluded(start), Unbounded) if is_stack_address(&registers.sp, start) => (start.saturating_add(1), stack),
-            (Excluded(start), Unbounded) => (start.saturating_add(1), VM_MAX_RAM),
-
-            (Unbounded, Included(end)) if is_stack_address(&registers.sp, end) => (0, end.saturating_add(1)),
-            (Unbounded, Included(end)) => (heap, end),
-
-            (Unbounded, Excluded(end)) if is_stack_address(&registers.sp, end) => (0, end),
-            (Unbounded, Excluded(end)) => (heap, end),
+    /// Attempts to allocate a page of memory from the heap.
+    /// Does nothing if all memory is already allocated.
+    fn alloc_heap_page(&mut self) {
+        if !self.is_all_memory_allocated() {
+            self.heap_pages.push(ZERO_PAGE);
         }
     }
 
-    /// Return an owned memory slice with a relative address to the heap space
-    /// defined in `r[$hp]`
-    pub fn to_heap<S, Tx>(mut self, vm: &Interpreter<S, Tx>) -> Self
-    where
-        Tx: ExecutableTransaction,
-    {
-        use ops::Bound::*;
-
-        let heap = vm.registers()[RegId::HP];
-
-        self.start = match self.start {
-            Included(start) => Included(heap.saturating_add(start)),
-            Excluded(start) => Included(heap.saturating_add(start).saturating_add(1)),
-            Unbounded => Included(heap),
-        };
-
-        self.end = match self.end {
-            Included(end) => Excluded(heap.saturating_add(end).saturating_add(1)),
-            Excluded(end) => Excluded(heap.saturating_add(end)),
-            Unbounded => Excluded(VM_MAX_RAM),
-        };
-
-        let (start, end) = self.boundaries(&OwnershipRegisters::new(vm));
-        self.len = end.saturating_sub(start);
-
-        self
-    }
-}
-
-impl<R> From<R> for MemoryRange
-where
-    R: ops::RangeBounds<Word>,
-{
-    fn from(range: R) -> MemoryRange {
-        use ops::Bound::*;
-        // Owned bounds are unstable
-        // https://github.com/rust-lang/rust/issues/61356
-
-        let (start, s) = match range.start_bound() {
-            Included(start) => (Included(*start), *start),
-            Excluded(start) => (Included(start.saturating_add(1)), start.saturating_add(1)),
-            Unbounded => (Unbounded, 0),
-        };
-
-        let (end, e) = match range.end_bound() {
-            Included(end) => (Excluded(end.saturating_add(1)), end.saturating_add(1)),
-            Excluded(end) => (Excluded(*end), *end),
-            Unbounded => (Unbounded, VM_MAX_RAM),
-        };
-
-        let len = e.saturating_sub(s);
-
-        Self { start, end, len }
-    }
-}
-
-// Memory bounds must be manually checked and cannot follow general PartialEq
-// rules
-impl PartialEq for MemoryRange {
-    fn eq(&self, other: &MemoryRange) -> bool {
-        use ops::Bound::*;
-
-        let start = match (self.start, other.start) {
-            (Included(a), Included(b)) => a == b,
-            (Included(a), Excluded(b)) => a == b.saturating_add(1),
-            (Included(a), Unbounded) => a == 0,
-            (Excluded(a), Included(b)) => a.saturating_add(1) == b,
-            (Excluded(a), Excluded(b)) => a == b,
-            (Excluded(a), Unbounded) => a == 0,
-            (Unbounded, Included(b)) => b == 0,
-            (Unbounded, Excluded(b)) => b == 0,
-            (Unbounded, Unbounded) => true,
-        };
-
-        let end = match (self.end, other.end) {
-            (Included(a), Included(b)) => a == b,
-            (Included(a), Excluded(b)) => a == b.saturating_sub(1),
-            (Included(a), Unbounded) => a == VM_MAX_RAM - 1,
-            (Excluded(a), Included(b)) => a.saturating_sub(1) == b,
-            (Excluded(a), Excluded(b)) => a == b,
-            (Excluded(a), Unbounded) => a == VM_MAX_RAM,
-            (Unbounded, Included(b)) => b == VM_MAX_RAM - 1,
-            (Unbounded, Excluded(b)) => b == VM_MAX_RAM,
-            (Unbounded, Unbounded) => true,
-        };
-
-        start && end
-    }
-}
-
-impl<S, Tx> Interpreter<S, Tx>
-where
-    Tx: ExecutableTransaction,
-{
-    /// Return the registers used to determine ownership.
-    pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
-        OwnershipRegisters::new(self)
-    }
-
-    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>
-    where
-        F: FnOnce(Word, Word) -> (Word, bool),
-    {
-        let (SystemRegisters { sp, hp, pc, .. }, _) = split_registers(&mut self.registers);
-        stack_pointer_overflow(sp, hp.as_ref(), pc, f, v)
-    }
-
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(&self.memory, pc, result, b, c)
-    }
-
-    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(&self.memory, pc, result, b, c)
-    }
-
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let owner = self.ownership_registers();
-        store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
-    }
-
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let owner = self.ownership_registers();
-        store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
-    }
-
-    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { hp, sp, pc, .. }, _) = split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a)
-    }
-
-    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
-        let owner = self.ownership_registers();
-        memclear(&mut self.memory, owner, self.registers.pc_mut(), a, b)
-    }
-
-    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let owner = self.ownership_registers();
-        memcopy(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
-    }
-
-    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        memeq(&mut self.memory, result, pc, b, c, d)
-    }
-}
-
-pub(crate) fn stack_pointer_overflow<F>(
-    mut sp: RegMut<SP>,
-    hp: Reg<HP>,
-    pc: RegMut<PC>,
-    f: F,
-    v: Word,
-) -> Result<(), RuntimeError>
-where
-    F: FnOnce(Word, Word) -> (Word, bool),
-{
-    let (result, overflow) = f(*sp, v);
-
-    if overflow || result >= *hp {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *sp = result;
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn load_byte(
-    memory: &[u8; MEM_SIZE],
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Word,
-) -> Result<(), RuntimeError> {
-    let bc = b.saturating_add(c) as usize;
-
-    if bc >= VM_MAX_RAM as RegisterId {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result = memory[bc] as Word;
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn load_word(
-    memory: &[u8; MEM_SIZE],
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Word,
-) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
-    let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-    *result = Word::from_be_bytes(read_bytes(memory, addr)?);
-    inc_pc(pc)
-}
-
-pub(crate) fn store_byte(
-    memory: &mut [u8; MEM_SIZE],
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> Result<(), RuntimeError> {
-    let (ac, overflow) = a.overflowing_add(c);
-    let range = ac..(ac + 1);
-    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range)) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[ac as usize] = b as u8;
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn store_word(
-    memory: &mut [u8; MEM_SIZE],
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
-    let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-    write_bytes(memory, owner, addr, b.to_be_bytes())?;
-    inc_pc(pc)
-}
-
-pub(crate) fn malloc(mut hp: RegMut<HP>, sp: Reg<SP>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
-    let (result, overflow) = hp.overflowing_sub(a);
-
-    if overflow || result < *sp {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *hp = result;
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn memclear(
-    memory: &mut [u8; MEM_SIZE],
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-) -> Result<(), RuntimeError> {
-    let (ab, overflow) = a.overflowing_add(b);
-
-    let range = MemoryRange::new(a, b);
-    if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        // trivial compiler optimization for memset
-        for i in &mut memory[a as usize..ab as usize] {
-            *i = 0
-        }
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn memcopy(
-    memory: &mut [u8; MEM_SIZE],
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> Result<(), RuntimeError> {
-    let (ac, overflow) = a.overflowing_add(c);
-    let (bc, of) = b.overflowing_add(c);
-    let overflow = overflow || of;
-
-    let range = MemoryRange::new(a, c);
-    if overflow
-        || ac > VM_MAX_RAM
-        || bc > VM_MAX_RAM
-        || c > MEM_MAX_ACCESS_SIZE
-        || a <= b && b < ac
-        || b <= a && a < bc
-        || a < bc && bc <= ac
-        || b < ac && ac <= bc
-        || !owner.has_ownership_range(&range)
-    {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        if a <= b {
-            let (dst, src) = memory.split_at_mut(b as usize);
-            dst[a as usize..ac as usize].copy_from_slice(&src[..c as usize]);
+    fn page(&self, index: PageIndex) -> &MemoryPage {
+        if index.0 < self.stack_pages.len() {
+            &self.stack_pages[index.0]
+        } else if index > self.heap_start_page() {
+            &self.heap_pages[index.0 - self.heap_start_page().0]
         } else {
-            let (src, dst) = memory.split_at_mut(a as usize);
-            dst[..c as usize].copy_from_slice(&src[b as usize..bc as usize]);
-        }
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) fn memeq(
-    memory: &mut [u8; MEM_SIZE],
-    result: &mut Word,
-    pc: RegMut<PC>,
-    b: Word,
-    c: Word,
-    d: Word,
-) -> Result<(), RuntimeError> {
-    let (bd, overflow) = b.overflowing_add(d);
-    let (cd, of) = c.overflowing_add(d);
-    let overflow = overflow || of;
-
-    if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result = (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
-
-        inc_pc(pc)
-    }
-}
-
-pub(crate) const fn is_stack_address(sp: &u64, a: Word) -> bool {
-    a < *sp
-}
-
-pub struct OwnershipRegisters {
-    pub(crate) sp: u64,
-    pub(crate) ssp: u64,
-    pub(crate) hp: u64,
-    pub(crate) prev_hp: u64,
-    pub(crate) context: Context,
-}
-
-impl OwnershipRegisters {
-    pub(crate) fn new<S, Tx>(vm: &Interpreter<S, Tx>) -> Self {
-        OwnershipRegisters {
-            sp: vm.registers[RegId::SP],
-            ssp: vm.registers[RegId::SSP],
-            hp: vm.registers[RegId::HP],
-            prev_hp: vm.frames.last().map(|frame| frame.registers()[RegId::HP]).unwrap_or(0),
-            context: vm.context.clone(),
+            &ZERO_PAGE
         }
     }
-    pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (start_incl, end_excl) = range.boundaries(self);
-        let range = start_incl..end_excl;
-        self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
-    }
 
-    /// Empty range is owned iff the range.start is owned
-    pub(crate) fn has_ownership_stack(&self, range: &Range<Word>) -> bool {
-        if range.is_empty() && range.start == self.ssp {
-            return true;
-        }
-
-        if !(self.ssp..self.sp).contains(&range.start) {
-            return false;
-        }
-
-        if range.end > VM_MAX_RAM {
-            return false;
-        }
-
-        (self.ssp..=self.sp).contains(&range.end)
-    }
-
-    /// Empty range is owned iff the range.start is owned
-    pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
-        if range.start < self.hp {
-            return false;
-        }
-
-        let heap_end = if self.context.is_external() {
-            VM_MAX_RAM
+    /// Get a mutable reference to a page, but only if it's already allocated.
+    fn page_mut(&self, index: PageIndex) -> Option<&mut MemoryPage> {
+        if index.0 < self.stack_pages.len() {
+            Some(&mut self.stack_pages[index.0])
+        } else if index > self.heap_start_page() {
+            Some(&mut self.heap_pages[index.0 - self.heap_start_page().0])
         } else {
-            self.prev_hp
-        };
+            None
+        }
+    }
 
-        self.hp != heap_end && range.end <= heap_end
+    fn iter_pages(&self, start_index: PageIndex, count: usize) -> impl Iterator<Item = &MemoryPage> {
+        (start_index.0..start_index.0 + count).map(move |i| self.page(PageIndex(i)))
+    }
+
+    fn page_range(&self, range: RangeInclusive<PageIndex>) -> impl DoubleEndedIterator<Item = &MemoryPage> {
+        (range.start().0..=range.end().0).map(move |i| self.page(PageIndex(i)))
+    }
+
+    fn all_pages(&self) -> impl DoubleEndedIterator<Item = &MemoryPage> {
+        (0..PageIndex::LIMIT.0).map(move |i| self.page(PageIndex(i)))
+    }
+
+    pub fn read_into<W: io::Write>(&self, addr: usize, count: usize, mut target: W) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(count).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        let mut it = self.page_range(s_page..=e_page);
+
+        // Special case: the read is within a single page
+        if s_page == e_page {
+            target.write_all(&self.page(s_page)[s_offset..e_offset])?;
+            return Ok(());
+        }
+
+        let mut cursor = 0;
+
+        // The first page must be handled separately, as it may be only partially read
+        if let Some(page) = it.next() {
+            target.write_all(&page[s_offset..])?;
+        }
+
+        // The last page must be handled separately, as it may be only partially read
+        let last_page = it.next_back();
+
+        // The rest of the pages are read fully
+        for page in it {
+            target.write_all(page)?;
+        }
+
+        if let Some(page) = last_page {
+            target.write_all(&page[..e_offset])?;
+        }
+
+        Ok(())
+    }
+
+    /// Read a constant size byte array from the memory.
+    /// This operation copies the data and is intended for small reads only.
+    pub fn read_bytes<const S: usize>(&self, addr: usize) -> Result<[u8; S], RuntimeError> {
+        let end = addr.saturating_add(S).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        let mut it = self.page_range(s_page..=e_page);
+
+        let mut result = [0u8; S];
+
+        // Special case: the read is within a single page
+        if s_page == e_page {
+            result.copy_from_slice(&self.page(s_page)[s_offset..e_offset]);
+            return Ok(result);
+        }
+
+        let mut cursor = 0;
+
+        // The first page must be handled separately, as it may be only partially read
+        if let Some(page) = it.next() {
+            result[cursor..].copy_from_slice(&page[s_offset..]);
+            cursor += VM_PAGE_SIZE - s_offset;
+        }
+
+        // The last page must be handled separately, as it may be only partially read
+        if let Some(page) = it.next_back() {
+            result[e_offset..].copy_from_slice(&page[..e_offset]);
+        }
+
+        // The rest of the pages are read fully
+        for page in it {
+            result[cursor..cursor + VM_PAGE_SIZE].copy_from_slice(page);
+            cursor += VM_PAGE_SIZE;
+        }
+
+        debug_assert_eq!(cursor + e_offset, S);
+
+        Ok(result)
+    }
+
+    /// Write a constant size byte array to the memory without performing ownership checks.
+    /// TODO: better name
+    pub fn write_bytes_unchecked<const S: usize>(&self, addr: usize, data: &[u8; S]) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(S).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        // let mut it = self.page_range(s_page..=e_page);
+
+        todo!("memory allocation on write");
+
+        // // Special case: the write is within a single page
+        // if s_page == e_page {
+        //     self.page(s_page)[s_offset..e_offset].copy_from_slice(&data[..]);
+        //     return Ok(());
+        // }
+
+        // let mut cursor = 0;
+
+        // // The first page must be handled separately, as it may be only partially written
+        // if let Some(page) = it.next() {
+        //     page[cursor..].copy_from_slice(&page[s_offset..]);
+        //     cursor += VM_PAGE_SIZE - s_offset;
+        // }
+
+        // // The last page must be handled separately, as it may be only partially written
+        // if let Some(page) = it.next_back() {
+        //     page[e_offset..].copy_from_slice(&page[..e_offset]);
+        // }
+
+        // // The rest of the pages are written fully
+        // for page in it {
+        //     page[cursor..cursor + VM_PAGE_SIZE].copy_from_slice(page);
+        //     cursor += VM_PAGE_SIZE;
+        // }
+
+        // debug_assert_eq!(cursor + e_offset, S);
+
+        // Ok(result)
+    }
+
+    /// Write a constant size byte array to the memory.
+    /// This only allows writes to existing pages.
+    pub fn write_bytes<const S: usize>(
+        &self,
+        ownership: OwnershipRegisters,
+        addr: usize,
+        data: &[u8; S],
+    ) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(S).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        // let mut it = self.page_range(s_page..=e_page);
+
+        todo!("memory allocation on write");
+
+        // // Special case: the write is within a single page
+        // if s_page == e_page {
+        //     self.page(s_page)[s_offset..e_offset].copy_from_slice(&data[..]);
+        //     return Ok(());
+        // }
+
+        // let mut cursor = 0;
+
+        // // The first page must be handled separately, as it may be only partially written
+        // if let Some(page) = it.next() {
+        //     page[cursor..].copy_from_slice(&page[s_offset..]);
+        //     cursor += VM_PAGE_SIZE - s_offset;
+        // }
+
+        // // The last page must be handled separately, as it may be only partially written
+        // if let Some(page) = it.next_back() {
+        //     page[e_offset..].copy_from_slice(&page[..e_offset]);
+        // }
+
+        // // The rest of the pages are written fully
+        // for page in it {
+        //     page[cursor..cursor + VM_PAGE_SIZE].copy_from_slice(page);
+        //     cursor += VM_PAGE_SIZE;
+        // }
+
+        // debug_assert_eq!(cursor + e_offset, S);
+
+        // Ok(result)
+    }
+
+    /// Write a constant size byte array to the memory.
+    /// No ownership checks are performed.
+    /// TODO: rename
+    pub fn write_unchecked(&self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(data.len()).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        // let mut it = self.page_range(s_page..=e_page);
+
+        todo!("memory allocation on write");
+    }
+
+    /// Attempt writing bytes, performing ownership checks first.
+    pub fn try_write(&self, ownership: OwnershipRegisters, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(data.len()).saturating_sub(1);
+
+        if end >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        let (s_page, s_offset) = PageIndex::from_addr(addr);
+        let (e_page, e_offset) = PageIndex::from_addr(end);
+
+        // let mut it = self.page_range(s_page..=e_page);
+
+        // TODO: ownership checks
+
+        todo!("memory allocation on write");
     }
 }
 
-pub(crate) fn try_mem_write(
-    addr: usize,
-    data: &[u8],
-    registers: OwnershipRegisters,
-    memory: &mut [u8; MEM_SIZE],
-) -> Result<(), RuntimeError> {
-    let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
+impl PartialEq for VmMemory {
+    fn eq(&self, other: &Self) -> bool {
+        for (a, b) in self.all_pages().zip(other.all_pages()) {
+            if a != b {
+                return false;
+            }
+        }
 
-    let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, data.len() as Word))
-        .ok_or(PanicReason::MemoryOverflow)?;
-
-    registers
-        .has_ownership_range(&range)
-        .then(|| {
-            memory.get_mut(addr..ax)?.copy_from_slice(data);
-            Some(())
-        })
-        .flatten()
-        .ok_or_else(|| PanicReason::MemoryOwnership.into())
-}
-
-pub(crate) fn try_zeroize(
-    addr: usize,
-    len: usize,
-    registers: OwnershipRegisters,
-    memory: &mut [u8; MEM_SIZE],
-) -> Result<(), RuntimeError> {
-    let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
-
-    let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, len as Word))
-        .ok_or(PanicReason::MemoryOverflow)?;
-
-    registers
-        .has_ownership_range(&range)
-        .then(|| {
-            memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
-        })
-        .ok_or_else(|| PanicReason::MemoryOwnership.into())
-}
-
-/// Reads a constant-sized byte array from memory, performing overflow and memory range checks.
-pub(crate) fn read_bytes<const COUNT: usize>(memory: &[u8; MEM_SIZE], addr: Word) -> Result<[u8; COUNT], RuntimeError> {
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || end > VM_MAX_RAM as RegisterId {
-        return Err(PanicReason::MemoryOverflow.into());
+        true
     }
-
-    Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
-}
-
-/// Writes a constant-sized byte array to memory, performing overflow, memory range and ownership checks.
-pub(crate) fn write_bytes<const COUNT: usize>(
-    memory: &mut [u8; MEM_SIZE],
-    owner: OwnershipRegisters,
-    addr: Word,
-    bytes: [u8; COUNT],
-) -> Result<(), RuntimeError> {
-    let range = MemoryRange::new(addr, COUNT as Word);
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || (end as Word) > VM_MAX_RAM || !owner.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOverflow.into());
-    }
-
-    memory[addr..end].copy_from_slice(&bytes);
-    Ok(())
 }

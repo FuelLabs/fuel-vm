@@ -1,4 +1,4 @@
-use crate::interpreter::memory::Memory;
+use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 
 use super::*;

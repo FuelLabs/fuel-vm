@@ -11,6 +11,8 @@ use itertools::Itertools;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
+use super::VmMemory;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
     value: Word,
@@ -91,14 +93,14 @@ impl RuntimeBalances {
         self.state.get(asset).map(Balance::value)
     }
 
-    fn set_memory_balance_inner(balance: &Balance, memory: &mut [u8; MEM_SIZE]) -> Result<Word, RuntimeError> {
+    fn set_memory_balance_inner(balance: &Balance, memory: &mut VmMemory) -> Result<Word, RuntimeError> {
         let value = balance.value();
         let offset = balance.offset();
 
         let offset = offset + AssetId::LEN;
         let range = CheckedMemRange::new_const::<WORD_SIZE>(offset as Word)?;
 
-        range.write(memory).copy_from_slice(&value.to_be_bytes());
+        memory.write_bytes_unchecked(range.start(), &value.to_be_bytes());
 
         Ok(value)
     }
@@ -110,7 +112,7 @@ impl RuntimeBalances {
     /// Note: This will not append a new asset into the set since all the assets must be created
     /// during VM initialization and any additional asset would imply reordering the memory
     /// representation of the balances since they must always be ordered, as in the protocol.
-    pub fn checked_balance_add(&mut self, memory: &mut [u8; MEM_SIZE], asset: &AssetId, value: Word) -> Option<Word> {
+    pub fn checked_balance_add(&mut self, memory: &mut VmMemory, asset: &AssetId, value: Word) -> Option<Word> {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_add(value))
@@ -120,7 +122,7 @@ impl RuntimeBalances {
 
     /// Attempt to subtract the balance of an asset, updating the VM memory in the appropriate
     /// offset
-    pub fn checked_balance_sub(&mut self, memory: &mut [u8; MEM_SIZE], asset: &AssetId, value: Word) -> Option<Word> {
+    pub fn checked_balance_sub(&mut self, memory: &mut VmMemory, asset: &AssetId, value: Word) -> Option<Word> {
         self.state
             .get_mut(asset)
             .and_then(|b| b.checked_sub(value))
@@ -143,8 +145,12 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
-            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE].copy_from_slice(&value.to_be_bytes());
+            vm.memory
+                .write_bytes_unchecked(ofs, &*asset)
+                .expect("the memory access is in bounds");
+            vm.memory
+                .write_bytes_unchecked(ofs + AssetId::LEN, &value.to_be_bytes())
+                .expect("the memory access is in bounds");
         });
 
         vm.balances = self;

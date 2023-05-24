@@ -1,7 +1,7 @@
 use super::{
     internal::{append_receipt, inc_pc, internal_contract_or_default, AppendReceipt},
     receipts::ReceiptsCtx,
-    ExecutableTransaction, Interpreter,
+    ExecutableTransaction, Interpreter, VmMemory,
 };
 use crate::{constraints::reg_key::*, consts::*};
 use crate::{context::Context, error::RuntimeError};
@@ -50,7 +50,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     tx_offset: usize,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,

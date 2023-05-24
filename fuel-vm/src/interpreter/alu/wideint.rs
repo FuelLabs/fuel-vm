@@ -4,7 +4,6 @@ use fuel_asm::{wideint::*, PanicReason};
 use fuel_types::{RegisterId, Word};
 
 use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTransaction, Interpreter};
-use crate::interpreter::memory::{read_bytes, write_bytes};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
@@ -62,11 +61,11 @@ macro_rules! wideint_ops {
                     let dest: &mut Word = &mut w[ra.try_into()?];
 
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(read_bytes(&self.memory, c)?)
+                        $t::from_be_bytes(self.memory.read_bytes(c as usize)?)
                     } else {
                         c.into()
                     };
@@ -87,11 +86,11 @@ macro_rules! wideint_ops {
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(read_bytes(&self.memory, c)?)
+                        $t::from_be_bytes(self.memory.read_bytes(c as usize)?)
                     } else {
                         c.into()
                     };
@@ -105,7 +104,7 @@ macro_rules! wideint_ops {
                     *of = overflow as Word;
                     *err = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, wrapped.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &wrapped.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -122,13 +121,13 @@ macro_rules! wideint_ops {
 
                     // LHS is only indirect if the flag is set
                     let lhs: $t = if args.indirect_lhs {
-                        $t::from_be_bytes(read_bytes(&self.memory, b)?)
+                        $t::from_be_bytes(self.memory.read_bytes(b as usize)?)
                     } else {
                         b.into()
                     };
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(read_bytes(&self.memory, c)?)
+                        $t::from_be_bytes(self.memory.read_bytes(c as usize)?)
                     } else {
                         c.into()
                     };
@@ -142,7 +141,7 @@ macro_rules! wideint_ops {
                     *of = overflow as Word;
                     *err = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, wrapped.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &wrapped.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -158,11 +157,11 @@ macro_rules! wideint_ops {
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
                     // LHS is always indirect
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(read_bytes(&self.memory, c)?)
+                        $t::from_be_bytes(self.memory.read_bytes(c as usize)?)
                     } else {
                         c.into()
                     };
@@ -187,7 +186,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &result.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -202,9 +201,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
-                    let rhs: $t = $t::from_be_bytes(read_bytes(&self.memory, c)?);
-                    let modulus: $t = $t::from_be_bytes(read_bytes(&self.memory, d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c as usize)?);
+                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d as usize)?);
 
                     let result: $t = if modulus == 0 {
                         if is_unsafe_math(flag.into()) {
@@ -227,7 +226,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &result.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -242,9 +241,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
-                    let rhs: $t = $t::from_be_bytes(read_bytes(&self.memory, c)?);
-                    let modulus: $t = $t::from_be_bytes(read_bytes(&self.memory, d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c as usize)?);
+                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d as usize)?);
 
                     let result: $t = if modulus == 0 {
                         if is_unsafe_math(flag.into()) {
@@ -268,7 +267,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &result.to_be_bytes())?;
 
                     inc_pc(pc)
                 }
@@ -283,9 +282,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { mut of, mut err, pc, flag, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(read_bytes(&self.memory, b)?);
-                    let rhs: $t = $t::from_be_bytes(read_bytes(&self.memory, c)?);
-                    let divider: $t = $t::from_be_bytes(read_bytes(&self.memory, d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b as usize)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c as usize)?);
+                    let divider: $t = $t::from_be_bytes(self.memory.read_bytes(d as usize)?);
 
                     const S: usize = core::mem::size_of::<$t>();
 
@@ -312,7 +311,7 @@ macro_rules! wideint_ops {
                     *of = overflows as Word;
                     *err = 0;
 
-                    write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.write_bytes(owner_regs, dest_addr as usize, &result.to_be_bytes())?;
 
                     inc_pc(pc)
                 }

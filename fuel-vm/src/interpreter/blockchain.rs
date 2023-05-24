@@ -4,8 +4,8 @@ use super::internal::{
     append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
     tx_id, AppendReceipt,
 };
-use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
-use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
+use super::memory::OwnershipRegisters;
+use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances, VmMemory};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
 use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, CheckedMemValue};
@@ -115,7 +115,7 @@ where
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let (SystemRegisters { cgas, ggas, pc, is, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeCtx {
@@ -223,7 +223,7 @@ where
             ..
         } = self;
 
-        state_write_qword(&contract_id?, storage, memory.as_mut(), pc, result, input)
+        state_write_qword(&contract_id?, storage, &mut memory, pc, result, input)
     }
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
@@ -257,7 +257,7 @@ where
 
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
     storage: &'vm S,
@@ -312,8 +312,9 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             .for_each(|m| *m = 0);
 
         // fetch the contract id
-        let contract_id: &[u8; ContractId::LEN] = &self.memory[contract_id..contract_id_end]
-            .try_into()
+        let contract_id: &[u8; ContractId::LEN] = &self
+            .memory
+            .read_bytes(contract_id)
             .expect("This can't fail, because we checked the bounds above.");
 
         // Safety: Memory bounds are checked and consistent
@@ -338,13 +339,9 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
 
         let code = &contract[..len];
 
-        let memory = self
-            .memory
-            .get_mut(memory_offset..arith::checked_add_usize(memory_offset, len)?)
-            .ok_or(PanicReason::MemoryOverflow)?;
-
         // perform the code copy
-        memory.copy_from_slice(code);
+        arith::checked_add_usize(memory_offset, len)?;
+        self.memory.write_unchecked(memory_offset, code)?;
 
         self.sp
             //TODO this is looser than the compare against [RegId::HP,RegId::SSP+length]
@@ -360,15 +357,13 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
-            let length = Word::from_be_bytes(
-                self.memory[fp_code_size..fp_code_size_end]
-                    .try_into()
-                    .map_err(|_| PanicReason::MemoryOverflow)?,
-            )
-            .checked_add(length as Word)
-            .ok_or(PanicReason::MemoryOverflow)?;
+            let length = Word::from_be_bytes(self.memory.read_bytes(fp_code_size)?)
+                .checked_add(length as Word)
+                .ok_or(PanicReason::MemoryOverflow)?;
 
-            self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
+            self.memory
+                .write_unchecked(fp_code_size, &length.to_be_bytes())
+                .expect("checked");
         }
 
         inc_pc(self.pc)
@@ -377,7 +372,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
 
 pub(crate) fn burn<S>(
     storage: &mut S,
-    memory: &[u8; MEM_SIZE],
+    memory: &VmMemory,
     context: &Context,
     fp: Reg<FP>,
     pc: RegMut<PC>,
@@ -389,14 +384,14 @@ where
 {
     let range = internal_contract_bounds(context, fp)?;
 
-    let contract = ContractId::from_bytes_ref(range.clone().read(memory));
-    let asset_id = AssetId::from_bytes_ref(range.read(memory));
+    let contract = ContractId::from(memory.read_bytes(range.start()).expect("checked"));
+    let asset_id = AssetId::from(memory.read_bytes(range.start()).expect("checked"));
 
-    let balance = balance(storage, contract, asset_id)?;
+    let balance = balance(storage, &contract, &asset_id)?;
     let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
 
     storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
         .map_err(RuntimeError::from_io)?;
 
     inc_pc(pc)
@@ -404,7 +399,7 @@ where
 
 pub(crate) fn mint<S>(
     storage: &mut S,
-    memory: &[u8; MEM_SIZE],
+    memory: &VmMemory,
     context: &Context,
     fp: Reg<FP>,
     pc: RegMut<PC>,
@@ -416,21 +411,21 @@ where
 {
     let range = internal_contract_bounds(context, fp)?;
 
-    let contract = ContractId::from_bytes_ref(range.clone().read(memory));
-    let asset_id = AssetId::from_bytes_ref(range.read(memory));
+    let contract = ContractId::from(memory.read_bytes(range.start()).expect("Checked!"));
+    let asset_id = AssetId::from(memory.read_bytes(range.start()).expect("Checked!"));
 
-    let balance = balance(storage, contract, asset_id)?;
+    let balance = balance(storage, &contract, &asset_id)?;
     let balance = checked_add_word(balance, a)?;
 
     storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
         .map_err(RuntimeError::from_io)?;
 
     inc_pc(pc)
 }
 
 struct CodeCopyCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
     storage: &'vm S,
@@ -475,7 +470,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
 pub(crate) fn block_hash<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -501,7 +496,7 @@ pub(crate) fn block_height(context: &Context, pc: RegMut<PC>, result: &mut Word)
 
 pub(crate) fn coinbase<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -516,7 +511,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 
 pub(crate) fn code_root<S>(
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -548,7 +543,7 @@ where
 
 struct CodeSizeCtx<'vm, S> {
     storage: &'vm S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
     current_contract: Option<ContractId>,
@@ -584,7 +579,7 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
 
 pub(crate) struct StateWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm [u8; MEM_SIZE],
+    pub memory: &'vm VmMemory,
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
@@ -675,7 +670,7 @@ where
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     max_message_data_length: u64,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
@@ -736,7 +731,7 @@ where
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
-            txid,
+            &txid,
             self.receipts.len() as Word,
             *sender,
             recipient,
@@ -805,7 +800,7 @@ impl StateReadQWord {
 fn state_read_qword(
     contract_id: &ContractId,
     storage: &impl InterpreterStorage,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateReadQWord,
@@ -869,7 +864,7 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; MEM_SIZE],
+    memory: &VmMemory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
@@ -914,7 +909,7 @@ impl StateClearQWord {
 fn state_clear_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &[u8; MEM_SIZE],
+    memory: &VmMemory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,

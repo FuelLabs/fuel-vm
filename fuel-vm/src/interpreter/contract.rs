@@ -1,7 +1,7 @@
 use super::internal::{
     append_receipt, external_asset_id_balance_sub, inc_pc, internal_contract, set_variable_output, AppendReceipt,
 };
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances, VmMemory};
 use crate::constraints::{reg_key::*, CheckedMemConstLen};
 use crate::context::Context;
 use crate::error::RuntimeError;
@@ -91,7 +91,7 @@ where
 
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     pc: RegMut<'vm, PC>,
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
@@ -126,7 +126,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 }
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut VmMemory,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
@@ -164,10 +164,16 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         }
 
         let amount = b;
-        let destination =
-            ContractId::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
-        let asset_id =
-            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+        let destination = ContractId::from(
+            self.memory
+                .read_bytes(a as usize)
+                .expect("Unreachable! Checked memory range"),
+        );
+        let asset_id = AssetId::from(
+            self.memory
+                .read_bytes(c as usize)
+                .expect("Unreachable! Checked memory range"),
+        );
 
         if !self.tx.input_contracts().any(|contract| &destination == contract) {
             *panic_context = PanicContext::ContractId(destination);

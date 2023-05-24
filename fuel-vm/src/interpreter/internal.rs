@@ -1,8 +1,8 @@
+use super::VmMemory;
 use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::reg_key::*;
 use crate::constraints::CheckedMemConstLen;
 use crate::constraints::CheckedMemRange;
-use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
 
@@ -45,7 +45,7 @@ where
 /// serialized tx in vm memory.
 pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     tx_offset: usize,
     idx: usize,
     variable: Output,
@@ -78,7 +78,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     tx_offset: usize,
     idx: usize,
 ) -> Result<(), RuntimeError> {
@@ -94,7 +94,7 @@ pub(crate) struct AppendReceipt<'vm> {
     pub receipts: &'vm mut ReceiptsCtx,
     pub script: Option<&'vm mut Script>,
     pub tx_offset: usize,
-    pub memory: &'vm mut [u8; MEM_SIZE],
+    pub memory: &'vm mut VmMemory,
 }
 
 pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
@@ -117,7 +117,9 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
 
         // Transaction memory space length is already checked on initialization so its
         // guaranteed to fit
-        memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
+        memory
+            .write_bytes_unchecked(offset, &*root)
+            .expect("unreachable! access is checked to be valid");
     }
 }
 
@@ -135,7 +137,8 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
-        self.memory[ssp as usize..self.registers[RegId::SSP] as usize].copy_from_slice(data);
+        debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
+        self.memory.write_unchecked(ssp as usize, data);
 
         Ok(())
     }
@@ -162,7 +165,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn internal_contract_or_default(&self) -> ContractId {
-        internal_contract_or_default(&self.context, self.registers.fp(), self.memory.as_ref())
+        internal_contract_or_default(&self.context, self.registers.fp(), &self.memory)
     }
 
     pub(crate) const fn tx_offset(&self) -> usize {
@@ -196,16 +199,15 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
         .map(|i| *pc = i)
 }
 
-pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
-    let memory = (&memory[..Bytes32::LEN]).try_into().expect("Bytes32::LEN < MEM_SIZE");
+pub(crate) fn tx_id(memory: &VmMemory) -> Bytes32 {
     // Safety: vm parameters guarantees enough space for txid
-    Bytes32::from_bytes_ref(memory)
+    Bytes32::from(memory.read_bytes(0).expect("Unreachable! Not enough memory for txid"))
 }
 
 /// Reduces the unspent balance of the base asset
 pub(crate) fn base_asset_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     value: Word,
 ) -> Result<(), RuntimeError> {
     external_asset_id_balance_sub(balances, memory, &AssetId::zeroed(), value)
@@ -214,7 +216,7 @@ pub(crate) fn base_asset_balance_sub(
 /// Reduces the unspent balance of a given asset ID
 pub(crate) fn external_asset_id_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     asset_id: &AssetId,
     value: Word,
 ) -> Result<(), RuntimeError> {
@@ -225,18 +227,14 @@ pub(crate) fn external_asset_id_balance_sub(
     Ok(())
 }
 
-pub(crate) fn internal_contract_or_default(
-    context: &Context,
-    register: Reg<FP>,
-    memory: &[u8; MEM_SIZE],
-) -> ContractId {
+pub(crate) fn internal_contract_or_default(context: &Context, register: Reg<FP>, memory: &VmMemory) -> ContractId {
     internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
 }
 
 pub(crate) fn current_contract<'a>(
     context: &Context,
     fp: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
+    memory: &'a VmMemory,
 ) -> Result<Option<&'a ContractId>, RuntimeError> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
@@ -245,17 +243,15 @@ pub(crate) fn current_contract<'a>(
     }
 }
 
-pub(crate) fn internal_contract<'a>(
+pub(crate) fn internal_contract(
     context: &Context,
     register: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
-) -> Result<&'a ContractId, RuntimeError> {
+    memory: &VmMemory,
+) -> Result<ContractId, RuntimeError> {
     let range = internal_contract_bounds(context, register)?;
 
     // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::from_bytes_ref(range.read(memory));
-
-    Ok(contract)
+    ContractId::from(range.read(memory))
 }
 
 pub(crate) fn internal_contract_bounds(

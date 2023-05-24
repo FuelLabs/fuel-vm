@@ -1,5 +1,5 @@
 use crate::context::Context;
-use crate::interpreter::memory::Memory;
+use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 use test_case::test_case;
 

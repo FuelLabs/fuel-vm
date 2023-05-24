@@ -1,5 +1,5 @@
 use crate::interpreter::contract::balance as contract_balance;
-use crate::{interpreter::memory::Memory, storage::MemoryStorage};
+use crate::{interpreter::_memory_old::Memory, storage::MemoryStorage};
 
 use super::*;
 

@@ -1,8 +1,8 @@
 use super::internal::{clear_err, inc_pc, set_err};
-use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
-use super::{ExecutableTransaction, Interpreter};
+use super::memory::OwnershipRegisters;
+use super::{ExecutableTransaction, Interpreter, VmMemory};
 use crate::constraints::reg_key::*;
-use crate::consts::{MEM_MAX_ACCESS_SIZE, MEM_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
+use crate::consts::{MEM_MAX_ACCESS_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
 use crate::error::RuntimeError;
 
 use crate::arith::{checked_add_word, checked_sub_word};
@@ -35,7 +35,7 @@ where
 }
 
 pub(crate) fn ecrecover(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -56,8 +56,9 @@ pub(crate) fn ecrecover(
     // TODO: These casts may overflow/truncate on 32-bit?
     let (a, b, bx, c, cx) = (a as usize, b as usize, bx as usize, c as usize, cx as usize);
 
-    let sig_bytes = <&_>::try_from(&memory[b..bx]).expect("memory bounds checked");
-    let msg_bytes = <&_>::try_from(&memory[c..cx]).expect("memory bounds checked");
+    let sig_bytes = Bytes64::from(memory.read_bytes(b).expect("bounds checked"));
+    let msg_bytes = Bytes32::from(memory.read_bytes(c).expect("bounds checked"));
+
     let signature = Signature::from_bytes_ref(sig_bytes);
     let message = Message::from_bytes_ref(msg_bytes);
 
@@ -76,7 +77,7 @@ pub(crate) fn ecrecover(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -94,19 +95,18 @@ pub(crate) fn keccak256(
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let (a, b, bc) = (a as usize, b as usize, bc as usize);
+    let (a, b, c) = (a as usize, b as usize, c as usize);
 
     let mut h = Keccak256::new();
 
-    h.update(&memory[b..bc]);
-
-    try_mem_write(a, h.finalize().as_slice(), owner, memory)?;
+    memory.read_into(b, c, h).expect("Unreachabled! Bounds checked already");
+    memory.try_write(owner, a, h.finalize().as_slice())?;
 
     inc_pc(pc)
 }
 
 pub(crate) fn sha256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut VmMemory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,

@@ -1,4 +1,4 @@
-use crate::interpreter::memory::Memory;
+use crate::interpreter::_memory_old::Memory;
 
 use super::*;
 
@@ -87,7 +87,7 @@ fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
     receipts: &'a mut ReceiptsCtx,
-    memory: &'a mut [u8; MEM_SIZE],
+    memory: &'a mut VmMemory,
     context: &'a mut Context,
 ) -> RetCtx<'a> {
     RetCtx {

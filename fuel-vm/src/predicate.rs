@@ -100,6 +100,7 @@ fn from_tx_works() {
         let tx = TransactionBuilder::script(vec![], vec![])
             .with_params(params)
             .add_input(i)
+            .add_random_fee_input()
             .finalize_checked_basic(height);
 
         // assert invalid idx wont panic

@@ -54,9 +54,7 @@ fn variable_output_updates_in_memory() {
 
     let mut vm = Interpreter::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
     let height = Default::default();
     let asset_id_to_update: AssetId = rng.gen();
     let amount_to_set: Word = 100;
@@ -68,18 +66,13 @@ fn variable_output_updates_in_memory() {
         asset_id: rng.gen(),
     };
 
-    let tx = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        vec![],
-        vec![],
-        vec![],
-        vec![variable_output],
-        vec![Witness::default()],
-    )
-    .into_checked(height, vm.params(), vm.gas_costs())
-    .expect("failed to check tx");
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .gas_limit(gas_limit)
+        .add_random_fee_input()
+        .add_output(variable_output)
+        .finalize()
+        .into_checked(height, vm.params(), vm.gas_costs())
+        .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");
 

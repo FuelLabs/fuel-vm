@@ -49,7 +49,7 @@ fn metadata() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .add_output(output)
         .finalize()
         .into_checked(height, &params, &gas_costs)
@@ -90,7 +90,7 @@ fn metadata() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .add_output(output)
         .finalize()
         .into_checked(height, &params, &gas_costs)
@@ -147,7 +147,7 @@ fn metadata() {
         .add_input(inputs[1].clone())
         .add_output(outputs[0])
         .add_output(outputs[1])
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .finalize()
         .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
@@ -195,7 +195,7 @@ fn get_metadata_chain_id() {
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .with_params(params)
         .gas_limit(gas_limit)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), height)
+        .add_random_fee_input()
         .finalize()
         .into_checked(height, &params, &gas_costs)
         .unwrap();
@@ -232,7 +232,7 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), height)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(height, client.gas_costs());
 

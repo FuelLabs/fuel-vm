@@ -19,7 +19,7 @@ fn gas_limit() {
         .gas_price(rng.gen())
         .gas_limit(PARAMS.max_gas_per_tx)
         .maturity(maturity)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
@@ -28,7 +28,7 @@ fn gas_limit() {
         .gas_price(rng.gen())
         .gas_limit(PARAMS.max_gas_per_tx)
         .maturity(maturity)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate transaction");
@@ -75,7 +75,7 @@ fn maturity() {
         .gas_price(rng.gen())
         .gas_limit(PARAMS.max_gas_per_tx)
         .maturity(block_height)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), block_height)
+        .add_random_fee_input()
         .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate script");
@@ -84,7 +84,7 @@ fn maturity() {
         .gas_price(rng.gen())
         .gas_limit(PARAMS.max_gas_per_tx)
         .maturity(block_height)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), block_height)
+        .add_random_fee_input()
         .finalize()
         .check(block_height, &PARAMS)
         .expect("Failed to validate tx create");

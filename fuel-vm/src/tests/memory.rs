@@ -9,9 +9,6 @@ use fuel_vm::prelude::*;
 use super::test_helpers::set_full_word;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
-    use rand::Rng;
-    use rand::SeedableRng;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -27,7 +24,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
+        .add_random_fee_input()
         .finalize()
         .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");

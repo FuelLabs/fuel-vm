@@ -15,9 +15,6 @@ pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
 
 /// Run a instructions-only script with reasonable defaults, and return receipts
 pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
-    use rand::Rng;
-    use rand::SeedableRng;
-    let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
 
@@ -25,14 +22,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .gas_price(0)
         .gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_unsigned_coin_input(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            Default::default(),
-        )
+        .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::DEFAULT, client.gas_costs())
         .expect("failed to generate a checked tx");

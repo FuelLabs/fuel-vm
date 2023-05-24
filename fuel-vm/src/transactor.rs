@@ -93,12 +93,9 @@ where
         }
     }
 
-    /// Convert this transaction into the underlying VM instance.
-    ///
-    /// This isn't a two-way operation since if you convert this instance into
-    /// the raw VM, then you lose the transactor state.
-    pub fn interpreter(self) -> Interpreter<S, Tx> {
-        self.into()
+    /// Gets the interpreter.
+    pub fn interpreter(&self) -> &Interpreter<S, Tx> {
+        &self.interpreter
     }
 
     /// Consensus parameters

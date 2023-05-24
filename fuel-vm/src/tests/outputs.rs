@@ -1,10 +1,10 @@
-use fuel_asm::{op, RegId};
-use fuel_vm::util::test_helpers::find_change;
-use fuel_vm::{
+use crate::util::test_helpers::find_change;
+use crate::{
     prelude::{field::Outputs, *},
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
+use fuel_asm::{op, RegId};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 /// Testing of post-execution output handling
@@ -129,7 +129,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         .into_checked_basic(context.get_block_height(), context.get_params())
         .expect("failed to generate checked tx");
 
-    let state = context.execute_tx(create).expect("Create should be executed");
+    let state = context.deploy(create).expect("Create should be executed");
     let change = find_change(state.tx().outputs().to_vec(), AssetId::BASE);
 
     assert_eq!(change, input_amount - spend_amount);

@@ -53,12 +53,9 @@ impl Contract {
             if len % LEAF_SIZE == 0 || len % MULTIPLE == 0 {
                 tree.push(leaf);
             } else {
-                let mut padded_leaf = leaf.to_vec();
-                let padding_size = next_multiple::<MULTIPLE>(len) - len;
-                let padding = iter::repeat(PADDING_BYTE).take(padding_size);
-                for byte in padding {
-                    padded_leaf.push(byte)
-                }
+                let padding_size = next_multiple::<MULTIPLE>(len);
+                let mut padded_leaf = vec![PADDING_BYTE; padding_size];
+                padded_leaf[0..len].clone_from_slice(leaf);
                 tree.push(padded_leaf.as_ref());
             }
         });

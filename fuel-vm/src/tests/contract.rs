@@ -3,6 +3,7 @@ use crate::script_with_data_offset;
 use crate::util::test_helpers::TestBuilder;
 use fuel_asm::op;
 use fuel_asm::RegId;
+use fuel_tx::Witness;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -44,7 +45,7 @@ fn prevent_contract_id_redeployment() {
             Output::change(rng.gen(), 0, asset_id),
             Output::coin(rng.gen(), spend_amount, asset_id),
         ],
-        vec![program],
+        vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
         rng.gen(),
@@ -53,6 +54,7 @@ fn prevent_contract_id_redeployment() {
         asset_id,
         rng.gen(),
         Default::default(),
+        1,
     );
     let create = create
         .into_checked_basic(1.into(), &ConsensusParameters::default())

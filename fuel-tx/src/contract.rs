@@ -206,7 +206,8 @@ mod tests {
     fn multi_leaf_state_root_snapshot() {
         let mut rng = StdRng::seed_from_u64(0xF00D);
         // 5 full leaves and a partial 6th leaf with 4 bytes of data
-        let code_len = 5 * LEAF_SIZE + 4;
+        let partial_leaf_size = 4;
+        let code_len = 5 * LEAF_SIZE + partial_leaf_size;
         let mut code = alloc::vec![0u8; code_len];
         rng.fill_bytes(code.as_mut_slice());
 
@@ -290,7 +291,7 @@ mod tests {
             // remaining data bytes into the start of this array.
             let sz = next_multiple::<8>(partial_leaf_size);
             let mut padded_leaf = vec![PADDING_BYTE; sz];
-            padded_leaf[0..partial_leaf_size].clone_from_slice(&leaves[3]);
+            padded_leaf[0..partial_leaf_size].clone_from_slice(leaves[3]);
             tree.push(&padded_leaf);
             tree.root().into()
         };

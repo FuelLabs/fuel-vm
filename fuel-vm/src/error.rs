@@ -225,8 +225,11 @@ impl From<core::array::TryFromSliceError> for RuntimeError {
 /// Predicates checking failed
 #[derive(Debug, Error)]
 pub enum PredicateVerificationFailed {
+    /// The predicate did not use the amount of gas provided
+    #[error("Predicate used less than the required amount of gas")]
+    GasMismatch,
     /// The transaction doesn't contain enough gas to evaluate the predicate
-    #[error("Insufficient gas available for predicates")]
+    #[error("Insufficient gas available for single predicate")]
     OutOfGas,
     /// The predicate owner does not correspond to the predicate code
     #[error("Predicate owner invalid, doesn't match code root")]
@@ -234,6 +237,15 @@ pub enum PredicateVerificationFailed {
     /// The predicate wasn't successfully evaluated to true
     #[error("Predicate failed to evaluate")]
     False,
+    /// The predicate gas used was not specified before execution
+    #[error("Predicate failed to evaluate")]
+    GasNotSpecified,
+    /// The transaction doesn't contain enough gas to evaluate all predicates
+    #[error("Insufficient gas available for all predicates")]
+    CumulativePredicateGasExceededTxGasLimit,
+    /// The cumulative gas overflowed the u64 accumulator
+    #[error("Cumulative gas computation overflowed the u64 accumulator")]
+    GasOverflow,
     /// An unexpected error occurred.
     #[error(transparent)]
     Io(#[from] io::Error),

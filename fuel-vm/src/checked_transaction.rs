@@ -16,6 +16,8 @@ pub mod types;
 
 pub use types::*;
 
+use crate::checked_transaction::balances::{initial_free_balances, AvailableBalances};
+use crate::interpreter::InitialBalances;
 use crate::{gas::GasCosts, interpreter::CheckedMetadata as CheckedMetadataAccessTrait, prelude::*};
 
 bitflags::bitflags! {
@@ -178,25 +180,58 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     ) -> Result<Checked<Self>, CheckError>;
 }
 
-/// Performs predicate verification for a transaction
+/// Provides predicate verification functionality for the transaction.
 pub trait CheckPredicates: Sized {
-    /// Define predicate verification logic (if any)
+    /// Performs predicates verification of the transaction.
     fn check_predicates(self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError>;
+}
+
+/// Provides predicate estimation functionality for the transaction.
+pub trait EstimatePredicates: Sized {
+    /// Estimates predicates of the transaction.
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError>;
 }
 
 impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
 where
-    Self: Clone,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,
 {
     fn check_predicates(mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            // TODO: Optimize predicate verification to work with references where it is possible.
-            let checked = Interpreter::<PredicateStorage>::check_predicates(self.clone(), *params, gas_costs.clone())?;
+            let checked = Interpreter::<PredicateStorage>::check_predicates(&self, *params, gas_costs.clone())?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
         Ok(self)
+    }
+}
+
+impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError> {
+        // validate fees and compute free balances
+        let AvailableBalances {
+            non_retryable_balances,
+            retryable_balance,
+            ..
+        } = initial_free_balances(self, params)?;
+
+        let balances: InitialBalances = InitialBalances {
+            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+            retryable: Some(RetryableAmount(retryable_balance)),
+        };
+
+        Interpreter::<PredicateStorage>::estimate_predicates(self, balances, *params, gas_costs.clone())?;
+        Ok(())
+    }
+}
+
+impl EstimatePredicates for Transaction {
+    fn estimate_predicates(&mut self, params: &ConsensusParameters, gas_costs: &GasCosts) -> Result<(), CheckError> {
+        match self {
+            Transaction::Script(script) => script.estimate_predicates(params, gas_costs),
+            Transaction::Create(create) => create.estimate_predicates(params, gas_costs),
+            Transaction::Mint(_) => Ok(()),
+        }
     }
 }
 
@@ -396,7 +431,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total() - output_amount
+            input_amount - checked.metadata().fee.max_fee() - output_amount
         );
     }
 
@@ -416,7 +451,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total()
+            input_amount - checked.metadata().fee.max_fee()
         );
     }
 
@@ -436,7 +471,7 @@ mod tests {
         // verify available balance was decreased by max fee
         assert_eq!(
             checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.total()
+            input_amount - checked.metadata().fee.max_fee()
         );
     }
 
@@ -482,6 +517,7 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
+                Default::default(),
                 vec![0xff; 10],
                 vec![0xaa; 10],
                 vec![0xbb; 10],
@@ -520,7 +556,8 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount);
+        let predicate_gas_used = rng.gen();
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -546,7 +583,8 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount);
+        let predicate_gas_used = rng.gen();
+        let tx = predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
         if let Ok(valid) = is_valid_max_fee(&tx, &params) {
             TestResult::from_bool(valid)
@@ -814,9 +852,10 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
         let params = ConsensusParameters::default();
-        let gas_costs = GasCosts::default();
+        let gas_costs = GasCosts::free();
 
-        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000);
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
+
         let checked = tx
             // Sets Checks::Basic
             .into_checked_basic(block_height, &params)
@@ -841,7 +880,7 @@ mod tests {
         let fee_remainder = (total.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.fee.total())
+        Ok(rounded_fee == available_balances.fee.max_fee())
     }
 
     fn is_valid_min_fee<Tx>(tx: &Tx, params: &ConsensusParameters) -> Result<bool, CheckError>
@@ -849,14 +888,16 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances = balances::initial_free_balances(tx, params)?;
-        // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128) * params.gas_per_byte as u128 * tx.price() as u128;
+        // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte < u64::MAX
+        let bytes = (tx.metered_bytes_size() as u128 + tx.gas_used_by_predicates() as u128)
+            * params.gas_per_byte as u128
+            * tx.price() as u128;
         // use different division mechanism than impl
         let fee = bytes / params.gas_price_factor as u128;
         let fee_remainder = (bytes.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
-        Ok(rounded_fee == available_balances.fee.bytes())
+        Ok(rounded_fee == available_balances.fee.min_fee())
     }
 
     fn valid_coin_tx(
@@ -879,7 +920,13 @@ mod tests {
     }
 
     // used when proptesting to avoid expensive crypto signatures
-    fn predicate_tx(rng: &mut StdRng, gas_price: u64, gas_limit: u64, fee_input_amount: u64) -> Script {
+    fn predicate_tx(
+        rng: &mut StdRng,
+        gas_price: u64,
+        gas_limit: u64,
+        fee_input_amount: u64,
+        predicate_gas_used: u64,
+    ) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
         let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
@@ -893,6 +940,7 @@ mod tests {
                 asset,
                 rng.gen(),
                 Default::default(),
+                predicate_gas_used,
                 predicate,
                 vec![],
             ))
@@ -918,6 +966,7 @@ mod tests {
                 rng.gen(),
                 input_amount,
                 rng.gen(),
+                Default::default(),
                 vec![],
                 vec![],
             ))

@@ -29,10 +29,12 @@ pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
+    type PredicateGasUsed: AsField<Word>;
 }
 
 pub mod specifications {
     use super::{Empty, MessageSpecification};
+    use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
     /// signature(witness) should be stored under the `witness_index` index in the `witnesses`
@@ -61,6 +63,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Empty;
         type PredicateData = Empty;
+        type PredicateGasUsed = Empty;
     }
 
     impl MessageSpecification for MessageData<Predicate> {
@@ -68,6 +71,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 
     /// The spendable message acts as a standard coin.
@@ -80,6 +84,7 @@ pub mod specifications {
         type Data = Empty;
         type Predicate = Empty;
         type PredicateData = Empty;
+        type PredicateGasUsed = Empty;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
@@ -87,6 +92,7 @@ pub mod specifications {
         type Data = Empty;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 
     /// The type is used to represent the full message. It is used during the deserialization of
@@ -103,6 +109,7 @@ pub mod specifications {
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
+        type PredicateGasUsed = Word;
     }
 }
 
@@ -139,6 +146,8 @@ where
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
+    pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate: Specification::Predicate,
@@ -150,9 +159,11 @@ impl<Specification> Message<Specification>
 where
     Specification: MessageSpecification,
 {
-    /// It is empty, because specification says nothing:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage
-    pub fn prepare_sign(&mut self) {}
+    pub fn prepare_sign(&mut self) {
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            core::mem::take(predicate_gas_used_field);
+        }
+    }
 
     pub fn message_id(&self) -> MessageId {
         let Self {
@@ -217,6 +228,7 @@ where
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         } = self;
         type S = MessageSizes;
         const LEN: usize = MessageSizes::LEN;
@@ -237,6 +249,13 @@ where
             0
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
+
+        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+            *predicate_gas_used
+        } else {
+            0
+        };
+        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
 
         let data_size = if let Some(data) = data.as_field() {
             data.len()
@@ -310,6 +329,11 @@ where
             *witness_index_field = witness_index;
         }
 
+        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
+            *predicate_gas_used_field = predicate_gas_used;
+        }
+
         let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
         let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
         let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
@@ -361,6 +385,7 @@ impl FullMessage {
             data,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -373,6 +398,7 @@ impl FullMessage {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -385,6 +411,7 @@ impl FullMessage {
             data,
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 
@@ -407,6 +434,7 @@ impl FullMessage {
             data: (),
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         }
     }
 
@@ -418,6 +446,7 @@ impl FullMessage {
             nonce,
             predicate,
             predicate_data,
+            predicate_gas_used,
             ..
         } = self;
 
@@ -430,6 +459,7 @@ impl FullMessage {
             data: (),
             predicate,
             predicate_data,
+            predicate_gas_used,
         }
     }
 }

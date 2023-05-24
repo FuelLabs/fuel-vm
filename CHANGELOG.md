@@ -12,22 +12,21 @@ Description of the upcoming release here.
 
 #### Breaking
 
-- Added a new type - `ChainId` to represent the identifier of the chain. 
-It is a wrapper around the `u64`, so any `u64` can be converted into this type via `.into()` or `ChainId::new(...)` - [#456](https://github.com/FuelLabs/fuel-vm/pull/456)
+- [#456](https://github.com/FuelLabs/fuel-vm/pull/456): Added a new type - `ChainId` to represent the identifier of the chain. 
+It is a wrapper around the `u64`, so any `u64` can be converted into this type via `.into()` or `ChainId::new(...)`.
 
 
 ### Changed
 
-- Something changed here 1
-- Something changed here 2
+- [#458](https://github.com/FuelLabs/fuel-vm/pull/458): Automatically sort storage slots for creation transactions.
 
 #### Breaking
 
-- The basic methods `UniqueIdentifier::id`, `Signable::sign_inputs`, 
+- [#456](https://github.com/FuelLabs/fuel-vm/pull/456): The basic methods `UniqueIdentifier::id`, `Signable::sign_inputs`, 
 and `Input::predicate_owner` use `ChainId` instead of the `ConsensusParameters`. 
 It is a less strict requirement than before because you can get `ChainId` 
 from `ConsensusParameters.chain_id`, and it makes the API cleaner. 
-It affects all downstream functions that use listed methods - [#456](https://github.com/FuelLabs/fuel-vm/pull/456)
+It affects all downstream functions that use listed methods.
 
 ### Fixed
 
@@ -35,5 +34,5 @@ It affects all downstream functions that use listed methods - [#456](https://git
 - Some fix here 2
 
 #### Breaking
-- Some breaking fix here 3
-- Some breaking fix here 4
+
+- [#458](https://github.com/FuelLabs/fuel-vm/pull/458): The storage slots with the same key inside of the `Create` transaction are forbidden.

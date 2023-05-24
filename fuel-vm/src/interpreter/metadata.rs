@@ -64,7 +64,7 @@ pub(crate) fn metadata(
             }
 
             GMArgs::GetChainId => {
-                *result = params.chain_id;
+                *result = params.chain_id.into();
             }
 
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
@@ -85,7 +85,7 @@ pub(crate) fn metadata(
             }
 
             GMArgs::GetChainId => {
-                *result = params.chain_id;
+                *result = params.chain_id.into();
             }
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
         }

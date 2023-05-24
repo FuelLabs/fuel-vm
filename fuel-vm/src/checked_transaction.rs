@@ -6,7 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{CheckError, ConsensusParameters, Create, Mint, Script, Transaction};
-use fuel_types::BlockHeight;
+use fuel_types::{BlockHeight, ChainId};
 
 use core::borrow::Borrow;
 
@@ -93,9 +93,9 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Performs check of signatures, if not yet done.
-    pub fn check_signatures(mut self, parameters: &ConsensusParameters) -> Result<Self, CheckError> {
+    pub fn check_signatures(mut self, chain_id: &ChainId) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
-            self.transaction.check_signatures(parameters)?;
+            self.transaction.check_signatures(chain_id)?;
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
@@ -168,7 +168,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         Checked<Self>: CheckPredicates,
     {
         self.into_checked_basic(block_height, params)?
-            .check_signatures(params)?
+            .check_signatures(&params.chain_id)?
             .check_predicates(params, gas_costs)
     }
 
@@ -841,7 +841,7 @@ mod tests {
             .into_checked_basic(block_height, &params)
             .unwrap()
             // Sets Checks::Signatures
-            .check_signatures(&params)
+            .check_signatures(&params.chain_id)
             .unwrap();
 
         assert!(checked.checks().contains(Checks::Basic | Checks::Signatures));
@@ -929,7 +929,7 @@ mod tests {
     ) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
-        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)

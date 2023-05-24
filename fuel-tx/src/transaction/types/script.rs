@@ -9,7 +9,7 @@ use crate::transaction::{
 };
 use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, BlockHeight, Bytes32, Word};
+use fuel_types::{bytes, BlockHeight, Bytes32, ChainId, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
     fmt_truncated_hex, mem_layout, MemLayout, MemLocType,
@@ -85,7 +85,7 @@ impl Default for Script {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
-    fn id(&self, params: &ConsensusParameters) -> Bytes32 {
+    fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
             return id;
         }
@@ -98,7 +98,7 @@ impl crate::UniqueIdentifier for Script {
         clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(params, &mut clone)
+        compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
@@ -136,15 +136,15 @@ impl Chargeable for Script {
 
 impl FormatValidityChecks for Script {
     #[cfg(feature = "std")]
-    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
-        let id = self.id(parameters);
+        let id = self.id(chain_id);
 
         self.inputs()
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, parameters))?;
+            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, chain_id))?;
 
         Ok(())
     }
@@ -182,10 +182,10 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, parameters: &ConsensusParameters) {
+    fn precompute(&mut self, chain_id: &ChainId) {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
-            common: CommonMetadata::compute(self, parameters),
+            common: CommonMetadata::compute(self, chain_id),
             script_data_offset: self.script_data_offset(),
         });
     }

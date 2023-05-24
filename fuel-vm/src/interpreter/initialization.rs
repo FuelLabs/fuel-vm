@@ -39,7 +39,7 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id(&self.params).as_ref())
+        self.push_stack(self.transaction().id(&self.params.chain_id).as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         RuntimeBalances::try_from(initial_balances)?.to_vm(self);

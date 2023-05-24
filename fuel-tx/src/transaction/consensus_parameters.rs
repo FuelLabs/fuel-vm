@@ -1,5 +1,5 @@
 use fuel_types::bytes::WORD_SIZE;
-use fuel_types::{AssetId, Bytes32};
+use fuel_types::{AssetId, Bytes32, ChainId};
 
 const MAX_GAS: u64 = 100_000_000;
 
@@ -37,7 +37,7 @@ pub struct ConsensusParameters {
     /// Maximum length of message data, in bytes.
     pub max_message_data_length: u64,
     /// The unique identifier of this chain
-    pub chain_id: u64,
+    pub chain_id: ChainId,
 }
 
 impl ConsensusParameters {
@@ -57,7 +57,7 @@ impl ConsensusParameters {
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
         max_message_data_length: 1024 * 1024,
-        chain_id: 0,
+        chain_id: ChainId::new(0),
     };
 
     /// Transaction memory offset in VM runtime
@@ -163,6 +163,7 @@ impl Default for ConsensusParameters {
 #[deprecated(since = "0.12.2", note = "use `ConsensusParameters` instead.")]
 pub mod default_parameters {
     use super::ConsensusParameters;
+    use fuel_types::ChainId;
 
     pub const CONTRACT_MAX_SIZE: u64 = ConsensusParameters::DEFAULT.contract_max_size;
     pub const MAX_INPUTS: u64 = ConsensusParameters::DEFAULT.max_inputs;
@@ -178,5 +179,5 @@ pub mod default_parameters {
     pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
     pub const MAX_MESSAGE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_message_data_length;
-    pub const CHAIN_ID: u64 = ConsensusParameters::DEFAULT.chain_id;
+    pub const CHAIN_ID: ChainId = ConsensusParameters::DEFAULT.chain_id;
 }

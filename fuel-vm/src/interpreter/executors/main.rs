@@ -93,7 +93,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     where
         Tx: ExecutableTransaction,
     {
-        if !kind.tx().check_predicate_owners(&params) {
+        if !kind.tx().check_predicate_owners(&params.chain_id) {
             return Err(PredicateVerificationFailed::InvalidOwner);
         }
 

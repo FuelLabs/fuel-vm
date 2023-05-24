@@ -204,7 +204,7 @@ fn get_metadata_chain_id() {
     let receipts = client.transact(script);
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
-        assert_eq!(val, params.chain_id);
+        assert_eq!(val, *params.chain_id);
     } else {
         panic!("expected return receipt, instead of {:?}", receipts[0])
     }
@@ -243,7 +243,7 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -269,7 +269,7 @@ fn get_transaction_fields() {
     rng.fill(m_data.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&m_predicate, &params);
+    let owner = Input::predicate_owner(&m_predicate, &params.chain_id);
     let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,

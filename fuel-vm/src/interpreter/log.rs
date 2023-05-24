@@ -90,8 +90,12 @@ impl LogInput<'_> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let cd = (c + d) as usize;
-        let digest = Hasher::hash(&self.memory[c as usize..cd]);
+        let len = d as usize;
+        let mut data = Vec::new();
+        data.reserve_exact(len);
+        self.memory.read_into(c as usize, len, &mut data).expect("checked");
+
+        let digest = Hasher::hash(&data);
 
         let receipt = Receipt::log_data_with_len(
             internal_contract_or_default(self.context, self.fp, self.memory),
@@ -100,7 +104,7 @@ impl LogInput<'_> {
             c,
             d,
             digest,
-            self.memory[c as usize..cd].to_vec(),
+            data,
             *self.pc,
             *self.is,
         );

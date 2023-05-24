@@ -160,7 +160,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         matches!(self.context, Context::Predicate { .. })
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
+    pub(crate) fn internal_contract(&self) -> Result<ContractId, RuntimeError> {
         internal_contract(&self.context, self.registers.fp(), &self.memory)
     }
 
@@ -228,14 +228,14 @@ pub(crate) fn external_asset_id_balance_sub(
 }
 
 pub(crate) fn internal_contract_or_default(context: &Context, register: Reg<FP>, memory: &VmMemory) -> ContractId {
-    internal_contract(context, register, memory).map_or(Default::default(), |contract| *contract)
+    internal_contract(context, register, memory).unwrap_or_default()
 }
 
 pub(crate) fn current_contract<'a>(
     context: &Context,
     fp: Reg<FP>,
-    memory: &'a VmMemory,
-) -> Result<Option<&'a ContractId>, RuntimeError> {
+    memory: &VmMemory,
+) -> Result<Option<ContractId>, RuntimeError> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
     } else {
@@ -249,9 +249,7 @@ pub(crate) fn internal_contract(
     memory: &VmMemory,
 ) -> Result<ContractId, RuntimeError> {
     let range = internal_contract_bounds(context, register)?;
-
-    // Safety: Memory bounds logically verified by the interpreter
-    ContractId::from(range.read(memory))
+    Ok(ContractId::from(range.read(memory)))
 }
 
 pub(crate) fn internal_contract_bounds(

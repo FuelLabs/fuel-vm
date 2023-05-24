@@ -115,7 +115,7 @@ where
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let (SystemRegisters { cgas, ggas, pc, is, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeCtx {
@@ -133,7 +133,7 @@ where
     }
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
-        let contract_id = self.internal_contract().copied();
+        let contract_id = self.internal_contract();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
@@ -174,7 +174,7 @@ where
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        let contract_id = self.internal_contract().copied();
+        let contract_id = self.internal_contract();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
@@ -212,7 +212,7 @@ where
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let contract_id = self.internal_contract().copied();
+        let contract_id = self.internal_contract();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
@@ -306,10 +306,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        // compiler will optimize to memset
-        self.memory[memory_offset..memory_offset_end]
-            .iter_mut()
-            .for_each(|m| *m = 0);
+        self.memory.clear_unchecked(memory_offset, length).expect("checked");
 
         // fetch the contract id
         let contract_id: &[u8; ContractId::LEN] = &self
@@ -449,19 +446,19 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         let (a, c, d) = (a as usize, c as usize, d as usize);
         let cd = cd as usize;
 
-        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
+        let contract = ContractId::new(contract.read(self.memory));
 
-        if !self.input_contracts.any(|input| input == contract) {
-            *self.panic_context = PanicContext::ContractId(*contract);
+        if !self.input_contracts.any(|input| *input == contract) {
+            *self.panic_context = PanicContext::ContractId(contract);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        let contract = super::contract::contract(self.storage, contract)?.into_owned();
+        let contract = super::contract::contract(self.storage, &contract)?.into_owned();
 
         if contract.as_ref().len() < d {
-            try_zeroize(a, d, self.owner, self.memory)?;
+            self.memory.try_clear(self.owner, a, d)?;
         } else {
-            try_mem_write(a, &contract.as_ref()[c..cd], self.owner, self.memory)?;
+            self.memory.try_write(self.owner, a, &contract.as_ref()[c..cd])?;
         }
 
         inc_pc(self.pc)
@@ -479,7 +476,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
     let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
-    try_mem_write(a as usize, hash.as_ref(), owner, memory)?;
+    memory.try_write(owner, a as usize, hash.as_ref())?;
 
     inc_pc(pc)
 }
@@ -504,7 +501,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     storage
         .coinbase()
         .map_err(RuntimeError::from_io)
-        .and_then(|data| try_mem_write(a as usize, data.as_ref(), owner, memory))?;
+        .and_then(|data| memory.try_write(owner, a as usize, data.as_ref()))?;
 
     inc_pc(pc)
 }
@@ -527,16 +524,16 @@ where
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let contract_id = ContractId::from_bytes_ref(contract_id.read(memory));
+    let contract_id = ContractId::new(contract_id.read(memory));
 
     let (_, root) = storage
-        .storage_contract_root(contract_id)
+        .storage_contract_root(&contract_id)
         .transpose()
         .ok_or(PanicReason::ContractNotFound)?
         .map_err(RuntimeError::from_io)?
         .into_owned();
 
-    try_mem_write(a as usize, root.as_ref(), owner, memory)?;
+    memory.try_write(owner, a as usize, root.as_ref())?;
 
     inc_pc(pc)
 }
@@ -561,9 +558,9 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
     {
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
-        let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
+        let contract_id = ContractId::new(contract_id.read(self.memory));
 
-        let len = contract_size(self.storage, contract_id)?;
+        let len = contract_size(self.storage, &contract_id)?;
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -601,10 +598,10 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
     let contract = internal_contract(context, fp, memory)?;
 
-    let key = Bytes32::from_bytes_ref(key.read(memory));
+    let key = Bytes32::new(key.read(memory));
 
     let value = storage
-        .merkle_contract_state(contract, key)
+        .merkle_contract_state(&contract, &key)
         .map_err(RuntimeError::from_io)?
         .map(|state| bytes::from_array(state.as_ref().borrow()))
         .map(Word::from_be_bytes);
@@ -632,15 +629,15 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = internal_contract_bounds(context, fp)?;
 
     // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::from_bytes_ref(contract.read(memory));
-    let key = Bytes32::from_bytes_ref(key.read(memory));
+    let contract = ContractId::new(contract.read(memory));
+    let key = Bytes32::new(key.read(memory));
 
     let mut value = Bytes32::default();
 
     value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage
-        .merkle_contract_state_insert(contract, key, &value)
+        .merkle_contract_state_insert(&contract, &key, &value)
         .map_err(RuntimeError::from_io)?;
 
     *exists = result.is_some() as Word;
@@ -728,12 +725,12 @@ where
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
         let msg_data = msg_data_range.read(self.memory).to_vec();
-        let sender = Address::from_bytes_ref(sender.read(self.memory));
+        let sender = Address::from(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
             &txid,
             self.receipts.len() as Word,
-            *sender,
+            sender,
             recipient,
             self.amount_coins_to_send,
             msg_data,
@@ -805,11 +802,11 @@ fn state_read_qword(
     result_register: &mut Word,
     input: StateReadQWord,
 ) -> Result<(), RuntimeError> {
-    let origin_key = Bytes32::from_bytes_ref(input.origin_key_memory_range.read(memory));
+    let origin_key = Bytes32::from(input.origin_key_memory_range.read(memory));
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
+        .merkle_contract_state_range(contract_id, &origin_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
         .into_iter()
         .flat_map(|bytes| match bytes {
@@ -823,7 +820,9 @@ fn state_read_qword(
 
     *result_register = all_set as Word;
 
-    memory[input.destination_address_memory_range].copy_from_slice(&result);
+    memory
+        .write_unchecked(input.destination_address_memory_range.start(), &result)
+        .expect("checked");
 
     inc_pc(pc)?;
 

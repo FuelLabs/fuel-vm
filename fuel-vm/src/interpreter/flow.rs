@@ -43,7 +43,7 @@ where
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
@@ -60,7 +60,7 @@ where
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory)?;
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
@@ -77,8 +77,7 @@ where
     }
 
     pub(crate) fn revert(&mut self, a: Word) {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
-            .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory).unwrap_or_default();
         let append = AppendReceipt {
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
@@ -162,16 +161,22 @@ impl RetCtx<'_> {
         if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
             return Err(PanicReason::MemoryOverflow.into());
         }
+        let len = b as usize;
+        let mut data = Vec::new();
+        data.reserve_exact(len);
+        self.append
+            .memory
+            .read_into(a as usize, len, &mut data)
+            .expect("checked");
 
-        let ab = (a + b) as usize;
-        let digest = Hasher::hash(&self.append.memory[a as usize..ab]);
+        let digest = Hasher::hash(&data);
 
         let receipt = Receipt::return_data_with_len(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
             b,
             digest,
-            self.append.memory[a as usize..ab].to_vec(),
+            data.to_vec(),
             self.registers[RegId::PC],
             self.registers[RegId::IS],
         );
@@ -282,7 +287,7 @@ where
             asset_id_mem_address: c,
             amount_of_gas_to_forward: d,
         };
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let memory = PrepareCallMemory::try_from((&mut self.memory, &params))?;
         let input_contracts = self.tx.input_contracts().copied().collect();
 

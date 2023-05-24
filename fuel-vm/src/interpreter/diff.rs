@@ -370,7 +370,7 @@ impl<S, Tx> Interpreter<S, Tx> {
             Change::Receipt(Previous(value)) => invert_receipts_ctx(&mut self.receipts, value),
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
             Change::Memory(Previous(Memory { start, bytes })) => {
-                self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
+                self.memory.write_unchecked(*start, &bytes[..]).unwrap()
             }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),

@@ -183,7 +183,7 @@ fn state_read_write() {
     script_data.extend(val.to_be_bytes());
 
     let result = test_context
-        .start_script(script.clone(), script_data)
+        .start_script(script, script_data)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()

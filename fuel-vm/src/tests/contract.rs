@@ -200,7 +200,7 @@ fn mint_burn() {
     // Burn the remainder balance
     let script_call_data = Call::new(contract_id, 1, balance).to_bytes();
     test_context
-        .start_script(script_call.clone(), script_call_data)
+        .start_script(script_call, script_call_data)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
@@ -208,7 +208,7 @@ fn mint_burn() {
         .execute();
 
     let result = test_context
-        .start_script(script_check_balance.clone(), script_data_check_balance.clone())
+        .start_script(script_check_balance, script_data_check_balance)
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()

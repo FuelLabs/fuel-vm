@@ -234,7 +234,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "rand", feature = "std"))]
     pub fn add_random_fee_input(&mut self) -> &mut Self {
         use rand::Rng;
         use rand::SeedableRng;

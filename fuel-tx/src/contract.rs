@@ -18,6 +18,7 @@ const LEAF_SIZE: usize = 16 * 1024;
 /// be padded to the nearest multiple of 8 bytes. Padding is achieved by repeating the
 /// `PADDING_BYTE`.
 const PADDING_BYTE: u8 = 0u8;
+const MULTIPLE: usize = 8;
 
 /// See https://stackoverflow.com/a/9194117
 fn next_multiple<const N: usize>(x: usize) -> usize {
@@ -49,7 +50,7 @@ impl Contract {
         // If the bytecode is not a multiple of 16 KiB, the final leaf should be
         // zero-padded rounding up to the nearest multiple of 8 bytes.
         let len = bytes.len();
-        let padding_size = next_multiple::<8>(len) - len;
+        let padding_size = next_multiple::<MULTIPLE>(len) - len;
         let padding = iter::repeat(PADDING_BYTE).take(padding_size);
         for byte in padding {
             bytes.push(byte)

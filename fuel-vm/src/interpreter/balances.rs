@@ -100,7 +100,7 @@ impl RuntimeBalances {
         let offset = offset + AssetId::LEN;
         let range = CheckedMemRange::new_const::<WORD_SIZE>(offset as Word)?;
 
-        memory.write_bytes_unchecked(range.start(), &value.to_be_bytes());
+        memory.write_bytes_unchecked(range.start(), &value.to_be_bytes())?;
 
         Ok(value)
     }

@@ -56,19 +56,16 @@ pub(crate) fn ecrecover(
     // TODO: These casts may overflow/truncate on 32-bit?
     let (a, b, bx, c, cx) = (a as usize, b as usize, bx as usize, c as usize, cx as usize);
 
-    let sig_bytes = Bytes64::from(memory.read_bytes(b).expect("bounds checked"));
-    let msg_bytes = Bytes32::from(memory.read_bytes(c).expect("bounds checked"));
+    let signature = Signature::from_bytes(memory.read_bytes(b).expect("bounds checked"));
+    let message = Message::from_bytes(memory.read_bytes(c).expect("bounds checked"));
 
-    let signature = Signature::from_bytes_ref(sig_bytes);
-    let message = Message::from_bytes_ref(msg_bytes);
-
-    match signature.recover(message) {
+    match signature.recover(&message) {
         Ok(pub_key) => {
-            try_mem_write(a, pub_key.as_ref(), owner, memory)?;
+            memory.try_write(owner, a, pub_key.as_ref())?;
             clear_err(err);
         }
         Err(_) => {
-            try_zeroize(a, PublicKey::LEN, owner, memory)?;
+            memory.try_clear(owner, a, PublicKey::LEN)?;
             set_err(err);
         }
     }
@@ -99,7 +96,9 @@ pub(crate) fn keccak256(
 
     let mut h = Keccak256::new();
 
-    memory.read_into(b, c, h).expect("Unreachabled! Bounds checked already");
+    memory
+        .read_into(b, c, &mut h)
+        .expect("Unreachabled! Bounds checked already");
     memory.try_write(owner, a, h.finalize().as_slice())?;
 
     inc_pc(pc)
@@ -122,9 +121,16 @@ pub(crate) fn sha256(
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let (a, b, bc) = (a as usize, b as usize, bc as usize);
+    let (a, b, c) = (a as usize, b as usize, c as usize);
 
-    try_mem_write(a, Hasher::hash(&memory[b..bc]).as_ref(), owner, memory)?;
+    let mut h = Hasher::default();
+
+    // TODO: optimize with larger reads
+    for b in memory.read(b, c).expect("Unreachabled! Bounds checked already") {
+        h.input(&[*b]);
+    }
+
+    memory.try_write(owner, a, h.finalize().as_ref())?;
 
     inc_pc(pc)
 }

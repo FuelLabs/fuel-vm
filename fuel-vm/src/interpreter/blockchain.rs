@@ -223,7 +223,7 @@ where
             ..
         } = self;
 
-        state_write_qword(&contract_id?, storage, &mut memory, pc, result, input)
+        state_write_qword(&contract_id?, storage, memory, pc, result, input)
     }
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
@@ -707,7 +707,7 @@ where
 
         let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
-        let recipient = recipient_address.try_from(self.memory)?;
+        let recipient = recipient_address.from(self.memory)?;
 
         // validations passed, perform the mutations
 
@@ -724,7 +724,7 @@ where
 
         let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
         let txid = tx_id(self.memory);
-        let msg_data = msg_data_range.read(self.memory).to_vec();
+        let msg_data = msg_data_range.read_to_vec(self.memory);
         let sender = Address::from(sender.read(self.memory));
 
         let receipt = Receipt::message_out_from_tx_output(
@@ -821,7 +821,7 @@ fn state_read_qword(
     *result_register = all_set as Word;
 
     memory
-        .write_unchecked(input.destination_address_memory_range.start(), &result)
+        .write_unchecked(input.destination_address_memory_range.start, &result)
         .expect("checked");
 
     inc_pc(pc)?;
@@ -863,20 +863,25 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &VmMemory,
+    memory: &mut VmMemory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
-    let destination_key = Bytes32::from_bytes_ref(input.starting_storage_key_memory_range.read(memory));
+    let destination_key = Bytes32::new(input.starting_storage_key_memory_range.read(memory));
 
-    let values: Vec<_> = memory[input.source_address_memory_range]
-        .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
-        .collect();
+    // TODO: switch to stdlib array_chunks when it's stable: https://github.com/rust-lang/rust/issues/100450
+    let values: Vec<_> = itermore::IterArrayChunks::array_chunks(
+        memory
+            .read_range(input.source_address_memory_range)
+            .expect("Checked range")
+            .copied(),
+    )
+    .map(Bytes32::from)
+    .collect();
 
     let any_none = storage
-        .merkle_contract_state_insert_range(contract_id, destination_key, &values)
+        .merkle_contract_state_insert_range(contract_id, &destination_key, &values)
         .map_err(RuntimeError::from_io)?
         .is_some();
     *result_register = any_none as Word;
@@ -913,10 +918,10 @@ fn state_clear_qword(
     result_register: &mut Word,
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {
-    let start_key = Bytes32::from_bytes_ref(input.start_storage_key_memory_range.read(memory));
+    let start_key = Bytes32::new(input.start_storage_key_memory_range.read(memory));
 
     let all_previously_set = storage
-        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
+        .merkle_contract_state_remove_range(contract_id, &start_key, input.num_slots)
         .map_err(RuntimeError::from_io)?
         .is_some();
 

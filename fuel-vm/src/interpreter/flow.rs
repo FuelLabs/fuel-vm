@@ -60,7 +60,7 @@ where
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory)?;
+        let current_contract = current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
@@ -420,8 +420,8 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let call = self.memory.call_params.try_from(self.memory.memory)?;
-        let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
+        let call = Call::from_bytes(self.memory.call_params.read_array(self.memory.memory)?);
+        let asset_id = self.memory.asset_id.from(self.memory.memory)?;
 
         let mut frame = call_frame(self.registers.copy_registers(), &self.storage, call, asset_id)?;
 
@@ -551,14 +551,16 @@ where
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
     code_frame_range.shrink_end((frame.code_size() + frame.code_size_padding()) as usize);
-    code_frame_range.clone().write(memory).copy_from_slice(&frame_bytes);
+    memory
+        .write_unchecked(code_frame_range.start(), &frame_bytes)
+        .expect("Unreachable! Checked range");
 
     let mut code_range = code_mem_range.clone();
     code_range.grow_start(CallFrame::serialized_size());
     code_range.shrink_end(frame.code_size_padding() as usize);
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(frame.to(), code_range.write(memory))
+        .read(frame.to(), &mut [0u8; 1000] /*code_range.write(memory)*/)
         .map_err(RuntimeError::from_io)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
@@ -568,7 +570,7 @@ where
     if frame.code_size_padding() > 0 {
         let mut padding_range = code_mem_range;
         padding_range.grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
-        padding_range.write(memory).fill(0);
+        padding_range.clear(memory);
     }
     Ok(code_frame_range.end() as Word)
 }

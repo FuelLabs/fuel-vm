@@ -41,13 +41,21 @@ impl<T> CheckedMemValue<T> {
     }
 
     /// Try to read a value of type `T` from memory.
-    pub fn try_from(self, memory: &VmMemory) -> Result<T, RuntimeError>
+    pub fn from<const SIZE: usize>(self, memory: &VmMemory) -> Result<T, RuntimeError>
     where
-        T: for<'a> TryFrom<&'a [u8]>,
-        RuntimeError: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
+        T: From<[u8; SIZE]>,
     {
         let bytes = memory.read_bytes(self.0.start())?;
-        Ok(T::try_from(&bytes)?)
+        Ok(T::from(bytes))
+    }
+
+    pub fn read_array<const SIZE: usize>(self, memory: &VmMemory) -> Result<[u8; SIZE], RuntimeError> {
+        memory.read_bytes(self.0.start())
+    }
+
+    /// Write access to the memory range.
+    pub fn write<const SIZE: usize>(self, memory: &VmMemory) -> Result<&mut [u8], RuntimeError> {
+        todo!("write access");
     }
 
     /// The start of the range.
@@ -122,6 +130,11 @@ impl CheckedMemRange {
         self.0.end
     }
 
+    /// The length of the range.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// This function is safe because it is only used to shrink the range
     /// and worst case the range will be empty.
     pub fn shrink_end(&mut self, by: usize) {
@@ -130,8 +143,23 @@ impl CheckedMemRange {
 
     /// This function is safe because it is only used to grow the range
     /// and worst case the range will be empty.
+    /// TODO: is the really safe??
     pub fn grow_start(&mut self, by: usize) {
         self.0 = self.0.start.saturating_add(by)..self.0.end;
+    }
+
+    pub fn read_to_vec(&self, memory: &VmMemory) -> Vec<u8> {
+        memory
+            .read(self.start(), self.len())
+            .expect("Unreachable! Checked access")
+            .copied()
+            .collect()
+    }
+
+    pub fn clear(&self, memory: &mut VmMemory) {
+        memory
+            .clear_unchecked(self.start(), self.len())
+            .expect("Unreachable! Checked access")
     }
 }
 

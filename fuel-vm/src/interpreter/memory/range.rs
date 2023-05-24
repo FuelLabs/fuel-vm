@@ -73,6 +73,12 @@ impl MemoryRange {
         self.len == 0
     }
 
+    /// Return `true` if the ranges overlap
+    pub fn overlaps(&self, other: &Self) -> bool {
+        // TODO: tests
+        self.start().max(other.start()) < self.end().max(other.end())
+    }
+
     /// Return the boundaries of the slice with exclusive end `[a, b[`
     ///
     /// Remap the unbound boundaries to stack or heap when applicable.

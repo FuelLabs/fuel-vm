@@ -1,4 +1,3 @@
-use crate::consts::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::flow::{JumpArgs, JumpMode};
 use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
@@ -17,14 +16,9 @@ where
 {
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
-        // Safety: `chunks_exact` is guaranteed to return a well-formed slice
-        let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
-            .chunks_exact(WORD_SIZE)
-            .next()
-            .map(|b| b.try_into().expect("Has to be correct size slice"))
-            .map(Word::from_be_bytes)
-            .map(fuel_asm::raw_instructions_from_word)
-            .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
+        let [hi, lo] = fuel_asm::raw_instructions_from_word(Word::from_be_bytes(
+            self.memory.read_bytes(self.registers[RegId::PC] as usize)?,
+        ));
 
         // Store the expected `$pc` after executing `hi`
         let pc = self.registers[RegId::PC] + Instruction::SIZE as Word;

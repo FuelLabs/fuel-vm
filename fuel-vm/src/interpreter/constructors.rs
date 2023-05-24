@@ -1,6 +1,6 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances, VmMemory};
 use crate::context::Context;
 use crate::interpreter::PanicContext;
 use crate::state::Debugger;
@@ -26,7 +26,7 @@ where
     pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
+            memory: VmMemory::new(),
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),

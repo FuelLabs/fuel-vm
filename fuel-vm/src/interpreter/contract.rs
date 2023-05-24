@@ -109,15 +109,15 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new_with_constraint(b, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
         let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new_with_constraint(c, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
 
-        let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
-        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
+        let asset_id = AssetId::new(asset_id.read(self.memory));
+        let contract = ContractId::new(contract.read(self.memory));
 
-        if !self.input_contracts.any(|input| contract == input) {
-            *self.panic_context = PanicContext::ContractId(*contract);
+        if !self.input_contracts.any(|input| contract == *input) {
+            *self.panic_context = PanicContext::ContractId(contract);
             return Err(PanicReason::ContractNotInInputs.into());
         }
 
-        let balance = balance(self.storage, contract, asset_id)?;
+        let balance = balance(self.storage, &contract, &asset_id)?;
 
         *result = balance;
 
@@ -186,7 +186,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory) {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
             // bubble up any other kind of errors
@@ -246,14 +246,21 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         }
 
         let out_idx = b as usize;
-        let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
-        let asset_id =
-            AssetId::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");
+        let to = Address::from(
+            self.memory
+                .read_bytes(a as usize)
+                .expect("Unreachable! Checked memory range"),
+        );
+        let asset_id = AssetId::from(
+            self.memory
+                .read_bytes(d as usize)
+                .expect("Unreachable! Checked memory range"),
+        );
         let amount = c;
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory) {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
             // bubble up any other kind of errors

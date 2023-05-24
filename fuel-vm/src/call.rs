@@ -55,6 +55,18 @@ impl Call {
     pub const fn into_inner(self) -> (ContractId, Word, Word) {
         (self.to, self.a, self.b)
     }
+
+    pub fn from_bytes(bytes: [u8; Self::LEN]) -> Self {
+        let to = bytes::restore_at(&bytes, Self::layout(Self::LAYOUT.to));
+        let a = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.b));
+
+        Self {
+            to: to.into(),
+            a: a,
+            b: b,
+        }
+    }
 }
 
 impl SizedBytes for Call {

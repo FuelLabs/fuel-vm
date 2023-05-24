@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod allocation_tests;
+mod operations;
 mod ownership;
 mod range;
 #[cfg(test)]
@@ -8,13 +9,13 @@ mod tests;
 pub use self::ownership::OwnershipRegisters;
 pub use self::range::MemoryRange;
 
-use std::{io, iter};
+use std::{io, iter, ops::Range};
 
 use derivative::Derivative;
 use fuel_asm::PanicReason;
-use fuel_types::fmt_truncated_hex;
+use fuel_types::{fmt_truncated_hex, Word};
 
-use crate::{consts::MEM_SIZE, prelude::RuntimeError};
+use crate::{consts::*, prelude::RuntimeError};
 
 /// Page size, in bytes.
 pub const VM_PAGE_SIZE: usize = 16 * (1 << 10); // 16 KiB
@@ -28,19 +29,29 @@ pub const ZERO_PAGE: MemoryPage = [0u8; VM_PAGE_SIZE];
 static_assertions::const_assert!(VM_PAGE_SIZE < MEM_SIZE);
 static_assertions::const_assert!(MEM_SIZE % VM_PAGE_SIZE == 0);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct PageIndex(usize);
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+// struct PageIndex(usize);
 
-impl PageIndex {
-    /// The page just past the last byte of memory.
-    const ZERO: Self = Self(0);
+// impl PageIndex {
+//     /// The page just past the last byte of memory.
+//     const ZERO: Self = Self(0);
 
-    /// The page just past the last byte of memory.
-    const LIMIT: Self = Self::from_addr(MEM_SIZE).0;
+//     /// The page just past the last byte of memory.
+//     const LIMIT: Self = Self::from_addr(MEM_SIZE).0;
 
-    /// Returns page index of an address, and the offset on that page
-    const fn from_addr(addr: usize) -> (Self, usize) {
-        (Self(addr / VM_PAGE_SIZE), addr % VM_PAGE_SIZE)
+//     /// Returns page index of an address, and the offset on that page
+//     const fn from_addr(addr: usize) -> (Self, usize) {
+//         (Self(addr / VM_PAGE_SIZE), addr % VM_PAGE_SIZE)
+//     }
+// }
+
+fn range_overlap(a: Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
+    let start = a.start.max(b.start);
+    let end = a.end.min(b.end);
+    if start < end {
+        Some(start..end)
+    } else {
+        None
     }
 }
 
@@ -93,7 +104,15 @@ impl VmMemory {
         }
     }
 
-    fn iter(&self) -> impl Iterator<Item = &u8> + '_ {
+    /// Converts an address to index in the heap, if in range
+    fn heap_range(&self) -> Range<usize> {
+        // Never wraps, heap isn't larger than the address space
+        let heap_start = MEM_SIZE - self.heap.len();
+        heap_start..MEM_SIZE
+    }
+
+    /// Read-only iteration of the full memory space, including unallocated pages filled with zeroes.
+    pub fn iter(&self) -> impl Iterator<Item = &u8> + '_ {
         self.stack
             .iter()
             .chain(iter::repeat(&0u8).take(self.unallocated()))
@@ -108,6 +127,10 @@ impl VmMemory {
         }
 
         Ok(self.iter().skip(addr).take(count))
+    }
+
+    pub fn read_range(&self, range: Range<usize>) -> Result<impl Iterator<Item = &u8> + '_, RuntimeError> {
+        self.read(range.start, range.len())
     }
 
     pub fn read_into<W: io::Write>(&self, addr: usize, count: usize, mut target: W) -> Result<(), RuntimeError> {
@@ -128,38 +151,43 @@ impl VmMemory {
         Ok(result)
     }
 
+    /// Read a single byte of memory.
+    pub fn at(&self, addr: usize) -> Result<u8, RuntimeError> {
+        let b: [u8; 1] = self.read_bytes(addr)?;
+        Ok(b[0])
+    }
+
     /// Zero memory memory without performing ownership checks.
     /// TODO: better name
-    pub fn clear_unchecked(&self, addr: usize, len: usize) -> Result<(), RuntimeError> {
-        let end = addr.saturating_add(len).saturating_sub(1);
+    pub fn clear_unchecked(&mut self, addr: usize, len: usize) -> Result<(), RuntimeError> {
+        let end = addr.saturating_add(len);
 
-        if end >= MEM_SIZE {
+        if end > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        for dst in self
-            .stack
-            .iter_mut()
-            .chain(iter::repeat_with(|| &mut 0u8).take(self.unallocated()))
-            .chain(self.heap.iter_mut())
-            .skip(addr)
-            .take(len)
-        {
-            *dst = 0;
+        self.stack.iter_mut().skip(addr).take(len).for_each(|b| *b = 0);
+
+        if let Some(range) = range_overlap(self.heap_range(), addr..end) {
+            self.heap
+                .iter_mut()
+                .skip(range.start)
+                .take(range.len())
+                .for_each(|b| *b = 0);
         }
 
         Ok(())
     }
 
-    /// Zero memory memory, performing ownership checks.
-    pub fn try_clear(&self, ownership: OwnershipRegisters, addr: usize, len: usize) -> Result<(), RuntimeError> {
-        let end = addr.saturating_add(len).saturating_sub(1);
+    /// Zero memory, performing ownership checks and max access size check.
+    pub fn try_clear(&mut self, owner: OwnershipRegisters, addr: usize, len: usize) -> Result<(), RuntimeError> {
+        let (end, overflow) = addr.overflowing_add(len);
 
-        if end >= MEM_SIZE {
+        let range = MemoryRange::new(addr as Word, len as Word);
+
+        if overflow || end > MEM_SIZE || len > MEM_MAX_ACCESS_SIZE as usize || !owner.has_ownership_range(&range) {
             return Err(PanicReason::MemoryOverflow.into());
         }
-
-        // TODO: ownership checks
 
         self.clear_unchecked(addr, len).unwrap();
         Ok(())
@@ -167,7 +195,7 @@ impl VmMemory {
 
     /// Write a constant size byte array to the memory without performing ownership checks.
     /// TODO: better name
-    pub fn write_bytes_unchecked<const S: usize>(&self, addr: usize, data: &[u8; S]) -> Result<(), RuntimeError> {
+    pub fn write_bytes_unchecked<const S: usize>(&mut self, addr: usize, data: &[u8; S]) -> Result<(), RuntimeError> {
         let end = addr.saturating_add(S).saturating_sub(1);
 
         if end >= MEM_SIZE {
@@ -184,8 +212,8 @@ impl VmMemory {
     /// Write a constant size byte array to the memory.
     /// This only allows writes to existing pages.
     pub fn write_bytes<const S: usize>(
-        &self,
-        ownership: OwnershipRegisters,
+        &mut self,
+        owner: OwnershipRegisters,
         addr: usize,
         data: &[u8; S],
     ) -> Result<(), RuntimeError> {
@@ -201,7 +229,7 @@ impl VmMemory {
     /// Write a constant size byte array to the memory.
     /// No ownership checks are performed.
     /// TODO: rename
-    pub fn write_unchecked(&self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
+    pub fn write_unchecked(&mut self, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
         let end = addr.saturating_add(data.len()).saturating_sub(1);
 
         if end >= MEM_SIZE {
@@ -212,7 +240,7 @@ impl VmMemory {
     }
 
     /// Attempt writing bytes, performing ownership checks first.
-    pub fn try_write(&self, ownership: OwnershipRegisters, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
+    pub fn try_write(&mut self, owner: OwnershipRegisters, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
         let end = addr.saturating_add(data.len()).saturating_sub(1);
 
         if end >= MEM_SIZE {
@@ -222,6 +250,51 @@ impl VmMemory {
         // TODO: ownership checks
 
         todo!("memory allocation on write");
+    }
+
+    /// Obtain a mutable reference a slice of the memory.
+    /// No ownership checks are performed.
+    pub fn mut_unchecked(&mut self, addr: usize, len: usize) -> Result<&mut [u8], RuntimeError> {
+        // TODO: ensure contiguous region
+        todo!();
+    }
+
+    /// Obtain a mutable reference a slice of the memory.
+    pub fn try_mut(&mut self, owner: OwnershipRegisters, addr: usize, len: usize) -> Result<&mut [u8], RuntimeError> {
+        // TODO: ownership checks
+        // TODO: alloc memory
+        // TODO: ensure contiguous region
+        todo!();
+    }
+
+    /// Copy bytes from one location to another.
+    /// Ownership and max access size checks are performed.
+    /// Also fails if the ranges overlap.
+    pub fn try_copy_within(
+        &mut self,
+        owner: OwnershipRegisters,
+        dst: usize,
+        src: usize,
+        len: usize,
+    ) -> Result<(), RuntimeError> {
+        let (src_end, src_of) = src.overflowing_add(len);
+        let (dst_end, dst_of) = dst.overflowing_add(len);
+        let overflow = src_of || dst_of;
+
+        let dst_range = MemoryRange::new(dst as Word, len as Word);
+        let src_range = MemoryRange::new(dst as Word, len as Word);
+
+        if overflow
+            || dst_end > MEM_SIZE
+            || src_end > MEM_SIZE
+            || len > (MEM_MAX_ACCESS_SIZE as usize)
+            || dst_range.overlaps(&src_range)
+            || !owner.has_ownership_range(&dst_range)
+        {
+            Err(PanicReason::MemoryOverflow.into())
+        } else {
+            todo!("optimized implementation");
+        }
     }
 }
 

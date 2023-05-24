@@ -83,9 +83,10 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     idx: usize,
 ) -> Result<(), RuntimeError> {
     let mem_range = absolute_output_mem_range(tx, tx_offset, idx, None)?.ok_or(PanicReason::OutputNotFound)?;
-    let mem = mem_range.write(memory);
+    todo!("???");
+    // let mem = mem_range.write(memory);
 
-    tx.output_to_mem(idx, mem)?;
+    // tx.output_to_mem(idx, mem)?;
 
     Ok(())
 }
@@ -138,7 +139,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
         debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
-        self.memory.write_unchecked(ssp as usize, data);
+        self.memory.write_unchecked(ssp as usize, data)?;
 
         Ok(())
     }

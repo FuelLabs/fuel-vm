@@ -24,6 +24,7 @@ fuel-merkle = { workspace = true }
 fuel-storage = { workspace = true, path = "../fuel-storage" }
 fuel-tx = { workspace = true, features = ["builder", "std"], path = "../fuel-tx" }
 fuel-types = { workspace = true, path = "../fuel-types" }
+itermore = "0.5"
 itertools = "0.10"
 paste = "1.0"
 primitive-types = { version = "0.12", default-features = false }

@@ -1,7 +1,7 @@
 use crate::{Input, Output, Transaction, Witness};
 use core::hash::Hash;
 
-use fuel_types::{AssetId, BlockHeight};
+use fuel_types::{AssetId, BlockHeight, ChainId};
 
 #[cfg(feature = "std")]
 use fuel_types::Bytes32;
@@ -29,7 +29,7 @@ impl Input {
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         self.check_without_signature(index, outputs, witnesses, parameters)?;
-        self.check_signature(index, txhash, witnesses, parameters)?;
+        self.check_signature(index, txhash, witnesses, &parameters.chain_id)?;
 
         Ok(())
     }
@@ -40,7 +40,7 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        parameters: &ConsensusParameters,
+        chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         match self {
             Self::CoinSigned(CoinSigned {
@@ -89,7 +89,7 @@ impl Input {
                 recipient: owner,
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate, parameters) => {
+            }) if !Input::is_predicate_owner_valid(owner, predicate, chain_id) => {
                 Err(CheckError::InputPredicateOwner { index })
             }
 
@@ -191,14 +191,14 @@ pub trait FormatValidityChecks {
     /// of fields according to rules in the specification and validity of signatures.
     fn check(&self, block_height: BlockHeight, parameters: &ConsensusParameters) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, parameters)?;
-        self.check_signatures(parameters)?;
+        self.check_signatures(&parameters.chain_id)?;
 
         Ok(())
     }
 
     #[cfg(feature = "std")]
     /// Validates that all required signatures are set in the transaction and that they are valid.
-    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError>;
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError>;
 
     /// Validates the transactions according to rules from the specification:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
@@ -211,11 +211,11 @@ pub trait FormatValidityChecks {
 
 impl FormatValidityChecks for Transaction {
     #[cfg(feature = "std")]
-    fn check_signatures(&self, parameters: &ConsensusParameters) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => script.check_signatures(parameters),
-            Transaction::Create(create) => create.check_signatures(parameters),
-            Transaction::Mint(mint) => mint.check_signatures(parameters),
+            Transaction::Script(script) => script.check_signatures(chain_id),
+            Transaction::Create(create) => create.check_signatures(chain_id),
+            Transaction::Mint(mint) => mint.check_signatures(chain_id),
         }
     }
 

@@ -54,9 +54,9 @@ impl Contract {
                 tree.push(leaf);
             } else {
                 let padding_size = next_multiple::<MULTIPLE>(len);
-                let mut padded_leaf = vec![PADDING_BYTE; padding_size];
+                let mut padded_leaf = [PADDING_BYTE; LEAF_SIZE];
                 padded_leaf[0..len].clone_from_slice(leaf);
-                tree.push(padded_leaf.as_ref());
+                tree.push(padded_leaf[..padding_size].as_ref());
             }
         });
 

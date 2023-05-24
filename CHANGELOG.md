@@ -35,4 +35,9 @@ It affects all downstream functions that use listed methods.
 
 #### Breaking
 
+- [#457](https://github.com/FuelLabs/fuel-vm/pull/457): Transactions got one more validity rule: 
+Each `Script` or `Create` transaction requires at least one input coin or message to be spendable. 
+It may break code/tests that previously didn't set any spendable inputs. 
+Note: `Message` with non-empty `data` field is not spendable.
+
 - [#458](https://github.com/FuelLabs/fuel-vm/pull/458): The storage slots with the same key inside of the `Create` transaction are forbidden.

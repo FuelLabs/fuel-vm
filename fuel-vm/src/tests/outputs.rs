@@ -1,4 +1,5 @@
 use fuel_asm::{op, RegId};
+use fuel_tx::Witness;
 use fuel_vm::util::test_helpers::find_change;
 use fuel_vm::{
     prelude::{field::Outputs, *},
@@ -115,7 +116,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
             Output::change(rng.gen(), 0, asset_id),
             Output::coin(rng.gen(), spend_amount, asset_id),
         ],
-        vec![program],
+        vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
         rng.gen(),
@@ -124,6 +125,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         asset_id,
         rng.gen(),
         Default::default(),
+        1,
     );
     let create = create
         .into_checked_basic(context.get_block_height(), context.get_params())

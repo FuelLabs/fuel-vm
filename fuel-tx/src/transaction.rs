@@ -285,13 +285,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         maturity: BlockHeight,
+        witness_index: u8,
     ) {
         let owner = Input::owner(owner);
 
-        let witness_index = self.witnesses().len() as u8;
         let input = Input::coin_signed(utxo_id, owner, amount, asset_id, tx_pointer, witness_index, maturity);
-
-        self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
     }
 
@@ -310,15 +308,14 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
+        witness_index: u8,
     ) {
-        let witness_index = self.witnesses().len() as u8;
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
             Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
         };
 
-        self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
     }
 

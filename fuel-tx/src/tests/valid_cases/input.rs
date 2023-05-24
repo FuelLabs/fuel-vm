@@ -1,6 +1,7 @@
 use super::PARAMS;
 
 use fuel_crypto::{PublicKey, SecretKey};
+use fuel_tx::field::Witnesses;
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes, TransactionFactory};
 use rand::rngs::StdRng;
@@ -62,7 +63,17 @@ fn input_coin_message_signature() {
             let maturity = rng.gen();
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
-                tx.add_unsigned_coin_input(utxo_id, public, amount, asset_id, tx_pointer, maturity)
+                let witness_index = <Tx as fuel_tx::field::Witnesses>::witnesses(tx).len();
+                <Tx as fuel_tx::field::Witnesses>::witnesses_mut(tx).push(fuel_tx::Witness::default());
+                tx.add_unsigned_coin_input(
+                    utxo_id,
+                    public,
+                    amount,
+                    asset_id,
+                    tx_pointer,
+                    maturity,
+                    witness_index as u8,
+                )
             })
             .expect("Failed to validate transaction");
         }
@@ -74,7 +85,16 @@ fn input_coin_message_signature() {
             let data = generate_bytes(rng);
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
-                tx.add_unsigned_message_input(sender, Input::owner(public), nonce, amount, data.clone())
+                let witness_index = <Tx as fuel_tx::field::Witnesses>::witnesses(tx).len();
+                <Tx as fuel_tx::field::Witnesses>::witnesses_mut(tx).push(fuel_tx::Witness::default());
+                tx.add_unsigned_message_input(
+                    sender,
+                    Input::owner(public),
+                    nonce,
+                    amount,
+                    data.clone(),
+                    witness_index as u8,
+                )
             })
             .expect("Failed to validate transaction");
         }
@@ -100,6 +120,46 @@ fn coin_signed() {
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err);
+}
+
+#[test]
+fn duplicate_secrets_reuse_witness() {
+    let rng = &mut StdRng::seed_from_u64(10000);
+    let key = SecretKey::random(rng);
+
+    // verify witness reuse for script txs
+    let script = TransactionBuilder::script(vec![], vec![])
+        // coin 1
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        // coin 2
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        // message 1
+        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
+        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
+        .finalize();
+
+    assert_eq!(
+        script.witnesses().len(),
+        1,
+        "Script should only have one witness as only one private key is used"
+    );
+
+    // verify witness reuse for creation txs
+    let create = TransactionBuilder::create(Witness::default(), rng.gen(), vec![])
+        // coin 1
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        // coin 2
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        // message 1
+        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
+        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
+        .finalize();
+
+    assert_eq!(
+        create.witnesses().len(),
+        1,
+        "Script should only have one witness as only one private key is used"
+    )
 }
 
 #[test]

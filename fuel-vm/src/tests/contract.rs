@@ -1,6 +1,7 @@
 use fuel_asm::op;
 use fuel_asm::RegId;
 use fuel_tx::field::ScriptData;
+use fuel_tx::Witness;
 use fuel_vm::prelude::*;
 use fuel_vm::script_with_data_offset;
 use fuel_vm::util::test_helpers::TestBuilder;
@@ -45,7 +46,7 @@ fn prevent_contract_id_redeployment() {
             Output::change(rng.gen(), 0, asset_id),
             Output::coin(rng.gen(), spend_amount, asset_id),
         ],
-        vec![program],
+        vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
         rng.gen(),
@@ -54,6 +55,7 @@ fn prevent_contract_id_redeployment() {
         asset_id,
         rng.gen(),
         Default::default(),
+        1,
     );
     let create = create
         .into_checked_basic(1.into(), &ConsensusParameters::default())

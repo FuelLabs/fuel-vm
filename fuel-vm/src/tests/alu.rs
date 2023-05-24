@@ -1,35 +1,27 @@
+use crate::prelude::*;
 use fuel_asm::{op, Instruction};
 use fuel_asm::{Imm18, RegId};
-use fuel_vm::prelude::*;
 
 use super::test_helpers::set_full_word;
 
 fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId, expected: Word) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
         .flat_map(|(r, v)| set_full_word(*r, *v))
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     assert_eq!(
         receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
@@ -38,30 +30,18 @@ fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId,
 }
 
 fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolean: bool) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
-    let script = program
-        .iter()
-        .copied()
-        .chain([op::ret(RegId::ONE)].iter().copied())
-        .collect();
+    let script = program.iter().copied().chain([op::ret(RegId::ONE)]).collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
@@ -78,25 +58,19 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     let script = [op::movi(0x10, 0x02), op::flag(0x10)]
         .into_iter()
         .chain(program.iter().copied())
-        .chain(
-            [
-                op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
-                op::ret(RegId::ONE),
-            ]
-            .iter()
-            .copied(),
-        )
+        .chain([
+            op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
+            op::ret(RegId::ONE),
+        ])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     if !boolean {
         let lo_value = receipts.first().expect("Receipt not found").ra().expect("$ra expected");
@@ -118,46 +92,32 @@ fn alu_wrapping(
     expected: Word,
     expected_of: bool,
 ) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
-
     let set_regs = registers_init.iter().flat_map(|(r, v)| set_full_word(*r, *v));
 
-    let script = [
+    let script = vec![
         // TODO avoid magic constants
         // https://github.com/FuelLabs/fuel-asm/issues/60
         op::movi(RegId::WRITABLE, 0x2),
         op::flag(RegId::WRITABLE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .chain(set_regs)
-    .chain(
-        [
-            ins,
-            op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
-            op::ret(RegId::ONE),
-        ]
-        .iter()
-        .copied(),
-    )
+    .chain([
+        ins,
+        op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
+        op::ret(RegId::ONE),
+    ])
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     let log_receipt = receipts.first().expect("Receipt not found");
 
@@ -171,31 +131,23 @@ fn alu_wrapping(
 }
 
 fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: RegisterId, expected: Word) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
         .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v))
-        .chain([ins, op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
@@ -216,18 +168,16 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
                 .iter()
                 .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
         )
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     assert_eq!(
         receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
@@ -236,14 +186,8 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
 }
 
 fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
@@ -251,15 +195,13 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
         .chain([ins, op::ret(RegId::ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     let result = receipts
         .iter()

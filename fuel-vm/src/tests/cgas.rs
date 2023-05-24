@@ -1,7 +1,7 @@
+use crate::prelude::*;
+use crate::script_with_data_offset;
 use fuel_asm::op;
 use fuel_asm::RegId;
-use fuel_vm::prelude::*;
-use fuel_vm::script_with_data_offset;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -82,6 +82,7 @@ fn cgas_overflow_bug() {
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
+        .fee_input()
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
         .execute();
@@ -188,6 +189,7 @@ fn cgas_uses_min_available_gas() {
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
+        .fee_input()
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
         .execute();

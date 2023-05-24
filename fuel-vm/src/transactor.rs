@@ -69,12 +69,12 @@ where
 
     /// Returns true if last transaction execution was successful
     pub const fn is_success(&self) -> bool {
-        self.program_state.is_some()
+        !self.is_reverted()
     }
 
     /// Returns true if last transaction execution was erroneous
-    pub const fn is_error(&self) -> bool {
-        self.error.is_some()
+    pub const fn is_reverted(&self) -> bool {
+        self.error.is_some() || matches!(self.program_state, Some(ProgramState::Revert(_)))
     }
 
     /// Result representation of the last executed transaction.
@@ -93,12 +93,9 @@ where
         }
     }
 
-    /// Convert this transaction into the underlying VM instance.
-    ///
-    /// This isn't a two-way operation since if you convert this instance into
-    /// the raw VM, then you lose the transactor state.
-    pub fn interpreter(self) -> Interpreter<S, Tx> {
-        self.into()
+    /// Gets the interpreter.
+    pub fn interpreter(&self) -> &Interpreter<S, Tx> {
+        &self.interpreter
     }
 
     /// Consensus parameters

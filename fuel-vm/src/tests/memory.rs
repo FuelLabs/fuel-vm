@@ -20,7 +20,12 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
 
     let script = program.into_iter().collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
         .into_checked(height, &params, &gas_costs)
         .expect("failed to check tx");
 
@@ -120,22 +125,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
         op::ret(RegId::ONE),
     ]);
 
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
-
-    let script = ops.into_iter().collect();
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
-
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
-    vm.transact(tx);
+    let vm = setup(ops);
 
     let mut receipts = vm.receipts().unwrap().to_vec();
 
@@ -175,22 +165,7 @@ fn dynamic_call_frame_ops() {
         op::ret(RegId::SP),
     ];
 
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
-
-    let script = ops.into_iter().collect();
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
-
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
-    vm.transact(tx);
+    let vm = setup(ops);
 
     let receipts = vm.receipts().unwrap().to_vec();
     // gather values of sp from the test

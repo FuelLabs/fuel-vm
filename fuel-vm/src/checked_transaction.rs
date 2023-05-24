@@ -402,16 +402,6 @@ mod tests {
     use rand::{Rng, SeedableRng};
 
     #[test]
-    fn checked_tx_has_default() {
-        let height = 1.into();
-
-        Checked::<Transaction>::default()
-            .transaction()
-            .check(height, &Default::default())
-            .expect("default checked tx should be valid");
-    }
-
-    #[test]
     fn checked_tx_accepts_valid_tx() {
         // simple smoke test that valid txs can be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -486,6 +476,8 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            // Add empty base coin
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -522,6 +514,8 @@ mod tests {
                 vec![0xaa; 10],
                 vec![0xbb; 10],
             ))
+            // Add empty base coin
+            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -823,7 +817,9 @@ mod tests {
         let block_height = 1.into();
         let params = ConsensusParameters::default();
 
-        let tx = Transaction::default();
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .add_random_fee_input()
+            .finalize();
         // Sets Checks::Basic
         let checked = tx.into_checked_basic(block_height, &params).unwrap();
         assert!(checked.checks().contains(Checks::Basic));

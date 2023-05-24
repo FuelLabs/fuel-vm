@@ -681,3 +681,43 @@ impl TryFrom<&Create> for Contract {
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn storage_slots_sorting() {
+        // Test that storage slots must be sorted correctly
+        let mut slot_data = [0u8; 64];
+
+        let storage_slots = (0..10u64)
+            .map(|i| {
+                slot_data[..8].copy_from_slice(&i.to_be_bytes());
+                StorageSlot::from(&slot_data.clone().into())
+            })
+            .collect::<Vec<StorageSlot>>();
+
+        let mut storage_slots_reverse = storage_slots;
+
+        storage_slots_reverse.reverse();
+
+        let err = Create {
+            gas_price: 0,
+            gas_limit: 0,
+            maturity: Default::default(),
+            bytecode_length: 0,
+            bytecode_witness_index: 0,
+            storage_slots: storage_slots_reverse,
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![Witness::default()],
+            salt: Default::default(),
+            metadata: None,
+        }
+        .check(0.into(), &ConsensusParameters::default())
+        .expect_err("Expected erroneous transaction");
+
+        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+    }
+}

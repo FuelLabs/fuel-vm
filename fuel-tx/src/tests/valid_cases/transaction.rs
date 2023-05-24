@@ -636,23 +636,6 @@ fn create() {
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(CheckError::TransactionCreateStorageSlotMax, err);
-
-    // Test storage slots must be sorted correctly
-    let mut storage_slots_reverse = storage_slots;
-
-    storage_slots_reverse.reverse();
-
-    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), storage_slots_reverse)
-        .gas_limit(PARAMS.max_gas_per_tx)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &PARAMS)
-        .expect_err("Expected erroneous transaction");
-
-    assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
 }
 
 #[test]

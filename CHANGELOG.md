@@ -15,8 +15,7 @@ Description of the upcoming release here.
 
 ### Changed
 
-- Something changed here 1
-- Something changed here 2
+- [#458](https://github.com/FuelLabs/fuel-vm/pull/458) - Automatically sort storage slots for creation transactions
 
 #### Breaking
 - Some breaking change here 3

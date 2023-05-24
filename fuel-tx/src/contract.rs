@@ -50,7 +50,7 @@ impl Contract {
             // should be zero-padded rounding up to the nearest multiple of 8
             // bytes.
             let len = leaf.len();
-            if len % LEAF_SIZE == 0 || len % MULTIPLE == 0 {
+            if len == LEAF_SIZE || len % MULTIPLE == 0 {
                 tree.push(leaf);
             } else {
                 let padding_size = next_multiple::<MULTIPLE>(len);

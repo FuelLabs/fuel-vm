@@ -34,5 +34,5 @@ It affects all downstream functions that use listed methods.
 - Some fix here 2
 
 #### Breaking
-- Some breaking fix here 3
-- Some breaking fix here 4
+
+- [#458](https://github.com/FuelLabs/fuel-vm/pull/458): The storage slots with the same key inside of the `Create` transaction are forbidden.

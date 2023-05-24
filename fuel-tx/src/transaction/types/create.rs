@@ -137,7 +137,7 @@ impl FormatValidityChecks for Create {
         }
 
         // Verify storage slots are sorted
-        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] <= s[1]) {
+        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] < s[1]) {
             return Err(CheckError::TransactionCreateStorageSlotOrder);
         }
 
@@ -685,6 +685,7 @@ impl TryFrom<&Create> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fuel_types::Bytes32;
 
     #[test]
     fn storage_slots_sorting() {
@@ -709,6 +710,32 @@ mod tests {
             bytecode_length: 0,
             bytecode_witness_index: 0,
             storage_slots: storage_slots_reverse,
+            inputs: vec![],
+            outputs: vec![],
+            witnesses: vec![Witness::default()],
+            salt: Default::default(),
+            metadata: None,
+        }
+        .check(0.into(), &ConsensusParameters::default())
+        .expect_err("Expected erroneous transaction");
+
+        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+    }
+
+    #[test]
+    fn storage_slots_no_duplicates() {
+        let storage_slots = vec![
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+        ];
+
+        let err = Create {
+            gas_price: 0,
+            gas_limit: 0,
+            maturity: Default::default(),
+            bytecode_length: 0,
+            bytecode_witness_index: 0,
+            storage_slots,
             inputs: vec![],
             outputs: vec![],
             witnesses: vec![Witness::default()],

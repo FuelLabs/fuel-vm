@@ -50,7 +50,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
-        if !checked.transaction().check_predicate_owners(&params) {
+        if !checked.transaction().check_predicate_owners(&params.chain_id) {
             return Err(PredicateVerificationFailed::InvalidOwner);
         }
 

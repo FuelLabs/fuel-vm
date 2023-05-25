@@ -70,7 +70,7 @@ impl Input {
                 // recover the address associated with a witness, using the cache if available
                 let recovered_address = if let Some(cache) = recovery_cache {
                     if let Some(recovered_address) = cache.get(witness_index) {
-                        recovered_address.clone()
+                        *recovered_address
                     } else {
                         // if this witness hasn't been recovered before,
                         // cache ecrecover by witness index

@@ -12,9 +12,6 @@ Description of the upcoming release here.
 
 #### Breaking
 
-- [#462](https://github.com/FuelLabs/fuel-vm/pull/462): Adds a `cache` parameter to `Input::check` and `Input::check_signature`.
-    This is used to avoid redundant signature recovery when multiple inputs share the same witness index.
-
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/386): The coin and message inputs 
     got a new field - `predicate_gas_used`. So it breaks the constructor API 
     of these inputs.
@@ -53,21 +50,30 @@ It is a wrapper around the `u64`, so any `u64` can be converted into this type v
 - [#459](https://github.com/FuelLabs/fuel-vm/pull/459) Require witness index to be specified when adding an unsigned coin to a transaction.
 This allows for better reuse of witness data when using the transaction builder and helper methods to make transactions compact.
 
+- [#462](https://github.com/FuelLabs/fuel-vm/pull/462): Adds a `cache` parameter to `Input::check` and `Input::check_signature`.
+  This is used to avoid redundant signature recovery when multiple inputs share the same witness index.
+
 ### Changed
 
 - [#458](https://github.com/FuelLabs/fuel-vm/pull/458): Automatically sort storage slots for creation transactions.
 
 #### Breaking
 
+- [#386](https://github.com/FuelLabs/fuel-vm/pull/386): Several methods of the `TransactionFee` are renamed `total` -> `max_fee`
+  and `bytes` -> `min_fee`. The `TransactionFee::min_fee` take into account the gas used by predicates.
+
+- [#450](https://github.com/FuelLabs/fuel-vm/pull/450): The Merkle root of a contract's code is now calculated by partitioning the code into chunks of 16 KiB, instead of 8 bytes. If the last leaf is does not a full 16 KiB, it is padded with `0` up to the nearest multiple of 8 bytes. This affects the `ContractId` and `PredicateId` calculations, breaking all code that used hardcoded values.
+
 - [#456](https://github.com/FuelLabs/fuel-vm/pull/456): The basic methods `UniqueIdentifier::id`, `Signable::sign_inputs`, 
 and `Input::predicate_owner` use `ChainId` instead of the `ConsensusParameters`. 
 It is a less strict requirement than before because you can get `ChainId` 
 from `ConsensusParameters.chain_id`, and it makes the API cleaner. 
 It affects all downstream functions that use listed methods.
-- [#450](https://github.com/FuelLabs/fuel-vm/pull/450): The Merkle root of a contract's code is now calculated by partitioning the code into chunks of 16 KiB, instead of 8 bytes. If the last leaf is does not a full 16 KiB, it is padded with `0` up to the nearest multiple of 8 bytes. This affects the `ContractId` and `PredicateId` calculations, breaking all code that used hardcoded values.
 
-- [#386](https://github.com/FuelLabs/fuel-vm/pull/386): Several methods of the `TransactionFee` are renamed `total` -> `max_fee` 
-    and `bytes` -> `min_fee`. The `TransactionFee::min_fee` take into account the gas used by predicates.
+- [#463](https://github.com/FuelLabs/fuel-vm/pull/463): Moves verification that the `Output::ContractCreated` 
+output contains valid `contract_id` and `state_root`(the values from the `Output` match with calculated 
+values from the bytecode, storage slots, and salt) from `fuel-vm` to `fuel-tx`. 
+It means the end-user will receive this error earlier on the SDK side before `dry_run` instead of after.
 
 ### Fixed
 

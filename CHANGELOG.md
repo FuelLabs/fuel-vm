@@ -12,6 +12,9 @@ Description of the upcoming release here.
 
 #### Breaking
 
+- [#462](https://github.com/FuelLabs/fuel-vm/pull/462): Adds a `cache` parameter to `Input::check` and `Input::check_signature`.
+    This is used to avoid redundant signature recovery when multiple inputs share the same witness index.
+
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/386): The coin and message inputs 
     got a new field - `predicate_gas_used`. So it breaks the constructor API 
     of these inputs.

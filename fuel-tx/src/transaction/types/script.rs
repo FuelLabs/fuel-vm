@@ -15,11 +15,12 @@ use fuel_types::{
     fmt_truncated_hex, mem_layout, MemLayout, MemLocType,
 };
 
-#[cfg(feature = "std")]
-use std::io;
-
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -141,10 +142,12 @@ impl FormatValidityChecks for Script {
 
         let id = self.id(chain_id);
 
-        self.inputs()
-            .iter()
-            .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, chain_id))?;
+        // There will be at most len(witnesses) signatures to cache
+        let mut recovery_cache = Some(HashMap::with_capacity(self.witnesses().len()));
+
+        self.inputs().iter().enumerate().try_for_each(|(index, input)| {
+            input.check_signature(index, &id, &self.witnesses, chain_id, &mut recovery_cache)
+        })?;
 
         Ok(())
     }

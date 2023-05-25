@@ -1,5 +1,5 @@
 use fuel_types::bytes::{self, WORD_SIZE};
-use fuel_types::fmt_truncated_hex;
+use fuel_types::{fmt_truncated_hex, Address};
 
 #[cfg(feature = "random")]
 use rand::{
@@ -9,7 +9,9 @@ use rand::{
 
 use alloc::vec::Vec;
 
+use crate::{CheckError, Input, TxId};
 use derivative::Derivative;
+use fuel_crypto::{Message, Signature};
 #[cfg(feature = "std")]
 use std::io;
 
@@ -32,6 +34,21 @@ impl Witness {
 
     pub fn into_inner(self) -> Vec<u8> {
         self.data
+    }
+
+    /// ECRecover an address from a witness
+    #[cfg(feature = "std")]
+    pub fn recover_witness(&self, txhash: &TxId, witness_index: usize) -> Result<Address, CheckError> {
+        let bytes = <[u8; Signature::LEN]>::try_from(self.as_ref())
+            .map_err(|_| CheckError::InputInvalidSignature { index: witness_index })?;
+        let signature = Signature::from_bytes(bytes);
+
+        let message = Message::from_bytes_ref(txhash);
+
+        signature
+            .recover(message)
+            .map_err(|_| CheckError::InputInvalidSignature { index: witness_index })
+            .map(|pk| Input::owner(&pk))
     }
 }
 

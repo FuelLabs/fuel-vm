@@ -15,11 +15,13 @@ use fuel_types::{
     mem_layout, MemLayout, MemLocType,
 };
 
-#[cfg(feature = "std")]
-use std::io;
-
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use core::cmp::max;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::io;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -115,10 +117,12 @@ impl FormatValidityChecks for Create {
 
         let id = self.id(chain_id);
 
-        self.inputs()
-            .iter()
-            .enumerate()
-            .try_for_each(|(index, input)| input.check_signature(index, &id, &self.witnesses, chain_id))?;
+        // There will be at most len(witnesses) - 1 signatures to cache, as one of the witnesses will be bytecode
+        let mut recovery_cache = Some(HashMap::with_capacity(max(self.witnesses().len() - 1, 1)));
+
+        self.inputs().iter().enumerate().try_for_each(|(index, input)| {
+            input.check_signature(index, &id, &self.witnesses, chain_id, &mut recovery_cache)
+        })?;
 
         Ok(())
     }

@@ -1,14 +1,14 @@
 use crate::{Input, Output, Transaction, Witness};
 use core::hash::Hash;
 
-use fuel_types::{AssetId, BlockHeight, ChainId};
+use fuel_types::{Address, AssetId, BlockHeight, ChainId};
 
 #[cfg(feature = "std")]
 use fuel_types::Bytes32;
 
-#[cfg(feature = "std")]
-use fuel_crypto::{Message, Signature};
 use itertools::Itertools;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 mod error;
 
@@ -27,9 +27,10 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         parameters: &ConsensusParameters,
+        recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
         self.check_without_signature(index, outputs, witnesses, parameters)?;
-        self.check_signature(index, txhash, witnesses, &parameters.chain_id)?;
+        self.check_signature(index, txhash, witnesses, &parameters.chain_id, recovery_cache)?;
 
         Ok(())
     }
@@ -41,6 +42,7 @@ impl Input {
         txhash: &Bytes32,
         witnesses: &[Witness],
         chain_id: &ChainId,
+        recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
         match self {
             Self::CoinSigned(CoinSigned {
@@ -56,23 +58,31 @@ impl Input {
                 recipient: owner,
                 ..
             }) => {
-                let witness = witnesses
-                    .get(*witness_index as usize)
-                    .ok_or(CheckError::InputWitnessIndexBounds { index })?
-                    .as_ref();
+                // Helper function for recovering the address from a witness
+                let recover_address = || -> Result<Address, CheckError> {
+                    let witness = witnesses
+                        .get(*witness_index as usize)
+                        .ok_or(CheckError::InputWitnessIndexBounds { index })?;
 
-                let bytes = <[u8; Signature::LEN]>::try_from(witness)
-                    .map_err(|_| CheckError::InputInvalidSignature { index })?;
-                let signature = Signature::from_bytes(bytes);
+                    witness.recover_witness(txhash, *witness_index as usize)
+                };
 
-                let message = Message::from_bytes_ref(txhash);
+                // recover the address associated with a witness, using the cache if available
+                let recovered_address = if let Some(cache) = recovery_cache {
+                    if let Some(recovered_address) = cache.get(witness_index) {
+                        recovered_address.clone()
+                    } else {
+                        // if this witness hasn't been recovered before,
+                        // cache ecrecover by witness index
+                        let recovered_address = recover_address()?;
+                        cache.insert(*witness_index, recovered_address);
+                        recovered_address
+                    }
+                } else {
+                    recover_address()?
+                };
 
-                let pk = signature
-                    .recover(message)
-                    .map_err(|_| CheckError::InputInvalidSignature { index })
-                    .map(|pk| Input::owner(&pk))?;
-
-                if owner != &pk {
+                if owner != &recovered_address {
                     return Err(CheckError::InputInvalidSignature { index });
                 }
 

@@ -17,8 +17,8 @@ use fuel_asm::{PanicReason, RegId};
 use fuel_tx::input::coin::CoinPredicate;
 use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_tx::{
-    field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
+    field::{ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
+    Chargeable, ConsensusParameters, Contract, Create, Input, Receipt, ScriptExecutionResult,
 };
 use fuel_types::Word;
 
@@ -206,21 +206,19 @@ where
             .limit()
             .checked_sub(create.gas_used_by_predicates())
             .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
+
+        let metadata = create.metadata().as_ref();
+        debug_assert!(metadata.is_some(), "`deploy_inner` is called without cached metadata");
         let salt = create.salt();
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
-        let root = contract.root();
-        let storage_root = Contract::initial_state_root(storage_slots.iter());
-        let id = contract.id(salt, &root, &storage_root);
-
-        // TODO: Move this check to `fuel-tx`.
-        if !create
-            .outputs()
-            .iter()
-            .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
-        {
-            return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
-        }
+        let root = metadata.map(|m| m.contract_root).unwrap_or(contract.root());
+        let storage_root = metadata
+            .map(|m| m.state_root)
+            .unwrap_or(Contract::initial_state_root(storage_slots.iter()));
+        let id = metadata
+            .map(|m| m.contract_id)
+            .unwrap_or(contract.id(salt, &root, &storage_root));
 
         // Prevent redeployment of contracts
         if storage

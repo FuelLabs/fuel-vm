@@ -331,7 +331,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             .iter()
             .for_each(|(k, _)| tx.sign_inputs(k, &self.parameters.chain_id));
 
-        tx.precompute(&self.parameters.chain_id);
+        tx.precompute(&self.parameters.chain_id)
+            .expect("Should be able to calculate cache");
 
         tx
     }
@@ -342,7 +343,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.parameters.chain_id);
+        tx.precompute(&self.parameters.chain_id)
+            .expect("Should be able to calculate cache");
 
         tx
     }
@@ -365,7 +367,8 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.parameters.chain_id);
+        tx.precompute(&self.parameters.chain_id)
+            .expect("Should be able to calculate cache");
         tx
     }
 

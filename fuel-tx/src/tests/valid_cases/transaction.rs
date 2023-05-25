@@ -508,14 +508,21 @@ fn create() {
 
     assert_eq!(err, CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },);
 
-    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+    let witness = generate_bytes(rng);
+    let contract = Contract::from(witness.as_ref());
+    let salt = rng.gen();
+    let storage_slots: Vec<StorageSlot> = vec![];
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    let contract_id = contract.id(&salt, &contract.root(), &state_root);
+
+    let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .add_output(Output::contract_created(contract_id, state_root))
+        .add_output(Output::contract_created(contract_id, state_root))
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");

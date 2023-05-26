@@ -1,4 +1,3 @@
-use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 use crate::prelude::RuntimeError;
@@ -97,10 +96,8 @@ impl RuntimeBalances {
         let value = balance.value();
         let offset = balance.offset();
 
-        let offset = offset + AssetId::LEN;
-        let range = CheckedMemRange::new_const::<WORD_SIZE>(offset as Word)?;
-
-        memory.write_bytes_unchecked(range.start(), &value.to_be_bytes())?;
+        let offset = offset.saturating_add(AssetId::LEN);
+        memory.force_write_bytes(offset, &value.to_be_bytes());
 
         Ok(value)
     }
@@ -145,12 +142,8 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory
-                .write_bytes_unchecked(ofs, &*asset)
-                .expect("the memory access is in bounds");
-            vm.memory
-                .write_bytes_unchecked(ofs + AssetId::LEN, &value.to_be_bytes())
-                .expect("the memory access is in bounds");
+            vm.memory.force_write_bytes(ofs, &*asset);
+            vm.memory.force_write_bytes(ofs + AssetId::LEN, &value.to_be_bytes());
         });
 
         vm.balances = self;

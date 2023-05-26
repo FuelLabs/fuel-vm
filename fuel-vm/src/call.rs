@@ -1,12 +1,12 @@
 //! Inter-contract call supporting structures
 
-use fuel_asm::{PanicReason, RegId};
+use fuel_asm::RegId;
 use fuel_types::bytes::{self, SizedBytes};
 use fuel_types::{mem_layout, AssetId, ContractId, MemLayout, MemLocType, Word};
 
 use crate::consts::WORD_SIZE;
 use crate::consts::*;
-use std::io::{self, Write};
+use std::io::{self};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -56,6 +56,7 @@ impl Call {
         (self.to, self.a, self.b)
     }
 
+    /// Restore a call structure from a byte array.
     pub fn from_bytes(bytes: [u8; Self::LEN]) -> Self {
         let to = bytes::restore_at(&bytes, Self::layout(Self::LAYOUT.to));
         let a = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.a));
@@ -97,13 +98,7 @@ impl io::Write for Call {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
-        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
-        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
-
-        self.to = to.into();
-        self.a = a;
-        self.b = b;
+        *self = Self::from(*buf);
 
         Ok(Self::LEN)
     }
@@ -113,15 +108,12 @@ impl io::Write for Call {
     }
 }
 
-impl TryFrom<&[u8]> for Call {
-    type Error = PanicReason;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, PanicReason> {
-        let mut call = Self::default();
-
-        call.write(bytes).map_err(|_| PanicReason::MalformedCallStructure)?;
-
-        Ok(call)
+impl From<[u8; Call::LEN]> for Call {
+    fn from(bytes: [u8; Call::LEN]) -> Self {
+        let to = bytes::restore_at(&bytes, Self::layout(Self::LAYOUT.to));
+        let a = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.b));
+        Self { to: to.into(), a, b }
     }
 }
 

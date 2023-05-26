@@ -1,6 +1,6 @@
 use super::internal::{clear_err, inc_pc, set_err};
 use super::memory::OwnershipRegisters;
-use super::{ExecutableTransaction, Interpreter, VmMemory};
+use super::{ExecutableTransaction, Interpreter, MemoryRange, VmMemory};
 use crate::constraints::reg_key::*;
 use crate::consts::{MEM_MAX_ACCESS_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
 use crate::error::RuntimeError;
@@ -54,18 +54,18 @@ pub(crate) fn ecrecover(
     }
 
     // TODO: These casts may overflow/truncate on 32-bit?
-    let (a, b, bx, c, cx) = (a as usize, b as usize, bx as usize, c as usize, cx as usize);
+    let (a, b, c) = (a as usize, b as usize, c as usize);
 
     let signature = Signature::from_bytes(memory.read_bytes(b).expect("bounds checked"));
     let message = Message::from_bytes(memory.read_bytes(c).expect("bounds checked"));
 
     match signature.recover(&message) {
         Ok(pub_key) => {
-            memory.try_write(owner, a, pub_key.as_ref())?;
+            memory.write_slice(owner, a, pub_key.as_ref())?;
             clear_err(err);
         }
         Err(_) => {
-            memory.try_clear(owner, a, PublicKey::LEN)?;
+            memory.try_clear(owner, MemoryRange::try_new_usize(a, PublicKey::LEN)?)?;
             set_err(err);
         }
     }
@@ -99,7 +99,7 @@ pub(crate) fn keccak256(
     memory
         .read_into(b, c, &mut h)
         .expect("Unreachabled! Bounds checked already");
-    memory.try_write(owner, a, h.finalize().as_slice())?;
+    memory.write_slice(owner, a, h.finalize().as_slice())?;
 
     inc_pc(pc)
 }
@@ -130,7 +130,7 @@ pub(crate) fn sha256(
         h.input(&[*b]);
     }
 
-    memory.try_write(owner, a, h.finalize().as_ref())?;
+    memory.write_slice(owner, a, h.finalize().as_ref())?;
 
     inc_pc(pc)
 }

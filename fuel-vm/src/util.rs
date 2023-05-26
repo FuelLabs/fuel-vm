@@ -344,8 +344,13 @@ pub mod test_helpers {
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.params.tx_offset();
-            let tx_mem = &interpreter.memory()[tx_offset..(tx_offset + transaction.serialized_size())];
-            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            let tx_mem: Vec<u8> = interpreter
+                .memory()
+                .read(tx_offset, transaction.serialized_size())
+                .unwrap()
+                .copied()
+                .collect();
+            let deser_tx = Transaction::from_bytes(&tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);
 

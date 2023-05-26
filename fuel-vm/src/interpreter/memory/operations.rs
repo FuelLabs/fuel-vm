@@ -1,6 +1,6 @@
 use super::super::internal::inc_pc;
 use super::super::{ExecutableTransaction, Interpreter};
-use super::{OwnershipRegisters, VmMemory};
+use super::{AllocatedPages, MemoryRange, OwnershipRegisters, VmMemory};
 use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::error::RuntimeError;
@@ -43,13 +43,29 @@ where
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { hp, sp, pc, .. }, _) = split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a)
+        let (SystemRegisters { mut hp, sp, .. }, _) = split_registers(&mut self.registers);
+        let (result, overflow) = hp.overflowing_sub(a);
+        if overflow || result < *sp {
+            Err(PanicReason::MemoryOverflow.into())
+        } else {
+            *hp = result;
+            let AllocatedPages(pages_allocated) = self
+                .memory
+                .update_allocations(*sp, *hp)
+                .map_err(|_| RuntimeError::Recoverable(PanicReason::OutOfMemory))?;
+
+            // TODO: gas price for the page
+            self.gas_charge((pages_allocated as u64) * 10)?;
+
+            let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
+            inc_pc(pc)
+        }
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        self.memory.try_clear(owner, a as usize, b as usize)?;
+        let range = MemoryRange::try_new(a, b)?;
+        self.memory.try_clear(owner, range)?;
         inc_pc(self.registers.pc_mut())
     }
 
@@ -122,15 +138,13 @@ pub(crate) fn store_byte(
     c: Word,
 ) -> Result<(), RuntimeError> {
     let (ac, overflow) = a.overflowing_add(c);
-    let range = ac..(ac + 1);
-    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range)) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        // TODO
-        // memory.set_at(ac as usize, b as u8)?;
-
-        inc_pc(pc)
+    if overflow {
+        return Err(PanicReason::MemoryOverflow.into());
     }
+
+    memory.set_at(owner, ac as usize, b as u8)?;
+
+    inc_pc(pc)
 }
 
 pub(crate) fn store_word(
@@ -147,18 +161,6 @@ pub(crate) fn store_word(
     inc_pc(pc)
 }
 
-pub(crate) fn malloc(mut hp: RegMut<HP>, sp: Reg<SP>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
-    let (result, overflow) = hp.overflowing_sub(a);
-
-    if overflow || result < *sp {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *hp = result;
-
-        inc_pc(pc)
-    }
-}
-
 pub(crate) fn memeq(
     memory: &mut VmMemory,
     result: &mut Word,
@@ -167,19 +169,18 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> Result<(), RuntimeError> {
-    let (bd, overflow) = b.overflowing_add(d);
-    let (cd, of) = c.overflowing_add(d);
-    let overflow = overflow || of;
-
-    if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        let eq = memory
-            .read_range(b as usize..bd as usize)?
-            .zip(memory.read_range(c as usize..cd as usize)?)
-            .all(|(a, b)| a == b);
-        *result = eq as Word;
-
-        inc_pc(pc)
+    if d > MEM_MAX_ACCESS_SIZE {
+        return Err(PanicReason::MemoryOverflow.into());
     }
+
+    let range0 = MemoryRange::try_new(b, d)?;
+    let range1 = MemoryRange::try_new(c, d)?;
+
+    let eq = memory
+        .read_range(range0)?
+        .zip(memory.read_range(range1)?)
+        .all(|(a, b)| a == b);
+    *result = eq as Word;
+
+    inc_pc(pc)
 }

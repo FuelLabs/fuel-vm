@@ -40,8 +40,7 @@ impl OwnershipRegisters {
         }
     }
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (start_incl, end_excl) = range.boundaries(self);
-        let range = start_incl..end_excl;
+        let range = range.as_words();
         self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
     }
 

@@ -10,17 +10,17 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn verify_predicate(&mut self) -> Result<ProgramState, InterpreterError> {
-        let (start, end) = self
+        let range = self
             .context
             .predicate()
-            .map(|p| p.program().boundaries(&self.ownership_registers()))
+            .map(|p| p.program().as_words())
             .ok_or(InterpreterError::PredicateFailure)?;
 
-        self.registers[RegId::PC] = start;
-        self.registers[RegId::IS] = start;
+        self.registers[RegId::PC] = range.start;
+        self.registers[RegId::IS] = range.start;
 
         loop {
-            if end <= self.registers[RegId::PC] {
+            if range.end <= self.registers[RegId::PC] {
                 return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
             }
 

@@ -2,7 +2,6 @@
 
 use crate::interpreter::MemoryRange;
 
-use fuel_asm::Word;
 use fuel_tx::{field, ConsensusParameters};
 
 /// Runtime representation of a predicate
@@ -31,10 +30,11 @@ impl RuntimePredicate {
     where
         T: field::Inputs,
     {
-        tx.inputs_predicate_offset_at(idx)
-            .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
-            .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self { program, idx })
+        tx.inputs_predicate_offset_at(idx).and_then(|(ofs, len)| {
+            let start = ofs.checked_add(params.tx_offset())?;
+            let program = MemoryRange::try_new_usize(start, len).ok()?;
+            Some(Self { program, idx })
+        })
     }
 }
 

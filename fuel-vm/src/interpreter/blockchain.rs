@@ -1,14 +1,15 @@
 use super::contract::{balance, balance_decrease, contract_size};
 use super::gas::{dependent_gas_charge, ProfileGas};
 use super::internal::{
-    append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_bounds,
-    tx_id, AppendReceipt,
+    append_receipt, base_asset_balance_sub, current_contract, inc_pc, internal_contract, internal_contract_addr, tx_id,
+    AppendReceipt,
 };
 use super::memory::OwnershipRegisters;
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances, VmMemory};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
-use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, CheckedMemValue};
+use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
+use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
@@ -16,7 +17,6 @@ use crate::interpreter::receipts::ReceiptsCtx;
 use crate::interpreter::PanicContext;
 use crate::prelude::Profiler;
 use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
-use crate::{arith, consts::*};
 
 use fuel_asm::PanicReason;
 use fuel_storage::{StorageInspect, StorageSize};
@@ -25,7 +25,6 @@ use fuel_types::{bytes, BlockHeight};
 use fuel_types::{Address, AssetId, Bytes32, ContractId, RegisterId, Word};
 
 use std::borrow::Borrow;
-use std::ops::Range;
 
 #[cfg(test)]
 mod code_tests;
@@ -306,7 +305,8 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        self.memory.clear_unchecked(memory_offset, length).expect("checked");
+        self.memory
+            .force_clear(MemoryRange::try_new_usize(memory_offset, length)?);
 
         // fetch the contract id
         let contract_id: &[u8; ContractId::LEN] = &self
@@ -337,8 +337,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         let code = &contract[..len];
 
         // perform the code copy
-        arith::checked_add_usize(memory_offset, len)?;
-        self.memory.write_unchecked(memory_offset, code)?;
+        self.memory.force_write_slice(memory_offset, code);
 
         self.sp
             //TODO this is looser than the compare against [RegId::HP,RegId::SSP+length]
@@ -352,15 +351,12 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
-            let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
             let length = Word::from_be_bytes(self.memory.read_bytes(fp_code_size)?)
                 .checked_add(length as Word)
                 .ok_or(PanicReason::MemoryOverflow)?;
 
-            self.memory
-                .write_unchecked(fp_code_size, &length.to_be_bytes())
-                .expect("checked");
+            self.memory.force_write_slice(fp_code_size, &length.to_be_bytes());
         }
 
         inc_pc(self.pc)
@@ -379,10 +375,10 @@ where
     S: ContractsAssetsStorage + ?Sized,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    let range = internal_contract_bounds(context, fp)?;
+    let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(range.start()).expect("checked"));
-    let asset_id = AssetId::from(memory.read_bytes(range.start()).expect("checked"));
+    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
+    let asset_id = AssetId::from(memory.read_bytes(addr as usize).expect("checked"));
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
@@ -406,10 +402,10 @@ where
     S: ContractsAssetsStorage + ?Sized,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    let range = internal_contract_bounds(context, fp)?;
+    let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(range.start()).expect("Checked!"));
-    let asset_id = AssetId::from(memory.read_bytes(range.start()).expect("Checked!"));
+    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
+    let asset_id = AssetId::from(memory.read_bytes(addr as usize).expect("checked"));
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = checked_add_word(balance, a)?;
@@ -436,7 +432,6 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
         let cd = checked_add_word(c, d)?;
 
         if d > MEM_MAX_ACCESS_SIZE || a > checked_sub_word(VM_MAX_RAM, d)? || cd > VM_MAX_RAM {
@@ -446,7 +441,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         let (a, c, d) = (a as usize, c as usize, d as usize);
         let cd = cd as usize;
 
-        let contract = ContractId::new(contract.read(self.memory));
+        let contract = ContractId::from(self.memory.read_bytes(b as usize)?);
 
         if !self.input_contracts.any(|input| *input == contract) {
             *self.panic_context = PanicContext::ContractId(contract);
@@ -456,9 +451,10 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         let contract = super::contract::contract(self.storage, &contract)?.into_owned();
 
         if contract.as_ref().len() < d {
-            self.memory.try_clear(self.owner, a, d)?;
+            let range = MemoryRange::try_new_usize(a, d)?;
+            self.memory.try_clear(self.owner, range)?;
         } else {
-            self.memory.try_write(self.owner, a, &contract.as_ref()[c..cd])?;
+            self.memory.write_slice(self.owner, a, &contract.as_ref()[c..cd])?;
         }
 
         inc_pc(self.pc)
@@ -476,7 +472,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
     let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
-    memory.try_write(owner, a as usize, hash.as_ref())?;
+    memory.write_slice(owner, a as usize, hash.as_ref())?;
 
     inc_pc(pc)
 }
@@ -501,7 +497,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     storage
         .coinbase()
         .map_err(RuntimeError::from_io)
-        .and_then(|data| memory.try_write(owner, a as usize, data.as_ref()))?;
+        .and_then(|data| memory.write_slice(owner, a as usize, data.as_ref()))?;
 
     inc_pc(pc)
 }
@@ -518,13 +514,12 @@ where
     S: InterpreterStorage,
 {
     let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-    let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
     if ax > VM_MAX_RAM {
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let contract_id = ContractId::new(contract_id.read(memory));
+    let contract_id = ContractId::from(memory.read_bytes(b as usize)?);
 
     let (_, root) = storage
         .storage_contract_root(&contract_id)
@@ -533,7 +528,7 @@ where
         .map_err(RuntimeError::from_io)?
         .into_owned();
 
-    memory.try_write(owner, a as usize, root.as_ref())?;
+    memory.write_slice(owner, a as usize, root.as_ref())?;
 
     inc_pc(pc)
 }
@@ -556,9 +551,7 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
         S: StorageSize<ContractsRawCode>,
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
     {
-        let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
-
-        let contract_id = ContractId::new(contract_id.read(self.memory));
+        let contract_id = ContractId::from(self.memory.read_bytes(b as usize)?);
 
         let len = contract_size(self.storage, &contract_id)?;
         let profiler = ProfileGas {
@@ -594,11 +587,8 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     got_result: &mut Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(c)?;
-
+    let key = Bytes32::from(memory.read_bytes(c as usize)?);
     let contract = internal_contract(context, fp, memory)?;
-
-    let key = Bytes32::new(key.read(memory));
 
     let value = storage
         .merkle_contract_state(&contract, &key)
@@ -624,13 +614,12 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     exists: &mut Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(a)?;
+    let key = Bytes32::from(memory.read_bytes(a as usize)?);
 
-    let contract = internal_contract_bounds(context, fp)?;
+    let addr = internal_contract_addr(context, fp)?;
 
     // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::new(contract.read(memory));
-    let key = Bytes32::new(key.read(memory));
+    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
 
     let mut value = Bytes32::default();
 
@@ -695,7 +684,7 @@ where
     where
         Tx: ExecutableTransaction,
     {
-        let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(self.recipient_mem_address)?;
+        let recipient = Address::from(self.memory.read_bytes(self.recipient_mem_address as usize)?);
 
         if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
             return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
@@ -705,9 +694,7 @@ where
             return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
-        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
-
-        let recipient = recipient_address.from(self.memory)?;
+        let msg_data_range = MemoryRange::try_new(self.msg_data_ptr, self.msg_data_len)?;
 
         // validations passed, perform the mutations
 
@@ -722,10 +709,9 @@ where
             base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
         }
 
-        let sender = CheckedMemConstLen::<{ Address::LEN }>::new(*self.fp)?;
+        let sender = Address::from(self.memory.read_bytes(*self.fp as usize)?);
         let txid = tx_id(self.memory);
-        let msg_data = msg_data_range.read_to_vec(self.memory);
-        let sender = Address::from(sender.read(self.memory));
+        let msg_data: Vec<u8> = self.memory.read_range(msg_data_range)?.copied().collect();
 
         let receipt = Receipt::message_out_from_tx_output(
             &txid,
@@ -753,10 +739,10 @@ where
 struct StateReadQWord {
     /// The destination memory address is
     /// stored in this range of memory.
-    destination_address_memory_range: Range<usize>,
+    destination_address_memory_range: MemoryRange,
     /// The starting storage key location is stored
     /// in this range of memory.
-    origin_key_memory_range: CheckedMemConstLen<{ Bytes32::LEN }>,
+    origin_key_ptr: TypedMemoryPtr<Bytes32, { Bytes32::LEN }>,
     /// Number of slots to read.
     num_slots: Word,
 }
@@ -768,27 +754,22 @@ impl StateReadQWord {
         num_slots: Word,
         ownership_registers: OwnershipRegisters,
     ) -> Result<Self, RuntimeError> {
-        let mem_range = MemoryRange::new(
+        let mem_range = MemoryRange::try_new(
             destination_memory_address,
             (Bytes32::LEN as Word).saturating_mul(num_slots),
-        );
+        )?;
         if !ownership_registers.has_ownership_range(&mem_range) {
             return Err(PanicReason::MemoryOwnership.into());
         }
         if ownership_registers.context.is_external() {
             return Err(PanicReason::ExpectedInternalContext.into());
         }
-        let dest_end = checked_add_word(
-            destination_memory_address,
-            Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
-        )?;
-        let origin_key_memory_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(origin_key_memory_address)?;
-        if dest_end > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
         Ok(Self {
-            destination_address_memory_range: (destination_memory_address as usize)..(dest_end as usize),
-            origin_key_memory_range,
+            destination_address_memory_range: MemoryRange::try_new(
+                destination_memory_address,
+                Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
+            )?,
+            origin_key_ptr: MemoryPtr::try_new(origin_key_memory_address)?.typed(),
             num_slots,
         })
     }
@@ -802,7 +783,7 @@ fn state_read_qword(
     result_register: &mut Word,
     input: StateReadQWord,
 ) -> Result<(), RuntimeError> {
-    let origin_key = Bytes32::from(input.origin_key_memory_range.read(memory));
+    let origin_key = input.origin_key_ptr.read(memory);
 
     let mut all_set = true;
     let result: Vec<u8> = storage
@@ -820,9 +801,7 @@ fn state_read_qword(
 
     *result_register = all_set as Word;
 
-    memory
-        .write_unchecked(input.destination_address_memory_range.start, &result)
-        .expect("checked");
+    memory.force_write_slice(input.destination_address_memory_range.start, &result);
 
     inc_pc(pc)?;
 
@@ -832,10 +811,10 @@ fn state_read_qword(
 struct StateWriteQWord {
     /// The starting storage key location is stored
     /// in this range of memory.
-    starting_storage_key_memory_range: CheckedMemConstLen<{ Bytes32::LEN }>,
+    starting_storage_key_memory_range: MemoryRange, // TODO: constant size
     /// The source data memory address is
     /// stored in this range of memory.
-    source_address_memory_range: Range<usize>,
+    source_address_memory_range: MemoryRange,
 }
 
 impl StateWriteQWord {
@@ -844,17 +823,13 @@ impl StateWriteQWord {
         source_memory_address: Word,
         num_slots: Word,
     ) -> Result<Self, RuntimeError> {
-        let source_end = checked_add_word(
-            source_memory_address,
-            Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
-        )?;
         let starting_storage_key_memory_range =
-            CheckedMemConstLen::<{ Bytes32::LEN }>::new(starting_storage_key_memory_address)?;
-        if source_end > VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
+            MemoryRange::try_new(starting_storage_key_memory_address, Bytes32::LEN as Word)?;
         Ok(Self {
-            source_address_memory_range: (source_memory_address as usize)..(source_end as usize),
+            source_address_memory_range: MemoryRange::try_new(
+                source_memory_address,
+                Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
+            )?,
             starting_storage_key_memory_range,
         })
     }
@@ -868,7 +843,7 @@ fn state_write_qword(
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
-    let destination_key = Bytes32::new(input.starting_storage_key_memory_range.read(memory));
+    let destination_key = Bytes32::from(memory.read_bytes(input.starting_storage_key_memory_range.start)?);
 
     // TODO: switch to stdlib array_chunks when it's stable: https://github.com/rust-lang/rust/issues/100450
     let values: Vec<_> = itermore::IterArrayChunks::array_chunks(
@@ -894,17 +869,16 @@ fn state_write_qword(
 struct StateClearQWord {
     /// The starting storage key location is stored
     /// in this range of memory.
-    start_storage_key_memory_range: CheckedMemConstLen<{ Bytes32::LEN }>,
+    start_storage_key_ptr: TypedMemoryPtr<Bytes32, { Bytes32::LEN }>,
     /// Number of slots to read.
     num_slots: Word,
 }
 
 impl StateClearQWord {
     fn new(start_storage_key_memory_address: Word, num_slots: Word) -> Result<Self, RuntimeError> {
-        let start_storage_key_memory_range =
-            CheckedMemConstLen::<{ Bytes32::LEN }>::new(start_storage_key_memory_address)?;
+        let start_storage_key_ptr = MemoryPtr::try_new(start_storage_key_memory_address)?.typed();
         Ok(Self {
-            start_storage_key_memory_range,
+            start_storage_key_ptr,
             num_slots,
         })
     }
@@ -918,7 +892,7 @@ fn state_clear_qword(
     result_register: &mut Word,
     input: StateClearQWord,
 ) -> Result<(), RuntimeError> {
-    let start_key = Bytes32::new(input.start_storage_key_memory_range.read(memory));
+    let start_key = input.start_storage_key_ptr.read(memory);
 
     let all_previously_set = storage
         .merkle_contract_state_remove_range(contract_id, &start_key, input.num_slots)

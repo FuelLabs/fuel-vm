@@ -1,8 +1,6 @@
-use super::VmMemory;
 use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{MemoryRange, VmMemory};
 use crate::constraints::reg_key::*;
-use crate::constraints::CheckedMemConstLen;
-use crate::constraints::CheckedMemRange;
 use crate::context::Context;
 use crate::error::RuntimeError;
 
@@ -58,35 +56,22 @@ fn absolute_output_offset<Tx: Outputs>(tx: &Tx, tx_offset: usize, idx: usize) ->
     tx.outputs_offset_at(idx).map(|offset| tx_offset + offset)
 }
 
-pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
-    tx: &Tx,
-    tx_offset: usize,
-    idx: usize,
-    memory_constraint: Option<core::ops::Range<Word>>,
-) -> Result<Option<CheckedMemRange>, RuntimeError> {
-    absolute_output_offset(tx, tx_offset, idx)
-        .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.serialized_size())))
-        .map_or(Ok(None), |(offset, output_size)| match memory_constraint {
-            Some(constraint) => Ok(Some(CheckedMemRange::new_with_constraint(
-                offset as u64,
-                output_size,
-                constraint,
-            )?)),
-            None => Ok(Some(CheckedMemRange::new(offset as u64, output_size)?)),
-        })
-}
-
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
     memory: &mut VmMemory,
     tx_offset: usize,
     idx: usize,
 ) -> Result<(), RuntimeError> {
-    let mem_range = absolute_output_mem_range(tx, tx_offset, idx, None)?.ok_or(PanicReason::OutputNotFound)?;
-    todo!("???");
-    // let mem = mem_range.write(memory);
+    let range = absolute_output_offset(tx, tx_offset, idx)
+        .and_then(|offset| {
+            tx.outputs()
+                .get(idx)
+                .map(|output| MemoryRange::try_new_usize(offset, output.serialized_size()))
+        })
+        .ok_or(PanicReason::OutputNotFound)??;
 
-    // tx.output_to_mem(idx, mem)?;
+    let mem = memory.force_mut_range(range);
+    tx.output_to_mem(idx, mem)?;
 
     Ok(())
 }
@@ -118,9 +103,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
 
         // Transaction memory space length is already checked on initialization so its
         // guaranteed to fit
-        memory
-            .write_bytes_unchecked(offset, &*root)
-            .expect("unreachable! access is checked to be valid");
+        memory.force_write_bytes(offset, &*root);
     }
 }
 
@@ -139,7 +122,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
         debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
-        self.memory.write_unchecked(ssp as usize, data)?;
+        self.memory.force_write_slice(ssp as usize, data);
 
         Ok(())
     }
@@ -249,16 +232,13 @@ pub(crate) fn internal_contract(
     register: Reg<FP>,
     memory: &VmMemory,
 ) -> Result<ContractId, RuntimeError> {
-    let range = internal_contract_bounds(context, register)?;
-    Ok(ContractId::from(range.read(memory)))
+    let addr = internal_contract_addr(context, register)?;
+    Ok(ContractId::from(memory.read_bytes(addr as usize)?))
 }
 
-pub(crate) fn internal_contract_bounds(
-    context: &Context,
-    fp: Reg<FP>,
-) -> Result<CheckedMemConstLen<{ ContractId::LEN }>, RuntimeError> {
+pub(crate) fn internal_contract_addr(context: &Context, fp: Reg<FP>) -> Result<Word, RuntimeError> {
     if context.is_internal() {
-        CheckedMemConstLen::new(*fp)
+        Ok(*fp) // TODO: use MemoryAddr type
     } else {
         Err(PanicReason::ExpectedInternalContext.into())
     }

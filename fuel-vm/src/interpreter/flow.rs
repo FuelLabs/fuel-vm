@@ -4,11 +4,10 @@ use super::internal::{
     append_receipt, current_contract, external_asset_id_balance_sub, inc_pc, internal_contract_or_default,
     set_frame_pointer, AppendReceipt,
 };
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances, VmMemory};
+use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances, VmMemory};
 use crate::arith;
 use crate::call::{Call, CallFrame};
-use crate::constraints::reg_key::*;
-use crate::constraints::*;
+use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
@@ -391,8 +390,8 @@ impl<'a> PrepareCallRegisters<'a> {
 
 struct PrepareCallMemory<'a> {
     memory: &'a mut VmMemory,
-    call_params: CheckedMemValue<Call>,
-    asset_id: CheckedMemValue<AssetId>,
+    call_params: TypedMemoryPtr<Call, { Call::LEN }>,
+    asset_id: TypedMemoryPtr<AssetId, { AssetId::LEN }>,
 }
 
 struct PrepareCallCtx<'vm, S> {
@@ -420,8 +419,8 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let call = Call::from_bytes(self.memory.call_params.read_array(self.memory.memory)?);
-        let asset_id = self.memory.asset_id.from(self.memory.memory)?;
+        let call = self.memory.call_params.read(self.memory.memory);
+        let asset_id = self.memory.asset_id.read(self.memory.memory);
 
         let mut frame = call_frame(self.registers.copy_registers(), &self.storage, call, asset_id)?;
 
@@ -496,7 +495,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         *self.registers.system_registers.sp = arith::checked_add_word(*self.registers.system_registers.sp, len)?;
         *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
 
-        let code_frame_mem_range = CheckedMemRange::new(*self.registers.system_registers.fp, len as usize)?;
+        let code_frame_mem_range = MemoryRange::try_new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(
             &frame,
             frame_bytes,
@@ -540,7 +539,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
 fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
-    code_mem_range: CheckedMemRange,
+    code_mem_range: MemoryRange,
     memory: &mut VmMemory,
     storage: &S,
 ) -> Result<Word, RuntimeError>
@@ -548,31 +547,33 @@ where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
     <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
-    let mut code_frame_range = code_mem_range.clone();
-    // Addition is safe because code size + padding is always less than len
-    code_frame_range.shrink_end((frame.code_size() + frame.code_size_padding()) as usize);
-    memory
-        .write_unchecked(code_frame_range.start(), &frame_bytes)
-        .expect("Unreachable! Checked range");
+    let code_frame_range = code_mem_range.clone();
+    debug_assert_eq!(frame.code_size(), frame_bytes.len() as Word);
+    memory.force_write_slice(code_frame_range.start, &frame_bytes);
 
-    let mut code_range = code_mem_range.clone();
-    code_range.grow_start(CallFrame::serialized_size());
-    code_range.shrink_end(frame.code_size_padding() as usize);
+    let code_range = code_mem_range
+        .subrange(CallFrame::serialized_size(), frame.code_size_padding() as usize)
+        .expect("Bug! code_mem_range not large enough");
+
+    let dst = memory.force_mut_range(code_range);
+
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(frame.to(), &mut [0u8; 1000] /*code_range.write(memory)*/)
+        .read(frame.to(), dst)
         .map_err(RuntimeError::from_io)?
         .ok_or(PanicReason::ContractNotFound)?;
+
     if bytes_read as Word != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into());
     }
 
     if frame.code_size_padding() > 0 {
-        let mut padding_range = code_mem_range;
-        padding_range.grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
-        padding_range.clear(memory);
+        let (_, rest) = code_mem_range
+            .split_at(CallFrame::serialized_size() + frame.code_size() as usize)
+            .expect("Bug! not enough space for padding");
+        memory.force_clear(rest);
     }
-    Ok(code_frame_range.end() as Word)
+    Ok(code_frame_range.end as Word)
 }
 
 fn call_frame<S>(
@@ -663,8 +664,8 @@ impl<'mem> TryFrom<(&'mem mut VmMemory, &PrepareCallParams)> for PrepareCallMemo
     fn try_from((memory, params): (&'mem mut VmMemory, &PrepareCallParams)) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,
-            call_params: CheckedMemValue::new::<{ Call::LEN }>(params.call_params_mem_address)?,
-            asset_id: CheckedMemValue::new::<{ AssetId::LEN }>(params.asset_id_mem_address)?,
+            call_params: MemoryPtr::try_new(params.call_params_mem_address)?.typed(),
+            asset_id: MemoryPtr::try_new(params.asset_id_mem_address)?.typed(),
         })
     }
 }

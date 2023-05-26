@@ -82,8 +82,10 @@ pub enum PanicReason {
     ArithmeticError = 0x23,
     /// The contract instruction is not allowed in predicates.
     ContractInstructionNotAllowed = 0x24,
+    /// Attempting to allocate stack or heap memory so that sp and hp would collide.
+    OutOfMemory = 0x25,
     /// The byte can't be mapped to any known `PanicReason`.
-    UnknownPanicReason = 0x25,
+    UnknownPanicReason = 0x26,
 }
 
 impl fmt::Display for PanicReason {
@@ -157,6 +159,7 @@ impl TryFrom<u8> for PanicReason {
             0x22 => MessageDataTooLong,
             0x23 => ArithmeticError,
             0x24 => ContractInstructionNotAllowed,
+            0x25 => OutOfMemory,
             _ => UnknownPanicReason,
         };
 

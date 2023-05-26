@@ -161,8 +161,7 @@ mod tests {
     {
         let mut tx_p = tx.clone();
 
-        let mut tx_q = tx.clone();
-        tx_q.precompute(&ConsensusParameters::DEFAULT.chain_id);
+        let tx_q = tx.clone();
 
         f(&mut tx_p);
 
@@ -184,8 +183,7 @@ mod tests {
 
         f(&mut tx_p);
 
-        let mut tx_q = tx_p.clone();
-        tx_q.precompute(&ConsensusParameters::DEFAULT.chain_id);
+        let tx_q = tx_p.clone();
 
         assert_ne!(
             tx.id(&ConsensusParameters::DEFAULT.chain_id),

@@ -63,6 +63,9 @@ pub enum CheckError {
     TransactionCreateOutputChangeNotBaseAsset {
         index: usize,
     },
+    TransactionCreateOutputContractCreatedDoesntMatch {
+        index: usize,
+    },
     TransactionCreateOutputContractCreatedMultiple {
         index: usize,
     },

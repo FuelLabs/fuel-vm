@@ -9,7 +9,7 @@ use crate::transaction::{
 };
 use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, TxId, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, AssetId, BlockHeight, ChainId, Salt, Word};
+use fuel_types::{bytes, AssetId, BlockHeight, Bytes32, ChainId, ContractId, Salt, Word};
 use fuel_types::{
     bytes::{SizedBytes, WORD_SIZE},
     mem_layout, MemLayout, MemLocType,
@@ -27,6 +27,59 @@ use std::io;
 mod ser_de_tests;
 
 #[derive(Default, Debug, Clone, Derivative)]
+#[derivative(Eq, PartialEq, Hash)]
+pub struct CreateMetadata {
+    pub contract_id: ContractId,
+    pub contract_root: Bytes32,
+    pub state_root: Bytes32,
+    pub id: Bytes32,
+    pub inputs_offset: usize,
+    pub inputs_offset_at: Vec<usize>,
+    pub inputs_predicate_offset_at: Vec<Option<(usize, usize)>>,
+    pub outputs_offset: usize,
+    pub outputs_offset_at: Vec<usize>,
+    pub witnesses_offset: usize,
+    pub witnesses_offset_at: Vec<usize>,
+}
+
+impl CreateMetadata {
+    /// Computes the `Metadata` for the `tx` transaction.
+    pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
+        let CommonMetadata {
+            id,
+            inputs_offset,
+            inputs_offset_at,
+            inputs_predicate_offset_at,
+            outputs_offset,
+            outputs_offset_at,
+            witnesses_offset,
+            witnesses_offset_at,
+        } = CommonMetadata::compute(tx, chain_id);
+
+        let salt = tx.salt();
+        let storage_slots = tx.storage_slots();
+        let contract = Contract::try_from(tx)?;
+        let contract_root = contract.root();
+        let state_root = Contract::initial_state_root(storage_slots.iter());
+        let contract_id = contract.id(salt, &contract_root, &state_root);
+
+        Ok(Self {
+            contract_id,
+            contract_root,
+            state_root,
+            id,
+            inputs_offset,
+            inputs_offset_at,
+            inputs_predicate_offset_at,
+            outputs_offset,
+            outputs_offset_at,
+            witnesses_offset,
+            witnesses_offset_at,
+        })
+    }
+}
+
+#[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
@@ -42,7 +95,7 @@ pub struct Create {
     pub(crate) salt: Salt,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
-    pub(crate) metadata: Option<CommonMetadata>,
+    pub(crate) metadata: Option<CreateMetadata>,
 }
 
 mem_layout!(
@@ -59,6 +112,12 @@ mem_layout!(
     witnesses_len: Word = WORD_SIZE,
     salt: Salt = {Salt::LEN}
 );
+
+impl Create {
+    pub fn metadata(&self) -> &Option<CreateMetadata> {
+        &self.metadata
+    }
+}
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
@@ -155,9 +214,6 @@ impl FormatValidityChecks for Create {
             return Err(CheckError::TransactionCreateStorageSlotOrder);
         }
 
-        // TODO The computed contract ADDRESS (see below) is not equal to the
-        // contractADDRESS of the one OutputType.ContractCreated output
-
         self.inputs
             .iter()
             .enumerate()
@@ -168,6 +224,17 @@ impl FormatValidityChecks for Create {
                 }
                 _ => Ok(()),
             })?;
+
+        debug_assert!(
+            self.metadata.is_some(),
+            "`check_without_signatures` is called without cached metadata"
+        );
+        let (state_root_calculated, contract_id_calculated) = if let Some(metadata) = &self.metadata {
+            (metadata.state_root, metadata.contract_id)
+        } else {
+            let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
+            (metadata.state_root, metadata.contract_id)
+        };
 
         let mut contract_created = false;
         self.outputs
@@ -180,6 +247,13 @@ impl FormatValidityChecks for Create {
 
                 Output::Change { asset_id, .. } if asset_id != &AssetId::BASE => {
                     Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
+                }
+
+                Output::ContractCreated {
+                    contract_id,
+                    state_root,
+                } if contract_id != &contract_id_calculated || state_root != &state_root_calculated => {
+                    Err(CheckError::TransactionCreateOutputContractCreatedDoesntMatch { index })
                 }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root
@@ -207,9 +281,10 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
         self.metadata = None;
-        self.metadata = Some(CommonMetadata::compute(self, chain_id));
+        self.metadata = Some(CreateMetadata::compute(self, chain_id)?);
+        Ok(())
     }
 }
 
@@ -374,7 +449,7 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(CommonMetadata {
+            if let Some(CreateMetadata {
                 inputs_offset_at: inputs_offset,
                 ..
             }) = &self.metadata
@@ -399,7 +474,7 @@ mod field {
 
         #[inline(always)]
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
-            if let Some(CommonMetadata {
+            if let Some(CreateMetadata {
                 inputs_predicate_offset_at: inputs_predicate_offset,
                 ..
             }) = &self.metadata
@@ -429,7 +504,7 @@ mod field {
 
         #[inline(always)]
         fn outputs_offset(&self) -> usize {
-            if let Some(CommonMetadata { outputs_offset, .. }) = &self.metadata {
+            if let Some(CreateMetadata { outputs_offset, .. }) = &self.metadata {
                 return *outputs_offset;
             }
 
@@ -438,7 +513,7 @@ mod field {
 
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(CommonMetadata {
+            if let Some(CreateMetadata {
                 outputs_offset_at: outputs_offset,
                 ..
             }) = &self.metadata
@@ -475,7 +550,7 @@ mod field {
 
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
-            if let Some(CommonMetadata { witnesses_offset, .. }) = &self.metadata {
+            if let Some(CreateMetadata { witnesses_offset, .. }) = &self.metadata {
                 return *witnesses_offset;
             }
 
@@ -484,7 +559,7 @@ mod field {
 
         #[inline(always)]
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(CommonMetadata {
+            if let Some(CreateMetadata {
                 witnesses_offset_at: witnesses_offset,
                 ..
             }) = &self.metadata

@@ -719,8 +719,7 @@ fn create_input_data_offset() {
                         witnesses.clone(),
                     );
 
-                    let mut tx_p = tx.clone();
-                    tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id);
+                    let tx_p = tx.clone();
 
                     buffer.iter_mut().for_each(|b| *b = 0x00);
                     let _ = tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
@@ -828,7 +827,8 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id);
+                        tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id)
+                            .expect("Should be able to calculate cache");
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);
 

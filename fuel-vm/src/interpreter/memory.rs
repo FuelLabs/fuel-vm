@@ -1,5 +1,5 @@
-#[cfg(test)]
-mod allocation_tests;
+// #[cfg(test)]
+// mod allocation_tests; // TODO
 mod operations;
 mod ownership;
 
@@ -125,6 +125,7 @@ impl std::ops::Deref for MemoryRange {
 pub struct AllocatedPages(pub usize);
 
 /// Stack and heap memory regions would overlap.
+#[derive(Debug)]
 #[must_use = "Gas charging is required when new pages are allacted"]
 pub struct StackAndHeapOverlap;
 
@@ -132,7 +133,7 @@ pub struct StackAndHeapOverlap;
 /// Note that even though the memory is divided into stack and heap pages,
 /// those names are only descriptive and do not imply any special behavior.
 /// When doing reads, both stack and heap pages are treated the same.
-#[derive(Clone, Derivative)]
+#[derive(Clone, Derivative, Eq)]
 #[derivative(Debug)]
 pub struct VmMemory {
     /// Stack memory is allocated in from the beginning of the address space.

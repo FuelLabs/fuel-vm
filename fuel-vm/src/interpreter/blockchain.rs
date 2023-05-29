@@ -838,7 +838,7 @@ impl StateWriteQWord {
 fn state_write_qword(
     contract_id: &ContractId,
     storage: &mut impl InterpreterStorage,
-    memory: &mut VmMemory,
+    memory: &VmMemory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,

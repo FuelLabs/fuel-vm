@@ -1,13 +1,12 @@
 use fuel_crypto::SecretKey;
 
 use crate::context::Context;
-use crate::interpreter::_memory_old::Memory;
 
 use super::*;
 
 #[test]
 fn test_ecrecover() -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -29,8 +28,8 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
     let message = Message::new([3u8; 100]);
     let signature = Signature::sign(&secret, &message);
 
-    memory[sig_address..sig_address + Signature::LEN].copy_from_slice(signature.as_ref());
-    memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
+    memory.force_write_bytes(sig_address, &signature);
+    memory.force_write_bytes(msg_address, &message);
 
     ecrecover(
         &mut memory,
@@ -43,16 +42,14 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
     )?;
     assert_eq!(pc, 8);
     assert_eq!(err, 0);
-    assert_eq!(
-        &memory[recovered as usize..recovered as usize + PublicKey::LEN],
-        public_key.as_ref()
-    );
+    let mem_public_key: [u8; PublicKey::LEN] = memory.read_bytes(recovered as usize).unwrap();
+    assert_eq!(&mem_public_key, public_key.as_ref());
     Ok(())
 }
 
 #[test]
 fn test_keccak256() -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -68,13 +65,15 @@ fn test_keccak256() -> Result<(), RuntimeError> {
     let num_bytes = 100;
     keccak256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
     assert_eq!(pc, 8);
-    assert_ne!(&memory[hash as usize..hash as usize + 32], &[1u8; 32][..]);
+    let hash_bytes: [u8; 32] = memory.read_bytes(hash as usize).unwrap();
+    assert_ne!(&hash_bytes, &[1u8; 32][..]);
     Ok(())
 }
 
 #[test]
 fn test_sha256() -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -90,6 +89,7 @@ fn test_sha256() -> Result<(), RuntimeError> {
     let num_bytes = 100;
     sha256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
     assert_eq!(pc, 8);
-    assert_ne!(&memory[hash as usize..hash as usize + 32], &[1u8; 32][..]);
+    let hash_bytes: [u8; 32] = memory.read_bytes(hash as usize).unwrap();
+    assert_ne!(&hash_bytes, &[1u8; 32][..]);
     Ok(())
 }

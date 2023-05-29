@@ -99,7 +99,8 @@ fn variable_output_updates_in_memory() {
     // verify the vm memory is updated properly
     let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
     let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
-    let _ = mem_output.write(&vm.memory()[position..]).unwrap();
+    let rest: Vec<u8> = vm.memory.iter().skip(position).copied().collect();
+    let _ = mem_output.write(&rest).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
 }
 
@@ -107,5 +108,5 @@ fn variable_output_updates_in_memory() {
 fn test_inc_pc_errors_on_of() {
     let mut pc = Word::MAX - 4;
     inc_pc(RegMut::new(&mut pc)).unwrap();
-    inc_pc(RegMut::new(&mut pc)).expect_err("Expected overflow error");
+    let _ = inc_pc(RegMut::new(&mut pc)).expect_err("Expected overflow error");
 }

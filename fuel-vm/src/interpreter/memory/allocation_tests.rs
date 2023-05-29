@@ -1,3 +1,5 @@
+use crate::{context::Context, constraints::reg_key::{RegMut, Reg}};
+
 use super::*;
 use test_case::test_case;
 
@@ -24,7 +26,7 @@ fn test_malloc(mut hp: Word, sp: Word, a: Word) -> Result<Word, RuntimeError> {
 #[test_case(true, MEM_SIZE as Word - 10, 10 => Ok(()); "Memory range ends at last address")]
 #[test_case(true, 1, MEM_MAX_ACCESS_SIZE + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory range size exceeds limit")]
 fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,
@@ -58,8 +60,10 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 #[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryOverflow.into()); "a <= b < ac")]
 #[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "a < bc <= ac")]
 fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);
+    let mut memory = VmMemory::new();
+    memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM);
+    memory.force_mut_range(MemoryRange::try_new(b, c).unwrap())
+    .copy_from_slice(&vec![2u8; c as usize]);
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,
@@ -93,7 +97,7 @@ fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), Ru
 #[test_case(0, 0, 0 => Ok(()); "smallest input values")]
 #[test_case(0, MEM_MAX_ACCESS_SIZE/2, MEM_MAX_ACCESS_SIZE/2 => Ok(()); "maximum range of addressable memory")]
 fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let r = (b as usize).min(MEM_SIZE)..((b as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
     memory[r].fill(2u8);
     let r = (c as usize).min(MEM_SIZE)..((c as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
@@ -148,7 +152,7 @@ fn test_stack_pointer_overflow(add: bool, mut sp: Word, hp: Word, v: Word) -> Re
 #[test_case(0, VM_MAX_RAM - 1 => Ok(()); "c eq VM_MAX_RAM - 1")]
 #[test_case(u32::MAX as u64, u32::MAX as u64 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "b + c overflow")]
 fn test_load_byte(b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     memory[((b + c) as usize).min(MEM_SIZE - 1)] = 2;
     let mut pc = 4;
     let mut result = 0;
@@ -165,7 +169,7 @@ fn test_load_byte(b: Word, c: Word) -> Result<(), RuntimeError> {
 #[test_case(VM_MAX_RAM, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "b + 8 * c gteq VM_MAX_RAM")]
 fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
     // create a mutable memory with size `MEM_SIZE`
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
 
     // calculate start location where 8 bytes of value will be stored based on `b` and `c` values.
     let start = (b as usize + (c as usize * 8)).min(MEM_SIZE - 8);
@@ -192,7 +196,7 @@ fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
 #[test_case(false, 0, 100, VM_MAX_RAM - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow on stack")]
 #[test_case(true, VM_MAX_RAM, 1, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow by address range")]
 fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,
@@ -220,7 +224,7 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(),
 #[test_case(true, 20, 30, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to memory overflow")]
 #[test_case(false, 20, 30, 40 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to not having ownership of the range")]
 fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
         sp: 0,

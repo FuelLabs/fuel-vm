@@ -1,5 +1,5 @@
 use crate::interpreter::contract::balance as contract_balance;
-use crate::{interpreter::_memory_old::Memory, storage::MemoryStorage};
+use crate::storage::MemoryStorage;
 
 use super::*;
 
@@ -193,9 +193,11 @@ fn test_smo(
 ) -> Result<Output, RuntimeError> {
     let asset = AssetId::zeroed();
 
-    let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
     for (offset, bytes) in mem {
-        memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
+        let range = MemoryRange::try_new_usize(offset, bytes.len()).unwrap();
+        memory.force_mut_range(range).copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();
     let mut tx = Create::default();

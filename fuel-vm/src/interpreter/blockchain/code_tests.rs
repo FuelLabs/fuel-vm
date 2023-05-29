@@ -1,4 +1,3 @@
-use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 
 use super::*;
@@ -7,7 +6,7 @@ use fuel_tx::Contract;
 #[test]
 fn test_load_contract() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let mut pc = 4;
     let hp = 2000;
     let mut ssp = 1000;
@@ -20,8 +19,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory[contract_id_mem_address as usize..contract_id_mem_address as usize + ContractId::LEN]
-        .copy_from_slice(contract_id.as_ref());
+    memory.force_write_bytes(contract_id_mem_address as usize, &contract_id);
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
         .unwrap();
@@ -48,7 +46,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
 #[test]
 fn test_code_copy() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let mut pc = 4;
 
     let contract_id = ContractId::from([4u8; 32]);
@@ -58,8 +56,7 @@ fn test_code_copy() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory[contract_id_mem_address as usize..contract_id_mem_address as usize + ContractId::LEN]
-        .copy_from_slice(contract_id.as_ref());
+    memory.force_write_bytes(contract_id_mem_address as usize, &contract_id);
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
         .unwrap();

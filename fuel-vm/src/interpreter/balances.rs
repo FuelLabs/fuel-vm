@@ -210,11 +210,10 @@ fn writes_to_memory_correctly() {
     assets_sorted
         .iter()
         .fold(VM_MEMORY_BALANCES_OFFSET, |ofs, (asset, value)| {
-            assert_eq!(asset.as_ref(), &memory[ofs..ofs + AssetId::LEN]);
-            assert_eq!(
-                &value.to_be_bytes(),
-                &memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
-            );
+            let mem_asset = AssetId::from(memory.read_bytes(ofs).unwrap());
+            let mem_value = Word::from_be_bytes(memory.read_bytes(ofs + AssetId::LEN).unwrap());
+            assert_eq!(asset, &mem_asset);
+            assert_eq!(value, &mem_value);
 
             ofs + AssetId::LEN + WORD_SIZE
         });

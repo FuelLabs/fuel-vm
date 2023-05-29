@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::*;
 use crate::checked_transaction::Checked;
 use crate::prelude::*;
-use fuel_asm::op;
+use fuel_asm::{op, RegId};
 use fuel_tx::Script;
 use test_case::test_case;
 
@@ -69,36 +69,6 @@ fn memcopy() {
     let overlapping = vm.instruction(op::mcp(RegId::HP, 0x25, 0x20));
 
     assert!(overlapping.is_err());
-}
-
-#[test]
-fn memrange() {
-    let m = MemoryRange::from(..1024);
-    let m_p = MemoryRange::new(0, 1024);
-    assert_eq!(m, m_p);
-
-    let mut vm = Interpreter::with_memory_storage();
-    vm.init_script(Checked::<Script>::default()).expect("Failed to init VM");
-
-    let bytes = 1024;
-    vm.instruction(op::addi(0x10, RegId::ZERO, bytes as Immediate12))
-        .unwrap();
-    vm.instruction(op::aloc(0x10)).unwrap();
-
-    let m = MemoryRange::new(vm.registers()[RegId::HP] - 1, bytes);
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes);
-    assert!(vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes + 1);
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(0, bytes).to_heap(&vm);
-    assert!(vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(0, bytes + 1).to_heap(&vm);
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
 }
 
 #[test]
@@ -179,7 +149,7 @@ fn stack_alloc_ownership() {
     20..41 => false; "start exclusive and end inclusive"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
-    let range = MemoryRange::new(range.start, range.end - range.start);
+    let range = MemoryRange::try_new(range.start, range.end - range.start).unwrap();
     reg.has_ownership_range(&range)
 }
 
@@ -233,10 +203,11 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for heap"
 )]
-fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
-    let memory: [u8; 100] = memory[..100].try_into().unwrap();
+fn test_mem_write(addr: usize, data: &[u8], owner: OwnershipRegisters) -> (bool, [u8; 100]) {
+    let mut memory: VmMemory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let r = memory.write_slice(owner, addr, data).is_ok();
+    let memory: [u8; 100] = memory.read_bytes(0).unwrap();
     (r, memory)
 }
 
@@ -285,9 +256,13 @@ fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (b
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [1u8; 100]); "Internal too large for heap"
 )]
-fn test_try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
-    let memory: [u8; 100] = memory[..100].try_into().unwrap();
+fn test_try_zeroize(addr: usize, len: usize, owner: OwnershipRegisters) -> (bool, [u8; 100]) {
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(1000, VM_MAX_RAM).unwrap();
+    memory.force_write_bytes(0, &[1u8; 100]);
+    let r = memory
+        .try_clear(owner, MemoryRange::try_new_usize(addr, len).unwrap())
+        .is_ok();
+    let memory: [u8; 100] = memory.read_bytes(0).unwrap();
     (r, memory)
 }

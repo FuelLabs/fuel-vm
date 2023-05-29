@@ -1,4 +1,4 @@
-use crate::interpreter::_memory_old::Memory;
+use crate::consts::MEM_SIZE;
 
 use super::*;
 use fuel_tx::Create;
@@ -37,19 +37,17 @@ fn test_absolute_output_offset(tx_offset: usize, idx: usize, num_outputs: usize)
     MEM_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
     ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
-fn test_update_memory_output(tx_offset: usize) -> Result<Memory<MEM_SIZE>, RuntimeError> {
+fn test_update_memory_output(tx_offset: usize) -> Result<VmMemory, RuntimeError> {
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![Output::default()];
-    let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)
 }
 
-fn check_memory(result: Memory<MEM_SIZE>, expected: &[(usize, Vec<u8>)]) {
+fn check_memory(result: VmMemory, expected: &[(usize, Vec<u8>)]) {
     for (offset, bytes) in expected {
-        assert_eq!(
-            &result[*offset..*offset + bytes.len()],
-            bytes.as_slice(),
-            "memory mismatch at {offset}"
-        );
+        let range = MemoryRange::try_new_usize(*offset, bytes.len()).unwrap();
+        let r: Vec<u8> = result.read_range(range).unwrap().copied().collect();
+        assert_eq!(&r, bytes.as_slice(), "memory mismatch at {offset}");
     }
 }

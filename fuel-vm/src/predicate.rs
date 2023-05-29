@@ -126,10 +126,14 @@ fn from_tx_works() {
 
         let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
 
-        let program = runtime.program();
-        let program = &interpreter.memory()[program.start() as usize..program.end() as usize];
+        let program: Vec<u8> = interpreter
+            .memory()
+            .read_range(runtime.program().clone())
+            .expect("failed to read program")
+            .copied()
+            .collect();
 
         // assert the program in the vm memory is the same of the input
-        assert_eq!(program, &padded_predicate);
+        assert_eq!(&program, &padded_predicate);
     }
 }

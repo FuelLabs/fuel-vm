@@ -263,6 +263,37 @@ impl CallFrame {
     pub fn global_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::GGAS]
     }
+
+    /// Restores a CallFrame from raw bytes.
+    pub fn from_bytes(buf: &[u8; Self::LEN]) -> Self {
+        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
+        let asset_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.asset_id));
+        let registers = bytes::restore_at(buf, Self::layout(Self::LAYOUT.registers));
+        let code_size = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
+        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
+
+        let mut vm_registers = [0u64; VM_REGISTER_COUNT];
+
+        debug_assert_eq!(vm_registers.len() * WORD_SIZE, registers.len());
+
+        // TODO: switch to stdlib array_chunks when it's stable: https://github.com/rust-lang/rust/issues/100450
+        for (i, value) in itermore::IterArrayChunks::array_chunks(registers.into_iter())
+            .map(Word::from_be_bytes)
+            .enumerate()
+        {
+            vm_registers[i] = value;
+        }
+
+        Self {
+            to: to.into(),
+            asset_id: asset_id.into(),
+            code_size: code_size,
+            a: a,
+            b: b,
+            registers: vm_registers,
+        }
+    }
 }
 
 impl SizedBytes for CallFrame {
@@ -300,28 +331,19 @@ impl io::Write for CallFrame {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
-        let asset_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.asset_id));
-        let registers = bytes::restore_at(buf, Self::layout(Self::LAYOUT.registers));
-        let code_size = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
-        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
-        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
-
-        for (reg, word) in self.registers.iter_mut().zip(registers.chunks_exact(WORD_SIZE)) {
-            *reg = bytes::restore_number(word.try_into().expect("Can't fail as chunks are exact"));
-        }
-
-        self.to = to.into();
-        self.asset_id = asset_id.into();
-        self.code_size = code_size;
-        self.a = a;
-        self.b = b;
+        *self = Self::from_bytes(buf);
 
         Ok(Self::LEN)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+impl From<[u8; CallFrame::LEN]> for CallFrame {
+    fn from(call: [u8; CallFrame::LEN]) -> Self {
+        Self::from_bytes(&call)
     }
 }
 

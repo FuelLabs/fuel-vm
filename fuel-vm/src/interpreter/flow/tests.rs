@@ -1,4 +1,3 @@
-use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 
 use super::*;
@@ -15,7 +14,7 @@ struct Input {
     balance: Vec<(AssetId, Word)>,
     input_contracts: Vec<ContractId>,
     storage_balance: Vec<(AssetId, Word)>,
-    memory: Memory<MEM_SIZE>,
+    memory: VmMemory,
     gas_cost: DependentCost,
     storage_contract: Vec<(ContractId, Vec<u8>)>,
     script: Option<Script>,
@@ -36,7 +35,7 @@ impl Default for Input {
             balance: Default::default(),
             input_contracts: vec![Default::default()],
             storage_balance: Default::default(),
-            memory: vec![0u8; MEM_SIZE].try_into().unwrap(),
+            memory: VmMemory::new(),
             gas_cost: DependentCost {
                 base: 10,
                 dep_per_unit: 10,
@@ -63,7 +62,7 @@ struct RegInput {
 #[derive(PartialEq, Eq)]
 enum CheckMem {
     Check(Vec<(usize, Vec<u8>)>),
-    Mem(Memory<MEM_SIZE>),
+    Mem(VmMemory),
 }
 
 #[derive(PartialEq, Eq)]
@@ -129,10 +128,12 @@ impl Default for Output {
     }
 }
 
-fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+fn mem(set: &[(usize, Vec<u8>)]) -> VmMemory {
+    let mut memory: VmMemory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
     for (addr, data) in set {
-        memory[*addr..*addr + data.len()].copy_from_slice(data);
+        let range = MemoryRange::try_new_usize(*addr, data.len()).unwrap();
+        memory.force_mut_range(range).copy_from_slice(data);
     }
     memory
 }
@@ -318,7 +319,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     registers.system_registers.bal = RegMut::new(&mut reg.bal);
     registers.system_registers.cgas = RegMut::new(&mut reg.cgas);
     registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
-    let memory = PrepareCallMemory::try_from((mem.as_mut(), &params))?;
+    let memory = PrepareCallMemory::try_from((&mut mem, &params))?;
     let mut runtime_balances = RuntimeBalances::try_from_iter(balance).expect("Balance should be valid");
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     for (id, code) in storage_contract {
@@ -375,7 +376,8 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
             match (e.memory, r.memory) {
                 (CheckMem::Check(e), CheckMem::Mem(r)) => {
                     for (i, bytes) in e {
-                        assert_eq!(r[i..i + bytes.len()], bytes, "memory mismatch at {i}");
+                        let mem_bytes = r.read(i, bytes.len()).unwrap().copied().collect::<Vec<_>>();
+                        assert_eq!(mem_bytes, bytes, "memory mismatch at {i}");
                     }
                 }
                 _ => unreachable!(),
@@ -394,29 +396,29 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
         4,
         5,
     ),
-    CheckedMemRange::new(0, 640).unwrap()
+    MemoryRange::try_new(0, 640).unwrap()
     => Ok(600); "call"
 )]
-fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedMemRange) -> Result<Word, RuntimeError> {
+fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: MemoryRange) -> Result<Word, RuntimeError> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let end = write_call_to_memory(&call_frame, frame_bytes, code_mem_range, memory.as_mut(), &storage)?;
+    let mut memory: VmMemory = VmMemory::new();
+    let end = write_call_to_memory(&call_frame, frame_bytes, code_mem_range, &mut memory, &storage)?;
     check_memory(memory, call_frame, code);
     Ok(end)
 }
 
-fn check_memory(result: Memory<MEM_SIZE>, expected: CallFrame, code: Vec<u8>) {
-    let frame = CheckedMemValue::<CallFrame>::new::<{ CallFrame::serialized_size() }>(0)
-        .unwrap()
-        .inspect(&result);
+fn check_memory(result: VmMemory, expected: CallFrame, code: Vec<u8>) {
+    let ptr: TypedMemoryPtr<CallFrame, { CallFrame::serialized_size() }> = MemoryPtr::try_new(0).unwrap().typed();
+    let frame: CallFrame = ptr.read(&result);
     assert_eq!(frame, expected);
-    assert_eq!(
-        &result[CallFrame::serialized_size()..(CallFrame::serialized_size() + frame.total_code_size() as usize)],
-        &code[..]
-    );
+
+    let range = MemoryRange::try_new_usize(CallFrame::serialized_size(), frame.total_code_size() as usize).unwrap();
+    let mem_code: Vec<u8> = result.read_range(range).unwrap().copied().collect();
+
+    assert_eq!(&mem_code, &code[..]);
 }

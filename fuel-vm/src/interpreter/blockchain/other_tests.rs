@@ -1,4 +1,3 @@
-use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 
 use super::*;
@@ -16,9 +15,10 @@ use test_case::test_case;
 #[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
 fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
-    let contract_id = ContractId::from([3u8; 32]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id = ContractId::from([3u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id);
     let asset_id = AssetId::from([3u8; 32]);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
@@ -66,9 +66,10 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
 fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
-    let contract_id = ContractId::from([3u8; 32]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id = ContractId::from([3u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id);
     let asset_id = AssetId::from([3u8; 32]);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
@@ -106,7 +107,7 @@ fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test]
 fn test_block_hash() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -119,7 +120,8 @@ fn test_block_hash() {
     let mut pc = 4;
     block_hash(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 40).unwrap();
     assert_eq!(pc, 8);
-    assert_ne!(memory[20..20 + 32], [1u8; 32]);
+    let mem_bytes = Bytes32::from(memory.read_bytes(20).unwrap());
+    assert_ne!(*mem_bytes, [1u8; 32]);
 }
 
 #[test]
@@ -137,7 +139,7 @@ fn test_block_height() {
 #[test]
 fn test_coinbase() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = VmMemory::new();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -150,14 +152,17 @@ fn test_coinbase() {
     let mut pc = 4;
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
     assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], [0u8; 32]);
+    let mem_bytes = Bytes32::from(memory.read_bytes(20).unwrap());
+    assert_ne!(*mem_bytes, [0u8; 32]);
 }
 
 #[test]
 fn test_code_root() {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id = ContractId::from([3u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id);
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -168,7 +173,7 @@ fn test_code_root() {
         },
     };
     let mut pc = 4;
-    code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).expect_err("Contract is not found");
+    let _ = code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
     storage
@@ -189,14 +194,18 @@ fn test_code_root() {
     };
     code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).unwrap();
     assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], [6u8; 32]);
+    let mem_bytes = Bytes32::from(memory.read_bytes(20).unwrap());
+    assert_ne!(*mem_bytes, [6u8; 32]);
 }
 
 #[test]
 fn test_code_size() {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id = ContractId::from([3u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id);
+
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .write(&ContractId::from([3u8; 32]), vec![1u8; 100])
         .unwrap();
@@ -219,7 +228,7 @@ fn test_code_size() {
         is: Reg::new(&is),
     };
     let mut result = 0;
-    input.code_size(&mut result, 1).expect_err("Contract is not found");
+    let _ = input.code_size(&mut result, 1).expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
     let input = CodeSizeCtx {
@@ -247,9 +256,9 @@ fn test_timestamp() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut pc = 4;
     let mut result = 0;
-    timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 1)
+    let _ = timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 1)
         .expect_err("Height is greater then current block height");
-    timestamp(
+    let _ = timestamp(
         &storage,
         u32::MAX.into(),
         RegMut::new(&mut pc),

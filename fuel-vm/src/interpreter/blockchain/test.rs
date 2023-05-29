@@ -1,5 +1,6 @@
+use std::ops::Range;
+
 use crate::context::Context;
-use crate::interpreter::_memory_old::Memory;
 use crate::storage::MemoryStorage;
 use test_case::test_case;
 
@@ -9,11 +10,17 @@ mod scwq;
 mod srwq;
 mod swwq;
 
-fn mem(chains: &[&[u8]]) -> Memory<MEM_SIZE> {
-    let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
-    vec.resize(MEM_SIZE, 0);
-    vec.try_into().unwrap()
+fn mem(chains: &[&[u8]]) -> VmMemory {
+    let vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
+
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(vec.len() as Word, VM_MAX_RAM).unwrap();
+    memory
+        .force_mut_range(MemoryRange::try_new_usize(0, vec.len()).unwrap())
+        .copy_from_slice(&vec[..]);
+    memory
 }
+
 const fn key(k: u8) -> [u8; 32] {
     [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, k,
@@ -47,9 +54,12 @@ fn test_state_read_word(
     key: Word,
 ) -> Result<(Word, Word), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
-    memory[32..64].copy_from_slice(&[4u8; 32][..]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id0 = ContractId::from([3u8; ContractId::LEN]);
+    let contract_id1 = ContractId::from([4u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id0);
+    memory.force_write_bytes(ContractId::LEN, &contract_id1);
     let mut pc = 4;
     let mut result = 0;
     let mut got_result = 0;
@@ -103,9 +113,12 @@ fn test_state_read_word(
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> Result<Word, RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
-    memory[32..64].copy_from_slice(&[4u8; 32][..]);
+    let mut memory = VmMemory::new();
+    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let contract_id0 = ContractId::from([3u8; ContractId::LEN]);
+    let contract_id1 = ContractId::from([4u8; ContractId::LEN]);
+    memory.force_write_bytes(0, &contract_id0);
+    memory.force_write_bytes(ContractId::LEN, &contract_id1);
     let mut pc = 4;
     let mut result = 0;
     let context = if external {

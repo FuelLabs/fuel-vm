@@ -494,6 +494,12 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
 
         *self.registers.system_registers.sp = arith::checked_add_word(*self.registers.system_registers.sp, len)?;
         *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
+        let _new_pages = self
+            .memory
+            .memory
+            .update_allocations(*self.registers.system_registers.sp, *self.registers.system_registers.hp)
+            .map_err(|_| PanicReason::OutOfMemory)?;
+        // TODO: deduct the gas cost for newly allocated pages
 
         let code_frame_mem_range = MemoryRange::try_new(*self.registers.system_registers.fp, len)?;
         write_call_to_memory(
@@ -553,6 +559,7 @@ where
         frame.code_size() + frame.code_size_padding() + frame_bytes.len() as Word,
         code_mem_range.len() as Word
     );
+    debug_assert!(memory.verify_in_bounds(code_mem_range.clone()).is_ok());
 
     memory.force_write_slice(code_mem_range.start, &frame_bytes);
 

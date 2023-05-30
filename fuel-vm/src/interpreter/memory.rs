@@ -203,6 +203,15 @@ impl VmMemory {
         MemoryRange(heap_start..MEM_SIZE)
     }
 
+    /// Verify that a range is in bounds.
+    pub fn verify_in_bounds(&self, range: MemoryRange) -> Result<(), RuntimeError> {
+        if range.end > MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+
+        Ok(())
+    }
+
     /// Read-only iteration of the full memory space, including unallocated pages filled with zeroes.
     pub fn iter(&self) -> impl Iterator<Item = &u8> + '_ {
         self.stack

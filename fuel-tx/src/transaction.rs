@@ -55,6 +55,17 @@ impl Default for Transaction {
 }
 
 impl Transaction {
+    /// Return default valid transaction useful for tests.
+    #[cfg(feature = "builder")]
+    pub fn default_test_tx() -> Self {
+        use crate::Finalizable;
+
+        crate::TransactionBuilder::script(vec![], vec![])
+            .add_random_fee_input()
+            .finalize()
+            .into()
+    }
+
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,

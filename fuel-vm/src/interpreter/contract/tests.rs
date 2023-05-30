@@ -9,8 +9,7 @@ use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
 fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(b as usize, &asset_id);
@@ -41,8 +40,7 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(b as usize, &contract_id);
@@ -107,8 +105,7 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
     memory.force_write_bytes(a as usize, &contract_id);

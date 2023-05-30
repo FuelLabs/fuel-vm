@@ -204,8 +204,7 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
     => (false, [0u8; 100]); "Internal too large for heap"
 )]
 fn test_mem_write(addr: usize, data: &[u8], owner: OwnershipRegisters) -> (bool, [u8; 100]) {
-    let mut memory: VmMemory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory: VmMemory = VmMemory::fully_allocated();
     let r = memory.write_slice(owner, addr, data).is_ok();
     let memory: [u8; 100] = memory.read_bytes(0).unwrap();
     (r, memory)

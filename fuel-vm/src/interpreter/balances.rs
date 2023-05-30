@@ -142,7 +142,7 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory.force_write_bytes(ofs, &*asset);
+            vm.memory.force_write_bytes(ofs, asset);
             vm.memory.force_write_bytes(ofs + AssetId::LEN, &value.to_be_bytes());
         });
 

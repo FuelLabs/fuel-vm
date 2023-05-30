@@ -193,8 +193,7 @@ fn test_smo(
 ) -> Result<Output, RuntimeError> {
     let asset = AssetId::zeroed();
 
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     for (offset, bytes) in mem {
         let range = MemoryRange::try_new_usize(offset, bytes.len()).unwrap();
         memory.force_mut_range(range).copy_from_slice(bytes.as_slice());

@@ -54,8 +54,7 @@ fn test_state_read_word(
     key: Word,
 ) -> Result<(Word, Word), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id0 = ContractId::from([3u8; ContractId::LEN]);
     let contract_id1 = ContractId::from([4u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id0);
@@ -113,8 +112,7 @@ fn test_state_read_word(
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(external: bool, fp: Word, insert: bool, key: Word) -> Result<Word, RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id0 = ContractId::from([3u8; ContractId::LEN]);
     let contract_id1 = ContractId::from([4u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id0);

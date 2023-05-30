@@ -129,8 +129,7 @@ impl Default for Output {
 }
 
 fn mem(set: &[(usize, Vec<u8>)]) -> VmMemory {
-    let mut memory: VmMemory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory: VmMemory = VmMemory::fully_allocated();
     for (addr, data) in set {
         let range = MemoryRange::try_new_usize(*addr, data.len()).unwrap();
         memory.force_mut_range(range).copy_from_slice(data);
@@ -397,19 +396,19 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
         5,
     ),
     MemoryRange::try_new(0, 640).unwrap()
-    => Ok(600); "call"
+    => Ok(()); "call"
 )]
-fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: MemoryRange) -> Result<Word, RuntimeError> {
+fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: MemoryRange) -> Result<(), RuntimeError> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
-    let mut memory: VmMemory = VmMemory::new();
-    let end = write_call_to_memory(&call_frame, frame_bytes, code_mem_range, &mut memory, &storage)?;
+    let mut memory: VmMemory = VmMemory::fully_allocated();
+    write_call_to_memory(&call_frame, frame_bytes, code_mem_range, &mut memory, &storage)?;
     check_memory(memory, call_frame, code);
-    Ok(end)
+    Ok(())
 }
 
 fn check_memory(result: VmMemory, expected: CallFrame, code: Vec<u8>) {

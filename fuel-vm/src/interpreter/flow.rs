@@ -496,7 +496,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
 
         let code_frame_mem_range = MemoryRange::try_new(*self.registers.system_registers.fp, len)?;
-        let frame_end = write_call_to_memory(
+        write_call_to_memory(
             &frame,
             frame_bytes,
             code_frame_mem_range,
@@ -504,7 +504,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             self.storage,
         )?;
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
-        *self.registers.system_registers.pc = frame_end;
+        *self.registers.system_registers.pc = CallFrame::serialized_size() as Word;
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
 
@@ -542,17 +542,20 @@ fn write_call_to_memory<S>(
     code_mem_range: MemoryRange,
     memory: &mut VmMemory,
     storage: &S,
-) -> Result<Word, RuntimeError>
+) -> Result<(), RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
     <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
     let code_frame_range = code_mem_range.clone();
-    debug_assert_eq!(frame.code_size(), frame_bytes.len() as Word);
+    debug_assert_eq!(
+        frame.code_size() + frame.code_size_padding() + frame_bytes.len() as Word,
+        code_frame_range.len() as Word
+    );
     memory.force_write_slice(code_frame_range.start, &frame_bytes);
 
     let code_range = code_mem_range
-        .subrange(CallFrame::serialized_size(), frame.code_size_padding() as usize)
+        .subrange(CallFrame::serialized_size(), frame.code_size() as usize)
         .expect("Bug! code_mem_range not large enough");
 
     let dst = memory.force_mut_range(code_range);
@@ -573,7 +576,7 @@ where
             .expect("Bug! not enough space for padding");
         memory.force_clear(rest);
     }
-    Ok(code_frame_range.end as Word)
+    Ok(())
 }
 
 fn call_frame<S>(

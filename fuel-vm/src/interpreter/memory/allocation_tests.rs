@@ -60,8 +60,7 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 #[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryOverflow.into()); "a <= b < ac")]
 #[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "a < bc <= ac")]
 fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
-    memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM);
+    let mut memory = VmMemory::fully_allocated();
     memory.force_mut_range(MemoryRange::try_new(b, c).unwrap())
     .copy_from_slice(&vec![2u8; c as usize]);
     let mut pc = 4;

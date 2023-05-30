@@ -72,8 +72,7 @@ fn test_keccak256() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_sha256() -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,

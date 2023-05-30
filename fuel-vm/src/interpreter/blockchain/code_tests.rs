@@ -46,7 +46,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
 #[test]
 fn test_code_copy() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let mut pc = 4;
 
     let contract_id = ContractId::from([4u8; 32]);

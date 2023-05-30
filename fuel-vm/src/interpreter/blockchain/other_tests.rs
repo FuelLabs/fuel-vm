@@ -15,8 +15,7 @@ use test_case::test_case;
 #[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
 fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id);
     let asset_id = AssetId::from([3u8; 32]);
@@ -66,8 +65,7 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
 fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id);
     let asset_id = AssetId::from([3u8; 32]);
@@ -159,8 +157,7 @@ fn test_coinbase() {
 #[test]
 fn test_code_root() {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id);
     let owner = OwnershipRegisters {
@@ -201,8 +198,7 @@ fn test_code_root() {
 #[test]
 fn test_code_size() {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
-    let _ = memory.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+    let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     memory.force_write_bytes(0, &contract_id);
 

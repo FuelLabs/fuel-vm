@@ -152,6 +152,14 @@ impl VmMemory {
         }
     }
 
+    /// Allocates full memory range for stack.
+    #[cfg(test)]
+    pub fn fully_allocated() -> Self {
+        let mut mem = Self::new();
+        let _ = mem.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+        mem
+    }
+
     fn unallocated(&self) -> usize {
         MEM_SIZE
             .checked_sub(self.stack.len() + self.heap.len())

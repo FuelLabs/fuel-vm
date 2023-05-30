@@ -64,8 +64,8 @@ impl Call {
 
         Self {
             to: to.into(),
-            a: a,
-            b: b,
+            a,
+            b,
         }
     }
 }
@@ -288,9 +288,9 @@ impl CallFrame {
         Self {
             to: to.into(),
             asset_id: asset_id.into(),
-            code_size: code_size,
-            a: a,
-            b: b,
+            code_size,
+            a,
+            b,
             registers: vm_registers,
         }
     }

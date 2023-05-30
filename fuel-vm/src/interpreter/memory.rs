@@ -166,8 +166,6 @@ impl VmMemory {
             return Err(StackAndHeapOverlap);
         }
 
-        debug_assert!(sp + hp <= VM_MAX_RAM);
-
         // To guard against the last page being allocated twice
         let available_pages = self.unallocated() / VM_PAGE_SIZE;
         let mut new_pages = 0;
@@ -179,7 +177,7 @@ impl VmMemory {
             }
         }
 
-        while self.heap_range().len() > hp as usize {
+        while self.heap_range().len() < hp as usize {
             if new_pages < available_pages {
                 self.heap.extend(&ZERO_PAGE);
                 new_pages += 1;

@@ -11,7 +11,7 @@ use fuel_vm::prelude::*;
 use fuel_asm::PanicReason::ErrorFlag;
 use fuel_asm::{
     op, Instruction,
-    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership},
+    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow},
 };
 use fuel_tx::field::Script as ScriptField;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -1092,7 +1092,7 @@ fn state_r_qword_a_plus_32_over() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOwnership);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1127,7 +1127,7 @@ fn state_r_qword_a_over_max_ram() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOwnership);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1212,7 +1212,7 @@ fn state_w_qword_b_plus_32_over() {
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
 }
 
 #[test]

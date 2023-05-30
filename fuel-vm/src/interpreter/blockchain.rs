@@ -811,7 +811,7 @@ fn state_read_qword(
 struct StateWriteQWord {
     /// The starting storage key location is stored
     /// in this range of memory.
-    starting_storage_key_memory_range: MemoryRange, // TODO: constant size
+    starting_storage_key_addr: TypedMemoryPtr<Bytes32, { Bytes32::LEN }>,
     /// The source data memory address is
     /// stored in this range of memory.
     source_address_memory_range: MemoryRange,
@@ -819,18 +819,16 @@ struct StateWriteQWord {
 
 impl StateWriteQWord {
     fn new(
-        starting_storage_key_memory_address: Word,
+        starting_storage_key_addr: Word,
         source_memory_address: Word,
         num_slots: Word,
     ) -> Result<Self, RuntimeError> {
-        let starting_storage_key_memory_range =
-            MemoryRange::try_new(starting_storage_key_memory_address, Bytes32::LEN as Word)?;
         Ok(Self {
             source_address_memory_range: MemoryRange::try_new(
                 source_memory_address,
                 Bytes32::LEN.saturating_mul(num_slots as usize) as Word,
             )?,
-            starting_storage_key_memory_range,
+            starting_storage_key_addr: MemoryPtr::try_new(starting_storage_key_addr)?.typed(),
         })
     }
 }
@@ -843,7 +841,7 @@ fn state_write_qword(
     result_register: &mut Word,
     input: StateWriteQWord,
 ) -> Result<(), RuntimeError> {
-    let destination_key = Bytes32::from(memory.read_bytes(input.starting_storage_key_memory_range.start)?);
+    let destination_key = input.starting_storage_key_addr.read(memory);
 
     // TODO: switch to stdlib array_chunks when it's stable: https://github.com/rust-lang/rust/issues/100450
     let values: Vec<_> = itermore::IterArrayChunks::array_chunks(

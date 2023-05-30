@@ -105,7 +105,7 @@ fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test]
 fn test_block_hash() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -192,7 +192,7 @@ fn test_code_root() {
     code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).unwrap();
     assert_eq!(pc, 8);
     let mem_bytes = Bytes32::from(memory.read_bytes(20).unwrap());
-    assert_ne!(*mem_bytes, [6u8; 32]);
+    assert_eq!(*mem_bytes, [6u8; 32]);
 }
 
 #[test]

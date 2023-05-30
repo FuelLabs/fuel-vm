@@ -26,7 +26,7 @@ impl<const SIZE: usize> MemoryPtr<SIZE> {
     /// Create a new pointer from an address, checking that it's valid
     /// and that the sized value fits into vm memory as well.
     pub fn try_new_usize(addr: usize) -> Result<Self, RuntimeError> {
-        if addr.saturating_add(SIZE) >= MEM_SIZE {
+        if addr.saturating_add(SIZE) > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into());
         }
 

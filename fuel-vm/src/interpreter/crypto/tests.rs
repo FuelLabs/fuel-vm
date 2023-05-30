@@ -6,7 +6,7 @@ use super::*;
 
 #[test]
 fn test_ecrecover() -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,

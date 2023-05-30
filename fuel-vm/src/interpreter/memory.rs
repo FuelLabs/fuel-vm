@@ -154,6 +154,12 @@ impl VmMemory {
         }
     }
 
+    /// Reset the memory to its initial state.
+    pub fn reset(&mut self) {
+        self.stack.clear();
+        self.heap.clear();
+    }
+
     /// Allocates full memory range for stack.
     #[cfg(test)]
     pub fn fully_allocated() -> Self {

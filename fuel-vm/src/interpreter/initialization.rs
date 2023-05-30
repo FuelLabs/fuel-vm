@@ -15,6 +15,21 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
+    /// Resets most of the VM state.
+    /// Can also be used by tests as a minimal initialization.
+    pub fn reset(&mut self) {
+        self.frames.clear();
+        self.receipts.clear();
+
+        self.memory.reset();
+
+        // Optimized for memset
+        self.registers.iter_mut().for_each(|r| *r = 0);
+
+        self.registers[RegId::ONE] = 1;
+        self.registers[RegId::HP] = VM_MAX_RAM;
+    }
+
     /// Initialize the VM with a given transaction
     fn init_inner(
         &mut self,
@@ -22,21 +37,11 @@ where
         initial_balances: InitialBalances,
         gas_used_by_predicates: Word,
     ) -> Result<(), InterpreterError> {
+        self.reset();
+
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
-
-        self.frames.clear();
-        self.receipts.clear();
-
-        // Optimized for memset
-        self.registers.iter_mut().for_each(|r| *r = 0);
-
-        self.registers[RegId::ONE] = 1;
-        self.registers[RegId::SSP] = 0;
-
-        // Set heap area
-        self.registers[RegId::HP] = VM_MAX_RAM;
 
         self.push_stack(self.transaction().id(&self.params.chain_id).as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

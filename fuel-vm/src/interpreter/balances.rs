@@ -184,6 +184,7 @@ fn writes_to_memory_correctly() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let mut interpreter = Interpreter::<_, Script>::without_storage();
+    interpreter.reset();
 
     let base = AssetId::zeroed();
     let base_balance = 950;

@@ -112,8 +112,10 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) fn update_allocations(&mut self) -> Result<(), RuntimeError> {
         let sp = self.registers[RegId::SSP].max(self.registers[RegId::SP]);
         let hp = self.registers[RegId::HP];
-        let _new_pages = self.memory.update_allocations(sp, hp)
-        .map_err(|_| PanicReason::OutOfMemory)?;
+        let _new_pages = self
+            .memory
+            .update_allocations(sp, hp)
+            .map_err(|_| PanicReason::OutOfMemory)?;
         // TODO: gas cost for new pages
         Ok(())
     }

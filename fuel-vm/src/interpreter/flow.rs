@@ -504,7 +504,8 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             self.storage,
         )?;
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
-        *self.registers.system_registers.pc = CallFrame::serialized_size() as Word;
+        *self.registers.system_registers.pc =
+            *self.registers.system_registers.fp + CallFrame::serialized_size() as Word;
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
 
@@ -547,10 +548,12 @@ where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
     <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
+    debug_assert_eq!(CallFrame::serialized_size(), frame_bytes.len());
     debug_assert_eq!(
         frame.code_size() + frame.code_size_padding() + frame_bytes.len() as Word,
         code_mem_range.len() as Word
     );
+
     memory.force_write_slice(code_mem_range.start, &frame_bytes);
 
     let code_range = code_mem_range
@@ -575,6 +578,7 @@ where
             .expect("Bug! not enough space for padding");
         memory.force_clear(rest);
     }
+
     Ok(())
 }
 

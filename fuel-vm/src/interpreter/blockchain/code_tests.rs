@@ -6,7 +6,7 @@ use fuel_tx::Contract;
 #[test]
 fn test_load_contract() -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let mut pc = 4;
     let hp = 2000;
     let mut ssp = 1000;

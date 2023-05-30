@@ -104,6 +104,8 @@ impl MemoryRange {
     /// Splits the range into two ranges at the given offset.
     /// Returns `None` if the offset is not within the range.
     pub fn split_at(&self, offset: usize) -> Option<(Self, Self)> {
+        let offset = self.start.checked_add(offset)?;
+
         if offset > self.end {
             return None;
         }

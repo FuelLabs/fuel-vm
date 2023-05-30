@@ -127,7 +127,7 @@ pub(crate) fn sha256(
 
     // TODO: optimize with larger reads
     for b in memory.read(b, c).expect("Unreachabled! Bounds checked already") {
-        h.input(&[*b]);
+        h.input([*b]);
     }
 
     memory.write_slice(owner, a, h.finalize().as_ref())?;

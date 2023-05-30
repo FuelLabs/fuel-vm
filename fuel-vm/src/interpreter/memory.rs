@@ -81,7 +81,7 @@ impl MemoryRange {
     /// Checks that a range is fully contained within another range, and then returns
     /// the self as offset relative to the outer range.
     pub fn relative_to(&self, outer: &Self) -> Option<Self> {
-        if outer.contains_range(&self) {
+        if outer.contains_range(self) {
             Some(Self(self.start - outer.start..self.end - outer.start))
         } else {
             None
@@ -337,13 +337,13 @@ impl VmMemory {
     /// Write a constant size byte array to the memory, without performing ownership checks.
     pub fn force_write_slice(&mut self, addr: usize, data: &[u8]) {
         let range = MemoryRange::try_new_usize(addr, data.len()).expect("Bug! Invalid memory access");
-        self.force_mut_range(range).copy_from_slice(&data[..]);
+        self.force_mut_range(range).copy_from_slice(data);
     }
 
     /// Write a constant size byte array to the memory
     pub fn write_slice(&mut self, owner: OwnershipRegisters, addr: usize, data: &[u8]) -> Result<(), RuntimeError> {
         let range = MemoryRange::try_new_usize(addr, data.len())?;
-        self.mut_range(owner, range)?.copy_from_slice(&data[..]);
+        self.mut_range(owner, range)?.copy_from_slice(data);
         Ok(())
     }
 

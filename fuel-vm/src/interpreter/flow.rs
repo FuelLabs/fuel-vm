@@ -547,12 +547,11 @@ where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
     <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
-    let code_frame_range = code_mem_range.clone();
     debug_assert_eq!(
         frame.code_size() + frame.code_size_padding() + frame_bytes.len() as Word,
-        code_frame_range.len() as Word
+        code_mem_range.len() as Word
     );
-    memory.force_write_slice(code_frame_range.start, &frame_bytes);
+    memory.force_write_slice(code_mem_range.start, &frame_bytes);
 
     let code_range = code_mem_range
         .subrange(CallFrame::serialized_size(), frame.code_size() as usize)

@@ -103,7 +103,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
 
         // Transaction memory space length is already checked on initialization so its
         // guaranteed to fit
-        memory.force_write_bytes(offset, &*root);
+        memory.force_write_bytes(offset, &root);
     }
 }
 
@@ -231,7 +231,7 @@ pub(crate) fn internal_contract_or_default(context: &Context, register: Reg<FP>,
     internal_contract(context, register, memory).unwrap_or_default()
 }
 
-pub(crate) fn current_contract<'a>(
+pub(crate) fn current_contract(
     context: &Context,
     fp: Reg<FP>,
     memory: &VmMemory,

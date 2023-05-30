@@ -62,11 +62,7 @@ impl Call {
         let a = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.a));
         let b = bytes::restore_number_at(&bytes, Self::layout(Self::LAYOUT.b));
 
-        Self {
-            to: to.into(),
-            a,
-            b,
-        }
+        Self { to: to.into(), a, b }
     }
 }
 

@@ -40,7 +40,7 @@ fn test_absolute_output_offset(tx_offset: usize, idx: usize, num_outputs: usize)
 fn test_update_memory_output(tx_offset: usize) -> Result<VmMemory, RuntimeError> {
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![Output::default()];
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)
 }
 

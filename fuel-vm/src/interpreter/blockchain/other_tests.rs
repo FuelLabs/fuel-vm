@@ -137,7 +137,7 @@ fn test_block_height() {
 #[test]
 fn test_coinbase() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -151,7 +151,7 @@ fn test_coinbase() {
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
     assert_eq!(pc, 8);
     let mem_bytes = Bytes32::from(memory.read_bytes(20).unwrap());
-    assert_ne!(*mem_bytes, [0u8; 32]);
+    assert_eq!(*mem_bytes, [0u8; 32]);
 }
 
 #[test]

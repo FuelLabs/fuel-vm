@@ -49,7 +49,7 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_keccak256() -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_allocated();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,

@@ -307,6 +307,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
         storage_contract,
         mut script,
     } = input;
+    let _ = mem.update_allocations(reg.sp, reg.hp).unwrap();
     let mut registers = [0; VM_REGISTER_COUNT];
     let mut registers: PrepareCallRegisters = (&mut registers).into();
     registers.system_registers.hp = Reg::new(&reg.hp);

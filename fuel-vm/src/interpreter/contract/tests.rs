@@ -41,9 +41,9 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory = VmMemory::fully_allocated();
-    let asset_id = AssetId::from([2u8; AssetId::LEN]);
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
-    memory.force_write_bytes(b as usize, &contract_id);
+    let asset_id = AssetId::from([2u8; AssetId::LEN]);
+    memory.force_write_bytes(a as usize, &contract_id);
     memory.force_write_bytes(c as usize, &asset_id);
 
     let mut storage = MemoryStorage::new(Default::default(), Default::default());

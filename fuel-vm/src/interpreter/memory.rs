@@ -168,6 +168,15 @@ impl VmMemory {
         mem
     }
 
+    /// Allocates full memory range for stack and fills it with given byte.
+    #[cfg(test)]
+    pub fn fully_filled(byte: u8) -> Self {
+        let mut mem = Self::new();
+        let _ = mem.update_allocations(VM_MAX_RAM, VM_MAX_RAM).unwrap();
+        mem.stack.fill(byte);
+        mem
+    }
+
     fn unallocated(&self) -> usize {
         MEM_SIZE
             .checked_sub(self.stack.len() + self.heap.len())

@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_log() -> Result<(), RuntimeError> {
-    let mut memory = VmMemory::new();
+    let mut memory = VmMemory::fully_filled(1);
     let context = Context::Script {
         block_height: Default::default(),
     };

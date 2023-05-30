@@ -170,18 +170,14 @@ impl VmMemory {
         let available_pages = self.unallocated() / VM_PAGE_SIZE;
         let mut new_pages = 0;
 
-        while self.stack.len() < sp as usize {
-            if new_pages < available_pages {
-                self.stack.extend(&ZERO_PAGE);
-                new_pages += 1;
-            }
+        while self.stack.len() < sp as usize && new_pages < available_pages {
+            self.stack.extend(&ZERO_PAGE);
+            new_pages += 1;
         }
 
-        while self.heap_range().len() < hp as usize {
-            if new_pages < available_pages {
-                self.heap.extend(&ZERO_PAGE);
-                new_pages += 1;
-            }
+        while self.heap_range().start > hp as usize && new_pages < available_pages {
+            self.heap.extend(&ZERO_PAGE);
+            new_pages += 1;
         }
 
         Ok(AllocatedPages(new_pages))

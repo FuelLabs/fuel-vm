@@ -56,7 +56,7 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(feature = "builder")]
+    #[cfg(all(feature = "rand", feature = "std", feature = "builder"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 

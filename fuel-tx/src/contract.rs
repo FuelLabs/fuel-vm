@@ -313,4 +313,15 @@ mod tests {
 
         assert_eq!(root, expected_root);
     }
+
+    #[test]
+    fn empty_contract_id() {
+        let contract = Contract::from(vec![]);
+        let salt = Salt::zeroed();
+        let root = contract.root();
+        let state_root = Contract::default_state_root();
+
+        let calculated_id = contract.id(&salt, &root, &state_root);
+        assert_eq!(calculated_id, Contract::EMPTY_CONTRACT_ID)
+    }
 }

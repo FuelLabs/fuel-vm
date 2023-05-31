@@ -42,7 +42,7 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
     )?;
     assert_eq!(pc, 8);
     assert_eq!(err, 0);
-    let mem_public_key: [u8; PublicKey::LEN] = memory.read_bytes(recovered as usize).unwrap();
+    let mem_public_key: [u8; PublicKey::LEN] = memory.read_bytes(recovered).unwrap();
     assert_eq!(&mem_public_key, public_key.as_ref());
     Ok(())
 }
@@ -65,7 +65,7 @@ fn test_keccak256() -> Result<(), RuntimeError> {
     let num_bytes = 100;
     keccak256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
     assert_eq!(pc, 8);
-    let hash_bytes: [u8; 32] = memory.read_bytes(hash as usize).unwrap();
+    let hash_bytes: [u8; 32] = memory.read_bytes(hash).unwrap();
     assert_ne!(&hash_bytes, &[1u8; 32][..]);
     Ok(())
 }
@@ -88,7 +88,7 @@ fn test_sha256() -> Result<(), RuntimeError> {
     let num_bytes = 100;
     sha256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
     assert_eq!(pc, 8);
-    let hash_bytes: [u8; 32] = memory.read_bytes(hash as usize).unwrap();
+    let hash_bytes: [u8; 32] = memory.read_bytes(hash).unwrap();
     assert_ne!(&hash_bytes, &[1u8; 32][..]);
     Ok(())
 }

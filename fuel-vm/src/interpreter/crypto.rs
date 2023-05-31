@@ -53,9 +53,6 @@ pub(crate) fn ecrecover(
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    // TODO: These casts may overflow/truncate on 32-bit?
-    let (a, b, c) = (a as usize, b as usize, c as usize);
-
     let signature = Signature::from_bytes(memory.read_bytes(b).expect("bounds checked"));
     let message = Message::from_bytes(memory.read_bytes(c).expect("bounds checked"));
 
@@ -65,7 +62,7 @@ pub(crate) fn ecrecover(
             clear_err(err);
         }
         Err(_) => {
-            memory.try_clear(owner, MemoryRange::try_new_usize(a, PublicKey::LEN)?)?;
+            memory.try_clear(owner, MemoryRange::try_new(a, PublicKey::LEN)?)?;
             set_err(err);
         }
     }
@@ -92,7 +89,7 @@ pub(crate) fn keccak256(
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let (a, b, c) = (a as usize, b as usize, c as usize);
+    let c = c as usize;
 
     let mut h = Keccak256::new();
 
@@ -120,8 +117,6 @@ pub(crate) fn sha256(
     {
         return Err(PanicReason::MemoryOverflow.into());
     }
-
-    let (a, b, c) = (a as usize, b as usize, c as usize);
 
     let mut h = Hasher::default();
 

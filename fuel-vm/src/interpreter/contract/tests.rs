@@ -12,8 +12,8 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory = VmMemory::fully_allocated();
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
-    memory.force_write_bytes(b as usize, &asset_id);
-    memory.force_write_bytes(c as usize, &contract_id);
+    memory.force_write_bytes(b, &asset_id);
+    memory.force_write_bytes(c, &contract_id);
 
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
@@ -43,8 +43,8 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
     let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
-    memory.force_write_bytes(a as usize, &contract_id);
-    memory.force_write_bytes(c as usize, &asset_id);
+    memory.force_write_bytes(a, &contract_id);
+    memory.force_write_bytes(c, &asset_id);
 
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
@@ -108,8 +108,8 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
     let mut memory = VmMemory::fully_allocated();
     let contract_id = ContractId::from([3u8; ContractId::LEN]);
     let asset_id = AssetId::from([2u8; AssetId::LEN]);
-    memory.force_write_bytes(a as usize, &contract_id);
-    memory.force_write_bytes(d as usize, &asset_id);
+    memory.force_write_bytes(a, &contract_id);
+    memory.force_write_bytes(d, &asset_id);
 
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage

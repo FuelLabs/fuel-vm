@@ -17,7 +17,7 @@ where
     /// Execute the current instruction pair located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
         let [hi, lo] = fuel_asm::raw_instructions_from_word(Word::from_be_bytes(
-            self.memory.read_bytes(self.registers[RegId::PC] as usize)?,
+            self.memory.read_bytes(self.registers[RegId::PC])?,
         ));
 
         // Store the expected `$pc` after executing `hi`

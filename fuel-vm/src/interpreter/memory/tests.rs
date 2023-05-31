@@ -260,7 +260,7 @@ fn test_try_zeroize(addr: usize, len: usize, owner: OwnershipRegisters) -> (bool
     let _ = memory.update_allocations(1000, VM_MAX_RAM).unwrap();
     memory.force_write_bytes(0, &[1u8; 100]);
     let r = memory
-        .try_clear(owner, MemoryRange::try_new_usize(addr, len).unwrap())
+        .try_clear(owner, MemoryRange::try_new(addr, len).unwrap())
         .is_ok();
     let memory: [u8; 100] = memory.read_bytes(0).unwrap();
     (r, memory)

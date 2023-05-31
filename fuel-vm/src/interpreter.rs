@@ -47,6 +47,8 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use memory::{MemoryRange, VmMemory};
 
+pub(crate) use memory::ToAddr;
+
 use crate::checked_transaction::{
     CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
 };

@@ -3,9 +3,13 @@
 use std::{marker::PhantomData, ops::Deref};
 
 use fuel_asm::PanicReason;
-use fuel_types::{ContractId, Word};
+use fuel_types::ContractId;
 
-use crate::{consts::MEM_SIZE, interpreter::VmMemory, prelude::RuntimeError};
+use crate::{
+    consts::MEM_SIZE,
+    interpreter::{ToAddr, VmMemory},
+    prelude::RuntimeError,
+};
 
 pub mod reg_key;
 
@@ -19,13 +23,9 @@ pub struct MemoryPtr<const SIZE: usize> {
 impl<const SIZE: usize> MemoryPtr<SIZE> {
     /// Create a new pointer from an address, checking that it's valid
     /// and that the sized value fits into vm memory as well.
-    pub fn try_new(addr: Word) -> Result<Self, RuntimeError> {
-        Self::try_new_usize(addr.try_into().map_err(|_| PanicReason::MemoryOverflow)?)
-    }
+    pub fn try_new<A: ToAddr>(addr: A) -> Result<Self, RuntimeError> {
+        let addr = addr.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
 
-    /// Create a new pointer from an address, checking that it's valid
-    /// and that the sized value fits into vm memory as well.
-    pub fn try_new_usize(addr: usize) -> Result<Self, RuntimeError> {
         if addr.saturating_add(SIZE) > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into());
         }

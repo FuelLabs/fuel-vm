@@ -305,8 +305,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        self.memory
-            .force_clear(MemoryRange::try_new_usize(memory_offset, length)?);
+        self.memory.force_clear(MemoryRange::try_new(memory_offset, length)?);
 
         // fetch the contract id
         let contract_id: &[u8; ContractId::LEN] = &self
@@ -383,8 +382,8 @@ where
 {
     let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
-    let asset_id = AssetId::from(memory.read_bytes(addr as usize).expect("checked"));
+    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
+    let asset_id = AssetId::from(memory.read_bytes(addr).expect("checked"));
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
@@ -410,8 +409,8 @@ where
 {
     let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
-    let asset_id = AssetId::from(memory.read_bytes(addr as usize).expect("checked"));
+    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
+    let asset_id = AssetId::from(memory.read_bytes(addr).expect("checked"));
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = checked_add_word(balance, a)?;
@@ -444,10 +443,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        let (a, c, d) = (a as usize, c as usize, d as usize);
-        let cd = cd as usize;
-
-        let contract = ContractId::from(self.memory.read_bytes(b as usize)?);
+        let contract = ContractId::from(self.memory.read_bytes(b)?);
 
         if !self.input_contracts.any(|input| *input == contract) {
             *self.panic_context = PanicContext::ContractId(contract);
@@ -456,10 +452,11 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
         let contract = super::contract::contract(self.storage, &contract)?.into_owned();
 
-        if contract.as_ref().len() < d {
-            let range = MemoryRange::try_new_usize(a, d)?;
+        if contract.as_ref().len() < d as usize {
+            let range = MemoryRange::try_new(a, d)?;
             self.memory.try_clear(self.owner, range)?;
         } else {
+            let (c, cd) = (c as usize, cd as usize);
             self.memory.write_slice(self.owner, a, &contract.as_ref()[c..cd])?;
         }
 
@@ -478,7 +475,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
     let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
-    memory.write_slice(owner, a as usize, hash.as_ref())?;
+    memory.write_slice(owner, a, hash.as_ref())?;
 
     inc_pc(pc)
 }
@@ -503,7 +500,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     storage
         .coinbase()
         .map_err(RuntimeError::from_io)
-        .and_then(|data| memory.write_slice(owner, a as usize, data.as_ref()))?;
+        .and_then(|data| memory.write_slice(owner, a, data.as_ref()))?;
 
     inc_pc(pc)
 }
@@ -525,7 +522,7 @@ where
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    let contract_id = ContractId::from(memory.read_bytes(b as usize)?);
+    let contract_id = ContractId::from(memory.read_bytes(b)?);
 
     let (_, root) = storage
         .storage_contract_root(&contract_id)
@@ -534,7 +531,7 @@ where
         .map_err(RuntimeError::from_io)?
         .into_owned();
 
-    memory.write_slice(owner, a as usize, root.as_ref())?;
+    memory.write_slice(owner, a, root.as_ref())?;
 
     inc_pc(pc)
 }
@@ -557,7 +554,7 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
         S: StorageSize<ContractsRawCode>,
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
     {
-        let contract_id = ContractId::from(self.memory.read_bytes(b as usize)?);
+        let contract_id = ContractId::from(self.memory.read_bytes(b)?);
 
         let len = contract_size(self.storage, &contract_id)?;
         let profiler = ProfileGas {
@@ -593,7 +590,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     got_result: &mut Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let key = Bytes32::from(memory.read_bytes(c as usize)?);
+    let key = Bytes32::from(memory.read_bytes(c)?);
     let contract = internal_contract(context, fp, memory)?;
 
     let value = storage
@@ -620,12 +617,12 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     exists: &mut Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let key = Bytes32::from(memory.read_bytes(a as usize)?);
+    let key = Bytes32::from(memory.read_bytes(a)?);
 
     let addr = internal_contract_addr(context, fp)?;
 
     // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::from(memory.read_bytes(addr as usize).expect("checked"));
+    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
 
     let mut value = Bytes32::default();
 
@@ -690,7 +687,7 @@ where
     where
         Tx: ExecutableTransaction,
     {
-        let recipient = Address::from(self.memory.read_bytes(self.recipient_mem_address as usize)?);
+        let recipient = Address::from(self.memory.read_bytes(self.recipient_mem_address)?);
 
         if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
             return Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow));
@@ -715,7 +712,7 @@ where
             base_asset_balance_sub(self.balances, self.memory, self.amount_coins_to_send)?;
         }
 
-        let sender = Address::from(self.memory.read_bytes(*self.fp as usize)?);
+        let sender = Address::from(self.memory.read_bytes(*self.fp)?);
         let txid = tx_id(self.memory);
         let msg_data: Vec<u8> = self.memory.read_range(msg_data_range)?.copied().collect();
 

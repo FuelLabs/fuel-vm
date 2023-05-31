@@ -93,7 +93,7 @@ impl LogInput<'_> {
         let len = d as usize;
         let mut data = Vec::new();
         data.reserve_exact(len);
-        self.memory.read_into(c as usize, len, &mut data).expect("checked");
+        self.memory.read_into(c, len, &mut data).expect("checked");
 
         let digest = Hasher::hash(&data);
 

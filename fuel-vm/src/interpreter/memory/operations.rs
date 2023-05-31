@@ -17,7 +17,12 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (SystemRegisters { mut sp, ssp, hp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (
+            SystemRegisters {
+                mut sp, ssp, hp, pc, ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         let (result, overflow) = f(*sp, v);
 
         if overflow || result >= *hp || result < *ssp {
@@ -37,8 +42,7 @@ where
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        let bc = b.saturating_add(c) as usize;
-        *result = self.memory.at(bc)? as Word;
+        *result = self.memory.at(b.saturating_add(c))? as Word;
         inc_pc(pc)
     }
 
@@ -47,7 +51,7 @@ where
         let result = &mut w[WriteRegKey::try_from(ra)?];
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-        *result = Word::from_be_bytes(self.memory.read_bytes(addr as usize)?);
+        *result = Word::from_be_bytes(self.memory.read_bytes(addr)?);
         inc_pc(pc)
     }
 
@@ -59,7 +63,7 @@ where
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        self.memory.set_at(owner, ac as usize, b as u8)?;
+        self.memory.set_at(owner, ac, b as u8)?;
 
         inc_pc(pc)
     }
@@ -69,7 +73,7 @@ where
         let pc = self.registers.pc_mut();
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-        self.memory.write_bytes(owner, addr as usize, &b.to_be_bytes())?;
+        self.memory.write_bytes(owner, addr, &b.to_be_bytes())?;
         inc_pc(pc)
     }
 
@@ -102,7 +106,7 @@ where
 
     pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        self.memory.try_copy_within(owner, a as usize, b as usize, c as usize)?;
+        self.memory.try_copy_within(owner, a, b, c)?;
         inc_pc(self.registers.pc_mut())
     }
 

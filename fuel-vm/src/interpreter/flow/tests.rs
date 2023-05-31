@@ -131,7 +131,7 @@ impl Default for Output {
 fn mem(set: &[(usize, Vec<u8>)]) -> VmMemory {
     let mut memory: VmMemory = VmMemory::fully_allocated();
     for (addr, data) in set {
-        let range = MemoryRange::try_new_usize(*addr, data.len()).unwrap();
+        let range = MemoryRange::try_new(*addr, data.len()).unwrap();
         memory.force_mut_range(range).copy_from_slice(data);
     }
     memory
@@ -417,7 +417,7 @@ fn check_memory(result: VmMemory, expected: CallFrame, code: Vec<u8>) {
     let frame: CallFrame = ptr.read(&result);
     assert_eq!(frame, expected);
 
-    let range = MemoryRange::try_new_usize(CallFrame::serialized_size(), frame.total_code_size() as usize).unwrap();
+    let range = MemoryRange::try_new(CallFrame::serialized_size(), frame.total_code_size()).unwrap();
     let mem_code: Vec<u8> = result.read_range(range).unwrap().copied().collect();
 
     assert_eq!(&mem_code, &code[..]);

@@ -46,7 +46,7 @@ fn test_update_memory_output(tx_offset: usize) -> Result<VmMemory, RuntimeError>
 
 fn check_memory(result: VmMemory, expected: &[(usize, Vec<u8>)]) {
     for (offset, bytes) in expected {
-        let range = MemoryRange::try_new_usize(*offset, bytes.len()).unwrap();
+        let range = MemoryRange::try_new(*offset, bytes.len()).unwrap();
         let r: Vec<u8> = result.read_range(range).unwrap().copied().collect();
         assert_eq!(&r, bytes.as_slice(), "memory mismatch at {offset}");
     }

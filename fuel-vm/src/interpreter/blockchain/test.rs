@@ -16,7 +16,7 @@ fn mem(chains: &[&[u8]]) -> VmMemory {
     let mut memory = VmMemory::new();
     let _ = memory.update_allocations(vec.len() as Word, VM_MAX_RAM).unwrap();
     memory
-        .force_mut_range(MemoryRange::try_new_usize(0, vec.len()).unwrap())
+        .force_mut_range(MemoryRange::try_new(0, vec.len()).unwrap())
         .copy_from_slice(&vec[..]);
     memory
 }

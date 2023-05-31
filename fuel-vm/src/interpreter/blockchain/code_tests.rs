@@ -19,7 +19,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory.force_write_bytes(contract_id_mem_address as usize, &contract_id);
+    memory.force_write_bytes(contract_id_mem_address, &contract_id);
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
         .unwrap();
@@ -56,7 +56,7 @@ fn test_code_copy() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory.force_write_bytes(contract_id_mem_address as usize, &contract_id);
+    memory.force_write_bytes(contract_id_mem_address, &contract_id);
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
         .unwrap();

@@ -32,7 +32,7 @@ impl RuntimePredicate {
     {
         tx.inputs_predicate_offset_at(idx).and_then(|(ofs, len)| {
             let start = ofs.checked_add(params.tx_offset())?;
-            let program = MemoryRange::try_new_usize(start, len).ok()?;
+            let program = MemoryRange::try_new(start, len).ok()?;
             Some(Self { program, idx })
         })
     }

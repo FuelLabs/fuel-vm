@@ -106,8 +106,8 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
     {
         // if above usize::MAX then it cannot be safely cast to usize,
         // check the tighter bound between VM_MAX_RAM and usize::MAX
-        let asset_id = AssetId::from(self.memory.read_bytes(b as usize)?);
-        let contract = ContractId::from(self.memory.read_bytes(c as usize)?);
+        let asset_id = AssetId::from(self.memory.read_bytes(b)?);
+        let contract = ContractId::from(self.memory.read_bytes(c)?);
 
         if !self.input_contracts.any(|input| contract == *input) {
             *self.panic_context = PanicContext::ContractId(contract);
@@ -161,16 +161,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         }
 
         let amount = b;
-        let destination = ContractId::from(
-            self.memory
-                .read_bytes(a as usize)
-                .expect("Unreachable! Checked memory range"),
-        );
-        let asset_id = AssetId::from(
-            self.memory
-                .read_bytes(c as usize)
-                .expect("Unreachable! Checked memory range"),
-        );
+        let destination = ContractId::from(self.memory.read_bytes(a).expect("Unreachable! Checked memory range"));
+        let asset_id = AssetId::from(self.memory.read_bytes(c).expect("Unreachable! Checked memory range"));
 
         if !self.tx.input_contracts().any(|contract| &destination == contract) {
             *panic_context = PanicContext::ContractId(destination);
@@ -243,16 +235,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         }
 
         let out_idx = b as usize;
-        let to = Address::from(
-            self.memory
-                .read_bytes(a as usize)
-                .expect("Unreachable! Checked memory range"),
-        );
-        let asset_id = AssetId::from(
-            self.memory
-                .read_bytes(d as usize)
-                .expect("Unreachable! Checked memory range"),
-        );
+        let to = Address::from(self.memory.read_bytes(a).expect("Unreachable! Checked memory range"));
+        let asset_id = AssetId::from(self.memory.read_bytes(d).expect("Unreachable! Checked memory range"));
         let amount = c;
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory) {

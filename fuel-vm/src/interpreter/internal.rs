@@ -66,7 +66,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
         .and_then(|offset| {
             tx.outputs()
                 .get(idx)
-                .map(|output| MemoryRange::try_new_usize(offset, output.serialized_size()))
+                .map(|output| MemoryRange::try_new(offset, output.serialized_size()))
         })
         .ok_or(PanicReason::OutputNotFound)??;
 
@@ -138,7 +138,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
         debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
-        self.memory.force_write_slice(ssp as usize, data);
+        self.memory.force_write_slice(ssp, data);
 
         Ok(())
     }
@@ -249,7 +249,7 @@ pub(crate) fn internal_contract(
     memory: &VmMemory,
 ) -> Result<ContractId, RuntimeError> {
     let addr = internal_contract_addr(context, register)?;
-    Ok(ContractId::from(memory.read_bytes(addr as usize)?))
+    Ok(ContractId::from(memory.read_bytes(addr)?))
 }
 
 pub(crate) fn internal_contract_addr(context: &Context, fp: Reg<FP>) -> Result<Word, RuntimeError> {

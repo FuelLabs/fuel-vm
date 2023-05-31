@@ -195,7 +195,7 @@ fn test_smo(
 
     let mut memory = VmMemory::fully_allocated();
     for (offset, bytes) in mem {
-        let range = MemoryRange::try_new_usize(offset, bytes.len()).unwrap();
+        let range = MemoryRange::try_new(offset, bytes.len()).unwrap();
         memory.force_mut_range(range).copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();

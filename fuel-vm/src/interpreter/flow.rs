@@ -163,10 +163,7 @@ impl RetCtx<'_> {
         let len = b as usize;
         let mut data = Vec::new();
         data.reserve_exact(len);
-        self.append
-            .memory
-            .read_into(a as usize, len, &mut data)
-            .expect("checked");
+        self.append.memory.read_into(a, len, &mut data).expect("checked");
 
         let digest = Hasher::hash(&data);
 

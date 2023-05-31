@@ -5,6 +5,8 @@ use fuel_types::Word;
 
 use crate::consts::MEM_SIZE;
 
+use super::ToAddr;
+
 /// A range of memory, checked to be within the VM memory bounds upon construction.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -12,14 +14,9 @@ pub struct MemoryRange(Range<usize>);
 
 impl MemoryRange {
     /// Returns `None` if the range doesn't fall within the VM memory.
-    pub fn try_new(start: Word, len: Word) -> Result<Self, PanicReason> {
-        let start: usize = start.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
-        let len: usize = len.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
-        Self::try_new_usize(start, len)
-    }
-
-    /// Returns `None` if the range doesn't fall within the VM memory.
-    pub fn try_new_usize(start: usize, len: usize) -> Result<Self, PanicReason> {
+    pub fn try_new<A: ToAddr, B: ToAddr>(start: A, len: B) -> Result<Self, PanicReason> {
+        let start: usize = start.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
+        let len: usize = len.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
         let end = start.checked_add(len).ok_or(PanicReason::MemoryOverflow)?;
 
         if end > MEM_SIZE {
@@ -139,10 +136,6 @@ pub mod tests {
         assert!(MemoryRange::try_new(0, u64::MAX).is_err());
         assert!(MemoryRange::try_new(u64::MAX, 0).is_err());
         assert!(MemoryRange::try_new(u64::MAX, u64::MAX).is_err());
-
-        assert!(MemoryRange::try_new_usize(0, usize::MAX).is_err());
-        assert!(MemoryRange::try_new_usize(usize::MAX, 0).is_err());
-        assert!(MemoryRange::try_new_usize(usize::MAX, usize::MAX).is_err());
     }
 
     #[test]

@@ -29,8 +29,19 @@ static_assertions::const_assert!(VM_PAGE_SIZE < MEM_SIZE);
 static_assertions::const_assert!(MEM_SIZE % VM_PAGE_SIZE == 0);
 
 /// Number of new pages allocated by a memory allocation request.
+#[derive(Debug, Clone, Copy)]
 #[must_use = "Gas charging is required when new pages are allacted"]
 pub struct AllocatedPages(pub usize);
+impl AllocatedPages {
+    /// Returns the cost of allocated pages, or `None` if no pages were allocated.
+    pub fn maybe_cost(self, cost_per_page: Word) -> Option<Word> {
+        if self.0 == 0 {
+            None
+        } else {
+            Some((self.0 as Word) * cost_per_page)
+        }
+    }
+}
 
 /// Stack and heap memory regions would overlap.
 #[derive(Debug)]

@@ -5,6 +5,7 @@ use fuel_tx::Contract;
 
 #[test]
 fn test_load_contract() -> Result<(), RuntimeError> {
+    let mut profiler = Profiler::default();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory = VmMemory::fully_allocated();
     let mut pc = 4;
@@ -12,6 +13,9 @@ fn test_load_contract() -> Result<(), RuntimeError> {
     let mut ssp = 1000;
     let mut sp = 1000;
     let fp = 0;
+    let is = 0;
+    let mut cgas = 1_000;
+    let mut ggas = 1_000;
 
     let contract_id = ContractId::from([4u8; 32]);
 
@@ -28,7 +32,9 @@ fn test_load_contract() -> Result<(), RuntimeError> {
     let input = LoadContractCodeCtx {
         contract_max_size: 100,
         storage: &storage,
+        profiler: &mut profiler,
         memory: &mut memory,
+        memory_page_gas_cost: 1,
         panic_context: &mut PanicContext::None,
         input_contracts: input_contracts.iter(),
         ssp: RegMut::new(&mut ssp),
@@ -36,6 +42,9 @@ fn test_load_contract() -> Result<(), RuntimeError> {
         fp: Reg::new(&fp),
         hp: Reg::new(&hp),
         pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);

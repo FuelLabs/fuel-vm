@@ -108,18 +108,6 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
-    /// Updates the boundaries of allocated memory.
-    pub(crate) fn update_allocations(&mut self) -> Result<(), RuntimeError> {
-        let sp = self.registers[RegId::SSP].max(self.registers[RegId::SP]);
-        let hp = self.registers[RegId::HP];
-        let _new_pages = self
-            .memory
-            .update_allocations(sp, hp)
-            .map_err(|_| PanicReason::OutOfMemory)?;
-        // TODO: gas cost for new pages
-        Ok(())
-    }
-
     /// Reserves `len` bytes of stack space. Returns the previous $ssp value,
     /// i.e. the first byte of the recently reserved memory area.
     pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
@@ -129,7 +117,16 @@ impl<S, Tx> Interpreter<S, Tx> {
             Err(PanicReason::MemoryOverflow.into())
         } else {
             let prev_ssp = mem::replace(&mut self.registers[RegId::SSP], ssp);
-            self.update_allocations()?;
+
+            let pages = self
+                .memory
+                .update_allocations(self.registers[RegId::SSP], self.registers[RegId::HP])
+                .map_err(|_| PanicReason::OutOfMemory)?;
+
+            if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
+                self.gas_charge(charge)?;
+            }
+
             Ok(prev_ssp)
         }
     }

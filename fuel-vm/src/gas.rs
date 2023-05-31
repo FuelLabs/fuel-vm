@@ -278,6 +278,9 @@ pub struct GasCostsValues {
     pub retd: DependentCost,
     pub smo: DependentCost,
     pub srwq: DependentCost,
+
+    // Non-instructions
+    pub memory_page: Word,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -411,6 +414,7 @@ impl GasCostsValues {
             retd: DependentCost::free(),
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
+            memory_page: 0,
         }
     }
 
@@ -517,6 +521,7 @@ impl GasCostsValues {
             retd: DependentCost::unit(),
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
+            memory_page: 1,
         }
     }
 }

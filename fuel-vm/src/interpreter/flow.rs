@@ -7,7 +7,7 @@ use super::internal::{
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances, VmMemory};
 use crate::arith;
 use crate::call::{Call, CallFrame};
-use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
+use crate::constraints::{reg_key::*, InstructionLocation, MemoryPtr, TypedMemoryPtr};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
@@ -293,6 +293,7 @@ where
             memory,
             context: &mut self.context,
             gas_cost: self.gas_costs.call,
+            memory_page_gas_cost: self.gas_costs.memory_page,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
             input_contracts,
@@ -397,6 +398,7 @@ struct PrepareCallCtx<'vm, S> {
     memory: PrepareCallMemory<'vm>,
     context: &'vm mut Context,
     gas_cost: DependentCost,
+    memory_page_gas_cost: Word,
     runtime_balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
     input_contracts: Vec<fuel_types::ContractId>,
@@ -421,16 +423,17 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
 
         let mut frame = call_frame(self.registers.copy_registers(), &self.storage, call, asset_id)?;
 
-        let profiler = ProfileGas {
-            pc: self.registers.system_registers.pc.as_ref(),
-            is: self.registers.system_registers.is.as_ref(),
-            current_contract: self.current_contract,
+        let mut profiler = ProfileGas {
+            location: InstructionLocation {
+                context: self.current_contract,
+                offset: *self.registers.system_registers.pc - *self.registers.system_registers.is,
+            },
             profiler: self.profiler,
         };
         dependent_gas_charge(
-            self.registers.system_registers.cgas.as_mut(),
-            self.registers.system_registers.ggas.as_mut(),
-            profiler,
+            &mut self.registers.system_registers.cgas,
+            &mut self.registers.system_registers.ggas,
+            &mut profiler,
             self.gas_cost,
             frame.total_code_size(),
         )?;
@@ -491,12 +494,21 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
 
         *self.registers.system_registers.sp = arith::checked_add_word(*self.registers.system_registers.sp, len)?;
         *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
-        let _new_pages = self
+
+        let pages = self
             .memory
             .memory
             .update_allocations(*self.registers.system_registers.sp, *self.registers.system_registers.hp)
             .map_err(|_| PanicReason::OutOfMemory)?;
-        // TODO: deduct the gas cost for newly allocated pages
+
+        if let Some(charge) = pages.maybe_cost(self.memory_page_gas_cost) {
+            super::gas::gas_charge(
+                &mut self.registers.system_registers.cgas,
+                &mut self.registers.system_registers.ggas,
+                &mut profiler,
+                charge,
+            )?;
+        }
 
         let code_frame_mem_range = MemoryRange::try_new(*self.registers.system_registers.fp, len)?;
         write_call_to_memory(

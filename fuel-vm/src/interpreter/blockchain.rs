@@ -8,7 +8,7 @@ use super::memory::OwnershipRegisters;
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances, VmMemory};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
-use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
+use crate::constraints::{reg_key::*, InstructionLocation, MemoryPtr, TypedMemoryPtr};
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
@@ -50,13 +50,23 @@ where
     pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let (
             SystemRegisters {
-                ssp, sp, hp, fp, pc, ..
+                ssp,
+                sp,
+                hp,
+                fp,
+                pc,
+                is,
+                cgas,
+                ggas,
+                ..
             },
             _,
         ) = split_registers(&mut self.registers);
         let input = LoadContractCodeCtx {
             memory: &mut self.memory,
+            memory_page_gas_cost: self.gas_costs.memory_page,
             storage: &mut self.storage,
+            profiler: &mut self.profiler,
             contract_max_size: self.params.contract_max_size,
             input_contracts: self.tx.input_contracts(),
             panic_context: &mut self.panic_context,
@@ -65,6 +75,9 @@ where
             fp: fp.as_ref(),
             hp: hp.as_ref(),
             pc,
+            is: is.as_ref(),
+            cgas,
+            ggas,
         };
         input.load_contract_code(a, b, c)
     }
@@ -257,14 +270,19 @@ where
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut VmMemory,
+    memory_page_gas_cost: Word,
     input_contracts: I,
     panic_context: &'vm mut PanicContext,
     storage: &'vm S,
+    profiler: &'vm mut Profiler,
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
     fp: Reg<'vm, FP>,
     hp: Reg<'vm, HP>,
     pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
 }
 
 impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
@@ -347,11 +365,22 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             })
             .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
 
-        let _pages = self
+        let pages = self
             .memory
             .update_allocations(*self.sp, *self.hp)
             .map_err(|_| PanicReason::OutOfMemory)?;
-        // TODO: gas price for the allocated pages
+
+        if let Some(charge) = pages.maybe_cost(self.memory_page_gas_cost) {
+            super::gas::gas_charge(
+                &mut self.cgas,
+                &mut self.ggas,
+                &mut ProfileGas {
+                    location: InstructionLocation::new(self.panic_context.clone().into(), *self.pc - *self.is),
+                    profiler: self.profiler,
+                },
+                charge,
+            )?;
+        }
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
@@ -549,7 +578,7 @@ struct CodeSizeCtx<'vm, S> {
 }
 
 impl<'vm, S> CodeSizeCtx<'vm, S> {
-    pub(crate) fn code_size(self, result: &mut Word, b: Word) -> Result<(), RuntimeError>
+    pub(crate) fn code_size(mut self, result: &mut Word, b: Word) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>,
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
@@ -557,13 +586,11 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
         let contract_id = ContractId::from(self.memory.read_bytes(b)?);
 
         let len = contract_size(self.storage, &contract_id)?;
-        let profiler = ProfileGas {
-            pc: self.pc.as_ref(),
-            is: self.is,
-            current_contract: self.current_contract,
+        let mut profiler = ProfileGas {
+            location: InstructionLocation::new(self.current_contract, *self.pc - *self.is),
             profiler: self.profiler,
         };
-        dependent_gas_charge(self.cgas, self.ggas, profiler, self.gas_cost, len)?;
+        dependent_gas_charge(&mut self.cgas, &mut self.ggas, &mut profiler, self.gas_cost, len)?;
         *result = len;
 
         inc_pc(self.pc)

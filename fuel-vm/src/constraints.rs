@@ -2,13 +2,13 @@
 
 use std::{marker::PhantomData, ops::Deref};
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_types::ContractId;
 
 use crate::{
     consts::MEM_SIZE,
     interpreter::{ToAddr, VmMemory},
-    prelude::RuntimeError,
+    prelude::{Interpreter, RuntimeError},
 };
 
 pub mod reg_key;
@@ -87,4 +87,13 @@ pub struct InstructionLocation {
     pub context: Option<ContractId>,
     /// Offset from the IS register
     pub offset: u64,
+}
+
+impl<S, Tx> Interpreter<S, Tx> {
+    pub(crate) fn current_location(&self) -> InstructionLocation {
+        InstructionLocation {
+            context: self.contract_id(),
+            offset: self.registers()[RegId::PC] - self.registers()[RegId::IS],
+        }
+    }
 }

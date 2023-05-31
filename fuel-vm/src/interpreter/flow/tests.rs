@@ -344,6 +344,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
         memory,
         context: &mut context,
         gas_cost,
+        memory_page_gas_cost: 0,
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
         input_contracts,

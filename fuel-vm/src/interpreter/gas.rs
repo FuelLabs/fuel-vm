@@ -1,6 +1,7 @@
 use super::Interpreter;
 use crate::arith;
 use crate::constraints::reg_key::*;
+use crate::constraints::InstructionLocation;
 use crate::error::RuntimeError;
 use crate::gas::DependentCost;
 use crate::prelude::Bug;
@@ -10,7 +11,6 @@ use crate::profiler::Profiler;
 
 use fuel_asm::PanicReason;
 use fuel_asm::RegId;
-use fuel_types::ContractId;
 use fuel_types::Word;
 
 #[cfg(test)]
@@ -30,50 +30,43 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
-        let current_contract = self.contract_id();
-        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
+        let mut profiler = ProfileGas {
+            location: self.current_location(),
             profiler: &mut self.profiler,
         };
-        dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
+        let SystemRegisters { mut ggas, mut cgas, .. } = split_registers(&mut self.registers).0;
+        dependent_gas_charge(&mut cgas, &mut ggas, &mut profiler, gas_cost, arg)
     }
 
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
-        let current_contract = self.contract_id();
-        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
-
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
+        let mut profiler = ProfileGas {
+            location: self.current_location(),
             profiler: &mut self.profiler,
         };
-        gas_charge(cgas, ggas, profiler, gas)
+        let SystemRegisters { mut ggas, mut cgas, .. } = split_registers(&mut self.registers).0;
+        gas_charge(&mut cgas, &mut ggas, &mut profiler, gas)
     }
 }
 
 pub(crate) fn dependent_gas_charge(
-    mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
+    cgas: &mut RegMut<CGAS>,
+    ggas: &mut RegMut<GGAS>,
+    profiler: &mut ProfileGas<'_>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> Result<(), RuntimeError> {
     if gas_cost.dep_per_unit == 0 {
         gas_charge(cgas, ggas, profiler, gas_cost.base)
     } else {
-        let cost = dependent_gas_charge_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
+        let cost = dependent_gas_charge_inner(cgas, ggas, gas_cost, arg)?;
         profiler.profile(cgas.as_ref(), cost);
         Ok(())
     }
 }
 
 fn dependent_gas_charge_inner(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
+    cgas: &mut RegMut<CGAS>,
+    ggas: &mut RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> Result<Word, RuntimeError> {
@@ -82,26 +75,26 @@ fn dependent_gas_charge_inner(
 }
 
 pub(crate) fn gas_charge(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
+    cgas: &mut RegMut<CGAS>,
+    ggas: &mut RegMut<GGAS>,
+    profiler: &mut ProfileGas<'_>,
     gas: Word,
 ) -> Result<(), RuntimeError> {
     profiler.profile(cgas.as_ref(), gas);
     gas_charge_inner(cgas, ggas, gas)
 }
 
-fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
-    if *cgas > *ggas {
+fn gas_charge_inner(cgas: &mut RegMut<CGAS>, ggas: &mut RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
+    if **cgas > **ggas {
         Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
-    } else if gas > *cgas {
-        *ggas = arith::sub_word(*ggas, *cgas)?;
-        *cgas = 0;
+    } else if gas > **cgas {
+        **ggas = arith::sub_word(**ggas, **cgas)?;
+        **cgas = 0;
 
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = arith::sub_word(*cgas, gas)?;
-        *ggas = arith::sub_word(*ggas, gas)?;
+        **cgas = arith::sub_word(**cgas, gas)?;
+        **ggas = arith::sub_word(**ggas, gas)?;
 
         Ok(())
     }
@@ -109,9 +102,7 @@ fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -
 
 #[allow(dead_code)]
 pub(crate) struct ProfileGas<'a> {
-    pub pc: Reg<'a, PC>,
-    pub is: Reg<'a, IS>,
-    pub current_contract: Option<ContractId>,
+    pub location: InstructionLocation,
     pub profiler: &'a mut Profiler,
 }
 
@@ -120,15 +111,13 @@ impl<'a> ProfileGas<'a> {
     pub(crate) fn profile(&mut self, cgas: Reg<CGAS>, gas: Word) {
         #[cfg(feature = "profile-coverage")]
         {
-            let location = super::current_location(self.current_contract, self.pc, self.is);
-            self.profiler.set_coverage(location);
+            self.profiler.set_coverage(self.location);
         }
 
         #[cfg(feature = "profile-gas")]
         {
             let gas_use = gas.min(*cgas);
-            let location = super::current_location(self.current_contract, self.pc, self.is);
-            self.profiler.add_gas(location, gas_use);
+            self.profiler.add_gas(self.location, gas_use);
         }
     }
 }

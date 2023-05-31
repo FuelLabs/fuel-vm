@@ -41,9 +41,6 @@ mod debug;
 
 use crate::profiler::Profiler;
 
-#[cfg(feature = "profile-gas")]
-use crate::profiler::InstructionLocation;
-
 pub use balances::RuntimeBalances;
 pub use memory::{MemoryRange, VmMemory};
 
@@ -93,6 +90,16 @@ pub(crate) enum PanicContext {
     None,
     /// `ContractId` retrieved during instruction execution.
     ContractId(ContractId),
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<Option<ContractId>> for PanicContext {
+    fn into(self) -> Option<ContractId> {
+        match self {
+            PanicContext::None => None,
+            PanicContext::ContractId(contract_id) => Some(contract_id),
+        }
+    }
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
@@ -161,15 +168,6 @@ pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
 
 pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
     flags(flag).contains(Flags::UNSAFEMATH)
-}
-
-#[cfg(feature = "profile-gas")]
-fn current_location(
-    current_contract: Option<ContractId>,
-    pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
-    is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
-) -> InstructionLocation {
-    InstructionLocation::new(current_contract, *pc - *is)
 }
 
 impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {

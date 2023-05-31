@@ -1,6 +1,6 @@
 use super::super::internal::inc_pc;
 use super::super::{ExecutableTransaction, Interpreter};
-use super::{AllocatedPages, MemoryRange};
+use super::MemoryRange;
 use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::error::RuntimeError;
@@ -17,24 +17,24 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (
-            SystemRegisters {
-                mut sp, ssp, hp, pc, ..
-            },
-            _,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { mut sp, ssp, hp, .. }, _) = split_registers(&mut self.registers);
         let (result, overflow) = f(*sp, v);
 
         if overflow || result >= *hp || result < *ssp {
             Err(PanicReason::MemoryOverflow.into())
         } else {
             *sp = result;
-            let _pages = self
+
+            let pages = self
                 .memory
                 .update_allocations(*sp, *hp)
                 .map_err(|_| PanicReason::OutOfMemory)?;
-            // TODO: gas price for the allocated pages
 
+            if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
+                self.gas_charge(charge)?;
+            }
+
+            let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
             inc_pc(pc)
         }
     }
@@ -84,13 +84,15 @@ where
             Err(PanicReason::MemoryOverflow.into())
         } else {
             *hp = result;
-            let AllocatedPages(pages_allocated) = self
+
+            let pages = self
                 .memory
                 .update_allocations(*sp, *hp)
                 .map_err(|_| RuntimeError::Recoverable(PanicReason::OutOfMemory))?;
 
-            // TODO: gas price for the page
-            self.gas_charge((pages_allocated as u64) * 10)?;
+            if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
+                self.gas_charge(charge)?;
+            }
 
             let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
             inc_pc(pc)

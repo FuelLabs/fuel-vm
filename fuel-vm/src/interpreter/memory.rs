@@ -2,13 +2,15 @@
 // mod allocation_tests; // TODO
 mod operations;
 mod ownership;
+mod range;
 
 #[cfg(test)]
 mod tests;
 
 pub use self::ownership::OwnershipRegisters;
+pub use self::range::MemoryRange;
 
-use std::{io, iter, ops::Range};
+use std::{io, iter};
 
 use derivative::Derivative;
 use fuel_asm::PanicReason;
@@ -27,100 +29,6 @@ pub const ZERO_PAGE: MemoryPage = [0u8; VM_PAGE_SIZE];
 
 static_assertions::const_assert!(VM_PAGE_SIZE < MEM_SIZE);
 static_assertions::const_assert!(MEM_SIZE % VM_PAGE_SIZE == 0);
-
-/// A range of memory, checked to be within the VM memory bounds upon construction.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct MemoryRange(Range<usize>);
-
-impl MemoryRange {
-    /// Returns `None` if the range doesn't fall within the VM memory.
-    pub fn try_new(start: Word, len: Word) -> Result<Self, PanicReason> {
-        let start: usize = start.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
-        let len: usize = len.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
-        Self::try_new_usize(start, len)
-    }
-
-    /// Returns `None` if the range doesn't fall within the VM memory.
-    pub fn try_new_usize(start: usize, len: usize) -> Result<Self, PanicReason> {
-        let end = start.checked_add(len).ok_or(PanicReason::MemoryOverflow)?;
-
-        if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow);
-        }
-
-        Ok(Self(start..end))
-    }
-
-    /// Converts this to a `usize` range. This is needed because `Range` doesn't implement `Copy`.
-    pub fn as_usizes(&self) -> Range<usize> {
-        self.0.clone()
-    }
-
-    /// Converts this to a `Word` range
-    pub fn as_words(&self) -> Range<Word> {
-        (self.start as Word)..(self.end as Word)
-    }
-
-    /// Checks if a range falls fully within another range
-    pub fn contains_range(&self, inner: &Self) -> bool {
-        self.contains(&inner.start) && inner.end <= self.end
-    }
-
-    /// Computes the overlap (intersection) of two ranges. Returns `None` if the ranges do not overlap.
-    pub fn overlap_with(&self, other: &Self) -> Option<Self> {
-        let start = self.start.max(other.start);
-        let end = self.end.min(other.end);
-        if start < end {
-            Some(Self(start..end))
-        } else {
-            None
-        }
-    }
-
-    /// Checks that a range is fully contained within another range, and then returns
-    /// the self as offset relative to the outer range.
-    pub fn relative_to(&self, outer: &Self) -> Option<Self> {
-        if outer.contains_range(self) {
-            Some(Self(self.start - outer.start..self.end - outer.start))
-        } else {
-            None
-        }
-    }
-
-    /// Shrink the into the given subrange.
-    /// Returns `None` if the subrange is not fully contained within the range.
-    pub fn subrange(&self, offset: usize, len: usize) -> Option<Self> {
-        let new_start = self.start.checked_add(offset)?;
-        let new_end = new_start.checked_add(len)?;
-
-        if new_end > self.end {
-            return None;
-        }
-
-        Some(Self(new_start..new_end))
-    }
-
-    /// Splits the range into two ranges at the given offset.
-    /// Returns `None` if the offset is not within the range.
-    pub fn split_at(&self, offset: usize) -> Option<(Self, Self)> {
-        let offset = self.start.checked_add(offset)?;
-
-        if offset > self.end {
-            return None;
-        }
-
-        Some((Self(self.start..offset), Self(offset..self.end)))
-    }
-}
-
-impl std::ops::Deref for MemoryRange {
-    type Target = Range<usize>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 /// Number of new pages allocated by a memory allocation request.
 #[must_use = "Gas charging is required when new pages are allacted"]
@@ -209,13 +117,13 @@ impl VmMemory {
     }
 
     fn stack_range(&self) -> MemoryRange {
-        MemoryRange(0..self.stack.len())
+        MemoryRange::try_new_usize(0, self.stack.len()).unwrap()
     }
 
     fn heap_range(&self) -> MemoryRange {
         // Never wraps, heap isn't larger than the address space
         let heap_start = MEM_SIZE - self.heap.len();
-        MemoryRange(heap_start..MEM_SIZE)
+        MemoryRange::try_new_usize(heap_start, self.heap.len()).unwrap()
     }
 
     /// Verify that a range is in bounds.

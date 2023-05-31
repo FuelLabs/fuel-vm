@@ -144,6 +144,19 @@ where
         Ok(())
     }
 
+    pub fn update_set<'a, I, D>(&mut self, set: I) -> Result<(), MerkleTreeError<StorageError>>
+    where
+        I: IntoIterator<Item = (&'a Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        let iter = set.into_iter();
+        for (key, data) in iter {
+            self.update(key, data.as_ref())?;
+        }
+
+        Ok(())
+    }
+
     pub fn delete(&mut self, key: &Bytes32) -> Result<(), MerkleTreeError<StorageError>> {
         if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
@@ -725,5 +738,44 @@ mod test {
 
         let err = MerkleTree::load(&mut storage, &root).expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::DeserializeError(_)));
+    }
+
+    #[test]
+    fn test_update_multiple_yields_expected_root() {
+        use hashbrown::HashMap;
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let keys = [
+                sum(b"\x00\x00\x00\x00"),
+                sum(b"\x00\x00\x00\x02"),
+                sum(b"\x00\x00\x00\x04"),
+                sum(b"\x00\x00\x00\x06"),
+                sum(b"\x00\x00\x00\x08"),
+            ];
+            let input: HashMap<&Bytes32, &[u8]> = HashMap::from([
+                (&keys[0], b"DATA".as_slice()),
+                (&keys[1], b"DATA".as_slice()),
+                (&keys[2], b"DATA".as_slice()),
+                (&keys[3], b"DATA".as_slice()),
+                (&keys[4], b"DATA".as_slice()),
+            ]);
+            tree.update_set(input).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
     }
 }

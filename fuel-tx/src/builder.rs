@@ -247,7 +247,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
+            Default::default(),
             Default::default(),
         )
     }

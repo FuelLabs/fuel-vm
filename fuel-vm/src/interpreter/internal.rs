@@ -1,6 +1,6 @@
 use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
 use super::{MemoryRange, VmMemory};
-use crate::constraints::reg_key::*;
+use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
 use crate::context::Context;
 use crate::error::RuntimeError;
 
@@ -248,13 +248,15 @@ pub(crate) fn internal_contract(
     register: Reg<FP>,
     memory: &VmMemory,
 ) -> Result<ContractId, RuntimeError> {
-    let addr = internal_contract_addr(context, register)?;
-    Ok(ContractId::from(memory.read_bytes(addr)?))
+    Ok(internal_contract_addr(context, register)?.read(memory))
 }
 
-pub(crate) fn internal_contract_addr(context: &Context, fp: Reg<FP>) -> Result<Word, RuntimeError> {
+pub(crate) fn internal_contract_addr(
+    context: &Context,
+    fp: Reg<FP>,
+) -> Result<TypedMemoryPtr<ContractId, { ContractId::LEN }>, RuntimeError> {
     if context.is_internal() {
-        Ok(*fp) // TODO: use MemoryAddr type
+        Ok(MemoryPtr::try_new(*fp)?.typed())
     } else {
         Err(PanicReason::ExpectedInternalContext.into())
     }

@@ -382,8 +382,8 @@ where
 {
     let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
-    let asset_id = AssetId::from(memory.read_bytes(addr).expect("checked"));
+    let contract = addr.read(memory);
+    let asset_id = AssetId::from(*contract);
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
@@ -409,8 +409,8 @@ where
 {
     let addr = internal_contract_addr(context, fp)?;
 
-    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
-    let asset_id = AssetId::from(memory.read_bytes(addr).expect("checked"));
+    let contract = addr.read(memory);
+    let asset_id = AssetId::from(*contract);
 
     let balance = balance(storage, &contract, &asset_id)?;
     let balance = checked_add_word(balance, a)?;
@@ -619,10 +619,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
 ) -> Result<(), RuntimeError> {
     let key = Bytes32::from(memory.read_bytes(a)?);
 
-    let addr = internal_contract_addr(context, fp)?;
-
-    // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::from(memory.read_bytes(addr).expect("checked"));
+    let contract = internal_contract(context, fp, memory)?;
 
     let mut value = Bytes32::default();
 

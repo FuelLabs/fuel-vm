@@ -1,5 +1,3 @@
-// #[cfg(test)]
-// mod allocation_tests; // TODO
 mod operations;
 mod ownership;
 mod range;
@@ -62,13 +60,14 @@ impl VmMemory {
         }
     }
 
-    /// Reset the memory to its initial state.
+    /// Reset the memory to its initial state. This doesn't deallocate the memory buffers.
     pub fn reset(&mut self) {
         self.stack.clear();
         self.heap.clear();
     }
 
-    /// Allocates full memory range for stack.
+    /// Allocates full memory range for stack, essentially disabling ownership checks.
+    /// This is only used for testing.
     #[cfg(test)]
     pub fn fully_allocated() -> Self {
         let mut mem = Self::new();
@@ -85,6 +84,7 @@ impl VmMemory {
         mem
     }
 
+    /// Returns the number of unallocated bytes.
     fn unallocated(&self) -> usize {
         MEM_SIZE
             .checked_sub(self.stack.len() + self.heap.len())
@@ -116,10 +116,12 @@ impl VmMemory {
         Ok(AllocatedPages(new_pages))
     }
 
+    /// Stack area as a memory range.
     fn stack_range(&self) -> MemoryRange {
         MemoryRange::try_new_usize(0, self.stack.len()).unwrap()
     }
 
+    /// Heap area as a memory range.
     fn heap_range(&self) -> MemoryRange {
         // Never wraps, heap isn't larger than the address space
         let heap_start = MEM_SIZE - self.heap.len();
@@ -143,7 +145,7 @@ impl VmMemory {
             .chain(self.heap.iter())
     }
 
-    /// Read given number of bytes of memory at address
+    /// Read given number of bytes of memory at address.
     pub fn read(&self, addr: usize, count: usize) -> Result<impl Iterator<Item = &u8> + '_, RuntimeError> {
         let end = addr.saturating_add(count).saturating_sub(1);
 

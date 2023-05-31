@@ -348,6 +348,12 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             })
             .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
 
+        let _pages = self
+            .memory
+            .update_allocations(*self.sp, *self.hp)
+            .map_err(|_| PanicReason::OutOfMemory)?;
+        // TODO: gas price for the allocated pages
+
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());

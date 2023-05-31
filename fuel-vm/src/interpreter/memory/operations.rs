@@ -17,10 +17,10 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (SystemRegisters { mut sp, hp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { mut sp, ssp, hp, pc, .. }, _) = split_registers(&mut self.registers);
         let (result, overflow) = f(*sp, v);
 
-        if overflow || result >= *hp {
+        if overflow || result >= *hp || result < *ssp {
             Err(PanicReason::MemoryOverflow.into())
         } else {
             *sp = result;

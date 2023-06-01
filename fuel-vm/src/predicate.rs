@@ -101,6 +101,7 @@ fn from_tx_works() {
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_limit(1_000_000)
             .with_params(params)
             .add_input(i)
             .add_random_fee_input()

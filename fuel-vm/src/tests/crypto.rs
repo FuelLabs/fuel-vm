@@ -59,7 +59,9 @@ fn ecrecover() {
         .finalize_checked(height, &gas_costs);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, rb, .. } if *ra == 1 && *rb == 0));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, rb, .. } if *ra == 1 && *rb == 0));
 
     assert!(success);
 }
@@ -153,7 +155,6 @@ fn sha256() {
 
     assert!(success);
 }
-
 
 #[test]
 fn keccak256() {

@@ -214,8 +214,8 @@ where
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let contract_id = ContractId::from(self.mem_read_bytes(b)?);
         let wrk = WriteRegKey::try_from(ra)?;
+        let contract_id = ContractId::from(self.mem_read_bytes(b)?);
 
         let len = contract_size(&self.storage, &contract_id)?;
         self.dependent_gas_charge(self.gas_costs.csiz, len)?;
@@ -226,6 +226,7 @@ where
     }
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(rb)?;
         let contract_id = self.internal_contract()?;
 
         let start_key = Bytes32::from(self.mem_read_bytes(a)?);
@@ -237,7 +238,8 @@ where
             .map_err(RuntimeError::from_io)?
             .is_some();
 
-        self.registers[rb] = all_previously_set as Word;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = all_previously_set as Word;
 
         Ok(())
     }
@@ -264,6 +266,7 @@ where
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(rb)?;
         let contract_id = self.internal_contract()?;
         let src_key = Bytes32::from(self.mem_read_bytes(c)?);
 
@@ -282,7 +285,8 @@ where
             })
             .collect();
 
-        self.registers[rb] = all_set as Word;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = all_set as Word;
 
         self.mem_write_slice(a, &result)?;
 
@@ -290,6 +294,7 @@ where
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(rb)?;
         let key = Bytes32::from(self.mem_read_bytes(a)?);
         let contract = self.internal_contract()?;
 
@@ -302,12 +307,14 @@ where
             .merkle_contract_state_insert(&contract, &key, &value)
             .map_err(RuntimeError::from_io)?;
 
-        self.registers[rb] = result.is_some() as Word;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = result.is_some() as Word;
 
         Ok(())
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(rb)?;
         let contract_id = self.internal_contract();
         let source_addresses = MemoryRange::try_new(c, Bytes32::LEN.saturating_mul(d as usize) as Word)?;
 
@@ -325,7 +332,9 @@ where
             .merkle_contract_state_insert_range(contract_id, &destination_key, &values)
             .map_err(RuntimeError::from_io)?
             .is_some();
-        self.registers[rb] = any_none as Word;
+
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = any_none as Word;
 
         Ok(())
     }
@@ -334,14 +343,13 @@ where
         let wrk = WriteRegKey::try_from(ra)?;
         let block_height = self.get_block_height()?;
 
-
         let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
         (b <= block_height)
             .then_some(())
             .ok_or(PanicReason::TransactionValidity)?;
 
         let (_, mut w) = split_registers(&mut self.registers);
-        w[wrk] =  self.storage.timestamp(b).map_err(|e| e.into())?;
+        w[wrk] = self.storage.timestamp(b).map_err(|e| e.into())?;
 
         Ok(())
     }

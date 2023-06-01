@@ -132,7 +132,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
     if cause_error {
         let _ = receipts.pop().unwrap(); // Script result unneeded, the panic receipt below is enough
         if let Receipt::Panic { reason, .. } = receipts.pop().unwrap() {
-            assert!(matches!(reason.reason(), PanicReason::MemoryAccess));
+            assert!(matches!(reason.reason(), PanicReason::OutOfMemory));
         } else {
             panic!("Expected tx panic when cause_error is set");
         }
@@ -344,6 +344,6 @@ fn test_meq(
             _ => unreachable!(),
         }
     } else {
-        panic!("Expected LogData receipt");
+        panic!("Expected Log receipt");
     }
 }

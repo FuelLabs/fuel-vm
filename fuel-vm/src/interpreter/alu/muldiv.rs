@@ -1,7 +1,7 @@
 use super::super::{ExecutableTransaction, Interpreter};
-use crate::{error::RuntimeError, constraints::reg_key::*};
+use crate::{constraints::reg_key::*, error::RuntimeError};
 
-use fuel_asm::{PanicReason};
+use fuel_asm::PanicReason;
 use fuel_types::{RegisterId, Word};
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -23,7 +23,7 @@ where
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 
-        let (SystemRegisters {mut of, mut err, ..}, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { mut of, mut err, .. }, mut w) = split_registers(&mut self.registers);
         *of = overflow;
         *err = 0;
         w[wrk] = result;

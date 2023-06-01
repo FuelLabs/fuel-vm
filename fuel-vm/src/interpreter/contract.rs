@@ -34,7 +34,7 @@ where
         let balance = balance(&self.storage, &contract, &asset_id)?;
 
         let (_, mut w) = split_registers(&mut self.registers);
-        w[wrk] =  balance;
+        w[wrk] = balance;
 
         Ok(())
     }

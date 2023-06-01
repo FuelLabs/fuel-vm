@@ -30,7 +30,7 @@ where
 
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         let wrk = WriteRegKey::try_from(ra)?;
-        
+
         let addr = b.checked_add(c).ok_or(PanicReason::MemoryAccess)?;
         let bytes: [u8; 1] = self.mem_read_bytes(addr)?;
         let (_, mut w) = split_registers(&mut self.registers);
@@ -40,7 +40,7 @@ where
 
     pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         let wrk = WriteRegKey::try_from(ra)?;
-        
+
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryAccess)?;
         let word = Word::from_be_bytes(self.mem_read_bytes(addr)?);

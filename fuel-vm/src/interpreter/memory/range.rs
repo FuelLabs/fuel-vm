@@ -38,7 +38,7 @@ impl MemoryRange {
 
     /// Checks if a range falls fully within another range
     pub fn contains_range(&self, inner: &Self) -> bool {
-        if inner.len() == 0 && self.len() == 0{
+        if inner.len() == 0 && self.len() == 0 {
             return self.start == inner.start;
         }
 

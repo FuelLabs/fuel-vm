@@ -1,4 +1,4 @@
-use crate::consts::MEM_SIZE;
+use crate::consts::WORD_SIZE;
 use crate::interpreter::internal::{external_asset_id_balance_sub, set_variable_output};
 use crate::prelude::*;
 use fuel_asm::op;
@@ -90,7 +90,10 @@ fn variable_output_updates_in_memory() {
     // verify the vm memory is updated properly
     let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
     let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
-    let rest: Vec<u8> = vm.mem_read(position, MEM_SIZE - position).unwrap().to_vec();
+    let rest: Vec<u8> = vm
+        .mem_read(position, WORD_SIZE + mem_output.serialized_size())
+        .unwrap()
+        .to_vec();
     let _ = mem_output.write(&rest).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
 }

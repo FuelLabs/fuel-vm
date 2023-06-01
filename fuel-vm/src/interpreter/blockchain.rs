@@ -3,6 +3,7 @@ use super::internal::{base_asset_balance_sub, tx_id};
 use super::{ExecutableTransaction, Interpreter, MemoryRange};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word};
 use crate::call::CallFrame;
+use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::interpreter::PanicContext;
@@ -179,7 +180,9 @@ where
     }
 
     pub(crate) fn block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
-        self.registers[ra] = self
+        let (_, mut w) = split_registers(&mut self.registers);
+        let result = &mut w[WriteRegKey::try_from(ra)?];
+        *result = self
             .context
             .block_height()
             .map(|h| *h as Word)
@@ -212,10 +215,12 @@ where
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
         let contract_id = ContractId::from(self.mem_read_bytes(b)?);
+        let wrk = WriteRegKey::try_from(ra)?;
 
         let len = contract_size(&self.storage, &contract_id)?;
         self.dependent_gas_charge(self.gas_costs.csiz, len)?;
-        self.registers[ra] = len;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = len;
 
         Ok(())
     }
@@ -238,6 +243,9 @@ where
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
+        let wrk_a = WriteRegKey::try_from(ra)?;
+        let wrk_b = WriteRegKey::try_from(rb)?;
+
         let key = Bytes32::from(self.mem_read_bytes(c)?);
         let contract = self.internal_contract()?;
 
@@ -248,8 +256,9 @@ where
             .map(|state| bytes::from_array(state.as_ref().borrow()))
             .map(Word::from_be_bytes);
 
-        self.registers[ra] = value.unwrap_or(0);
-        self.registers[rb] = value.is_some() as Word;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk_a] = value.unwrap_or(0);
+        w[wrk_b] = value.is_some() as Word;
 
         Ok(())
     }
@@ -322,14 +331,17 @@ where
     }
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
         let block_height = self.get_block_height()?;
+
 
         let b = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
         (b <= block_height)
             .then_some(())
             .ok_or(PanicReason::TransactionValidity)?;
 
-        self.registers[ra] = self.storage.timestamp(b).map_err(|e| e.into())?;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] =  self.storage.timestamp(b).map_err(|e| e.into())?;
 
         Ok(())
     }
@@ -341,24 +353,6 @@ where
         msg_data_len: Word,
         amount_coins_to_send: Word,
     ) -> Result<(), RuntimeError> {
-        // let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
-        // let input = MessageOutputCtx {
-        //     max_message_data_length: self.params.max_message_data_length,
-        //     memory: &mut self.memory,
-        //     tx_offset: self.params.tx_offset(),
-        //     receipts: &mut self.receipts,
-        //     tx: &mut self.tx,
-        //     balances: &mut self.balances,
-        //     storage: &mut self.storage,
-        //     current_contract: self.frames.last().map(|frame| frame.to()).copied(),
-        //     fp: fp.as_ref(),
-        //     pc,
-        //     recipient_mem_address: a,
-        //     msg_data_ptr: b,
-        //     msg_data_len: c,
-        //     amount_coins_to_send: d,
-        // };
-
         let recipient = Address::from(self.mem_read_bytes(recipient_mem_address)?);
 
         if msg_data_len > self.params.max_message_data_length {

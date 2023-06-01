@@ -29,16 +29,23 @@ where
     }
 
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
+        
         let addr = b.checked_add(c).ok_or(PanicReason::MemoryAccess)?;
         let bytes: [u8; 1] = self.mem_read_bytes(addr)?;
-        self.registers[ra] = bytes[0] as Word;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = bytes[0] as Word;
         Ok(())
     }
 
     pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
+        
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryAccess)?;
-        self.registers[ra] = Word::from_be_bytes(self.mem_read_bytes(addr)?);
+        let word = Word::from_be_bytes(self.mem_read_bytes(addr)?);
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = word;
         Ok(())
     }
 
@@ -85,6 +92,7 @@ where
     }
 
     pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
         let range0 = MemoryRange::try_new(b, d)?;
         let range1 = MemoryRange::try_new(c, d)?;
 
@@ -93,7 +101,9 @@ where
         }
 
         let eq = self.memory.read(&range0) == self.memory.read(&range1);
-        self.registers[ra] = eq as Word;
+
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] = eq as Word;
         Ok(())
     }
 }

@@ -1,7 +1,7 @@
 use super::super::{ExecutableTransaction, Interpreter};
-use crate::error::RuntimeError;
+use crate::{error::RuntimeError, constraints::reg_key::*};
 
-use fuel_asm::{PanicReason, RegId};
+use fuel_asm::{PanicReason};
 use fuel_types::{RegisterId, Word};
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -16,15 +16,17 @@ where
         rhs: Word,
         divider: Word,
     ) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
         let (result, overflow) = muldiv(lhs, rhs, divider);
 
         if overflow != 0 && !self.flag_wrapping() {
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 
-        self.registers[RegId::OF] = overflow;
-        self.registers[RegId::ERR] = 0;
-        self.registers[ra] = result;
+        let (SystemRegisters {mut of, mut err, ..}, mut w) = split_registers(&mut self.registers);
+        *of = overflow;
+        *err = 0;
+        w[wrk] = result;
 
         Ok(())
     }

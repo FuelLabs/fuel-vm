@@ -1,5 +1,6 @@
 use super::internal::{external_asset_id_balance_sub, set_variable_output};
 use super::{ExecutableTransaction, Interpreter};
+use crate::constraints::reg_key::*;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
 use crate::storage::ContractsRawCode;
@@ -21,6 +22,7 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+        let wrk = WriteRegKey::try_from(ra)?;
         let asset_id = AssetId::from(self.mem_read_bytes(b)?);
         let contract = ContractId::from(self.mem_read_bytes(c)?);
 
@@ -31,7 +33,8 @@ where
 
         let balance = balance(&self.storage, &contract, &asset_id)?;
 
-        self.registers[ra] = balance;
+        let (_, mut w) = split_registers(&mut self.registers);
+        w[wrk] =  balance;
 
         Ok(())
     }

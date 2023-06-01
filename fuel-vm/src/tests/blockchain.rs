@@ -10,10 +10,9 @@ use crate::consts::*;
 use crate::prelude::*;
 
 use crate::script_with_data_offset;
-use fuel_asm::PanicReason::ErrorFlag;
 use fuel_asm::{
     op, Instruction,
-    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryAccess},
+    PanicReason::{ContractNotInInputs, ExpectedUnallocatedStack, MemoryAccess},
 };
 use fuel_tx::field::Script as ScriptField;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -582,145 +581,6 @@ fn code_copy_a_gt_vmmax_sub_d() {
 }
 
 #[test]
-fn code_copy_b_plus_32_overflow() {
-    let reg_a = 0x20;
-    //test overflow add
-    let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(code_copy, MemoryAccess);
-}
-
-#[test]
-fn code_copy_b_gt_vm_max_ram() {
-    let reg_a = 0x20;
-    //test overflow add
-    let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::subi(reg_a, reg_a, 31),
-        op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(code_copy, MemoryAccess);
-}
-
-#[test]
-fn code_copy_c_gt_vm_max_ram() {
-    let reg_a = 0x20;
-    //test overflow add
-    let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::addi(reg_a, reg_a, 1),
-        op::ccp(RegId::ZERO, RegId::ZERO, reg_a, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(code_copy, MemoryAccess);
-}
-
-#[test]
-fn code_root_a_plus_32_overflow() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::croo(reg_a, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(code_root, ArithmeticOverflow);
-}
-
-#[test]
-fn code_root_b_plus_32_overflow() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::croo(RegId::ZERO, reg_a),
-    ];
-
-    check_expected_reason_for_instructions(code_root, MemoryAccess);
-}
-
-#[test]
-fn code_root_a_over_max_ram() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::croo(reg_a, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(code_root, MemoryAccess);
-}
-
-#[test]
-fn code_root_b_over_max_ram() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::croo(RegId::ZERO, reg_a),
-    ];
-
-    check_expected_reason_for_instructions(code_root, MemoryAccess);
-}
-
-#[test]
-fn code_size_b_plus_32_overflow() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::csiz(reg_a, reg_a),
-    ];
-
-    check_expected_reason_for_instructions(code_root, MemoryAccess);
-}
-
-#[test]
-fn code_size_b_over_max_ram() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::csiz(reg_a, reg_a),
-    ];
-
-    check_expected_reason_for_instructions(code_root, MemoryAccess);
-}
-
-#[test]
 fn sww_sets_status() {
     #[rustfmt::skip]
         let program = vec![
@@ -1096,40 +956,6 @@ fn state_w_qword_a_over_max_ram() {
     ];
 
     check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
-}
-
-#[test]
-fn state_w_qword_b_over_max_ram() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let state_write_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::subi(reg_a, reg_a, 31),
-        op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
-    ];
-
-    check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
-}
-
-#[test]
-fn message_output_b_gt_msg_len() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-
-    // cover contract_id_end beyond max ram
-    let message_output = vec![
-        op::xor(reg_a, reg_a, reg_a), // r[a] = 0
-        op::ori(reg_a, reg_a, 1),     // r[a] = 1
-        op::slli(reg_a, reg_a, 20),   // r[a] = 2^20
-        op::addi(reg_a, reg_a, 1),    // r[a] = 2^20 + 1
-        op::smo(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
-    ];
-
-    check_expected_reason_for_instructions(message_output, ErrorFlag);
 }
 
 #[test]

@@ -5,6 +5,7 @@ use fuel_types::{RegisterId, Word};
 
 use super::super::{ExecutableTransaction, Interpreter};
 use crate::error::RuntimeError;
+use crate::interpreter::{split_registers, WriteRegKey};
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
 // It takes two type parameters: the current type and type that has double-width of it.
@@ -57,6 +58,8 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: CompareArgs,
                 ) -> Result<(), RuntimeError> {
+                    let wrk = WriteRegKey::try_from(ra)?;
+
                     // LHS argument is always indirect, load it
                     let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
 
@@ -67,7 +70,8 @@ macro_rules! wideint_ops {
                         c.into()
                     };
 
-                    self.registers[ra] = [<cmp_ $t:lower>](lhs, rhs, args.mode);
+                    let (_, mut w) = split_registers(&mut self.registers);
+                    w[wrk] = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
                     Ok(())
                 }

@@ -365,7 +365,7 @@ where
     pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
             if self.registers[RegId::PC] >= VM_MAX_RAM {
-                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
+                return Err(InterpreterError::Panic(PanicReason::MemoryAccess));
             }
 
             // Check whether the instruction will be executed in a call context

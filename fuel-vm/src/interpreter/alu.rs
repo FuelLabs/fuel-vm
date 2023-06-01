@@ -1,7 +1,7 @@
-use super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTransaction, Interpreter};
+use super::{internal::inc_pc, parse_flags, ExecutableTransaction, Interpreter};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
-use fuel_asm::PanicReason;
+use fuel_asm::{Flags, PanicReason};
 use fuel_types::{RegisterId, Word};
 
 mod muldiv;
@@ -97,7 +97,7 @@ where
 {
     let (result, _overflow) = f(b, c);
 
-    if result > Word::MAX as u128 && !is_wrapping(flag) {
+    if result > Word::MAX as u128 && !parse_flags(flag).contains(Flags::WRAPPING) {
         return Err(PanicReason::ArithmeticOverflow.into());
     }
 
@@ -125,7 +125,7 @@ where
 {
     let (result, overflow) = f(b, c);
 
-    if overflow && !is_wrapping(flag) {
+    if overflow && !parse_flags(flag).contains(Flags::WRAPPING) {
         return Err(PanicReason::ArithmeticOverflow.into());
     }
 
@@ -150,7 +150,7 @@ pub(crate) fn alu_error<F, B, C>(
 where
     F: FnOnce(B, C) -> Word,
 {
-    if err_bool && !is_unsafe_math(flag) {
+    if err_bool && !parse_flags(flag).contains(Flags::UNSAFEMATH) {
         return Err(PanicReason::ArithmeticError.into());
     }
 

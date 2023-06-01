@@ -3,18 +3,11 @@ use std::ops::Range;
 use fuel_asm::RegId;
 use fuel_types::Word;
 
-use crate::{
-    consts::VM_MAX_RAM,
-    context::Context,
-    prelude::{ExecutableTransaction, Interpreter},
-};
+use crate::{consts::VM_MAX_RAM, context::Context, prelude::Interpreter};
 
 use super::MemoryRange;
 
-impl<S, Tx> Interpreter<S, Tx>
-where
-    Tx: ExecutableTransaction,
-{
+impl<S, Tx> Interpreter<S, Tx> {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)

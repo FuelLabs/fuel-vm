@@ -69,41 +69,7 @@ fn opcode() {
 fn panic_reason_description() {
     let imm24 = 0xbfffff;
 
-    let reasons = vec![
-        PanicReason::Revert,
-        PanicReason::OutOfGas,
-        PanicReason::TransactionValidity,
-        PanicReason::MemoryOverflow,
-        PanicReason::ArithmeticOverflow,
-        PanicReason::ContractNotFound,
-        PanicReason::MemoryOwnership,
-        PanicReason::NotEnoughBalance,
-        PanicReason::ExpectedInternalContext,
-        PanicReason::AssetIdNotFound,
-        PanicReason::InputNotFound,
-        PanicReason::OutputNotFound,
-        PanicReason::WitnessNotFound,
-        PanicReason::TransactionMaturity,
-        PanicReason::InvalidMetadataIdentifier,
-        PanicReason::MalformedCallStructure,
-        PanicReason::ReservedRegisterNotWritable,
-        PanicReason::ErrorFlag,
-        PanicReason::InvalidImmediateValue,
-        PanicReason::ExpectedCoinInput,
-        PanicReason::MaxMemoryAccess,
-        PanicReason::MemoryWriteOverlap,
-        PanicReason::ContractNotInInputs,
-        PanicReason::InternalBalanceOverflow,
-        PanicReason::ContractMaxSize,
-        PanicReason::ExpectedUnallocatedStack,
-        PanicReason::MaxStaticContractsReached,
-        PanicReason::TransferAmountCannotBeZero,
-        PanicReason::ExpectedOutputVariable,
-        PanicReason::ExpectedParentInternalContext,
-        PanicReason::IllegalJump,
-        PanicReason::ArithmeticError,
-        PanicReason::ContractInstructionNotAllowed,
-    ];
+    let reasons = PanicReason::iter();
 
     for r in reasons {
         let b = r as u8;

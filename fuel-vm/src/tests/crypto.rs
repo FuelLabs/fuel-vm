@@ -1,4 +1,4 @@
-use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
+use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryAccess};
 use fuel_asm::{op, GTFArgs, RegId};
 use fuel_crypto::Hasher;
 use fuel_tx::TransactionBuilder;
@@ -104,7 +104,7 @@ fn ecrecover_a_gt_vmaxram_sub_64() {
         op::ecr(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn s256_a_gt_vmaxram_sub_32() {
         op::s256(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -214,7 +214,7 @@ fn s256_c_gt_mem_max() {
         op::s256(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn s256_b_gt_vmaxram_sub_c() {
         op::s256(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn k256_a_gt_vmaxram_sub_32() {
         op::k256(reg_a, reg_b, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -308,7 +308,7 @@ fn k256_c_gt_mem_max() {
         op::k256(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }
 
 #[test]
@@ -324,5 +324,5 @@ fn k256_b_gt_vmaxram_sub_c() {
         op::k256(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, MemoryOverflow);
+    check_expected_reason_for_instructions(script, MemoryAccess);
 }

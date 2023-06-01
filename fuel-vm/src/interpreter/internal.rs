@@ -1,12 +1,11 @@
-use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
 use super::{MemoryRange, VmMemory};
-use crate::constraints::{reg_key::*, MemoryPtr, TypedMemoryPtr};
+use crate::constraints::reg_key::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
 
 use fuel_asm::{Flags, Instruction, PanicReason, RegId};
 use fuel_tx::field::{Outputs, ReceiptsRoot};
-use fuel_tx::Script;
 use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{AssetId, BlockHeight, Bytes32, ContractId, Word};
@@ -27,15 +26,21 @@ where
     }
 
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
-        append_receipt(
-            AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
-                memory: &mut self.memory,
-            },
-            receipt,
-        )
+        self.receipts.push(receipt);
+
+        if let Some(script) = self.tx.as_script_mut() {
+            let offset = self.params.tx_offset() + script.receipts_root_offset();
+
+            // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
+            // linear monadic model and should be discussed. Maybe the receipts tree should have
+            // constant capacity so the gas cost is also constant to the maximum depth?
+            let root = self.receipts.root();
+            *script.receipts_root_mut() = root;
+
+            // Transaction memory space length is already checked on initialization so its
+            // guaranteed to fit
+            self.memory.write_bytes(offset, &root);
+        }
     }
 }
 
@@ -70,41 +75,10 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
         })
         .ok_or(PanicReason::OutputNotFound)??;
 
-    let mem = memory.force_mut_range(range);
+    let mem = memory.write(&range);
     tx.output_to_mem(idx, mem)?;
 
     Ok(())
-}
-
-pub(crate) struct AppendReceipt<'vm> {
-    pub receipts: &'vm mut ReceiptsCtx,
-    pub script: Option<&'vm mut Script>,
-    pub tx_offset: usize,
-    pub memory: &'vm mut VmMemory,
-}
-
-pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
-    let AppendReceipt {
-        receipts,
-        script,
-        tx_offset,
-        memory,
-    } = input;
-    receipts.push(receipt);
-
-    if let Some(script) = script {
-        let offset = tx_offset + script.receipts_root_offset();
-
-        // TODO this generates logarithmic gas cost to the receipts count. This won't fit the
-        // linear monadic model and should be discussed. Maybe the receipts tree should have
-        // constant capacity so the gas cost is also constant to the maximum depth?
-        let root = receipts.root();
-        *script.receipts_root_mut() = root;
-
-        // Transaction memory space length is already checked on initialization so its
-        // guaranteed to fit
-        memory.force_write_bytes(offset, &root);
-    }
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
@@ -114,7 +88,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 
         if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
-            Err(PanicReason::MemoryOverflow.into())
+            Err(PanicReason::OutOfMemory.into())
         } else {
             let prev_ssp = mem::replace(&mut self.registers[RegId::SSP], ssp);
 
@@ -135,7 +109,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
         debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
-        self.memory.force_write_slice(ssp, data);
+        self.memory.write_slice(ssp, data);
 
         Ok(())
     }
@@ -161,13 +135,24 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn internal_contract(&self) -> Result<ContractId, RuntimeError> {
-        internal_contract(&self.context, self.registers.fp(), &self.memory)
+        if self.context.is_internal() {
+            Ok(ContractId::from(self.mem_read_bytes(self.registers[RegId::FP])?))
+        } else {
+            Err(PanicReason::ExpectedInternalContext.into())
+        }
     }
 
     pub(crate) fn internal_contract_or_default(&self) -> ContractId {
-        internal_contract_or_default(&self.context, self.registers.fp(), &self.memory)
+        self.internal_contract().ok().unwrap_or_default()
     }
 
+    pub(crate) fn current_contract(&self) -> Result<Option<ContractId>, RuntimeError> {
+        if self.context.is_internal() {
+            Ok(Some(self.internal_contract()?))
+        } else {
+            Ok(None)
+        }
+    }
     pub(crate) const fn tx_offset(&self) -> usize {
         self.params().tx_offset()
     }
@@ -201,7 +186,7 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
 
 pub(crate) fn tx_id(memory: &VmMemory) -> Bytes32 {
     // Safety: vm parameters guarantees enough space for txid
-    Bytes32::from(memory.read_bytes(0).expect("Unreachable! Not enough memory for txid"))
+    Bytes32::from(memory.read_bytes(0))
 }
 
 /// Reduces the unspent balance of the base asset
@@ -227,40 +212,37 @@ pub(crate) fn external_asset_id_balance_sub(
     Ok(())
 }
 
-pub(crate) fn internal_contract_or_default(context: &Context, register: Reg<FP>, memory: &VmMemory) -> ContractId {
-    internal_contract(context, register, memory).unwrap_or_default()
-}
+// pub(crate) fn internal_contract_or_default(context: &Context, register: Reg<FP>, memory: &VmMemory) -> ContractId {
+//     internal_contract(context, register, memory).unwrap_or_default()
+// }
 
-pub(crate) fn current_contract(
-    context: &Context,
-    fp: Reg<FP>,
-    memory: &VmMemory,
-) -> Result<Option<ContractId>, RuntimeError> {
-    if context.is_internal() {
-        Ok(Some(internal_contract(context, fp, memory)?))
-    } else {
-        Ok(None)
-    }
-}
+// pub(crate) fn current_contract(
+//     context: &Context,
+//     fp: Reg<FP>,
+//     memory: &VmMemory,
+// ) -> Result<Option<ContractId>, RuntimeError> {
+//     if context.is_internal() {
+//         Ok(Some(internal_contract(context, fp, memory)?))
+//     } else {
+//         Ok(None)
+//     }
+// }
 
-pub(crate) fn internal_contract(
-    context: &Context,
-    register: Reg<FP>,
-    memory: &VmMemory,
-) -> Result<ContractId, RuntimeError> {
-    Ok(internal_contract_addr(context, register)?.read(memory))
-}
+// pub(crate) fn internal_contract(
+//     context: &Context,
+//     register: Reg<FP>,
+//     memory: &VmMemory,
+// ) -> Result<ContractId, RuntimeError> {
+//     Ok(internal_contract_addr(context, register)?.read(memory))
+// }
 
-pub(crate) fn internal_contract_addr(
-    context: &Context,
-    fp: Reg<FP>,
-) -> Result<TypedMemoryPtr<ContractId, { ContractId::LEN }>, RuntimeError> {
-    if context.is_internal() {
-        Ok(MemoryPtr::try_new(*fp)?.typed())
-    } else {
-        Err(PanicReason::ExpectedInternalContext.into())
-    }
-}
+// pub(crate) fn internal_contract_addr(context: &Context, fp: Reg<FP>) -> Result<MemoryAddr, RuntimeError> {
+//     if context.is_internal() {
+//         Ok((*fp).to_raw_address())
+//     } else {
+//         Err(PanicReason::ExpectedInternalContext.into())
+//     }
+// }
 
 pub(crate) fn set_frame_pointer(context: &mut Context, mut register: RegMut<FP>, fp: Word) {
     context.update_from_frame_pointer(fp);

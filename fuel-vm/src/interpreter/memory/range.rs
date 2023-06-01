@@ -15,12 +15,12 @@ pub struct MemoryRange(Range<usize>);
 impl MemoryRange {
     /// Returns `None` if the range doesn't fall within the VM memory.
     pub fn try_new<A: ToAddr, B: ToAddr>(start: A, len: B) -> Result<Self, PanicReason> {
-        let start: usize = start.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-        let len: usize = len.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-        let end = start.checked_add(len).ok_or(PanicReason::MemoryOverflow)?;
+        let start: usize = start.to_raw_address().ok_or(PanicReason::MemoryAccess)?;
+        let len: usize = len.to_raw_address().ok_or(PanicReason::MemoryAccess)?;
+        let end = start.checked_add(len).ok_or(PanicReason::MemoryAccess)?;
 
         if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow);
+            return Err(PanicReason::MemoryAccess);
         }
 
         Ok(Self(start..end))

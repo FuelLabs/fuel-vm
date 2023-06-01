@@ -251,6 +251,7 @@ pub(crate) fn split_registers(
 }
 
 /// Copy the system and program registers into a single array.
+#[cfg(test)]
 pub(crate) fn copy_registers(
     system_registers: &SystemRegistersRef<'_>,
     program_registers: &ProgramRegistersRef<'_>,
@@ -261,6 +262,7 @@ pub(crate) fn copy_registers(
     out
 }
 
+#[cfg(test)]
 impl<'r> ProgramRegisters<'r> {
     /// Get two mutable references to program registers.
     /// Note they cannot be the same register.
@@ -297,7 +299,6 @@ impl<'r> ProgramRegisters<'r> {
         }
     }
 }
-
 impl<'a> From<&'a SystemRegisters<'_>> for SystemRegistersRef<'a> {
     fn from(value: &'a SystemRegisters<'_>) -> Self {
         Self {

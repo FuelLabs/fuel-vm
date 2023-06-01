@@ -1,9 +1,9 @@
 use ethnum::U256;
 
-use fuel_asm::{wideint::*, PanicReason};
+use fuel_asm::{wideint::*, PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
-use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTransaction, Interpreter};
+use super::super::{internal::inc_pc, ExecutableTransaction, Interpreter};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
@@ -57,22 +57,19 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: CompareArgs,
                 ) -> Result<(), RuntimeError> {
-                    let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-                    let dest: &mut Word = &mut w[ra.try_into()?];
-
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.mem_read_bytes(c)?)
                     } else {
                         c.into()
                     };
 
-                    *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
+                    self.registers[ra] = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_op_ $t:lower>](
@@ -82,31 +79,28 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: MathArgs,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
-
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.mem_read_bytes(c)?)
                     } else {
                         c.into()
                     };
 
                     let (wrapped, overflow) = [<op_overflowing_ $t:lower>](lhs, rhs, args);
 
-                    if overflow && !is_wrapping(flag.into()) {
+                    if overflow && !self.flag_wrapping() {
                         return Err(PanicReason::ArithmeticOverflow.into());
                     }
 
-                    *of = overflow as Word;
-                    *err = 0;
+                    self.registers[RegId::OF] = overflow as Word;
+                    self.registers[RegId::ERR] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &wrapped.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &wrapped.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_mul_ $t:lower>](
@@ -116,34 +110,31 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: MulArgs,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
-
                     // LHS is only indirect if the flag is set
                     let lhs: $t = if args.indirect_lhs {
-                        $t::from_be_bytes(self.memory.read_bytes(b)?)
+                        $t::from_be_bytes(self.mem_read_bytes(b)?)
                     } else {
                         b.into()
                     };
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.mem_read_bytes(c)?)
                     } else {
                         c.into()
                     };
 
                     let (wrapped, overflow) = $t::overflowing_mul(lhs, rhs);
 
-                    if overflow && !is_wrapping(flag.into()) {
+                    if overflow && !self.flag_wrapping() {
                         return Err(PanicReason::ArithmeticOverflow.into());
                     }
 
-                    *of = overflow as Word;
-                    *err = 0;
+                    self.registers[RegId::OF] = overflow as Word;
+                    self.registers[RegId::ERR] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &wrapped.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &wrapped.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_div_ $t:lower>](
@@ -153,15 +144,12 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: DivArgs,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
-
                     // LHS is always indirect
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.mem_read_bytes(c)?)
                     } else {
                         c.into()
                     };
@@ -171,12 +159,12 @@ macro_rules! wideint_ops {
 
                     let result = match lhs.checked_div(rhs) {
                         Some(d) => {
-                            *err = 0;
+                            self.registers[RegId::ERR] = 0;
                             [<from_prim_ $t:lower>](d)
                         },
                         None => {
-                            if is_unsafe_math(flag.into()) {
-                                *err = 1;
+                            if self.flag_unsafemath() {
+                                self.registers[RegId::ERR] = 1;
                                 $t::default() // Zero
                             } else {
                                 return Err(PanicReason::ArithmeticError.into());
@@ -184,11 +172,11 @@ macro_rules! wideint_ops {
                         }
                     };
 
-                    *of = 0;
+                    self.registers[RegId::OF] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &result.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_addmod_ $t:lower>](
@@ -198,22 +186,19 @@ macro_rules! wideint_ops {
                     c: Word,
                     d: Word,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
-
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.mem_read_bytes(c)?);
+                    let modulus: $t = $t::from_be_bytes(self.mem_read_bytes(d)?);
 
                     let result: $t = if modulus == 0 {
-                        if is_unsafe_math(flag.into()) {
-                            *err = 1;
+                        if self.flag_unsafemath() {
+                            self.registers[RegId::ERR] = 1;
                             $t::default() // Zero
                         } else {
                             return Err(PanicReason::ArithmeticError.into());
                         }
                     } else {
-                        *err = 0;
+                        self.registers[RegId::ERR] = 0;
 
                         // Use wider types to avoid overflow
                         let lhs = [<to_wider_prim_ $t:lower>](lhs);
@@ -224,11 +209,11 @@ macro_rules! wideint_ops {
                         [<truncate_from_prim_ $t:lower>]((lhs + rhs) % modulus)
                     };
 
-                    *of = 0;
+                    self.registers[RegId::OF] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &result.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_mulmod_ $t:lower>](
@@ -238,22 +223,19 @@ macro_rules! wideint_ops {
                     c: Word,
                     d: Word,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
-
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.mem_read_bytes(c)?);
+                    let modulus: $t = $t::from_be_bytes(self.mem_read_bytes(d)?);
 
                     let result: $t = if modulus == 0 {
-                        if is_unsafe_math(flag.into()) {
-                            *err = 1;
+                        if self.flag_unsafemath() {
+                            self.registers[RegId::ERR] = 1;
                             $t::default() // Zero
                         } else {
                             return Err(PanicReason::ArithmeticError.into());
                         }
                     } else {
-                        *err = 0;
+                        self.registers[RegId::ERR] = 0;
 
                         let lhs = [<to_prim_ $t:lower>](lhs);
                         let rhs = [<to_prim_ $t:lower>](rhs);
@@ -265,11 +247,11 @@ macro_rules! wideint_ops {
                         [<truncate_from_prim_ $t:lower>](result)
                     };
 
-                    *of = 0;
+                    self.registers[RegId::OF] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &result.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
 
                 pub(crate) fn [<alu_wideint_muldiv_ $t:lower>](
@@ -279,12 +261,9 @@ macro_rules! wideint_ops {
                     c: Word,
                     d: Word,
                 ) -> Result<(), RuntimeError> {
-                    let owner_regs = self.ownership_registers();
-                    let (SystemRegisters { mut of, mut err, pc, flag, .. }, _) = split_registers(&mut self.registers);
-
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let divider: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.mem_read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.mem_read_bytes(c)?);
+                    let divider: $t = $t::from_be_bytes(self.mem_read_bytes(d)?);
 
                     const S: usize = core::mem::size_of::<$t>();
 
@@ -305,15 +284,15 @@ macro_rules! wideint_ops {
                     let result = $t::from_le_bytes(lower_half);
 
                     let overflows = higher_half != [0u8; S];
-                    if overflows && !is_wrapping(flag.into()) {
+                    if overflows && !self.flag_wrapping() {
                         return Err(PanicReason::ArithmeticOverflow.into());
                     }
-                    *of = overflows as Word;
-                    *err = 0;
+                    self.registers[RegId::OF] = overflows as Word;
+                    self.registers[RegId::ERR] = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, &result.to_be_bytes())?;
+                    self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    inc_pc(self.registers.pc_mut())
                 }
             }
 

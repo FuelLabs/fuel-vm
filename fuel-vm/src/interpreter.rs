@@ -10,7 +10,7 @@ use std::io::Read;
 use std::ops::Index;
 use std::{io, mem};
 
-use fuel_asm::{Flags, PanicReason};
+use fuel_asm::{Flags, PanicReason, RegId};
 use fuel_tx::{
     field, Chargeable, CheckError, ConsensusParameters, Create, Executable, Output, Receipt, Script, Transaction,
     TransactionFee, TransactionRepr, UniqueIdentifier,
@@ -43,8 +43,6 @@ use crate::profiler::Profiler;
 
 pub use balances::RuntimeBalances;
 pub use memory::{MemoryRange, VmMemory};
-
-pub(crate) use memory::ToAddr;
 
 use crate::checked_transaction::{
     CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount,
@@ -157,18 +155,22 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+
+    pub(crate) fn flags(&self) -> Flags {
+        Flags::from_bits_truncate(self.registers[RegId::FLAG])
+    }
+
+    pub(crate) fn flag_wrapping(&self) -> bool {
+        self.flags().contains(Flags::WRAPPING)
+    }
+
+    pub(crate) fn flag_unsafemath(&self) -> bool {
+        self.flags().contains(Flags::UNSAFEMATH)
+    }
 }
 
-pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
+fn parse_flags(flag: Reg<FLAG>) -> Flags {
     Flags::from_bits_truncate(*flag)
-}
-
-pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
-    flags(flag).contains(Flags::WRAPPING)
-}
-
-pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
-    flags(flag).contains(Flags::UNSAFEMATH)
 }
 
 impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {

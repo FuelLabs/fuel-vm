@@ -8,8 +8,6 @@ mod tests;
 pub use self::ownership::OwnershipRegisters;
 pub use self::range::MemoryRange;
 
-use std::{io, iter};
-
 use derivative::Derivative;
 use fuel_asm::PanicReason;
 use fuel_types::{fmt_truncated_hex, Word};
@@ -139,236 +137,110 @@ impl VmMemory {
         MemoryRange::try_new(heap_start, self.heap.len()).unwrap()
     }
 
-    /// Verify that a range is in bounds.
-    pub fn verify_in_bounds(&self, range: MemoryRange) -> Result<(), RuntimeError> {
-        if range.end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        Ok(())
-    }
-
-    /// Read-only iteration of the full memory space, including unallocated pages filled with zeroes.
-    pub fn iter(&self) -> impl Iterator<Item = &u8> + '_ {
-        self.stack
-            .iter()
-            .chain(iter::repeat(&0u8).take(self.unallocated()))
-            .chain(self.heap.iter())
-    }
-
     /// Read given number of bytes of memory at address.
-    pub fn read<A: ToAddr, B: ToAddr>(
-        &self,
-        addr: A,
-        count: B,
-    ) -> Result<impl Iterator<Item = &u8> + '_, RuntimeError> {
-        let addr = addr.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-        let count = count.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-
-        let end = addr.saturating_add(count);
-
-        if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        Ok(self.iter().skip(addr).take(count))
-    }
-
-    /// Read a range of memory.
-    pub fn read_range(&self, range: MemoryRange) -> Result<impl Iterator<Item = &u8> + '_, RuntimeError> {
-        self.read(range.start, range.len())
-    }
-
-    /// Read from memory into anything that implements `std::io::Write`.
-    pub fn read_into<A: ToAddr, W: io::Write>(&self, addr: A, count: usize, mut target: W) -> Result<(), RuntimeError> {
-        let addr = addr.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-        // TODO: optimize for chunks?
-        self.read(addr, count)?.try_for_each(|b| target.write_all(&[*b]))?;
-        Ok(())
-    }
-
-    /// Read a constant size byte array from the memory.
-    /// This operation copies the data and is intended for small reads only.
-    pub fn read_bytes<A: ToAddr, const S: usize>(&self, addr: A) -> Result<[u8; S], RuntimeError> {
-        let mut result = [0u8; S];
-
-        for (dst, src) in result.iter_mut().zip(self.read(addr, S)?) {
-            *dst = *src;
-        }
-
-        Ok(result)
-    }
-
-    /// Read a single byte of memory.
-    pub fn at<A: ToAddr>(&self, addr: A) -> Result<u8, RuntimeError> {
-        let addr = addr.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
-        let b: [u8; 1] = self.read_bytes(addr)?;
-        Ok(b[0])
-    }
-
-    /// Zero memory memory without performing ownership checks.
-    pub fn force_clear(&mut self, range: MemoryRange) {
-        self.stack
-            .iter_mut()
-            .skip(range.start)
-            .take(range.len())
-            .for_each(|b| *b = 0);
-
-        if let Some(range) = range.relative_to(&self.heap_range()) {
-            self.heap
-                .iter_mut()
-                .skip(range.start)
-                .take(range.len())
-                .for_each(|b| *b = 0);
-        }
-    }
-
-    /// Zero memory, performing ownership checks and max access size check.
-    pub fn try_clear(&mut self, owner: OwnershipRegisters, range: MemoryRange) -> Result<(), RuntimeError> {
-        if range.len() > MEM_MAX_ACCESS_SIZE as usize || !owner.has_ownership_range(&range) {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        self.force_clear(range);
-        Ok(())
-    }
-
-    /// Get a write access to a memory region, without checking for ownership.
-    /// Panics on incorrect memory access.
-    pub fn force_mut_range(&mut self, range: MemoryRange) -> &mut [u8] {
-        if range.end > MEM_SIZE {
-            panic!("BUG! Invalid memory access");
-        }
-
+    /// Panics on invalid memory access.
+    pub fn read(&self, range: &MemoryRange) -> &[u8] {
         let in_stack = range.relative_to(&self.stack_range());
         let in_heap = range.relative_to(&self.heap_range());
 
-        assert!(in_stack.is_some() != in_heap.is_some(), "BUG! Invalid memory access");
+        debug_assert!(!(in_stack.is_some() && in_heap.is_some()));
+
+        if let Some(dst) = in_stack {
+            &self.stack[dst.as_usizes()]
+        } else if let Some(dst) = in_heap {
+            &self.heap[dst.as_usizes()]
+        } else {
+            panic!("Invalid memory read");
+        }
+    }
+
+    /// Mutable reference at address.
+    /// Panics on invalid memory access.
+    pub fn write(&mut self, range: &MemoryRange) -> &mut [u8] {
+        let in_stack = range.relative_to(&self.stack_range());
+        let in_heap = range.relative_to(&self.heap_range());
+
+        debug_assert!(!(in_stack.is_some() && in_heap.is_some()));
 
         if let Some(dst) = in_stack {
             &mut self.stack[dst.as_usizes()]
         } else if let Some(dst) = in_heap {
             &mut self.heap[dst.as_usizes()]
         } else {
-            unreachable!("Writable range must be fully in stack or heap, as checked above");
+            panic!("Invalid memory write");
         }
     }
 
-    /// Get a write access to a memory region.
-    pub fn mut_range(&mut self, owner: OwnershipRegisters, range: MemoryRange) -> Result<&mut [u8], RuntimeError> {
-        if range.end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        if !owner.has_ownership_range(&range) {
-            return Err(PanicReason::MemoryOwnership.into());
-        }
-
-        Ok(self.force_mut_range(range))
+    /// Reads a fixed-size array of bytes.
+    /// Panics on invalid memory access.
+    pub fn read_bytes<A: ToAddr, const LEN: usize>(&self, addr: A) -> [u8; LEN] {
+        let range = MemoryRange::try_new(addr, LEN).expect("Invalid memory read");
+        let mut buf = [0u8; LEN];
+        buf.copy_from_slice(self.read(&range));
+        buf
     }
 
-    /// Write a constant size byte array to the memory, without performing ownership checks.
-    pub fn force_write_bytes<A: ToAddr, const S: usize>(&mut self, addr: A, data: &[u8; S]) {
-        let range = MemoryRange::try_new(addr, S).expect("Bug! Invalid memory access");
-        self.force_mut_range(range).copy_from_slice(&data[..]);
+    /// Writes a slice of bytes.
+    /// Panics on invalid memory access.
+    pub fn write_slice<A: ToAddr>(&mut self, addr: A, data: &[u8]) {
+        let range = MemoryRange::try_new(addr, data.len()).expect("Invalid memory write");
+        self.write(&range).copy_from_slice(data);
     }
 
-    /// Write a constant size byte array to the memory
-    pub fn write_bytes<A: ToAddr, const S: usize>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        data: &[u8; S],
-    ) -> Result<(), RuntimeError> {
-        let range = MemoryRange::try_new(addr, S)?;
-        self.mut_range(owner, range)?.copy_from_slice(&data[..]);
-        Ok(())
-    }
-
-    /// Write a single byte
-    pub fn set_at<A: ToAddr>(&mut self, owner: OwnershipRegisters, addr: A, value: u8) -> Result<(), RuntimeError> {
-        self.write_bytes(owner, addr, &[value; 1])
-    }
-
-    /// Write a constant size byte array to the memory, without performing ownership checks.
-    pub fn force_write_slice<A: ToAddr>(&mut self, addr: A, data: &[u8]) {
-        let range = MemoryRange::try_new(addr, data.len()).expect("Bug! Invalid memory access");
-        self.force_mut_range(range).copy_from_slice(data);
-    }
-
-    /// Write a constant size byte array to the memory
-    pub fn write_slice<A: ToAddr>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        data: &[u8],
-    ) -> Result<(), RuntimeError> {
-        let range = MemoryRange::try_new(addr, data.len())?;
-        self.mut_range(owner, range)?.copy_from_slice(data);
-        Ok(())
+    /// Writes a fixed-size array of bytes.
+    /// Panics on invalid memory access.
+    pub fn write_bytes<A: ToAddr, const LEN: usize>(&mut self, addr: A, data: &[u8; LEN]) {
+        self.write_slice(addr, data)
     }
 
     /// Copy bytes from one location to another.
-    /// Ownership and max access size checks are performed.
-    /// Also fails if the ranges overlap.
-    pub fn try_copy_within<A: ToAddr, B: ToAddr, C: ToAddr>(
-        &mut self,
-        owner: OwnershipRegisters,
-        dst: A,
-        src: B,
-        len: C,
-    ) -> Result<(), RuntimeError> {
-        let dst_range = MemoryRange::try_new(dst, len)?;
-        let src_range = MemoryRange::try_new(src, len)?;
-        let len = len.to_raw_address().ok_or(PanicReason::MemoryOverflow)?;
+    /// Fails if the ranges overlap.
+    /// Panics if ranges have different lengths.
+    pub fn try_copy_within(&mut self, dst_range: &MemoryRange, src_range: &MemoryRange) -> Result<(), RuntimeError> {
+        assert!(dst_range.len() == src_range.len());
 
-        if len > (MEM_MAX_ACCESS_SIZE as usize)
-            || dst_range.overlap_with(&src_range).is_some()
-            || !owner.has_ownership_range(&dst_range)
-        {
-            Err(PanicReason::MemoryOverflow.into())
-        } else {
-            // TODO: optimize, since the ranges do not overlap
-            let data: Vec<u8> = self.read_range(src_range).expect("checked").copied().collect();
-            let target = self.force_mut_range(dst_range);
-            target.copy_from_slice(&data);
-            Ok(())
+        if dst_range.overlap_with(src_range).is_some() {
+            return Err(PanicReason::MemoryWriteOverlap.into());
         }
+
+        // TODO: optimize, since the ranges do not overlap
+        let data: Vec<u8> = self.read(src_range).to_vec();
+        let target = self.write(dst_range);
+        target.copy_from_slice(&data);
+        Ok(())
     }
 }
 
 impl PartialEq for VmMemory {
     fn eq(&self, other: &Self) -> bool {
-        self.read(0, MEM_SIZE)
-            .unwrap()
-            .zip(other.read(0, MEM_SIZE).unwrap())
-            .all(|(a, b)| a == b)
+        self.stack == other.stack && self.heap == other.heap
     }
 }
+pub type MemoryAddr = usize;
 
 /// Allows taking multiple input types for memory operations.
 /// This can be used for both addresses and lenghts in it.
 /// Only checks that the type conversion is lossless.
 pub trait ToAddr: Copy {
     /// Convert to a raw address, or return None if the conversion is not possible.
-    fn to_raw_address(&self) -> Option<usize>;
+    fn to_raw_address(&self) -> Option<MemoryAddr>;
 }
 
-impl ToAddr for usize {
-    fn to_raw_address(&self) -> Option<usize> {
+impl ToAddr for MemoryAddr {
+    fn to_raw_address(&self) -> Option<MemoryAddr> {
         Some(*self)
     }
 }
 
 impl ToAddr for Word {
-    fn to_raw_address(&self) -> Option<usize> {
+    fn to_raw_address(&self) -> Option<MemoryAddr> {
         (*self).try_into().ok()
     }
 }
 
 /// Integer literals
 impl ToAddr for i32 {
-    fn to_raw_address(&self) -> Option<usize> {
+    fn to_raw_address(&self) -> Option<MemoryAddr> {
         (*self).try_into().ok()
     }
 }

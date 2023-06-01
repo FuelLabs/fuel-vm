@@ -36,7 +36,7 @@ fn logd_memory_range_overflow() {
     ];
 
     let receipts = run_script(script.into_iter().collect());
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn logd_memory_out_of_range_fails() {
     script.push(op::ret(RegId::ONE));
 
     let receipts = run_script(script.into_iter().collect());
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]

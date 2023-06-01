@@ -1,7 +1,7 @@
-use super::super::{internal::inc_pc, is_wrapping, ExecutableTransaction, Interpreter};
+use super::super::{internal::inc_pc, ExecutableTransaction, Interpreter};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
-use fuel_asm::PanicReason;
+use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -16,29 +16,17 @@ where
         rhs: Word,
         divider: Word,
     ) -> Result<(), RuntimeError> {
-        let (
-            SystemRegisters {
-                flag,
-                mut of,
-                mut err,
-                pc,
-                ..
-            },
-            mut w,
-        ) = split_registers(&mut self.registers);
-        let dest = &mut w[ra.try_into()?];
-
         let (result, overflow) = muldiv(lhs, rhs, divider);
 
-        if overflow != 0 && !is_wrapping(flag.into()) {
+        if overflow != 0 && !self.flag_wrapping() {
             return Err(PanicReason::ArithmeticOverflow.into());
         }
 
-        *of = overflow;
-        *err = 0;
-        *dest = result;
+        self.registers[RegId::OF] = overflow;
+        self.registers[RegId::ERR] = 0;
+        self.registers[ra] = result;
 
-        inc_pc(pc)
+        inc_pc(self.registers.pc_mut())
     }
 }
 

@@ -317,7 +317,10 @@ impl<S, Tx> Interpreter<S, Tx> {
         let balances = capture_map_state(self.balances.as_ref(), other.balances.as_ref(), Change::Balance);
         diff.changes.extend(balances);
 
-        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
+        // let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
+        let a: Vec<u8> = Vec::new();
+        let memory = a.iter().enumerate().zip(a.iter());
+        todo!("memory diffing");
 
         while let Some(((start, s_from), s_to)) = memory
             .by_ref()
@@ -369,7 +372,10 @@ impl<S, Tx> Interpreter<S, Tx> {
             Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
             Change::Receipt(Previous(value)) => invert_receipts_ctx(&mut self.receipts, value),
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(Memory { start, bytes })) => self.memory.force_write_slice(*start, &bytes[..]),
+            Change::Memory(Previous(Memory { start, bytes })) => {
+                self.mem_write_slice(*start, &bytes[..]).expect("Checked write")
+                // TODO: error handling here? Can this fail?
+            }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {

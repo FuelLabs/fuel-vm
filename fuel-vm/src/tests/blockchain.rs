@@ -13,7 +13,7 @@ use crate::script_with_data_offset;
 use fuel_asm::PanicReason::ErrorFlag;
 use fuel_asm::{
     op, Instruction,
-    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow},
+    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryAccess},
 };
 use fuel_tx::field::Script as ScriptField;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -504,7 +504,7 @@ fn ldc_mem_offset_above_reg_hp() {
         op::ldc(RegId::ZERO, RegId::ZERO, reg_a), // Load first two words from the contract
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, false);
+    ldc_reason_helper(load_contract, MemoryAccess, false);
 }
 
 #[test]
@@ -521,7 +521,7 @@ fn ldc_contract_id_end_beyond_max_ram() {
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, false);
+    ldc_reason_helper(load_contract, MemoryAccess, false);
 }
 
 #[test]
@@ -561,7 +561,7 @@ fn ldc_contract_offset_over_length() {
         op::noop(),                                       // Patched to the jump later
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, true);
+    ldc_reason_helper(load_contract, MemoryAccess, true);
 }
 
 #[test]
@@ -578,7 +578,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
         op::ccp(reg_a, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
+    check_expected_reason_for_instructions(code_copy, MemoryAccess);
 }
 
 #[test]
@@ -591,7 +591,7 @@ fn code_copy_b_plus_32_overflow() {
         op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
+    check_expected_reason_for_instructions(code_copy, MemoryAccess);
 }
 
 #[test]
@@ -606,7 +606,7 @@ fn code_copy_b_gt_vm_max_ram() {
         op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
+    check_expected_reason_for_instructions(code_copy, MemoryAccess);
 }
 
 #[test]
@@ -621,7 +621,7 @@ fn code_copy_c_gt_vm_max_ram() {
         op::ccp(RegId::ZERO, RegId::ZERO, reg_a, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
+    check_expected_reason_for_instructions(code_copy, MemoryAccess);
 }
 
 #[test]
@@ -651,7 +651,7 @@ fn code_root_b_plus_32_overflow() {
         op::croo(RegId::ZERO, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryAccess);
 }
 
 #[test]
@@ -668,7 +668,7 @@ fn code_root_a_over_max_ram() {
         op::croo(reg_a, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryAccess);
 }
 
 #[test]
@@ -685,7 +685,7 @@ fn code_root_b_over_max_ram() {
         op::croo(RegId::ZERO, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryAccess);
 }
 
 #[test]
@@ -700,7 +700,7 @@ fn code_size_b_plus_32_overflow() {
         op::csiz(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryAccess);
 }
 
 #[test]
@@ -717,7 +717,7 @@ fn code_size_b_over_max_ram() {
         op::csiz(reg_a, reg_a),
     ];
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryAccess);
 }
 
 #[test]
@@ -925,7 +925,7 @@ fn state_r_word_b_plus_32_over() {
         op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
 
-    check_expected_reason_for_instructions(state_read_word, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_word, MemoryAccess);
 }
 
 #[test]
@@ -942,7 +942,7 @@ fn state_r_word_b_over_max_ram() {
         op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
 
-    check_expected_reason_for_instructions(state_read_word, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_word, MemoryAccess);
 }
 
 #[test]
@@ -958,7 +958,7 @@ fn state_r_qword_a_plus_32_over() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryAccess);
 }
 
 #[test]
@@ -976,7 +976,7 @@ fn state_r_qword_c_plus_32_over() {
         op::srwq(RegId::HP, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryAccess);
 }
 
 #[test]
@@ -993,7 +993,7 @@ fn state_r_qword_a_over_max_ram() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryAccess);
 }
 
 #[test]
@@ -1013,7 +1013,7 @@ fn state_r_qword_c_over_max_ram() {
         op::srwq(0x31, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_read_qword, MemoryAccess);
 }
 
 #[test]
@@ -1029,7 +1029,7 @@ fn state_w_word_a_plus_32_over() {
         op::sww(reg_a, SET_STATUS_REG, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(state_write_word, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_word, MemoryAccess);
 }
 
 #[test]
@@ -1046,7 +1046,7 @@ fn state_w_word_a_over_max_ram() {
         op::sww(reg_a, SET_STATUS_REG, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(state_write_word, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_word, MemoryAccess);
 }
 
 #[test]
@@ -1062,7 +1062,7 @@ fn state_w_qword_a_plus_32_over() {
         op::swwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
 }
 
 #[test]
@@ -1078,7 +1078,7 @@ fn state_w_qword_b_plus_32_over() {
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
 }
 
 #[test]
@@ -1095,7 +1095,7 @@ fn state_w_qword_a_over_max_ram() {
         op::swwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
 }
 
 #[test]
@@ -1112,7 +1112,7 @@ fn state_w_qword_b_over_max_ram() {
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryAccess);
 }
 
 #[test]
@@ -1147,7 +1147,7 @@ fn message_output_a_b_over() {
         op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(message_output, MemoryOverflow);
+    check_expected_reason_for_instructions(message_output, MemoryAccess);
 }
 
 #[test]
@@ -1166,7 +1166,7 @@ fn message_output_a_b_gt_max_mem() {
         op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(message_output, MemoryOverflow);
+    check_expected_reason_for_instructions(message_output, MemoryAccess);
 }
 
 #[test]

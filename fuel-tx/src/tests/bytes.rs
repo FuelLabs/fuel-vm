@@ -229,7 +229,7 @@ fn receipt() {
         Receipt::panic(
             rng.gen(),
             PanicInstruction::error(
-                PanicReason::MemoryOverflow,
+                PanicReason::MemoryAccess,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
             rng.gen(),
@@ -382,7 +382,7 @@ fn receipt() {
         Receipt::panic(
             rng.gen(),
             PanicInstruction::error(
-                PanicReason::MaxMemoryAccess,
+                PanicReason::MemoryAccessSize,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
             rng.gen(),

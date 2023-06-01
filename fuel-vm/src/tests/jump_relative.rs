@@ -78,7 +78,7 @@ fn relative_jump_dynamic_below_zero() {
     ];
 
     let receipts = run_script(script);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn relative_jump_immediate_below_zero() {
     ];
 
     let receipts = run_script(script);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn relative_jump_subtract_underflow() {
     ];
 
     let receipts = run_script(script);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn relative_jump_dynamic_above_ram() {
     ];
 
     let receipts = run_script(script);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn relative_jump_dynamic_overflow() {
     ];
 
     let receipts = run_script(script);
-    assert_panics(&receipts, PanicReason::MemoryOverflow);
+    assert_panics(&receipts, PanicReason::MemoryAccess);
 }
 
 #[test]

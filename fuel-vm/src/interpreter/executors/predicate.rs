@@ -21,7 +21,7 @@ where
 
         loop {
             if range.end <= self.registers[RegId::PC] {
-                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
+                return Err(InterpreterError::Panic(PanicReason::MemoryAccess));
             }
 
             match self.execute()? {

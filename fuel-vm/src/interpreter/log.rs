@@ -1,124 +1,51 @@
-use super::{
-    internal::{append_receipt, inc_pc, internal_contract_or_default, AppendReceipt},
-    receipts::ReceiptsCtx,
-    ExecutableTransaction, Interpreter, VmMemory,
-};
-use crate::{constraints::reg_key::*, consts::*};
-use crate::{context::Context, error::RuntimeError};
+use super::{internal::inc_pc, ExecutableTransaction, Interpreter};
+use crate::constraints::reg_key::*;
+use crate::error::RuntimeError;
 
-use fuel_asm::PanicReason;
+use fuel_asm::RegId;
 use fuel_crypto::Hasher;
-use fuel_tx::{Receipt, Script};
+use fuel_tx::Receipt;
 use fuel_types::Word;
-
-#[cfg(test)]
-mod tests;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
-        let input = LogInput {
-            memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
-            context: &self.context,
-            receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
-            fp: fp.as_ref(),
-            is: is.as_ref(),
-            pc,
-        };
-        input.log(a, b, c, d)
-    }
-
-    pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
-        let input = LogInput {
-            memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
-            context: &self.context,
-            receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
-            fp: fp.as_ref(),
-            is: is.as_ref(),
-            pc,
-        };
-        input.log_data(a, b, c, d)
-    }
-}
-
-struct LogInput<'vm> {
-    memory: &'vm mut VmMemory,
-    tx_offset: usize,
-    context: &'vm Context,
-    receipts: &'vm mut ReceiptsCtx,
-    script: Option<&'vm mut Script>,
-    fp: Reg<'vm, FP>,
-    is: Reg<'vm, IS>,
-    pc: RegMut<'vm, PC>,
-}
-
-impl LogInput<'_> {
-    pub(crate) fn log(self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
         let receipt = Receipt::log(
-            internal_contract_or_default(self.context, self.fp, self.memory),
+            self.internal_contract_or_default(),
             a,
             b,
             c,
             d,
-            *self.pc,
-            *self.is,
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.script,
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        );
+        self.append_receipt(receipt);
 
-        inc_pc(self.pc)
+        inc_pc(self.registers.pc_mut())
     }
 
-    pub(crate) fn log_data(self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        if d > MEM_MAX_ACCESS_SIZE || c > VM_MAX_RAM - d {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let len = d as usize;
-        let mut data = Vec::new();
-        data.reserve_exact(len);
-        self.memory.read_into(c, len, &mut data).expect("checked");
+    pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+        let data = self.mem_read(c, d)?.to_vec();
 
         let digest = Hasher::hash(&data);
 
         let receipt = Receipt::log_data_with_len(
-            internal_contract_or_default(self.context, self.fp, self.memory),
+            self.internal_contract_or_default(),
             a,
             b,
             c,
             d,
             digest,
             data,
-            *self.pc,
-            *self.is,
+            self.registers[RegId::PC],
+            self.registers[RegId::IS],
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.script,
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        );
+        self.append_receipt(receipt);
 
-        inc_pc(self.pc)
+        inc_pc(self.registers.pc_mut())
     }
 }

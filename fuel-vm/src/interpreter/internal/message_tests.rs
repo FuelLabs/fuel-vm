@@ -30,11 +30,11 @@ fn test_absolute_output_offset(tx_offset: usize, idx: usize, num_outputs: usize)
     ; "Output at 200 in memory"
 )]
 #[test_case(
-    MEM_SIZE - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryAccess))
     ; "Output at MEM_SIZE - 1 should overflow"
 )]
 #[test_case(
-    MEM_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryAccess))
     ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
 fn test_update_memory_output(tx_offset: usize) -> Result<VmMemory, RuntimeError> {
@@ -47,7 +47,7 @@ fn test_update_memory_output(tx_offset: usize) -> Result<VmMemory, RuntimeError>
 fn check_memory(result: VmMemory, expected: &[(usize, Vec<u8>)]) {
     for (offset, bytes) in expected {
         let range = MemoryRange::try_new(*offset, bytes.len()).unwrap();
-        let r: Vec<u8> = result.read_range(range).unwrap().copied().collect();
-        assert_eq!(&r, bytes.as_slice(), "memory mismatch at {offset}");
+        let r = result.read(&range);
+        assert_eq!(r, bytes.as_slice(), "memory mismatch at {offset}");
     }
 }

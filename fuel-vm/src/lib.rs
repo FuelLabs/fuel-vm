@@ -1,6 +1,7 @@
 //! FuelVM implementation
 
 #![warn(missing_docs)]
+#![deny(unused_must_use)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 

@@ -97,7 +97,7 @@ impl RuntimeBalances {
         let offset = balance.offset();
 
         let offset = offset.saturating_add(AssetId::LEN);
-        memory.force_write_bytes(offset, &value.to_be_bytes());
+        memory.write_bytes(offset, &value.to_be_bytes());
 
         Ok(value)
     }
@@ -142,8 +142,8 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory.force_write_bytes(ofs, asset);
-            vm.memory.force_write_bytes(ofs + AssetId::LEN, &value.to_be_bytes());
+            vm.memory.write_bytes(ofs, asset);
+            vm.memory.write_bytes(ofs + AssetId::LEN, &value.to_be_bytes());
         });
 
         vm.balances = self;
@@ -211,8 +211,8 @@ fn writes_to_memory_correctly() {
     assets_sorted
         .iter()
         .fold(VM_MEMORY_BALANCES_OFFSET, |ofs, (asset, value)| {
-            let mem_asset = AssetId::from(memory.read_bytes(ofs).unwrap());
-            let mem_value = Word::from_be_bytes(memory.read_bytes(ofs + AssetId::LEN).unwrap());
+            let mem_asset = AssetId::from(memory.read_bytes(ofs));
+            let mem_value = Word::from_be_bytes(memory.read_bytes(ofs + AssetId::LEN));
             assert_eq!(asset, &mem_asset);
             assert_eq!(value, &mem_value);
 

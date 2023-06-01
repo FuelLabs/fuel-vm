@@ -66,23 +66,6 @@ impl<'de> serde::Deserialize<'de> for InstructionLocation {
     }
 }
 
-impl InstructionLocation {
-    /// New location from context and offset
-    pub const fn new(context: Option<ContractId>, offset: u64) -> Self {
-        Self { context, offset }
-    }
-
-    /// Context, i.e. current contract
-    pub const fn context(&self) -> Option<ContractId> {
-        self.context
-    }
-
-    /// Offset from the IS register
-    pub const fn offset(&self) -> u64 {
-        self.offset
-    }
-}
-
 impl fmt::Display for InstructionLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

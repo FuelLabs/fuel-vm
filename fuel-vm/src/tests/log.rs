@@ -53,6 +53,7 @@ fn logd_memory_out_of_range_fails() {
 fn logd_just_below_memory_limit_succeeds() {
     let mut script = set_full_word(0x30, VM_MAX_RAM - 100);
     script.push(op::movi(0x31, 100));
+    script.push(op::aloc(0x31));
     script.push(op::logd(RegId::ZERO, RegId::ZERO, 0x30, 0x31));
     script.push(op::ret(RegId::ONE));
 

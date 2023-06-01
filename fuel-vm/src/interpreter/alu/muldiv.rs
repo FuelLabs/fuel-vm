@@ -1,5 +1,5 @@
-use super::super::{internal::inc_pc, ExecutableTransaction, Interpreter};
-use crate::{constraints::reg_key::*, error::RuntimeError};
+use super::super::{ExecutableTransaction, Interpreter};
+use crate::error::RuntimeError;
 
 use fuel_asm::{PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
@@ -26,7 +26,7 @@ where
         self.registers[RegId::ERR] = 0;
         self.registers[ra] = result;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 }
 

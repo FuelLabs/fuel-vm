@@ -104,8 +104,8 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
-        set_flag(flag, pc, a)
+        let (SystemRegisters { flag, .. }, _) = split_registers(&mut self.registers);
+        set_flag(flag, a)
     }
 
     pub(crate) const fn context(&self) -> &Context {
@@ -155,18 +155,17 @@ pub(crate) fn set_err(mut err: RegMut<ERR>) {
     *err = 1;
 }
 
-pub(crate) fn set_flag(mut flag: RegMut<FLAG>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
-    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::ErrorFlag.into()) };
+pub(crate) fn set_flag(mut flag: RegMut<FLAG>, a: Word) -> Result<(), RuntimeError> {
+    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::InvalidValue.into()) };
 
     *flag = flags.bits();
-
-    inc_pc(pc)
+    Ok(())
 }
 
-pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
-    pc.checked_add(Instruction::SIZE as Word)
-        .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
-        .map(|i| *pc = i)
+pub(crate) fn inc_pc(mut pc: RegMut<PC>) {
+    *pc = pc
+        .checked_add(Instruction::SIZE as Word)
+        .expect("PC cannot be outside of the memory");
 }
 
 pub(crate) fn tx_id(memory: &VmMemory) -> Bytes32 {

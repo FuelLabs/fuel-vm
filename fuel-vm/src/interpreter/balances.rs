@@ -200,7 +200,7 @@ fn writes_to_memory_correctly() {
     let mut interpreter = Interpreter::<_, Script>::without_storage();
     interpreter.registers_mut()[RegId::CGAS] = 1_000_000;
     interpreter.registers_mut()[RegId::GGAS] = 1_000_000;
-    
+
     let base = AssetId::zeroed();
     let base_balance = 950;
     let assets = vec![

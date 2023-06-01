@@ -3,8 +3,8 @@ use ethnum::U256;
 use fuel_asm::{wideint::*, PanicReason, RegId};
 use fuel_types::{RegisterId, Word};
 
-use super::super::{internal::inc_pc, ExecutableTransaction, Interpreter};
-use crate::{constraints::reg_key::*, error::RuntimeError};
+use super::super::{ExecutableTransaction, Interpreter};
+use crate::error::RuntimeError;
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
 // It takes two type parameters: the current type and type that has double-width of it.
@@ -69,7 +69,7 @@ macro_rules! wideint_ops {
 
                     self.registers[ra] = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_op_ $t:lower>](
@@ -100,7 +100,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &wrapped.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_mul_ $t:lower>](
@@ -134,7 +134,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &wrapped.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_div_ $t:lower>](
@@ -176,7 +176,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_addmod_ $t:lower>](
@@ -213,7 +213,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_mulmod_ $t:lower>](
@@ -251,7 +251,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_muldiv_ $t:lower>](
@@ -292,7 +292,7 @@ macro_rules! wideint_ops {
 
                     self.mem_write_bytes(dest_addr, &result.to_be_bytes())?;
 
-                    inc_pc(self.registers.pc_mut())
+                    Ok(())
                 }
             }
 

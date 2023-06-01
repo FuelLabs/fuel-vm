@@ -1,4 +1,3 @@
-use crate::constraints::reg_key::RegMut;
 use crate::consts::MEM_SIZE;
 use crate::interpreter::internal::{external_asset_id_balance_sub, set_variable_output};
 use crate::prelude::*;
@@ -8,8 +7,6 @@ use fuel_tx::TransactionBuilder;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::io::Write;
-
-use super::inc_pc;
 
 #[test]
 fn external_balance() {
@@ -96,11 +93,4 @@ fn variable_output_updates_in_memory() {
     let rest: Vec<u8> = vm.mem_read(position, MEM_SIZE - position).unwrap().to_vec();
     let _ = mem_output.write(&rest).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
-}
-
-#[test]
-fn test_inc_pc_errors_on_of() {
-    let mut pc = Word::MAX - 4;
-    inc_pc(RegMut::new(&mut pc)).unwrap();
-    let _ = inc_pc(RegMut::new(&mut pc)).expect_err("Expected overflow error");
 }

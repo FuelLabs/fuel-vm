@@ -1,5 +1,7 @@
+use crate::constraints::reg_key::*;
 use crate::error::{InterpreterError, RuntimeError};
 use crate::interpreter::flow::{JumpArgs, JumpMode};
+use crate::interpreter::internal::inc_pc;
 use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
 use crate::state::ExecuteState;
 use crate::storage::InterpreterStorage;
@@ -14,24 +16,13 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    /// Execute the current instruction pair located in `$m[$pc]`.
+    /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
-        let [hi, lo] =
-            fuel_asm::raw_instructions_from_word(Word::from_be_bytes(self.mem_read_bytes(self.registers[RegId::PC])?));
-
-        // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[RegId::PC] + Instruction::SIZE as Word;
-        let state = self.instruction(hi)?;
-
-        // TODO optimize
-        // Should execute `lo` only if there is no rupture in the flow - that means
-        // either a breakpoint or some instruction that would skip `lo` such as
-        // `RET`, `JI` or `CALL`
-        if self.registers[RegId::PC] == pc && state.should_continue() {
-            self.instruction(lo)
-        } else {
-            Ok(state)
-        }
+        let raw = RawInstruction::from_be_bytes(
+            self.mem_read_bytes(self.registers[RegId::PC])
+                .map_err(|_| PanicReason::InstructionFetch)?,
+        );
+        self.instruction(raw)
     }
 
     /// Execute a provided instruction
@@ -49,7 +40,8 @@ where
     }
 
     fn instruction_inner(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
-        let instruction = Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
+        let instruction =
+            Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68
@@ -768,6 +760,10 @@ where
                 let (a, b, c, d) = tro.unpack();
                 self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
             }
+        }
+
+        if !instruction.opcode().has_control_flow() {
+            inc_pc(self.registers.pc_mut());
         }
 
         Ok(ExecuteState::Proceed)

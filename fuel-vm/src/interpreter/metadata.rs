@@ -1,4 +1,3 @@
-use super::internal::inc_pc;
 use super::{ExecutableTransaction, Interpreter};
 use crate::call::CallFrame;
 use crate::constraints::reg_key::*;
@@ -21,9 +20,9 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn metadata(&mut self, ra: RegisterId, imm: Immediate18) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.params, &self.frames, pc, result, imm)
+        metadata(&self.context, &self.params, &self.frames, result, imm)
     }
 
     pub(crate) fn get_transaction_field(
@@ -32,12 +31,11 @@ where
         b: Word,
         imm: Immediate12,
     ) -> Result<(), RuntimeError> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = GTFInput {
             tx: &self.tx,
             tx_offset: self.params.tx_offset(),
-            pc,
         };
         input.get_transaction_field(result, b, imm)
     }
@@ -47,7 +45,6 @@ pub(crate) fn metadata(
     context: &Context,
     params: &ConsensusParameters,
     frames: &[CallFrame],
-    pc: RegMut<PC>,
     result: &mut Word,
     imm: Immediate18,
 ) -> Result<(), RuntimeError> {
@@ -91,13 +88,12 @@ pub(crate) fn metadata(
         }
     }
 
-    inc_pc(pc)
+    Ok(())
 }
 
 struct GTFInput<'vm, Tx> {
     tx: &'vm Tx,
     tx_offset: usize,
-    pc: RegMut<'vm, PC>,
 }
 
 impl<Tx> GTFInput<'_, Tx> {
@@ -507,6 +503,6 @@ impl<Tx> GTFInput<'_, Tx> {
 
         *result = a;
 
-        inc_pc(self.pc)
+        Ok(())
     }
 }

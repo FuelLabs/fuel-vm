@@ -1,4 +1,4 @@
-use super::internal::{clear_err, inc_pc, set_err};
+use super::internal::{clear_err, set_err};
 use super::{ExecutableTransaction, Interpreter};
 use crate::constraints::reg_key::*;
 use crate::error::RuntimeError;
@@ -25,7 +25,7 @@ where
             }
         }
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -34,14 +34,12 @@ where
         let data = self.mem_read(b, c)?;
         let mut h = Keccak256::default();
         h.update(data);
-        self.mem_write_slice(a, h.finalize().as_slice())?;
-        inc_pc(self.registers.pc_mut())
+        self.mem_write_slice(a, h.finalize().as_slice())
     }
 
     pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let data = self.mem_read(b, c)?;
         let h = Hasher::hash(data);
-        self.mem_write_slice(a, &*h)?;
-        inc_pc(self.registers.pc_mut())
+        self.mem_write_slice(a, &*h)
     }
 }

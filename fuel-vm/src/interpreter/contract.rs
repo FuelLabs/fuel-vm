@@ -1,6 +1,5 @@
-use super::internal::{external_asset_id_balance_sub, inc_pc, set_variable_output};
+use super::internal::{external_asset_id_balance_sub, set_variable_output};
 use super::{ExecutableTransaction, Interpreter};
-use crate::constraints::reg_key::*;
 use crate::error::RuntimeError;
 use crate::interpreter::PanicContext;
 use crate::storage::ContractsRawCode;
@@ -34,7 +33,7 @@ where
 
         self.registers[ra] = balance;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn transfer(
@@ -98,7 +97,7 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn transfer_output(
@@ -151,7 +150,7 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, RuntimeError> {

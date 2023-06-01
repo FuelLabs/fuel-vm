@@ -16,7 +16,7 @@ use fuel_asm::RegId;
 use fuel_tx::ConsensusParameters;
 use fuel_types::Word;
 
-/// The initial register values for the VM 
+/// The initial register values for the VM
 pub(crate) fn initial_register_values() -> [Word; VM_REGISTER_COUNT] {
     let mut values = [0; VM_REGISTER_COUNT];
     values[RegId::ONE] = 1;

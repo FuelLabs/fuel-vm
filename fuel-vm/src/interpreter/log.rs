@@ -1,5 +1,4 @@
-use super::{internal::inc_pc, ExecutableTransaction, Interpreter};
-use crate::constraints::reg_key::*;
+use super::{ExecutableTransaction, Interpreter};
 use crate::error::RuntimeError;
 
 use fuel_asm::RegId;
@@ -24,7 +23,7 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn log_data(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
@@ -46,6 +45,6 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 }

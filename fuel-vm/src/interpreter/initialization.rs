@@ -1,7 +1,6 @@
 use super::constructors::initial_register_values;
 use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::checked_transaction::{Checked, IntoChecked};
-use crate::consts::*;
 use crate::context::Context;
 use crate::error::{Bug, BugId, InterpreterError};
 use crate::storage::InterpreterStorage;
@@ -11,7 +10,6 @@ use fuel_types::Word;
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use crate::interpreter::CheckedMetadata;
-use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

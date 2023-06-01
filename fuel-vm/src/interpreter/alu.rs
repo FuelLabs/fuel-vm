@@ -1,4 +1,4 @@
-use super::{internal::inc_pc, parse_flags, ExecutableTransaction, Interpreter};
+use super::{parse_flags, ExecutableTransaction, Interpreter};
 use crate::{constraints::reg_key::*, error::RuntimeError};
 
 use fuel_asm::{Flags, PanicReason};
@@ -19,9 +19,9 @@ where
     where
         F: FnOnce(B, C) -> (u128, bool),
     {
-        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
-        let common = AluCommonReg { of, err, pc };
+        let common = AluCommonReg { of, err };
         alu_capture_overflow(dest, flag.as_ref(), common, f, b, c)
     }
 
@@ -30,9 +30,9 @@ where
     where
         F: FnOnce(B, C) -> (Word, bool),
     {
-        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
-        let common = AluCommonReg { of, err, pc };
+        let common = AluCommonReg { of, err };
         alu_boolean_overflow(dest, flag.as_ref(), common, f, b, c)
     }
 
@@ -47,22 +47,22 @@ where
     where
         F: FnOnce(B, C) -> Word,
     {
-        let (SystemRegisters { flag, of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { flag, of, err, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
-        let common = AluCommonReg { of, err, pc };
+        let common = AluCommonReg { of, err };
         alu_error(dest, flag.as_ref(), common, f, b, c, err_bool)
     }
 
     pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { of, err, pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { of, err, .. }, mut w) = split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
-        let common = AluCommonReg { of, err, pc };
+        let common = AluCommonReg { of, err };
         alu_set(dest, common, b)
     }
 
     pub(crate) fn alu_clear(&mut self) -> Result<(), RuntimeError> {
-        let (SystemRegisters { of, err, pc, .. }, _) = split_registers(&mut self.registers);
-        let common = AluCommonReg { of, err, pc };
+        let (SystemRegisters { of, err, .. }, _) = split_registers(&mut self.registers);
+        let common = AluCommonReg { of, err };
         alu_clear(common)
     }
 }
@@ -80,7 +80,6 @@ pub(crate) fn exp(b: Word, c: Word) -> (Word, bool) {
 pub(crate) struct AluCommonReg<'a> {
     pub of: RegMut<'a, OF>,
     pub err: RegMut<'a, ERR>,
-    pub pc: RegMut<'a, PC>,
 }
 
 /// Stores the overflowed wrapped value into RegId::OF
@@ -108,7 +107,7 @@ where
     // set the return value to the low bits of the u128 result
     *dest = (result & Word::MAX as u128) as u64;
 
-    inc_pc(common.pc)
+    Ok(())
 }
 
 /// Set RegId::OF to true and zero the result register if overflow occurred.
@@ -135,7 +134,7 @@ where
 
     *dest = if overflow { 0 } else { result };
 
-    inc_pc(common.pc)
+    Ok(())
 }
 
 pub(crate) fn alu_error<F, B, C>(
@@ -159,7 +158,7 @@ where
 
     *dest = if err_bool { 0 } else { f(b, c) };
 
-    inc_pc(common.pc)
+    Ok(())
 }
 
 pub(crate) fn alu_set(dest: &mut Word, mut common: AluCommonReg, b: Word) -> Result<(), RuntimeError> {
@@ -168,12 +167,12 @@ pub(crate) fn alu_set(dest: &mut Word, mut common: AluCommonReg, b: Word) -> Res
 
     *dest = b;
 
-    inc_pc(common.pc)
+    Ok(())
 }
 
 pub(crate) fn alu_clear(mut common: AluCommonReg) -> Result<(), RuntimeError> {
     *common.of = 0;
     *common.err = 0;
 
-    inc_pc(common.pc)
+    Ok(())
 }

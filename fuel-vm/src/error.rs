@@ -85,6 +85,13 @@ impl InterpreterError {
     }
 }
 
+impl From<PanicReason> for InterpreterError {
+    fn from(error: PanicReason) -> Self {
+        let e: RuntimeError = error.into();
+        e.into()
+    }
+}
+
 impl From<RuntimeError> for InterpreterError {
     fn from(error: RuntimeError) -> Self {
         match error {

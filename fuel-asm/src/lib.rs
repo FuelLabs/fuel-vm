@@ -484,6 +484,16 @@ impl Opcode {
             _ => false,
         }
     }
+
+    /// Checks if the instruction has special control flow, i.e.
+    /// returns `false` if $pc is always incremented by four after this.
+    pub fn has_control_flow(&self) -> bool {
+        use Opcode::*;
+        matches!(
+            self,
+            CALL | RET | JNEI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB
+        )
+    }
 }
 
 // Direct conversions

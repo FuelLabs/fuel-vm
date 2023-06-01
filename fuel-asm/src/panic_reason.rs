@@ -18,6 +18,11 @@ pub enum PanicReason {
     OutOfGas,
     /// The transaction validity is violated.
     TransactionValidity,
+    /// Attempting to execute memory that doesn't contain a valid instruction.
+    InvalidInstruction,
+    /// Attempting to read current instruction from unaccessible memory area, i.e.
+    /// either between the stack and the heap, or after the heap.
+    InstructionFetch,
     /// Attempt to read or write unaccessible memory area, i.e.
     /// either between the stack and the heap, or after the heap.
     MemoryAccess,
@@ -54,6 +59,8 @@ pub enum PanicReason {
     MalformedCallStructure,
     /// The provided register does not allow write operations.
     ReservedRegisterNotWritable,
+    /// Invalid value was written to a system register.
+    InvalidValue,
     /// The execution resulted in an erroneous state of the interpreter.
     ErrorFlag,
     /// The provided immediate value is not valid for this instruction.

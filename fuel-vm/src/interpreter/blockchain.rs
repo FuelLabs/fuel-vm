@@ -1,9 +1,8 @@
 use super::contract::{balance, balance_decrease, contract_size};
-use super::internal::{base_asset_balance_sub, inc_pc, tx_id};
+use super::internal::{base_asset_balance_sub, tx_id};
 use super::{ExecutableTransaction, Interpreter, MemoryRange};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word};
 use crate::call::CallFrame;
-use crate::constraints::reg_key::*;
 use crate::consts::*;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::interpreter::PanicContext;
@@ -118,7 +117,7 @@ where
             self.memory.write_slice(fp_code_size, &length.to_be_bytes());
         }
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn burn(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -132,7 +131,7 @@ where
             .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn mint(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -146,7 +145,7 @@ where
             .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
             .map_err(RuntimeError::from_io)?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn code_copy(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
@@ -169,14 +168,14 @@ where
             dst.copy_from_slice(src_data);
         }
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
         let hash = self.storage.block_hash(height).map_err(|e| e.into())?;
         self.mem_write_bytes(a, &hash)?;
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
@@ -186,13 +185,13 @@ where
             .map(|h| *h as Word)
             .ok_or(PanicReason::TransactionValidity)?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), RuntimeError> {
         let cb = self.storage.coinbase().map_err(RuntimeError::from_io)?;
         self.mem_write_bytes(a, &cb)?;
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
@@ -208,7 +207,7 @@ where
 
         self.mem_write_bytes(a, &root)?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn code_size(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
@@ -218,7 +217,7 @@ where
         self.dependent_gas_charge(self.gas_costs.csiz, len)?;
         self.registers[ra] = len;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn state_clear_qword(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
@@ -235,7 +234,7 @@ where
 
         self.registers[rb] = all_previously_set as Word;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn state_read_word(&mut self, ra: RegisterId, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
@@ -252,7 +251,7 @@ where
         self.registers[ra] = value.unwrap_or(0);
         self.registers[rb] = value.is_some() as Word;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn state_read_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
@@ -278,7 +277,7 @@ where
 
         self.mem_write_slice(a, &result)?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn state_write_word(&mut self, a: Word, rb: RegisterId, c: Word) -> Result<(), RuntimeError> {
@@ -296,7 +295,7 @@ where
 
         self.registers[rb] = result.is_some() as Word;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn state_write_qword(&mut self, a: Word, rb: RegisterId, c: Word, d: Word) -> Result<(), RuntimeError> {
@@ -319,7 +318,7 @@ where
             .is_some();
         self.registers[rb] = any_none as Word;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn timestamp(&mut self, ra: RegisterId, b: Word) -> Result<(), RuntimeError> {
@@ -332,7 +331,7 @@ where
 
         self.registers[ra] = self.storage.timestamp(b).map_err(|e| e.into())?;
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn message_output(
@@ -394,6 +393,6 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 }

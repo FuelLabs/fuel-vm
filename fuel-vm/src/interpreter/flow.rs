@@ -54,7 +54,8 @@ where
 
         self.append_receipt(receipt);
 
-        inc_pc(self.registers.pc_mut())
+        inc_pc(self.registers.pc_mut());
+        Ok(())
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -174,7 +175,8 @@ impl JumpArgs {
 
     pub(crate) fn jump(&self, is: Reg<IS>, mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
         if !self.condition {
-            return inc_pc(pc);
+            inc_pc(pc);
+            return Ok(());
         }
 
         let offset_instructions = match self.mode {

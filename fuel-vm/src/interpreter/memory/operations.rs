@@ -1,4 +1,3 @@
-use super::super::internal::inc_pc;
 use super::super::{ExecutableTransaction, Interpreter};
 use super::{MemoryRange, ToAddr};
 use crate::constraints::reg_key::*;
@@ -25,9 +24,7 @@ where
         } else {
             *sp = result;
 
-            self.update_allocations()?;
-
-            inc_pc(self.registers.pc_mut())
+            self.update_allocations()
         }
     }
 
@@ -35,14 +32,14 @@ where
         let addr = b.checked_add(c).ok_or(PanicReason::MemoryAccess)?;
         let bytes: [u8; 1] = self.mem_read_bytes(addr)?;
         self.registers[ra] = bytes[0] as Word;
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryAccess)?;
         self.registers[ra] = Word::from_be_bytes(self.mem_read_bytes(addr)?);
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -51,16 +48,13 @@ where
             return Err(PanicReason::MemoryAccess.into());
         }
 
-        self.mem_write_bytes(ac, &[b as u8])?;
-
-        inc_pc(self.registers.pc_mut())
+        self.mem_write_bytes(ac, &[b as u8])
     }
 
     pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
         let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryAccess)?;
-        self.mem_write_bytes(addr, &b.to_be_bytes())?;
-        inc_pc(self.registers.pc_mut())
+        self.mem_write_bytes(addr, &b.to_be_bytes())
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -71,14 +65,13 @@ where
         } else {
             *hp = result;
 
-            self.update_allocations()?;
-            inc_pc(self.registers.pc_mut())
+            self.update_allocations()
         }
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         self.mem_write(a, b)?.fill(0);
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 
     pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -88,8 +81,7 @@ where
         self.check_mem_owned(&dst_range)?;
         self.check_mem_access(&src_range)?;
 
-        self.memory.try_copy_within(&dst_range, &src_range)?;
-        inc_pc(self.registers.pc_mut())
+        self.memory.try_copy_within(&dst_range, &src_range)
     }
 
     pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
@@ -102,8 +94,7 @@ where
 
         let eq = self.memory.read(&range0) == self.memory.read(&range1);
         self.registers[ra] = eq as Word;
-
-        inc_pc(self.registers.pc_mut())
+        Ok(())
     }
 }
 

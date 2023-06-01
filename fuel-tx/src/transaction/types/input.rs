@@ -66,6 +66,23 @@ impl AsFieldFmt for u8 {
     }
 }
 
+impl AsField<u64> for u64 {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&u64> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut u64> {
+        Some(self)
+    }
+}
+
+impl AsFieldFmt for u64 {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
+    }
+}
+
 impl AsField<Vec<u8>> for Vec<u8> {
     #[inline(always)]
     fn as_field(&self) -> Option<&Vec<u8>> {
@@ -150,6 +167,7 @@ impl Input {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         maturity: BlockHeight,
+        predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
     ) -> Self {
@@ -161,6 +179,7 @@ impl Input {
             tx_pointer,
             witness_index: (),
             maturity,
+            predicate_gas_used,
             predicate,
             predicate_data,
         })
@@ -183,6 +202,7 @@ impl Input {
             tx_pointer,
             witness_index,
             maturity,
+            predicate_gas_used: (),
             predicate: (),
             predicate_data: (),
         })
@@ -217,6 +237,7 @@ impl Input {
             amount,
             nonce,
             witness_index,
+            predicate_gas_used: (),
             data: (),
             predicate: (),
             predicate_data: (),
@@ -228,6 +249,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
+        predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
     ) -> Self {
@@ -237,6 +259,7 @@ impl Input {
             amount,
             nonce,
             witness_index: (),
+            predicate_gas_used,
             data: (),
             predicate,
             predicate_data,
@@ -260,6 +283,7 @@ impl Input {
             data,
             predicate: (),
             predicate_data: (),
+            predicate_gas_used: (),
         })
     }
 
@@ -268,6 +292,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
+        predicate_gas_used: Word,
         data: Vec<u8>,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -278,6 +303,7 @@ impl Input {
             amount,
             nonce,
             witness_index: (),
+            predicate_gas_used,
             data,
             predicate,
             predicate_data,
@@ -412,6 +438,17 @@ impl Input {
         }
     }
 
+    pub fn predicate_gas_used(&self) -> Option<Word> {
+        match self {
+            Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => Some(*predicate_gas_used),
+            Input::CoinSigned(_) | Input::MessageCoinSigned(_) | Input::MessageDataSigned(_) | Input::Contract(_) => {
+                None
+            }
+        }
+    }
+
     pub fn message_id(&self) -> Option<MessageId> {
         match self {
             Self::MessageCoinSigned(message) => Some(message.message_id()),
@@ -459,25 +496,28 @@ impl Input {
         }
     }
 
-    /// Return a tuple containing the predicate and its data if the input is of
+    /// Return a tuple containing the predicate, its data and used gas if the input is of
     /// type `CoinPredicate` or `MessageCoinPredicate` or `MessageDataPredicate`
-    pub fn predicate(&self) -> Option<(&[u8], &[u8])> {
+    pub fn predicate(&self) -> Option<(&[u8], &[u8], &Word)> {
         match self {
             Input::CoinPredicate(CoinPredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
             })
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
             })
             | Input::MessageDataPredicate(MessageDataPredicate {
                 predicate,
                 predicate_data,
+                predicate_gas_used,
                 ..
-            }) => Some((predicate.as_slice(), predicate_data.as_slice())),
+            }) => Some((predicate.as_slice(), predicate_data.as_slice(), predicate_gas_used)),
 
             _ => None,
         }

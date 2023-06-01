@@ -3,6 +3,7 @@ use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
+use fuel_types::Word;
 use std::fmt;
 use std::io::{self, Read, Write};
 
@@ -109,6 +110,7 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             (u32::MAX >> 1).into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 23],
         ),
@@ -119,6 +121,7 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             (u32::MAX >> 1).into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![],
         ),
@@ -128,6 +131,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xee; 50],
             vec![0xff; 23],
         ),
@@ -136,6 +140,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xee; 50],
             vec![],
         ),
@@ -152,6 +157,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![0xff; 23],
@@ -161,6 +167,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![],

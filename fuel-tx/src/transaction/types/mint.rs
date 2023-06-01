@@ -144,9 +144,10 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
+        Ok(())
     }
 }
 

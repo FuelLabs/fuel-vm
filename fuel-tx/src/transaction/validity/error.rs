@@ -9,6 +9,8 @@ use std::{error, io};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum CheckError {
+    /// Transaction doesn't have spendable input message or coin.
+    NoSpendableInput,
     InputWitnessIndexBounds {
         index: usize,
     },
@@ -59,6 +61,9 @@ pub enum CheckError {
         index: usize,
     },
     TransactionCreateOutputChangeNotBaseAsset {
+        index: usize,
+    },
+    TransactionCreateOutputContractCreatedDoesntMatch {
         index: usize,
     },
     TransactionCreateOutputContractCreatedMultiple {

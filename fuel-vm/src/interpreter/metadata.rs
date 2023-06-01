@@ -213,6 +213,12 @@ impl<Tx> GTFInput<'_, Tx> {
                 .filter(|i| i.is_coin())
                 .and_then(Input::predicate_data_len)
                 .ok_or(PanicReason::InputNotFound)? as Word,
+            GTFArgs::InputCoinPredicateGasUsed => tx
+                .inputs()
+                .get(b)
+                .filter(|i| i.is_coin())
+                .and_then(Input::predicate_gas_used)
+                .ok_or(PanicReason::InputNotFound)? as Word,
             GTFArgs::InputCoinPredicate => {
                 (ofs + tx
                     .inputs()
@@ -345,6 +351,12 @@ impl<Tx> GTFInput<'_, Tx> {
                 .get(b)
                 .filter(|i| i.is_message())
                 .and_then(Input::predicate_data_len)
+                .ok_or(PanicReason::InputNotFound)? as Word,
+            GTFArgs::InputMessagePredicateGasUsed => tx
+                .inputs()
+                .get(b)
+                .filter(|i| i.is_message())
+                .and_then(Input::predicate_gas_used)
                 .ok_or(PanicReason::InputNotFound)? as Word,
             GTFArgs::InputMessageData => {
                 (ofs + tx

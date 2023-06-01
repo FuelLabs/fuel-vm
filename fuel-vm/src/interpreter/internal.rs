@@ -154,7 +154,10 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {
-        matches!(self.context, Context::Predicate { .. })
+        matches!(
+            self.context,
+            Context::PredicateEstimation { .. } | Context::PredicateVerification { .. }
+        )
     }
 
     pub(crate) fn internal_contract(&self) -> Result<ContractId, RuntimeError> {

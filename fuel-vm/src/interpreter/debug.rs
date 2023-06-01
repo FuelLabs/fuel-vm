@@ -50,9 +50,7 @@ fn breakpoint_script() {
 
     let mut vm = Interpreter::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
     let height = Default::default();
     let params = ConsensusParameters::default();
 
@@ -67,7 +65,10 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(gas_limit)
+        .add_random_fee_input()
+        .finalize()
         .into_checked(height, &params, vm.gas_costs())
         .expect("failed to generate checked tx");
 
@@ -115,9 +116,7 @@ fn single_stepping() {
     use fuel_asm::op;
     let mut vm = Interpreter::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
     let height = Default::default();
     let params = ConsensusParameters::default();
 
@@ -131,7 +130,10 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(gas_limit)
+        .add_random_fee_input()
+        .finalize()
         .into_checked(height, &params, vm.gas_costs())
         .expect("failed to generate checked tx");
 

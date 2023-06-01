@@ -4,10 +4,26 @@ use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
 use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
-use fuel_types::{fmt_truncated_hex, Bytes32, Bytes8, ContractId, Salt};
+use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 
 use alloc::vec::Vec;
 use core::iter;
+
+/// The target size of Merkle tree leaves in bytes. Contract code will will be divided into chunks
+/// of this size and pushed to the Merkle tree.
+///
+/// See https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id
+const LEAF_SIZE: usize = 16 * 1024;
+/// In the event that contract code cannot be divided evenly by the `LEAF_SIZE`, the remainder must
+/// be padded to the nearest multiple of 8 bytes. Padding is achieved by repeating the
+/// `PADDING_BYTE`.
+const PADDING_BYTE: u8 = 0u8;
+const MULTIPLE: usize = 8;
+
+/// See https://stackoverflow.com/a/9194117
+fn next_multiple<const N: usize>(x: usize) -> usize {
+    x + (N - x % N) % N
+}
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
@@ -16,6 +32,12 @@ use core::iter;
 pub struct Contract(#[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>);
 
 impl Contract {
+    /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state root.
+    pub const EMPTY_CONTRACT_ID: ContractId = ContractId::new([
+        55, 187, 13, 108, 165, 51, 58, 230, 74, 109, 215, 229, 33, 69, 82, 120, 81, 4, 85, 54, 172, 30, 84, 115, 226,
+        164, 0, 99, 103, 189, 154, 243,
+    ]);
+
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
     pub fn root(&self) -> Bytes32 {
         Self::root_from_code(self)
@@ -29,25 +51,20 @@ impl Contract {
         B: AsRef<[u8]>,
     {
         let mut tree = BinaryMerkleTree::new();
-
-        bytes
-            .as_ref()
-            .chunks(Bytes8::LEN)
-            .map(|c| {
-                if c.len() == Bytes8::LEN {
-                    Bytes8::new(c.try_into().expect("checked len chunk"))
-                } else {
-                    // Potential collision with non-padded input. Consider adding an extra leaf
-                    // for padding?
-                    let mut b = [0u8; 8];
-
-                    let l = c.len();
-                    b[..l].copy_from_slice(c);
-
-                    b.into()
-                }
-            })
-            .for_each(|l| tree.push(l.as_ref()));
+        bytes.as_ref().chunks(LEAF_SIZE).for_each(|leaf| {
+            // If the bytecode is not a multiple of LEAF_SIZE, the final leaf
+            // should be zero-padded rounding up to the nearest multiple of 8
+            // bytes.
+            let len = leaf.len();
+            if len == LEAF_SIZE || len % MULTIPLE == 0 {
+                tree.push(leaf);
+            } else {
+                let padding_size = next_multiple::<MULTIPLE>(len);
+                let mut padded_leaf = [PADDING_BYTE; LEAF_SIZE];
+                padded_leaf[0..len].clone_from_slice(leaf);
+                tree.push(padded_leaf[..padding_size].as_ref());
+            }
+        });
 
         tree.root().into()
     }
@@ -192,5 +209,119 @@ mod tests {
     fn default_state_root_snapshot() {
         let default_root = Contract::default_state_root();
         insta::assert_debug_snapshot!(default_root);
+    }
+
+    #[test]
+    fn multi_leaf_state_root_snapshot() {
+        let mut rng = StdRng::seed_from_u64(0xF00D);
+        // 5 full leaves and a partial 6th leaf with 4 bytes of data
+        let partial_leaf_size = 4;
+        let code_len = 5 * LEAF_SIZE + partial_leaf_size;
+        let mut code = alloc::vec![0u8; code_len];
+        rng.fill_bytes(code.as_mut_slice());
+
+        // compute root
+        let root = Contract::root_from_code(code);
+
+        // take root snapshot
+        insta::with_settings!(
+            {snapshot_suffix => "multi-leaf-state-root"},
+            {
+                insta::assert_debug_snapshot!(root);
+            }
+        );
+    }
+
+    #[rstest]
+    #[case(0)]
+    #[case(1)]
+    #[case(8)]
+    #[case(500)]
+    #[case(1000)]
+    #[case(1024)]
+    #[case(1025)]
+    fn partial_leaf_state_root(#[case] partial_leaf_size: usize) {
+        let mut rng = StdRng::seed_from_u64(0xF00D);
+        let code_len = partial_leaf_size;
+        let mut code = alloc::vec![0u8; code_len];
+        rng.fill_bytes(code.as_mut_slice());
+
+        // Compute root
+        let root = Contract::root_from_code(code.clone());
+
+        // Compute expected root
+        let expected_root = {
+            let mut tree = BinaryMerkleTree::new();
+
+            // Push partial leaf with manual padding.
+            // We start by generating an n-byte array, where n is the code
+            // length rounded to the nearest multiple of 8, and each byte is the
+            // PADDING_BYTE by default. The leaf is generated by copying the
+            // remaining data bytes into the start of this array.
+            let sz = next_multiple::<8>(partial_leaf_size);
+            if sz > 0 {
+                let mut padded_leaf = vec![PADDING_BYTE; sz];
+                padded_leaf[0..code_len].clone_from_slice(&code);
+                tree.push(&padded_leaf);
+            }
+            tree.root().into()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[rstest]
+    #[case(0)]
+    #[case(1)]
+    #[case(8)]
+    #[case(500)]
+    #[case(1000)]
+    #[case(1024)]
+    #[case(1025)]
+    fn multi_leaf_state_root(#[case] partial_leaf_size: usize) {
+        let mut rng = StdRng::seed_from_u64(0xF00D);
+        // 3 full leaves and a partial 4th leaf
+        let code_len = 3 * LEAF_SIZE + partial_leaf_size;
+        let mut code = alloc::vec![0u8; code_len];
+        rng.fill_bytes(code.as_mut_slice());
+
+        // Compute root
+        let root = Contract::root_from_code(code.clone());
+
+        // Compute expected root
+        let expected_root = {
+            let mut tree = BinaryMerkleTree::new();
+
+            let leaves = code.chunks(LEAF_SIZE).into_iter().collect::<Vec<_>>();
+            tree.push(leaves[0]);
+            tree.push(leaves[1]);
+            tree.push(leaves[2]);
+
+            // Push partial leaf with manual padding.
+            // We start by generating an n-byte array, where n is the code
+            // length rounded to the nearest multiple of 8, and each byte is the
+            // PADDING_BYTE by default. The leaf is generated by copying the
+            // remaining data bytes into the start of this array.
+            let sz = next_multiple::<8>(partial_leaf_size);
+            if sz > 0 {
+                let mut padded_leaf = vec![PADDING_BYTE; sz];
+                padded_leaf[0..partial_leaf_size].clone_from_slice(leaves[3]);
+                tree.push(&padded_leaf);
+            }
+            tree.root().into()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn empty_contract_id() {
+        let contract = Contract::from(vec![]);
+        let salt = Salt::zeroed();
+        let root = contract.root();
+        let state_root = Contract::default_state_root();
+
+        let calculated_id = contract.id(&salt, &root, &state_root);
+        assert_eq!(calculated_id, Contract::EMPTY_CONTRACT_ID)
     }
 }

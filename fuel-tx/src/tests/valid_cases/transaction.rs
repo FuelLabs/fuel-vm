@@ -15,32 +15,23 @@ fn gas_limit() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    Transaction::script(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        maturity,
-        generate_bytes(rng),
-        generate_bytes(rng),
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate transaction");
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate transaction");
 
-    Transaction::create(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        maturity,
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![vec![0xfau8].into()],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate transaction");
+    TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate transaction");
 
     let err = Transaction::script(
         rng.gen(),
@@ -80,32 +71,23 @@ fn maturity() {
 
     let block_height = 1000.into();
 
-    Transaction::script(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        block_height,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate script");
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(block_height)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate script");
 
-    Transaction::create(
-        rng.gen(),
-        PARAMS.max_gas_per_tx,
-        1000.into(),
-        0,
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![rng.gen()],
-    )
-    .check(block_height, &PARAMS)
-    .expect("Failed to validate tx create");
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .gas_price(rng.gen())
+        .gas_limit(PARAMS.max_gas_per_tx)
+        .maturity(block_height)
+        .add_random_fee_input()
+        .finalize()
+        .check(block_height, &PARAMS)
+        .expect("Failed to validate tx create");
 
     let err = Transaction::script(
         rng.gen(),
@@ -463,6 +445,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_input(Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()))
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &PARAMS)
@@ -476,6 +459,7 @@ fn create() {
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), not_empty_data)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
@@ -524,14 +508,21 @@ fn create() {
 
     assert_eq!(err, CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },);
 
-    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+    let witness = generate_bytes(rng);
+    let contract = Contract::from(witness.as_ref());
+    let salt = rng.gen();
+    let storage_slots: Vec<StorageSlot> = vec![];
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    let contract_id = contract.id(&salt, &contract.root(), &state_root);
+
+    let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .gas_limit(PARAMS.max_gas_per_tx)
         .gas_price(rng.gen())
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity)
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .add_output(Output::contract_created(contract_id, state_root))
+        .add_output(Output::contract_created(contract_id, state_root))
         .finalize()
         .check(block_height, &PARAMS)
         .expect_err("Expected erroneous transaction");
@@ -575,12 +566,20 @@ fn create() {
         rng.gen(),
         PARAMS.max_gas_per_tx,
         maturity,
-        0,
+        1,
         rng.gen(),
         vec![],
+        vec![Input::coin_signed(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            0,
+            rng.gen(),
+        )],
         vec![],
-        vec![],
-        vec![],
+        vec![Default::default()],
     )
     .check_without_signatures(block_height, &PARAMS)
     .expect_err("Expected erroneous transaction");
@@ -620,7 +619,7 @@ fn create() {
         .expect("Failed to validate the transaction");
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = storage_slots.clone();
+    let mut storage_slots_max = storage_slots;
 
     let s = StorageSlot::new([255u8; 32].into(), Default::default());
     storage_slots_max.push(s);
@@ -636,23 +635,6 @@ fn create() {
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(CheckError::TransactionCreateStorageSlotMax, err);
-
-    // Test storage slots must be sorted correctly
-    let mut storage_slots_reverse = storage_slots;
-
-    storage_slots_reverse.reverse();
-
-    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), storage_slots_reverse)
-        .gas_limit(PARAMS.max_gas_per_tx)
-        .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen(), maturity)
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &PARAMS)
-        .expect_err("Expected erroneous transaction");
-
-    assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
 }
 
 #[test]
@@ -784,6 +766,7 @@ mod inputs {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
+                rng.gen(),
                 predicate,
                 vec![],
             ))
@@ -804,6 +787,7 @@ mod inputs {
             .gas_price(rng.gen())
             .maturity(rng.gen())
             .add_input(Input::coin_predicate(
+                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
@@ -836,6 +820,7 @@ mod inputs {
                 recipient,
                 rng.gen(),
                 rng.gen(),
+                rng.gen(),
                 vec![],
                 predicate,
                 vec![],
@@ -857,6 +842,7 @@ mod inputs {
             .gas_price(rng.gen())
             .maturity(rng.gen())
             .add_input(Input::message_data_predicate(
+                rng.gen(),
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),

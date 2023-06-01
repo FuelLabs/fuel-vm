@@ -71,6 +71,7 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -80,11 +81,13 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
     );
 
     let c = Input::message_data_predicate(
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -100,6 +103,7 @@ fn from_tx_works() {
         let tx = TransactionBuilder::script(vec![], vec![])
             .with_params(params)
             .add_input(i)
+            .add_random_fee_input()
             .finalize_checked_basic(height);
 
         // assert invalid idx wont panic
@@ -117,7 +121,16 @@ fn from_tx_works() {
 
         let mut interpreter = Interpreter::without_storage();
 
-        assert!(interpreter.init_predicate(tx));
+        assert!(interpreter
+            .init_predicate(
+                fuel_vm::context::Context::PredicateVerification {
+                    program: Default::default()
+                },
+                tx.transaction(),
+                Default::default(),
+                tx.transaction().limit()
+            )
+            .is_ok());
 
         let pad = bytes::padded_len(&predicate) - predicate.len();
 

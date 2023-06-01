@@ -21,10 +21,10 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.registers[RegId::GGAS]
     }
 
-    /// Sets the remaining amout of gas to both CGAS and GGAS.
+    /// Sets the amount of gas available for execution to both CGAS and GGAS.
     /// Only useful in contexts where CGAS and GGAS are the same,
     /// i.e. predicates and testing.
-    pub(crate) fn set_remaining_gas(&mut self, gas: Word) {
+    pub(crate) fn set_gas(&mut self, gas: Word) {
         self.registers[RegId::GGAS] = gas;
         self.registers[RegId::CGAS] = gas;
     }

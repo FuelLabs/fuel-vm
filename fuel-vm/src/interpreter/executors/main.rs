@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
 use crate::context::Context;
@@ -11,9 +14,11 @@ use crate::storage::{InterpreterStorage, PredicateStorage};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
 use fuel_asm::{PanicReason, RegId};
+use fuel_tx::input::coin::CoinPredicate;
+use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
 use fuel_tx::{
-    field::{Outputs, ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Chargeable, ConsensusParameters, Contract, Create, Input, Output, Receipt, ScriptExecutionResult,
+    field::{ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
+    Chargeable, ConsensusParameters, Contract, Create, Input, Receipt, ScriptExecutionResult,
 };
 use fuel_types::Word;
 
@@ -28,21 +33,27 @@ impl PredicatesChecked {
     }
 }
 
-// FIXME replace for a type-safe transaction
+enum PredicateRunKind<'a, Tx> {
+    Verifying(&'a Tx),
+    Estimating(&'a mut Tx),
+}
+
+impl<'a, Tx> PredicateRunKind<'a, Tx> {
+    fn tx(&self) -> &Tx {
+        match self {
+            PredicateRunKind::Verifying(tx) => tx,
+            PredicateRunKind::Estimating(tx) => tx,
+        }
+    }
+}
+
 impl<T> Interpreter<PredicateStorage, T> {
     /// Initialize the VM with the provided transaction and check all predicates defined in the
     /// inputs.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for predicates.
-    /// This way, its possible, for the sake of simplicity, it is possible to use
-    /// [unit](https://doc.rust-lang.org/core/primitive.unit.html) as storage provider.
-    ///
-    /// # Debug
-    ///
-    /// This is not a valid entrypoint for debug calls. It will only return a `bool`, and not the
-    /// VM state required to trace the execution steps.
     pub fn check_predicates<Tx>(
-        checked: Checked<Tx>,
+        checked: &Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
@@ -50,42 +61,133 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
-        if !checked.transaction().check_predicate_owners(&params.chain_id) {
+        let tx = checked.transaction();
+        let balances = checked.metadata().balances();
+        Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params, gas_costs)
+    }
+
+    /// Initialize the VM with the provided transaction, check all predicates defined in the
+    /// inputs and set the predicate_gas_used to be the actual gas consumed during execution for
+    /// each predicate.
+    ///
+    /// The storage provider is not used since contract opcodes are not allowed for predicates.
+    pub fn estimate_predicates<Tx>(
+        transaction: &mut Tx,
+        balances: InitialBalances,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<(), PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        Self::run_predicate(PredicateRunKind::Estimating(transaction), balances, params, gas_costs)?;
+        Ok(())
+    }
+
+    fn run_predicate<Tx>(
+        mut kind: PredicateRunKind<Tx>,
+        balances: InitialBalances,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        if !kind.tx().check_predicate_owners(&params.chain_id) {
             return Err(PredicateVerificationFailed::InvalidOwner);
         }
 
-        let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+        let mut cumulative_gas_used: Word = 0;
 
-        // Needed for now because checked is only freed once the value is collected into a Vec
-        #[allow(clippy::needless_collect)]
-        let predicates: Vec<_> = (0..checked.transaction().inputs().len())
-            .filter_map(|i| RuntimePredicate::from_tx(&params, checked.transaction(), i))
-            .collect();
+        for i in 0..kind.tx().inputs().len() {
+            let is_predicate = matches!(
+                kind.tx().inputs()[i],
+                Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::MessageDataPredicate(_)
+            );
 
-        // Since we reuse the vm objects otherwise, we need to keep the actual gas here
-        let tx_gas_limit = checked.transaction().limit();
-        let mut remaining_gas = tx_gas_limit;
-
-        vm.init_predicate(checked);
-
-        for predicate in predicates {
-            // VM is cloned because the state should be reset for every predicate verification
-            let mut vm = vm.clone();
-
-            vm.context = Context::Predicate { program: predicate };
-            vm.set_remaining_gas(remaining_gas);
-
-            if !matches!(vm.verify_predicate()?, ProgramState::Return(0x01)) {
-                return Err(PredicateVerificationFailed::False);
+            if !is_predicate {
+                continue;
             }
 
-            remaining_gas = vm.registers[RegId::GGAS];
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), i) {
+                let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs.clone());
+
+                let available_gas = match &kind {
+                    PredicateRunKind::Verifying(tx) => {
+                        let context = Context::PredicateVerification { program: predicate };
+
+                        let available_gas = if let Some(x) = kind.tx().inputs()[i].predicate_gas_used() {
+                            x
+                        } else {
+                            return Err(PredicateVerificationFailed::GasNotSpecified);
+                        };
+
+                        vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
+                        available_gas
+                    }
+                    PredicateRunKind::Estimating(tx) => {
+                        let context = Context::PredicateEstimation { program: predicate };
+                        let tx_available_gas = params
+                            .max_gas_per_tx
+                            .checked_sub(cumulative_gas_used)
+                            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
+                        let available_gas = core::cmp::min(params.max_gas_per_predicate, tx_available_gas);
+
+                        vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
+                        available_gas
+                    }
+                };
+
+                let result = vm.verify_predicate();
+                let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
+
+                let gas_used = available_gas
+                    .checked_sub(vm.remaining_gas())
+                    .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+                cumulative_gas_used = cumulative_gas_used
+                    .checked_add(gas_used)
+                    .ok_or_else(|| PredicateVerificationFailed::OutOfGas)?;
+
+                match &mut kind {
+                    PredicateRunKind::Verifying(_) => {
+                        if !is_successful {
+                            result?;
+                            return Err(PredicateVerificationFailed::False);
+                        }
+
+                        if vm.remaining_gas() != 0 {
+                            return Err(PredicateVerificationFailed::GasMismatch);
+                        }
+                    }
+                    PredicateRunKind::Estimating(tx) => match &mut tx.inputs_mut()[i] {
+                        Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
+                        | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
+                        | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
+                            *predicate_gas_used = gas_used;
+                        }
+                        _ => {
+                            unreachable!("It was checked before during iteration over predicates")
+                        }
+                    },
+                }
+            }
+        }
+
+        match kind {
+            PredicateRunKind::Verifying(tx) => {
+                if cumulative_gas_used > tx.limit() {
+                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
+                }
+            }
+            PredicateRunKind::Estimating(_) => {
+                if cumulative_gas_used > params.max_gas_per_tx {
+                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
+                }
+            }
         }
 
         Ok(PredicatesChecked {
-            gas_used: tx_gas_limit
-                .checked_sub(remaining_gas)
-                .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?,
+            gas_used: cumulative_gas_used,
         })
     }
 }
@@ -100,21 +202,23 @@ where
         initial_balances: InitialBalances,
         params: &ConsensusParameters,
     ) -> Result<(), InterpreterError> {
+        let remaining_gas = create
+            .limit()
+            .checked_sub(create.gas_used_by_predicates())
+            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
+
+        let metadata = create.metadata().as_ref();
+        debug_assert!(metadata.is_some(), "`deploy_inner` is called without cached metadata");
         let salt = create.salt();
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
-        let root = contract.root();
-        let storage_root = Contract::initial_state_root(storage_slots.iter());
-        let id = contract.id(salt, &root, &storage_root);
-
-        // TODO: Move this check to `fuel-tx`.
-        if !create
-            .outputs()
-            .iter()
-            .any(|output| matches!(output, Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root))
-        {
-            return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
-        }
+        let root = metadata.map(|m| m.contract_root).unwrap_or(contract.root());
+        let storage_root = metadata
+            .map(|m| m.state_root)
+            .unwrap_or(Contract::initial_state_root(storage_slots.iter()));
+        let id = metadata
+            .map(|m| m.contract_id)
+            .unwrap_or(contract.id(salt, &root, &storage_root));
 
         // Prevent redeployment of contracts
         if storage
@@ -127,8 +231,6 @@ where
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
             .map_err(InterpreterError::from_io)?;
-
-        let remaining_gas = create.limit();
         Self::finalize_outputs(
             create,
             false,

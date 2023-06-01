@@ -1,10 +1,11 @@
-use fuel_asm::{op, RegId};
-use fuel_vm::util::test_helpers::find_change;
-use fuel_vm::{
+use crate::util::test_helpers::find_change;
+use crate::{
     prelude::{field::Outputs, *},
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
+use fuel_asm::{op, RegId};
+use fuel_tx::Witness;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 /// Testing of post-execution output handling
@@ -115,7 +116,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
             Output::change(rng.gen(), 0, asset_id),
             Output::coin(rng.gen(), spend_amount, asset_id),
         ],
-        vec![program],
+        vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
         rng.gen(),
@@ -124,12 +125,13 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         asset_id,
         rng.gen(),
         Default::default(),
+        1,
     );
     let create = create
         .into_checked_basic(context.get_block_height(), context.get_params())
         .expect("failed to generate checked tx");
 
-    let state = context.execute_tx(create).expect("Create should be executed");
+    let state = context.deploy(create).expect("Create should be executed");
     let change = find_change(state.tx().outputs().to_vec(), AssetId::BASE);
 
     assert_eq!(change, input_amount - spend_amount);
@@ -453,6 +455,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
+        .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
@@ -530,6 +533,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
+        .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)

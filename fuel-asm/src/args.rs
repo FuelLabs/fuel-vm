@@ -92,14 +92,13 @@ const GTF_INPUT_COIN_PREDICATE_LENGTH: u16 = 0x10A;
 const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH: u16 = 0x10B;
 const GTF_INPUT_COIN_PREDICATE: u16 = 0x10C;
 const GTF_INPUT_COIN_PREDICATE_DATA: u16 = 0x10D;
-const GTF_INPUT_CONTRACT_TX_ID: u16 = 0x10E;
-const GTF_INPUT_CONTRACT_OUTPUT_INDEX: u16 = 0x10F;
-const GTF_INPUT_CONTRACT_BALANCE_ROOT: u16 = 0x110;
-const GTF_INPUT_CONTRACT_STATE_ROOT: u16 = 0x111;
-const GTF_INPUT_CONTRACT_TX_POINTER: u16 = 0x112;
-const GTF_INPUT_CONTRACT_ID: u16 = 0x113;
-// TODO: Add `GTF_INPUT_COIN_PREDICATE_GAS_USED` above, `GTF_INPUT_MESSAGE_SENDER` should
-//  have `0x115`
+const GTF_INPUT_COIN_PREDICATE_GAS_USED: u16 = 0x10E;
+const GTF_INPUT_CONTRACT_TX_ID: u16 = 0x10F;
+const GTF_INPUT_CONTRACT_OUTPUT_INDEX: u16 = 0x110;
+const GTF_INPUT_CONTRACT_BALANCE_ROOT: u16 = 0x111;
+const GTF_INPUT_CONTRACT_STATE_ROOT: u16 = 0x112;
+const GTF_INPUT_CONTRACT_TX_POINTER: u16 = 0x113;
+const GTF_INPUT_CONTRACT_ID: u16 = 0x114;
 const GTF_INPUT_MESSAGE_SENDER: u16 = 0x115;
 const GTF_INPUT_MESSAGE_RECIPIENT: u16 = 0x116;
 const GTF_INPUT_MESSAGE_AMOUNT: u16 = 0x117;
@@ -111,6 +110,7 @@ const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH: u16 = 0x11C;
 const GTF_INPUT_MESSAGE_DATA: u16 = 0x11D;
 const GTF_INPUT_MESSAGE_PREDICATE: u16 = 0x11E;
 const GTF_INPUT_MESSAGE_PREDICATE_DATA: u16 = 0x11F;
+const GTF_INPUT_MESSAGE_PREDICATE_GAS_USED: u16 = 0x120;
 const GTF_OUTPUT_TYPE: u16 = 0x201;
 const GTF_OUTPUT_COIN_TO: u16 = 0x202;
 const GTF_OUTPUT_COIN_AMOUNT: u16 = 0x203;
@@ -257,6 +257,9 @@ pub enum GTFArgs {
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
     InputCoinPredicateData = GTF_INPUT_COIN_PREDICATE_DATA,
 
+    /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
+    InputCoinPredicateGasUsed = GTF_INPUT_COIN_PREDICATE_GAS_USED,
+
     /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
     InputContractTxId = GTF_INPUT_CONTRACT_TX_ID,
 
@@ -307,6 +310,9 @@ pub enum GTFArgs {
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
     InputMessagePredicateData = GTF_INPUT_MESSAGE_PREDICATE_DATA,
+
+    /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
+    InputMessagePredicateGasUsed = GTF_INPUT_MESSAGE_PREDICATE_GAS_USED,
 
     /// Set `$rA` to `tx.outputs[$rB].type`
     OutputType = GTF_OUTPUT_TYPE,
@@ -389,6 +395,7 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_COIN_PREDICATE_DATA_LENGTH => Ok(Self::InputCoinPredicateDataLength),
             GTF_INPUT_COIN_PREDICATE => Ok(Self::InputCoinPredicate),
             GTF_INPUT_COIN_PREDICATE_DATA => Ok(Self::InputCoinPredicateData),
+            GTF_INPUT_COIN_PREDICATE_GAS_USED => Ok(Self::InputCoinPredicateGasUsed),
             GTF_INPUT_CONTRACT_TX_ID => Ok(Self::InputContractTxId),
             GTF_INPUT_CONTRACT_OUTPUT_INDEX => Ok(Self::InputContractOutputIndex),
             GTF_INPUT_CONTRACT_BALANCE_ROOT => Ok(Self::InputContractBalanceRoot),
@@ -406,6 +413,7 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_MESSAGE_DATA => Ok(Self::InputMessageData),
             GTF_INPUT_MESSAGE_PREDICATE => Ok(Self::InputMessagePredicate),
             GTF_INPUT_MESSAGE_PREDICATE_DATA => Ok(Self::InputMessagePredicateData),
+            GTF_INPUT_MESSAGE_PREDICATE_GAS_USED => Ok(Self::InputMessagePredicateGasUsed),
             GTF_OUTPUT_TYPE => Ok(Self::OutputType),
             GTF_OUTPUT_COIN_TO => Ok(Self::OutputCoinTo),
             GTF_OUTPUT_COIN_AMOUNT => Ok(Self::OutputCoinAmount),
@@ -492,6 +500,7 @@ fn encode_gtf_args() {
         GTFArgs::InputCoinPredicateDataLength,
         GTFArgs::InputCoinPredicate,
         GTFArgs::InputCoinPredicateData,
+        GTFArgs::InputCoinPredicateGasUsed,
         GTFArgs::InputContractTxId,
         GTFArgs::InputContractOutputIndex,
         GTFArgs::InputContractBalanceRoot,
@@ -509,6 +518,7 @@ fn encode_gtf_args() {
         GTFArgs::InputMessageData,
         GTFArgs::InputMessagePredicate,
         GTFArgs::InputMessagePredicateData,
+        GTFArgs::InputMessagePredicateGasUsed,
         GTFArgs::OutputType,
         GTFArgs::OutputCoinTo,
         GTFArgs::OutputCoinAmount,

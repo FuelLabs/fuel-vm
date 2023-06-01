@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 use fuel_types::{Bytes32, ChainId};
 
+use crate::CheckError;
 #[cfg(feature = "std")]
 use crate::{field, UniqueIdentifier};
 
@@ -12,7 +13,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self, chain_id: &ChainId);
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError>;
 }
 
 #[cfg(feature = "std")]
@@ -25,7 +26,7 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {
             Self::Script(script) => script.precompute(chain_id),
             Self::Create(create) => create.precompute(chain_id),

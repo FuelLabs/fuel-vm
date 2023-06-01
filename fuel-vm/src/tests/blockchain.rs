@@ -1,13 +1,15 @@
 use fuel_asm::RegId;
 use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::{field::Outputs, Input, Output, Receipt, TransactionBuilder};
-use fuel_types::{bytes, AssetId, BlockHeight};
+use fuel_tx::{field::Outputs, Finalizable, Input, Output, Receipt, TransactionBuilder};
+use fuel_types::{AssetId, BlockHeight};
+use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
+use crate::consts::*;
+use crate::prelude::*;
 
+use crate::script_with_data_offset;
 use fuel_asm::PanicReason::ErrorFlag;
 use fuel_asm::{
     op, Instruction,
@@ -22,17 +24,8 @@ const MAX_MEM_SHL: Immediate12 = 26 as Immediate12;
 
 #[test]
 fn state_read_write() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let mut client = MemoryClient::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-
-    let salt: Salt = rng.gen();
 
     // Create a program with two main routines
     //
@@ -107,63 +100,25 @@ fn state_read_write() {
         op::ret(RegId::ZERO),
     ];
 
-    let program: Witness = function_selector
+    let program = function_selector
         .into_iter()
         .chain(call_arguments_parser.into_iter())
         .chain(routine_add_word_to_state.into_iter())
         .chain(routine_unpack_and_xor_limbs_into_state.into_iter())
         .chain(invalid_call.into_iter())
-        .collect::<Vec<u8>>()
-        .into();
+        .collect_vec();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let output = Output::contract_created(contract, state_root);
-
-    let bytecode_witness = 0;
-    let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
-    let output = Output::contract(0, rng.gen(), rng.gen());
-
-    // The script needs to locate the data offset at runtime. Hence, we need to know
-    // upfront the serialized size of the script so we can set the registers
-    // accordingly.
-    //
-    // This variable is created to assert we have correct script size in the
-    // instructions.
-    let script_len = 16;
-
-    // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
-    let script_data_offset = script_data_offset as Immediate18;
-
-    let script = vec![
-        op::movi(0x10, script_data_offset),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        op::ret(RegId::ONE),
-    ]
-    .into_iter()
-    .collect::<Vec<u8>>();
-
-    // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate18);
+    let (script, script_data_offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.tx_offset()
+    );
 
     let mut script_data = vec![];
 
@@ -179,34 +134,26 @@ fn state_read_write() {
     let val: Word = 150;
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_add_word = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        script_data,
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
     // Assert the initial state of `key` is empty
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context.get_storage().contract_state(&contract_id, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.deploy(tx_deploy);
-    client.transact(tx_add_word);
+    let result = test_context
+        .start_script(script.clone(), script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    let receipts = client.receipts().expect("The transaction was executed");
-    let state = client.as_ref().contract_state(&contract, &key);
+    let receipts = result.receipts();
+    let state = test_context.get_storage().contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
@@ -229,29 +176,21 @@ fn state_read_write() {
     let val: Word = (a << 48) | (b << 32) | (c << 16) | d;
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_unpack_xor = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    // Mutate the state
-    client.transact(tx_unpack_xor);
-
-    let receipts = client.receipts().expect("Expected receipts");
+    let receipts = result.receipts();
 
     // Expect the arguments to be received correctly by the VM
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -281,7 +220,7 @@ fn state_read_write() {
 
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context.get_storage().contract_state(&contract_id, &key);
     assert_eq!(bytes, state.into_owned());
 }
 
@@ -316,19 +255,15 @@ fn load_external_contract_code() {
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let tx_create_target = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        0,
-        salt,
-        vec![],
-        vec![],
-        vec![output0],
-        vec![program.clone()],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output0)
+        .finalize()
+        .into_checked(height, &params, client.gas_costs())
+        .expect("failed to check tx");
 
     client.deploy(tx_create_target);
 
@@ -368,17 +303,18 @@ fn load_external_contract_code() {
         op::noop(),                                       // Patched to the jump later
     ]);
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
+    let tx_deploy_loader = TransactionBuilder::script(
         #[allow(clippy::iter_cloned_collect)]
         load_contract.iter().copied().collect(),
         vec![],
-        vec![input0.clone()],
-        vec![output1],
-        vec![],
     )
+    .gas_price(gas_price)
+    .gas_limit(gas_limit)
+    .maturity(maturity)
+    .add_input(input0.clone())
+    .add_random_fee_input()
+    .add_output(output1)
+    .finalize()
     .into_checked(height, &params, client.gas_costs())
     .expect("failed to check tx");
 
@@ -386,18 +322,16 @@ fn load_external_contract_code() {
     let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
     *load_contract.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![input0],
-        vec![output1],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let tx_deploy_loader = TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_input(input0)
+        .add_random_fee_input()
+        .add_output(output1)
+        .finalize()
+        .into_checked(height, &params, client.gas_costs())
+        .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
 
@@ -446,19 +380,15 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let tx_create_target = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        0,
-        salt,
-        vec![],
-        vec![],
-        vec![output0],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let tx_create_target = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output0)
+        .finalize()
+        .into_checked(height, &params, client.gas_costs())
+        .expect("failed to check tx");
 
     client.deploy(tx_create_target);
 
@@ -470,18 +400,14 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
     if !should_patch_jump {
         load_contract = cmd;
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            load_contract.into_iter().collect(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
-        .into_checked(height, &params, client.gas_costs())
-        .expect("failed to check tx");
+        tx_deploy_loader = TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_random_fee_input()
+            .finalize()
+            .into_checked(height, &params, client.gas_costs())
+            .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
         let count = ContractId::LEN as Immediate12;
@@ -505,35 +431,31 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
 
         load_contract.extend(cmd);
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            load_contract.clone().into_iter().collect(),
-            vec![],
-            vec![input0.clone()],
-            vec![output1],
-            vec![],
-        )
-        .into_checked(height, &params, client.gas_costs())
-        .expect("failed to check tx");
+        tx_deploy_loader = TransactionBuilder::script(load_contract.clone().into_iter().collect(), vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_input(input0.clone())
+            .add_random_fee_input()
+            .add_output(output1)
+            .finalize()
+            .into_checked(height, &params, client.gas_costs())
+            .expect("failed to check tx");
 
         // Patch the code with correct jump address
         let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
         *load_contract.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            load_contract.into_iter().collect(),
-            vec![],
-            vec![input0],
-            vec![output1],
-            vec![],
-        )
-        .into_checked(height, &params, client.gas_costs())
-        .expect("failed to check tx");
+        tx_deploy_loader = TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_input(input0)
+            .add_random_fee_input()
+            .add_output(output1)
+            .finalize()
+            .into_checked(height, &params, client.gas_costs())
+            .expect("failed to check tx");
     }
 
     let receipts = client.transact(tx_deploy_loader);
@@ -932,68 +854,20 @@ fn swwq_sets_status_with_range() {
 }
 
 fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: Vec<Word>) -> bool {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let mut client = MemoryClient::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
 
-    let salt: Salt = rng.gen();
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
-
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
-
-    let output = Output::contract_created(contract, state_root);
-
-    let bytecode_witness = 0;
-    let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
-    let output = Output::contract(0, rng.gen(), rng.gen());
-
-    // The script needs to locate the data offset at runtime. Hence, we need to know
-    // upfront the serialized size of the script so we can set the registers
-    // accordingly.
-    //
-    // This variable is created to assert we have correct script size in the
-    // instructions.
-    let script_len = 16;
-
-    // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
-    let script_data_offset = script_data_offset as Immediate18;
-
-    let script = vec![
-        op::movi(0x10, script_data_offset),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        op::ret(RegId::ONE),
-    ]
-    .into_iter()
-    .collect::<Vec<u8>>();
-
-    // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate18);
+    let (script, script_data_offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.tx_offset()
+    );
 
     let mut script_data = vec![];
 
@@ -1008,34 +882,26 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
     let key = Hasher::hash(b"some key");
     let val: Word = 150;
 
-    // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    // Script data containing the call arguments (contract_id, a, b) and (key, value)
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_add_word = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
     // Assert the initial state of `key` is empty
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context.get_storage().contract_state(&contract_id, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.deploy(tx_deploy);
-    client.transact(tx_add_word);
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    let receipts = client.receipts().expect("The transaction was executed");
+    let receipts = result.receipts();
 
     // Expect the correct receipt
     assert_eq!(receipts[1].ra().expect("Register value expected"), expected_values[0]);
@@ -1353,6 +1219,7 @@ fn smo_instruction_works() {
                 amount: 0,
                 asset_id: Default::default(),
             })
+            .add_random_fee_input()
             .with_params(*params)
             .finalize_checked(block_height, client.gas_costs());
 
@@ -1478,6 +1345,7 @@ fn timestamp_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
+            .add_random_fee_input()
             .with_params(params)
             .finalize_checked(block_height, client.gas_costs());
 
@@ -1536,6 +1404,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(current_height, client.gas_costs());
 
@@ -1586,6 +1455,7 @@ fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0,
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(current_height, client.gas_costs());
 
@@ -1625,6 +1495,7 @@ fn coinbase_works() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
+        .add_random_fee_input()
         .with_params(params)
         .finalize_checked(10.into(), client.gas_costs());
 

@@ -182,6 +182,7 @@ mod use_std {
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -216,6 +217,7 @@ mod use_std {
                             recipient,
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -236,6 +238,7 @@ mod use_std {
                         let input = Input::message_data_predicate(
                             self.rng.gen(),
                             recipient,
+                            self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
                             generate_bytes(&mut self.rng),

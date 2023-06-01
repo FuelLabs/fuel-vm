@@ -55,6 +55,17 @@ impl Default for Transaction {
 }
 
 impl Transaction {
+    /// Return default valid transaction useful for tests.
+    #[cfg(all(feature = "rand", feature = "std", feature = "builder"))]
+    pub fn default_test_tx() -> Self {
+        use crate::Finalizable;
+
+        crate::TransactionBuilder::script(vec![], vec![])
+            .add_random_fee_input()
+            .finalize()
+            .into()
+    }
+
     pub const fn script(
         gas_price: Word,
         gas_limit: Word,
@@ -87,7 +98,7 @@ impl Transaction {
         maturity: BlockHeight,
         bytecode_witness_index: u8,
         salt: Salt,
-        storage_slots: Vec<StorageSlot>,
+        mut storage_slots: Vec<StorageSlot>,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -98,6 +109,9 @@ impl Transaction {
             .get(bytecode_witness_index as usize)
             .map(|witness| witness.as_ref().len() as Word / 4)
             .unwrap_or(0);
+
+        // sort incoming storage slots
+        storage_slots.sort();
 
         Create {
             gas_price,
@@ -285,13 +299,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         maturity: BlockHeight,
+        witness_index: u8,
     ) {
         let owner = Input::owner(owner);
 
-        let witness_index = self.witnesses().len() as u8;
         let input = Input::coin_signed(utxo_id, owner, amount, asset_id, tx_pointer, witness_index, maturity);
-
-        self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
     }
 
@@ -310,15 +322,14 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
+        witness_index: u8,
     ) {
-        let witness_index = self.witnesses().len() as u8;
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
             Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
         };
 
-        self.witnesses_mut().push(Witness::default());
         self.inputs_mut().push(input);
     }
 
@@ -380,6 +391,7 @@ pub mod field {
     use fuel_types::{BlockHeight, Bytes32, Word};
 
     use alloc::vec::Vec;
+    use std::ops::{Deref, DerefMut};
 
     pub trait GasPrice {
         fn gas_price(&self) -> &Word;
@@ -479,7 +491,7 @@ pub mod field {
 
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
-        fn storage_slots_mut(&mut self) -> &mut Vec<StorageSlot>;
+        fn storage_slots_mut(&mut self) -> StorageSlotRef;
         fn storage_slots_offset(&self) -> usize {
             Self::storage_slots_offset_static()
         }
@@ -488,6 +500,39 @@ pub mod field {
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;
+    }
+
+    /// Reference object for mutating storage slots which will automatically
+    /// sort the slots when dropped.
+    pub struct StorageSlotRef<'a> {
+        pub(crate) storage_slots: &'a mut Vec<StorageSlot>,
+    }
+
+    impl<'a> AsMut<Vec<StorageSlot>> for StorageSlotRef<'a> {
+        fn as_mut(&mut self) -> &mut Vec<StorageSlot> {
+            self.storage_slots
+        }
+    }
+
+    impl<'a> Deref for StorageSlotRef<'a> {
+        type Target = [StorageSlot];
+
+        fn deref(&self) -> &Self::Target {
+            self.storage_slots.deref()
+        }
+    }
+
+    impl<'a> DerefMut for StorageSlotRef<'a> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.storage_slots.deref_mut()
+        }
+    }
+
+    /// Ensure the storage slots are sorted after being set
+    impl<'a> Drop for StorageSlotRef<'a> {
+        fn drop(&mut self) {
+            self.storage_slots.sort()
+        }
     }
 
     pub trait Inputs {

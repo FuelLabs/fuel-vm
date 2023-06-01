@@ -112,6 +112,12 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.registers
     }
 
+    /// Mutable access to registers for testing
+    #[cfg(test)]
+    pub fn registers_mut(&mut self) -> &mut [Word] {
+        &mut self.registers
+    }
+
     pub(crate) fn call_stack(&self) -> &[CallFrame] {
         self.frames.as_slice()
     }

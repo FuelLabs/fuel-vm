@@ -65,6 +65,7 @@ fn ecrecover() {
 
     assert!(success);
 }
+
 #[test]
 fn ecrecover_error() {
     let rng = &mut StdRng::seed_from_u64(2322u64);

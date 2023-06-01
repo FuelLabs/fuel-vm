@@ -10,6 +10,7 @@ use std::{fmt, io};
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
+#[must_use = "Interpreter errors must be handled"]
 pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.

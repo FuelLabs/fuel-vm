@@ -1,3 +1,4 @@
+use super::constructors::initial_register_values;
 use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
 use crate::checked_transaction::{Checked, IntoChecked};
 use crate::consts::*;
@@ -24,11 +25,7 @@ where
 
         self.memory.reset();
 
-        // Optimized for memset
-        self.registers.iter_mut().for_each(|r| *r = 0);
-
-        self.registers[RegId::ONE] = 1;
-        self.registers[RegId::HP] = VM_MAX_RAM;
+        self.registers = initial_register_values();
     }
 
     /// Initialize the VM with a given transaction
@@ -40,27 +37,23 @@ where
     ) -> Result<(), InterpreterError> {
         self.reset();
 
+        self.set_gas(gas_limit);
+
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
 
-        self.push_stack(self.transaction().id(&self.params.chain_id).as_ref())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.init_push_stack(self.transaction().id(&self.params.chain_id).as_ref());
 
         RuntimeBalances::try_from(initial_balances)?.to_vm(self);
 
         let tx_size = self.transaction().serialized_size() as Word;
-        self.set_gas(gas_limit);
-
-        self.push_stack(&tx_size.to_be_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.init_push_stack(&tx_size.to_be_bytes());
 
         let tx_bytes = self.tx.to_bytes();
+        self.init_push_stack(tx_bytes.as_slice());
 
-        self.push_stack(tx_bytes.as_slice())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-        self.registers[RegId::SP] = self.registers[RegId::SSP];
+        debug_assert_eq!(self.registers[RegId::SP], self.registers[RegId::SSP]);
 
         Ok(())
     }

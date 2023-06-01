@@ -27,7 +27,11 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .into_checked(Default::default(), &ConsensusParameters::DEFAULT, client.gas_costs())
         .expect("failed to generate a checked tx");
     client.transact(tx);
-    client.receipts().expect("Expected receipts").to_vec()
+    if let Some(r) = client.receipts() {
+        r.to_vec()
+    } else {
+        panic!("Script execution failed");
+    }
 }
 
 /// Assert that transaction didn't panic

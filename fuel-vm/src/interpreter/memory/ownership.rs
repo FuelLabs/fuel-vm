@@ -14,6 +14,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 }
 
+#[derive(Debug)]
 pub struct OwnershipRegisters {
     pub(crate) sp: u64,
     pub(crate) ssp: u64,

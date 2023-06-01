@@ -271,21 +271,14 @@ where
         set_frame_pointer(&mut self.context, self.registers.fp_mut(), new_fp);
 
         self.registers[RegId::SP] = arith::checked_add_word(self.registers[RegId::SP], len)?;
-        self.registers[RegId::SSP] = self.registers[RegId::SP];
 
-        let pages = self
-            .memory
-            .update_allocations(self.registers[RegId::SP], self.registers[RegId::HP])
-            .map_err(|_| PanicReason::OutOfMemory)?;
+        self.update_allocations()?;
 
-        if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
-            self.gas_charge(charge)?;
-        }
-
-        // let dst = self.mem_write()?;
         let dst_range = MemoryRange::try_new(self.registers[RegId::FP], len)?;
         self.check_mem_owned(&dst_range)?;
         write_call_to_memory(self.memory.write(&dst_range), &frame, frame_bytes, &self.storage)?;
+
+        self.registers[RegId::SSP] = self.registers[RegId::SP];
 
         self.registers[RegId::BAL] = amount_of_coins_to_forward;
         self.registers[RegId::PC] = self.registers[RegId::FP] + CallFrame::serialized_size() as Word;

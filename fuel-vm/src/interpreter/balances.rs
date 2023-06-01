@@ -128,23 +128,37 @@ impl RuntimeBalances {
     }
 
     /// Write all assets into the VM memory.
+    /// Requires the VM stack to be initialized until `VM_MEMORY_BALANCES_OFFSET`.
     pub fn to_vm<S, Tx>(self, vm: &mut Interpreter<S, Tx>)
     where
         Tx: ExecutableTransaction,
     {
+        let start_sp = vm.registers()[RegId::SP];
+
+        debug_assert_eq!(start_sp, VM_MEMORY_BALANCES_OFFSET as Word);
+
+        // Push balances in order, and fill the rest with zeroes.
+        for maybe_balance in self
+            .state
+            .iter()
+            .sorted_by_key(|(_, balance)| balance.offset())
+            .map(Some)
+            .chain(std::iter::repeat(None))
+            .take(vm.params().max_inputs as usize)
+        {
+            if let Some((asset, balance)) = maybe_balance {
+                debug_assert_eq!(balance.offset() as Word, vm.registers()[RegId::SP]);
+
+                vm.init_push_stack(asset.as_ref());
+                vm.init_push_stack(&balance.value().to_be_bytes());
+            } else {
+                vm.init_push_stack(AssetId::zeroed().as_ref());
+                vm.init_push_stack(&Word::MIN.to_be_bytes());
+            }
+        }
+
         let len = vm.params().max_inputs * (AssetId::LEN + WORD_SIZE) as Word;
-
-        vm.registers[RegId::SP] += len;
-        vm.reserve_stack(len)
-            .expect("consensus parameters won't allow stack overflow for VM initialization");
-
-        self.state.iter().for_each(|(asset, balance)| {
-            let value = balance.value();
-            let ofs = balance.offset();
-
-            vm.memory.write_bytes(ofs, asset);
-            vm.memory.write_bytes(ofs + AssetId::LEN, &value.to_be_bytes());
-        });
+        debug_assert_eq!(start_sp + len, vm.registers()[RegId::SP]);
 
         vm.balances = self;
     }
@@ -184,8 +198,9 @@ fn writes_to_memory_correctly() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let mut interpreter = Interpreter::<_, Script>::without_storage();
-    interpreter.reset();
-
+    interpreter.registers_mut()[RegId::CGAS] = 1_000_000;
+    interpreter.registers_mut()[RegId::GGAS] = 1_000_000;
+    
     let base = AssetId::zeroed();
     let base_balance = 950;
     let assets = vec![
@@ -203,6 +218,10 @@ fn writes_to_memory_correctly() {
 
     let balances = assets.into_iter();
 
+    // Init stack section before the balances with random data
+    interpreter.init_push_stack(&*ContractId::new(rng.gen()));
+
+    // Push balances
     RuntimeBalances::try_from_iter(balances)
         .expect("failed to generate balances")
         .to_vm(&mut interpreter);

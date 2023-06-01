@@ -25,14 +25,7 @@ where
         } else {
             *sp = result;
 
-            let pages = self
-                .memory
-                .update_allocations(*sp, *hp)
-                .map_err(|_| PanicReason::OutOfMemory)?;
-
-            if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
-                self.gas_charge(charge)?;
-            }
+            self.update_allocations()?;
 
             inc_pc(self.registers.pc_mut())
         }
@@ -125,7 +118,12 @@ impl<S, Tx> Interpreter<S, Tx> {
             return Err(PanicReason::MemoryAccessSize.into());
         }
 
-        if stack.contains_range(range) && heap.contains_range(range) {
+        let in_stack = stack.contains_range(range);
+        let in_heap = heap.contains_range(range);
+
+        debug_assert!(!(in_stack && in_heap), "Heap and stack cannot overlap");
+
+        if in_stack || in_heap {
             Ok(())
         } else {
             Err(PanicReason::MemoryAccess.into())

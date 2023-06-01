@@ -3,6 +3,37 @@ use crate::prelude::*;
 use fuel_asm::{op, RegId};
 
 #[test]
+fn alloc_pages() {
+    const PAGE_SIZE: Word = VM_PAGE_SIZE as Word;
+    let mut mem = VmMemory::new();
+    assert_eq!(mem.update_allocations(0, VM_MAX_RAM).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM).unwrap(), AllocatedPages(1));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM - 1).unwrap(), AllocatedPages(1));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM - 1).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(0, VM_MAX_RAM - 1).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM - 1).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM).unwrap(), AllocatedPages(0));
+    assert_eq!(mem.update_allocations(1, VM_MAX_RAM - 1).unwrap(), AllocatedPages(0));
+    assert_eq!(
+        mem.update_allocations(PAGE_SIZE, VM_MAX_RAM - 1).unwrap(),
+        AllocatedPages(0)
+    );
+    assert_eq!(
+        mem.update_allocations(PAGE_SIZE + 1, VM_MAX_RAM - 1).unwrap(),
+        AllocatedPages(1)
+    );
+    assert_eq!(
+        mem.update_allocations(PAGE_SIZE * 2, VM_MAX_RAM - 1).unwrap(),
+        AllocatedPages(0)
+    );
+    assert_eq!(
+        mem.update_allocations(PAGE_SIZE * 2 + 1, VM_MAX_RAM - 1).unwrap(),
+        AllocatedPages(1)
+    );
+}
+
+#[test]
 fn memcopy() {
     let mut vm = Interpreter::with_memory_storage();
     let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);

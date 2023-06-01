@@ -10,8 +10,6 @@ use fuel_tx::{Output, Receipt};
 use fuel_types::bytes::SizedBytes;
 use fuel_types::{AssetId, BlockHeight, Bytes32, ContractId, Word};
 
-use core::mem;
-
 #[cfg(test)]
 mod message_tests;
 #[cfg(all(test, feature = "random"))]
@@ -82,36 +80,27 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
-    /// Reserves `len` bytes of stack space. Returns the previous $ssp value,
-    /// i.e. the first byte of the recently reserved memory area.
-    pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
-        let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
+    /// Pushes given bytes to stack. Only to be used during initialization.
+    pub(crate) fn init_push_stack(&mut self, data: &[u8]) {
+        debug_assert!(
+            self.registers[RegId::SSP] == self.registers[RegId::SP],
+            "init_push_stack can only be used in during initialization"
+        );
 
-        if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
-            Err(PanicReason::OutOfMemory.into())
-        } else {
-            let prev_ssp = mem::replace(&mut self.registers[RegId::SSP], ssp);
+        let old_sp = self.registers[RegId::SP];
+        let Some(new_sp) = self.registers[RegId::SP].checked_add(data.len() as Word) else {
+            panic!("VM must have enough memory for initial allocations");
+        };
 
-            let pages = self
-                .memory
-                .update_allocations(self.registers[RegId::SSP], self.registers[RegId::HP])
-                .map_err(|_| PanicReason::OutOfMemory)?;
+        self.registers[RegId::SP] = new_sp;
 
-            if let Some(charge) = pages.maybe_cost(self.gas_costs.memory_page) {
-                self.gas_charge(charge)?;
-            }
+        self.update_allocations()
+            .expect("VM must have enough gas for initial allocations");
 
-            Ok(prev_ssp)
-        }
-    }
+        self.mem_write_slice(old_sp, data)
+            .expect("VM must have enough memory for initial allocations");
 
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
-        let ssp = self.reserve_stack(data.len() as Word)?;
-
-        debug_assert_eq!((self.registers[RegId::SSP] - ssp) as usize, data.len());
-        self.memory.write_slice(ssp, data);
-
-        Ok(())
+        self.registers[RegId::SSP] = new_sp;
     }
 
     pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
@@ -121,10 +110,6 @@ impl<S, Tx> Interpreter<S, Tx> {
 
     pub(crate) const fn context(&self) -> &Context {
         &self.context
-    }
-
-    pub(crate) const fn is_external_context(&self) -> bool {
-        self.context().is_external()
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {

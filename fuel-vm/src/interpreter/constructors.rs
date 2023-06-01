@@ -12,7 +12,17 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
+use fuel_asm::RegId;
 use fuel_tx::ConsensusParameters;
+use fuel_types::Word;
+
+/// The initial register values for the VM 
+pub(crate) fn initial_register_values() -> [Word; VM_REGISTER_COUNT] {
+    let mut values = [0; VM_REGISTER_COUNT];
+    values[RegId::ONE] = 1;
+    values[RegId::HP] = VM_MAX_RAM;
+    values
+}
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -25,7 +35,7 @@ where
     /// will provide full functionality.
     pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
         Self {
-            registers: [0; VM_REGISTER_COUNT],
+            registers: initial_register_values(),
             memory: VmMemory::new(),
             frames: vec![],
             receipts: Default::default(),

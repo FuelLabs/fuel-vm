@@ -27,7 +27,7 @@ static_assertions::const_assert!(VM_PAGE_SIZE < MEM_SIZE);
 static_assertions::const_assert!(MEM_SIZE % VM_PAGE_SIZE == 0);
 
 /// Number of new pages allocated by a memory allocation request.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[must_use = "Gas charging is required when new pages are allacted"]
 pub struct AllocatedPages(pub usize);
 impl AllocatedPages {
@@ -36,7 +36,8 @@ impl AllocatedPages {
         if self.0 == 0 {
             None
         } else {
-            Some((self.0 as Word) * cost_per_page)
+            // If this ends up saturating, then we'll be out of gas anyway
+            Some((self.0 as Word).saturating_mul(cost_per_page))
         }
     }
 }

@@ -100,7 +100,7 @@ where
             return Err(PanicReason::MemoryAccessSize.into());
         }
 
-        let eq = self.memory.read(&range0) == self.memory.read(&range1);
+        let eq = self.mem_read_range(&range0)? == self.mem_read_range(&range1)?;
 
         let (_, mut w) = split_registers(&mut self.registers);
         w[wrk] = eq as Word;

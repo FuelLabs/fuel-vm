@@ -38,6 +38,10 @@ impl MemoryRange {
 
     /// Checks if a range falls fully within another range
     pub fn contains_range(&self, inner: &Self) -> bool {
+        if inner.len() == 0 && self.len() == 0{
+            return self.start == inner.start;
+        }
+
         self.contains(&inner.start) && inner.end <= self.end
     }
 
@@ -140,11 +144,25 @@ pub mod tests {
 
     #[test]
     fn test_contains_range() {
+        let empty0 = MemoryRange::try_new(0, 0).unwrap();
+        let empty1 = MemoryRange::try_new(1, 0).unwrap();
+
+        assert!(empty0.contains_range(&empty0));
+        assert!(empty1.contains_range(&empty1));
+        assert!(!empty1.contains_range(&empty0));
+        assert!(!empty0.contains_range(&empty1));
+
         let a = MemoryRange::try_new(0, 10).unwrap();
         let b = MemoryRange::try_new(2, 4).unwrap();
         let c = MemoryRange::try_new(8, 4).unwrap();
         let d = MemoryRange::try_new(10, 10).unwrap();
         let e = MemoryRange::try_new(20, 10).unwrap();
+
+        assert!(a.contains_range(&a));
+        assert!(b.contains_range(&b));
+        assert!(c.contains_range(&c));
+        assert!(d.contains_range(&d));
+        assert!(e.contains_range(&e));
 
         assert!(a.contains_range(&b));
         assert!(!a.contains_range(&c));

@@ -200,6 +200,10 @@ impl VmMemory {
     pub fn try_copy_within(&mut self, dst_range: &MemoryRange, src_range: &MemoryRange) -> Result<(), RuntimeError> {
         assert!(dst_range.len() == src_range.len());
 
+        if dst_range.len() == 0 {
+            return Ok(());
+        }
+
         if dst_range.overlap_with(src_range).is_some() {
             return Err(PanicReason::MemoryWriteOverlap.into());
         }

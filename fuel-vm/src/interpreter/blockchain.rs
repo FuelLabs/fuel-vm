@@ -1,7 +1,7 @@
 use super::contract::{balance, balance_decrease, contract_size};
 use super::internal::{base_asset_balance_sub, tx_id};
 use super::{ExecutableTransaction, Interpreter, MemoryRange};
-use crate::arith::{add_usize, checked_add_usize, checked_add_word};
+use crate::arith::{add_usize, checked_add_word};
 use crate::call::CallFrame;
 use crate::constraints::reg_key::*;
 use crate::consts::*;
@@ -94,12 +94,12 @@ where
         Ok(())
     }
 
-    pub(crate) fn burn(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let contract = ContractId::from(self.mem_read_bytes(a)?);
+    pub(crate) fn burn(&mut self, amount_coins: Word) -> Result<(), RuntimeError> {
+        let contract = self.internal_contract()?;
         let asset_id = AssetId::from(*contract);
 
         let balance = balance(&self.storage, &contract, &asset_id)?;
-        let balance = balance.checked_sub(a).ok_or(PanicReason::NotEnoughBalance)?;
+        let balance = balance.checked_sub(amount_coins).ok_or(PanicReason::NotEnoughBalance)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)
@@ -108,12 +108,12 @@ where
         Ok(())
     }
 
-    pub(crate) fn mint(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let contract = ContractId::from(self.mem_read_bytes(a)?);
+    pub(crate) fn mint(&mut self, amount_coins: Word) -> Result<(), RuntimeError> {
+        let contract = self.internal_contract()?;
         let asset_id = AssetId::from(*contract);
 
         let balance = balance(&self.storage, &contract, &asset_id)?;
-        let balance = checked_add_word(balance, a)?;
+        let balance = checked_add_word(balance, amount_coins)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(&contract, &asset_id, balance)

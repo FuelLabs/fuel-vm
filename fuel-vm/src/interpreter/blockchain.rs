@@ -54,6 +54,12 @@ where
             return Err(PanicReason::ContractNotInInputs.into());
         };
 
+        self.registers[RegId::SP] = self.registers[RegId::SP]
+            .checked_add(length as Word)
+            .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
+
+        self.update_allocations()?;
+
         self.mem_write(memory_offset, length)?.fill(0);
 
         // fetch the storage contract
@@ -72,17 +78,6 @@ where
         // perform the code copy
         self.memory.write_slice(memory_offset, code);
 
-        self.registers[RegId::SP]
-            //TODO this is looser than the compare against [RegId::HP,RegId::SSP+length]
-            .checked_add(length as Word)
-            .map(|sp| {
-                self.registers[RegId::SP] = sp;
-                self.registers[RegId::SSP] = sp;
-            })
-            .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
-
-        self.update_allocations()?;
-
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
@@ -93,6 +88,8 @@ where
 
             self.memory.write_slice(fp_code_size, &length.to_be_bytes());
         }
+
+        self.registers[RegId::SSP] = self.registers[RegId::SP];
 
         Ok(())
     }

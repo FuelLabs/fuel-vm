@@ -317,10 +317,11 @@ impl<S, Tx> Interpreter<S, Tx> {
         let balances = capture_map_state(self.balances.as_ref(), other.balances.as_ref(), Change::Balance);
         diff.changes.extend(balances);
 
-        // let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
-        let a: Vec<u8> = Vec::new();
-        let memory = a.iter().enumerate().zip(a.iter());
-        todo!("memory diffing");
+        let mut memory = self
+            .memory
+            .iter_full_area()
+            .enumerate()
+            .zip(other.memory.iter_full_area());
 
         while let Some(((start, s_from), s_to)) = memory
             .by_ref()

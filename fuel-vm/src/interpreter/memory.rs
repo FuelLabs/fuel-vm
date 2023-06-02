@@ -138,6 +138,15 @@ impl VmMemory {
         MemoryRange::try_new(heap_start, self.heap.len()).unwrap()
     }
 
+    /// Iterates the full memory area, filling zeroes between the stack and the heap.
+    /// This is a costly operation and is mostly intended for tests.
+    pub fn iter_full_area(&self) -> impl Iterator<Item = &u8> + '_ {
+        self.stack
+            .iter()
+            .chain(std::iter::repeat(&0).take(self.unallocated()))
+            .chain(self.heap.iter())
+    }
+
     /// Read given number of bytes of memory at address.
     /// Panics on invalid memory access.
     pub fn read(&self, range: &MemoryRange) -> &[u8] {

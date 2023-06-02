@@ -32,6 +32,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
+        .gas_limit(1_000_000)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());

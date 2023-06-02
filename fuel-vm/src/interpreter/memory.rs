@@ -217,10 +217,40 @@ impl VmMemory {
             return Err(PanicReason::MemoryWriteOverlap.into());
         }
 
-        // TODO: optimize, since the ranges do not overlap
-        let data: Vec<u8> = self.read(src_range).to_vec();
-        let target = self.write(dst_range);
-        target.copy_from_slice(&data);
+        // Optimized, since we know that the ranges are non-overlapping
+
+        let dst_in_stack = dst_range.relative_to(&self.stack_range());
+        let dst_in_heap = dst_range.relative_to(&self.heap_range());
+        
+        debug_assert!(dst_in_stack.is_some() != dst_in_heap.is_some());
+
+        let src_in_stack = src_range.relative_to(&self.stack_range());
+        let src_in_heap = src_range.relative_to(&self.heap_range());
+
+        debug_assert!(src_in_stack.is_some() != src_in_heap.is_some());
+
+        if let Some(dst) = dst_in_stack {
+            if let Some(src) = src_in_stack {
+                // TODO: optimize to use split_at for non-overlapping optimization
+                self.stack.copy_within(src.as_usizes(), dst.start);
+            } else if let Some(src) = src_in_heap {
+                self.stack[dst.as_usizes()].copy_from_slice(&self.heap[src.as_usizes()]);
+            } else {
+                unreachable!()
+            }
+        } else if let Some(dst) = dst_in_heap {
+            if let Some(src) = src_in_heap {
+                // TODO: optimize to use split_at for non-overlapping optimization
+                self.heap.copy_within(src.as_usizes(), dst.start);
+            } else if let Some(src) = src_in_stack {
+                self.heap[dst.as_usizes()].copy_from_slice(&self.stack[src.as_usizes()]);
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+
         Ok(())
     }
 }

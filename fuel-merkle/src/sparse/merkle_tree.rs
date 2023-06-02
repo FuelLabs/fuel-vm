@@ -144,6 +144,21 @@ where
         Ok(())
     }
 
+    pub fn from_set<'a, I, D>(storage: StorageType, set: I) -> Result<Self, MerkleTreeError<StorageError>>
+    where
+        I: IntoIterator<Item = (&'a Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        let mut tree = Self::new(storage);
+        let iter = set.into_iter();
+
+        for (key, data) in iter {
+            tree.update(key, data.as_ref())?;
+        }
+
+        Ok(tree)
+    }
+
     pub fn update_set<'a, I, D>(&mut self, set: I) -> Result<(), MerkleTreeError<StorageError>>
     where
         I: IntoIterator<Item = (&'a Bytes32, D)>,
@@ -741,7 +756,45 @@ mod test {
     }
 
     #[test]
-    fn test_update_multiple_yields_expected_root() {
+    fn test_from_set_yields_expected_root() {
+        use hashbrown::HashMap;
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.update(&sum(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let keys = [
+                sum(b"\x00\x00\x00\x00"),
+                sum(b"\x00\x00\x00\x02"),
+                sum(b"\x00\x00\x00\x04"),
+                sum(b"\x00\x00\x00\x06"),
+                sum(b"\x00\x00\x00\x08"),
+            ];
+            let input: HashMap<&Bytes32, &[u8]> = HashMap::from([
+                (&keys[0], b"DATA".as_slice()),
+                (&keys[1], b"DATA".as_slice()),
+                (&keys[2], b"DATA".as_slice()),
+                (&keys[3], b"DATA".as_slice()),
+                (&keys[4], b"DATA".as_slice()),
+            ]);
+            let tree = MerkleTree::from_set(&mut storage, input).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_update_set_yields_expected_root() {
         use hashbrown::HashMap;
 
         let expected_root = {

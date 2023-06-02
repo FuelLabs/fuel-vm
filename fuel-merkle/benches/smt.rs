@@ -1,5 +1,4 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use digest::Digest;
 use fuel_merkle::common::{Bytes32, StorageMap};
 use fuel_merkle::sparse::{MerkleTree, MerkleTreeError, Primitive};
 use fuel_storage::{Mappable, StorageMutate};
@@ -7,8 +6,6 @@ use hashbrown::HashMap;
 use rand::Rng;
 use sha2::Sha256;
 use std::convert::Infallible;
-
-type Hash = Sha256;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
 where
@@ -66,13 +63,13 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     let mut group_update = c.benchmark_group("update");
 
     group_update.bench_with_input("update-set-baseline", &input, |b, input| {
-        let mut storage = Storage::new();
+        let storage = Storage::new();
         let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
         b.iter(|| update_set_baseline(&mut tree, input));
     });
 
     group_update.bench_with_input("update-set", &input, |b, input| {
-        let mut storage = Storage::new();
+        let storage = Storage::new();
         let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
         b.iter(|| tree.update_set(input));
     });

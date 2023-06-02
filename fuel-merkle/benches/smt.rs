@@ -4,7 +4,6 @@ use fuel_merkle::sparse::{MerkleTree, MerkleTreeError, Primitive};
 use fuel_storage::{Mappable, StorageMutate};
 use hashbrown::HashMap;
 use rand::Rng;
-use sha2::Sha256;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
 where

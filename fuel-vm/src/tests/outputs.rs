@@ -17,6 +17,7 @@ fn full_change_with_no_fees() {
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
+        .gas_limit(1_000_000)
         .coin_input(AssetId::default(), input_amount)
         .change_output(AssetId::default())
         .execute_get_change(AssetId::default());
@@ -66,12 +67,12 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
 #[test]
 fn correct_change_is_provided_for_coin_outputs_script() {
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::default();
 
     let change = TestBuilder::new(2322u64)
-        .gas_price(gas_price)
+        .gas_price(0)
+        .gas_limit(1_000_000)
         .coin_input(asset_id, input_amount)
         .change_output(asset_id)
         .coin_output(asset_id, spend_amount)
@@ -84,7 +85,6 @@ fn correct_change_is_provided_for_coin_outputs_script() {
 fn correct_change_is_provided_for_coin_outputs_create() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::BASE;
 
@@ -104,8 +104,8 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let mut context = TestBuilder::new(2322u64);
     let bytecode_witness = 0;
     let mut create = Transaction::create(
-        gas_price,
-        Default::default(),
+        0,
+        1_000_000,
         Default::default(),
         bytecode_witness,
         salt,

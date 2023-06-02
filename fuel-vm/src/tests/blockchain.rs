@@ -12,7 +12,7 @@ use crate::prelude::*;
 use crate::script_with_data_offset;
 use fuel_asm::{
     op, Instruction,
-    PanicReason::{ContractNotInInputs, ExpectedUnallocatedStack, MemoryAccess},
+    PanicReason::{ContractNotInInputs, ExpectedUnallocatedStack, MemoryAccess, MemoryAccessSize},
 };
 use fuel_tx::field::Script as ScriptField;
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
@@ -503,7 +503,7 @@ fn ldc_mem_offset_above_reg_hp() {
         op::ldc(RegId::ZERO, RegId::ZERO, reg_a), // Load first two words from the contract
     ];
 
-    ldc_reason_helper(load_contract, MemoryAccess, false);
+    ldc_reason_helper(load_contract, MemoryAccessSize, false);
 }
 
 #[test]

@@ -5,12 +5,14 @@ mod range;
 #[cfg(test)]
 mod tests;
 
+use std::collections::VecDeque;
+
 pub use self::ownership::OwnershipRegisters;
 pub use self::range::MemoryRange;
 
 use derivative::Derivative;
 use fuel_asm::PanicReason;
-use fuel_types::{fmt_truncated_hex, Word};
+use fuel_types::Word;
 
 use crate::{consts::*, prelude::RuntimeError};
 
@@ -55,18 +57,17 @@ pub struct StackAndHeapOverlap;
 #[derivative(Debug)]
 pub struct VmMemory {
     /// Stack memory is allocated in from the beginning of the address space.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     stack: Vec<u8>,
     /// Heap memory is allocated in from the end of the address space, in reverse order.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    heap: Vec<u8>,
+    /// This is always kept contiguous by calling `make_contiguous` after pushing to it.
+    heap: VecDeque<u8>,
 }
 impl VmMemory {
     /// Create a new empty VM memory instance.
     pub const fn new() -> Self {
         Self {
             stack: Vec::new(),
-            heap: Vec::new(),
+            heap: VecDeque::new(),
         }
     }
 
@@ -120,6 +121,8 @@ impl VmMemory {
 
         while self.heap_range().start > hp as usize && new_pages < available_pages {
             self.heap.extend(&ZERO_PAGE);
+            self.heap.rotate_right(VM_PAGE_SIZE);
+            self.heap.make_contiguous();
             new_pages += 1;
         }
 
@@ -158,7 +161,7 @@ impl VmMemory {
         if let Some(dst) = in_stack {
             &self.stack[dst.as_usizes()]
         } else if let Some(dst) = in_heap {
-            &self.heap[dst.as_usizes()]
+            &self.heap.as_slices().0[dst.as_usizes()]
         } else {
             panic!("Invalid memory read");
         }
@@ -175,7 +178,9 @@ impl VmMemory {
         if let Some(dst) = in_stack {
             &mut self.stack[dst.as_usizes()]
         } else if let Some(dst) = in_heap {
-            &mut self.heap[dst.as_usizes()]
+            let (a, b) = self.heap.as_mut_slices();
+            debug_assert!(b.is_empty(), "Heap VecDeque must be contiguous");
+            &mut a[dst.as_usizes()]
         } else {
             panic!("Invalid memory write");
         }
@@ -209,7 +214,7 @@ impl VmMemory {
     pub fn try_copy_within(&mut self, dst_range: &MemoryRange, src_range: &MemoryRange) -> Result<(), RuntimeError> {
         assert!(dst_range.len() == src_range.len());
 
-        if dst_range.len() == 0 {
+        if dst_range.is_empty() {
             return Ok(());
         }
 
@@ -221,7 +226,7 @@ impl VmMemory {
 
         let dst_in_stack = dst_range.relative_to(&self.stack_range());
         let dst_in_heap = dst_range.relative_to(&self.heap_range());
-        
+
         debug_assert!(dst_in_stack.is_some() != dst_in_heap.is_some());
 
         let src_in_stack = src_range.relative_to(&self.stack_range());
@@ -234,16 +239,21 @@ impl VmMemory {
                 // TODO: optimize to use split_at for non-overlapping optimization
                 self.stack.copy_within(src.as_usizes(), dst.start);
             } else if let Some(src) = src_in_heap {
-                self.stack[dst.as_usizes()].copy_from_slice(&self.heap[src.as_usizes()]);
+                let (a, b) = self.heap.as_slices();
+                debug_assert!(b.is_empty(), "Heap VecDeque must be contiguous");
+                self.stack[dst.as_usizes()].copy_from_slice(&a[src.as_usizes()]);
             } else {
                 unreachable!()
             }
         } else if let Some(dst) = dst_in_heap {
             if let Some(src) = src_in_heap {
-                // TODO: optimize to use split_at for non-overlapping optimization
-                self.heap.copy_within(src.as_usizes(), dst.start);
+                let (a, b) = self.heap.as_mut_slices();
+                debug_assert!(b.is_empty(), "Heap VecDeque must be contiguous");
+                a.copy_within(src.as_usizes(), dst.start);
             } else if let Some(src) = src_in_stack {
-                self.heap[dst.as_usizes()].copy_from_slice(&self.stack[src.as_usizes()]);
+                let (a, b) = self.heap.as_mut_slices();
+                debug_assert!(b.is_empty(), "Heap VecDeque must be contiguous");
+                a[dst.as_usizes()].copy_from_slice(&self.stack[src.as_usizes()]);
             } else {
                 unreachable!()
             }

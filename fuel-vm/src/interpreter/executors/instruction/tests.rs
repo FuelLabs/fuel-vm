@@ -4,3 +4,5 @@ use fuel_asm::{op, Instruction, Opcode};
 
 mod math_operations;
 mod reserved_registers;
+
+mod memory_operations;

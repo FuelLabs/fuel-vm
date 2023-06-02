@@ -5,7 +5,6 @@ use fuel_storage::{Mappable, StorageMutate};
 use hashbrown::HashMap;
 use rand::Rng;
 use sha2::Sha256;
-use std::convert::Infallible;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
 where
@@ -65,13 +64,13 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     group_update.bench_with_input("update-set-baseline", &input, |b, input| {
         let storage = Storage::new();
         let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-        b.iter(|| update_set_baseline(&mut tree, input));
+        b.iter(|| update_set_baseline(black_box(&mut tree), black_box(input)));
     });
 
     group_update.bench_with_input("update-set", &input, |b, input| {
         let storage = Storage::new();
         let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-        b.iter(|| tree.update_set(input));
+        b.iter(|| tree.update_set(black_box(input)));
     });
 
     group_update.finish();

@@ -1,3 +1,6 @@
+use criterion as _;
+use tikv_jemallocator as _;
+
 mod test_helpers;
 
 mod alu;

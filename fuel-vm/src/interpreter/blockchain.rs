@@ -29,24 +29,6 @@ where
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
     pub(crate) fn load_contract_code(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        // let input = LoadContractCodeCtx {
-        //     memory: &mut self.memory,
-        //     memory_page_gas_cost: self.gas_costs.memory_page,
-        //     storage: &mut self.storage,
-        //     profiler: &mut self.profiler,
-        //     contract_max_size: self.params.contract_max_size,
-        //     input_contracts: self.tx.input_contracts(),
-        //     panic_context: &mut self.panic_context,
-        //     ssp,
-        //     sp,
-        //     fp: fp.as_ref(),
-        //     hp: hp.as_ref(),
-        //     pc,
-        //     is: is.as_ref(),
-        //     cgas,
-        //     ggas,
-        // };
-
         let ssp = self.registers[RegId::SSP];
         let sp = self.registers[RegId::SP];
         let fp = self.registers[RegId::FP] as usize;
@@ -60,25 +42,19 @@ where
         let contract_offset = b as usize;
         let length = bytes::padded_len_usize(c as usize);
 
-        let memory_offset = ssp as usize;
-        let memory_offset_end = checked_add_usize(memory_offset, length)?;
+        let memory_offset = ssp;
 
-        // Validate arguments
-        if memory_offset_end >= self.registers[RegId::HP] as usize || length > self.params.contract_max_size as usize {
-            return Err(PanicReason::MemoryAccess.into());
-        }
-
-        if length > MEM_MAX_ACCESS_SIZE {
+        if length > self.params.contract_max_size as usize || length > MEM_MAX_ACCESS_SIZE {
             return Err(PanicReason::MemoryAccessSize.into());
         }
-
-        self.mem_write(memory_offset, length)?.fill(0);
 
         // the contract must be declared in the transaction inputs
         if !self.tx.input_contracts().any(|id| *id == contract_id) {
             self.panic_context = PanicContext::ContractId(contract_id);
             return Err(PanicReason::ContractNotInInputs.into());
         };
+
+        self.mem_write(memory_offset, length)?.fill(0);
 
         // fetch the storage contract
         let contract = super::contract::contract(&self.storage, &contract_id)?;

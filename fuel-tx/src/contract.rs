@@ -32,6 +32,12 @@ fn next_multiple<const N: usize>(x: usize) -> usize {
 pub struct Contract(#[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>);
 
 impl Contract {
+    /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state root.
+    pub const EMPTY_CONTRACT_ID: ContractId = ContractId::new([
+        55, 187, 13, 108, 165, 51, 58, 230, 74, 109, 215, 229, 33, 69, 82, 120, 81, 4, 85, 54, 172, 30, 84, 115, 226,
+        164, 0, 99, 103, 189, 154, 243,
+    ]);
+
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
     pub fn root(&self) -> Bytes32 {
         Self::root_from_code(self)
@@ -306,5 +312,16 @@ mod tests {
         };
 
         assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn empty_contract_id() {
+        let contract = Contract::from(vec![]);
+        let salt = Salt::zeroed();
+        let root = contract.root();
+        let state_root = Contract::default_state_root();
+
+        let calculated_id = contract.id(&salt, &root, &state_root);
+        assert_eq!(calculated_id, Contract::EMPTY_CONTRACT_ID)
     }
 }

@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased] - yyyy-mm-dd
+## [Unreleased]
 
 Description of the upcoming release here.
+
+## [Version 0.33.0]
+
+The release contains a lot of breaking changes. 
+Most of them are audit blockers and affect the protocol itself.
+Starting this release we plan to maintain the changelog file and describe all minor and major changes that make sense.
 
 ### Added
 

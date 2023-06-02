@@ -817,9 +817,7 @@ mod tests {
         let block_height = 1.into();
         let params = ConsensusParameters::default();
 
-        let tx = TransactionBuilder::script(vec![], vec![])
-            .add_random_fee_input()
-            .finalize();
+        let tx = Transaction::default_test_tx();
         // Sets Checks::Basic
         let checked = tx.into_checked_basic(block_height, &params).unwrap();
         assert!(checked.checks().contains(Checks::Basic));

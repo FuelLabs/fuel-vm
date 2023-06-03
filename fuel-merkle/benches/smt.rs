@@ -2,8 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use fuel_merkle::common::{Bytes32, StorageMap};
 use fuel_merkle::sparse::{MerkleTree, MerkleTreeError, Primitive};
 use fuel_storage::{Mappable, StorageMutate};
-use hashbrown::HashMap;
 use rand::Rng;
+use std::collections::BTreeMap;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
 where
@@ -51,12 +51,8 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-    let data: [(_, _); 100] = std::iter::from_fn(gen)
-        .take(100)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-    let input: HashMap<Bytes32, Bytes32> = HashMap::from(data);
+    let data = std::iter::from_fn(gen).take(10000).collect::<Vec<_>>();
+    let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
     let mut group_update = c.benchmark_group("update");
 

@@ -46,7 +46,7 @@ impl Prefix for Bytes32 {
                 }
             }
         }
-        mem::size_of::<Self>()
+        std::mem::size_of::<Self>()
     }
 }
 

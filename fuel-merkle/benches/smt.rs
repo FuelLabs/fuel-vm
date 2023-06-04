@@ -46,7 +46,7 @@ impl Prefix for Bytes32 {
                 }
             }
         }
-        256
+        mem::size_of::<Self>()
     }
 }
 

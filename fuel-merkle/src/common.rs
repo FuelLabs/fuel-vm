@@ -1,4 +1,4 @@
-mod msb;
+pub mod msb;
 mod path_iterator;
 mod position;
 mod position_path;

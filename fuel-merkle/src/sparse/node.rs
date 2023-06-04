@@ -15,7 +15,7 @@ use crate::{
 use core::{cmp, fmt, marker::PhantomData};
 
 #[derive(Clone)]
-pub(crate) struct Node {
+pub struct Node {
     height: u32,
     prefix: Prefix,
     bytes_lo: Bytes32,

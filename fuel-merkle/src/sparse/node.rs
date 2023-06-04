@@ -50,7 +50,7 @@ impl Node {
     pub fn create_leaf(key: &Bytes32, data: &[u8]) -> Self {
         let bytes_hi = sum(data);
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Leaf, &key, &bytes_hi),
+            hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,

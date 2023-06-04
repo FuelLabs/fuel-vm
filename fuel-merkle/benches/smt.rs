@@ -32,8 +32,21 @@ trait Prefix {
 
 impl Prefix for Bytes32 {
     fn common_prefix(&self, other: &Self) -> usize {
-        use fuel_merkle::common::msb::Msb;
-        self.common_prefix_count(other)
+        for i in 0..self.len() {
+            if self[i] == other[i] {
+                continue;
+            } else {
+                for k in 0..8 {
+                    let bit = 1 << (7 - k);
+                    if self[i] & bit == other[i] & bit {
+                        continue;
+                    } else {
+                        return 8 * i + k;
+                    }
+                }
+            }
+        }
+        256
     }
 }
 
@@ -50,7 +63,6 @@ where
     I: IntoIterator<Item = (&'a Bytes32, &'a Bytes32)>,
     Storage: StorageMutate<NodesTable>,
 {
-    let mut stack: Vec<Branch> = vec![];
     let mut upcoming = set
         .into_iter()
         .map(|(key, data)| {
@@ -64,6 +76,8 @@ where
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let mut stack: Vec<Branch> = Vec::with_capacity(upcoming.len());
+
     while !upcoming.is_empty() {
         let current = upcoming.pop().expect("We checked that above");
 

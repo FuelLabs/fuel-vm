@@ -5,41 +5,41 @@ use crate::{
         path::{ComparablePath, Instruction, Path},
         Bytes32, Prefix,
     },
-    sparse::{
-        hash::{sum, sum_all},
-        zero_sum, Primitive,
-    },
+    sparse::{hash::sum, zero_sum, Primitive},
     storage::{Mappable, StorageInspect},
 };
 
 use core::{cmp, fmt, marker::PhantomData};
 
-#[derive(Clone)]
-pub struct Node {
-    height: u32,
-    prefix: Prefix,
-    bytes_lo: Bytes32,
-    bytes_hi: Bytes32,
-}
-
-impl Default for Node {
-    fn default() -> Self {
-        Self {
-            height: Default::default(),
-            prefix: Default::default(),
-            bytes_lo: *zero_sum(),
-            bytes_hi: *zero_sum(),
-        }
-    }
+#[derive(Clone, PartialEq, Eq)]
+pub enum Node {
+    Node {
+        hash: Bytes32,
+        height: u32,
+        prefix: Prefix,
+        bytes_lo: Bytes32,
+        bytes_hi: Bytes32,
+    },
+    Placeholder,
 }
 
 impl Node {
+    fn calculate_hash(prefix: &Prefix, bytes_lo: &Bytes32, bytes_hi: &Bytes32) -> Bytes32 {
+        use digest::Digest;
+        let mut hash = sha2::Sha256::new();
+        hash.update(prefix);
+        hash.update(bytes_lo);
+        hash.update(bytes_hi);
+        hash.finalize().try_into().unwrap()
+    }
+
     pub fn max_height() -> usize {
         Node::key_size_in_bits()
     }
 
     pub fn new(height: u32, prefix: Prefix, bytes_lo: Bytes32, bytes_hi: Bytes32) -> Self {
-        Self {
+        Self::Node {
+            hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
             height,
             prefix,
             bytes_lo,
@@ -48,20 +48,25 @@ impl Node {
     }
 
     pub fn create_leaf(key: &Bytes32, data: &[u8]) -> Self {
-        Self {
+        let bytes_hi = sum(data);
+        Self::Node {
+            hash: Self::calculate_hash(&Prefix::Leaf, &key, &bytes_hi),
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,
-            bytes_hi: sum(data),
+            bytes_hi,
         }
     }
 
     pub fn create_node(left_child: &Node, right_child: &Node, height: u32) -> Self {
-        Self {
+        let bytes_lo = left_child.hash();
+        let bytes_hi = right_child.hash();
+        Self::Node {
+            hash: Self::calculate_hash(&Prefix::Node, &bytes_lo, &bytes_hi),
             height,
             prefix: Prefix::Node,
-            bytes_lo: left_child.hash(),
-            bytes_hi: right_child.hash(),
+            bytes_lo,
+            bytes_hi,
         }
     }
 
@@ -93,7 +98,7 @@ impl Node {
     }
 
     pub fn create_placeholder() -> Self {
-        Default::default()
+        Self::Placeholder
     }
 
     pub fn common_path_length(&self, other: &Node) -> usize {
@@ -112,19 +117,31 @@ impl Node {
     }
 
     pub fn height(&self) -> u32 {
-        self.height
+        match self {
+            Node::Node { height, .. } => *height,
+            Node::Placeholder => 0,
+        }
     }
 
     pub fn prefix(&self) -> Prefix {
-        self.prefix
+        match self {
+            Node::Node { prefix, .. } => *prefix,
+            Node::Placeholder => Prefix::Leaf,
+        }
     }
 
     pub fn bytes_lo(&self) -> &Bytes32 {
-        &self.bytes_lo
+        match self {
+            Node::Node { bytes_lo, .. } => bytes_lo,
+            Node::Placeholder => zero_sum(),
+        }
     }
 
     pub fn bytes_hi(&self) -> &Bytes32 {
-        &self.bytes_hi
+        match self {
+            Node::Node { bytes_hi, .. } => bytes_hi,
+            Node::Placeholder => zero_sum(),
+        }
     }
 
     pub fn is_leaf(&self) -> bool {
@@ -156,15 +173,13 @@ impl Node {
     }
 
     pub fn is_placeholder(&self) -> bool {
-        *self.bytes_lo() == *zero_sum() && *self.bytes_hi() == *zero_sum()
+        &Self::Placeholder == self
     }
 
     pub fn hash(&self) -> Bytes32 {
-        if self.is_placeholder() {
-            *zero_sum()
-        } else {
-            let data = [self.prefix.as_ref(), self.bytes_lo.as_ref(), self.bytes_hi.as_ref()];
-            sum_all(data)
+        match self {
+            Node::Node { hash, .. } => *hash,
+            Node::Placeholder => *zero_sum(),
         }
     }
 }

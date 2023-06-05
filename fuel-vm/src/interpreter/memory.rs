@@ -213,8 +213,8 @@ where
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (SystemRegisters { sp, hp, pc, .. }, _) = split_registers(&mut self.registers);
-        stack_pointer_overflow(sp, hp.as_ref(), pc, f, v)
+        let (SystemRegisters { sp, ssp, hp, pc, .. }, _) = split_registers(&mut self.registers);
+        stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v)
     }
 
     pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -263,6 +263,7 @@ where
 
 pub(crate) fn stack_pointer_overflow<F>(
     mut sp: RegMut<SP>,
+    ssp: Reg<SSP>,
     hp: Reg<HP>,
     pc: RegMut<PC>,
     f: F,
@@ -273,7 +274,7 @@ where
 {
     let (result, overflow) = f(*sp, v);
 
-    if overflow || result >= *hp {
+    if overflow || result >= *hp || result < *ssp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *sp = result;

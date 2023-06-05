@@ -115,6 +115,7 @@ fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
 #[test_case(false, 10, 0, 11, 20 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on underflowing subtraction")]
 #[test_case(true, u64::MAX, 0, u64::MAX, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on equality check for overflowing addition")]
 #[test_case(false, 0, 0, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on zero check for underflowing subtraction")]
+#[test_case(false, 8, 8, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on sp < ssp")]
 fn test_stack_pointer_overflow(add: bool, mut sp: Word, ssp: Word, hp: Word, v: Word) -> Result<(), RuntimeError> {
     let mut pc = 4;
     let old_sp = sp;

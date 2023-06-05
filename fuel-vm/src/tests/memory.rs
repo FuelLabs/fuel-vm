@@ -1,3 +1,4 @@
+use fuel_asm::PanicReason;
 use test_case::test_case;
 
 use fuel_asm::op;
@@ -6,6 +7,8 @@ use fuel_tx::Receipt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuel_vm::prelude::*;
 
+use super::test_helpers::assert_panics;
+use super::test_helpers::run_script;
 use super::test_helpers::set_full_word;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
@@ -192,6 +195,19 @@ fn dynamic_call_frame_ops() {
         shrunken_sp,
         initial_sp + STACK_EXTEND_AMOUNT as u64 - STACK_SHRINK_AMOUNT as u64
     );
+}
+
+#[test]
+fn dynamic_call_frame_ops_bug_missing_ssp_check() {
+    let ops = vec![
+        op::cfs(RegId::SP),
+        op::slli(0x10, RegId::ONE, 26),
+        op::aloc(0x10),
+        op::sw(RegId::ZERO, 0x10, 0),
+        op::ret(RegId::ONE),
+    ];
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
 }
 
 #[rstest::rstest]

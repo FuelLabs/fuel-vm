@@ -306,12 +306,10 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        // compiler will optimize to memset
-        self.memory[memory_offset..memory_offset_end]
-            .iter_mut()
-            .for_each(|m| *m = 0);
+        // Clear memory
+        self.memory[memory_offset..memory_offset_end].fill(0);
 
-        // fetch the contract id
+        // Fetch the contract id
         let contract_id: &[u8; ContractId::LEN] = &self.memory[contract_id..contract_id_end]
             .try_into()
             .expect("This can't fail, because we checked the bounds above.");
@@ -360,13 +358,9 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
-            let length = Word::from_be_bytes(
-                self.memory[fp_code_size..fp_code_size_end]
-                    .try_into()
-                    .map_err(|_| PanicReason::MemoryOverflow)?,
-            )
-            .checked_add(length as Word)
-            .ok_or(PanicReason::MemoryOverflow)?;
+            let length = Word::from_be_bytes(self.memory[fp_code_size..fp_code_size_end].try_into().unwrap())
+                .checked_add(length as Word)
+                .ok_or(PanicReason::MemoryOverflow)?;
 
             self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
         }
@@ -506,11 +500,8 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     pc: RegMut<PC>,
     a: Word,
 ) -> Result<(), RuntimeError> {
-    storage
-        .coinbase()
-        .map_err(RuntimeError::from_io)
-        .and_then(|data| try_mem_write(a as usize, data.as_ref(), owner, memory))?;
-
+    let coinbase = storage.coinbase().map_err(RuntimeError::from_io)?;
+    try_mem_write(a as usize, coinbase.as_ref(), owner, memory)?;
     inc_pc(pc)
 }
 

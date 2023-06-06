@@ -372,11 +372,7 @@ pub(crate) fn memclear(
     if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
         Err(PanicReason::MemoryOverflow.into())
     } else {
-        // trivial compiler optimization for memset
-        for i in &mut memory[a as usize..ab as usize] {
-            *i = 0
-        }
-
+        memory[a as usize..ab as usize].fill(0);
         inc_pc(pc)
     }
 }

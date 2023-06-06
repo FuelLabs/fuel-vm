@@ -1,7 +1,7 @@
+use super::MemoryRange;
 use super::{receipts::ReceiptsCtx, ExecutableTransaction, Interpreter, RuntimeBalances};
 use crate::constraints::reg_key::*;
 use crate::constraints::CheckedMemConstLen;
-use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::context::Context;
 use crate::error::RuntimeError;
@@ -62,17 +62,11 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
     tx: &Tx,
     tx_offset: usize,
     idx: usize,
-    memory_constraint: Option<core::ops::Range<Word>>,
-) -> Result<Option<CheckedMemRange>, RuntimeError> {
+) -> Result<Option<MemoryRange>, RuntimeError> {
     absolute_output_offset(tx, tx_offset, idx)
         .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.serialized_size())))
-        .map_or(Ok(None), |(offset, output_size)| match memory_constraint {
-            Some(constraint) => Ok(Some(CheckedMemRange::new_with_constraint(
-                offset as u64,
-                output_size,
-                constraint,
-            )?)),
-            None => Ok(Some(CheckedMemRange::new(offset as u64, output_size)?)),
+        .map_or(Ok(None), |(offset, output_size)| {
+            Ok(Some(MemoryRange::new(offset as u64, output_size)?))
         })
 }
 
@@ -82,7 +76,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx_offset: usize,
     idx: usize,
 ) -> Result<(), RuntimeError> {
-    let mem_range = absolute_output_mem_range(tx, tx_offset, idx, None)?.ok_or(PanicReason::OutputNotFound)?;
+    let mem_range = absolute_output_mem_range(tx, tx_offset, idx)?.ok_or(PanicReason::OutputNotFound)?;
     let mem = mem_range.write(memory);
 
     tx.output_to_mem(idx, mem)?;

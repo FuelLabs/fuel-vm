@@ -8,7 +8,7 @@ use super::memory::{try_mem_write, try_zeroize, OwnershipRegisters};
 use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
 use crate::arith::{add_usize, checked_add_usize, checked_add_word, checked_sub_word};
 use crate::call::CallFrame;
-use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemRange, CheckedMemValue};
+use crate::constraints::{reg_key::*, CheckedMemConstLen, CheckedMemValue};
 use crate::context::Context;
 use crate::error::{Bug, BugId, BugVariant, RuntimeError};
 use crate::gas::DependentCost;
@@ -713,7 +713,7 @@ where
             return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
-        let msg_data_range = CheckedMemRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
+        let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 
@@ -779,7 +779,7 @@ impl StateReadQWord {
         let mem_range = MemoryRange::new(
             destination_memory_address,
             (Bytes32::LEN as Word).saturating_mul(num_slots),
-        );
+        )?;
         if !ownership_registers.has_ownership_range(&mem_range) {
             return Err(PanicReason::MemoryOwnership.into());
         }

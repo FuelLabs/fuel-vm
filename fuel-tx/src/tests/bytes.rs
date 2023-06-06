@@ -1,4 +1,4 @@
-use fuel_asm::{op, PanicInstruction};
+use fuel_asm::{op, PanicInstruction, PanicReason};
 use fuel_tx::*;
 use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
 use fuel_types::{bytes, Immediate24};
@@ -8,6 +8,7 @@ use rand::{Rng, RngCore, SeedableRng};
 use fuel_tx::field::{Inputs, Script, ScriptData};
 use std::fmt;
 use std::io::{self, Read, Write};
+use strum::IntoEnumIterator;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
@@ -159,7 +160,7 @@ fn output() {
 fn receipt() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    assert_encoding_correct(&[
+    let mut receipts = vec![
         Receipt::call(
             rng.gen(),
             rng.gen(),
@@ -204,264 +205,6 @@ fn receipt() {
         Receipt::transfer_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::panic(
             rng.gen(),
-            PanicInstruction::error(PanicReason::Revert, op::ji(rng.gen::<Immediate24>() & 0xffffff).into()),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::OutOfGas,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::TransactionValidity,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::MemoryOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ArithmeticOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ContractNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::MemoryOwnership,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::NotEnoughBalance,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ExpectedInternalContext,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::AssetIdNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::InputNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::OutputNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::WitnessNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::TransactionMaturity,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::InvalidMetadataIdentifier,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::MalformedCallStructure,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ReservedRegisterNotWritable,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ErrorFlag,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::InvalidImmediateValue,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ExpectedCoinInput,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::MaxMemoryAccess,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::MemoryWriteOverlap,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ContractNotInInputs,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::InternalBalanceOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ContractMaxSize,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ExpectedUnallocatedStack,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::TransferAmountCannotBeZero,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ExpectedOutputVariable,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                PanicReason::ExpectedParentInternalContext,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
             PanicInstruction::error(
                 PanicReason::ContractNotInInputs,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
@@ -475,7 +218,18 @@ fn receipt() {
         Receipt::script_result(ScriptExecutionResult::Revert, rng.gen()),
         Receipt::script_result(ScriptExecutionResult::GenericFailure(rng.gen()), rng.gen()),
         Receipt::message_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), vec![rng.gen()]),
-    ]);
+    ];
+
+    for panic_reason in PanicReason::iter() {
+        receipts.push(Receipt::panic(
+            rng.gen(),
+            PanicInstruction::error(panic_reason, op::ji(rng.gen::<Immediate24>() & 0xffffff).into()),
+            rng.gen(),
+            rng.gen(),
+        ));
+    }
+
+    assert_encoding_correct(&receipts);
 }
 
 #[test]

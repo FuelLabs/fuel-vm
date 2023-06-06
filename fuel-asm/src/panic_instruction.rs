@@ -1,4 +1,3 @@
-use crate::panic_reason::InvalidPanicReason;
 use crate::{Instruction, PanicReason, RawInstruction, Word};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,15 +38,13 @@ impl From<PanicInstruction> for Word {
     }
 }
 
-impl TryFrom<Word> for PanicInstruction {
-    type Error = InvalidPanicReason;
-
-    fn try_from(val: Word) -> Result<Self, Self::Error> {
+impl From<Word> for PanicInstruction {
+    fn from(val: Word) -> Self {
         // Safe to cast as we've shifted the 8 MSB.
         let reason_u8 = (val >> REASON_OFFSET) as u8;
         // Cast to truncate in order to remove the `reason` bits.
         let instruction = (val >> INSTR_OFFSET) as u32;
-        let reason = PanicReason::try_from(reason_u8)?;
-        Ok(Self { reason, instruction })
+        let reason = PanicReason::from(reason_u8);
+        Self { reason, instruction }
     }
 }

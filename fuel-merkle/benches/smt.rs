@@ -223,23 +223,23 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
     let data = std::iter::from_fn(gen).take(64000).collect::<Vec<_>>();
 
-    let l0 = Bytes32::default(); // left, left, left, left left, ...
-
-    let mut l1 = Bytes32::default();
-    l1[0..1].copy_from_slice(&[0b01000000]); // left, right, left, left, left, ...
-
-    let mut l3 = Bytes32::default();
-    l3[0..1].copy_from_slice(&[0b01001000]); // left, right, left, left, right, ...
-
-    let mut l2 = Bytes32::default();
-    l2[0..1].copy_from_slice(&[0b01100000]); // left, right, right, ...
-
-    let data = [
-        (l0, random_bytes32(rng)),
-        (l1, random_bytes32(rng)),
-        (l2, random_bytes32(rng)),
-        (l3, random_bytes32(rng)),
-    ];
+    // let l0 = Bytes32::default(); // left, left, left, left left, ...
+    //
+    // let mut l1 = Bytes32::default();
+    // l1[0..1].copy_from_slice(&[0b01000000]); // left, right, left, left, left, ...
+    //
+    // let mut l3 = Bytes32::default();
+    // l3[0..1].copy_from_slice(&[0b01001000]); // left, right, left, left, right, ...
+    //
+    // let mut l2 = Bytes32::default();
+    // l2[0..1].copy_from_slice(&[0b01100000]); // left, right, right, ...
+    //
+    // let data = [
+    //     (l0, random_bytes32(rng)),
+    //     (l1, random_bytes32(rng)),
+    //     (l2, random_bytes32(rng)),
+    //     (l3, random_bytes32(rng)),
+    // ];
 
     let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 

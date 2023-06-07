@@ -106,13 +106,25 @@ where
             }
             (None, None) => {
                 stack.push(current);
+                // return Ok(current.node.hash());
             }
         }
     }
 
     assert_eq!(stack.len(), 1);
 
-    Ok(stack[0].node.hash())
+    let top = stack.pop().unwrap();
+    let mut node = top.node;
+    let path = top.bits;
+    let height = node.height() as usize;
+    let depth = Node::max_height() - height;
+    let placeholders = std::iter::repeat(Node::create_placeholder()).take(depth);
+    for placeholder in placeholders {
+        node = Node::create_node_on_path(&path, &node, &placeholder);
+        storage.insert(&node.hash(), &node.as_ref().into())?;
+    }
+
+    Ok(node.hash())
 }
 
 fn merge_branches<Storage>(
@@ -210,6 +222,25 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
     let data = std::iter::from_fn(gen).take(64000).collect::<Vec<_>>();
+
+    let l0 = Bytes32::default(); // left, left, left, left left, ...
+
+    let mut l1 = Bytes32::default();
+    l1[0..1].copy_from_slice(&[0b01000000]); // left, right, left, left, left, ...
+
+    let mut l3 = Bytes32::default();
+    l3[0..1].copy_from_slice(&[0b01001000]); // left, right, left, left, right, ...
+
+    let mut l2 = Bytes32::default();
+    l2[0..1].copy_from_slice(&[0b01100000]); // left, right, right, ...
+
+    let data = [
+        (l0, random_bytes32(rng)),
+        (l1, random_bytes32(rng)),
+        (l2, random_bytes32(rng)),
+        (l3, random_bytes32(rng)),
+    ];
+
     let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
     let storage = Storage::new();

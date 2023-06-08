@@ -97,7 +97,7 @@ impl RuntimeBalances {
         let offset = balance.offset();
 
         let offset = offset + AssetId::LEN;
-        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset as Word)?;
+        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset)?;
 
         range.write(memory).copy_from_slice(&value.to_be_bytes());
 

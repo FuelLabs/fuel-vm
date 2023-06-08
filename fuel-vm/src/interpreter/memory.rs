@@ -43,6 +43,7 @@ impl ToAddr for Word {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 /// Implemented for `i32` to allow integer literals. Panics on negative values.
 impl ToAddr for i32 {
     fn to_addr(self) -> Result<usize, RuntimeError> {

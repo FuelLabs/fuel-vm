@@ -713,7 +713,7 @@ where
             return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
-        let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len as usize)?;
+        let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len)?;
 
         let recipient = recipient_address.try_from(self.memory)?;
 

@@ -491,7 +491,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         *self.registers.system_registers.sp = arith::checked_add_word(*self.registers.system_registers.sp, len)?;
         *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
 
-        let code_frame_mem_range = MemoryRange::new(*self.registers.system_registers.fp, len as usize)?;
+        let code_frame_mem_range = MemoryRange::new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(
             &frame,
             frame_bytes,

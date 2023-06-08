@@ -66,7 +66,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
     absolute_output_offset(tx, tx_offset, idx)
         .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.serialized_size())))
         .map_or(Ok(None), |(offset, output_size)| {
-            Ok(Some(MemoryRange::new(offset as u64, output_size)?))
+            Ok(Some(MemoryRange::new(offset, output_size)?))
         })
 }
 

@@ -185,11 +185,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use rand::rngs::StdRng;
     use rand::Rng;
-    use rand::SeedableRng;
+    use std::collections::BTreeMap;
+
+    use crate::common::StorageMap;
+    use crate::sparse::MerkleTree;
 
     use super::*;
+
+    type Storage = StorageMap<NodesTable>;
 
     fn random_bytes32<R>(rng: &mut R) -> Bytes32
     where
@@ -205,14 +209,9 @@ mod test {
         let rng = &mut rand::thread_rng();
         let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
         let data = std::iter::from_fn(gen).take(5000).collect::<Vec<_>>();
-
-        for (i, (k, v)) in data.iter().enumerate() {
-            let l = Node::create_leaf(k, v);
-        }
-
         let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
-        let mut storage = Storage::new();
+        let storage = Storage::new();
         let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
         tree.update_set(&input).unwrap();
         let expected_root = tree.root();

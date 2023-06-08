@@ -40,19 +40,12 @@ impl<const N: usize> Msb for [u8; N] {
     fn common_prefix_count(&self, other: &Self) -> usize {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
-            let xor = byte1 ^ byte2;
-            if xor == 0 {
-                // The bytes are equal: Increment the prefix count by 8 bits
-                count += 8;
-            } else {
-                // The bytes are not equal: Count the number of matching bits
-                // and increment the prefix count by this number
-                let leading_zeros = xor.leading_zeros();
-                count += leading_zeros as usize;
+            count += (byte1 ^ byte2).leading_zeros();
+            if byte1 != byte2 {
                 break;
             }
         }
-        count
+        count as usize
     }
 }
 

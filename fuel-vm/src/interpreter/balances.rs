@@ -1,4 +1,3 @@
-use crate::constraints::CheckedMemRange;
 use crate::consts::*;
 use crate::interpreter::{ExecutableTransaction, InitialBalances, Interpreter};
 use crate::prelude::RuntimeError;
@@ -10,6 +9,8 @@ use itertools::Itertools;
 
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
+
+use super::MemoryRange;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -96,7 +97,7 @@ impl RuntimeBalances {
         let offset = balance.offset();
 
         let offset = offset + AssetId::LEN;
-        let range = CheckedMemRange::new_const::<WORD_SIZE>(offset as Word)?;
+        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset)?;
 
         range.write(memory).copy_from_slice(&value.to_be_bytes());
 

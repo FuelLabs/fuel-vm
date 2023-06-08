@@ -53,10 +53,10 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 #[test_case(true, 1, 20, 0 => Ok(()); "Can copy zero bytes")]
 #[test_case(true, 1, 20, 10 => Ok(()); "Can copy some bytes")]
 #[test_case(true, 10, 20, 10 => Ok(()); "Can copy some bytes in close range")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "b <= a < bc")]
-#[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "b < ac <= bc")]
-#[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryOverflow.into()); "a <= b < ac")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "a < bc <= ac")]
+#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b <= a < bc")]
+#[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b < ac <= bc")]
+#[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a <= b < ac")]
+#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a < bc <= ac")]
 fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);
@@ -109,18 +109,20 @@ fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
     Ok(())
 }
 
-#[test_case(true, 20, 40, 10 => Ok(()); "Can move sp up")]
-#[test_case(false, 20, 40, 10 => Ok(()); "Can move sp down")]
-#[test_case(true, u64::MAX - 10, u64::MAX, 20 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on overflowing addition")]
-#[test_case(false, 10, 11, 20 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on underflowing subtraction")]
-#[test_case(true, u64::MAX, u64::MAX, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on equality check for overflowing addition")]
-#[test_case(false, 0, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on zero check for underflowing subtraction")]
-fn test_stack_pointer_overflow(add: bool, mut sp: Word, hp: Word, v: Word) -> Result<(), RuntimeError> {
+#[test_case(true, 20, 0, 40, 10 => Ok(()); "Can move sp up")]
+#[test_case(false, 20, 0, 40, 10 => Ok(()); "Can move sp down")]
+#[test_case(true, u64::MAX - 10, 0, u64::MAX, 20 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on overflowing addition")]
+#[test_case(false, 10, 0, 11, 20 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on underflowing subtraction")]
+#[test_case(true, u64::MAX, 0, u64::MAX, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on equality check for overflowing addition")]
+#[test_case(false, 0, 0, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on zero check for underflowing subtraction")]
+#[test_case(false, 8, 8, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on sp < ssp")]
+fn test_stack_pointer_overflow(add: bool, mut sp: Word, ssp: Word, hp: Word, v: Word) -> Result<(), RuntimeError> {
     let mut pc = 4;
     let old_sp = sp;
 
     stack_pointer_overflow(
         RegMut::new(&mut sp),
+        Reg::new(&ssp),
         Reg::new(&hp),
         RegMut::new(&mut pc),
         if add {

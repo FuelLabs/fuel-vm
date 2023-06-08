@@ -17,186 +17,133 @@ mod tests;
 
 #[cfg(test)]
 mod allocation_tests;
-#[allow(clippy::derive_hash_xor_eq)]
-#[derive(Debug, Clone, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-/// Memory range representation for the VM.
-///
-/// `start` is inclusive, and `end` is exclusive.
-pub struct MemoryRange {
-    start: ops::Bound<Word>,
-    end: ops::Bound<Word>,
-    len: Word,
+
+/// Used to handle `Word` to `usize` conversions for memory addresses,
+/// as well as checking that the resulting value is withing the VM ram boundaries.
+pub trait ToAddr {
+    /// Converts a value to `usize` used for memory addresses.
+    /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM memory.
+    /// This can be used for both addresses and offsets.
+    fn to_addr(self) -> Result<usize, RuntimeError>;
 }
+
+impl ToAddr for usize {
+    fn to_addr(self) -> Result<usize, RuntimeError> {
+        if self >= MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
+        }
+        Ok(self)
+    }
+}
+
+impl ToAddr for Word {
+    fn to_addr(self) -> Result<usize, RuntimeError> {
+        let value = usize::try_from(self).map_err(|_| PanicReason::MemoryOverflow)?;
+        value.to_addr()
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+/// Implemented for `i32` to allow integer literals. Panics on negative values.
+impl ToAddr for i32 {
+    fn to_addr(self) -> Result<usize, RuntimeError> {
+        if self < 0 {
+            panic!("Negative memory address");
+        }
+        let value = usize::try_from(self).map_err(|_| PanicReason::MemoryOverflow)?;
+        value.to_addr()
+    }
+}
+
+/// Memory range representation for the VM, checked to be in-bounds on construction.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MemoryRange(ops::Range<usize>);
 
 impl Default for MemoryRange {
     fn default() -> Self {
-        Self {
-            start: ops::Bound::Included(0),
-            end: ops::Bound::Excluded(0),
-            len: 0,
-        }
+        Self(0..0)
+    }
+}
+
+impl ops::Deref for MemoryRange {
+    type Target = ops::Range<usize>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
 impl MemoryRange {
     /// Create a new memory range represented as `[address, address + size[`.
-    pub const fn new(address: Word, size: Word) -> Self {
-        let start = ops::Bound::Included(address);
-        let end = ops::Bound::Excluded(address.saturating_add(size));
-        let len = size;
+    pub fn new<A: ToAddr, B: ToAddr>(address: A, size: B) -> Result<Self, RuntimeError> {
+        let start = address.to_addr()?;
+        let size = size.to_addr()?;
+        let end = start.checked_add(size).ok_or(PanicReason::MemoryOverflow)?;
 
-        Self { start, end, len }
-    }
-
-    /// Beginning of the memory range.
-    pub const fn start(&self) -> Word {
-        use ops::Bound::*;
-
-        match self.start {
-            Included(start) => start,
-            Excluded(start) => start.saturating_add(1),
-            Unbounded => 0,
+        if end > MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow.into());
         }
+
+        Ok(Self(start..end))
     }
 
-    /// End of the memory range.
-    pub const fn end(&self) -> Word {
-        use ops::Bound::*;
-
-        match self.end {
-            Included(end) => end.saturating_add(1),
-            Excluded(end) => end,
-            Unbounded => VM_MAX_RAM,
-        }
-    }
-
-    /// Bytes count of this memory range.
-    pub const fn len(&self) -> Word {
-        self.len
+    /// Create a new const sized memory range.
+    pub fn new_const<A: ToAddr, const SIZE: usize>(address: A) -> Result<Self, RuntimeError> {
+        Self::new(address, SIZE)
     }
 
     /// Return `true` if the length is `0`.
-    pub const fn is_empty(&self) -> bool {
-        self.len == 0
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
-    /// Return the boundaries of the slice with exclusive end `[a, b[`
-    ///
-    /// Remap the unbound boundaries to stack or heap when applicable.
-    pub fn boundaries(&self, registers: &OwnershipRegisters) -> (Word, Word) {
-        use ops::Bound::*;
+    /// Convert to a raw `usize` range.
+    pub fn usizes(&self) -> ops::Range<usize> {
+        self.start..self.end
+    }
 
-        let stack = registers.sp;
-        let heap = registers.hp.saturating_add(1);
-        match (self.start, self.end) {
-            (Included(start), Included(end)) => (start, end.saturating_add(1)),
-            (Included(start), Excluded(end)) => (start, end),
-            (Excluded(start), Included(end)) => (start.saturating_add(1), end.saturating_add(1)),
-            (Excluded(start), Excluded(end)) => (start.saturating_add(1), end),
-            (Unbounded, Unbounded) => (0, VM_MAX_RAM),
-
-            (Included(start), Unbounded) if is_stack_address(&registers.sp, start) => (start, stack),
-            (Included(start), Unbounded) => (start, VM_MAX_RAM),
-
-            (Excluded(start), Unbounded) if is_stack_address(&registers.sp, start) => (start.saturating_add(1), stack),
-            (Excluded(start), Unbounded) => (start.saturating_add(1), VM_MAX_RAM),
-
-            (Unbounded, Included(end)) if is_stack_address(&registers.sp, end) => (0, end.saturating_add(1)),
-            (Unbounded, Included(end)) => (heap, end),
-
-            (Unbounded, Excluded(end)) if is_stack_address(&registers.sp, end) => (0, end),
-            (Unbounded, Excluded(end)) => (heap, end),
-        }
+    /// Convert to a raw `Word` range.
+    pub fn words(&self) -> ops::Range<Word> {
+        self.start as Word..self.end as Word
     }
 
     /// Return an owned memory slice with a relative address to the heap space
-    /// defined in `r[$hp]`
-    pub fn to_heap<S, Tx>(mut self, vm: &Interpreter<S, Tx>) -> Self
+    /// defined in `r[$hp]`. Panics if the range is not within the heap space.
+    #[cfg(test)]
+    pub fn to_heap<S, Tx>(self, vm: &Interpreter<S, Tx>) -> Self
     where
         Tx: ExecutableTransaction,
     {
-        use ops::Bound::*;
-
-        let heap = vm.registers()[RegId::HP];
-
-        self.start = match self.start {
-            Included(start) => Included(heap.saturating_add(start)),
-            Excluded(start) => Included(heap.saturating_add(start).saturating_add(1)),
-            Unbounded => Included(heap),
-        };
-
-        self.end = match self.end {
-            Included(end) => Excluded(heap.saturating_add(end).saturating_add(1)),
-            Excluded(end) => Excluded(heap.saturating_add(end)),
-            Unbounded => Excluded(VM_MAX_RAM),
-        };
-
-        let (start, end) = self.boundaries(&OwnershipRegisters::new(vm));
-        self.len = end.saturating_sub(start);
-
-        self
+        let hp = vm.registers()[RegId::HP] as usize;
+        let start = self.start.checked_add(hp).expect("Overflow");
+        let end = self.end.checked_add(hp).expect("Overflow");
+        if end > MEM_SIZE {
+            panic!("Invalid heap range");
+        }
+        Self(start..end)
     }
-}
 
-impl<R> From<R> for MemoryRange
-where
-    R: ops::RangeBounds<Word>,
-{
-    fn from(range: R) -> MemoryRange {
-        use ops::Bound::*;
-        // Owned bounds are unstable
-        // https://github.com/rust-lang/rust/issues/61356
-
-        let (start, s) = match range.start_bound() {
-            Included(start) => (Included(*start), *start),
-            Excluded(start) => (Included(start.saturating_add(1)), start.saturating_add(1)),
-            Unbounded => (Unbounded, 0),
-        };
-
-        let (end, e) = match range.end_bound() {
-            Included(end) => (Excluded(end.saturating_add(1)), end.saturating_add(1)),
-            Excluded(end) => (Excluded(*end), *end),
-            Unbounded => (Unbounded, VM_MAX_RAM),
-        };
-
-        let len = e.saturating_sub(s);
-
-        Self { start, end, len }
+    /// This function is safe because it is only used to shrink the range
+    /// and worst case the range will be empty.
+    pub fn shrink_end(&mut self, by: usize) {
+        self.0 = self.0.start..self.0.end.saturating_sub(by);
     }
-}
 
-// Memory bounds must be manually checked and cannot follow general PartialEq
-// rules
-impl PartialEq for MemoryRange {
-    fn eq(&self, other: &MemoryRange) -> bool {
-        use ops::Bound::*;
+    /// This function is safe because it is only used to grow the range
+    /// and worst case the range will be empty.
+    pub fn grow_start(&mut self, by: usize) {
+        self.0 = self.0.start.saturating_add(by)..self.0.end;
+    }
 
-        let start = match (self.start, other.start) {
-            (Included(a), Included(b)) => a == b,
-            (Included(a), Excluded(b)) => a == b.saturating_add(1),
-            (Included(a), Unbounded) => a == 0,
-            (Excluded(a), Included(b)) => a.saturating_add(1) == b,
-            (Excluded(a), Excluded(b)) => a == b,
-            (Excluded(a), Unbounded) => a == 0,
-            (Unbounded, Included(b)) => b == 0,
-            (Unbounded, Excluded(b)) => b == 0,
-            (Unbounded, Unbounded) => true,
-        };
+    /// Get the memory slice for this range.
+    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8] {
+        &memory[self.0]
+    }
 
-        let end = match (self.end, other.end) {
-            (Included(a), Included(b)) => a == b,
-            (Included(a), Excluded(b)) => a == b.saturating_sub(1),
-            (Included(a), Unbounded) => a == VM_MAX_RAM - 1,
-            (Excluded(a), Included(b)) => a.saturating_sub(1) == b,
-            (Excluded(a), Excluded(b)) => a == b,
-            (Excluded(a), Unbounded) => a == VM_MAX_RAM,
-            (Unbounded, Included(b)) => b == VM_MAX_RAM - 1,
-            (Unbounded, Excluded(b)) => b == VM_MAX_RAM,
-            (Unbounded, Unbounded) => true,
-        };
-
-        start && end
+    /// Get the mutable memory slice for this range.
+    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8] {
+        &mut memory[self.0]
     }
 }
 
@@ -366,13 +313,11 @@ pub(crate) fn memclear(
     a: Word,
     b: Word,
 ) -> Result<(), RuntimeError> {
-    let (ab, overflow) = a.overflowing_add(b);
-
-    let range = MemoryRange::new(a, b);
-    if overflow || ab > VM_MAX_RAM || b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
+    let range = MemoryRange::new(a, b)?;
+    if b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
         Err(PanicReason::MemoryOverflow.into())
     } else {
-        memory[a as usize..ab as usize].fill(0);
+        memory[range.usizes()].fill(0);
         inc_pc(pc)
     }
 }
@@ -385,33 +330,35 @@ pub(crate) fn memcopy(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let (ac, overflow) = a.overflowing_add(c);
-    let (bc, of) = b.overflowing_add(c);
-    let overflow = overflow || of;
+    let dst_range = MemoryRange::new(a, c)?;
+    let src_range = MemoryRange::new(b, c)?;
 
-    let range = MemoryRange::new(a, c);
-    if overflow
-        || ac > VM_MAX_RAM
-        || bc > VM_MAX_RAM
-        || c > MEM_MAX_ACCESS_SIZE
-        || a <= b && b < ac
-        || b <= a && a < bc
-        || a < bc && bc <= ac
-        || b < ac && ac <= bc
-        || !owner.has_ownership_range(&range)
-    {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        if a <= b {
-            let (dst, src) = memory.split_at_mut(b as usize);
-            dst[a as usize..ac as usize].copy_from_slice(&src[..c as usize]);
-        } else {
-            let (src, dst) = memory.split_at_mut(a as usize);
-            dst[..c as usize].copy_from_slice(&src[b as usize..bc as usize]);
-        }
-
-        inc_pc(pc)
+    if c > MEM_MAX_ACCESS_SIZE {
+        return Err(PanicReason::MemoryOverflow.into());
     }
+
+    if !owner.has_ownership_range(&dst_range) {
+        return Err(PanicReason::MemoryOwnership.into());
+    }
+
+    if dst_range.start <= src_range.start && src_range.start < dst_range.end
+        || src_range.start <= dst_range.start && dst_range.start < src_range.end
+        || dst_range.start < src_range.end && src_range.end <= dst_range.end
+        || src_range.start < dst_range.end && dst_range.end <= src_range.end
+    {
+        return Err(PanicReason::MemoryWriteOverlap.into());
+    }
+
+    let len = src_range.len();
+    if a <= b {
+        let (dst, src) = memory.split_at_mut(src_range.start);
+        dst[dst_range.usizes()].copy_from_slice(&src[..len]);
+    } else {
+        let (src, dst) = memory.split_at_mut(dst_range.start);
+        dst[..len].copy_from_slice(&src[src_range.usizes()]);
+    }
+
+    inc_pc(pc)
 }
 
 pub(crate) fn memeq(
@@ -435,10 +382,7 @@ pub(crate) fn memeq(
     }
 }
 
-pub(crate) const fn is_stack_address(sp: &u64, a: Word) -> bool {
-    a < *sp
-}
-
+#[derive(Debug)]
 pub struct OwnershipRegisters {
     pub(crate) sp: u64,
     pub(crate) ssp: u64,
@@ -458,8 +402,7 @@ impl OwnershipRegisters {
         }
     }
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let (start_incl, end_excl) = range.boundaries(self);
-        let range = start_incl..end_excl;
+        let range = range.words();
         self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
     }
 
@@ -507,20 +450,14 @@ pub(crate) fn try_mem_write(
     registers: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
-    let ax = addr.checked_add(data.len()).ok_or(PanicReason::ArithmeticOverflow)?;
+    let range = MemoryRange::new(addr, data.len())?;
 
-    let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, data.len() as Word))
-        .ok_or(PanicReason::MemoryOverflow)?;
+    if !registers.has_ownership_range(&range) {
+        return Err(PanicReason::MemoryOwnership.into());
+    }
 
-    registers
-        .has_ownership_range(&range)
-        .then(|| {
-            memory.get_mut(addr..ax)?.copy_from_slice(data);
-            Some(())
-        })
-        .flatten()
-        .ok_or_else(|| PanicReason::MemoryOwnership.into())
+    memory[range.usizes()].copy_from_slice(data);
+    Ok(())
 }
 
 pub(crate) fn try_zeroize(
@@ -529,18 +466,14 @@ pub(crate) fn try_zeroize(
     registers: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
-    let ax = addr.checked_add(len).ok_or(PanicReason::ArithmeticOverflow)?;
+    let range = MemoryRange::new(addr, len)?;
 
-    let range = (ax <= VM_MAX_RAM as usize)
-        .then(|| MemoryRange::new(addr as Word, len as Word))
-        .ok_or(PanicReason::MemoryOverflow)?;
+    if !registers.has_ownership_range(&range) {
+        return Err(PanicReason::MemoryOwnership.into());
+    }
 
-    registers
-        .has_ownership_range(&range)
-        .then(|| {
-            memory[addr..].iter_mut().take(len).for_each(|m| *m = 0);
-        })
-        .ok_or_else(|| PanicReason::MemoryOwnership.into())
+    memory[range.usizes()].fill(0);
+    Ok(())
 }
 
 /// Reads a constant-sized byte array from memory, performing overflow and memory range checks.
@@ -562,14 +495,11 @@ pub(crate) fn write_bytes<const COUNT: usize>(
     addr: Word,
     bytes: [u8; COUNT],
 ) -> Result<(), RuntimeError> {
-    let range = MemoryRange::new(addr, COUNT as Word);
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || (end as Word) > VM_MAX_RAM || !owner.has_ownership_range(&range) {
+    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
+    if !owner.has_ownership_range(&range) {
         return Err(PanicReason::MemoryOverflow.into());
     }
 
-    memory[addr..end].copy_from_slice(&bytes);
+    memory[range.usizes()].copy_from_slice(&bytes);
     Ok(())
 }

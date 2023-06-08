@@ -4,7 +4,7 @@ use super::internal::{
     append_receipt, current_contract, external_asset_id_balance_sub, inc_pc, internal_contract_or_default,
     set_frame_pointer, AppendReceipt,
 };
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
+use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
 use crate::arith;
 use crate::call::{Call, CallFrame};
 use crate::constraints::reg_key::*;
@@ -468,7 +468,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         *self.registers.system_registers.sp = new_sp;
         *self.registers.system_registers.ssp = new_sp;
 
-        let code_frame_mem_range = CheckedMemRange::new(*self.registers.system_registers.fp, len as usize)?;
+        let code_frame_mem_range = MemoryRange::new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(
             &frame,
             frame_bytes,
@@ -512,7 +512,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
 fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
-    code_mem_range: CheckedMemRange,
+    code_mem_range: MemoryRange,
     memory: &mut [u8; MEM_SIZE],
     storage: &S,
 ) -> Result<Word, RuntimeError>
@@ -542,7 +542,7 @@ where
         padding_range.grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
         padding_range.write(memory).fill(0);
     }
-    Ok(code_frame_range.end() as Word)
+    Ok(code_frame_range.end as Word)
 }
 
 fn call_frame<S>(

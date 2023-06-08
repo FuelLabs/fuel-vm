@@ -65,10 +65,6 @@ fn memcopy() {
 
 #[test]
 fn memrange() {
-    let m = MemoryRange::from(..1024);
-    let m_p = MemoryRange::new(0, 1024);
-    assert_eq!(m, m_p);
-
     let tx = TransactionBuilder::script(vec![], vec![])
         .gas_limit(1000000)
         .add_random_fee_input()
@@ -83,20 +79,16 @@ fn memrange() {
         .unwrap();
     vm.instruction(op::aloc(0x10)).unwrap();
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP] - 1, bytes);
+    let m = MemoryRange::new(vm.registers()[RegId::HP] - 1, bytes).unwrap();
     assert!(!vm.ownership_registers().has_ownership_range(&m));
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes);
+    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes).unwrap();
     assert!(vm.ownership_registers().has_ownership_range(&m));
 
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes + 1);
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
+    MemoryRange::new(vm.registers()[RegId::HP], bytes + 1).expect_err("Overflows");
 
-    let m = MemoryRange::new(0, bytes).to_heap(&vm);
+    let m = MemoryRange::new(0, bytes).unwrap().to_heap(&vm);
     assert!(vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(0, bytes + 1).to_heap(&vm);
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
 }
 
 #[test]
@@ -183,7 +175,7 @@ fn stack_alloc_ownership() {
     20..41 => false; "start exclusive and end inclusive"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
-    let range = MemoryRange::new(range.start, range.end - range.start);
+    let range = MemoryRange::new(range.start, range.end - range.start).expect("Invalid range");
     reg.has_ownership_range(&range)
 }
 

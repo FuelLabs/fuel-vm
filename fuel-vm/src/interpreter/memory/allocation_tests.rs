@@ -53,10 +53,10 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 #[test_case(true, 1, 20, 0 => Ok(()); "Can copy zero bytes")]
 #[test_case(true, 1, 20, 10 => Ok(()); "Can copy some bytes")]
 #[test_case(true, 10, 20, 10 => Ok(()); "Can copy some bytes in close range")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "b <= a < bc")]
-#[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "b < ac <= bc")]
-#[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryOverflow.into()); "a <= b < ac")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryOverflow.into()); "a < bc <= ac")]
+#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b <= a < bc")]
+#[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b < ac <= bc")]
+#[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a <= b < ac")]
+#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a < bc <= ac")]
 fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);

@@ -104,10 +104,8 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        //if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new_with_constraint(b, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new_with_constraint(c, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
+        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
+        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
 
         let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));

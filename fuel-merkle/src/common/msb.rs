@@ -40,6 +40,10 @@ impl<const N: usize> Msb for [u8; N] {
     fn common_prefix_count(&self, other: &Self) -> usize {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
+            // For each pair of bytes, Compute the similarity of each the bytes
+            // using exclusive or (XOR). The leading zeros measures the number
+            // of similar bits from left to right. For equal bytes, this will be
+            // 8.
             count += (byte1 ^ byte2).leading_zeros();
             if byte1 != byte2 {
                 break;

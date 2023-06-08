@@ -275,15 +275,17 @@ impl From<InterpreterError> for PredicateVerificationFailed {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "strum", derive(strum::EnumVariantNames))]
 pub enum BugId {
+    // Not used
     ID001,
     ID002,
     ID003,
     ID004,
+    // Not used
     ID005,
+    // Not used
     ID006,
     ID007,
     ID008,
-    ID009,
 }
 
 /// Traceable bug variants
@@ -303,9 +305,6 @@ pub enum BugVariant {
 
     /// The global gas is less than the context gas.
     GlobalGasLessThanContext,
-
-    /// Constraint larger then memory bounds
-    InvalidMemoryConstraint,
 }
 
 impl fmt::Display for BugVariant {
@@ -344,13 +343,6 @@ impl fmt::Display for BugVariant {
                 r#"The global gas cannot ever be less than the context gas. 
 
                 This means the registers are corrupted."#
-            ),
-
-            Self::InvalidMemoryConstraint => write!(
-                f,
-                r#"The memory constraint cannot exceed the memory size.
-
-                This is a bug in the vm."#
             ),
         }
     }

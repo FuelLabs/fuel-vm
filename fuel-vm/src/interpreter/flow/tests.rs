@@ -394,10 +394,10 @@ fn check_output(expected: Result<Output, RuntimeError>) -> impl FnOnce(Result<Ou
         4,
         5,
     ),
-    CheckedMemRange::new(0, 640).unwrap()
+    MemoryRange::new(0, 640).unwrap()
     => Ok(600); "call"
 )]
-fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: CheckedMemRange) -> Result<Word, RuntimeError> {
+fn test_write_call_to_memory(mut call_frame: CallFrame, code_mem_range: MemoryRange) -> Result<Word, RuntimeError> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];

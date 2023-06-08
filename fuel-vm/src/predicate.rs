@@ -2,7 +2,6 @@
 
 use crate::interpreter::MemoryRange;
 
-use fuel_asm::Word;
 use fuel_tx::{field, ConsensusParameters};
 
 /// Runtime representation of a predicate
@@ -31,10 +30,10 @@ impl RuntimePredicate {
     where
         T: field::Inputs,
     {
-        tx.inputs_predicate_offset_at(idx)
-            .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
-            .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self { program, idx })
+        let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
+        let addr = ofs.saturating_add(params.tx_offset());
+        let range = MemoryRange::new(addr, len).expect("Invalid memory range");
+        Some(Self { program: range, idx })
     }
 }
 
@@ -140,7 +139,7 @@ fn from_tx_works() {
         let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
 
         let program = runtime.program();
-        let program = &interpreter.memory()[program.start() as usize..program.end() as usize];
+        let program = &interpreter.memory()[program.usizes()];
 
         // assert the program in the vm memory is the same of the input
         assert_eq!(program, &padded_predicate);

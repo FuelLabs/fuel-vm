@@ -36,8 +36,8 @@ impl MerkleTree {
         let _ = self.tree.update(key, data);
     }
 
-    pub fn delete(&mut self, key: &Bytes32, data: &[u8]) {
-        let _ = self.tree.delete(key, data);
+    pub fn delete(&mut self, key: &Bytes32) {
+        let _ = self.tree.delete(key);
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -105,7 +105,7 @@ mod test {
         let mut tree = MerkleTree::new();
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
-        tree.delete(&sum(b"\x00\x00\x00\x00"), b"DATA");
+        tree.delete(&sum(b"\x00\x00\x00\x00"));
 
         let root = tree.root();
         let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -118,7 +118,7 @@ mod test {
 
         tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
         tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA");
-        tree.delete(&sum(b"\x00\x00\x00\x01"), b"DATA");
+        tree.delete(&sum(b"\x00\x00\x00\x01"));
 
         let root = tree.root();
         let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";

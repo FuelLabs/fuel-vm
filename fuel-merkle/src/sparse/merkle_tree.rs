@@ -293,6 +293,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::sparse::Node;
     use crate::{
         common::{Bytes32, StorageMap},
         sparse::{empty_sum, hash::sum, MerkleTree, MerkleTreeError, Primitive},
@@ -618,6 +619,32 @@ mod test {
         let root = tree.root();
         let expected_root = "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
         assert_eq!(hex::encode(root), expected_root);
+    }
+
+    #[test]
+    fn test_override_hash_key() {
+        use fuel_storage::StorageInspect;
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let leaf_1_key = sum(b"\x00\x00\x00\x00");
+        let leaf_1_data = b"DATA_1";
+        let leaf_1 = Node::create_leaf(&leaf_1_key, leaf_1_data);
+
+        let leaf_2_key = leaf_1.hash();
+        let leaf_2_data = b"DATA_2";
+        let leaf_2 = Node::create_leaf(&leaf_2_key, leaf_2_data);
+
+        tree.update(&leaf_2_key, leaf_2_data).unwrap();
+        tree.update(&leaf_1_key, leaf_1_data).unwrap();
+        assert_eq!(
+            tree.storage.get(&leaf_2.hash()).unwrap().unwrap().into_owned(),
+            leaf_2.as_ref().into()
+        );
+        assert_eq!(
+            tree.storage.get(&leaf_1.hash()).unwrap().unwrap().into_owned(),
+            leaf_1.as_ref().into()
+        );
     }
 
     #[test]

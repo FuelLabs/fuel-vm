@@ -1,7 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use fuel_merkle::common::{Bytes32, StorageMap};
-use fuel_merkle::sparse::test::{merge_branches, update_set_v2, Branch};
-use fuel_merkle::sparse::{MerkleTree, Node, Primitive};
+use fuel_merkle::{
+    common::{path::ComparablePath, Bytes32, StorageMap},
+    sparse::{
+        test::{merge_branches, update_set_v2, Branch},
+        MerkleTree, Node, Primitive,
+    },
+};
 use fuel_storage::{Mappable, StorageMutate};
 use rand::Rng;
 use std::collections::BTreeMap;
@@ -26,30 +30,6 @@ impl Mappable for NodesTable {
 }
 
 type Storage = StorageMap<NodesTable>;
-
-trait Prefix {
-    fn common_prefix(&self, other: &Self) -> usize;
-}
-
-impl Prefix for Bytes32 {
-    fn common_prefix(&self, other: &Self) -> usize {
-        for i in 0..self.len() {
-            if self[i] == other[i] {
-                continue;
-            } else {
-                for k in 0..8 {
-                    let bit = 1 << (7 - k);
-                    if self[i] & bit == other[i] & bit {
-                        continue;
-                    } else {
-                        return 8 * i + k;
-                    }
-                }
-            }
-        }
-        core::mem::size_of::<Self>()
-    }
-}
 
 // Naive update set: Updates the Merkle tree sequentially.
 // This is the baseline. Performance improvements to the Sparse Merkle Tree's
@@ -79,8 +59,8 @@ where
 
         match (upcoming.pop(), stack.pop()) {
             (Some(left), Some(right)) => {
-                let left_cur = left.bits.common_prefix(&current.bits);
-                let cur_right = current.bits.common_prefix(&right.bits);
+                let left_cur = left.bits.common_path_length(&current.bits);
+                let cur_right = current.bits.common_path_length(&right.bits);
 
                 if left_cur < cur_right {
                     let branch = merge_branches(storage, current, right)?;
@@ -129,7 +109,7 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-    let data = std::iter::from_fn(gen).take(1000).collect::<Vec<_>>();
+    let data = std::iter::from_fn(gen).take(250_000).collect::<Vec<_>>();
 
     // let l0 = Bytes32::default(); // left, left, left, left left, ...
     //

@@ -8,7 +8,7 @@ mod subtree;
 
 pub(crate) mod error;
 pub(crate) mod node;
-pub(crate) mod path;
+pub mod path;
 
 pub use path_iterator::AsPathIterator;
 pub use position::Position;

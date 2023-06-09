@@ -1,5 +1,5 @@
 use crate::{
-    common::{path::ComparablePath, Bit, Bytes32, Msb},
+    common::{path::ComparablePath, Bytes32},
     sparse::{Node, Primitive},
 };
 use fuel_storage::{Mappable, StorageMutate};
@@ -36,57 +36,31 @@ where
             node,
         }
     } else {
-        let parent_depth = left_branch.bits.common_path_length(&right_branch.bits);
-        let parent_height = (Node::max_height() - parent_depth) as u32;
-
+        let ancestor_depth = left_branch.bits.common_path_length(&right_branch.bits);
+        let ancestor_height = Node::max_height() - ancestor_depth;
         if right_branch.node.is_node() {
-            let start_height = right_branch.node.height() + 1;
-            for height in start_height..parent_height {
-                let byte_index = Node::max_height() - height as usize;
-
-                match right_branch.bits.get_bit_at_index_from_msb(byte_index).unwrap() {
-                    Bit::_0 => {
-                        let node = Node::create_node(&right_branch.node, &Node::create_placeholder(), height);
-                        right_branch = Branch {
-                            bits: right_branch.bits,
-                            node,
-                        };
-                    }
-                    Bit::_1 => {
-                        let node = Node::create_node(&Node::create_placeholder(), &right_branch.node, height);
-                        right_branch = Branch {
-                            bits: right_branch.bits,
-                            node,
-                        };
-                    }
-                }
-                storage.insert(&right_branch.node.hash(), &right_branch.node.as_ref().into())?;
+            let mut current_node = right_branch.node;
+            let path = right_branch.bits;
+            let parent_height = current_node.height() as usize + 1;
+            let stale_depth = ancestor_height - parent_height;
+            let placeholders = std::iter::repeat(Node::create_placeholder()).take(stale_depth);
+            for placeholder in placeholders {
+                current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
+                storage.insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
+            right_branch.node = current_node;
         }
-
         if left_branch.node.is_node() {
-            let start_height = left_branch.node.height() + 1;
-            for height in start_height..parent_height {
-                let byte_index = Node::max_height() - height as usize;
-
-                match left_branch.bits.get_bit_at_index_from_msb(byte_index).unwrap() {
-                    Bit::_0 => {
-                        let node = Node::create_node(&left_branch.node, &Node::create_placeholder(), height);
-                        left_branch = Branch {
-                            bits: left_branch.bits,
-                            node,
-                        };
-                    }
-                    Bit::_1 => {
-                        let node = Node::create_node(&Node::create_placeholder(), &left_branch.node, height);
-                        left_branch = Branch {
-                            bits: left_branch.bits,
-                            node,
-                        };
-                    }
-                }
-                storage.insert(&left_branch.node.hash(), &left_branch.node.as_ref().into())?;
+            let mut current_node = left_branch.node;
+            let path = left_branch.bits;
+            let parent_height = current_node.height() as usize + 1;
+            let stale_depth = ancestor_height - parent_height;
+            let placeholders = std::iter::repeat(Node::create_placeholder()).take(stale_depth);
+            for placeholder in placeholders {
+                current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
+                storage.insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
+            left_branch.node = current_node;
         }
         let node = Node::create_node_on_path(&left_branch.bits, &left_branch.node, &right_branch.node);
         Branch {
@@ -208,7 +182,7 @@ mod test {
     fn test_update_set() {
         let rng = &mut rand::thread_rng();
         let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-        let data = std::iter::from_fn(gen).take(5000).collect::<Vec<_>>();
+        let data = std::iter::from_fn(gen).take(100000).collect::<Vec<_>>();
         let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
         let storage = Storage::new();

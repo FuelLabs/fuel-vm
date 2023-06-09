@@ -1,6 +1,4 @@
-use crate::common::node::Node;
-use crate::common::path_iterator::PathIter;
-use crate::common::{AsPathIterator, Position};
+use crate::common::{node::Node, path_iterator::PathIter, AsPathIterator, Position};
 
 /// # PositionPath
 ///

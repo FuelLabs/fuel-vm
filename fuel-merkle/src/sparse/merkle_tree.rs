@@ -559,6 +559,23 @@ mod test {
     }
 
     #[test]
+    fn test_delete_non_existent_data() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.update(&sum(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+        tree.update(&sum(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        tree.delete(&sum(b"\x00\x00\x00\x00"), b"BAD").unwrap();
+
+        let root = tree.root();
+        let expected_root = "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
+        assert_eq!(hex::encode(root), expected_root);
+    }
+
+    #[test]
     fn test_interleaved_update_delete() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);

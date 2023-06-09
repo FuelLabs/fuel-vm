@@ -1,14 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use fuel_merkle::{
-    common::{path::ComparablePath, Bytes32, StorageMap},
-    sparse::{
-        branch::{merge_branches, Branch},
-        MerkleTree, Node, Primitive,
-    },
+    common::{Bytes32, StorageMap},
+    sparse::{MerkleTree, MerkleTreeError, Primitive},
 };
-use fuel_storage::{Mappable, StorageMutate};
+use fuel_storage::{Mappable, StorageInspect};
+use hashbrown::HashMap;
 use rand::Rng;
-use std::collections::BTreeMap;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
 where
@@ -30,20 +27,34 @@ impl Mappable for NodesTable {
 }
 
 type Storage = StorageMap<NodesTable>;
+type StorageError = <Storage as StorageInspect<NodesTable>>::Error;
 
 // Naive update set: Updates the Merkle tree sequentially.
 // This is the baseline. Performance improvements to the Sparse Merkle Tree's
 // update_set must demonstrate an increase in speed relative to this baseline.
-pub fn update_set_baseline<'a, I, Storage>(storage: &mut Storage, set: I) -> Result<Bytes32, Storage::Error>
+pub fn baseline_root<'a, I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
 where
-    I: IntoIterator<Item = (&'a Bytes32, &'a Bytes32)>,
-    Storage: StorageMutate<NodesTable>,
+    I: IntoIterator<Item = (&'a Bytes32, D)>,
+    D: AsRef<[u8]>,
 {
+    let storage = Storage::new();
     let mut tree = MerkleTree::new(storage);
     for (key, data) in set.into_iter() {
-        tree.update(key, data)?;
+        tree.update(key, data.as_ref())?;
     }
-    Ok(tree.root())
+    let root = tree.root();
+    Ok(root)
+}
+
+pub fn subject_root<'a, I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
+where
+    I: IntoIterator<Item = (&'a Bytes32, D)>,
+    D: AsRef<[u8]>,
+{
+    let storage = Storage::new();
+    let tree = MerkleTree::from_set(storage, set)?;
+    let root = tree.root();
+    Ok(root)
 }
 
 fn sparse_merkle_tree(c: &mut Criterion) {
@@ -52,58 +63,23 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-    let data = std::iter::from_fn(gen).take(1_000_000).collect::<Vec<_>>();
+    let data = std::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
+    let input: HashMap<Bytes32, Bytes32> = HashMap::from_iter(data.into_iter());
 
-    // let l0 = Bytes32::default(); // left, left, left, left left, ...
-    //
-    // let mut l1 = Bytes32::default();
-    // l1[0..1].copy_from_slice(&[0b01000000]); // left, right, left, left, left, ...
-    //
-    // let mut l2 = Bytes32::default();
-    // l2[0..1].copy_from_slice(&[0b01100000]); // left, right, right, ...
-    //
-    // let mut l3 = Bytes32::default();
-    // l3[0..1].copy_from_slice(&[0b01001000]); // left, right, left, left, right, ...
-    //
-    // let data = [
-    //     (l0, random_bytes32(rng)),
-    //     (l1, random_bytes32(rng)),
-    //     (l2, random_bytes32(rng)),
-    //     (l3, random_bytes32(rng)),
-    // ];
+    let expected_root = baseline_root(&input).unwrap();
+    let root = subject_root(&input).unwrap();
 
-    let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
+    assert_eq!(expected_root, root);
 
-    // let storage = Storage::new();
-    // let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-    // tree.update_set(black_box(&input)).unwrap();
-    //
-    // let mut storage = Storage::new();
-    // let baseline_root = update_set_baseline(black_box(&mut storage), black_box(&input)).unwrap();
-    //
-    // assert_eq!(tree.root(), baseline_root);
-    //
-    // let mut storage = Storage::new();
-    // let v2_root = update_set_v2(black_box(&mut storage), black_box(&input)).unwrap();
-    // assert_eq!(tree.root(), v2_root);
+    let mut group_update = c.benchmark_group("from-set");
 
-    let mut group_update = c.benchmark_group("update");
-
-    group_update.bench_with_input("update-set-baseline", &input, |b, input| {
-        let mut storage = Storage::new();
-        b.iter(|| update_set_baseline(black_box(&mut storage), black_box(input)));
+    group_update.bench_with_input("from-set-baseline", &input, |b, input| {
+        b.iter(|| baseline_root(black_box(input)));
     });
 
-    group_update.bench_with_input("update-set-v2", &input, |b, input| {
-        let mut storage = Storage::new();
-        b.iter(|| update_set_v2(black_box(&mut storage), black_box(input)));
+    group_update.bench_with_input("from-set", &input, |b, input| {
+        b.iter(|| subject_root(black_box(input)));
     });
-
-    // group_update.bench_with_input("update-set", &input, |b, input| {
-    //     let storage = Storage::new();
-    //     let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-    //     b.iter(|| tree.update_set(black_box(input)));
-    // });
 
     group_update.finish();
 }

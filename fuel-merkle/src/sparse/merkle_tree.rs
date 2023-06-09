@@ -132,7 +132,7 @@ where
         let mut branches = sorted
             .iter()
             .filter(|(_, value)| !value.as_ref().is_empty())
-            .map(|(key, data)| Node::create_leaf(&key, data))
+            .map(|(key, data)| Node::create_leaf(key, data))
             .map(Into::<Branch>::into)
             .collect::<Vec<_>>();
 
@@ -141,7 +141,7 @@ where
             storage.insert(&leaf.hash(), &leaf.as_ref().into())?;
         }
 
-        if branches.len() == 0 {
+        if branches.is_empty() {
             let tree = Self::new(storage);
             return Ok(tree);
         }

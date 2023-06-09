@@ -123,7 +123,7 @@ where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn from_set<'a, I, D>(mut storage: StorageType, set: I) -> Result<Self, StorageError>
+    pub fn from_set<I, D>(mut storage: StorageType, set: I) -> Result<Self, StorageError>
     where
         I: Iterator<Item = (Bytes32, D)>,
         D: AsRef<[u8]>,

@@ -11,7 +11,6 @@ pub use node::Node;
 pub use primitive::Primitive;
 pub mod branch;
 pub mod in_memory;
-mod test;
 
 use crate::common::Bytes32;
 

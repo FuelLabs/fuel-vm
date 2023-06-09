@@ -94,12 +94,11 @@ where
 
     // PRIVATE
 
-    fn path_set(&self, leaf_node: Node) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    fn path_set(&self, leaf_key: Bytes32) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let leaf_storage_node = StorageNode::new(&self.storage, leaf_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(&leaf_storage_node)
+            .as_path_iter(leaf_key)
             .map(|(path_node, side_node)| {
                 Ok((
                     path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
@@ -227,12 +226,11 @@ where
 
         let leaf_node = Node::create_leaf(key, data);
         self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
-        self.storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
-            let (path_nodes, side_nodes) = self.path_set(leaf_node.clone())?;
+            let (path_nodes, side_nodes) = self.path_set(*key)?;
             self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -246,12 +244,14 @@ where
             return Ok(());
         }
 
-        if let Some(primitive) = self.storage.get(key)? {
-            let primitive = primitive.into_owned();
-            let leaf_node: Node = primitive.try_into().map_err(MerkleTreeError::DeserializeError)?;
-            let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(leaf_node.clone())?;
-            self.delete_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
-        }
+        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(*key)?;
+
+        match path_nodes.get(0) {
+            Some(node) if node.leaf_key() == key => {
+                self.delete_with_path_set(key, path_nodes.as_slice(), side_nodes.as_slice())?;
+            }
+            _ => {}
+        };
 
         Ok(())
     }
@@ -324,7 +324,7 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_node: &Node,
+        requested_leaf_key: &Bytes32,
         path_nodes: &[Node],
         side_nodes: &[Node],
     ) -> Result<(), StorageError> {
@@ -332,7 +332,7 @@ where
             self.storage.remove(&node.hash())?;
         }
 
-        let path = requested_leaf_node.leaf_key();
+        let path = requested_leaf_key;
         let mut side_nodes_iter = side_nodes.iter();
 
         // The deleted leaf is replaced by a placeholder. Build the tree upwards
@@ -576,7 +576,7 @@ mod test {
     }
 
     #[test]
-    fn test_update_with_empty_data() {
+    fn test_update_with_empty_data_does_not_change_root() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -588,7 +588,7 @@ mod test {
     }
 
     #[test]
-    fn test_update_with_empty_performs_delete() {
+    fn test_update_with_empty_data_performs_delete() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 

@@ -1,3 +1,4 @@
+use crate::common::node::Node;
 use crate::common::path_iterator::PathIter;
 use crate::common::{AsPathIterator, Position};
 
@@ -48,7 +49,7 @@ impl PositionPathIter {
         Self {
             rightmost_position: Position::from_leaf_index(leaves_count - 1),
             current_side_node: None,
-            path_iter: root.as_path_iter(&leaf),
+            path_iter: root.as_path_iter(leaf.leaf_key()),
         }
     }
 }

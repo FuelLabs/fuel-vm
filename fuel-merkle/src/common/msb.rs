@@ -39,16 +39,16 @@ impl<const N: usize> Msb for [u8; N] {
 
     fn common_prefix_count(&self, other: &Self) -> usize {
         let mut count = 0;
-        for i in 0..(N * 8) {
-            let lhs_bit = self.get_bit_at_index_from_msb(i).unwrap();
-            let rhs_bit = other.get_bit_at_index_from_msb(i).unwrap();
-            if lhs_bit == rhs_bit {
-                count += 1;
-            } else {
+        for (byte1, byte2) in self.iter().zip(other.iter()) {
+            // For each pair of bytes, compute the similarity of each byte using
+            // exclusive or (XOR). The leading zeros measures the number of
+            // similar bits from left to right. For equal bytes, this will be 8.
+            count += (byte1 ^ byte2).leading_zeros();
+            if byte1 != byte2 {
                 break;
             }
         }
-        count
+        count as usize
     }
 }
 
@@ -147,17 +147,26 @@ mod test {
 
     #[test]
     fn test_common_prefix_count_returns_count_of_common_bits_when_some_bits_match() {
-        let lhs_bytes: Bytes4 = [0b10101010, 0b10101010, 0b10101010, 0b10101010];
-        let rhs_bytes: Bytes4 = [0b10101010, 0b10101010, !0b10101010, 0b10101010];
+        let lhs_bytes: Bytes4 = [0b11111111, 0b11111111, 0b11111111, 0b11111111];
+        let rhs_bytes: Bytes4 = [0b11111111, 0b11111111, 0b11100000, 0b00000000];
         let common_prefix_count = lhs_bytes.common_prefix_count(&rhs_bytes);
 
-        assert_eq!(common_prefix_count, 2 * 8);
+        assert_eq!(common_prefix_count, 19);
     }
 
     #[test]
     fn test_common_prefix_count_returns_0_when_the_first_bits_are_different() {
-        let lhs_bytes: Bytes4 = [0b10101010, 0b10101010, 0b10101010, 0b10101010];
-        let rhs_bytes: Bytes4 = [0b00101010, 0b10101010, 0b10101010, 0b10101010];
+        let lhs_bytes: Bytes4 = [0b11111111, 0b11111111, 0b11111111, 0b11111111];
+        let rhs_bytes: Bytes4 = [0b01111111, 0b11111111, 0b11111111, 0b11111111];
+        let common_prefix_count = lhs_bytes.common_prefix_count(&rhs_bytes);
+
+        assert_eq!(common_prefix_count, 0);
+    }
+
+    #[test]
+    fn test_common_prefix_count_returns_0_when_all_bits_are_different() {
+        let lhs_bytes: Bytes4 = [0b11111111, 0b11111111, 0b11111111, 0b11111111];
+        let rhs_bytes: Bytes4 = [0b00000000, 0b00000000, 0b00000000, 0b00000000];
         let common_prefix_count = lhs_bytes.common_prefix_count(&rhs_bytes);
 
         assert_eq!(common_prefix_count, 0);

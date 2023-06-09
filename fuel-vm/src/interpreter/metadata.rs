@@ -337,9 +337,8 @@ impl<Tx> GTFInput<'_, Tx> {
                 .inputs()
                 .get(b)
                 .filter(|i| i.is_message())
-                .and_then(Input::input_data)
-                .map(|d| d.len() as Word)
-                .ok_or(PanicReason::InputNotFound)?,
+                .and_then(Input::input_data_len)
+                .ok_or(PanicReason::InputNotFound)? as Word,
             GTFArgs::InputMessagePredicateLength => tx
                 .inputs()
                 .get(b)

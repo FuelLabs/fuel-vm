@@ -358,9 +358,17 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
-            let length = Word::from_be_bytes(self.memory[fp_code_size..fp_code_size_end].try_into().unwrap())
-                .checked_add(length as Word)
-                .ok_or(PanicReason::MemoryOverflow)?;
+            if fp_code_size_end > self.memory.len() {
+                Err(PanicReason::MemoryOverflow)?;
+            }
+
+            let length = Word::from_be_bytes(
+                self.memory[fp_code_size..fp_code_size_end]
+                    .try_into()
+                    .expect("`fp_code_size_end` is `WORD_SIZE`"),
+            )
+            .checked_add(length as Word)
+            .ok_or(PanicReason::MemoryOverflow)?;
 
             self.memory[fp_code_size..fp_code_size_end].copy_from_slice(&length.to_be_bytes());
         }
@@ -478,7 +486,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
     let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
-    try_mem_write(a as usize, hash.as_ref(), owner, memory)?;
+    try_mem_write(a, hash.as_ref(), owner, memory)?;
 
     inc_pc(pc)
 }
@@ -501,7 +509,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     a: Word,
 ) -> Result<(), RuntimeError> {
     let coinbase = storage.coinbase().map_err(RuntimeError::from_io)?;
-    try_mem_write(a as usize, coinbase.as_ref(), owner, memory)?;
+    try_mem_write(a, coinbase.as_ref(), owner, memory)?;
     inc_pc(pc)
 }
 
@@ -532,7 +540,7 @@ where
         .map_err(RuntimeError::from_io)?
         .into_owned();
 
-    try_mem_write(a as usize, root.as_ref(), owner, memory)?;
+    try_mem_write(a, root.as_ref(), owner, memory)?;
 
     inc_pc(pc)
 }

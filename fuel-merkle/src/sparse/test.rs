@@ -83,8 +83,6 @@ where
         .map(|(key, data)| {
             let leaf_node = Node::create_leaf(key, data);
             storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
-            storage.insert(leaf_node.leaf_key(), &leaf_node.as_ref().into())?;
-
             Ok(Branch {
                 bits: *leaf_node.leaf_key(),
                 node: leaf_node,
@@ -105,8 +103,8 @@ where
                     // node is closer to its right neighbor than its left
                     // neighbor. We now merge the current node with its right
                     // neighbor.
-                    let right = nodes.pop().unwrap();
                     let current = nodes.pop().unwrap();
+                    let right = nodes.pop().unwrap();
                     let merged = merge_branches(storage, current, right)?;
                     nodes.push(merged);
 
@@ -176,7 +174,7 @@ mod test {
     fn test_update_set() {
         let rng = &mut rand::thread_rng();
         let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-        let data = std::iter::from_fn(gen).take(100_000).collect::<Vec<_>>();
+        let data = std::iter::from_fn(gen).take(250_000).collect::<Vec<_>>();
         let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
         let storage = Storage::new();

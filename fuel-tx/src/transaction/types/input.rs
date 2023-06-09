@@ -476,6 +476,15 @@ impl Input {
         }
     }
 
+    pub fn input_data_len(&self) -> Option<usize> {
+        match self {
+            Input::MessageDataSigned(MessageDataSigned { data, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => Some(data.len()),
+            Input::MessageCoinSigned(_) | Input::MessageCoinPredicate(_) => Some(0),
+            _ => None,
+        }
+    }
+
     pub fn input_predicate(&self) -> Option<&[u8]> {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })

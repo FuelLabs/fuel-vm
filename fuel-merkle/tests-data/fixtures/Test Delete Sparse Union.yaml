@@ -74,37 +74,22 @@ steps:
     encoding: hex
     value: 3b28a6c3766c6295adad976d349705ef49393fbfdebe4facb5862d2cdfa285d3
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: b40711a88c7039756fb8a73827eabe2c0fe5a0346ca7e0a104adc0fc764f528d
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: 88185d128d9922e0e6bcd32b07b6c7f20f27968eab447a1d8d1cdf250f79f7d3
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: 221f8af2372a95064f2ef7d7712216a9ab46e7ef98482fd237e106f83eaa7569
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: 1561ade0621c5acf44b780521f95a1e0b19b4e5032945b860c4032fc28a3a23b
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: 3b28a6c3766c6295adad976d349705ef49393fbfdebe4facb5862d2cdfa285d3

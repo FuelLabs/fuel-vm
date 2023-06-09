@@ -1,7 +1,7 @@
 expected_root:
   encoding: hex
   value: "0000000000000000000000000000000000000000000000000000000000000000"
-name: Test Update 1 Delete 1
+name: Test Update With Empty Data Performs Delete
 steps:
 - action: update
   data:
@@ -10,7 +10,10 @@ steps:
   key:
     encoding: hex
     value: df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119
-- action: delete
+- action: update
+  data:
+    encoding: utf-8
+    value: ""
   key:
     encoding: hex
     value: df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119

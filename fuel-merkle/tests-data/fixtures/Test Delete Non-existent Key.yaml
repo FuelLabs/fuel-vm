@@ -39,9 +39,6 @@ steps:
     encoding: hex
     value: 1bc5d0e3df0ea12c4d0078668d14924f95106bbe173e196de50fe13a900b0937
 - action: delete
-  data:
-    encoding: utf-8
-    value: DATA
   key:
     encoding: hex
     value: 72034de8a594b12de51205feba7ade26899d8425e81eac7f8c296bf974a51c60

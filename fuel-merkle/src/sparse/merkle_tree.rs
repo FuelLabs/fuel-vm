@@ -131,11 +131,11 @@ where
         let mut leaves = set
             .into_iter()
             .map(|(key, data)| Node::create_leaf(key, data.as_ref()))
-            .map(|leaf_node| {
-                storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
+            .map(|leaf| {
+                storage.insert(&leaf.hash(), &leaf.as_ref().into())?;
                 Ok(Branch {
-                    bits: *leaf_node.leaf_key(),
-                    node: leaf_node,
+                    bits: *leaf.leaf_key(),
+                    node: leaf,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;

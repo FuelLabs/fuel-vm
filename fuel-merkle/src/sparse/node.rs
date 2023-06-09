@@ -47,12 +47,12 @@ impl Node {
         }
     }
 
-    pub fn create_leaf(key: &Bytes32, data: &[u8]) -> Self {
+    pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
         Self {
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,
-            bytes_hi: sum(data),
+            bytes_hi: sum(data.as_ref()),
         }
     }
 

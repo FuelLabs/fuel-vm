@@ -4,12 +4,21 @@ use crate::{
 };
 use fuel_storage::{Mappable, StorageMutate};
 
-pub struct Branch {
+pub(crate) struct Branch {
     pub bits: Bytes32,
     pub node: Node,
 }
 
-pub fn merge_branches<Storage, Table>(
+impl From<Node> for Branch {
+    fn from(leaf: Node) -> Self {
+        Self {
+            bits: *leaf.leaf_key(),
+            node: leaf,
+        }
+    }
+}
+
+pub(crate) fn merge_branches<Storage, Table>(
     storage: &mut Storage,
     mut left_branch: Branch,
     mut right_branch: Branch,

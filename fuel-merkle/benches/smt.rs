@@ -4,7 +4,6 @@ use fuel_merkle::{
     sparse::{MerkleTree, MerkleTreeError, Primitive},
 };
 use fuel_storage::{Mappable, StorageInspect};
-use hashbrown::HashMap;
 use rand::Rng;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
@@ -34,8 +33,8 @@ type StorageError = <Storage as StorageInspect<NodesTable>>::Error;
 // update_set must demonstrate an increase in speed relative to this baseline.
 pub fn baseline_root<'a, I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
 where
-    I: IntoIterator<Item = (&'a Bytes32, D)>,
-    D: AsRef<[u8]>,
+    I: Iterator<Item = &'a (Bytes32, D)>,
+    D: 'a + AsRef<[u8]>,
 {
     let storage = Storage::new();
     let mut tree = MerkleTree::new(storage);
@@ -48,8 +47,8 @@ where
 
 pub fn subject_root<'a, I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
 where
-    I: IntoIterator<Item = (&'a Bytes32, D)>,
-    D: AsRef<[u8]>,
+    I: Iterator<Item = &'a (Bytes32, D)>,
+    D: 'a + AsRef<[u8]>,
 {
     let storage = Storage::new();
     let tree = MerkleTree::from_set(storage, set)?;
@@ -64,21 +63,20 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
     let data = std::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
-    let input: HashMap<Bytes32, Bytes32> = HashMap::from_iter(data.into_iter());
 
-    let expected_root = baseline_root(&input).unwrap();
-    let root = subject_root(&input).unwrap();
+    let expected_root = baseline_root(data.iter()).unwrap();
+    let root = subject_root(data.iter()).unwrap();
 
     assert_eq!(expected_root, root);
 
     let mut group_update = c.benchmark_group("from-set");
 
-    group_update.bench_with_input("from-set-baseline", &input, |b, input| {
-        b.iter(|| baseline_root(black_box(input)));
+    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
+        b.iter(|| baseline_root(black_box(data.iter())));
     });
 
-    group_update.bench_with_input("from-set", &input, |b, input| {
-        b.iter(|| subject_root(black_box(input)));
+    group_update.bench_with_input("from-set", &data, |b, data| {
+        b.iter(|| subject_root(black_box(data.iter())));
     });
 
     group_update.finish();

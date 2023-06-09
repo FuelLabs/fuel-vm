@@ -141,6 +141,18 @@ where
             .collect::<Result<Vec<_>, _>>()?;
         leaves.sort_by(|a, b| a.bits.cmp(&b.bits));
 
+        if leaves.len() == 0 {
+            let tree = Self::new(storage);
+            return Ok(tree);
+        }
+
+        if leaves.len() == 1 {
+            let leaf = leaves.pop().expect("Expected at least 1 leaf").node;
+            let mut tree = Self::new(storage);
+            tree.root_node = leaf;
+            return Ok(tree);
+        }
+
         let mut nodes = Vec::<Branch>::new();
         let mut proximities = Vec::<i64>::new();
 
@@ -154,8 +166,8 @@ where
                         // node is closer to its right neighbor than its left
                         // neighbor. We now merge the current node with its right
                         // neighbor.
-                        let current = nodes.pop().unwrap();
-                        let right = nodes.pop().unwrap();
+                        let current = nodes.pop().expect("Expected current node to be present");
+                        let right = nodes.pop().expect("Expected right node to be present");
                         let merged = merge_branches(&mut storage, current, right)?;
                         nodes.push(merged);
 
@@ -180,7 +192,7 @@ where
         }
 
         let top = {
-            let mut node = nodes.pop().expect("Nodes stack must have at least 1 element.");
+            let mut node = nodes.pop().expect("Nodes stack must have at least 1 element");
             while let Some(next) = nodes.pop() {
                 node = merge_branches(&mut storage, next, node)?;
             }
@@ -826,6 +838,62 @@ mod test {
         let rng = &mut rand::thread_rng();
         let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
         let data = std::iter::from_fn(gen).take(10_000).collect::<Vec<_>>();
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.iter() {
+                tree.update(key, value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let input = data.into_iter().collect::<HashMap<_, _>>();
+            let tree = MerkleTree::from_set(&mut storage, &input).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_empty_set_yields_expected_root() {
+        use hashbrown::HashMap;
+
+        let rng = &mut rand::thread_rng();
+        let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
+        let data = std::iter::from_fn(gen).take(0).collect::<Vec<_>>();
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.iter() {
+                tree.update(key, value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let input = data.into_iter().collect::<HashMap<_, _>>();
+            let tree = MerkleTree::from_set(&mut storage, &input).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_unit_set_yields_expected_root() {
+        use hashbrown::HashMap;
+
+        let rng = &mut rand::thread_rng();
+        let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
+        let data = std::iter::from_fn(gen).take(1).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();

@@ -131,6 +131,7 @@ where
         let sorted = set.into_iter().collect::<BTreeMap<Bytes32, D>>();
         let mut branches = sorted
             .iter()
+            .filter(|(_, value)| !value.as_ref().is_empty())
             .map(|(key, data)| Node::create_leaf(&key, data))
             .map(Into::<Branch>::into)
             .collect::<Vec<_>>();

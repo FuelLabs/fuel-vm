@@ -12,7 +12,7 @@ const ACTION_DELETE: &str = "delete";
 
 trait MerkleTreeTestAdaptor {
     fn update(&mut self, key: &Bytes32, data: &[u8]);
-    fn delete(&mut self, key: &Bytes32, data: &[u8]);
+    fn delete(&mut self, key: &Bytes32);
     fn root(&self) -> Bytes32;
 }
 
@@ -25,7 +25,7 @@ struct Step {
 
 enum Action {
     Update(EncodedValue, EncodedValue),
-    Delete(EncodedValue, EncodedValue),
+    Delete(EncodedValue),
 }
 
 impl Step {
@@ -39,12 +39,10 @@ impl Step {
                 tree.update(key, data);
                 Ok(())
             }
-            Action::Delete(encoded_key, encoded_data) => {
+            Action::Delete(encoded_key) => {
                 let key_bytes = encoded_key.into_bytes()?;
                 let key = &key_bytes.try_into().unwrap();
-                let data_bytes = encoded_data.into_bytes()?;
-                let data: &[u8] = &data_bytes;
-                tree.delete(key, data);
+                tree.delete(key);
                 Ok(())
             }
         }
@@ -58,7 +56,7 @@ impl Step {
             ACTION_UPDATE => Ok(Action::Update(self.key.clone().unwrap(), self.data.clone().unwrap())),
 
             // A Delete has a key
-            ACTION_DELETE => Ok(Action::Delete(self.key.clone().unwrap(), self.data.clone().unwrap())),
+            ACTION_DELETE => Ok(Action::Delete(self.key.clone().unwrap())),
 
             // Unsupported action
             _ => Err(TestError::UnsupportedAction(self.action.clone())),
@@ -75,8 +73,8 @@ impl MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
         self.tree.as_mut().update(key, data)
     }
 
-    fn delete(&mut self, key: &Bytes32, data: &[u8]) {
-        self.tree.as_mut().delete(key, data)
+    fn delete(&mut self, key: &Bytes32) {
+        self.tree.as_mut().delete(key)
     }
 
     fn root(&self) -> Bytes32 {

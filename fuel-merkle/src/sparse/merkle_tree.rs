@@ -133,7 +133,7 @@ where
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
-            let (path_nodes, side_nodes) = self.path_set(key.clone())?;
+            let (path_nodes, side_nodes) = self.path_set(*key)?;
             self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
         }
 
@@ -147,8 +147,8 @@ where
             return Ok(());
         }
 
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(key.clone())?;
-        self.delete_with_path_set(&key, path_nodes.as_slice(), side_nodes.as_slice())?;
+        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(*key)?;
+        self.delete_with_path_set(key, path_nodes.as_slice(), side_nodes.as_slice())?;
 
         Ok(())
     }

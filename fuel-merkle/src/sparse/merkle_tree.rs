@@ -126,6 +126,7 @@ where
             // If the data is empty, this signifies a delete operation for the
             // given key.
             self.delete(key)?;
+            return Ok(());
         }
 
         let leaf_node = Node::create_leaf(key, data);

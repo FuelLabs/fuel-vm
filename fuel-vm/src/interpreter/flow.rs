@@ -24,7 +24,7 @@ use fuel_storage::{StorageAsRef, StorageInspect, StorageRead, StorageSize};
 use fuel_tx::{ConsensusParameters, PanicReason, Receipt, Script};
 use fuel_types::bytes::SerializableVec;
 use fuel_types::{AssetId, Bytes32, ContractId, Word};
-use std::{cmp, io};
+use std::cmp;
 
 #[cfg(test)]
 mod jump_tests;
@@ -275,12 +275,19 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    fn prepare_call_inner(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+    /// Prepare a call instruction for execution
+    pub(crate) fn prepare_call(
+        &mut self,
+        call_params_mem_address: Word,
+        amount_of_coins_to_forward: Word,
+        asset_id_mem_address: Word,
+        amount_of_gas_to_forward: Word,
+    ) -> Result<(), RuntimeError> {
         let params = PrepareCallParams {
-            call_params_mem_address: a,
-            amount_of_coins_to_forward: b,
-            asset_id_mem_address: c,
-            amount_of_gas_to_forward: d,
+            call_params_mem_address,
+            amount_of_coins_to_forward,
+            asset_id_mem_address,
+            amount_of_gas_to_forward,
         };
         let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
         let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
@@ -305,48 +312,17 @@ where
         }
         .prepare_call()
     }
-
-    /// Prepare a call instruction for execution
-    pub fn prepare_call(&mut self, ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> Result<(), RuntimeError> {
-        const M: &str = "the provided id is not a valid register";
-
-        let a = self
-            .registers
-            .get(ra.to_u8() as usize)
-            .copied()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
-
-        let b = self
-            .registers
-            .get(rb.to_u8() as usize)
-            .copied()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
-
-        let c = self
-            .registers
-            .get(rc.to_u8() as usize)
-            .copied()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
-
-        let d = self
-            .registers
-            .get(rd.to_u8() as usize)
-            .copied()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, M))?;
-
-        self.prepare_call_inner(a, b, c, d)
-    }
 }
 
 #[cfg_attr(test, derive(Default))]
 struct PrepareCallParams {
-    /// A
+    /// Register A of input
     pub call_params_mem_address: Word,
-    /// B
+    /// Register B of input
     pub amount_of_coins_to_forward: Word,
-    /// C
+    /// Register C of input
     pub asset_id_mem_address: Word,
-    /// D
+    /// Register D of input
     pub amount_of_gas_to_forward: Word,
 }
 
@@ -485,11 +461,12 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             self.memory.memory,
         );
 
-        let sp = *self.registers.system_registers.sp;
-        set_frame_pointer(self.context, self.registers.system_registers.fp.as_mut(), sp);
+        let old_sp = *self.registers.system_registers.sp;
+        let new_sp = arith::checked_add_word(old_sp, len)?;
 
-        *self.registers.system_registers.sp = arith::checked_add_word(*self.registers.system_registers.sp, len)?;
-        *self.registers.system_registers.ssp = *self.registers.system_registers.sp;
+        set_frame_pointer(self.context, self.registers.system_registers.fp.as_mut(), old_sp);
+        *self.registers.system_registers.sp = new_sp;
+        *self.registers.system_registers.ssp = new_sp;
 
         let code_frame_mem_range = MemoryRange::new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(

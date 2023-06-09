@@ -57,6 +57,26 @@ impl Call {
     }
 }
 
+impl From<Call> for [u8; Call::LEN] {
+    fn from(val: Call) -> [u8; Call::LEN] {
+        let mut buf = [0u8; Call::LEN];
+        bytes::store_at(&mut buf, Call::layout(Call::LAYOUT.to), &val.to);
+        bytes::store_number_at(&mut buf, Call::layout(Call::LAYOUT.a), val.a);
+        bytes::store_number_at(&mut buf, Call::layout(Call::LAYOUT.b), val.b);
+        buf
+    }
+}
+
+impl From<[u8; Self::LEN]> for Call {
+    fn from(buf: [u8; Self::LEN]) -> Self {
+        let to = bytes::restore_at(&buf, Self::layout(Self::LAYOUT.to));
+        let a = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.a));
+        let b = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.b));
+
+        Self { to: to.into(), a, b }
+    }
+}
+
 impl SizedBytes for Call {
     fn serialized_size(&self) -> usize {
         Self::LEN
@@ -70,9 +90,8 @@ impl io::Read for Call {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.to), &self.to);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.a), self.a);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.b), self.b);
+        let bytes: [u8; Self::LEN] = (*self).into();
+        buf.copy_from_slice(&bytes);
 
         Ok(Self::LEN)
     }
@@ -85,13 +104,7 @@ impl io::Write for Call {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
-        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
-        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
-
-        self.to = to.into();
-        self.a = a;
-        self.b = b;
+        *self = Self::from(*buf);
 
         Ok(Self::LEN)
     }

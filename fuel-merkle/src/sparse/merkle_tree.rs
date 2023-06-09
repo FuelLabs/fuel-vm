@@ -636,15 +636,14 @@ mod test {
         let leaf_2 = Node::create_leaf(&leaf_2_key, leaf_2_data);
 
         tree.update(&leaf_2_key, leaf_2_data).unwrap();
-        assert_eq!(
-            tree.storage.get(&leaf_2_key).unwrap().unwrap().into_owned(),
-            leaf_2.as_ref().into()
-        );
-
         tree.update(&leaf_1_key, leaf_1_data).unwrap();
         assert_eq!(
-            tree.storage.get(&leaf_2_key).unwrap().unwrap().into_owned(),
+            tree.storage.get(&leaf_2.hash()).unwrap().unwrap().into_owned(),
             leaf_2.as_ref().into()
+        );
+        assert_eq!(
+            tree.storage.get(&leaf_1.hash()).unwrap().unwrap().into_owned(),
+            leaf_1.as_ref().into()
         );
     }
 

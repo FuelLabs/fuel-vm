@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use fuel_merkle::{
     common::{path::ComparablePath, Bytes32, StorageMap},
     sparse::{
-        test::{merge_branches, update_set_v2, Branch},
+        branch::{merge_branches, Branch},
         MerkleTree, Node, Primitive,
     },
 };

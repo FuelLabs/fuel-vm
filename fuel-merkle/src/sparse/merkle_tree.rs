@@ -122,6 +122,21 @@ where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
+    pub fn from_set<'a, I, D>(storage: StorageType, set: I) -> Result<Self, MerkleTreeError<StorageError>>
+    where
+        I: IntoIterator<Item = (&'a Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        let mut tree = Self::new(storage);
+        let iter = set.into_iter();
+
+        for (key, data) in iter {
+            tree.update(key, data.as_ref())?;
+        }
+
+        Ok(tree)
+    }
+
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
@@ -139,34 +154,6 @@ where
         } else {
             let (path_nodes, side_nodes) = self.path_set(leaf_node.clone())?;
             self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
-        }
-
-        Ok(())
-    }
-
-    pub fn from_set<'a, I, D>(storage: StorageType, set: I) -> Result<Self, MerkleTreeError<StorageError>>
-    where
-        I: IntoIterator<Item = (&'a Bytes32, D)>,
-        D: AsRef<[u8]>,
-    {
-        let mut tree = Self::new(storage);
-        let iter = set.into_iter();
-
-        for (key, data) in iter {
-            tree.update(key, data.as_ref())?;
-        }
-
-        Ok(tree)
-    }
-
-    pub fn update_set<'a, I, D>(&mut self, set: I) -> Result<(), MerkleTreeError<StorageError>>
-    where
-        I: IntoIterator<Item = (&'a Bytes32, D)>,
-        D: AsRef<[u8]>,
-    {
-        let iter = set.into_iter();
-        for (key, data) in iter {
-            self.update(key, data.as_ref())?;
         }
 
         Ok(())
@@ -794,7 +781,7 @@ mod test {
     }
 
     #[test]
-    fn test_update_set_yields_expected_root() {
+    fn test_from_set_yields_expected_root() {
         use hashbrown::HashMap;
 
         let expected_root = {
@@ -810,7 +797,6 @@ mod test {
 
         let root = {
             let mut storage = StorageMap::<TestTable>::new();
-            let mut tree = MerkleTree::new(&mut storage);
             let keys = [
                 sum(b"\x00\x00\x00\x00"),
                 sum(b"\x00\x00\x00\x02"),
@@ -825,7 +811,7 @@ mod test {
                 (&keys[3], b"DATA".as_slice()),
                 (&keys[4], b"DATA".as_slice()),
             ]);
-            tree.update_set(input).unwrap();
+            let tree = MerkleTree::from_set(&mut storage, input).unwrap();
             tree.root()
         };
 

@@ -4,12 +4,11 @@ mod node;
 mod primitive;
 
 pub(crate) use hash::zero_sum;
-pub(crate) use node::{StorageNode, StorageNodeError};
+pub(crate) use node::{Node, StorageNode, StorageNodeError};
+pub(crate) mod branch;
 
 pub use merkle_tree::{MerkleTree, MerkleTreeError};
-pub use node::Node;
 pub use primitive::Primitive;
-pub mod branch;
 pub mod in_memory;
 
 use crate::common::Bytes32;

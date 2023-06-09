@@ -68,7 +68,6 @@ where
             node,
         }
     };
-
     storage.insert(&branch.node.hash(), &branch.node.as_ref().into())?;
     Ok(branch)
 }
@@ -79,7 +78,7 @@ where
     Storage: StorageMutate<Table>,
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
-    let mut upcoming = set
+    let mut leaves = set
         .into_iter()
         .map(|(key, data)| {
             let leaf_node = Node::create_leaf(key, data);
@@ -93,52 +92,47 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut leaves_stack = Vec::<Branch>::new();
-    let mut differences = vec![];
-    let mut second_differences = vec![];
+    let mut nodes = Vec::<Branch>::new();
+    let mut proximities = Vec::<i64>::new();
 
-    while let Some(leaf) = upcoming.pop() {
-        if let Some(prev_leaf) = leaves_stack.last() {
-            let difference = leaf.node.common_path_length(&prev_leaf.node) as i64;
-            if let Some(prev_diff) = differences.last() {
-                let second_difference = prev_diff - difference;
-                second_differences.push(second_difference);
-            }
-            differences.push(difference);
-        }
+    while let Some(next) = leaves.pop() {
+        if let Some(current) = nodes.last() {
+            let proximity = next.node.common_path_length(&current.node) as i64;
+            if let Some(previous_proximity) = proximities.last() {
+                let mut difference = previous_proximity - proximity;
+                while difference > 0 {
+                    // A positive difference in proximity means that the current
+                    // node is closer to its right neighbor than its left
+                    // neighbor. We now merge the current node with its right
+                    // neighbor.
+                    let right = nodes.pop().unwrap();
+                    let current = nodes.pop().unwrap();
+                    let merged = merge_branches(storage, current, right)?;
+                    nodes.push(merged);
 
-        leaves_stack.push(leaf);
+                    // Now that the current node and its right neighbour are
+                    // merged, the distance between them has collapsed and their
+                    // proximity is no longer needed.
+                    proximities.pop();
 
-        while let Some(second_difference) = second_differences.pop() {
-            if second_difference > 0 {
-                // Safety:
-                // The presence of a second difference guarantees at least three
-                // leaves.
-                let n2 = leaves_stack.pop().unwrap();
-                let n1 = leaves_stack.pop().unwrap();
-                let n0 = leaves_stack.pop().unwrap();
-                let merged = merge_branches(storage, n0, n1)?;
-                leaves_stack.push(merged);
-                leaves_stack.push(n2);
-
-                // Remove sd0
-                second_differences.pop();
-
-                // Remove d1
-                let d2 = differences.pop().unwrap();
-                let _d1 = differences.pop().unwrap();
-                if let Some(prev_diff) = differences.last() {
-                    let second_difference = prev_diff - d2;
-                    second_differences.push(second_difference);
+                    // If the merged node is now adjacent to another node, we
+                    // calculate the difference in proximities to determine if
+                    // we must merge again.
+                    if let Some(previous_proximity) = proximities.last() {
+                        difference = previous_proximity - proximity;
+                    } else {
+                        break;
+                    }
                 }
-                differences.push(d2);
             }
+            proximities.push(proximity);
         }
+        nodes.push(next);
     }
 
     let top = {
-        let mut node = leaves_stack.pop().expect("Leaves stack must have at least 1 element.");
-        while let Some(next) = leaves_stack.pop() {
+        let mut node = nodes.pop().expect("Nodes stack must have at least 1 element.");
+        while let Some(next) = nodes.pop() {
             node = merge_branches(storage, next, node)?;
         }
         node
@@ -182,7 +176,7 @@ mod test {
     fn test_update_set() {
         let rng = &mut rand::thread_rng();
         let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-        let data = std::iter::from_fn(gen).take(100000).collect::<Vec<_>>();
+        let data = std::iter::from_fn(gen).take(100_000).collect::<Vec<_>>();
         let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
         let storage = Storage::new();

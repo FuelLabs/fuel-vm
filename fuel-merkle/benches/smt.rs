@@ -109,7 +109,7 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-    let data = std::iter::from_fn(gen).take(250_000).collect::<Vec<_>>();
+    let data = std::iter::from_fn(gen).take(1_000_000).collect::<Vec<_>>();
 
     // let l0 = Bytes32::default(); // left, left, left, left left, ...
     //
@@ -131,18 +131,18 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let input: BTreeMap<Bytes32, Bytes32> = BTreeMap::from_iter(data.into_iter());
 
-    let storage = Storage::new();
-    let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-    tree.update_set(black_box(&input)).unwrap();
-
-    let mut storage = Storage::new();
-    let baseline_root = update_set_baseline(black_box(&mut storage), black_box(&input)).unwrap();
-
-    assert_eq!(tree.root(), baseline_root);
-
-    let mut storage = Storage::new();
-    let v2_root = update_set_v2(black_box(&mut storage), black_box(&input)).unwrap();
-    assert_eq!(tree.root(), v2_root);
+    // let storage = Storage::new();
+    // let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
+    // tree.update_set(black_box(&input)).unwrap();
+    //
+    // let mut storage = Storage::new();
+    // let baseline_root = update_set_baseline(black_box(&mut storage), black_box(&input)).unwrap();
+    //
+    // assert_eq!(tree.root(), baseline_root);
+    //
+    // let mut storage = Storage::new();
+    // let v2_root = update_set_v2(black_box(&mut storage), black_box(&input)).unwrap();
+    // assert_eq!(tree.root(), v2_root);
 
     let mut group_update = c.benchmark_group("update");
 
@@ -156,11 +156,11 @@ fn sparse_merkle_tree(c: &mut Criterion) {
         b.iter(|| update_set_v2(black_box(&mut storage), black_box(input)));
     });
 
-    group_update.bench_with_input("update-set", &input, |b, input| {
-        let storage = Storage::new();
-        let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
-        b.iter(|| tree.update_set(black_box(input)));
-    });
+    // group_update.bench_with_input("update-set", &input, |b, input| {
+    //     let storage = Storage::new();
+    //     let mut tree = MerkleTree::<NodesTable, Storage>::new(storage);
+    //     b.iter(|| tree.update_set(black_box(input)));
+    // });
 
     group_update.finish();
 }

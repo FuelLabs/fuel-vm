@@ -444,8 +444,8 @@ impl OwnershipRegisters {
     }
 }
 
-pub(crate) fn try_mem_write(
-    addr: usize,
+pub(crate) fn try_mem_write<A: ToAddr>(
+    addr: A,
     data: &[u8],
     registers: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],

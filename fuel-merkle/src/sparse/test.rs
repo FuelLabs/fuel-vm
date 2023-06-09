@@ -97,7 +97,7 @@ where
 
     while let Some(next) = leaves.pop() {
         if let Some(current) = nodes.last() {
-            let proximity = next.node.common_path_length(&current.node) as i64;
+            let proximity = current.node.common_path_length(&next.node) as i64;
             if let Some(previous_proximity) = proximities.last() {
                 let mut difference = previous_proximity - proximity;
                 while difference > 0 {

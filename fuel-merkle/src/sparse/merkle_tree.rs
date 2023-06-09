@@ -123,8 +123,9 @@ where
 {
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
-            // Empty data signifies a no-op.
-            return Ok(());
+            // If the data is empty, this signifies a delete operation for the
+            // given key.
+            self.delete(key)?;
         }
 
         let leaf_node = Node::create_leaf(key, data);
@@ -482,7 +483,7 @@ mod test {
     }
 
     #[test]
-    fn test_update_with_empty_data_is_a_noop() {
+    fn test_update_with_empty_data_performs_delete() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -490,7 +491,7 @@ mod test {
         tree.update(&sum(b"\x00\x00\x00\x00"), b"").unwrap();
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 

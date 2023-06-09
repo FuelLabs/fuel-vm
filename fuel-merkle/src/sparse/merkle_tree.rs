@@ -124,6 +124,7 @@ where
 {
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
+            // Empty data signifies a no-op.
             return Ok(());
         }
 

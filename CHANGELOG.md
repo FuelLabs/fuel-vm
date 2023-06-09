@@ -8,11 +8,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
-### Breaking
+### Changed
+
+#### Breaking
+
+- [#482](https://github.com/FuelLabs/fuel-vm/pull/482): The signature of the `delete` method on both the Sparse Merkle Tree and in-memory Sparse Merkle Tree has been modified to require the leaf data of the original leaf that is being deleted. The signature now takes the leaf data as a second parameter to these methods.
+
+  E.g.,
+
+  ```rust
+  fn test() {
+      let mut storage = StorageMap::<TestTable>::new();
+      let mut tree = MerkleTree::new(&mut storage);
+      tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+      tree.delete(&sum(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+  }
+  ```
+
+### Fixed
+
+#### Breaking
 
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
     that the new `$sp` value isn't below `$ssp`, allowing write access to non-owned
     memory. This is now fixed, and attempting to set an incorrect `$sp` value panics.
+- [#482](https://github.com/FuelLabs/fuel-vm/pull/482): This PR address a security issue where updates to a Sparse Merkle Tree could deliberately overwrite existing leaves by setting the leaf key to the hash of an existing leaf or node. This is done by removing the insertion of the leaf using the leaf key. 
 
 ## [Version 0.33.0]
 

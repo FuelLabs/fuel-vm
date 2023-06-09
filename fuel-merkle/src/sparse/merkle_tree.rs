@@ -148,9 +148,13 @@ where
         }
 
         let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(*key)?;
-        if path_nodes[0].leaf_key() == key {
-            self.delete_with_path_set(key, path_nodes.as_slice(), side_nodes.as_slice())?;
-        }
+
+        match path_nodes.get(0) {
+            Some(node) if node.leaf_key() == key => {
+                self.delete_with_path_set(key, path_nodes.as_slice(), side_nodes.as_slice())?;
+            }
+            _ => {}
+        };
 
         Ok(())
     }

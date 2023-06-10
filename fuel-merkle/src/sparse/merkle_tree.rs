@@ -5,9 +5,8 @@ use crate::{
 };
 
 use crate::sparse::branch::{merge_branches, Branch};
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use core::{cmp, iter, marker::PhantomData};
-use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -203,7 +202,7 @@ where
         let path = top.bits;
         let height = node.height() as usize;
         let depth = Node::max_height() - height;
-        let placeholders = std::iter::repeat(Node::create_placeholder()).take(depth);
+        let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
             storage.insert(&node.hash(), &node.as_ref().into())?;

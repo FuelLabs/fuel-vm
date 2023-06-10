@@ -4,6 +4,8 @@ use crate::{
 };
 use fuel_storage::{Mappable, StorageMutate};
 
+use core::iter;
+
 pub(crate) struct Branch {
     pub bits: Bytes32,
     pub node: Node,
@@ -42,7 +44,7 @@ where
             let path = right_branch.bits;
             let parent_height = current_node.height() as usize + 1;
             let stale_depth = ancestor_height - parent_height;
-            let placeholders = std::iter::repeat(Node::create_placeholder()).take(stale_depth);
+            let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
                 storage.insert(&current_node.hash(), &current_node.as_ref().into())?;
@@ -54,7 +56,7 @@ where
             let path = left_branch.bits;
             let parent_height = current_node.height() as usize + 1;
             let stale_depth = ancestor_height - parent_height;
-            let placeholders = std::iter::repeat(Node::create_placeholder()).take(stale_depth);
+            let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
                 storage.insert(&current_node.hash(), &current_node.as_ref().into())?;

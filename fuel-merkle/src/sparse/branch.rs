@@ -4,11 +4,32 @@ use crate::{
 };
 use fuel_storage::{Mappable, StorageMutate};
 
+use core::cmp::Ordering;
 use core::iter;
 
 pub(crate) struct Branch {
     pub bits: Bytes32,
     pub node: Node,
+}
+
+impl PartialEq<Self> for Branch {
+    fn eq(&self, other: &Self) -> bool {
+        self.bits.eq(&other.bits)
+    }
+}
+
+impl Eq for Branch {}
+
+impl PartialOrd<Self> for Branch {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.bits.partial_cmp(&other.bits)
+    }
+}
+
+impl Ord for Branch {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.bits.cmp(&other.bits)
+    }
 }
 
 impl From<Node> for Branch {
@@ -30,8 +51,9 @@ where
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
     let branch = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
-        let path = left_branch.bits;
-        let node = Node::create_node_on_path(&path, &left_branch.node, &right_branch.node);
+        let parent_depth = left_branch.node.common_path_length(&right_branch.node);
+        let parent_height = (Node::max_height() - parent_depth) as u32;
+        let node = Node::create_node(&left_branch.node, &right_branch.node, parent_height);
         Branch {
             bits: left_branch.bits,
             node,
@@ -63,7 +85,7 @@ where
             }
             left_branch.node = current_node;
         }
-        let node = Node::create_node_on_path(&left_branch.bits, &left_branch.node, &right_branch.node);
+        let node = Node::create_node(&left_branch.node, &right_branch.node, ancestor_height as u32);
         Branch {
             bits: left_branch.bits,
             node,

@@ -5,7 +5,7 @@ use crate::{
 };
 
 use crate::sparse::branch::{merge_branches, Branch};
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::vec::Vec;
 use core::{cmp, iter, marker::PhantomData};
 
 #[derive(Debug, Clone)]
@@ -127,7 +127,7 @@ where
         I: Iterator<Item = (Bytes32, D)>,
         D: AsRef<[u8]>,
     {
-        let sorted = set.into_iter().collect::<BTreeMap<Bytes32, D>>();
+        let sorted = set.into_iter().collect::<alloc::collections::BTreeMap<Bytes32, D>>();
         let mut branches = sorted
             .iter()
             .filter(|(_, value)| !value.as_ref().is_empty())
@@ -148,42 +148,39 @@ where
         if branches.len() == 1 {
             let leaf = branches.pop().expect("Expected at least 1 leaf").node;
             let mut tree = Self::new(storage);
-            tree.root_node = leaf;
+            tree.set_root_node(leaf);
             return Ok(tree);
         }
 
-        let mut nodes = Vec::<Branch>::new();
-        let mut proximities = Vec::<i64>::new();
+        let mut nodes = Vec::<Branch>::with_capacity(branches.len());
+        let mut proximities = Vec::<usize>::with_capacity(branches.len());
 
         while let Some(next) = branches.pop() {
             if let Some(current) = nodes.last() {
-                let proximity = current.node.common_path_length(&next.node) as i64;
-                if let Some(previous_proximity) = proximities.last() {
-                    let mut difference = previous_proximity - proximity;
-                    while difference > 0 {
-                        // A positive difference in proximity means that the current
-                        // node is closer to its right neighbor than its left
-                        // neighbor. We now merge the current node with its right
-                        // neighbor.
-                        let current = nodes.pop().expect("Expected current node to be present");
-                        let right = nodes.pop().expect("Expected right node to be present");
-                        let merged = merge_branches(&mut storage, current, right)?;
-                        nodes.push(merged);
-
-                        // Now that the current node and its right neighbour are
-                        // merged, the distance between them has collapsed and their
-                        // proximity is no longer needed.
-                        proximities.pop();
-
-                        // If the merged node is now adjacent to another node, we
-                        // calculate the difference in proximities to determine if
-                        // we must merge again.
-                        if let Some(previous_proximity) = proximities.last() {
-                            difference = previous_proximity - proximity;
-                        } else {
-                            break;
-                        }
+                let proximity = current.node.common_path_length(&next.node);
+                while {
+                    // If the merged node is now adjacent to another node, we
+                    // calculate the difference in proximities to determine if
+                    // we must merge again.
+                    if let Some(previous_proximity) = proximities.last() {
+                        *previous_proximity > proximity
+                    } else {
+                        false
                     }
+                } {
+                    // A positive difference in proximity means that the current
+                    // node is closer to its right neighbor than its left
+                    // neighbor. We now merge the current node with its right
+                    // neighbor.
+                    let current = nodes.pop().expect("Expected current node to be present");
+                    let right = nodes.pop().expect("Expected right node to be present");
+                    let merged = merge_branches(&mut storage, current, right)?;
+                    nodes.push(merged);
+
+                    // Now that the current node and its right neighbour are
+                    // merged, the distance between them has collapsed and their
+                    // proximity is no longer needed.
+                    proximities.pop();
                 }
                 proximities.push(proximity);
             }
@@ -953,7 +950,8 @@ mod test {
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
             let mut tree = MerkleTree::new(&mut storage);
-            let input = data;
+            let mut input = data.clone();
+            input.sort_unstable();
             for (key, value) in input.iter() {
                 tree.update(key, value).unwrap();
             }

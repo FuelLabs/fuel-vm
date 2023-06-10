@@ -950,8 +950,7 @@ mod test {
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
             let mut tree = MerkleTree::new(&mut storage);
-            let mut input = data.clone();
-            input.sort_unstable();
+            let input = data.clone();
             for (key, value) in input.iter() {
                 tree.update(key, value).unwrap();
             }

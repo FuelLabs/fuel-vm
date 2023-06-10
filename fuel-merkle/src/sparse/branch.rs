@@ -69,7 +69,7 @@ where
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
-                storage.insert(&current_node.hash(), &current_node.as_ref().into())?;
+                storage.insert(current_node.hash(), &current_node.as_ref().into())?;
             }
             right_branch.node = current_node;
         }
@@ -81,7 +81,7 @@ where
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(&path, &current_node, &placeholder);
-                storage.insert(&current_node.hash(), &current_node.as_ref().into())?;
+                storage.insert(current_node.hash(), &current_node.as_ref().into())?;
             }
             left_branch.node = current_node;
         }
@@ -91,6 +91,6 @@ where
             node,
         }
     };
-    storage.insert(&branch.node.hash(), &branch.node.as_ref().into())?;
+    storage.insert(branch.node.hash(), &branch.node.as_ref().into())?;
     Ok(branch)
 }

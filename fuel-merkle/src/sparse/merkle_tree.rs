@@ -46,7 +46,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     pub fn root(&self) -> Bytes32 {
-        self.root_node().hash()
+        *self.root_node().hash()
     }
 
     // PRIVATE
@@ -137,7 +137,7 @@ where
 
         for branch in branches.iter() {
             let leaf = &branch.node;
-            storage.insert(&leaf.hash(), &leaf.as_ref().into())?;
+            storage.insert(leaf.hash(), &leaf.as_ref().into())?;
         }
 
         if branches.is_empty() {
@@ -202,7 +202,7 @@ where
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
-            storage.insert(&node.hash(), &node.as_ref().into())?;
+            storage.insert(node.hash(), &node.as_ref().into())?;
         }
 
         let tree = Self {
@@ -222,7 +222,7 @@ where
         }
 
         let leaf_node = Node::create_leaf(key, data);
-        self.storage.insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
+        self.storage.insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -292,7 +292,7 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node = Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
 
             // Merge placeholders
@@ -303,7 +303,7 @@ where
             for placeholder in placeholders {
                 current_node = Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
         }
 
@@ -311,7 +311,7 @@ where
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -326,7 +326,7 @@ where
         side_nodes: &[Node],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
-            self.storage.remove(&node.hash())?;
+            self.storage.remove(node.hash())?;
         }
 
         let path = requested_leaf_key;
@@ -365,7 +365,7 @@ where
                 if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
                     current_node = Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
-                        .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                        .insert(current_node.hash(), &current_node.as_ref().into())?;
                 }
             }
         }
@@ -374,7 +374,7 @@ where
         for side_node in side_nodes_iter {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -734,16 +734,16 @@ mod test {
 
         let leaf_2_key = leaf_1.hash();
         let leaf_2_data = b"DATA_2";
-        let leaf_2 = Node::create_leaf(&leaf_2_key, leaf_2_data);
+        let leaf_2 = Node::create_leaf(leaf_2_key, leaf_2_data);
 
-        tree.update(&leaf_2_key, leaf_2_data).unwrap();
+        tree.update(leaf_2_key, leaf_2_data).unwrap();
         tree.update(&leaf_1_key, leaf_1_data).unwrap();
         assert_eq!(
-            tree.storage.get(&leaf_2.hash()).unwrap().unwrap().into_owned(),
+            tree.storage.get(leaf_2.hash()).unwrap().unwrap().into_owned(),
             leaf_2.as_ref().into()
         );
         assert_eq!(
-            tree.storage.get(&leaf_1.hash()).unwrap().unwrap().into_owned(),
+            tree.storage.get(leaf_1.hash()).unwrap().unwrap().into_owned(),
             leaf_1.as_ref().into()
         );
     }

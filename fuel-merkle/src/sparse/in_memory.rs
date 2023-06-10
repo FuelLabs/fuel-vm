@@ -32,6 +32,15 @@ impl MerkleTree {
         }
     }
 
+    pub fn from_set<I, D>(set: I) -> Self
+    where
+        I: Iterator<Item = (Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        let tree = SparseMerkleTree::from_set(Storage::new(), set).expect("`Storage` can't return error");
+        Self { tree }
+    }
+
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) {
         let _ = self.tree.update(key, data);
     }

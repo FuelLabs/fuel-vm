@@ -8,6 +8,7 @@ use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 
 use alloc::vec::Vec;
 use core::iter;
+use core::ops::Deref;
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided into chunks
 /// of this size and pushed to the Merkle tree.
@@ -74,9 +75,7 @@ impl Contract {
     where
         I: Iterator<Item = &'a StorageSlot>,
     {
-        let mut tree = SparseMerkleTree::new();
-
-        storage_slots.for_each(|s| tree.update(s.key(), s.value().as_ref()));
+        let tree = SparseMerkleTree::from_set(storage_slots.map(|slot| (*slot.key().deref(), *slot.value().deref())));
 
         tree.root().into()
     }

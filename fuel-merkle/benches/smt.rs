@@ -38,7 +38,7 @@ where
 {
     let storage = Storage::new();
     let mut tree = MerkleTree::new(storage);
-    for (key, data) in set.into_iter() {
+    for (key, data) in set {
         tree.update(&key, data.as_ref())?;
     }
     let root = tree.root();

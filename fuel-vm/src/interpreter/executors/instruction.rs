@@ -641,7 +641,7 @@ where
                 let (a, b, c, d) = call.unpack();
 
                 // Enter call context
-                self.prepare_call(r!(a), r!(b), r!(c), r!(d))?;
+                self.prepare_call(a, b, c, d)?;
             }
 
             Instruction::CB(cb) => {

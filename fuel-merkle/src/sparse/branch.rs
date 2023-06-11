@@ -4,32 +4,11 @@ use crate::{
 };
 use fuel_storage::{Mappable, StorageMutate};
 
-use core::cmp::Ordering;
 use core::iter;
 
 pub(crate) struct Branch {
     pub bits: Bytes32,
     pub node: Node,
-}
-
-impl PartialEq<Self> for Branch {
-    fn eq(&self, other: &Self) -> bool {
-        self.bits.eq(&other.bits)
-    }
-}
-
-impl Eq for Branch {}
-
-impl PartialOrd<Self> for Branch {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.bits.partial_cmp(&other.bits)
-    }
-}
-
-impl Ord for Branch {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.bits.cmp(&other.bits)
-    }
 }
 
 impl From<Node> for Branch {

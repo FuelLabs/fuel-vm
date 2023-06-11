@@ -114,8 +114,9 @@ impl MerkleTree {
         let tree = sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
             .expect("`Storage` can't return error");
         let root = tree.root();
+        let nodes = tree.into_storage().storage;
 
-        (root, tree.into_storage().storage)
+        (root, nodes)
     }
 
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) {

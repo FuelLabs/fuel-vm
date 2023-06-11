@@ -1,6 +1,5 @@
 use fuel_merkle::common::Bytes32;
-use fuel_merkle::sparse::in_memory;
-use fuel_merkle::sparse::in_memory::MerkleTreeKey;
+use fuel_merkle::sparse::{in_memory, MerkleTreeKey};
 use serde::Deserialize;
 use std::convert::TryInto;
 
@@ -71,11 +70,11 @@ struct InMemoryMerkleTreeTestAdaptor {
 
 impl MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
     fn update(&mut self, key: &Bytes32, data: &[u8]) {
-        self.tree.as_mut().update(&MerkleTreeKey::new_without_hash(*key), data)
+        self.tree.as_mut().update(MerkleTreeKey::new_without_hash(*key), data)
     }
 
     fn delete(&mut self, key: &Bytes32) {
-        self.tree.as_mut().delete(&MerkleTreeKey::new_without_hash(*key))
+        self.tree.as_mut().delete(MerkleTreeKey::new_without_hash(*key))
     }
 
     fn root(&self) -> Bytes32 {

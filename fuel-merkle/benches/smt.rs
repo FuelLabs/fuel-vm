@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use fuel_merkle::common::Bytes32;
 use fuel_merkle::sparse::in_memory;
-use fuel_merkle::sparse::in_memory::MerkleTreeKey;
+use fuel_merkle::sparse::MerkleTreeKey;
 use rand::Rng;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
@@ -23,7 +23,7 @@ where
 {
     let mut tree = in_memory::MerkleTree::new();
     for (key, data) in set {
-        tree.update(&key, data.as_ref());
+        tree.update(key, data.as_ref());
     }
     tree.root()
 }

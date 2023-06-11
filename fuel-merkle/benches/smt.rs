@@ -25,8 +25,7 @@ where
     for (key, data) in set {
         tree.update(&key, data.as_ref());
     }
-    let root = tree.root();
-    root
+    tree.root()
 }
 
 pub fn subject_root<I, D>(set: I) -> Bytes32

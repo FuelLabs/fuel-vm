@@ -39,6 +39,8 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 pub struct MerkleTreeKey(Bytes32);
 
 impl MerkleTreeKey {
+    /// The safe way to create a `Self`. It hashes the `storage_key`, making
+    /// it entirely random and preventing SMT structure manipulation.
     pub fn new<B>(storage_key: B) -> Self
     where
         B: AsRef<[u8]>,
@@ -54,12 +56,25 @@ impl MerkleTreeKey {
         Self(hash)
     }
 
+    /// Unsafe analog to create a `Self` that doesn't hash the `storage_key` unlike `Self::new`.
+    ///
+    /// # Safety
+    ///
+    /// It is safe to use this method if you know that `storage_key`
+    /// was randomly generated like `ContractId` or `AssetId`.
+    pub unsafe fn convert<B>(storage_key: B) -> Self
+    where
+        B: Into<Bytes32>,
+    {
+        Self(storage_key.into())
+    }
+
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_without_hash<B>(storage_key: B) -> Self
     where
         B: Into<Bytes32>,
     {
-        Self(storage_key.into())
+        unsafe { Self::convert(storage_key) }
     }
 }
 

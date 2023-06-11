@@ -126,12 +126,16 @@ where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn from_set<I, D>(mut storage: StorageType, set: I) -> Result<Self, StorageError>
+    pub fn from_set<B, I, D>(mut storage: StorageType, set: I) -> Result<Self, StorageError>
     where
-        I: Iterator<Item = (Bytes32, D)>,
+        I: Iterator<Item = (B, D)>,
+        B: Into<Bytes32>,
         D: AsRef<[u8]>,
     {
-        let sorted = set.into_iter().collect::<alloc::collections::BTreeMap<Bytes32, D>>();
+        let sorted = set
+            .into_iter()
+            .map(|(k, v)| (k.into(), v))
+            .collect::<alloc::collections::BTreeMap<Bytes32, D>>();
         let mut branches = sorted
             .iter()
             .filter(|(_, value)| !value.as_ref().is_empty())

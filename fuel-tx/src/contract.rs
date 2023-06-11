@@ -3,7 +3,7 @@ use crate::{CheckError, StorageSlot, Transaction};
 use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
-use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
+use fuel_merkle::sparse::in_memory::{MerkleTree as SparseMerkleTree, MerkleTreeKey};
 use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 
 use alloc::vec::Vec;
@@ -75,8 +75,9 @@ impl Contract {
     where
         I: Iterator<Item = &'a StorageSlot>,
     {
-        let root =
-            SparseMerkleTree::root_from_set(storage_slots.map(|slot| (*slot.key().deref(), *slot.value().deref())));
+        let root = SparseMerkleTree::root_from_set(
+            storage_slots.map(|slot| (MerkleTreeKey::new(*slot.key().deref()), *slot.value().deref())),
+        );
 
         root.into()
     }

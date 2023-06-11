@@ -22,6 +22,42 @@ impl Mappable for NodesTable {
 type Storage = StorageMap<NodesTable>;
 type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
+/// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
+/// The type contains only one constructor that hashes the storage key.
+#[derive(Debug, Clone, Copy)]
+pub struct MerkleTreeKey(Bytes32);
+
+impl MerkleTreeKey {
+    pub fn new<B>(storage_key: B) -> Self
+    where
+        B: AsRef<[u8]>,
+    {
+        use digest::Digest;
+        let mut hash = sha2::Sha256::new();
+        hash.update(storage_key.as_ref());
+        let hash = hash
+            .finalize()
+            .try_into()
+            .expect("`sha2::Sha256` can't fail during hashing");
+
+        Self(hash)
+    }
+
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn new_without_hash<B>(storage_key: B) -> Self
+    where
+        B: Into<Bytes32>,
+    {
+        Self(storage_key.into())
+    }
+}
+
+impl From<MerkleTreeKey> for Bytes32 {
+    fn from(value: MerkleTreeKey) -> Self {
+        value.0
+    }
+}
+
 #[derive(Debug)]
 pub struct MerkleTree {
     tree: SparseMerkleTree,
@@ -36,7 +72,7 @@ impl MerkleTree {
 
     pub fn from_set<I, D>(set: I) -> Self
     where
-        I: Iterator<Item = (Bytes32, D)>,
+        I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
         let tree = SparseMerkleTree::from_set(Storage::new(), set).expect("`Storage` can't return error");
@@ -45,7 +81,7 @@ impl MerkleTree {
 
     pub fn root_from_set<I, D>(set: I) -> Bytes32
     where
-        I: Iterator<Item = (Bytes32, D)>,
+        I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
         #[derive(Default)]
@@ -80,7 +116,7 @@ impl MerkleTree {
 
     pub fn nodes_from_set<I, D>(set: I) -> (Bytes32, Vec<(Bytes32, Primitive)>)
     where
-        I: Iterator<Item = (Bytes32, D)>,
+        I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
         #[derive(Default)]
@@ -119,12 +155,12 @@ impl MerkleTree {
         (root, nodes)
     }
 
-    pub fn update(&mut self, key: &Bytes32, data: &[u8]) {
-        let _ = self.tree.update(key, data);
+    pub fn update(&mut self, key: &MerkleTreeKey, data: &[u8]) {
+        let _ = self.tree.update(&key.0, data);
     }
 
-    pub fn delete(&mut self, key: &Bytes32) {
-        let _ = self.tree.delete(key);
+    pub fn delete(&mut self, key: &MerkleTreeKey) {
+        let _ = self.tree.delete(&key.0);
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -143,6 +179,10 @@ mod test {
     use super::*;
     use sparse::hash::sum;
 
+    fn key(data: &[u8]) -> MerkleTreeKey {
+        MerkleTreeKey::new_without_hash(sum(data))
+    }
+
     #[test]
     fn test_empty_root() {
         let tree = MerkleTree::new();
@@ -155,7 +195,7 @@ mod test {
     fn test_update_1() {
         let mut tree = MerkleTree::new();
 
-        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x00"), b"DATA");
 
         let root = tree.root();
         let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
@@ -166,8 +206,8 @@ mod test {
     fn test_update_2() {
         let mut tree = MerkleTree::new();
 
-        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x00"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x01"), b"DATA");
 
         let root = tree.root();
         let expected_root = "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
@@ -178,9 +218,9 @@ mod test {
     fn test_update_3() {
         let mut tree = MerkleTree::new();
 
-        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA");
-        tree.update(&sum(b"\x00\x00\x00\x02"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x00"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x01"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x02"), b"DATA");
 
         let root = tree.root();
         let expected_root = "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
@@ -191,8 +231,8 @@ mod test {
     fn test_update_1_delete_1() {
         let mut tree = MerkleTree::new();
 
-        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
-        tree.delete(&sum(b"\x00\x00\x00\x00"));
+        tree.update(&key(b"\x00\x00\x00\x00"), b"DATA");
+        tree.delete(&key(b"\x00\x00\x00\x00"));
 
         let root = tree.root();
         let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -203,9 +243,9 @@ mod test {
     fn test_update_2_delete_1() {
         let mut tree = MerkleTree::new();
 
-        tree.update(&sum(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(&sum(b"\x00\x00\x00\x01"), b"DATA");
-        tree.delete(&sum(b"\x00\x00\x00\x01"));
+        tree.update(&key(b"\x00\x00\x00\x00"), b"DATA");
+        tree.update(&key(b"\x00\x00\x00\x01"), b"DATA");
+        tree.delete(&key(b"\x00\x00\x00\x01"));
 
         let root = tree.root();
         let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";

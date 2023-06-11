@@ -30,6 +30,7 @@ thiserror = "1.0"
 [features]
 default = ["std"]
 std = ["dep:thiserror", "digest/default", "hex/default", "sha2/default"]
+test-helpers = []
 
 [[test]]
 name = "tests-data"

@@ -49,6 +49,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         *self.root_node().hash()
     }
 
+    pub fn into_storage(self) -> StorageType {
+        self.storage
+    }
+
     // PRIVATE
 
     fn root_node(&self) -> &Node {

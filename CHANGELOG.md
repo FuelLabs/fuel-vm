@@ -32,6 +32,9 @@ Description of the upcoming release here.
 
 - [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Fixed bug with not-working `CreateMetadata`.
 
+
+- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Fixed bug with not-working `CreateMetadata`.
+
 #### Breaking
 
 - [#473](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating

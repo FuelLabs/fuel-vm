@@ -293,7 +293,7 @@ mod tests {
         let expected_root = {
             let mut tree = BinaryMerkleTree::new();
 
-            let leaves = code.chunks(LEAF_SIZE).into_iter().collect::<Vec<_>>();
+            let leaves = code.chunks(LEAF_SIZE).collect::<Vec<_>>();
             tree.push(leaves[0]);
             tree.push(leaves[1]);
             tree.push(leaves[2]);

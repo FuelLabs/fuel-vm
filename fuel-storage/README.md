@@ -6,4 +6,6 @@
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
 
-Storage traits for Fuel storage-backed data structures.
+Storage traits for Fuel storage-backed data structures. 
+The storage abstraction is used to connect FuelVM, `fuel-merkle`, and `fuel-core`
+together without direct access.

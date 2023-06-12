@@ -647,20 +647,20 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for i in 0_u32..10 {
-            let key = sum(i.to_be_bytes());
-            tree.update(&key, b"DATA").unwrap();
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA").unwrap();
         }
 
         let root_hash_before = tree.root();
 
         for i in 3_u32..7 {
-            let key = sum(i.to_be_bytes());
-            tree.update(&key, b"DATA_2").unwrap();
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA_2").unwrap();
         }
 
         for i in 3_u32..7 {
-            let key = sum(i.to_be_bytes());
-            tree.update(&key, b"DATA").unwrap();
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA").unwrap();
         }
 
         let root_hash_after = tree.root();

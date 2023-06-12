@@ -3,11 +3,12 @@ use crate::{CheckError, StorageSlot, Transaction};
 use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
-use fuel_merkle::sparse::in_memory::MerkleTree as SparseMerkleTree;
+use fuel_merkle::sparse::{in_memory::MerkleTree as SparseMerkleTree, MerkleTreeKey};
 use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
 
 use alloc::vec::Vec;
 use core::iter;
+use core::ops::Deref;
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided into chunks
 /// of this size and pushed to the Merkle tree.
@@ -74,11 +75,11 @@ impl Contract {
     where
         I: Iterator<Item = &'a StorageSlot>,
     {
-        let mut tree = SparseMerkleTree::new();
+        let root = SparseMerkleTree::root_from_set(
+            storage_slots.map(|slot| (MerkleTreeKey::new(*slot.key().deref()), *slot.value().deref())),
+        );
 
-        storage_slots.for_each(|s| tree.update(s.key(), s.value().as_ref()));
-
-        tree.root().into()
+        root.into()
     }
 
     /// The default state root value without any entries
@@ -292,7 +293,7 @@ mod tests {
         let expected_root = {
             let mut tree = BinaryMerkleTree::new();
 
-            let leaves = code.chunks(LEAF_SIZE).into_iter().collect::<Vec<_>>();
+            let leaves = code.chunks(LEAF_SIZE).collect::<Vec<_>>();
             tree.push(leaves[0]);
             tree.push(leaves[1]);
             tree.push(leaves[2]);

@@ -1,9 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use fuel_merkle::{
-    common::{Bytes32, StorageMap},
-    sparse::{MerkleTree, MerkleTreeError, Primitive},
-};
-use fuel_storage::{Mappable, StorageInspect};
+use fuel_merkle::common::Bytes32;
+use fuel_merkle::sparse::in_memory;
+use fuel_merkle::sparse::MerkleTreeKey;
 use rand::Rng;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
@@ -15,45 +13,44 @@ where
     bytes
 }
 
-#[derive(Debug)]
-pub struct NodesTable;
-
-impl Mappable for NodesTable {
-    type Key = Self::OwnedKey;
-    type OwnedKey = Bytes32;
-    type Value = Self::OwnedValue;
-    type OwnedValue = Primitive;
-}
-
-type Storage = StorageMap<NodesTable>;
-type StorageError = <Storage as StorageInspect<NodesTable>>::Error;
-
 // Naive update set: Updates the Merkle tree sequentially.
 // This is the baseline. Performance improvements to the Sparse Merkle Tree's
 // update_set must demonstrate an increase in speed relative to this baseline.
-pub fn baseline_root<I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
+pub fn baseline_root<I, D>(set: I) -> Bytes32
 where
-    I: Iterator<Item = (Bytes32, D)>,
+    I: Iterator<Item = (MerkleTreeKey, D)>,
     D: AsRef<[u8]>,
 {
-    let storage = Storage::new();
-    let mut tree = MerkleTree::new(storage);
+    let mut tree = in_memory::MerkleTree::new();
     for (key, data) in set {
-        tree.update(&key, data.as_ref())?;
+        tree.update(key, data.as_ref());
     }
-    let root = tree.root();
-    Ok(root)
+    tree.root()
 }
 
-pub fn subject_root<I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
+pub fn subject_root<I, D>(set: I) -> Bytes32
 where
-    I: Iterator<Item = (Bytes32, D)>,
+    I: Iterator<Item = (MerkleTreeKey, D)>,
     D: AsRef<[u8]>,
 {
-    let storage = Storage::new();
-    let tree = MerkleTree::from_set(storage, set)?;
-    let root = tree.root();
-    Ok(root)
+    let tree = in_memory::MerkleTree::from_set(set);
+    tree.root()
+}
+
+pub fn subject_only_root<I, D>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (MerkleTreeKey, D)>,
+    D: AsRef<[u8]>,
+{
+    in_memory::MerkleTree::root_from_set(set)
+}
+
+pub fn subject_nodes<I, D>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (MerkleTreeKey, D)>,
+    D: AsRef<[u8]>,
+{
+    in_memory::MerkleTree::nodes_from_set(set).0
 }
 
 fn sparse_merkle_tree(c: &mut Criterion) {
@@ -61,16 +58,27 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     use rand::SeedableRng;
 
     let rng = &mut StdRng::seed_from_u64(8586);
-    let gen = || Some((random_bytes32(rng), random_bytes32(rng)));
-    let mut data = std::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
-    data.sort();
+    let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
+    let data = std::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
 
-    let expected_root = baseline_root(data.clone().into_iter()).unwrap();
-    let root = subject_root(data.clone().into_iter()).unwrap();
+    let expected_root = baseline_root(data.clone().into_iter());
+    let root = subject_root(data.clone().into_iter());
+    let only_root = subject_only_root(data.clone().into_iter());
+    let nodes_root = subject_nodes(data.clone().into_iter());
 
     assert_eq!(expected_root, root);
+    assert_eq!(expected_root, only_root);
+    assert_eq!(expected_root, nodes_root);
 
     let mut group_update = c.benchmark_group("from-set");
+
+    group_update.bench_with_input("root-from-set", &data, |b, data| {
+        b.iter(|| subject_only_root(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("nodes-from-set", &data, |b, data| {
+        b.iter(|| subject_nodes(black_box(data.clone().into_iter())));
+    });
 
     group_update.bench_with_input("from-set", &data, |b, data| {
         b.iter(|| subject_root(black_box(data.clone().into_iter())));

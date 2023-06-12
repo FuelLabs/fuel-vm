@@ -276,7 +276,17 @@ where
     Tx: ExecutableTransaction,
 {
     /// Prepare a call instruction for execution
-    pub(crate) fn prepare_call(
+    pub fn prepare_call(&mut self, ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> Result<(), RuntimeError> {
+        self.prepare_call_inner(
+            self.registers[ra],
+            self.registers[rb],
+            self.registers[rc],
+            self.registers[rd],
+        )
+    }
+
+    /// Prepare a call instruction for execution
+    fn prepare_call_inner(
         &mut self,
         call_params_mem_address: Word,
         amount_of_coins_to_forward: Word,

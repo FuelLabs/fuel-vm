@@ -10,10 +10,17 @@ Description of the upcoming release here.
 
 ### Added
 
+- [#476](https://github.com/FuelLabs/fuel-vm/pull/476): The `fuel_vm::Call` supports `From<[u8; Self::LEN]>` and `Into<[u8; Self::LEN]>`.
+
 - [#484](https://github.com/FuelLabs/fuel-vm/pull/484): The `sparse::in_memory::MerkleTree`
-    got new methods `from_set`, `root_from_set`, and `nodes_from_set` methods. These methods allow 
-    a more optimal way to build and calculate the SMT when you know all leafs. 
-    The `Contract::initial_state_root` is much faster now(in ~15 times).
+    got new methods `from_set`, `root_from_set`, and `nodes_from_set` methods. These methods allow
+    a more optimal way to build and calculate the SMT when you know all leaves.
+    The `Contract::initial_state_root` is much faster now (by ~15 times).
+
+### Changed
+
+- [#478](https://github.com/FuelLabs/fuel-vm/pull/478): The `memcopy` method is updated
+    and returns `MemoryWriteOverlap` instead of `MemoryOverflow`.
 
 ### Fixed
 
@@ -24,9 +31,13 @@ Description of the upcoming release here.
 
 #### Breaking
 
-- [#386](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
+- [#473](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
     that the new `$sp` value isn't below `$ssp`, allowing write access to non-owned
     memory. This is now fixed, and attempting to set an incorrect `$sp` value panics.
+
+### Removed
+
+- [#478](https://github.com/FuelLabs/fuel-vm/pull/478): The `CheckedMemRange` is replaced by the `MemoryRange`.
 
 ## [Version 0.33.0]
 

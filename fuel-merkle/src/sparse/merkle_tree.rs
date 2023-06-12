@@ -155,23 +155,51 @@ where
         let mut nodes = Vec::<Branch>::with_capacity(branches.len());
         let mut proximities = Vec::<usize>::with_capacity(branches.len());
 
-        while let Some(next) = branches.pop() {
+        // Building the tree starts by merging all leaf nodes where possible.
+        // Given a set of leaf nodes sorted left to right (i.e., keys are sorted
+        // in lexical order), we scan the leaf set right to left, and analyze a
+        // moving window of three leaves: a center (or "current") leaf, its left
+        // neighbor, and its right neighbor.
+        //
+        // When merging leaf nodes, we analyze this three-node window to
+        // determine if the condition for merging is met: When the current node
+        // is closer to its right neighbor than it is to its left neighbor, we
+        // merge the current node with its right neighbor. The merged node then
+        // becomes the center of the window, and we must check the merge
+        // condition again. We calculate proximity using the common path length
+        // between two nodes, which is also the depth of their shared ancestor
+        // in the tree.
+        //
+        // This three-node window is centered around a current node, and moves
+        // leftward: At the next iteration, the current node is now the right
+        // node, the left node is now the current node, and so on. When we have
+        // checked all windows, we know that we have merged all leaf nodes where
+        // possible.
+        while let Some(left) = branches.pop() {
             if let Some(current) = nodes.last() {
-                let proximity = current.node.common_path_length(&next.node);
+                let left_proximity = current.node.common_path_length(&left.node);
                 while {
-                    // If the merged node is now adjacent to another node, we
-                    // calculate the difference in proximities to determine if
-                    // we must merge again.
-                    if let Some(previous_proximity) = proximities.last() {
-                        *previous_proximity > proximity
+                    // The current node's proximity to its right neighbor was
+                    // stored previously. We now compare the distances between
+                    // the current node's left and right neighbors. If, and only
+                    // if, the current node is closer to its right neighbor, we
+                    // merge these nodes to form an ancestor node. We then
+                    // reform the window, using the ancestor node in the center,
+                    // to check if we must merge again.
+                    //
+                    // If the current node is closer to its left, we do not have
+                    // enough information to merge nodes, and we must continue
+                    // scanning the leaf set leftwards to find a configuration
+                    // that satisfies the merge condition.
+                    if let Some(right_proximity) = proximities.last() {
+                        *right_proximity > left_proximity
                     } else {
                         false
                     }
                 } {
-                    // A positive difference in proximity means that the current
-                    // node is closer to its right neighbor than its left
-                    // neighbor. We now merge the current node with its right
-                    // neighbor.
+                    // The current node is closer to its right neighbor than its
+                    // left neighbor. We now merge the current node with its
+                    // right neighbor.
                     let current = nodes.pop().expect("Expected current node to be present");
                     let right = nodes.pop().expect("Expected right node to be present");
                     let merged = merge_branches(&mut storage, current, right)?;
@@ -182,11 +210,16 @@ where
                     // proximity is no longer needed.
                     proximities.pop();
                 }
-                proximities.push(proximity);
+                proximities.push(left_proximity);
             }
-            nodes.push(next);
+            nodes.push(left);
         }
 
+        // Where possible, all the leaves have been merged. The remaining leaves
+        // and nodes are stacked in order of height descending. This means that
+        // they are also ordered with the leftmost leaves at the top and the
+        // rightmost nodes at the bottom. We can iterate through the stack and
+        // merge them left to right.
         let top = {
             let mut node = nodes.pop().expect("Nodes stack must have at least 1 element");
             while let Some(next) = nodes.pop() {
@@ -195,6 +228,10 @@ where
             node
         };
 
+        // Lastly, all leaves and nodes are merged into one. The resulting node
+        // may still be an ancestor node below the root. To calculate the final
+        // root, we merge placeholder nodes along the path until the resulting
+        // node has the final height and forms the root node.
         let mut node = top.node;
         let path = top.bits;
         let height = node.height() as usize;

@@ -59,7 +59,7 @@ already that you can reuse to reproduce a bug. You need to add a new `test_case`
 
 Before the test and run this specific test or all tests.
 
-#### Run own script
+#### Build custom scripts
 
 If you need to write your own specific script and run it, you can use `test_helpers::run_script`.
 
@@ -82,9 +82,9 @@ fn dynamic_call_frame_ops_bug_missing_ssp_check() {
 
 It returns `receipts` that contain result of execution. The `assert_panics` can be used to check for panics.
 
-#### Build own transaction
+#### Build custom transactions
 
 The `fuel-tx` provides `fuel_tx::TransactionBuilder` that simplifies the building 
-of the own transaction for testing purposes.
+of custom transaction for testing purposes.
 
 You can check how `TransactionBuilder::script` or `TransactionBuilder::create` are used for better understanding.

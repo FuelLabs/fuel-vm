@@ -128,8 +128,8 @@ where
 {
     /// Build a sparse Merkle tree from a set of key-value pairs. This is
     /// equivalent to creating an empty sparse Merkle tree and sequentially
-    /// calling `update` for each key-value pair. This constructor is more
-    /// performant than calling individual sequential updates and is the
+    /// calling [update](Self::update) for each key-value pair. This constructor
+    /// is more performant than calling individual sequential updates and is the
     /// preferred approach when the key-values are known upfront.Leaves can be
     /// appended to the returned tree using `update` to further accumulate leaf
     /// data.

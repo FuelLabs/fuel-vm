@@ -12,6 +12,11 @@ Description of the upcoming release here.
 
 - [#476](https://github.com/FuelLabs/fuel-vm/pull/476): The `fuel_vm::Call` supports `From<[u8; Self::LEN]>` and `Into<[u8; Self::LEN]>`.
 
+- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): The `sparse::in_memory::MerkleTree`
+    got new methods `from_set`, `root_from_set`, and `nodes_from_set` methods. These methods allow
+    a more optimal way to build and calculate the SMT when you know all leaves.
+    The `Contract::initial_state_root` is much faster now (by ~15 times).
+
 ### Changed
 
 - [#478](https://github.com/FuelLabs/fuel-vm/pull/478): The `memcopy` method is updated
@@ -20,6 +25,9 @@ Description of the upcoming release here.
 ### Fixed
 
 - [#482](https://github.com/FuelLabs/fuel-vm/pull/482): This PR address a security issue where updates to a Sparse Merkle Tree could deliberately overwrite existing leaves by setting the leaf key to the hash of an existing leaf or node. This is done by removing the insertion of the leaf using the leaf key.
+
+
+- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Fixed bug with not-working `CreateMetadata`.
 
 #### Breaking
 

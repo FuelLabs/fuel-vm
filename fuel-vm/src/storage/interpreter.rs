@@ -53,6 +53,7 @@ pub trait InterpreterStorage:
         self.storage_contract_insert(id, contract)?;
         self.storage_contract_root_insert(id, salt, root)?;
 
+        // On the `fuel-core` side it is done in more optimal way
         slots
             .iter()
             .try_for_each(|s| self.merkle_contract_state_insert(id, s.key(), s.value()).map(|_| ()))

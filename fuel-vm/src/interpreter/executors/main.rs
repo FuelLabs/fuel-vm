@@ -212,13 +212,23 @@ where
         let salt = create.salt();
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
-        let root = metadata.map(|m| m.contract_root).unwrap_or(contract.root());
-        let storage_root = metadata
-            .map(|m| m.state_root)
-            .unwrap_or(Contract::initial_state_root(storage_slots.iter()));
-        let id = metadata
-            .map(|m| m.contract_id)
-            .unwrap_or(contract.id(salt, &root, &storage_root));
+        let root = if let Some(m) = metadata {
+            m.contract_root
+        } else {
+            contract.root()
+        };
+
+        let storage_root = if let Some(m) = metadata {
+            m.state_root
+        } else {
+            Contract::initial_state_root(storage_slots.iter())
+        };
+
+        let id = if let Some(m) = metadata {
+            m.contract_id
+        } else {
+            contract.id(salt, &root, &storage_root)
+        };
 
         // Prevent redeployment of contracts
         if storage

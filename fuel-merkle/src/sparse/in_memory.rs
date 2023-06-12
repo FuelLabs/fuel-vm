@@ -1,8 +1,10 @@
 use crate::{
     common::{Bytes32, StorageMap},
     sparse::{self, Primitive},
-    storage::Mappable,
+    storage::{Mappable, StorageInspect, StorageMutate},
 };
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
 
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle
 /// tree, where the storage key is `Bytes32` and the value is the [`Buffer`](crate::sparse::Buffer)
@@ -30,6 +32,114 @@ impl MerkleTree {
         Self {
             tree: SparseMerkleTree::new(Storage::new()),
         }
+    }
+
+    /// Build a sparse Merkle tree from a set of key-value pairs. This is
+    /// equivalent to creating an empty sparse Merkle tree and sequentially
+    /// calling [update](Self::update) for each key-value pair. This constructor
+    /// is more performant than calling individual sequential updates and is the
+    /// preferred approach when the key-values are known upfront. Leaves can be
+    /// appended to the returned tree using `update` to further accumulate leaf
+    /// data.
+    pub fn from_set<I, D>(set: I) -> Self
+    where
+        I: Iterator<Item = (Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        let tree = SparseMerkleTree::from_set(Storage::new(), set).expect("`Storage` can't return error");
+        Self { tree }
+    }
+
+    /// Calculate the sparse Merkle root from a set of key-value pairs. This is
+    /// similar to constructing a new tree from a set of key-value pairs using
+    /// [from_set](Self::from_set), except this method returns only the root; it
+    /// does not write to storage nor return a sparse Merkle tree instance. It
+    /// is equivalent to calling `from_set(..)`, followed by `root()`, but does
+    /// not incur the overhead of storage writes. This can be helpful when we
+    /// know all the key-values in the set upfront and we will not need to
+    /// update the set in the future.
+    pub fn root_from_set<I, D>(set: I) -> Bytes32
+    where
+        I: Iterator<Item = (Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        #[derive(Default)]
+        struct EmptyStorage;
+
+        impl StorageInspect<NodesTable> for EmptyStorage {
+            type Error = core::convert::Infallible;
+
+            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+                Ok(None)
+            }
+
+            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
+                Ok(false)
+            }
+        }
+
+        impl StorageMutate<NodesTable> for EmptyStorage {
+            fn insert(&mut self, _: &Bytes32, _: &Primitive) -> Result<Option<Primitive>, Self::Error> {
+                Ok(None)
+            }
+
+            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+                Ok(None)
+            }
+        }
+
+        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage::default(), set)
+            .expect("`Storage` can't return error");
+        tree.root()
+    }
+
+    /// Calculate the sparse Merkle root as well as all nodes in the Merkle tree
+    /// from a set of key-value pairs. This is similar to constructing a new
+    /// tree from a set of key-value pairs using [from_set](Self::from_set),
+    /// except this method returns only the root and the list of leaves and
+    /// nodes in the tree; it does not return a sparse Merkle tree instance.
+    /// This can be helpful when we know all the key-values in the set upfront
+    /// and we need to defer storage writes, such as expensive database inserts,
+    /// for batch operations later in the process.
+    pub fn nodes_from_set<I, D>(set: I) -> (Bytes32, Vec<(Bytes32, Primitive)>)
+    where
+        I: Iterator<Item = (Bytes32, D)>,
+        D: AsRef<[u8]>,
+    {
+        #[derive(Default)]
+        struct VectorStorage {
+            storage: Vec<(Bytes32, Primitive)>,
+        }
+
+        impl StorageInspect<NodesTable> for VectorStorage {
+            type Error = core::convert::Infallible;
+
+            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+                unimplemented!("Read operation is not supported")
+            }
+
+            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
+                unimplemented!("Read operation is not supported")
+            }
+        }
+
+        impl StorageMutate<NodesTable> for VectorStorage {
+            fn insert(&mut self, key: &Bytes32, value: &Primitive) -> Result<Option<Primitive>, Self::Error> {
+                self.storage.push((*key, *value));
+                Ok(None)
+            }
+
+            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+                unimplemented!("Remove operation is not supported")
+            }
+        }
+
+        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
+            .expect("`Storage` can't return error");
+        let root = tree.root();
+        let nodes = tree.into_storage().storage;
+
+        (root, nodes)
     }
 
     pub fn update(&mut self, key: &Bytes32, data: &[u8]) {

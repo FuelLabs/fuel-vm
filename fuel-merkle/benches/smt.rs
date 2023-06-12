@@ -1,4 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use fuel_merkle::sparse::in_memory;
 use fuel_merkle::{
     common::{Bytes32, StorageMap},
     sparse::{MerkleTree, MerkleTreeError, Primitive},
@@ -45,15 +46,29 @@ where
     Ok(root)
 }
 
-pub fn subject_root<I, D>(set: I) -> Result<Bytes32, MerkleTreeError<StorageError>>
+pub fn subject_root<I, D>(set: I) -> Bytes32
 where
     I: Iterator<Item = (Bytes32, D)>,
     D: AsRef<[u8]>,
 {
-    let storage = Storage::new();
-    let tree = MerkleTree::from_set(storage, set)?;
-    let root = tree.root();
-    Ok(root)
+    let tree = in_memory::MerkleTree::from_set(set);
+    tree.root()
+}
+
+pub fn subject_only_root<I, D>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (Bytes32, D)>,
+    D: AsRef<[u8]>,
+{
+    in_memory::MerkleTree::root_from_set(set)
+}
+
+pub fn subject_nodes<I, D>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (Bytes32, D)>,
+    D: AsRef<[u8]>,
+{
+    in_memory::MerkleTree::nodes_from_set(set).0
 }
 
 fn sparse_merkle_tree(c: &mut Criterion) {
@@ -66,11 +81,23 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     data.sort();
 
     let expected_root = baseline_root(data.clone().into_iter()).unwrap();
-    let root = subject_root(data.clone().into_iter()).unwrap();
+    let root = subject_root(data.clone().into_iter());
+    let only_root = subject_only_root(data.clone().into_iter());
+    let nodes_root = subject_nodes(data.clone().into_iter());
 
     assert_eq!(expected_root, root);
+    assert_eq!(expected_root, only_root);
+    assert_eq!(expected_root, nodes_root);
 
     let mut group_update = c.benchmark_group("from-set");
+
+    group_update.bench_with_input("root-from-set", &data, |b, data| {
+        b.iter(|| subject_only_root(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("nodes-from-set", &data, |b, data| {
+        b.iter(|| subject_nodes(black_box(data.clone().into_iter())));
+    });
 
     group_update.bench_with_input("from-set", &data, |b, data| {
         b.iter(|| subject_root(black_box(data.clone().into_iter())));

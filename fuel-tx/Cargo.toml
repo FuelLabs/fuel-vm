@@ -27,9 +27,9 @@ strum_macros = "0.24"
 [dev-dependencies]
 bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
-fuel-tx = { path = ".", features = ["builder", "random"] }
+fuel-tx = { workspace = true, features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
-fuel-types = { path = "../fuel-types", default-features = false, features = ["random"] }
+fuel-types = { workspace = true, default-features = false, features = ["random"] }
 hex = { version = "0.4" }
 insta = "1.0"
 quickcheck = "1.0"

@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
-### Breaking
+### Fixed
+
+- [#482](https://github.com/FuelLabs/fuel-vm/pull/482): This PR address a security issue where updates to a Sparse Merkle Tree could deliberately overwrite existing leaves by setting the leaf key to the hash of an existing leaf or node. This is done by removing the insertion of the leaf using the leaf key.
+
+#### Breaking
 
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
     that the new `$sp` value isn't below `$ssp`, allowing write access to non-owned

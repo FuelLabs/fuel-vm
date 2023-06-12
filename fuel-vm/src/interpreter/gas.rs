@@ -17,6 +17,7 @@ use fuel_types::Word;
 mod tests;
 
 impl<S, Tx> Interpreter<S, Tx> {
+    /// Global remaining gas amount
     pub(crate) fn remaining_gas(&self) -> Word {
         self.registers[RegId::GGAS]
     }
@@ -41,6 +42,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
     }
 
+    /// Do a gas charge with the given amount, panicing when running out of gas.
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
         let current_contract = self.contract_id();
         let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;

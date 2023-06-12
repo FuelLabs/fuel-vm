@@ -306,12 +306,10 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into());
         }
 
-        // compiler will optimize to memset
-        self.memory[memory_offset..memory_offset_end]
-            .iter_mut()
-            .for_each(|m| *m = 0);
+        // Clear memory
+        self.memory[memory_offset..memory_offset_end].fill(0);
 
-        // fetch the contract id
+        // Fetch the contract id
         let contract_id: &[u8; ContractId::LEN] = &self.memory[contract_id..contract_id_end]
             .try_into()
             .expect("This can't fail, because we checked the bounds above.");
@@ -360,10 +358,14 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             let fp_code_size = add_usize(fp, CallFrame::code_size_offset());
             let fp_code_size_end = add_usize(fp_code_size, WORD_SIZE);
 
+            if fp_code_size_end > self.memory.len() {
+                Err(PanicReason::MemoryOverflow)?;
+            }
+
             let length = Word::from_be_bytes(
                 self.memory[fp_code_size..fp_code_size_end]
                     .try_into()
-                    .map_err(|_| PanicReason::MemoryOverflow)?,
+                    .expect("`fp_code_size_end` is `WORD_SIZE`"),
             )
             .checked_add(length as Word)
             .ok_or(PanicReason::MemoryOverflow)?;
@@ -484,7 +486,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?.into();
     let hash = storage.block_hash(height).map_err(|e| e.into())?;
 
-    try_mem_write(a as usize, hash.as_ref(), owner, memory)?;
+    try_mem_write(a, hash.as_ref(), owner, memory)?;
 
     inc_pc(pc)
 }
@@ -506,11 +508,8 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     pc: RegMut<PC>,
     a: Word,
 ) -> Result<(), RuntimeError> {
-    storage
-        .coinbase()
-        .map_err(RuntimeError::from_io)
-        .and_then(|data| try_mem_write(a as usize, data.as_ref(), owner, memory))?;
-
+    let coinbase = storage.coinbase().map_err(RuntimeError::from_io)?;
+    try_mem_write(a, coinbase.as_ref(), owner, memory)?;
     inc_pc(pc)
 }
 
@@ -541,7 +540,7 @@ where
         .map_err(RuntimeError::from_io)?
         .into_owned();
 
-    try_mem_write(a as usize, root.as_ref(), owner, memory)?;
+    try_mem_write(a, root.as_ref(), owner, memory)?;
 
     inc_pc(pc)
 }

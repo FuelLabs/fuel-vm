@@ -77,7 +77,7 @@ use crate::common::{
 /// 12`.
 ///
 pub struct PathIter<T: ParentNode> {
-    leaf: T,
+    leaf_key: T::Key,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
     current_offset: usize,
 }
@@ -86,7 +86,7 @@ impl<T> PathIter<T>
 where
     T: ParentNode + Clone,
 {
-    pub fn new(root: &T, leaf: &T) -> Self {
+    pub fn new(root: &T, leaf_key: T::Key) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
 
         // The initial offset from the most significant bit (MSB).
@@ -134,7 +134,7 @@ where
         //
         let initial_offset = T::key_size_in_bits() - root.height() as usize;
         Self {
-            leaf: leaf.clone(),
+            leaf_key,
             current: Some(initial),
             current_offset: initial_offset,
         }
@@ -154,7 +154,7 @@ where
         if let Some((ref path_node, _)) = value {
             match path_node {
                 Ok(path_node) if path_node.is_node() => {
-                    let path = self.leaf.leaf_key();
+                    let path = &self.leaf_key;
                     let instruction = path.get_instruction(self.current_offset);
                     self.current = instruction.map(|instruction| {
                         self.current_offset += 1;
@@ -178,15 +178,15 @@ where
 }
 
 pub trait AsPathIterator<T: ParentNode> {
-    fn as_path_iter(&self, leaf: &Self) -> PathIter<T>;
+    fn as_path_iter(&self, leaf_key: T::Key) -> PathIter<T>;
 }
 
 impl<T> AsPathIterator<T> for T
 where
     T: ParentNode + Clone,
 {
-    fn as_path_iter(&self, leaf: &Self) -> PathIter<T> {
-        PathIter::new(self, leaf)
+    fn as_path_iter(&self, leaf_key: T::Key) -> PathIter<T> {
+        PathIter::new(self, leaf_key)
     }
 }
 
@@ -293,7 +293,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(0);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -308,7 +308,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(1);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -323,7 +323,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(2);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -338,7 +338,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(3);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -353,7 +353,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(4);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -368,7 +368,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(5);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -383,7 +383,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(6);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -398,7 +398,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(7);
             let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_path = vec![
@@ -435,7 +435,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(0);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -450,7 +450,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(1);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -465,7 +465,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(2);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -480,7 +480,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(3);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -495,7 +495,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(4);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -510,7 +510,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(5);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -525,7 +525,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(6);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -540,7 +540,7 @@ mod test {
         {
             let leaf = Node::from_leaf_index(7);
             let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
-                .as_path_iter(&leaf)
+                .as_path_iter(leaf.leaf_key())
                 .map(|(path, side)| (path.unwrap(), side.unwrap()))
                 .unzip();
             let expected_side = vec![
@@ -560,7 +560,7 @@ mod test {
         let leaf = Node::from_leaf_index(4); // 0b0100
 
         let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-            .as_path_iter(&leaf)
+            .as_path_iter(leaf.leaf_key())
             .map(|(path, side)| (path.unwrap(), side.unwrap()))
             .unzip();
 
@@ -581,7 +581,7 @@ mod test {
         let leaf = Node::from_leaf_index(61); // 0b00111101
 
         let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
-            .as_path_iter(&leaf)
+            .as_path_iter(leaf.leaf_key())
             .map(|(path, side)| (path.unwrap(), side.unwrap()))
             .unzip();
 
@@ -606,7 +606,7 @@ mod test {
         let leaf = Node::from_leaf_index(0);
 
         let (path, side): (Vec<TestNode>, Vec<TestNode>) = root
-            .as_path_iter(&leaf)
+            .as_path_iter(leaf.leaf_key())
             .map(|(path, side)| (path.unwrap(), side.unwrap()))
             .unzip();
 

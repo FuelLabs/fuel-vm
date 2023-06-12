@@ -53,11 +53,11 @@ impl MerkleTree {
     /// Calculate the sparse Merkle root from a set of key-value pairs. This is
     /// similar to constructing a new tree from a set of key-value pairs using
     /// [from_set](Self::from_set), except this method returns only the root; it
-    /// does not write to storage or return a sparse Merkle tree instance. It is
-    /// equivalent to calling `from_set(..)`, followed by `root()`, but does not
-    /// incur the overhead of storage writes. This can be helpful when know all
-    /// the key-values in the set upfront and we know we will not need to update
-    /// the set in the future.
+    /// does not write to storage nor return a sparse Merkle tree instance. It
+    /// is equivalent to calling `from_set(..)`, followed by `root()`, but does
+    /// not incur the overhead of storage writes. This can be helpful when we
+    /// know all the key-values in the set upfront and we will not need to
+    /// update the set in the future.
     pub fn root_from_set<I, D>(set: I) -> Bytes32
     where
         I: Iterator<Item = (Bytes32, D)>,

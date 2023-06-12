@@ -6,7 +6,9 @@ use crate::consts::{MEM_MAX_ACCESS_SIZE, MEM_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_
 use crate::error::RuntimeError;
 
 use crate::arith::{checked_add_word, checked_sub_word};
+use crate::prelude::MemoryRange;
 use fuel_asm::PanicReason;
+use fuel_crypto::coins_bip32::prelude::RecoveryId;
 use fuel_crypto::{Hasher, Message, PublicKey, Signature};
 use fuel_types::{Bytes32, Bytes64, Word};
 
@@ -17,10 +19,16 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn ecrecover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn secp256k1_recover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        ecrecover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
+    }
+
+    pub(crate) fn secp256r1_recover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+        let owner = self.ownership_registers();
+        let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
+        secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
@@ -34,7 +42,7 @@ where
     }
 }
 
-pub(crate) fn ecrecover(
+pub(crate) fn secp256k1_recover(
     memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
@@ -72,6 +80,43 @@ pub(crate) fn ecrecover(
         }
     }
 
+    inc_pc(pc)
+}
+
+pub(crate) fn secp256r1_recover(
+    memory: &mut [u8; MEM_SIZE],
+    owner: OwnershipRegisters,
+    err: RegMut<ERR>,
+    pc: RegMut<PC>,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
+    use p256::ecdsa::{Signature, VerifyingKey};
+
+    let sig = MemoryRange::new(b, Bytes64::LEN)?;
+    let msg = MemoryRange::new(c, Bytes32::LEN)?;
+
+    let Ok(signature) = Signature::from_slice(&memory[sig.usizes()]) else {
+        // Invalid signature, so there is no valid key to recover
+        try_zeroize(a as usize, PublicKey::LEN, owner, memory)?;
+        set_err(err);
+        return inc_pc(pc);
+    };
+
+    // Attempt the four possible recovery ids
+    for recid in 0..RecoveryId::MAX {
+        let recid = RecoveryId::from_byte(recid).unwrap();
+        if let Ok(pub_key) = VerifyingKey::recover_from_msg(&memory[msg.usizes()], &signature, recid) {
+            try_mem_write(a, &pub_key.to_sec1_bytes(), owner, memory)?;
+            clear_err(err);
+            return inc_pc(pc);
+        }
+    }
+
+    // None of the keys matched
+    try_zeroize(a as usize, PublicKey::LEN, owner, memory)?;
+    set_err(err);
     inc_pc(pc)
 }
 

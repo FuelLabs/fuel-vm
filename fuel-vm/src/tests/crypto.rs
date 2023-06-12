@@ -38,7 +38,7 @@ fn ecrecover() {
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
-        op::ecr(0x11, 0x20, 0x21),
+        op::eck1(0x11, 0x20, 0x21),
         op::meq(0x12, 0x22, 0x11, 0x10),
         op::log(0x12, 0x00, 0x00, 0x00),
         op::ret(RegId::ONE),
@@ -84,7 +84,7 @@ fn ecrecover_error() {
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
-        op::ecr(0x11, 0x20, 0x21),
+        op::eck1(0x11, 0x20, 0x21),
     ];
 
     check_expected_reason_for_instructions(script, ErrorFlag)
@@ -101,7 +101,7 @@ fn ecrecover_a_gt_vmaxram_sub_64() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
-        op::ecr(reg_a, reg_b, reg_b),
+        op::eck1(reg_a, reg_b, reg_b),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -118,7 +118,7 @@ fn ecrecover_b_gt_vmaxram_sub_64() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
-        op::ecr(reg_b, reg_a, reg_b),
+        op::eck1(reg_b, reg_a, reg_b),
     ];
 
     check_expected_reason_for_instructions(script, ArithmeticOverflow);
@@ -135,7 +135,7 @@ fn ecrecover_c_gt_vmaxram_sub_32() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 31),
-        op::ecr(reg_b, reg_b, reg_a),
+        op::eck1(reg_b, reg_b, reg_a),
     ];
 
     check_expected_reason_for_instructions(script, ArithmeticOverflow);

@@ -179,14 +179,16 @@ impl_instructions! {
     0x3C TR tr [RegId RegId RegId]
     "Transfer coins to a variable output."
     0x3D TRO tro [RegId RegId RegId RegId]
-    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message."
-    0x3E ECR ecr [RegId RegId RegId]
+    "The 64-byte Secp256k1 public key (x, y) recovered from 64-byte signature on 32-byte message."
+    0x3E ECK1 eck1 [RegId RegId RegId]
+    "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message."
+    0x3F ECR1 ecr1 [RegId RegId RegId]
     "The keccak-256 hash of a slice."
-    0x3F K256 k256 [RegId RegId RegId]
+    0x40 K256 k256 [RegId RegId RegId]
     "The SHA-2-256 hash of a slice."
-    0x40 S256 s256 [RegId RegId RegId]
+    0x41 S256 s256 [RegId RegId RegId]
     "Get timestamp of block at given height."
-    0x41 TIME time [RegId RegId]
+    0x42 TIME time [RegId RegId]
 
     "Performs no operation."
     0x47 NOOP noop []
@@ -478,9 +480,10 @@ impl Opcode {
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
             | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
-            | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
-            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
-            | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
+            | MODI | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM
+            | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
+            | GTF => true,
             _ => false,
         }
     }

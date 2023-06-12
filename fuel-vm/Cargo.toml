@@ -25,6 +25,7 @@ fuel-storage = { workspace = true, path = "../fuel-storage" }
 fuel-tx = { workspace = true, features = ["builder", "std"], path = "../fuel-tx" }
 fuel-types = { workspace = true, path = "../fuel-types" }
 itertools = "0.10"
+p256 =  { version = "0.13", features = ["digest"] }
 paste = "1.0"
 primitive-types = { version = "0.12", default-features = false }
 rand = { version = "0.8", optional = true }

@@ -6,7 +6,7 @@ use crate::interpreter::memory::Memory;
 use super::*;
 
 #[test]
-fn test_ecrecover() -> Result<(), RuntimeError> {
+fn test_recover_secp256k1() -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
@@ -32,7 +32,7 @@ fn test_ecrecover() -> Result<(), RuntimeError> {
     memory[sig_address..sig_address + Signature::LEN].copy_from_slice(signature.as_ref());
     memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
 
-    ecrecover(
+    secp256k1_recover(
         &mut memory,
         owner,
         RegMut::new(&mut err),

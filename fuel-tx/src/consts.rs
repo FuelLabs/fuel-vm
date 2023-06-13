@@ -1,6 +1,9 @@
 use crate::TxPointer;
-use fuel_types::bytes::WORD_SIZE;
-use fuel_types::{Bytes32, Salt};
+use fuel_types::{
+    bytes::WORD_SIZE,
+    Bytes32,
+    Salt,
+};
 
 pub const TRANSACTION_SCRIPT_FIXED_SIZE: usize = WORD_SIZE // Identifier
     + WORD_SIZE // Gas price

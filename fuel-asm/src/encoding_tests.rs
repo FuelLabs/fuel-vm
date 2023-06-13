@@ -39,7 +39,8 @@ fn opcode() {
 
     let bytes: Vec<u8> = instructions.iter().copied().collect();
 
-    let instructions_from_bytes: Result<Vec<Instruction>, _> = from_bytes(bytes.iter().copied()).collect();
+    let instructions_from_bytes: Result<Vec<Instruction>, _> =
+        from_bytes(bytes.iter().copied()).collect();
 
     assert_eq!(instructions, instructions_from_bytes.unwrap());
 
@@ -58,7 +59,8 @@ fn opcode() {
     #[cfg(feature = "serde")]
     for ins in &instructions {
         let ins_ser = bincode::serialize(ins).expect("Failed to serialize opcode");
-        let ins_de: Instruction = bincode::deserialize(&ins_ser).expect("Failed to serialize opcode");
+        let ins_de: Instruction =
+            bincode::deserialize(&ins_ser).expect("Failed to serialize opcode");
         assert_eq!(ins, &ins_de);
     }
 
@@ -73,7 +75,8 @@ fn panic_reason_description() {
         let b = r as u8;
         let r_p = PanicReason::try_from(b).expect("Should get panic reason");
         let w = Word::from(r as u8);
-        let r_q = PanicReason::try_from(u8::try_from(w).unwrap()).expect("Should get panic reason");
+        let r_q = PanicReason::try_from(u8::try_from(w).unwrap())
+            .expect("Should get panic reason");
         assert_eq!(r, r_p);
         assert_eq!(r, r_q);
 
@@ -86,7 +89,8 @@ fn panic_reason_description() {
         #[cfg(feature = "serde")]
         {
             let pd_s = bincode::serialize(&pd).expect("Failed to serialize instruction");
-            let pd_s: PanicInstruction = bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
+            let pd_s: PanicInstruction =
+                bincode::deserialize(&pd_s).expect("Failed to deserialize instruction");
 
             assert_eq!(pd_s, pd);
         }

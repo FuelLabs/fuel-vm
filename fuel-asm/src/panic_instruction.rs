@@ -1,4 +1,9 @@
-use crate::{Instruction, PanicReason, RawInstruction, Word};
+use crate::{
+    Instruction,
+    PanicReason,
+    RawInstruction,
+    Word,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -12,7 +17,10 @@ pub struct PanicInstruction {
 impl PanicInstruction {
     /// Represents an error described by a reason and an instruction.
     pub const fn error(reason: PanicReason, instruction: RawInstruction) -> Self {
-        Self { reason, instruction }
+        Self {
+            reason,
+            instruction,
+        }
     }
 
     /// Underlying panic reason
@@ -45,6 +53,9 @@ impl From<Word> for PanicInstruction {
         // Cast to truncate in order to remove the `reason` bits.
         let instruction = (val >> INSTR_OFFSET) as u32;
         let reason = PanicReason::from(reason_u8);
-        Self { reason, instruction }
+        Self {
+            reason,
+            instruction,
+        }
     }
 }

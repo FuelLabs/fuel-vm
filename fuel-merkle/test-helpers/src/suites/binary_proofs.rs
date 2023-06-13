@@ -1,5 +1,12 @@
-use fuel_merkle::{binary::in_memory::MerkleTree, common::Bytes32};
-use fuel_merkle_test_helpers::data::{binary::ProofTest, EncodedValue, Encoding};
+use fuel_merkle::{
+    binary::in_memory::MerkleTree,
+    common::Bytes32,
+};
+use fuel_merkle_test_helpers::data::{
+    binary::ProofTest,
+    EncodedValue,
+    Encoding,
+};
 
 use digest::Digest;
 use function_name::named;
@@ -61,7 +68,8 @@ fn generate_test(
 fn write_test(test: &ProofTest) {
     let yaml = serde_yaml::to_string(test).expect("Unable to serialize test!");
     let dir = "./fuel-merkle/tests-data-binary/fixtures";
-    std::fs::write(format!("{}/{}.yaml", dir, test.name), yaml).expect("Unable to write file!");
+    std::fs::write(format!("{}/{}.yaml", dir, test.name), yaml)
+        .expect("Unable to write file!");
 }
 
 #[named]
@@ -138,7 +146,8 @@ fn generate_test_0_leaves(test_data: &[Bytes32]) -> ProofTest {
     let samples = 1;
     let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, samples);
     let proof_index = 0;
-    let mut test = generate_test(name, function_name, description, &sample_data, proof_index);
+    let mut test =
+        generate_test(name, function_name, description, &sample_data, proof_index);
     test.num_leaves = 0;
     test.expected_verification = false;
     test
@@ -158,7 +167,8 @@ fn generate_test_1_leaf_invalid_proof_index(test_data: &[Bytes32]) -> ProofTest 
     let samples = 1;
     let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, samples);
     let proof_index = 0;
-    let mut test = generate_test(name, function_name, description, &sample_data, proof_index);
+    let mut test =
+        generate_test(name, function_name, description, &sample_data, proof_index);
     test.proof_index = 1;
     test.expected_verification = false;
     test
@@ -178,7 +188,8 @@ fn generate_test_1_leaf_invalid_root(test_data: &[Bytes32]) -> ProofTest {
     let samples = 1;
     let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, samples);
     let proof_index = 0;
-    let mut test = generate_test(name, function_name, description, &sample_data, proof_index);
+    let mut test =
+        generate_test(name, function_name, description, &sample_data, proof_index);
     test.root = EncodedValue::new(hex::encode(sum(b"invalid")), Encoding::Hex);
     test.expected_verification = false;
     test

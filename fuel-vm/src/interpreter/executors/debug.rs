@@ -1,7 +1,12 @@
-use crate::error::InterpreterError;
-use crate::interpreter::{ExecutableTransaction, Interpreter};
-use crate::state::ProgramState;
-use crate::storage::InterpreterStorage;
+use crate::{
+    error::InterpreterError,
+    interpreter::{
+        ExecutableTransaction,
+        Interpreter,
+    },
+    state::ProgramState,
+    storage::InterpreterStorage,
+};
 
 impl<S, Tx> Interpreter<S, Tx>
 where

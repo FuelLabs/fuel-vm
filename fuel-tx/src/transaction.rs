@@ -1,8 +1,20 @@
 use fuel_crypto::PublicKey;
-use fuel_types::bytes::SizedBytes;
-use fuel_types::{Address, AssetId, BlockHeight, Bytes32, ChainId, Nonce, Salt, Word};
+use fuel_types::{
+    bytes::SizedBytes,
+    Address,
+    AssetId,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+    Nonce,
+    Salt,
+    Word,
+};
 
-use alloc::vec::{IntoIter, Vec};
+use alloc::vec::{
+    IntoIter,
+    Vec,
+};
 use itertools::Itertools;
 
 mod fee;
@@ -20,21 +32,35 @@ mod txio;
 pub mod consensus_parameters;
 
 pub use consensus_parameters::ConsensusParameters;
-pub use fee::{Chargeable, TransactionFee};
+pub use fee::{
+    Chargeable,
+    TransactionFee,
+};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
-pub use validity::{CheckError, FormatValidityChecks};
+pub use validity::{
+    CheckError,
+    FormatValidityChecks,
+};
 
 use crate::TxPointer;
 
-use crate::input::coin::{CoinPredicate, CoinSigned};
-use crate::input::contract::Contract;
-use crate::input::message::MessageDataPredicate;
+use crate::input::{
+    coin::{
+        CoinPredicate,
+        CoinSigned,
+    },
+    contract::Contract,
+    message::MessageDataPredicate,
+};
 use input::*;
 
 #[cfg(feature = "std")]
-pub use id::{Signable, UniqueIdentifier};
+pub use id::{
+    Signable,
+    UniqueIdentifier,
+};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -103,8 +129,9 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Create {
-        // TODO consider split this function in two; one that will trust a provided bytecod len,
-        // and other that will return a resulting, failing if the witness index isn't present
+        // TODO consider split this function in two; one that will trust a provided
+        // bytecod len, and other that will return a resulting, failing if the
+        // witness index isn't present
         let bytecode_length = witnesses
             .get(bytecode_witness_index as usize)
             .map(|witness| witness.as_ref().len() as Word / 4)
@@ -142,26 +169,28 @@ impl Transaction {
 
     /// Convert the type into a JSON string
     ///
-    /// This is implemented as infallible because serde_json will fail only if the type can't
-    /// serialize one of its attributes. We don't have such case with the transaction because all
-    /// of its attributes are trivially serialized.
+    /// This is implemented as infallible because serde_json will fail only if the type
+    /// can't serialize one of its attributes. We don't have such case with the
+    /// transaction because all of its attributes are trivially serialized.
     ///
     /// If an error happens, a JSON string with the error description will be returned
     #[cfg(all(feature = "serde", feature = "alloc"))]
     pub fn to_json(&self) -> alloc::string::String {
-        serde_json::to_string(self).unwrap_or_else(|e| alloc::format!(r#"{{"error": "{e}"}}"#))
+        serde_json::to_string(self)
+            .unwrap_or_else(|e| alloc::format!(r#"{{"error": "{e}"}}"#))
     }
 
-    /// Attempt to deserialize a transaction from a JSON string, returning `None` if it fails
+    /// Attempt to deserialize a transaction from a JSON string, returning `None` if it
+    /// fails
     #[cfg(all(feature = "serde", feature = "alloc"))]
     pub fn from_json<J>(json: J) -> Option<Self>
     where
         J: AsRef<str>,
     {
-        // we opt to return `Option` to not leak serde concrete error implementations in the crate.
-        // considering we don't expect to handle failures downstream (e.g. if a string is not a
-        // valid json, then we simply don't have a transaction out of that), then its not required
-        // to leak the type
+        // we opt to return `Option` to not leak serde concrete error implementations in
+        // the crate. considering we don't expect to handle failures downstream
+        // (e.g. if a string is not a valid json, then we simply don't have a
+        // transaction out of that), then its not required to leak the type
         serde_json::from_str(json.as_ref()).ok()
     }
 
@@ -272,9 +301,13 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
-                Input::CoinPredicate(CoinPredicate { owner, predicate, .. }) => Some((owner, predicate)),
+                Input::CoinPredicate(CoinPredicate {
+                    owner, predicate, ..
+                }) => Some((owner, predicate)),
                 Input::MessageDataPredicate(MessageDataPredicate {
-                    recipient, predicate, ..
+                    recipient,
+                    predicate,
+                    ..
                 }) => Some((recipient, predicate)),
                 _ => None,
             })
@@ -303,7 +336,15 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ) {
         let owner = Input::owner(owner);
 
-        let input = Input::coin_signed(utxo_id, owner, amount, asset_id, tx_pointer, witness_index, maturity);
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+        );
         self.inputs_mut().push(input);
     }
 
@@ -327,7 +368,14 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
-            Input::message_data_signed(sender, recipient, amount, nonce, witness_index, data)
+            Input::message_data_signed(
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index,
+                data,
+            )
         };
 
         self.inputs_mut().push(input);
@@ -335,20 +383,26 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Prepare the transaction for VM initialization for script execution
     ///
-    /// note: Fields dependent on storage/state such as balance and state roots, or tx pointers,
-    /// should already set by the client beforehand.
+    /// note: Fields dependent on storage/state such as balance and state roots, or tx
+    /// pointers, should already set by the client beforehand.
     #[cfg(feature = "std")]
     fn prepare_init_script(&mut self) -> &mut Self {
-        self.outputs_mut().iter_mut().for_each(|o| o.prepare_init_script());
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(|o| o.prepare_init_script());
 
         self
     }
 
     /// Prepare the transaction for VM initialization for predicate verification
     fn prepare_init_predicate(&mut self) -> &mut Self {
-        self.inputs_mut().iter_mut().for_each(|i| i.prepare_init_predicate());
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(|i| i.prepare_init_predicate());
 
-        self.outputs_mut().iter_mut().for_each(|o| o.prepare_init_predicate());
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(|o| o.prepare_init_predicate());
 
         self
     }
@@ -384,14 +438,26 @@ impl From<Mint> for Transaction {
     }
 }
 
-/// The module contains traits for each possible field in the `Transaction`. Those traits can be
-/// used to write generic code based on the different combinations of the fields.
+/// The module contains traits for each possible field in the `Transaction`. Those traits
+/// can be used to write generic code based on the different combinations of the fields.
 pub mod field {
-    use crate::{Input, Output, StorageSlot, Witness};
-    use fuel_types::{BlockHeight, Bytes32, Word};
+    use crate::{
+        Input,
+        Output,
+        StorageSlot,
+        Witness,
+    };
+    use fuel_types::{
+        BlockHeight,
+        Bytes32,
+        Word,
+    };
 
     use alloc::vec::Vec;
-    use std::ops::{Deref, DerefMut};
+    use std::ops::{
+        Deref,
+        DerefMut,
+    };
 
     pub trait GasPrice {
         fn gas_price(&self) -> &Word;

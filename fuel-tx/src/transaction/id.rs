@@ -1,8 +1,25 @@
-use crate::input::coin::CoinSigned;
-use crate::input::message::{MessageCoinSigned, MessageDataSigned};
-use crate::{field, Input, Transaction};
-use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
-use fuel_types::{Bytes32, ChainId};
+use crate::{
+    field,
+    input::{
+        coin::CoinSigned,
+        message::{
+            MessageCoinSigned,
+            MessageDataSigned,
+        },
+    },
+    Input,
+    Transaction,
+};
+use fuel_crypto::{
+    Message,
+    PublicKey,
+    SecretKey,
+    Signature,
+};
+use fuel_types::{
+    Bytes32,
+    ChainId,
+};
 
 /// Means that transaction has a unique identifier.
 pub trait UniqueIdentifier {
@@ -63,7 +80,9 @@ where
             .iter()
             .filter_map(|input| match input {
                 Input::CoinSigned(CoinSigned {
-                    owner, witness_index, ..
+                    owner,
+                    witness_index,
+                    ..
                 })
                 | Input::MessageCoinSigned(MessageCoinSigned {
                     recipient: owner,
@@ -93,18 +112,44 @@ mod tests {
     use fuel_tx::{
         field::*,
         input::{
-            coin::{CoinPredicate, CoinSigned},
+            coin::{
+                CoinPredicate,
+                CoinSigned,
+            },
             contract::Contract,
-            message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned},
+            message::{
+                MessageCoinPredicate,
+                MessageCoinSigned,
+                MessageDataPredicate,
+                MessageDataSigned,
+            },
         },
-        Buildable, ConsensusParameters, Input, Output, StorageSlot, Transaction, UtxoId,
+        Buildable,
+        ConsensusParameters,
+        Input,
+        Output,
+        StorageSlot,
+        Transaction,
+        UtxoId,
     };
-    use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
-    use rand::rngs::StdRng;
-    use rand::{Rng, RngCore, SeedableRng};
-    use std::io::{Read, Write};
-    use std::mem;
-    use std::ops::Not;
+    use fuel_tx_test_helpers::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
+    use rand::{
+        rngs::StdRng,
+        Rng,
+        RngCore,
+        SeedableRng,
+    };
+    use std::{
+        io::{
+            Read,
+            Write,
+        },
+        mem,
+        ops::Not,
+    };
 
     fn invert<B>(mut bytes: B)
     where
@@ -204,7 +249,7 @@ mod tests {
                 })
             });
         };
-        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path[$it:path], $a:ident, $inv:expr) => {
             assert_id_ne($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
                     $i($it { $a, .. }) => $inv($a),
@@ -223,7 +268,7 @@ mod tests {
                 })
             });
         };
-        ($tx:expr, $t:ident, $i:path [ $it:path ], $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path[$it:path], $a:ident, $inv:expr) => {
             assert_id_eq($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
                     $i($it { $a, .. }) => $inv($a),
@@ -240,12 +285,36 @@ mod tests {
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));
 
         if !tx.inputs().is_empty() {
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], utxo_id, invert_utxo_id);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                utxo_id,
+                invert_utxo_id
+            );
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], owner, invert);
             assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], witness_index, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], maturity, not_u32);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                asset_id,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                witness_index,
+                not
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                maturity,
+                not_u32
+            );
 
             assert_io_ne!(
                 tx,
@@ -254,11 +323,41 @@ mod tests {
                 utxo_id,
                 invert_utxo_id
             );
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], amount, not);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], asset_id, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], maturity, not_u32);
-            assert_io_ne!(tx, inputs_mut, Input::CoinPredicate[CoinPredicate], predicate, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                owner,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                amount,
+                not
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                asset_id,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                maturity,
+                not_u32
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinPredicate[CoinPredicate],
+                predicate,
+                inv_v
+            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -267,10 +366,34 @@ mod tests {
                 inv_v
             );
 
-            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], utxo_id, invert_utxo_id);
-            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], balance_root, invert);
-            assert_io_eq!(tx, inputs_mut, Input::Contract[Contract], state_root, invert);
-            assert_io_ne!(tx, inputs_mut, Input::Contract[Contract], contract_id, invert);
+            assert_io_eq!(
+                tx,
+                inputs_mut,
+                Input::Contract[Contract],
+                utxo_id,
+                invert_utxo_id
+            );
+            assert_io_eq!(
+                tx,
+                inputs_mut,
+                Input::Contract[Contract],
+                balance_root,
+                invert
+            );
+            assert_io_eq!(
+                tx,
+                inputs_mut,
+                Input::Contract[Contract],
+                state_root,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::Contract[Contract],
+                contract_id,
+                invert
+            );
 
             assert_io_ne!(
                 tx,
@@ -286,7 +409,13 @@ mod tests {
                 recipient,
                 invert
             );
-            assert_io_ne!(tx, inputs_mut, Input::MessageCoinSigned[MessageCoinSigned], amount, not);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageCoinSigned[MessageCoinSigned],
+                amount,
+                not
+            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -316,7 +445,13 @@ mod tests {
                 recipient,
                 invert
             );
-            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], amount, not);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataSigned[MessageDataSigned],
+                amount,
+                not
+            );
             assert_io_ne!(
                 tx,
                 inputs_mut,
@@ -331,7 +466,13 @@ mod tests {
                 witness_index,
                 not
             );
-            assert_io_ne!(tx, inputs_mut, Input::MessageDataSigned[MessageDataSigned], data, inv_v);
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::MessageDataSigned[MessageDataSigned],
+                data,
+                inv_v
+            );
 
             assert_io_ne!(
                 tx,
@@ -451,11 +592,19 @@ mod tests {
             assert_io_eq!(tx, outputs_mut, Output::Variable, amount, not);
             assert_io_eq!(tx, outputs_mut, Output::Variable, asset_id, invert);
 
-            assert_io_ne!(tx, outputs_mut, Output::ContractCreated, contract_id, invert);
+            assert_io_ne!(
+                tx,
+                outputs_mut,
+                Output::ContractCreated,
+                contract_id,
+                invert
+            );
         }
 
         if !tx.witnesses().is_empty() {
-            assert_id_eq(tx, |t| inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut()));
+            assert_id_eq(tx, |t| {
+                inv_v(t.witnesses_mut().first_mut().unwrap().as_vec_mut())
+            });
         }
     }
 
@@ -535,7 +684,10 @@ mod tests {
             ],
         ];
 
-        let witnesses = vec![vec![], vec![generate_bytes(rng).into(), generate_bytes(rng).into()]];
+        let witnesses = vec![
+            vec![],
+            vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
+        ];
 
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
@@ -581,7 +733,11 @@ mod tests {
                         assert_id_ne(&tx, |t| invert(t.salt_mut()));
 
                         if !storage_slots.is_empty() {
-                            assert_id_ne(&tx, |t| invert_storage_slot(t.storage_slots_mut().first_mut().unwrap()));
+                            assert_id_ne(&tx, |t| {
+                                invert_storage_slot(
+                                    t.storage_slots_mut().first_mut().unwrap(),
+                                )
+                            });
                         }
 
                         assert_id_common_attrs(&tx);

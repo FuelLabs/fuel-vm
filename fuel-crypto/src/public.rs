@@ -1,7 +1,12 @@
 use crate::hasher::Hasher;
-use core::fmt;
-use core::ops::Deref;
-use fuel_types::{Bytes32, Bytes64};
+use core::{
+    fmt,
+    ops::Deref,
+};
+use fuel_types::{
+    Bytes32,
+    Bytes64,
+};
 
 /// Asymmetric public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -81,14 +86,22 @@ impl fmt::Display for PublicKey {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
-    use crate::{Error, SecretKey};
-
-    use secp256k1::{
-        constants::UNCOMPRESSED_PUBLIC_KEY_SIZE, Error as Secp256k1Error, PublicKey as Secp256k1PublicKey, Secp256k1,
+    use crate::{
+        Error,
+        SecretKey,
     };
 
-    use core::borrow::Borrow;
-    use core::str;
+    use secp256k1::{
+        constants::UNCOMPRESSED_PUBLIC_KEY_SIZE,
+        Error as Secp256k1Error,
+        PublicKey as Secp256k1PublicKey,
+        Secp256k1,
+    };
+
+    use core::{
+        borrow::Borrow,
+        str,
+    };
 
     // Internal secp256k1 identifier for uncompressed point
     //
@@ -107,7 +120,8 @@ mod use_std {
             debug_assert_eq!(SECP_UNCOMPRESSED_FLAG, pk[0]);
 
             // Ignore the first byte of the compression flag
-            let bytes = <[u8; Self::LEN]>::try_from(&pk[1..]).expect("compile-time bounds-checks");
+            let bytes = <[u8; Self::LEN]>::try_from(&pk[1..])
+                .expect("compile-time bounds-checks");
 
             Self::from_bytes_unchecked(bytes)
         }

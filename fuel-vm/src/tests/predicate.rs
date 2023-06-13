@@ -1,15 +1,34 @@
-use fuel_asm::{op, GMArgs, GTFArgs, Instruction, RegId};
-use fuel_tx::{ConsensusParameters, TransactionBuilder};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fuel_asm::{
+    op,
+    GMArgs,
+    GTFArgs,
+    Instruction,
+    RegId,
+};
+use fuel_tx::{
+    ConsensusParameters,
+    TransactionBuilder,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 use crate::prelude::*;
 
-use crate::checked_transaction::CheckPredicates;
-use crate::checked_transaction::EstimatePredicates;
+use crate::checked_transaction::{
+    CheckPredicates,
+    EstimatePredicates,
+};
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 
-fn execute_predicate<P>(predicate: P, predicate_data: Vec<u8>, dummy_inputs: usize) -> bool
+fn execute_predicate<P>(
+    predicate: P,
+    predicate_data: Vec<u8>,
+    dummy_inputs: usize,
+) -> bool
 where
     P: IntoIterator<Item = Instruction>,
 {
@@ -49,10 +68,20 @@ where
 
     let mut builder = TransactionBuilder::script(script, script_data);
 
-    builder.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
+    builder
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
-        builder.add_unsigned_coin_input(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), maturity);
+        builder.add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            maturity,
+        );
     });
 
     builder.add_input(input);
@@ -63,7 +92,12 @@ where
     let checked = transaction
         .into_checked_basic(height, &Default::default())
         .expect("Should successfully convert into Checked");
-    Interpreter::<PredicateStorage>::check_predicates(&checked, Default::default(), gas_costs).is_ok()
+    Interpreter::<PredicateStorage>::check_predicates(
+        &checked,
+        Default::default(),
+        gas_costs,
+    )
+    .is_ok()
 }
 
 #[test]
@@ -96,7 +130,11 @@ fn predicate() {
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0));
+    assert!(execute_predicate(
+        predicate.iter().copied(),
+        expected_data,
+        0
+    ));
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));
 }
 
@@ -152,7 +190,8 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
 
-        let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
+        let owner =
+            Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
         let input = Input::coin_predicate(
             rng.gen(),
             owner,
@@ -201,13 +240,19 @@ fn predicate_gas_metering() {
     // Multiple Predicate Success
     assert!(execute_gas_metered_predicates(vec![
         vec![op::ret(RegId::ONE)],
-        vec![op::movi(0x10, 0x11), op::movi(0x10, 0x11), op::ret(RegId::ONE)],
+        vec![
+            op::movi(0x10, 0x11),
+            op::movi(0x10, 0x11),
+            op::ret(RegId::ONE)
+        ],
     ])
     .is_ok());
 
     // Running predicate gas used is combined properly
     let gas_used_by: Vec<_> = (0..4)
-        .map(|n| execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]; n]).unwrap())
+        .map(|n| {
+            execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]; n]).unwrap()
+        })
         .collect();
     assert_eq!(gas_used_by[0], 0);
     assert_ne!(gas_used_by[1], 0);
@@ -291,9 +336,12 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     client.transact(tx_with_predicate);
     let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate =
+        client.receipts().expect("Expected receipts").to_vec();
 
-    assert!(receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used());
+    assert!(
+        receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used()
+    );
 }
 
 #[test]
@@ -303,9 +351,13 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .collect::<Vec<u8>>();
+    let script = vec![
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -333,7 +385,8 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let mut client = MemoryClient::default();
 
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate =
+        client.receipts().expect("Expected receipts").to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
         .gas_used()
         .expect("Should retrieve gas used");
@@ -375,10 +428,13 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     client.transact(tx_with_predicate);
     let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
 
-    //No panic for transaction without gas limit
+    // No panic for transaction without gas limit
     assert_eq!(receipts_without_predicate[1].reason(), None);
-    //Panic with out of gas for transaction with predicate
-    assert_eq!(receipts_with_predicate[0].reason().unwrap().reason(), &OutOfGas);
+    // Panic with out of gas for transaction with predicate
+    assert_eq!(
+        receipts_with_predicate[0].reason().unwrap().reason(),
+        &OutOfGas
+    );
 }
 
 #[test]
@@ -388,9 +444,13 @@ fn gas_used_by_predicates_more_than_limit() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .collect::<Vec<u8>>();
+    let script = vec![
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -418,7 +478,8 @@ fn gas_used_by_predicates_more_than_limit() {
     let mut client = MemoryClient::default();
 
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate =
+        client.receipts().expect("Expected receipts").to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
         .gas_used()
         .expect("Should retrieve gas used");
@@ -454,5 +515,8 @@ fn gas_used_by_predicates_more_than_limit() {
         .finalize_checked_basic(Default::default())
         .check_predicates(&params, &GasCosts::default());
 
-    assert_eq!(tx_with_predicate.unwrap_err(), CheckError::PredicateVerificationFailed);
+    assert_eq!(
+        tx_with_predicate.unwrap_err(),
+        CheckError::PredicateVerificationFailed
+    );
 }

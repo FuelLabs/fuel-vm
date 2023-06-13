@@ -1,6 +1,14 @@
-use fuel_crypto::{Error, Message, PublicKey, SecretKey, Signature};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
+use fuel_crypto::{
+    Error,
+    Message,
+    PublicKey,
+    SecretKey,
+    Signature,
+};
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
 
 #[test]
 fn recover() {
@@ -35,7 +43,9 @@ fn verify() {
 
         let signature = Signature::sign(&secret, &message);
 
-        signature.verify(&public, &message).expect("Failed to verify signature");
+        signature
+            .verify(&public, &message)
+            .expect("Failed to verify signature");
     }
 }
 

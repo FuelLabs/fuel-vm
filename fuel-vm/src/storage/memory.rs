@@ -1,23 +1,46 @@
-use crate::crypto;
-use crate::error::Infallible;
-use crate::storage::{
-    ContractsAssetKey, ContractsAssets, ContractsInfo, ContractsRawCode, ContractsState, ContractsStateKey,
-    InterpreterStorage,
+use crate::{
+    crypto,
+    error::Infallible,
+    storage::{
+        ContractsAssetKey,
+        ContractsAssets,
+        ContractsInfo,
+        ContractsRawCode,
+        ContractsState,
+        ContractsStateKey,
+        InterpreterStorage,
+    },
 };
 
 use fuel_crypto::Hasher;
 use fuel_storage::{
-    Mappable, MerkleRoot, MerkleRootStorage, StorageAsRef, StorageInspect, StorageMutate, StorageRead, StorageSize,
+    Mappable,
+    MerkleRoot,
+    MerkleRootStorage,
+    StorageAsRef,
+    StorageInspect,
+    StorageMutate,
+    StorageRead,
+    StorageSize,
     StorageWrite,
 };
 use fuel_tx::Contract;
-use fuel_types::{Address, BlockHeight, Bytes32, ContractId, Salt, Word};
+use fuel_types::{
+    Address,
+    BlockHeight,
+    Bytes32,
+    ContractId,
+    Salt,
+    Word,
+};
 use itertools::Itertools;
 use tai64::Tai64;
 
-use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::io::Read;
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    io::Read,
+};
 
 use super::interpreter::ContractsAssetsStorage;
 
@@ -58,12 +81,18 @@ impl MemoryStorage {
     }
 
     /// Iterate over all contract state in storage
-    pub fn all_contract_state(&self) -> impl Iterator<Item = (&ContractsStateKey, &Bytes32)> {
+    pub fn all_contract_state(
+        &self,
+    ) -> impl Iterator<Item = (&ContractsStateKey, &Bytes32)> {
         self.memory.contract_state.iter()
     }
 
     /// Fetch a mapping from the contract state.
-    pub fn contract_state(&self, contract: &ContractId, key: &Bytes32) -> Cow<'_, Bytes32> {
+    pub fn contract_state(
+        &self,
+        contract: &ContractId,
+        key: &Bytes32,
+    ) -> Cow<'_, Bytes32> {
         const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
 
         self.storage::<ContractsState>()
@@ -123,7 +152,11 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &[u8]) -> Result<Option<Contract>, Infallible> {
+    fn insert(
+        &mut self,
+        key: &ContractId,
+        value: &[u8],
+    ) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.insert(*key, value.into()))
     }
 
@@ -152,7 +185,10 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
         Ok((size, last.map(Vec::from)))
     }
 
-    fn take(&mut self, key: &<ContractsRawCode as Mappable>::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+    fn take(
+        &mut self,
+        key: &<ContractsRawCode as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         Ok(self.memory.contracts.remove(key).map(Vec::from))
     }
 }
@@ -164,8 +200,16 @@ impl StorageSize<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageRead<ContractsRawCode> for MemoryStorage {
-    fn read(&self, key: &ContractId, buf: &mut [u8]) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contracts.get(key).and_then(|c| c.as_ref().read(buf).ok()))
+    fn read(
+        &self,
+        key: &ContractId,
+        buf: &mut [u8],
+    ) -> Result<Option<usize>, Self::Error> {
+        Ok(self
+            .memory
+            .contracts
+            .get(key)
+            .and_then(|c| c.as_ref().read(buf).ok()))
     }
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -176,7 +220,10 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 impl StorageInspect<ContractsInfo> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
+    fn get(
+        &self,
+        key: &ContractId,
+    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
         Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
     }
 
@@ -186,11 +233,18 @@ impl StorageInspect<ContractsInfo> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsInfo> for MemoryStorage {
-    fn insert(&mut self, key: &ContractId, value: &(Salt, Bytes32)) -> Result<Option<(Salt, Bytes32)>, Infallible> {
+    fn insert(
+        &mut self,
+        key: &ContractId,
+        value: &(Salt, Bytes32),
+    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
         Ok(self.memory.contract_code_root.insert(*key, *value))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<(Salt, Bytes32)>, Infallible> {
+    fn remove(
+        &mut self,
+        key: &ContractId,
+    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
         Ok(self.memory.contract_code_root.remove(key))
     }
 }
@@ -198,21 +252,34 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
 impl StorageInspect<ContractsAssets> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &<ContractsAssets as Mappable>::Key) -> Result<Option<Cow<'_, Word>>, Infallible> {
+    fn get(
+        &self,
+        key: &<ContractsAssets as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, Word>>, Infallible> {
         Ok(self.memory.balances.get(key).map(Cow::Borrowed))
     }
 
-    fn contains_key(&self, key: &<ContractsAssets as Mappable>::Key) -> Result<bool, Infallible> {
+    fn contains_key(
+        &self,
+        key: &<ContractsAssets as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
         Ok(self.memory.balances.contains_key(key))
     }
 }
 
 impl StorageMutate<ContractsAssets> for MemoryStorage {
-    fn insert(&mut self, key: &<ContractsAssets as Mappable>::Key, value: &Word) -> Result<Option<Word>, Infallible> {
+    fn insert(
+        &mut self,
+        key: &<ContractsAssets as Mappable>::Key,
+        value: &Word,
+    ) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.insert(*key, *value))
     }
 
-    fn remove(&mut self, key: &<ContractsAssets as Mappable>::Key) -> Result<Option<Word>, Infallible> {
+    fn remove(
+        &mut self,
+        key: &<ContractsAssets as Mappable>::Key,
+    ) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.remove(key))
     }
 }
@@ -223,7 +290,9 @@ impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
             .memory
             .balances
             .iter()
-            .filter_map(|(key, balance)| (key.contract_id() == parent).then_some((key.asset_id(), balance)))
+            .filter_map(|(key, balance)| {
+                (key.contract_id() == parent).then_some((key.asset_id(), balance))
+            })
             .sorted_by_key(|t| t.0)
             .map(|(_, &balance)| balance)
             .map(Word::to_be_bytes);
@@ -235,11 +304,17 @@ impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
 impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
-    fn get(&self, key: &<ContractsState as Mappable>::Key) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
+    fn get(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
     }
 
-    fn contains_key(&self, key: &<ContractsState as Mappable>::Key) -> Result<bool, Infallible> {
+    fn contains_key(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
         Ok(self.memory.contract_state.contains_key(key))
     }
 }
@@ -253,7 +328,10 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         Ok(self.memory.contract_state.insert(*key, *value))
     }
 
-    fn remove(&mut self, key: &<ContractsState as Mappable>::Key) -> Result<Option<Bytes32>, Infallible> {
+    fn remove(
+        &mut self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Bytes32>, Infallible> {
         Ok(self.memory.contract_state.remove(key))
     }
 }
@@ -264,7 +342,9 @@ impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
             .memory
             .contract_state
             .iter()
-            .filter_map(|(key, value)| (key.contract_id() == parent).then_some((key.state_key(), value)))
+            .filter_map(|(key, value)| {
+                (key.contract_id() == parent).then_some((key.state_key(), value))
+            })
             .sorted_by_key(|t| t.0)
             .map(|(_, value)| value);
 
@@ -366,16 +446,17 @@ impl InterpreterStorage for MemoryStorage {
         range: Word,
     ) -> Result<Option<()>, Self::DataError> {
         let mut all_set_key = true;
-        let mut values: std::collections::HashSet<_> = std::iter::successors(Some(**start_key), |n| {
-            let mut n = *n;
-            if add_one(&mut n) {
-                None
-            } else {
-                Some(n)
-            }
-        })
-        .take(range as usize)
-        .collect();
+        let mut values: std::collections::HashSet<_> =
+            std::iter::successors(Some(**start_key), |n| {
+                let mut n = *n;
+                if add_one(&mut n) {
+                    None
+                } else {
+                    Some(n)
+                }
+            })
+            .take(range as usize)
+            .collect();
         self.memory.contract_state.retain(|key, _| {
             let c = key.contract_id();
             let k = key.state_key();
@@ -395,7 +476,7 @@ fn add_one(a: &mut [u8; 32]) -> bool {
         let left = u128::from_be_bytes(a[..16].try_into().unwrap());
         let (left, of) = left.overflowing_add(1);
         a[..16].copy_from_slice(&left.to_be_bytes()[..]);
-        return of;
+        return of
     }
     false
 }
@@ -407,7 +488,8 @@ mod tests {
 
     const fn key(k: u8) -> [u8; 32] {
         [
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, k,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, k,
         ]
     }
 
@@ -418,12 +500,17 @@ mod tests {
     #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
     #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Bytes32::zeroed()), None, Some(Bytes32::zeroed())])]
     #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Bytes32::zeroed())])]
-    fn test_contract_state_range(store: &[&[u8; 32]], start: &[u8; 32], range: Word) -> Vec<Option<Bytes32>> {
+    fn test_contract_state_range(
+        store: &[&[u8; 32]],
+        start: &[u8; 32],
+        range: Word,
+    ) -> Vec<Option<Bytes32>> {
         let mut mem = MemoryStorage::default();
         for k in store {
-            mem.memory
-                .contract_state
-                .insert((&ContractId::default(), &(**k).into()).into(), Bytes32::zeroed());
+            mem.memory.contract_state.insert(
+                (&ContractId::default(), &(**k).into()).into(),
+                Bytes32::zeroed(),
+            );
         }
         mem.merkle_contract_state_range(&ContractId::default(), &(*start).into(), range)
             .unwrap()

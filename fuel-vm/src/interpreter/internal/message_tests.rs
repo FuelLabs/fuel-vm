@@ -13,8 +13,13 @@ use test_case::test_case;
 #[test_case(0, 1, 3 => Some(184))]
 #[test_case(44, 2, 3 => Some(300))]
 #[test_case(88, 1, 1 => None)]
-// #[test_case(usize::MAX, 0, 1 => None ; "tx_offset and num_outputs should be constrained but they aren't")]
-fn test_absolute_output_offset(tx_offset: usize, idx: usize, num_outputs: usize) -> Option<usize> {
+// #[test_case(usize::MAX, 0, 1 => None ; "tx_offset and num_outputs should be constrained
+// but they aren't")]
+fn test_absolute_output_offset(
+    tx_offset: usize,
+    idx: usize,
+    num_outputs: usize,
+) -> Option<usize> {
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![Output::default(); num_outputs];
 

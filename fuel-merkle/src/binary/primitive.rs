@@ -1,6 +1,9 @@
 use crate::{
     binary::Node,
-    common::{Bytes32, Position},
+    common::{
+        Bytes32,
+        Position,
+    },
 };
 
 pub type Primitive = (u64, Bytes32);

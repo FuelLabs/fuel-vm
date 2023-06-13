@@ -1,6 +1,10 @@
-use crate::context::Context;
-use crate::storage::ContractsState;
-use crate::storage::MemoryStorage;
+use crate::{
+    context::Context,
+    storage::{
+        ContractsState,
+        MemoryStorage,
+    },
+};
 
 use super::*;
 use fuel_storage::StorageAsMut;
@@ -27,7 +31,12 @@ impl StateReadQWord {
                 block_height: Default::default(),
             },
         };
-        Self::new(destination_memory_address, origin_key_memory_address, num_slots, r)
+        Self::new(
+            destination_memory_address,
+            origin_key_memory_address,
+            num_slots,
+            r,
+        )
     }
 }
 
@@ -97,7 +106,10 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &Bytes32::new(v))
+            .insert(
+                &(&ContractId::default(), &Bytes32::new(k)).into(),
+                &Bytes32::new(v),
+            )
             .unwrap();
     }
     let mut result_register = 0u64;

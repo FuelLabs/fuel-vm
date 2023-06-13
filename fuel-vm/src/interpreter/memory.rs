@@ -1,14 +1,28 @@
-use super::internal::inc_pc;
-use super::{ExecutableTransaction, Interpreter};
-use crate::constraints::reg_key::*;
-use crate::error::RuntimeError;
-use crate::{consts::*, context::Context};
+use super::{
+    internal::inc_pc,
+    ExecutableTransaction,
+    Interpreter,
+};
+use crate::{
+    constraints::reg_key::*,
+    consts::*,
+    context::Context,
+    error::RuntimeError,
+};
 
-use fuel_asm::{PanicReason, RegId};
-use fuel_types::{RegisterId, Word};
+use fuel_asm::{
+    PanicReason,
+    RegId,
+};
+use fuel_types::{
+    RegisterId,
+    Word,
+};
 
-use std::ops;
-use std::ops::Range;
+use std::{
+    ops,
+    ops::Range,
+};
 
 pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
 
@@ -22,15 +36,15 @@ mod allocation_tests;
 /// as well as checking that the resulting value is withing the VM ram boundaries.
 pub trait ToAddr {
     /// Converts a value to `usize` used for memory addresses.
-    /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM memory.
-    /// This can be used for both addresses and offsets.
+    /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM
+    /// memory. This can be used for both addresses and offsets.
     fn to_addr(self) -> Result<usize, RuntimeError>;
 }
 
 impl ToAddr for usize {
     fn to_addr(self) -> Result<usize, RuntimeError> {
         if self >= MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
         Ok(self)
     }
@@ -82,14 +96,16 @@ impl MemoryRange {
         let end = start.checked_add(size).ok_or(PanicReason::MemoryOverflow)?;
 
         if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         Ok(Self(start..end))
     }
 
     /// Create a new const sized memory range.
-    pub fn new_const<A: ToAddr, const SIZE: usize>(address: A) -> Result<Self, RuntimeError> {
+    pub fn new_const<A: ToAddr, const SIZE: usize>(
+        address: A,
+    ) -> Result<Self, RuntimeError> {
         Self::new(address, SIZE)
     }
 
@@ -156,38 +172,68 @@ where
         OwnershipRegisters::new(self)
     }
 
-    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> Result<(), RuntimeError>
+    pub(crate) fn stack_pointer_overflow<F>(
+        &mut self,
+        f: F,
+        v: Word,
+    ) -> Result<(), RuntimeError>
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
-        let (SystemRegisters { sp, ssp, hp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (
+            SystemRegisters {
+                sp, ssp, hp, pc, ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v)
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn load_byte(
+        &mut self,
+        ra: RegisterId,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_byte(&self.memory, pc, result, b, c)
     }
 
-    pub(crate) fn load_word(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn load_word(
+        &mut self,
+        ra: RegisterId,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_word(&self.memory, pc, result, b, c)
     }
 
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn store_byte(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn store_word(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { hp, sp, pc, .. }, _) = split_registers(&mut self.registers);
+        let (SystemRegisters { hp, sp, pc, .. }, _) =
+            split_registers(&mut self.registers);
         malloc(hp, sp.as_ref(), pc, a)
     }
 
@@ -196,12 +242,23 @@ where
         memclear(&mut self.memory, owner, self.registers.pc_mut(), a, b)
     }
 
-    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn memcopy(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         memcopy(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn memeq(&mut self, ra: RegisterId, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn memeq(
+        &mut self,
+        ra: RegisterId,
+        b: Word,
+        c: Word,
+        d: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         memeq(&mut self.memory, result, pc, b, c, d)
@@ -255,7 +312,8 @@ pub(crate) fn load_word(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
+    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
+    // immediate value.
     let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
     *result = Word::from_be_bytes(read_bytes(memory, addr)?);
     inc_pc(pc)
@@ -271,7 +329,10 @@ pub(crate) fn store_byte(
 ) -> Result<(), RuntimeError> {
     let (ac, overflow) = a.overflowing_add(c);
     let range = ac..(ac + 1);
-    if overflow || ac >= VM_MAX_RAM || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range)) {
+    if overflow
+        || ac >= VM_MAX_RAM
+        || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range))
+    {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         memory[ac as usize] = b as u8;
@@ -288,13 +349,19 @@ pub(crate) fn store_word(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit immediate value.
+    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
+    // immediate value.
     let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
     write_bytes(memory, owner, addr, b.to_be_bytes())?;
     inc_pc(pc)
 }
 
-pub(crate) fn malloc(mut hp: RegMut<HP>, sp: Reg<SP>, pc: RegMut<PC>, a: Word) -> Result<(), RuntimeError> {
+pub(crate) fn malloc(
+    mut hp: RegMut<HP>,
+    sp: Reg<SP>,
+    pc: RegMut<PC>,
+    a: Word,
+) -> Result<(), RuntimeError> {
     let (result, overflow) = hp.overflowing_sub(a);
 
     if overflow || result < *sp {
@@ -334,11 +401,11 @@ pub(crate) fn memcopy(
     let src_range = MemoryRange::new(b, c)?;
 
     if c > MEM_MAX_ACCESS_SIZE {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     if !owner.has_ownership_range(&dst_range) {
-        return Err(PanicReason::MemoryOwnership.into());
+        return Err(PanicReason::MemoryOwnership.into())
     }
 
     if dst_range.start <= src_range.start && src_range.start < dst_range.end
@@ -346,7 +413,7 @@ pub(crate) fn memcopy(
         || dst_range.start < src_range.end && src_range.end <= dst_range.end
         || src_range.start < dst_range.end && dst_range.end <= src_range.end
     {
-        return Err(PanicReason::MemoryWriteOverlap.into());
+        return Err(PanicReason::MemoryWriteOverlap.into())
     }
 
     let len = src_range.len();
@@ -376,7 +443,8 @@ pub(crate) fn memeq(
     if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
         Err(PanicReason::MemoryOverflow.into())
     } else {
-        *result = (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
+        *result =
+            (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
 
         inc_pc(pc)
     }
@@ -397,10 +465,15 @@ impl OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],
             hp: vm.registers[RegId::HP],
-            prev_hp: vm.frames.last().map(|frame| frame.registers()[RegId::HP]).unwrap_or(0),
+            prev_hp: vm
+                .frames
+                .last()
+                .map(|frame| frame.registers()[RegId::HP])
+                .unwrap_or(0),
             context: vm.context.clone(),
         }
     }
+
     pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
         let range = range.words();
         self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
@@ -409,15 +482,15 @@ impl OwnershipRegisters {
     /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_stack(&self, range: &Range<Word>) -> bool {
         if range.is_empty() && range.start == self.ssp {
-            return true;
+            return true
         }
 
         if !(self.ssp..self.sp).contains(&range.start) {
-            return false;
+            return false
         }
 
         if range.end > VM_MAX_RAM {
-            return false;
+            return false
         }
 
         (self.ssp..=self.sp).contains(&range.end)
@@ -431,7 +504,7 @@ impl OwnershipRegisters {
         // "Saved registers from previous context" of the call frame at
         // $fp`
         if range.start < self.hp {
-            return false;
+            return false
         }
 
         let heap_end = if self.context.is_external() {
@@ -453,7 +526,7 @@ pub(crate) fn try_mem_write<A: ToAddr>(
     let range = MemoryRange::new(addr, data.len())?;
 
     if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into());
+        return Err(PanicReason::MemoryOwnership.into())
     }
 
     memory[range.usizes()].copy_from_slice(data);
@@ -469,26 +542,31 @@ pub(crate) fn try_zeroize(
     let range = MemoryRange::new(addr, len)?;
 
     if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into());
+        return Err(PanicReason::MemoryOwnership.into())
     }
 
     memory[range.usizes()].fill(0);
     Ok(())
 }
 
-/// Reads a constant-sized byte array from memory, performing overflow and memory range checks.
-pub(crate) fn read_bytes<const COUNT: usize>(memory: &[u8; MEM_SIZE], addr: Word) -> Result<[u8; COUNT], RuntimeError> {
+/// Reads a constant-sized byte array from memory, performing overflow and memory range
+/// checks.
+pub(crate) fn read_bytes<const COUNT: usize>(
+    memory: &[u8; MEM_SIZE],
+    addr: Word,
+) -> Result<[u8; COUNT], RuntimeError> {
     let addr = addr as usize;
     let (end, overflow) = addr.overflowing_add(COUNT);
 
     if overflow || end > VM_MAX_RAM as RegisterId {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
 }
 
-/// Writes a constant-sized byte array to memory, performing overflow, memory range and ownership checks.
+/// Writes a constant-sized byte array to memory, performing overflow, memory range and
+/// ownership checks.
 pub(crate) fn write_bytes<const COUNT: usize>(
     memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
@@ -497,7 +575,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
     if !owner.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     memory[range.usizes()].copy_from_slice(&bytes);

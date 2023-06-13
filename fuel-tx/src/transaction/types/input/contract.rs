@@ -1,7 +1,20 @@
-use crate::input::sizes::ContractSizes;
-use crate::{TxPointer, UtxoId};
-use fuel_types::bytes::{Deserializable, SizedBytes};
-use fuel_types::{bytes, Bytes32, ContractId, MemLayout, MemLocType, Word};
+use crate::{
+    input::sizes::ContractSizes,
+    TxPointer,
+    UtxoId,
+};
+use fuel_types::{
+    bytes,
+    bytes::{
+        Deserializable,
+        SizedBytes,
+    },
+    Bytes32,
+    ContractId,
+    MemLayout,
+    MemLocType,
+    Word,
+};
 
 /// It is a full representation of the contract input from the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
@@ -55,13 +68,17 @@ impl std::io::Read for Contract {
             .ok_or(bytes::eof())?;
 
         bytes::store_at(buf, S::layout(S::LAYOUT.tx_id), utxo_id.tx_id());
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.output_index), utxo_id.output_index() as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.output_index),
+            utxo_id.output_index() as Word,
+        );
         bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
         bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
 
         let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
         if n != S::LAYOUT.tx_pointer.size() {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
@@ -80,7 +97,9 @@ impl std::io::Write for Contract {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let utxo_id = UtxoId::from_bytes(&buf[S::LAYOUT.tx_id.range().start..S::LAYOUT.output_index.range().end])?;
+        let utxo_id = UtxoId::from_bytes(
+            &buf[S::LAYOUT.tx_id.range().start..S::LAYOUT.output_index.range().end],
+        )?;
 
         let balance_root = bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
         let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));

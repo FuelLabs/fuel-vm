@@ -1,5 +1,9 @@
-use fuel_types::bytes::WORD_SIZE;
-use fuel_types::{AssetId, Bytes32, ChainId};
+use fuel_types::{
+    bytes::WORD_SIZE,
+    AssetId,
+    Bytes32,
+    ChainId,
+};
 
 const MAX_GAS: u64 = 100_000_000;
 
@@ -105,7 +109,10 @@ impl ConsensusParameters {
     }
 
     /// Replace the max script data length with the given argument
-    pub const fn with_max_script_data_length(mut self, max_script_data_length: u64) -> Self {
+    pub const fn with_max_script_data_length(
+        mut self,
+        max_script_data_length: u64,
+    ) -> Self {
         self.max_script_data_length = max_script_data_length;
         self
     }
@@ -123,13 +130,19 @@ impl ConsensusParameters {
     }
 
     /// Replace the max predicate data length with the given argument
-    pub const fn with_max_predicate_data_length(mut self, max_predicate_data_length: u64) -> Self {
+    pub const fn with_max_predicate_data_length(
+        mut self,
+        max_predicate_data_length: u64,
+    ) -> Self {
         self.max_predicate_data_length = max_predicate_data_length;
         self
     }
 
     /// Replace the max gas per predicate with the given argument
-    pub const fn with_max_gas_per_predicate(mut self, max_gas_per_predicate: u64) -> Self {
+    pub const fn with_max_gas_per_predicate(
+        mut self,
+        max_gas_per_predicate: u64,
+    ) -> Self {
         self.max_gas_per_predicate = max_gas_per_predicate;
         self
     }
@@ -146,7 +159,10 @@ impl ConsensusParameters {
     }
 
     /// Replace the max message data length with the given argument
-    pub const fn with_max_message_data_length(mut self, max_message_data_length: u64) -> Self {
+    pub const fn with_max_message_data_length(
+        mut self,
+        max_message_data_length: u64,
+    ) -> Self {
         self.max_message_data_length = max_message_data_length;
         self
     }
@@ -171,13 +187,18 @@ pub mod default_parameters {
     pub const MAX_WITNESSES: u64 = ConsensusParameters::DEFAULT.max_witnesses;
     pub const MAX_GAS_PER_TX: u64 = ConsensusParameters::DEFAULT.max_gas_per_tx;
     pub const MAX_SCRIPT_LENGTH: u64 = ConsensusParameters::DEFAULT.max_script_length;
-    pub const MAX_SCRIPT_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_script_data_length;
+    pub const MAX_SCRIPT_DATA_LENGTH: u64 =
+        ConsensusParameters::DEFAULT.max_script_data_length;
     pub const MAX_STORAGE_SLOTS: u64 = ConsensusParameters::DEFAULT.max_storage_slots;
-    pub const MAX_PREDICATE_LENGTH: u64 = ConsensusParameters::DEFAULT.max_predicate_length;
-    pub const MAX_PREDICATE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_predicate_data_length;
-    pub const MAX_GAS_PER_PREDICATE: u64 = ConsensusParameters::DEFAULT.max_gas_per_predicate;
+    pub const MAX_PREDICATE_LENGTH: u64 =
+        ConsensusParameters::DEFAULT.max_predicate_length;
+    pub const MAX_PREDICATE_DATA_LENGTH: u64 =
+        ConsensusParameters::DEFAULT.max_predicate_data_length;
+    pub const MAX_GAS_PER_PREDICATE: u64 =
+        ConsensusParameters::DEFAULT.max_gas_per_predicate;
     pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
-    pub const MAX_MESSAGE_DATA_LENGTH: u64 = ConsensusParameters::DEFAULT.max_message_data_length;
+    pub const MAX_MESSAGE_DATA_LENGTH: u64 =
+        ConsensusParameters::DEFAULT.max_message_data_length;
     pub const CHAIN_ID: ChainId = ConsensusParameters::DEFAULT.chain_id;
 }

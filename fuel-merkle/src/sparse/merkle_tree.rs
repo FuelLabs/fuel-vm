@@ -1,12 +1,34 @@
 use crate::{
-    common::{error::DeserializeError, node::ChildError, AsPathIterator, Bytes32},
-    sparse::{empty_sum, primitive::Primitive, Node, StorageNode, StorageNodeError},
-    storage::{Mappable, StorageInspect, StorageMutate},
+    common::{
+        error::DeserializeError,
+        node::ChildError,
+        AsPathIterator,
+        Bytes32,
+    },
+    sparse::{
+        empty_sum,
+        primitive::Primitive,
+        Node,
+        StorageNode,
+        StorageNodeError,
+    },
+    storage::{
+        Mappable,
+        StorageInspect,
+        StorageMutate,
+    },
 };
 
-use crate::sparse::branch::{merge_branches, Branch};
+use crate::sparse::branch::{
+    merge_branches,
+    Branch,
+};
 use alloc::vec::Vec;
-use core::{cmp, iter, marker::PhantomData};
+use core::{
+    cmp,
+    iter,
+    marker::PhantomData,
+};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -56,7 +78,8 @@ impl MerkleTreeKey {
         Self(hash)
     }
 
-    /// Unsafe analog to create a `Self` that doesn't hash the `storage_key` unlike `Self::new`.
+    /// Unsafe analog to create a `Self` that doesn't hash the `storage_key` unlike
+    /// `Self::new`.
     ///
     /// # Safety
     ///
@@ -129,7 +152,10 @@ where
         }
     }
 
-    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(
+        storage: StorageType,
+        root: &Bytes32,
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
         if root == Self::empty_root() {
             let tree = Self::new(storage);
             Ok(tree)
@@ -139,7 +165,9 @@ where
                 .ok_or_else(|| MerkleTreeError::LoadError(*root))?
                 .into_owned();
             let tree = Self {
-                root_node: primitive.try_into().map_err(MerkleTreeError::DeserializeError)?,
+                root_node: primitive
+                    .try_into()
+                    .map_err(MerkleTreeError::DeserializeError)?,
                 storage,
                 phantom_table: Default::default(),
             };
@@ -149,7 +177,10 @@ where
 
     // PRIVATE
 
-    fn path_set(&self, leaf_key: Bytes32) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    fn path_set(
+        &self,
+        leaf_key: Bytes32,
+    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
@@ -184,7 +215,10 @@ where
     /// preferred approach when the key-values are known upfront. Leaves can be
     /// appended to the returned tree using `update` to further accumulate leaf
     /// data.
-    pub fn from_set<B, I, D>(mut storage: StorageType, set: I) -> Result<Self, StorageError>
+    pub fn from_set<B, I, D>(
+        mut storage: StorageType,
+        set: I,
+    ) -> Result<Self, StorageError>
     where
         I: Iterator<Item = (B, D)>,
         B: Into<Bytes32>,
@@ -208,14 +242,14 @@ where
 
         if branches.is_empty() {
             let tree = Self::new(storage);
-            return Ok(tree);
+            return Ok(tree)
         }
 
         if branches.len() == 1 {
             let leaf = branches.pop().expect("Expected at least 1 leaf").node;
             let mut tree = Self::new(storage);
             tree.set_root_node(leaf);
-            return Ok(tree);
+            return Ok(tree)
         }
 
         let mut nodes = Vec::<Branch>::with_capacity(branches.len());
@@ -266,7 +300,8 @@ where
                     // The current node is closer to its right neighbor than its
                     // left neighbor. We now merge the current node with its
                     // right neighbor.
-                    let current = nodes.pop().expect("Expected current node to be present");
+                    let current =
+                        nodes.pop().expect("Expected current node to be present");
                     let right = nodes.pop().expect("Expected right node to be present");
                     let merged = merge_branches(&mut storage, current, right)?;
                     nodes.push(merged);
@@ -287,7 +322,9 @@ where
         // rightmost nodes at the bottom. We can iterate through the stack and
         // merge them left to right.
         let top = {
-            let mut node = nodes.pop().expect("Nodes stack must have at least 1 element");
+            let mut node = nodes
+                .pop()
+                .expect("Nodes stack must have at least 1 element");
             while let Some(next) = nodes.pop() {
                 node = merge_branches(&mut storage, node, next)?;
             }
@@ -316,33 +353,45 @@ where
         Ok(tree)
     }
 
-    pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn update(
+        &mut self,
+        key: MerkleTreeKey,
+        data: &[u8],
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
             self.delete(key)?;
-            return Ok(());
+            return Ok(())
         }
 
         let key = key.into();
         let leaf_node = Node::create_leaf(&key, data);
-        self.storage.insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
+        self.storage
+            .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
             let (path_nodes, side_nodes) = self.path_set(key)?;
-            self.update_with_path_set(&leaf_node, path_nodes.as_slice(), side_nodes.as_slice())?;
+            self.update_with_path_set(
+                &leaf_node,
+                path_nodes.as_slice(),
+                side_nodes.as_slice(),
+            )?;
         }
 
         Ok(())
     }
 
-    pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn delete(
+        &mut self,
+        key: MerkleTreeKey,
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
-            return Ok(());
+            return Ok(())
         }
 
         let key = key.into();
@@ -350,7 +399,11 @@ where
 
         match path_nodes.get(0) {
             Some(node) if node.leaf_key() == &key => {
-                self.delete_with_path_set(&key, path_nodes.as_slice(), side_nodes.as_slice())?;
+                self.delete_with_path_set(
+                    &key,
+                    path_nodes.as_slice(),
+                    side_nodes.as_slice(),
+                )?;
             }
             _ => {}
         };
@@ -395,7 +448,8 @@ where
         if requested_leaf_node.leaf_key() != actual_leaf_node.leaf_key() {
             // Merge leaves
             if !actual_leaf_node.is_placeholder() {
-                current_node = Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                current_node =
+                    Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -404,9 +458,11 @@ where
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
             let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
             let placeholders_count = stale_depth - side_nodes.len();
-            let placeholders = iter::repeat(Node::create_placeholder()).take(placeholders_count);
+            let placeholders =
+                iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
-                current_node = Node::create_node_on_path(path, &current_node, &placeholder);
+                current_node =
+                    Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -467,8 +523,11 @@ where
                 // node will be an internal node, and not a leaf, by the time we
                 // start merging the remaining side nodes.
                 // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
-                if let Some(side_node) = side_nodes_iter.find(|side_node| !side_node.is_placeholder()) {
-                    current_node = Node::create_node_on_path(path, &current_node, side_node);
+                if let Some(side_node) =
+                    side_nodes_iter.find(|side_node| !side_node.is_placeholder())
+                {
+                    current_node =
+                        Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
                         .insert(current_node.hash(), &current_node.as_ref().into())?;
                 }
@@ -490,10 +549,20 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::sparse::{MerkleTreeKey, Node};
     use crate::{
-        common::{Bytes32, StorageMap},
-        sparse::{empty_sum, hash::sum, MerkleTree, MerkleTreeError, Primitive},
+        common::{
+            Bytes32,
+            StorageMap,
+        },
+        sparse::{
+            empty_sum,
+            hash::sum,
+            MerkleTree,
+            MerkleTreeError,
+            MerkleTreeKey,
+            Node,
+            Primitive,
+        },
     };
     use fuel_storage::Mappable;
     use hex;
@@ -513,8 +582,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
+        type Value = Self::OwnedValue;
     }
 
     fn key<B: AsRef<[u8]>>(data: B) -> MerkleTreeKey {
@@ -526,7 +595,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let tree = MerkleTree::new(&mut storage);
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -538,7 +608,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root =
+            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -551,7 +622,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
+        let expected_root =
+            "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -565,7 +637,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
+        let expected_root =
+            "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -581,7 +654,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
+        let expected_root =
+            "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -596,7 +670,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "21ca4917e99da99a61de93deaf88c400d4c082991cb95779e444d43dd13e8849";
+        let expected_root =
+            "21ca4917e99da99a61de93deaf88c400d4c082991cb95779e444d43dd13e8849";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -611,7 +686,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "82bf747d455a55e2f7044a03536fc43f1f55d43b855e72c0110c986707a23e4d";
+        let expected_root =
+            "82bf747d455a55e2f7044a03536fc43f1f55d43b855e72c0110c986707a23e4d";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -624,7 +700,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root =
+            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -637,7 +714,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"CHANGE").unwrap();
 
         let root = tree.root();
-        let expected_root = "dd97174c80e5e5aa3a31c61b05e279c1495c8a07b2a08bca5dbc9fb9774f9457";
+        let expected_root =
+            "dd97174c80e5e5aa3a31c61b05e279c1495c8a07b2a08bca5dbc9fb9774f9457";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -689,7 +767,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "7e6643325042cfe0fc76626c043b97062af51c7e9fc56665f12b479034bce326";
+        let expected_root =
+            "7e6643325042cfe0fc76626c043b97062af51c7e9fc56665f12b479034bce326";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -705,7 +784,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
 
         let root = tree.root();
-        let expected_root = "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
+        let expected_root =
+            "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -717,7 +797,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"").unwrap();
 
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -730,7 +811,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"").unwrap();
 
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -743,7 +825,8 @@ mod test {
         tree.delete(key(b"\x00\x00\x00\x00")).unwrap();
 
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -757,7 +840,8 @@ mod test {
         tree.delete(key(b"\x00\x00\x00\x01")).unwrap();
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root =
+            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -777,7 +861,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
+        let expected_root =
+            "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -794,7 +879,8 @@ mod test {
         tree.delete(key(b"\x00\x00\x04\x00")).unwrap();
 
         let root = tree.root();
-        let expected_root = "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
+        let expected_root =
+            "108f731f2414e33ae57e584dc26bd276db07874436b2264ca6e520c658185c6b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -834,7 +920,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "7e6643325042cfe0fc76626c043b97062af51c7e9fc56665f12b479034bce326";
+        let expected_root =
+            "7e6643325042cfe0fc76626c043b97062af51c7e9fc56665f12b479034bce326";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -854,7 +941,8 @@ mod test {
         }
 
         let root = tree.root();
-        let expected_root = "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
+        let expected_root =
+            "e912e97abc67707b2e6027338292943b53d01a7fbd7b244674128c7e468dd696";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -875,11 +963,19 @@ mod test {
         tree.update(leaf_2_key, leaf_2_data).unwrap();
         tree.update(leaf_1_key, leaf_1_data).unwrap();
         assert_eq!(
-            tree.storage.get(leaf_2.hash()).unwrap().unwrap().into_owned(),
+            tree.storage
+                .get(leaf_2.hash())
+                .unwrap()
+                .unwrap()
+                .into_owned(),
             leaf_2.as_ref().into()
         );
         assert_eq!(
-            tree.storage.get(leaf_1.hash()).unwrap().unwrap().into_owned(),
+            tree.storage
+                .get(leaf_1.hash())
+                .unwrap()
+                .unwrap()
+                .into_owned(),
             leaf_1.as_ref().into()
         );
     }
@@ -928,8 +1024,8 @@ mod test {
             let mut tree = MerkleTree::load(&mut storage_to_load, &root_to_load).unwrap();
             // Build up the loaded tree using the additional set of `update` data so its
             // root matches the expected root. This verifies that the loaded tree has
-            // successfully wrapped the given storage backing and assumed the correct state
-            // so that future updates can be made seamlessly.
+            // successfully wrapped the given storage backing and assumed the correct
+            // state so that future updates can be made seamlessly.
             tree.update(key(b"\x00\x00\x00\x05"), b"DATA").unwrap();
             tree.update(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
             tree.update(key(b"\x00\x00\x00\x07"), b"DATA").unwrap();
@@ -964,7 +1060,8 @@ mod test {
         }
 
         let root = &sum(b"\xff\xff\xff\xff");
-        let err = MerkleTree::load(&mut storage, root).expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage, root)
+            .expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::LoadError(_)));
     }
 
@@ -987,7 +1084,8 @@ mod test {
         let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
         storage.insert(&root, &primitive).unwrap();
 
-        let err = MerkleTree::load(&mut storage, &root).expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage, &root)
+            .expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::DeserializeError(_)));
     }
 

@@ -1,10 +1,22 @@
-use fuel_asm::{op, RegId};
-use fuel_tx::{ConsensusParameters, TransactionBuilder};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_tx::{
+    ConsensusParameters,
+    TransactionBuilder,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
-use crate::checked_transaction::CheckPredicates;
-use crate::interpreter::CheckedMetadata;
-use crate::prelude::*;
+use crate::{
+    checked_transaction::CheckPredicates,
+    interpreter::CheckedMetadata,
+    prelude::*,
+};
 
 #[test]
 fn estimate_gas_gives_proper_gas_used() {
@@ -13,9 +25,13 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
-    let script = vec![op::addi(0x20, 0x20, 1), op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
-        .into_iter()
-        .collect::<Vec<u8>>();
+    let script = vec![
+        op::addi(0x20, 0x20, 1),
+        op::addi(0x20, 0x20, 1),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -43,7 +59,8 @@ fn estimate_gas_gives_proper_gas_used() {
     let mut client = MemoryClient::default();
 
     client.transact(tx_without_predicate);
-    let receipts_without_predicate = client.receipts().expect("Expected receipts").to_vec();
+    let receipts_without_predicate =
+        client.receipts().expect("Expected receipts").to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
         .gas_used()
         .expect("Should retrieve gas used");
@@ -85,10 +102,15 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let balances = unestimated_checked.metadata().balances();
 
-    Interpreter::<PredicateStorage>::estimate_predicates(&mut transaction, balances, params, GasCosts::default())
-        .expect("Should successfully estimate predicates");
+    Interpreter::<PredicateStorage>::estimate_predicates(
+        &mut transaction,
+        balances,
+        params,
+        GasCosts::default(),
+    )
+    .expect("Should successfully estimate predicates");
 
-    //transaction should pass checking after estimation
+    // transaction should pass checking after estimation
     assert!(transaction
         .into_checked(Default::default(), &params, &GasCosts::default())
         .is_ok());

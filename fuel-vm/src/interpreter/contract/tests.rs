@@ -1,22 +1,34 @@
-use crate::interpreter::memory::Memory;
-use crate::storage::MemoryStorage;
+use crate::{
+    interpreter::memory::Memory,
+    storage::MemoryStorage,
+};
 
 use super::*;
-use fuel_tx::field::Inputs;
-use fuel_tx::field::Outputs;
-use fuel_tx::Input;
-use fuel_tx::Script;
+use fuel_tx::{
+    field::{
+        Inputs,
+        Outputs,
+    },
+    Input,
+    Script,
+};
 use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
 fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[b as usize..(b as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
-    memory[c as usize..(c as usize + ContractId::LEN)].copy_from_slice(&[3u8; ContractId::LEN][..]);
+    memory[b as usize..(b as usize + AssetId::LEN)]
+        .copy_from_slice(&[2u8; AssetId::LEN][..]);
+    memory[c as usize..(c as usize + ContractId::LEN)]
+        .copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     storage
-        .merkle_contract_asset_id_balance_insert(&contract_id, &AssetId::from([2u8; 32]), 33)
+        .merkle_contract_asset_id_balance_insert(
+            &contract_id,
+            &AssetId::from([2u8; 32]),
+            33,
+        )
         .unwrap();
     let mut pc = 4;
 
@@ -40,8 +52,10 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[a as usize..(a as usize + ContractId::LEN)].copy_from_slice(&[3u8; ContractId::LEN][..]);
-    memory[c as usize..(c as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
+    memory[a as usize..(a as usize + ContractId::LEN)]
+        .copy_from_slice(&[3u8; ContractId::LEN][..]);
+    memory[c as usize..(c as usize + AssetId::LEN)]
+        .copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -60,7 +74,8 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
         }
     };
 
-    let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
+    let mut balances =
+        RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
     let mut receipts = Default::default();
     let mut panic_context = PanicContext::None;
     let mut tx = Script::default();
@@ -102,10 +117,18 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
 }
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
-fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
+fn test_transfer_output(
+    external: bool,
+    a: Word,
+    b: Word,
+    c: Word,
+    d: Word,
+) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[a as usize..(a as usize + Address::LEN)].copy_from_slice(&[3u8; Address::LEN][..]);
-    memory[d as usize..(d as usize + AssetId::LEN)].copy_from_slice(&[2u8; AssetId::LEN][..]);
+    memory[a as usize..(a as usize + Address::LEN)]
+        .copy_from_slice(&[3u8; Address::LEN][..]);
+    memory[d as usize..(d as usize + AssetId::LEN)]
+        .copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -124,7 +147,8 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
         }
     };
 
-    let mut balances = RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
+    let mut balances =
+        RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
     let mut receipts = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
@@ -176,7 +200,10 @@ fn test_transfer_output(external: bool, a: Word, b: Word, c: Word, d: Word) -> R
 #[test_case(Word::MAX, 0 => Ok(()); "Can add zero to max")]
 #[test_case(1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing add")]
 #[test_case(Word::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing 1 add")]
-fn test_balance_increase(initial: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
+fn test_balance_increase(
+    initial: impl Into<Option<Word>>,
+    amount: Word,
+) -> Result<(), RuntimeError> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -208,7 +235,10 @@ fn test_balance_increase(initial: impl Into<Option<Word>>, amount: Word) -> Resu
 #[test_case(10, 10 => Ok(()); "Can subtract to zero")]
 #[test_case(1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Overflowing subtract")]
 #[test_case(1, 2 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Overflowing 1 subtract")]
-fn test_balance_decrease(initial: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
+fn test_balance_decrease(
+    initial: impl Into<Option<Word>>,
+    amount: Word,
+) -> Result<(), RuntimeError> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());

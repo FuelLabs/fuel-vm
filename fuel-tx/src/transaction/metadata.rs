@@ -1,9 +1,15 @@
 use alloc::vec::Vec;
-use fuel_types::{Bytes32, ChainId};
+use fuel_types::{
+    Bytes32,
+    ChainId,
+};
 
 use crate::CheckError;
 #[cfg(feature = "std")]
-use crate::{field, UniqueIdentifier};
+use crate::{
+    field,
+    UniqueIdentifier,
+};
 
 /// Entity support metadata computation to cache results.
 pub trait Cacheable {

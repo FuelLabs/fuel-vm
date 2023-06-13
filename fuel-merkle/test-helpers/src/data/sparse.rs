@@ -1,10 +1,17 @@
-use fuel_merkle::common::Bytes32;
-use fuel_merkle::sparse::{in_memory, MerkleTreeKey};
+use fuel_merkle::{
+    common::Bytes32,
+    sparse::{
+        in_memory,
+        MerkleTreeKey,
+    },
+};
 use serde::Deserialize;
 use std::convert::TryInto;
 
-use crate::data::EncodedValue;
-use crate::data::TestError;
+use crate::data::{
+    EncodedValue,
+    TestError,
+};
 
 // Supported actions:
 const ACTION_UPDATE: &str = "update";
@@ -48,12 +55,15 @@ impl Step {
         }
     }
 
-    // Translate the action string found in the step definition to an Action enum variant with the
-    // appropriate key and data bindings.
+    // Translate the action string found in the step definition to an Action enum variant
+    // with the appropriate key and data bindings.
     fn action_type(&self) -> Result<Action, TestError> {
         match self.action.as_str() {
             // An Update has a key and data
-            ACTION_UPDATE => Ok(Action::Update(self.key.clone().unwrap(), self.data.clone().unwrap())),
+            ACTION_UPDATE => Ok(Action::Update(
+                self.key.clone().unwrap(),
+                self.data.clone().unwrap(),
+            )),
 
             // A Delete has a key
             ACTION_DELETE => Ok(Action::Delete(self.key.clone().unwrap())),
@@ -70,11 +80,15 @@ struct InMemoryMerkleTreeTestAdaptor {
 
 impl MerkleTreeTestAdaptor for InMemoryMerkleTreeTestAdaptor {
     fn update(&mut self, key: &Bytes32, data: &[u8]) {
-        self.tree.as_mut().update(MerkleTreeKey::new_without_hash(*key), data)
+        self.tree
+            .as_mut()
+            .update(MerkleTreeKey::new_without_hash(*key), data)
     }
 
     fn delete(&mut self, key: &Bytes32) {
-        self.tree.as_mut().delete(MerkleTreeKey::new_without_hash(*key))
+        self.tree
+            .as_mut()
+            .delete(MerkleTreeKey::new_without_hash(*key))
     }
 
     fn root(&self) -> Bytes32 {

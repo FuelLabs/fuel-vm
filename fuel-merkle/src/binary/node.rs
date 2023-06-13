@@ -1,6 +1,12 @@
 use crate::{
-    binary::{leaf_sum, node_sum},
-    common::{Bytes32, Position},
+    binary::{
+        leaf_sum,
+        node_sum,
+    },
+    common::{
+        Bytes32,
+        Position,
+    },
 };
 
 use core::fmt::Debug;

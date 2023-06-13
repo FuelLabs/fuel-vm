@@ -2,8 +2,11 @@ use crate::Error;
 
 use fuel_types::Bytes64;
 
-use core::ops::Deref;
-use core::{fmt, str};
+use core::{
+    fmt,
+    ops::Deref,
+    str,
+};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -17,14 +20,16 @@ impl Signature {
 
     /// Construct a `Signature` directly from its bytes.
     ///
-    /// This constructor expects the given bytes to be a valid signature. No signing is performed.
+    /// This constructor expects the given bytes to be a valid signature. No signing is
+    /// performed.
     pub fn from_bytes(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
     }
 
     /// Construct a `Signature` reference directly from a reference to its bytes.
     ///
-    /// This constructor expects the given bytes to be a valid signature. No signing is performed.
+    /// This constructor expects the given bytes to be a valid signature. No signing is
+    /// performed.
     pub fn from_bytes_ref(bytes: &[u8; Self::LEN]) -> &Self {
         // TODO: Wrap this unsafe conversion safely in `fuel_types::Bytes64`.
         #[allow(unsafe_code)]
@@ -98,6 +103,7 @@ impl From<Signature> for Bytes64 {
 
 impl str::FromStr for Signature {
     type Err = Error;
+
     /// Parse a `Signature` directly from its bytes encoded as hex in a string.
     ///
     /// This constructor does not perform any signing.
@@ -110,35 +116,48 @@ impl str::FromStr for Signature {
 
 #[cfg(feature = "std")]
 mod use_std {
-    use crate::{Error, Message, PublicKey, SecretKey, Signature};
+    use crate::{
+        Error,
+        Message,
+        PublicKey,
+        SecretKey,
+        Signature,
+    };
 
     use lazy_static::lazy_static;
     use secp256k1::{
-        ecdsa::{RecoverableSignature as SecpRecoverableSignature, RecoveryId},
+        ecdsa::{
+            RecoverableSignature as SecpRecoverableSignature,
+            RecoveryId,
+        },
         Secp256k1,
     };
 
     use std::borrow::Borrow;
 
     lazy_static! {
-        static ref SIGNING_SECP: Secp256k1<secp256k1::SignOnly> = Secp256k1::signing_only();
+        static ref SIGNING_SECP: Secp256k1<secp256k1::SignOnly> =
+            Secp256k1::signing_only();
         static ref RECOVER_SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
     }
 
     impl Signature {
-        // Internal API - this isn't meant to be made public because some assumptions and pre-checks
-        // are performed prior to this call
+        // Internal API - this isn't meant to be made public because some assumptions and
+        // pre-checks are performed prior to this call
         fn to_secp(&mut self) -> SecpRecoverableSignature {
             let v = (self.as_mut()[32] >> 7) as i32;
 
             self.truncate_recovery_id();
 
-            let v = RecoveryId::from_i32(v)
-                .unwrap_or_else(|_| RecoveryId::from_i32(0).expect("0 is infallible recovery ID"));
-
-            let signature = SecpRecoverableSignature::from_compact(self.as_ref(), v).unwrap_or_else(|_| {
-                SecpRecoverableSignature::from_compact(&[0u8; 64], v).expect("Zeroed signature is infallible")
+            let v = RecoveryId::from_i32(v).unwrap_or_else(|_| {
+                RecoveryId::from_i32(0).expect("0 is infallible recovery ID")
             });
+
+            let signature = SecpRecoverableSignature::from_compact(self.as_ref(), v)
+                .unwrap_or_else(|_| {
+                    SecpRecoverableSignature::from_compact(&[0u8; 64], v)
+                        .expect("Zeroed signature is infallible")
+                });
 
             signature
         }
@@ -174,9 +193,9 @@ mod use_std {
         /// Recover the public key from a signature performed with
         /// [`Signature::sign`]
         ///
-        /// It takes the signature as owned because this operation is not idempotent. The taken
-        /// signature will not be recoverable. Signatures are meant to be single use, so this
-        /// avoids unnecessary copy.
+        /// It takes the signature as owned because this operation is not idempotent. The
+        /// taken signature will not be recoverable. Signatures are meant to be
+        /// single use, so this avoids unnecessary copy.
         pub fn recover(mut self, message: &Message) -> Result<PublicKey, Error> {
             let signature = self.to_secp();
             let message = message.to_secp();
@@ -190,9 +209,9 @@ mod use_std {
 
         /// Verify a signature produced by [`Signature::sign`]
         ///
-        /// It takes the signature as owned because this operation is not idempotent. The taken
-        /// signature will not be recoverable. Signatures are meant to be single use, so this
-        /// avoids unnecessary copy.
+        /// It takes the signature as owned because this operation is not idempotent. The
+        /// taken signature will not be recoverable. Signatures are meant to be
+        /// single use, so this avoids unnecessary copy.
         pub fn verify(mut self, pk: &PublicKey, message: &Message) -> Result<(), Error> {
             let signature = self.to_secp().to_standard();
             let message = message.to_secp();

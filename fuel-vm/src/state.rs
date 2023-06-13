@@ -1,7 +1,10 @@
 //! Runtime state representation for the VM
 
 use fuel_tx::Receipt;
-use fuel_types::{Bytes32, Word};
+use fuel_types::{
+    Bytes32,
+    Word,
+};
 
 #[cfg(feature = "debug")]
 mod debug;
@@ -10,7 +13,10 @@ mod debug;
 mod debugger;
 
 #[cfg(feature = "debug")]
-pub use debug::{Breakpoint, DebugEval};
+pub use debug::{
+    Breakpoint,
+    DebugEval,
+};
 
 #[cfg(feature = "debug")]
 pub use debugger::Debugger;
@@ -124,7 +130,11 @@ pub struct StateTransition<Tx> {
 impl<Tx> StateTransition<Tx> {
     /// Create a new state transition representation.
     pub const fn new(state: ProgramState, tx: Tx, receipts: Vec<Receipt>) -> Self {
-        Self { state, tx, receipts }
+        Self {
+            state,
+            tx,
+            receipts,
+        }
     }
 
     /// Program state representation.
@@ -173,7 +183,11 @@ pub struct StateTransitionRef<'a, Tx> {
 impl<'a, Tx> StateTransitionRef<'a, Tx> {
     /// Create a new by reference state transition representation.
     pub const fn new(state: ProgramState, tx: &'a Tx, receipts: &'a [Receipt]) -> Self {
-        Self { state, tx, receipts }
+        Self {
+            state,
+            tx,
+            receipts,
+        }
     }
 
     /// Program state representation.

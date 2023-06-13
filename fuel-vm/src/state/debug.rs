@@ -1,5 +1,8 @@
 use fuel_asm::Instruction;
-use fuel_types::{ContractId, Word};
+use fuel_types::{
+    ContractId,
+    Word,
+};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

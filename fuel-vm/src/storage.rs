@@ -2,14 +2,22 @@
 
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
-use fuel_types::{AssetId, Bytes32, ContractId, Salt, Word};
+use fuel_types::{
+    AssetId,
+    Bytes32,
+    ContractId,
+    Salt,
+    Word,
+};
 
 mod interpreter;
 mod memory;
 mod predicate;
 
-pub use interpreter::ContractsAssetsStorage;
-pub use interpreter::InterpreterStorage;
+pub use interpreter::{
+    ContractsAssetsStorage,
+    InterpreterStorage,
+};
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
 
@@ -19,8 +27,8 @@ pub struct ContractsRawCode;
 impl Mappable for ContractsRawCode {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
-    type Value = [u8];
     type OwnedValue = Contract;
+    type Value = [u8];
 }
 
 /// The storage table for contract's additional information as salt, root hash, etc.
@@ -29,10 +37,10 @@ pub struct ContractsInfo;
 impl Mappable for ContractsInfo {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
+    type OwnedValue = Self::Value;
     /// `Salt` - is the salt used during creation of the contract for uniques.
     /// `Bytes32` - is the root hash of the contract's code.
     type Value = (Salt, Bytes32);
-    type OwnedValue = Self::Value;
 }
 
 /// The storage table for contract's assets balances.
@@ -43,8 +51,8 @@ pub struct ContractsAssets;
 impl Mappable for ContractsAssets {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractsAssetKey;
-    type Value = Word;
     type OwnedValue = Self::Value;
+    type Value = Word;
 }
 
 /// The storage table for contract's hashed key-value state.
@@ -54,24 +62,27 @@ pub struct ContractsState;
 
 impl Mappable for ContractsState {
     type Key = Self::OwnedKey;
-    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's key.
+    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's
+    /// key.
     type OwnedKey = ContractsStateKey;
+    type OwnedValue = Self::Value;
     /// The table value is hash of the value.
     type Value = Bytes32;
-    type OwnedValue = Self::Value;
 }
 
-/// The macro defines a new type of double storage key. It is a merge of the two types into one
-/// general type that represents the storage key of some entity.
+/// The macro defines a new type of double storage key. It is a merge of the two types
+/// into one general type that represents the storage key of some entity.
 ///
-/// Both types are represented by one big array. It is done from the performance perspective
-/// to minimize the number of copies. The current code doesn't use consumed values and uses
-/// it in most cases as on big key(except tests, which require access to sub-keys).
-/// But in the future, we may change the layout of the fields based on
+/// Both types are represented by one big array. It is done from the performance
+/// perspective to minimize the number of copies. The current code doesn't use consumed
+/// values and uses it in most cases as on big key(except tests, which require access to
+/// sub-keys). But in the future, we may change the layout of the fields based on
 /// the performance measurements/new business logic.
 #[macro_export]
 macro_rules! double_key {
-    ($i:ident, $first:ident, $first_getter:ident, $second:ident, $second_getter:ident) => {
+    (
+        $i:ident, $first:ident, $first_getter:ident, $second:ident, $second_getter:ident
+    ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// The FuelVM storage double key.
         pub struct $i([u8; { $first::LEN + $second::LEN }]);
@@ -90,7 +101,8 @@ macro_rules! double_key {
             pub fn new(first: &$first, second: &$second) -> Self {
                 let mut default = Self::default();
                 default.0[0..Self::first_end()].copy_from_slice(first.as_ref());
-                default.0[Self::first_end()..Self::second_end()].copy_from_slice(second.as_ref());
+                default.0[Self::first_end()..Self::second_end()]
+                    .copy_from_slice(second.as_ref());
                 default
             }
 
@@ -100,7 +112,9 @@ macro_rules! double_key {
             }
 
             /// Creates a new instance of double storage key from the slice.
-            pub fn from_slice(slice: &[u8]) -> Result<Self, core::array::TryFromSliceError> {
+            pub fn from_slice(
+                slice: &[u8],
+            ) -> Result<Self, core::array::TryFromSliceError> {
                 Ok(Self(slice.try_into()?))
             }
 
@@ -161,5 +175,17 @@ macro_rules! double_key {
     };
 }
 
-double_key!(ContractsAssetKey, ContractId, contract_id, AssetId, asset_id);
-double_key!(ContractsStateKey, ContractId, contract_id, Bytes32, state_key);
+double_key!(
+    ContractsAssetKey,
+    ContractId,
+    contract_id,
+    AssetId,
+    asset_id
+);
+double_key!(
+    ContractsStateKey,
+    ContractId,
+    contract_id,
+    Bytes32,
+    state_key
+);

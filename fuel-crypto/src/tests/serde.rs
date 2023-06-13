@@ -1,6 +1,12 @@
-use fuel_crypto::{Message, SecretKey, Signature};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
+use fuel_crypto::{
+    Message,
+    SecretKey,
+    Signature,
+};
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
 
 #[test]
 fn serde() {
@@ -21,13 +27,16 @@ fn serde() {
     let message = b"Two souls live in me, alas, Irreconcilable with one another.";
     let message = Message::new(message);
     let message_p = bincode::serialize(&message).expect("Failed to serialize message");
-    let message_p = bincode::deserialize(&message_p).expect("Failed to deserialize message");
+    let message_p =
+        bincode::deserialize(&message_p).expect("Failed to deserialize message");
 
     assert_eq!(message, message_p);
 
     let signature = Signature::sign(&secret, &message);
-    let signature_p = bincode::serialize(&signature).expect("Failed to serialize signature");
-    let signature_p = bincode::deserialize(&signature_p).expect("Failed to deserialize signature");
+    let signature_p =
+        bincode::serialize(&signature).expect("Failed to serialize signature");
+    let signature_p =
+        bincode::deserialize(&signature_p).expect("Failed to deserialize signature");
 
     assert_eq!(signature, signature_p);
 }

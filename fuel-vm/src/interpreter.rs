@@ -1,22 +1,48 @@
 //! [`Interpreter`] implementation
 
-use crate::call::CallFrame;
-use crate::constraints::reg_key::*;
-use crate::consts::*;
-use crate::context::Context;
-use crate::gas::GasCosts;
-use crate::state::Debugger;
-use std::io::Read;
-use std::ops::Index;
-use std::{io, mem};
-
-use fuel_asm::{Flags, PanicReason};
-use fuel_tx::{
-    field, Chargeable, CheckError, ConsensusParameters, Create, Executable, Output, Receipt, Script, Transaction,
-    TransactionFee, TransactionRepr, UniqueIdentifier,
+use crate::{
+    call::CallFrame,
+    constraints::reg_key::*,
+    consts::*,
+    context::Context,
+    gas::GasCosts,
+    state::Debugger,
 };
-use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{AssetId, ContractId, Word};
+use std::{
+    io,
+    io::Read,
+    mem,
+    ops::Index,
+};
+
+use fuel_asm::{
+    Flags,
+    PanicReason,
+};
+use fuel_tx::{
+    field,
+    Chargeable,
+    CheckError,
+    ConsensusParameters,
+    Create,
+    Executable,
+    Output,
+    Receipt,
+    Script,
+    Transaction,
+    TransactionFee,
+    TransactionRepr,
+    UniqueIdentifier,
+};
+use fuel_types::{
+    bytes::{
+        SerializableVec,
+        SizedBytes,
+    },
+    AssetId,
+    ContractId,
+    Word,
+};
 
 mod alu;
 mod balances;
@@ -48,12 +74,18 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances, RetryableAmount,
+    CreateCheckedMetadata,
+    EstimatePredicates,
+    IntoChecked,
+    NonRetryableFreeBalances,
+    RetryableAmount,
     ScriptCheckedMetadata,
 };
 
-use self::memory::Memory;
-use self::receipts::ReceiptsCtx;
+use self::{
+    memory::Memory,
+    receipts::ReceiptsCtx,
+};
 
 /// VM interpreter.
 ///
@@ -78,8 +110,8 @@ pub struct Interpreter<S, Tx = ()> {
     gas_costs: GasCosts,
     profiler: Profiler,
     params: ConsensusParameters,
-    /// `PanicContext` after the latest execution. It is consumed by `append_panic_receipt`
-    /// and is `PanicContext::None` after consumption.
+    /// `PanicContext` after the latest execution. It is consumed by
+    /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
 }
 
@@ -213,7 +245,8 @@ pub trait ExecutableTransaction:
     /// Casts the `Self` transaction into `&mut Create` if any.
     fn as_create_mut(&mut self) -> Option<&mut Create>;
 
-    /// Returns the type of the transaction like `Transaction::Create` or `Transaction::Script`.
+    /// Returns the type of the transaction like `Transaction::Create` or
+    /// `Transaction::Script`.
     fn transaction_type() -> Word;
 
     /// Dumps the `Output` by the `idx` into the `buf` buffer.
@@ -224,14 +257,19 @@ pub trait ExecutableTransaction:
             .and_then(|o| o.read(buf))
     }
 
-    /// Replaces the `Output::Variable` with the `output`(should be also `Output::Variable`)
-    /// by the `idx` index.
-    fn replace_variable_output(&mut self, idx: usize, output: Output) -> Result<(), PanicReason> {
+    /// Replaces the `Output::Variable` with the `output`(should be also
+    /// `Output::Variable`) by the `idx` index.
+    fn replace_variable_output(
+        &mut self,
+        idx: usize,
+        output: Output,
+    ) -> Result<(), PanicReason> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable);
+            return Err(PanicReason::ExpectedOutputVariable)
         }
 
-        // TODO increase the error granularity for this case - create a new variant of panic reason
+        // TODO increase the error granularity for this case - create a new variant of
+        // panic reason
         self.outputs_mut()
             .get_mut(idx)
             .and_then(|o| match o {
@@ -245,8 +283,8 @@ pub trait ExecutableTransaction:
 
     /// Update change and variable outputs.
     ///
-    /// `revert` will signal if the execution was reverted. It will refund the unused gas cost to
-    /// the base asset and reset output changes to their `initial_balances`.
+    /// `revert` will signal if the execution was reverted. It will refund the unused gas
+    /// cost to the base asset and reset output changes to their `initial_balances`.
     ///
     /// `remaining_gas` expects the raw content of `$ggas`
     ///
@@ -264,33 +302,42 @@ pub trait ExecutableTransaction:
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
-        let gas_refund = TransactionFee::gas_refund_value(params, remaining_gas, self.price())
-            .ok_or(CheckError::ArithmeticOverflow)?;
+        let gas_refund =
+            TransactionFee::gas_refund_value(params, remaining_gas, self.price())
+                .ok_or(CheckError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
             // If revert, set base asset to initial balance and refund unused gas
             //
             // Note: the initial balance deducts the gas limit from base asset
-            Output::Change { asset_id, amount, .. } if revert && asset_id == &AssetId::BASE => initial_balances
-                .non_retryable[&AssetId::BASE]
+            Output::Change {
+                asset_id, amount, ..
+            } if revert && asset_id == &AssetId::BASE => initial_balances.non_retryable
+                [&AssetId::BASE]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
-            Output::Change { asset_id, amount, .. } if revert => {
+            Output::Change {
+                asset_id, amount, ..
+            } if revert => {
                 *amount = initial_balances.non_retryable[asset_id];
                 Ok(())
             }
 
             // The change for the base asset will be the available balance + unused gas
-            Output::Change { asset_id, amount, .. } if asset_id == &AssetId::BASE => balances[asset_id]
+            Output::Change {
+                asset_id, amount, ..
+            } if asset_id == &AssetId::BASE => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // Set changes to the remainder provided balances
-            Output::Change { asset_id, amount, .. } => {
+            Output::Change {
+                asset_id, amount, ..
+            } => {
                 *amount = balances[asset_id];
                 Ok(())
             }

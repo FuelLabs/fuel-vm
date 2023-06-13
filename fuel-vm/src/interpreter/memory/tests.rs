@@ -31,11 +31,13 @@ fn memcopy() {
 
     for i in 0..alloc {
         vm.instruction(op::addi(0x21, RegId::ZERO, i)).unwrap();
-        vm.instruction(op::sb(RegId::HP, 0x21, i as Immediate12)).unwrap();
+        vm.instruction(op::sb(RegId::HP, 0x21, i as Immediate12))
+            .unwrap();
     }
 
     // r[0x23] := m[$hp, 0x20] == m[$zero, 0x20]
-    vm.instruction(op::meq(0x23, RegId::HP, RegId::ZERO, 0x20)).unwrap();
+    vm.instruction(op::meq(0x23, RegId::HP, RegId::ZERO, 0x20))
+        .unwrap();
 
     assert_eq!(0, vm.registers()[0x23]);
 
@@ -46,7 +48,8 @@ fn memcopy() {
     vm.instruction(op::mcp(RegId::HP, 0x12, 0x20)).unwrap();
 
     // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
-    vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20)).unwrap();
+    vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20))
+        .unwrap();
 
     assert_eq!(1, vm.registers()[0x23]);
 
@@ -175,7 +178,8 @@ fn stack_alloc_ownership() {
     20..41 => false; "start exclusive and end inclusive"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
-    let range = MemoryRange::new(range.start, range.end - range.start).expect("Invalid range");
+    let range =
+        MemoryRange::new(range.start, range.end - range.start).expect("Invalid range");
     reg.has_ownership_range(&range)
 }
 
@@ -229,7 +233,11 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for heap"
 )]
-fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (bool, [u8; 100]) {
+fn test_mem_write(
+    addr: usize,
+    data: &[u8],
+    registers: OwnershipRegisters,
+) -> (bool, [u8; 100]) {
     let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
     let memory: [u8; 100] = memory[..100].try_into().unwrap();
@@ -281,7 +289,11 @@ fn test_mem_write(addr: usize, data: &[u8], registers: OwnershipRegisters) -> (b
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [1u8; 100]); "Internal too large for heap"
 )]
-fn test_try_zeroize(addr: usize, len: usize, registers: OwnershipRegisters) -> (bool, [u8; 100]) {
+fn test_try_zeroize(
+    addr: usize,
+    len: usize,
+    registers: OwnershipRegisters,
+) -> (bool, [u8; 100]) {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
     let memory: [u8; 100] = memory[..100].try_into().unwrap();

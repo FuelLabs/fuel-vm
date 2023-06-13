@@ -51,8 +51,15 @@ fn test_add(
         pc: RegMut::new(&mut pc),
     };
     let mut dest = 0;
-    alu_capture_overflow(&mut dest, Reg::new(&flag), common, u128::overflowing_add, b, c)
-        .map(|_| (dest, CommonInput { of, err, pc }))
+    alu_capture_overflow(
+        &mut dest,
+        Reg::new(&flag),
+        common,
+        u128::overflowing_add,
+        b,
+        c,
+    )
+    .map(|_| (dest, CommonInput { of, err, pc }))
 }
 
 #[test_case(
@@ -92,8 +99,16 @@ fn test_div(
         pc: RegMut::new(&mut pc),
     };
     let mut dest = 0;
-    alu_error(&mut dest, Reg::new(&flag), common, Word::div, b, c, err_bool)
-        .map(|_| (dest, CommonInput { of, err, pc }))
+    alu_error(
+        &mut dest,
+        Reg::new(&flag),
+        common,
+        Word::div,
+        b,
+        c,
+        err_bool,
+    )
+    .map(|_| (dest, CommonInput { of, err, pc }))
 }
 
 #[test_case(
@@ -151,7 +166,15 @@ fn test_add_can_do_big_int_math() {
         pc: RegMut::new(&mut pc),
     };
     let mut dest = 0;
-    alu_capture_overflow(&mut dest, Reg::new(&flag), common, u128::overflowing_add, b, c).unwrap();
+    alu_capture_overflow(
+        &mut dest,
+        Reg::new(&flag),
+        common,
+        u128::overflowing_add,
+        b,
+        c,
+    )
+    .unwrap();
     let result = u128::from_be_bytes(
         of.to_be_bytes()
             .into_iter()

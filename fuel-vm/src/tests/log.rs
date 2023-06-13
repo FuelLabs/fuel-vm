@@ -2,8 +2,16 @@ use super::test_helpers;
 use fuel_asm::*;
 use fuel_tx::Receipt;
 use fuel_types::Immediate24;
-use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT};
-use test_helpers::{assert_panics, assert_success, run_script, set_full_word};
+use fuel_vm::consts::{
+    VM_MAX_RAM,
+    VM_REGISTER_COUNT,
+};
+use test_helpers::{
+    assert_panics,
+    assert_success,
+    run_script,
+    set_full_word,
+};
 
 #[test]
 fn all_registers_can_be_logged() {

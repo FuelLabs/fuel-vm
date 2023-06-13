@@ -9,7 +9,8 @@
 
 mod args;
 mod panic_instruction;
-// This is `pub` to make documentation for the private `impl_instructions!` macro more accessible.
+// This is `pub` to make documentation for the private `impl_instructions!` macro more
+// accessible.
 #[macro_use]
 pub mod macros;
 pub mod op;
@@ -21,8 +22,15 @@ mod unpack;
 mod encoding_tests;
 
 #[doc(no_inline)]
-pub use args::{wideint, GMArgs, GTFArgs};
-pub use fuel_types::{RegisterId, Word};
+pub use args::{
+    wideint,
+    GMArgs,
+    GTFArgs,
+};
+pub use fuel_types::{
+    RegisterId,
+    Word,
+};
 pub use panic_instruction::PanicInstruction;
 pub use panic_reason::PanicReason;
 
@@ -84,9 +92,9 @@ impl CheckRegId for u8 {
     }
 }
 
-// Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a unique type
-// for each opcode's instruction variant. For a detailed explanation of how this works, see the
-// `fuel_asm::macros` module level documentation.
+// Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a
+// unique type for each opcode's instruction variant. For a detailed explanation of how
+// this works, see the `fuel_asm::macros` module level documentation.
 impl_instructions! {
     "Adds two registers."
     0x10 ADD add [RegId RegId RegId]
@@ -311,40 +319,42 @@ impl Instruction {
 }
 
 impl RegId {
-    /// Contains zero (0), for convenience.
-    pub const ZERO: Self = Self(0x00);
-    /// Contains one (1), for convenience.
-    pub const ONE: Self = Self(0x01);
-    /// Contains overflow/underflow of addition, subtraction, and multiplication.
-    pub const OF: Self = Self(0x02);
-    /// The program counter. Memory address of the current instruction.
-    pub const PC: Self = Self(0x03);
-    /// Stack start pointer. Memory address of bottom of current writable stack area.
-    pub const SSP: Self = Self(0x04);
-    /// Stack pointer. Memory address on top of current writable stack area (points to free memory).
-    pub const SP: Self = Self(0x05);
-    /// Frame pointer. Memory address of beginning of current call frame.
-    pub const FP: Self = Self(0x06);
-    /// Heap pointer. Memory address below the current bottom of the heap (points to free memory).
-    pub const HP: Self = Self(0x07);
-    /// Error codes for particular operations.
-    pub const ERR: Self = Self(0x08);
-    /// Remaining gas globally.
-    pub const GGAS: Self = Self(0x09);
-    /// Remaining gas in the context.
-    pub const CGAS: Self = Self(0x0A);
     /// Received balance for this context.
     pub const BAL: Self = Self(0x0B);
+    /// Remaining gas in the context.
+    pub const CGAS: Self = Self(0x0A);
+    /// Error codes for particular operations.
+    pub const ERR: Self = Self(0x08);
+    /// Flags register.
+    pub const FLAG: Self = Self(0x0F);
+    /// Frame pointer. Memory address of beginning of current call frame.
+    pub const FP: Self = Self(0x06);
+    /// Remaining gas globally.
+    pub const GGAS: Self = Self(0x09);
+    /// Heap pointer. Memory address below the current bottom of the heap (points to free
+    /// memory).
+    pub const HP: Self = Self(0x07);
     /// Instructions start. Pointer to the start of the currently-executing code.
     pub const IS: Self = Self(0x0C);
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    pub const OF: Self = Self(0x02);
+    /// Contains one (1), for convenience.
+    pub const ONE: Self = Self(0x01);
+    /// The program counter. Memory address of the current instruction.
+    pub const PC: Self = Self(0x03);
     /// Return value or pointer.
     pub const RET: Self = Self(0x0D);
     /// Return value length in bytes.
     pub const RETL: Self = Self(0x0E);
-    /// Flags register.
-    pub const FLAG: Self = Self(0x0F);
+    /// Stack pointer. Memory address on top of current writable stack area (points to
+    /// free memory).
+    pub const SP: Self = Self(0x05);
+    /// Stack start pointer. Memory address of bottom of current writable stack area.
+    pub const SSP: Self = Self(0x04);
     /// Smallest writable register.
     pub const WRITABLE: Self = Self(0x10);
+    /// Contains zero (0), for convenience.
+    pub const ZERO: Self = Self(0x00);
 
     /// Construct a register ID from the given value.
     ///
@@ -476,11 +486,14 @@ impl Opcode {
     pub fn is_predicate_allowed(&self) -> bool {
         use Opcode::*;
         match self {
-            ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL | NOT | OR | SLL | SRL | SUB
-            | XOR | WDCM | WQCM | WDOP | WQOP | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
-            | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
-            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI
-            | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
+            | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
+            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | RET
+            | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI
+            | DIVI | EXPI | MODI | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI
+            | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
+            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
+            | GTF => true,
             _ => false,
         }
     }
@@ -636,6 +649,7 @@ impl From<Instruction> for RawInstruction {
 
 impl core::convert::TryFrom<RawInstruction> for Instruction {
     type Error = InvalidOpcode;
+
     fn try_from(u: RawInstruction) -> Result<Self, Self::Error> {
         Self::try_from(u.to_be_bytes())
     }
@@ -648,6 +662,7 @@ where
     [T]: core::ops::Index<usize, Output = T>,
 {
     type Output = T;
+
     fn index(&self, ix: RegId) -> &Self::Output {
         &self[usize::from(ix)]
     }
@@ -689,8 +704,8 @@ pub fn raw_instructions_from_word(word: Word) -> [RawInstruction; 2] {
 ///
 /// This function assumes each consecutive 4 bytes aligns with an instruction.
 ///
-/// The produced iterator yields an `Err` in the case that an instruction fails to parse from 4
-/// consecutive bytes.
+/// The produced iterator yields an `Err` in the case that an instruction fails to parse
+/// from 4 consecutive bytes.
 pub fn from_bytes<I>(bs: I) -> impl Iterator<Item = Result<Instruction, InvalidOpcode>>
 where
     I: IntoIterator<Item = u8>,
@@ -705,8 +720,8 @@ where
     })
 }
 
-/// Given an iterator yielding u32s (i.e. "half words" or "raw instructions"), produces an iterator
-/// yielding `Instruction`s.
+/// Given an iterator yielding u32s (i.e. "half words" or "raw instructions"), produces an
+/// iterator yielding `Instruction`s.
 ///
 /// This function assumes each consecutive 4 bytes aligns with an instruction.
 ///
@@ -718,22 +733,27 @@ where
     us.into_iter().map(Instruction::try_from)
 }
 
-// Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g op::add).
+// Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g
+// op::add).
 
 fn check_imm06(u: u8) -> Imm06 {
-    Imm06::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 6-bit immediate"))
+    Imm06::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{u}` out of range for 6-bit immediate"))
 }
 
 fn check_imm12(u: u16) -> Imm12 {
-    Imm12::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
+    Imm12::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
 }
 
 fn check_imm18(u: u32) -> Imm18 {
-    Imm18::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 18-bit immediate"))
+    Imm18::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{u}` out of range for 18-bit immediate"))
 }
 
 fn check_imm24(u: u32) -> Imm24 {
-    Imm24::new_checked(u).unwrap_or_else(|| panic!("Value `{u}` out of range for 24-bit immediate"))
+    Imm24::new_checked(u)
+        .unwrap_or_else(|| panic!("Value `{u}` out of range for 24-bit immediate"))
 }
 
 // --------------------------------------------------------
@@ -770,8 +790,9 @@ fn check_predicate_allowed() {
     for byte in 0..u8::MAX {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
-                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG | LOGD | MINT | RETD | RVRT
-                | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME | TR | TRO => false,
+                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG
+                | LOGD | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ
+                | TIME | TR | TRO => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

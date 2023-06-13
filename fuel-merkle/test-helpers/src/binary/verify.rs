@@ -1,12 +1,20 @@
-use crate::binary::{node_sum, Data};
+use crate::binary::{
+    node_sum,
+    Data,
+};
 
-pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: u64) -> bool {
+pub fn verify(
+    root: &Data,
+    proof_set: &Vec<Data>,
+    proof_index: u64,
+    num_leaves: u64,
+) -> bool {
     if proof_index >= num_leaves {
-        return false;
+        return false
     }
 
     if proof_set.is_empty() {
-        return false;
+        return false
     }
 
     let mut height = 0usize;
@@ -19,13 +27,13 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
         let subtree_start_index = proof_index / (1 << height) * (1 << height);
         let subtree_end_index = subtree_start_index + (1 << height) - 1;
         if subtree_end_index >= num_leaves {
-            break;
+            break
         }
 
         stable_end = subtree_end_index;
 
         if proof_set.len() <= height {
-            return false;
+            return false
         }
 
         let proof_data = proof_set[height];
@@ -40,7 +48,7 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
 
     if stable_end != num_leaves - 1 {
         if proof_set.len() <= height {
-            return false;
+            return false
         }
         let proof_data = proof_set[height];
         sum = node_sum(&sum, &proof_data);
@@ -59,8 +67,10 @@ pub fn verify(root: &Data, proof_set: &Vec<Data>, proof_index: u64, num_leaves: 
 #[cfg(test)]
 mod test {
     use super::verify;
-    use crate::binary::MerkleTree;
-    use crate::TEST_DATA;
+    use crate::{
+        binary::MerkleTree,
+        TEST_DATA,
+    };
 
     #[test]
     fn verify_returns_true_when_the_given_proof_set_matches_the_given_merkle_root() {
@@ -81,7 +91,8 @@ mod test {
     }
 
     #[test]
-    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root() {
+    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root(
+    ) {
         // Check the Merkle root of one tree against the computed Merkle root of
         // another tree's proof set: because the two roots come from different
         // trees, the comparison should fail.

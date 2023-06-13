@@ -1,5 +1,10 @@
 use crate::{
-    common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
+    common::{
+        error::DeserializeError,
+        Bytes32,
+        Prefix,
+        PrefixError,
+    },
     sparse::Node,
 };
 
@@ -20,7 +25,6 @@ use crate::{
 /// | `04 - 05`  | Prefix (1 byte, `0x01`)    |
 /// | `05 - 37`  | Left child key (32 bytes)  |
 /// | `37 - 69`  | Right child key (32 bytes) |
-///
 pub type Primitive = (u32, u8, Bytes32, Bytes32);
 
 trait PrimitiveView {
@@ -50,7 +54,12 @@ impl PrimitiveView for Primitive {
 
 impl From<&Node> for Primitive {
     fn from(node: &Node) -> Self {
-        (node.height(), node.prefix() as u8, *node.bytes_lo(), *node.bytes_hi())
+        (
+            node.height(),
+            node.prefix() as u8,
+            *node.bytes_lo(),
+            *node.bytes_hi(),
+        )
     }
 }
 

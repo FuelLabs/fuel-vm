@@ -1,8 +1,15 @@
 use super::*;
-use crate::input::sizes::{MessageSizes, MessageSizesLayout};
-use fuel_types::bytes::Deserializable;
-use fuel_types::bytes::SerializableVec;
-use fuel_types::MemLayout;
+use crate::input::sizes::{
+    MessageSizes,
+    MessageSizesLayout,
+};
+use fuel_types::{
+    bytes::{
+        Deserializable,
+        SerializableVec,
+    },
+    MemLayout,
+};
 
 #[test]
 fn test_input_serialization() {

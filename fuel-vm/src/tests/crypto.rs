@@ -2,7 +2,6 @@ use fuel_asm::{
     op,
     GTFArgs,
     PanicReason::{
-        ArithmeticOverflow,
         ErrorFlag,
         MemoryOverflow,
     },
@@ -30,7 +29,7 @@ use crate::{
 };
 
 #[test]
-fn ecrecover() {
+fn secp256k1_recover() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let mut client = MemoryClient::default();
@@ -88,7 +87,7 @@ fn ecrecover() {
     assert!(success);
 }
 #[test]
-fn ecrecover_error() {
+fn secp256k1_recover_error() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let secret = SecretKey::random(rng);
@@ -113,7 +112,7 @@ fn ecrecover_error() {
 }
 
 #[test]
-fn ecrecover_a_gt_vmaxram_sub_64() {
+fn secp256k1_recover_a_gt_vmaxram_sub_64() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
@@ -130,7 +129,7 @@ fn ecrecover_a_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn ecrecover_b_gt_vmaxram_sub_64() {
+fn secp256k1_recover_b_gt_vmaxram_sub_64() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
@@ -143,11 +142,11 @@ fn ecrecover_b_gt_vmaxram_sub_64() {
         op::eck1(reg_b, reg_a, reg_b),
     ];
 
-    check_expected_reason_for_instructions(script, ArithmeticOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]
-fn ecrecover_c_gt_vmaxram_sub_32() {
+fn secp256k1_recover_c_gt_vmaxram_sub_32() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
@@ -160,7 +159,275 @@ fn ecrecover_c_gt_vmaxram_sub_32() {
         op::eck1(reg_b, reg_b, reg_a),
     ];
 
-    check_expected_reason_for_instructions(script, ArithmeticOverflow);
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn secp256r1_recover() {
+    use p256::ecdsa::SigningKey;
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+    let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
+
+    let message = b"The gift of words is the gift of deception and illusion.";
+    let message = Message::new(message);
+
+    let secret_key = SigningKey::random(rng);
+    let (signature, _recovery_id) = secret_key.sign_recoverable(&*message).unwrap();
+    let public_key = secret_key.verifying_key();
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x11, RegId::HP),
+        op::ecr1(0x11, 0x20, 0x21),
+        op::meq(0x12, 0x22, 0x11, 0x10),
+        op::log(0x12, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
+    ].into_iter().collect();
+
+    let script_data = signature
+        .to_bytes()
+        .iter()
+        .copied()
+        .chain(message.as_ref().iter().copied())
+        .chain(public_key.to_sec1_bytes().iter().copied())
+        .collect();
+
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .add_random_fee_input()
+        .finalize_checked(height, &gas_costs);
+
+    let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
+
+    assert!(success);
+}
+#[test]
+fn secp256r1_recover_error() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let secret = SecretKey::random(rng);
+
+    let message = b"The gift of words is the gift of deception and illusion.";
+    let message = Message::new(message);
+
+    let signature = Signature::sign(&secret, &message);
+
+    #[rustfmt::skip]
+    let script = vec![
+        // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x11, RegId::HP),
+        op::ecr1(0x11, 0x20, 0x21),
+    ];
+
+    check_expected_reason_for_instructions(script, ErrorFlag)
+}
+
+#[test]
+fn secp256r1_recover_a_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ecr1(reg_a, reg_b, reg_b),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn secp256r1_recover_b_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ecr1(reg_b, reg_a, reg_b),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn secp256r1_recover_c_gt_vmaxram_sub_32() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31),
+        op::ecr1(reg_b, reg_b, reg_a),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn ed25519_verify() {
+    use ed25519_dalek::Signer;
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+    let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
+
+    let keypair =
+        ed25519_dalek::Keypair::generate(&mut ed25519_dalek_old_rand::rngs::OsRng {});
+
+    let message = b"The gift of words is the gift of deception and illusion.";
+    let message = Message::new(message);
+
+    let signature = keypair.sign(&*message);
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::ed19(0x22, 0x20, 0x21),
+        op::log(RegId::ERR, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
+    ].into_iter().collect();
+
+    let script_data = signature
+        .as_ref()
+        .iter()
+        .copied()
+        .chain(message.as_ref().iter().copied())
+        .chain(keypair.public.as_ref().iter().copied())
+        .collect();
+
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .add_random_fee_input()
+        .finalize_checked(height, &gas_costs);
+
+    let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 0));
+
+    assert!(success);
+}
+
+#[test]
+fn ed25519_verify_error() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let secret = SecretKey::random(rng);
+
+    let message = b"The gift of words is the gift of deception and illusion.";
+    let message = Message::new(message);
+
+    let signature = Signature::sign(&secret, &message);
+
+    #[rustfmt::skip]
+    let script = vec![
+        // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x11, RegId::HP),
+        op::ed19(0x11, 0x20, 0x21),
+    ];
+
+    check_expected_reason_for_instructions(script, ErrorFlag)
+}
+
+#[test]
+fn ed25519_verify_a_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ed19(reg_a, reg_b, reg_b),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn ed25519_verify_b_gt_vmaxram_sub_64() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 63),
+        op::ed19(reg_b, reg_a, reg_b),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
+}
+
+#[test]
+fn ed25519_verify_c_gt_vmaxram_sub_32() {
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    #[rustfmt::skip]
+    let script = vec![
+        op::xor(reg_a, reg_a, reg_a),
+        op::xor(reg_b, reg_b, reg_b),
+        op::not(reg_a, reg_a),
+        op::subi(reg_a, reg_a, 31),
+        op::ed19(reg_b, reg_b, reg_a),
+    ];
+
+    check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
 #[test]

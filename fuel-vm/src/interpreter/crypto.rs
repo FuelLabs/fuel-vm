@@ -105,24 +105,11 @@ pub(crate) fn secp256k1_recover(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bx = checked_add_word(b, Bytes64::LEN as Word)?;
-    let cx = checked_add_word(c, Bytes32::LEN as Word)?;
+    let sig = Bytes64::from(read_bytes(memory, b)?);
+    let msg = Bytes32::from(read_bytes(memory, c)?);
 
-    if a > checked_sub_word(VM_MAX_RAM, Bytes64::LEN as Word)?
-        || bx > MIN_VM_MAX_RAM_USIZE_MAX
-        || cx > MIN_VM_MAX_RAM_USIZE_MAX
-    {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    // TODO: These casts may overflow/truncate on 32-bit?
-    let (a, b, bx, c, cx) =
-        (a as usize, b as usize, bx as usize, c as usize, cx as usize);
-
-    let sig_bytes = <&_>::try_from(&memory[b..bx]).expect("memory bounds checked");
-    let msg_bytes = <&_>::try_from(&memory[c..cx]).expect("memory bounds checked");
-    let signature = Signature::from_bytes_ref(sig_bytes);
-    let message = Message::from_bytes_ref(msg_bytes);
+    let signature = Signature::from_bytes_ref(&sig);
+    let message = Message::from_bytes_ref(&msg);
 
     match signature.recover(message) {
         Ok(pub_key) => {
@@ -152,7 +139,7 @@ pub(crate) fn secp256r1_recover(
 
     match fuel_crypto::secp256r1::recover(&sig, &msg) {
         Ok(pub_key) => {
-            try_mem_write(a, &pub_key, owner, memory)?;
+            try_mem_write(a, &*pub_key, owner, memory)?;
             clear_err(err);
         }
         Err(_) => {

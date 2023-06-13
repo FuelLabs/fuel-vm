@@ -43,13 +43,12 @@ pub fn add_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
     #[cfg(feature = "optimized")]
     #[allow(clippy::integer_arithmetic)]
     {
-        return Ok(a + b)
+        Ok(a + b)
     }
 
     #[cfg(not(feature = "optimized"))]
     {
-        return a
-            .checked_add(b)
+        a.checked_add(b)
             .ok_or_else(|| RuntimeError::unexpected_behavior("unexpected overflow"))
     }
 }
@@ -66,13 +65,12 @@ pub fn add_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
 pub fn sub_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
     #[cfg(feature = "optimized")]
     {
-        return Ok(a - b)
+        Ok(a - b)
     }
 
     #[cfg(not(feature = "optimized"))]
     {
-        return a
-            .checked_sub(b)
+        a.checked_sub(b)
             .ok_or_else(|| RuntimeError::unexpected_behavior("unexpected underflow"))
     }
 }

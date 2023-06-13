@@ -445,8 +445,7 @@ where
 {
     #[cfg(not(feature = "std"))]
     {
-        return iter
-            .sorted()
+        iter.sorted()
             .as_slice()
             .windows(2)
             .filter_map(|u| (u[0] == u[1]).then(|| u[0]))
@@ -455,6 +454,6 @@ where
 
     #[cfg(feature = "std")]
     {
-        return iter.duplicates().next()
+        iter.duplicates().next()
     }
 }

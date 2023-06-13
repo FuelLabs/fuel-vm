@@ -1,4 +1,8 @@
-use crate::common::{empty_sum_sha256, Bytes32, Prefix};
+use crate::common::{
+    empty_sum_sha256,
+    Bytes32,
+    Prefix,
+};
 
 use digest::Digest;
 use sha2::Sha256;

@@ -1,12 +1,26 @@
-use fuel_asm::{op, RegId};
-use fuel_tx::{ScriptExecutionResult, TransactionBuilder};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_tx::{
+    ScriptExecutionResult,
+    TransactionBuilder,
+};
 
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{
+    consts::*,
+    prelude::*,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 
@@ -52,7 +66,11 @@ fn code_coverage() {
     }
 
     impl ProfileReceiver for ProfilingOutput {
-        fn on_transaction(&mut self, _state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
+        fn on_transaction(
+            &mut self,
+            _state: &Result<ProgramState, InterpreterError>,
+            data: &ProfilingData,
+        ) {
             let mut guard = self.data.lock().unwrap();
             *guard = Some(data.clone());
         }
@@ -86,6 +104,9 @@ fn code_coverage() {
     assert_eq!(items.len(), expect.len());
 
     for (item, expect) in items.into_iter().zip(expect.into_iter()) {
-        assert_eq!(*item, InstructionLocation::new(None, expect * HALF_WORD_SIZE));
+        assert_eq!(
+            *item,
+            InstructionLocation::new(None, expect * HALF_WORD_SIZE)
+        );
     }
 }

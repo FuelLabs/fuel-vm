@@ -1,11 +1,22 @@
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{
+    consts::*,
+    prelude::*,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 use fuel_types::Word;
-use std::fmt;
-use std::io::{self, Read, Write};
+use std::{
+    fmt,
+    io::{
+        self,
+        Read,
+        Write,
+    },
+};
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
@@ -47,7 +58,7 @@ where
             assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
 
             if buffer.is_empty() {
-                break;
+                break
             }
         }
     }
@@ -125,7 +136,13 @@ fn input() {
             vec![0xdd; 50],
             vec![],
         ),
-        Input::message_coin_signed([0xaa; 32].into(), [0xbb; 32].into(), Word::MAX, [0xcc; 32].into(), 0xff),
+        Input::message_coin_signed(
+            [0xaa; 32].into(),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
+            0xff,
+        ),
         Input::message_coin_predicate(
             [0xaa; 32].into(),
             [0xbb; 32].into(),

@@ -1,6 +1,10 @@
 use fuel_tx::*;
-use rand::rngs::StdRng;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    RngCore,
+    SeedableRng,
+};
 
 #[test]
 fn coin() {
@@ -103,5 +107,7 @@ fn contract_created() {
     let mut rng_base = StdRng::seed_from_u64(8586);
     let rng = &mut rng_base;
 
-    Output::contract_created(rng.gen(), rng.gen()).check(1, &[]).unwrap();
+    Output::contract_created(rng.gen(), rng.gen())
+        .check(1, &[])
+        .unwrap();
 }

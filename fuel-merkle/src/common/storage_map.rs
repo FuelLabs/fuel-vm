@@ -1,5 +1,11 @@
-use crate::alloc::borrow::ToOwned;
-use crate::storage::{Mappable, StorageInspect, StorageMutate};
+use crate::{
+    alloc::borrow::ToOwned,
+    storage::{
+        Mappable,
+        StorageInspect,
+        StorageMutate,
+    },
+};
 
 use alloc::borrow::Cow;
 use hashbrown::HashMap;
@@ -58,14 +64,22 @@ where
     Type::Key: Eq + core::hash::Hash,
     Type::OwnedKey: Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
 {
-    fn insert(&mut self, key: &Type::Key, value: &Type::Value) -> Result<Option<Type::OwnedValue>, Self::Error> {
+    fn insert(
+        &mut self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
         let previous = self.map.remove(key);
 
-        self.map.insert(key.to_owned().into(), value.to_owned().into());
+        self.map
+            .insert(key.to_owned().into(), value.to_owned().into());
         Ok(previous)
     }
 
-    fn remove(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
+    fn remove(
+        &mut self,
+        key: &Type::Key,
+    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
         let value = self.map.remove(key);
         Ok(value)
     }
@@ -86,8 +100,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = TestKey;
-        type Value = Self::OwnedValue;
         type OwnedValue = TestValue;
+        type Value = Self::OwnedValue;
     }
 
     #[test]

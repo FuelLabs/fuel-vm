@@ -1,6 +1,13 @@
 use crate::{
-    binary::{self, Primitive},
-    common::{Bytes32, ProofSet, StorageMap},
+    binary::{
+        self,
+        Primitive,
+    },
+    common::{
+        Bytes32,
+        ProofSet,
+        StorageMap,
+    },
     storage::Mappable,
 };
 
@@ -13,8 +20,8 @@ pub struct NodesTable;
 impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
     type OwnedKey = u64;
-    type Value = Self::OwnedValue;
     type OwnedValue = Primitive;
+    type Value = Self::OwnedValue;
 }
 
 type Storage = StorageMap<NodesTable>;
@@ -58,7 +65,11 @@ impl Default for MerkleTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use binary::{empty_sum, leaf_sum, node_sum};
+    use binary::{
+        empty_sum,
+        leaf_sum,
+        node_sum,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
 
     #[test]

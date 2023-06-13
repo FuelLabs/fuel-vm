@@ -1,18 +1,45 @@
-use crate::transaction::{
-    compute_transaction_id,
-    field::{
-        GasLimit, GasPrice, Inputs, Maturity, Outputs, ReceiptsRoot, Script as ScriptField, ScriptData, Witnesses,
+use crate::{
+    transaction::{
+        compute_transaction_id,
+        field::{
+            GasLimit,
+            GasPrice,
+            Inputs,
+            Maturity,
+            Outputs,
+            ReceiptsRoot,
+            Script as ScriptField,
+            ScriptData,
+            Witnesses,
+        },
+        metadata::CommonMetadata,
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
+        Chargeable,
     },
-    metadata::CommonMetadata,
-    validity::{check_common_part, FormatValidityChecks},
-    Chargeable,
+    CheckError,
+    ConsensusParameters,
+    Input,
+    Output,
+    Witness,
 };
-use crate::{CheckError, ConsensusParameters, Input, Output, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, BlockHeight, Bytes32, ChainId, Word};
 use fuel_types::{
-    bytes::{SizedBytes, WORD_SIZE},
-    fmt_truncated_hex, mem_layout, MemLayout, MemLocType,
+    bytes,
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    fmt_truncated_hex,
+    mem_layout,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+    MemLayout,
+    MemLocType,
+    Word,
 };
 
 #[cfg(feature = "alloc")]
@@ -88,7 +115,7 @@ impl Default for Script {
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id;
+            return id
         }
 
         let mut clone = self.clone();
@@ -96,7 +123,10 @@ impl crate::UniqueIdentifier for Script {
         // Empties fields that should be zero during the signing.
         *clone.receipts_root_mut() = Default::default();
         clone.inputs_mut().iter_mut().for_each(Input::prepare_sign);
-        clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
+        clone
+            .outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
         compute_transaction_id(chain_id, &mut clone)
@@ -128,7 +158,8 @@ impl Chargeable for Script {
         let mut cumulative_predicate_gas: Word = 0;
         for input in self.inputs() {
             if let Some(predicate_gas_used) = input.predicate_gas_used() {
-                cumulative_predicate_gas = cumulative_predicate_gas.saturating_add(predicate_gas_used);
+                cumulative_predicate_gas =
+                    cumulative_predicate_gas.saturating_add(predicate_gas_used);
             }
         }
         cumulative_predicate_gas
@@ -145,9 +176,18 @@ impl FormatValidityChecks for Script {
         // There will be at most len(witnesses) signatures to cache
         let mut recovery_cache = Some(HashMap::with_capacity(self.witnesses().len()));
 
-        self.inputs().iter().enumerate().try_for_each(|(index, input)| {
-            input.check_signature(index, &id, &self.witnesses, chain_id, &mut recovery_cache)
-        })?;
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.check_signature(
+                    index,
+                    &id,
+                    &self.witnesses,
+                    chain_id,
+                    &mut recovery_cache,
+                )
+            })?;
 
         Ok(())
     }
@@ -171,7 +211,9 @@ impl FormatValidityChecks for Script {
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
-                Output::ContractCreated { .. } => Err(CheckError::TransactionScriptOutputContractCreated { index }),
+                Output::ContractCreated { .. } => {
+                    Err(CheckError::TransactionScriptOutputContractCreated { index })
+                }
                 _ => Ok(()),
             })?;
 
@@ -197,7 +239,12 @@ impl crate::Cacheable for Script {
 
 impl SizedBytes for Script {
     fn serialized_size(&self) -> usize {
-        self.witnesses_offset() + self.witnesses().iter().map(|w| w.serialized_size()).sum::<usize>()
+        self.witnesses_offset()
+            + self
+                .witnesses()
+                .iter()
+                .map(|w| w.serialized_size())
+                .sum::<usize>()
     }
 }
 
@@ -217,7 +264,7 @@ mod field {
 
         #[inline(always)]
         fn gas_price_offset_static() -> usize {
-            WORD_SIZE /* `Transaction` enum discriminant */
+            WORD_SIZE // `Transaction` enum discriminant
         }
     }
 
@@ -307,8 +354,11 @@ mod field {
 
         #[inline(always)]
         fn script_data_offset(&self) -> usize {
-            if let Some(ScriptMetadata { script_data_offset, .. }) = &self.metadata {
-                return *script_data_offset;
+            if let Some(ScriptMetadata {
+                script_data_offset, ..
+            }) = &self.metadata
+            {
+                return *script_data_offset
             }
 
             self.script_offset() + bytes::padded_len(self.script.as_slice())
@@ -333,7 +383,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *inputs_offset;
+                return *inputs_offset
             }
 
             self.script_data_offset() + bytes::padded_len(self.script_data.as_slice())
@@ -342,11 +392,14 @@ mod field {
         #[inline(always)]
         fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common: CommonMetadata { inputs_offset_at, .. },
+                common:
+                    CommonMetadata {
+                        inputs_offset_at, ..
+                    },
                 ..
             }) = &self.metadata
             {
-                return inputs_offset_at.get(idx).cloned();
+                return inputs_offset_at.get(idx).cloned()
             }
 
             if idx < self.inputs.len() {
@@ -375,13 +428,15 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
+                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None)
             }
 
             self.inputs().get(idx).and_then(|input| {
                 input
                     .predicate_offset()
-                    .and_then(|predicate| self.inputs_offset_at(idx).map(|inputs| inputs + predicate))
+                    .and_then(|predicate| {
+                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                    })
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
         }
@@ -405,20 +460,28 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *outputs_offset;
+                return *outputs_offset
             }
 
-            self.inputs_offset() + self.inputs().iter().map(|i| i.serialized_size()).sum::<usize>()
+            self.inputs_offset()
+                + self
+                    .inputs()
+                    .iter()
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>()
         }
 
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common: CommonMetadata { outputs_offset_at, .. },
+                common:
+                    CommonMetadata {
+                        outputs_offset_at, ..
+                    },
                 ..
             }) = &self.metadata
             {
-                return outputs_offset_at.get(idx).cloned();
+                return outputs_offset_at.get(idx).cloned()
             }
 
             if idx < self.outputs.len() {
@@ -451,26 +514,36 @@ mod field {
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                common: CommonMetadata { witnesses_offset, .. },
+                common:
+                    CommonMetadata {
+                        witnesses_offset, ..
+                    },
                 ..
             }) = &self.metadata
             {
-                return *witnesses_offset;
+                return *witnesses_offset
             }
 
-            self.outputs_offset() + self.outputs().iter().map(|i| i.serialized_size()).sum::<usize>()
+            self.outputs_offset()
+                + self
+                    .outputs()
+                    .iter()
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>()
         }
 
         #[inline(always)]
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                common: CommonMetadata {
-                    witnesses_offset_at, ..
-                },
+                common:
+                    CommonMetadata {
+                        witnesses_offset_at,
+                        ..
+                    },
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset_at.get(idx).cloned();
+                return witnesses_offset_at.get(idx).cloned()
             }
 
             if idx < self.witnesses.len() {
@@ -495,7 +568,7 @@ impl io::Read for Script {
     fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
         if full_buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
         let buf: &mut [_; Self::LEN] = full_buf
             .get_mut(..Self::LEN)
@@ -523,15 +596,31 @@ impl io::Read for Script {
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.script_len), script.len() as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.script_len),
+            script.len() as Word,
+        );
         bytes::store_number_at(
             buf,
             Self::layout(Self::LAYOUT.script_data_len),
             script_data.len() as Word,
         );
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.inputs_len), inputs.len() as Word);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.witnesses_len), witnesses.len() as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.inputs_len),
+            inputs.len() as Word,
+        );
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.outputs_len),
+            outputs.len() as Word,
+        );
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.witnesses_len),
+            witnesses.len() as Word,
+        );
         bytes::store_at(buf, Self::layout(Self::LAYOUT.receipts_root), receipts_root);
 
         let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
@@ -562,7 +651,7 @@ impl io::Write for Script {
     fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
         let mut n = crate::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
         if full_buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
         let buf: &[_; Self::LEN] = full_buf
             .get(..Self::LEN)
@@ -575,18 +664,27 @@ impl io::Write for Script {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "The provided identifier to the `Script` is invalid!",
-            ));
+            ))
         }
 
-        let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
-        let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
-        let script_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
-        let script_data_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
-        let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
-        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
-        let witnesses_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
-        let receipts_root = bytes::restore_at(buf, Self::layout(Self::LAYOUT.receipts_root));
+        let gas_price =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
+        let gas_limit =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
+        let maturity =
+            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
+        let script_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
+        let script_data_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
+        let inputs_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
+        let outputs_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
+        let witnesses_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
+        let receipts_root =
+            bytes::restore_at(buf, Self::layout(Self::LAYOUT.receipts_root));
 
         let receipts_root = receipts_root.into();
 
@@ -594,7 +692,8 @@ impl io::Write for Script {
         let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
         n += size;
 
-        let (size, script_data, mut buf) = bytes::restore_raw_bytes(buf, script_data_len)?;
+        let (size, script_data, mut buf) =
+            bytes::restore_raw_bytes(buf, script_data_len)?;
         n += size;
 
         let mut inputs = vec![Input::default(); inputs_len];
@@ -636,8 +735,12 @@ impl io::Write for Script {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
-        self.witnesses.iter_mut().try_for_each(|witness| witness.flush())?;
+        self.outputs
+            .iter_mut()
+            .try_for_each(|output| output.flush())?;
+        self.witnesses
+            .iter_mut()
+            .try_for_each(|witness| witness.flush())?;
 
         Ok(())
     }

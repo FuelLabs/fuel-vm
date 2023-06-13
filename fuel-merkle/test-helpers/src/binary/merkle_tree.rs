@@ -1,4 +1,10 @@
-use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
+use crate::binary::{
+    empty_sum,
+    leaf_sum,
+    node_sum,
+    Data,
+    Node,
+};
 
 type DataNode = Node<Data>;
 type ProofSet = Vec<Data>;
@@ -58,17 +64,21 @@ impl MerkleTree {
         let proof_set_length = self.proof_set.len() as u32;
 
         if self.head().is_none() || proof_set_length == 0 {
-            return (self.root(), self.proof_set);
+            return (self.root(), self.proof_set)
         }
 
         let mut current = self.head().clone().unwrap();
-        while current.next().is_some() && current.next_height().unwrap() < proof_set_length - 1 {
+        while current.next().is_some()
+            && current.next_height().unwrap() < proof_set_length - 1
+        {
             let mut node = current;
             let mut next_node = node.take_next().unwrap();
             current = Self::join_subtrees(&mut next_node, &node)
         }
 
-        if current.next().is_some() && current.next_height().unwrap() == proof_set_length - 1 {
+        if current.next().is_some()
+            && current.next_height().unwrap() == proof_set_length - 1
+        {
             self.proof_set.push(*current.data());
             current = current.take_next().unwrap();
         }
@@ -81,7 +91,6 @@ impl MerkleTree {
         (self.root(), self.proof_set)
     }
 
-    //
     // PRIVATE
     //
 
@@ -93,7 +102,7 @@ impl MerkleTree {
         loop {
             let head = self.head.as_ref().unwrap();
             if !(head.next().is_some() && head.height() == head.next_height().unwrap()) {
-                break;
+                break
             }
 
             let proof_set_length = self.proof_set.len() as u32;
@@ -123,7 +132,11 @@ impl MerkleTree {
         Self::create_node(next, height, data)
     }
 
-    fn create_node(next: Option<Box<DataNode>>, height: u32, data: Data) -> Box<DataNode> {
+    fn create_node(
+        next: Option<Box<DataNode>>,
+        height: u32,
+        data: Data,
+    ) -> Box<DataNode> {
         Box::new(DataNode::new(next, height, data))
     }
 }
@@ -131,8 +144,14 @@ impl MerkleTree {
 #[cfg(test)]
 mod test {
     use super::MerkleTree;
-    use crate::binary::{empty_sum, leaf_sum, node_sum};
-    use crate::TEST_DATA;
+    use crate::{
+        binary::{
+            empty_sum,
+            leaf_sum,
+            node_sum,
+        },
+        TEST_DATA,
+    };
 
     #[test]
     fn root_returns_the_hash_of_the_empty_string_when_no_leaves_are_pushed() {
@@ -306,7 +325,8 @@ mod test {
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root() {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root(
+    ) {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
@@ -347,7 +367,8 @@ mod test {
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root() {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root(
+    ) {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(4);
 

@@ -1,11 +1,29 @@
-use crate::consts::*;
-use crate::error::{InterpreterError, RuntimeError};
-use crate::interpreter::flow::{JumpArgs, JumpMode};
-use crate::interpreter::{alu, ExecutableTransaction, Interpreter};
-use crate::state::ExecuteState;
-use crate::storage::InterpreterStorage;
+use crate::{
+    consts::*,
+    error::{
+        InterpreterError,
+        RuntimeError,
+    },
+    interpreter::{
+        alu,
+        flow::{
+            JumpArgs,
+            JumpMode,
+        },
+        ExecutableTransaction,
+        Interpreter,
+    },
+    state::ExecuteState,
+    storage::InterpreterStorage,
+};
 
-use fuel_asm::{wideint, Instruction, PanicReason, RawInstruction, RegId};
+use fuel_asm::{
+    wideint,
+    Instruction,
+    PanicReason,
+    RawInstruction,
+    RegId,
+};
 use fuel_types::Word;
 
 use std::ops::Div;
@@ -42,12 +60,15 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction<R: Into<RawInstruction> + Copy>(&mut self, raw: R) -> Result<ExecuteState, InterpreterError> {
+    pub fn instruction<R: Into<RawInstruction> + Copy>(
+        &mut self,
+        raw: R,
+    ) -> Result<ExecuteState, InterpreterError> {
         #[cfg(feature = "debug")]
         {
             let debug = self.eval_debugger_state();
             if !debug.should_continue() {
-                return Ok(debug.into());
+                return Ok(debug.into())
             }
         }
 
@@ -55,13 +76,17 @@ where
             .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
     }
 
-    fn instruction_inner(&mut self, raw: RawInstruction) -> Result<ExecuteState, RuntimeError> {
-        let instruction = Instruction::try_from(raw).map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
+    fn instruction_inner(
+        &mut self,
+        raw: RawInstruction,
+    ) -> Result<ExecuteState, RuntimeError> {
+        let instruction = Instruction::try_from(raw)
+            .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68
         if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
-            return Err(PanicReason::ContractInstructionNotAllowed.into());
+            return Err(PanicReason::ContractInstructionNotAllowed.into())
         }
 
         // Short-hand for retrieving the value from the register with the given ID.
@@ -76,13 +101,23 @@ where
             Instruction::ADD(add) => {
                 self.gas_charge(self.gas_costs.add)?;
                 let (a, b, c) = add.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), r!(c).into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_add,
+                    r!(b).into(),
+                    r!(c).into(),
+                )?;
             }
 
             Instruction::ADDI(addi) => {
                 self.gas_charge(self.gas_costs.addi)?;
                 let (a, b, imm) = addi.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_add, r!(b).into(), imm.into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_add,
+                    r!(b).into(),
+                    imm.into(),
+                )?;
             }
 
             Instruction::AND(and) => {
@@ -145,56 +180,64 @@ where
             Instruction::WDCM(wdcm) => {
                 self.gas_charge(self.gas_costs.wdcm)?;
                 let (a, b, c, imm) = wdcm.unpack();
-                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::CompareArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WQCM(wdcm) => {
                 self.gas_charge(self.gas_costs.wqcm)?;
                 let (a, b, c, imm) = wdcm.unpack();
-                let args = wideint::CompareArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::CompareArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WDOP(wdop) => {
                 self.gas_charge(self.gas_costs.wdcm)?;
                 let (a, b, c, imm) = wdop.unpack();
-                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::MathArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQOP(wqop) => {
                 self.gas_charge(self.gas_costs.wqcm)?;
                 let (a, b, c, imm) = wqop.unpack();
-                let args = wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::MathArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u256(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WDML(wdml) => {
                 self.gas_charge(self.gas_costs.wdml)?;
                 let (a, b, c, imm) = wdml.unpack();
-                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::MulArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQML(wqml) => {
                 self.gas_charge(self.gas_costs.wqml)?;
                 let (a, b, c, imm) = wqml.unpack();
-                let args = wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::MulArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u256(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WDDV(wddv) => {
                 self.gas_charge(self.gas_costs.wddv)?;
                 let (a, b, c, imm) = wddv.unpack();
-                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::DivArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u128(r!(a), r!(b), r!(c), args)?;
             }
 
             Instruction::WQDV(wqdv) => {
                 self.gas_charge(self.gas_costs.wqdv)?;
                 let (a, b, c, imm) = wqdv.unpack();
-                let args = wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
+                let args = wideint::DivArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u256(r!(a), r!(b), r!(c), args)?;
             }
 
@@ -237,7 +280,11 @@ where
                 let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
                     a.into(),
-                    |l, r| l.checked_ilog(r).expect("checked_ilog returned None for valid values") as Word,
+                    |l, r| {
+                        l.checked_ilog(r)
+                            .expect("checked_ilog returned None for valid values")
+                            as Word
+                    },
                     lhs,
                     rhs,
                     lhs == 0 || rhs <= 1,
@@ -276,7 +323,11 @@ where
                 let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
                     a.into(),
-                    |l, r| checked_nth_root(l, r).expect("checked_nth_root returned None for valid values") as Word,
+                    |l, r| {
+                        checked_nth_root(l, r)
+                            .expect("checked_nth_root returned None for valid values")
+                            as Word
+                    },
                     lhs,
                     rhs,
                     rhs == 0,
@@ -286,13 +337,23 @@ where
             Instruction::MUL(mul) => {
                 self.gas_charge(self.gas_costs.mul)?;
                 let (a, b, c) = mul.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), r!(c).into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_mul,
+                    r!(b).into(),
+                    r!(c).into(),
+                )?;
             }
 
             Instruction::MULI(muli) => {
                 self.gas_charge(self.gas_costs.muli)?;
                 let (a, b, imm) = muli.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_mul, r!(b).into(), imm.into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_mul,
+                    r!(b).into(),
+                    imm.into(),
+                )?;
             }
 
             Instruction::MLDV(mldv) => {
@@ -368,13 +429,23 @@ where
             Instruction::SUB(sub) => {
                 self.gas_charge(self.gas_costs.sub)?;
                 let (a, b, c) = sub.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), r!(c).into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_sub,
+                    r!(b).into(),
+                    r!(c).into(),
+                )?;
             }
 
             Instruction::SUBI(subi) => {
                 self.gas_charge(self.gas_costs.subi)?;
                 let (a, b, imm) = subi.unpack();
-                self.alu_capture_overflow(a.into(), u128::overflowing_sub, r!(b).into(), imm.into())?;
+                self.alu_capture_overflow(
+                    a.into(),
+                    u128::overflowing_sub,
+                    r!(b).into(),
+                    imm.into(),
+                )?;
             }
 
             Instruction::XOR(xor) => {
@@ -500,14 +571,14 @@ where
                 let a = ret.unpack();
                 let ra = r!(a);
                 self.ret(ra)?;
-                return Ok(ExecuteState::Return(ra));
+                return Ok(ExecuteState::Return(ra))
             }
 
             Instruction::RETD(retd) => {
                 let (a, b) = retd.unpack();
                 let len = r!(b);
                 self.dependent_gas_charge(self.gas_costs.retd, len)?;
-                return self.ret_data(r!(a), len).map(ExecuteState::ReturnData);
+                return self.ret_data(r!(a), len).map(ExecuteState::ReturnData)
             }
 
             Instruction::RVRT(rvrt) => {
@@ -515,7 +586,7 @@ where
                 let a = rvrt.unpack();
                 let ra = r!(a);
                 self.revert(ra);
-                return Ok(ExecuteState::Revert(ra));
+                return Ok(ExecuteState::Revert(ra))
             }
 
             Instruction::SMO(smo) => {
@@ -641,7 +712,7 @@ where
                 let (a, b, c, d) = call.unpack();
 
                 // Enter call context
-                self.prepare_call(r!(a), r!(b), r!(c), r!(d))?;
+                self.prepare_call(a, b, c, d)?;
             }
 
             Instruction::CB(cb) => {
@@ -799,18 +870,18 @@ where
 fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
     if nth_root == 0 {
         // Zeroth root is not defined
-        return None;
+        return None
     }
 
     if nth_root == 1 || target <= 1 {
         // Corner cases
-        return Some(target);
+        return Some(target)
     }
 
     if nth_root >= target || nth_root > 64 {
         // For any root >= target, result always 1
         // For any n>1, n**64 can never fit into u64
-        return Some(1);
+        return Some(1)
     }
 
     let nth_root = nth_root as u32; // Never loses bits, checked above
@@ -821,21 +892,23 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
 
-    // Check if a value raised to nth_power is below the target value, handling overflow correctly
+    // Check if a value raised to nth_power is below the target value, handling overflow
+    // correctly
     let is_nth_power_below_target = |v: u64| match v.checked_pow(nth_root) {
         Some(pow) => target < pow,
         None => true, // v**nth_root >= 2**64 and target < 2**64
     };
 
     // Compute guess**n to check if the guess is too large.
-    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return here.
+    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return
+    // here.
     if is_nth_power_below_target(guess) {
-        return Some(guess - 1);
+        return Some(guess - 1)
     }
 
     // Check if the initial guess was correct
     if is_nth_power_below_target(guess + 1) {
-        return Some(guess);
+        return Some(guess)
     }
 
     // Check if the guess was correct

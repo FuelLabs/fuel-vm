@@ -1,6 +1,11 @@
 use crate::common::{
-    node::{ChildResult, Node, ParentNode},
-    Bytes8, PositionPath,
+    node::{
+        ChildResult,
+        Node,
+        ParentNode,
+    },
+    Bytes8,
+    PositionPath,
 };
 use core::convert::Infallible;
 
@@ -81,7 +86,6 @@ use core::convert::Infallible;
 /// balanced Merkle tree, using methods to retrieve a `Position's` sibling,
 /// parent, or uncle `Position`. However, in such cases, the corresponding
 /// sibling or uncle nodes are not guaranteed to exist in the tree.
-///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Position(u64);
 
@@ -295,7 +299,10 @@ mod test {
     fn test_from_leaf_index() {
         assert_eq!(Position::from_leaf_index(0).in_order_index(), 0);
         assert_eq!(Position::from_leaf_index(1).in_order_index(), 2);
-        assert_eq!(Position::from_leaf_index((!0u64) >> 1).in_order_index(), !0u64 - 1);
+        assert_eq!(
+            Position::from_leaf_index((!0u64) >> 1).in_order_index(),
+            !0u64 - 1
+        );
     }
 
     #[test]

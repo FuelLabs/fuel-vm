@@ -52,7 +52,9 @@ impl Context {
     pub const fn is_external(&self) -> bool {
         matches!(
             self,
-            Self::PredicateEstimation { .. } | Self::PredicateVerification { .. } | Self::Script { .. }
+            Self::PredicateEstimation { .. }
+                | Self::PredicateVerification { .. }
+                | Self::Script { .. }
         )
     }
 
@@ -73,7 +75,9 @@ impl Context {
     /// Return the block height from the context, if either script or call
     pub const fn block_height(&self) -> Option<BlockHeight> {
         match self {
-            Context::Script { block_height } | Context::Call { block_height } => Some(*block_height),
+            Context::Script { block_height } | Context::Call { block_height } => {
+                Some(*block_height)
+            }
             _ => None,
         }
     }

@@ -1,12 +1,28 @@
-use super::{Receipt, ReceiptRepr};
+use super::{
+    Receipt,
+    ReceiptRepr,
+};
 
 use fuel_asm::PanicInstruction;
-use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
-use fuel_types::{MemLayout, MemLocType, Word};
+use fuel_types::{
+    bytes::{
+        self,
+        SizedBytes,
+        WORD_SIZE,
+    },
+    MemLayout,
+    MemLocType,
+    Word,
+};
 
-use crate::receipt::script_result::ScriptExecutionResult;
-use crate::receipt::sizes::CallSizes;
-use std::io::{self, Write};
+use crate::receipt::{
+    script_result::ScriptExecutionResult,
+    sizes::CallSizes,
+};
+use std::io::{
+    self,
+    Write,
+};
 
 use crate::receipt::sizes::*;
 
@@ -15,7 +31,7 @@ impl io::Read for Receipt {
         let len = self.serialized_size();
 
         if buf.len() < len {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         match self {
@@ -37,7 +53,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Call as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Call as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
@@ -57,7 +77,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Return as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Return as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.val), *val);
@@ -81,7 +105,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::ReturnData as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::ReturnData as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.ptr), *ptr);
@@ -90,20 +118,33 @@ impl io::Read for Receipt {
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
 
-                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
+                bytes::store_bytes(
+                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
+                    data,
+                )?;
             }
 
-            Self::Panic { id, reason, pc, is, .. } => {
+            Self::Panic {
+                id, reason, pc, is, ..
+            } => {
                 type S = PanicSizes;
                 let buf: &mut [_; S::LEN] = buf
                     .get_mut(..S::LEN)
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Panic as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Panic as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.reason), Word::from(*reason));
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.reason),
+                    Word::from(*reason),
+                );
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
             }
@@ -115,7 +156,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Revert as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Revert as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
@@ -138,7 +183,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Log as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Log as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
@@ -167,7 +216,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::LogData as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::LogData as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.ra), *ra);
@@ -178,7 +231,10 @@ impl io::Read for Receipt {
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
 
-                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
+                bytes::store_bytes(
+                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
+                    data,
+                )?;
             }
 
             Self::Transfer {
@@ -195,7 +251,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::Transfer as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Transfer as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
@@ -219,7 +279,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::TransferOut as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::TransferOut as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.id), id);
                 bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
@@ -236,7 +300,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::ScriptResult as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::ScriptResult as u8,
+                );
 
                 let result = Word::from(*result);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.result), result);
@@ -259,7 +327,11 @@ impl io::Read for Receipt {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), ReceiptRepr::MessageOut as u8);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::MessageOut as u8,
+                );
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.sender), sender);
                 bytes::store_at(buf, S::layout(S::LAYOUT.recipient), recipient);
@@ -268,7 +340,10 @@ impl io::Read for Receipt {
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
                 bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
 
-                bytes::store_bytes(full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?, data)?;
+                bytes::store_bytes(
+                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
+                    data,
+                )?;
             }
         }
 
@@ -343,7 +418,8 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, _) =
+                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
 
                 let id = id.into();
                 let digest = digest.into();
@@ -365,7 +441,7 @@ impl io::Write for Receipt {
 
                 let id = id.into();
 
-                *self = Self::panic(id, PanicInstruction::try_from(reason)?, pc, is);
+                *self = Self::panic(id, PanicInstruction::from(reason), pc, is);
             }
 
             ReceiptRepr::Revert => {
@@ -421,12 +497,14 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, _) =
+                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
 
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is);
+                *self =
+                    Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is);
             }
 
             ReceiptRepr::Transfer => {
@@ -499,14 +577,17 @@ impl io::Write for Receipt {
                 let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
                 let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
 
-                let (_, data, _) = bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
+                let (_, data, _) =
+                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
 
                 let sender = sender.into();
                 let recipient = recipient.into();
                 let nonce = nonce.into();
                 let digest = digest.into();
 
-                *self = Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data);
+                *self = Self::message_out_with_len(
+                    sender, recipient, amount, nonce, len, digest, data,
+                );
             }
         }
 

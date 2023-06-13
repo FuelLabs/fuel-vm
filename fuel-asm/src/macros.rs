@@ -1,7 +1,8 @@
 //! # The `impl_instructions!` macro
 //!
-//! The heart of this crate's implementation is the private `impl_instructions!` macro. This macro
-//! is used to generate the `Instruction` and `Opcode` types along with their implementations.
+//! The heart of this crate's implementation is the private `impl_instructions!` macro.
+//! This macro is used to generate the `Instruction` and `Opcode` types along with their
+//! implementations.
 //!
 //! The intention is to allow for having a single source of truth from which each of the
 //! instruction-related types and implementations are derived.
@@ -47,8 +48,8 @@
 //! }
 //! ```
 //!
-//! A `TryFrom<u8>` implementation is also provided, producing an `Err(InvalidOpcode)` in the case
-//! that the byte represents a reserved or undefined value.
+//! A `TryFrom<u8>` implementation is also provided, producing an `Err(InvalidOpcode)` in
+//! the case that the byte represents a reserved or undefined value.
 //!
 //! ```rust
 //! # use fuel_asm::{InvalidOpcode, Opcode};
@@ -80,14 +81,15 @@
 //! }
 //! ```
 //!
-//! The `From<Instruction> for u32` (aka `RawInstruction`) and `TryFrom<u32> for Instruction`
-//! implementations can be found in the crate root.
+//! The `From<Instruction> for u32` (aka `RawInstruction`) and `TryFrom<u32> for
+//! Instruction` implementations can be found in the crate root.
 //!
 //! ## A unique unit type per operation
 //!
-//! In order to reduce the likelihood of misusing unrelated register IDs or immediate values, we
-//! generate a unique unit type for each type of operation (i.e instruction variant) and guard
-//! access to the relevant register IDs and immediate values behind each type's unique methods.
+//! In order to reduce the likelihood of misusing unrelated register IDs or immediate
+//! values, we generate a unique unit type for each type of operation (i.e instruction
+//! variant) and guard access to the relevant register IDs and immediate values behind
+//! each type's unique methods.
 //!
 //! These unique operation types are generated as follows within a dedicated `op` module:
 //!
@@ -148,8 +150,8 @@
 //!
 //! ### Instruction Layout
 //!
-//! The function signatures of the `new` and `unpack` functions are derived from the instruction's
-//! data layout described in the `impl_instructions!` table.
+//! The function signatures of the `new` and `unpack` functions are derived from the
+//! instruction's data layout described in the `impl_instructions!` table.
 //!
 //! For example, the `unpack` method for `ADD` looks like this:
 //!
@@ -167,10 +169,11 @@
 //!
 //! ### Shorthand Constructors
 //!
-//! The shorthand instruction constructors (e.g. `add`, `and`, etc) are specifically designed to
-//! make it easier to handwrite assembly for tests or benchmarking. Unlike the `$OP::new`
-//! constructors which require typed register ID or immediate inputs, the instruction constructors
-//! allow for constructing `Instruction`s from convenient literal value inputs. E.g.
+//! The shorthand instruction constructors (e.g. `add`, `and`, etc) are specifically
+//! designed to make it easier to handwrite assembly for tests or benchmarking. Unlike the
+//! `$OP::new` constructors which require typed register ID or immediate inputs, the
+//! instruction constructors allow for constructing `Instruction`s from convenient literal
+//! value inputs. E.g.
 //!
 //! ```rust
 //! use fuel_asm::{op, Instruction};

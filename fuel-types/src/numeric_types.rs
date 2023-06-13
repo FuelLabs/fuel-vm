@@ -1,13 +1,26 @@
-use core::array::TryFromSliceError;
-use core::borrow::Borrow;
-use core::borrow::BorrowMut;
-use core::convert::TryFrom;
-use core::ops::{Add, Deref, DerefMut, Sub};
-use core::{fmt, str};
+use core::{
+    array::TryFromSliceError,
+    borrow::{
+        Borrow,
+        BorrowMut,
+    },
+    convert::TryFrom,
+    fmt,
+    ops::{
+        Add,
+        Deref,
+        DerefMut,
+        Sub,
+    },
+    str,
+};
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -62,7 +75,10 @@ macro_rules! key_methods {
 
             #[cfg(feature = "random")]
             impl rand::Fill for $i {
-                fn try_fill<R: rand::Rng + ?Sized>(&mut self, rng: &mut R) -> Result<(), rand::Error> {
+                fn try_fill<R: rand::Rng + ?Sized>(
+                    &mut self,
+                    rng: &mut R,
+                ) -> Result<(), rand::Error> {
                     let number = rng.gen();
                     *self = $i(number);
 
@@ -136,9 +152,11 @@ macro_rules! key_methods {
 
                     let bytes = self.0.to_be_bytes();
                     match f.width() {
-                        Some(w) if w > 0 => bytes
-                            .chunks(2 * bytes.len() / w)
-                            .try_for_each(|c| write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))),
+                        Some(w) if w > 0 => {
+                            bytes.chunks(2 * bytes.len() / w).try_for_each(|c| {
+                                write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                            })
+                        }
 
                         _ => bytes.iter().try_for_each(|b| write!(f, "{:02x}", &b)),
                     }
@@ -153,9 +171,11 @@ macro_rules! key_methods {
 
                     let bytes = self.0.to_be_bytes();
                     match f.width() {
-                        Some(w) if w > 0 => bytes
-                            .chunks(2 * bytes.len() / w)
-                            .try_for_each(|c| write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))),
+                        Some(w) if w > 0 => {
+                            bytes.chunks(2 * bytes.len() / w).try_for_each(|c| {
+                                write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                            })
+                        }
 
                         _ => bytes.iter().try_for_each(|b| write!(f, "{:02X}", &b)),
                     }

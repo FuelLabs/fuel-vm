@@ -10,6 +10,7 @@ impl<const ADDR: usize, const SIZE: usize> MemLoc<ADDR, SIZE> {
     pub const fn new() -> Self {
         Self
     }
+
     /// Returns the address of the memory location.
     pub const fn addr(&self) -> usize {
         ADDR
@@ -48,7 +49,10 @@ pub trait MemLocType<const ADDR: usize, const SIZE: usize> {
 }
 
 /// A memory location combined with a type.
-pub struct LayoutType<const ADDR: usize, const SIZE: usize, T>(MemLoc<ADDR, SIZE>, PhantomData<T>)
+pub struct LayoutType<const ADDR: usize, const SIZE: usize, T>(
+    MemLoc<ADDR, SIZE>,
+    PhantomData<T>,
+)
 where
     T: MemLocType<ADDR, SIZE> + ?Sized;
 
@@ -60,6 +64,7 @@ where
     pub const fn new() -> Self {
         Self(MemLoc::new(), PhantomData)
     }
+
     /// The memory location of this type.
     pub const fn loc(&self) -> MemLoc<ADDR, SIZE> {
         self.0

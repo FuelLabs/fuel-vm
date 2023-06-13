@@ -1,24 +1,67 @@
 #[cfg(test)]
 mod tests;
 
-use crate::checked_transaction::{Checked, IntoChecked};
-use crate::consts::*;
-use crate::context::Context;
-use crate::error::{Bug, BugId, BugVariant, InterpreterError, PredicateVerificationFailed};
-use crate::gas::GasCosts;
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
-use crate::predicate::RuntimePredicate;
-use crate::state::{ExecuteState, ProgramState};
-use crate::state::{StateTransition, StateTransitionRef};
-use crate::storage::{InterpreterStorage, PredicateStorage};
+use crate::{
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+    },
+    consts::*,
+    context::Context,
+    error::{
+        Bug,
+        BugId,
+        BugVariant,
+        InterpreterError,
+        PredicateVerificationFailed,
+    },
+    gas::GasCosts,
+    interpreter::{
+        CheckedMetadata,
+        ExecutableTransaction,
+        InitialBalances,
+        Interpreter,
+        RuntimeBalances,
+    },
+    predicate::RuntimePredicate,
+    state::{
+        ExecuteState,
+        ProgramState,
+        StateTransition,
+        StateTransitionRef,
+    },
+    storage::{
+        InterpreterStorage,
+        PredicateStorage,
+    },
+};
 
 use crate::error::BugVariant::GlobalGasUnderflow;
-use fuel_asm::{PanicReason, RegId};
-use fuel_tx::input::coin::CoinPredicate;
-use fuel_tx::input::message::{MessageCoinPredicate, MessageDataPredicate};
+use fuel_asm::{
+    PanicReason,
+    RegId,
+};
 use fuel_tx::{
-    field::{ReceiptsRoot, Salt, Script as ScriptField, StorageSlots},
-    Chargeable, ConsensusParameters, Contract, Create, Input, Receipt, ScriptExecutionResult,
+    field::{
+        ReceiptsRoot,
+        Salt,
+        Script as ScriptField,
+        StorageSlots,
+    },
+    input::{
+        coin::CoinPredicate,
+        message::{
+            MessageCoinPredicate,
+            MessageDataPredicate,
+        },
+    },
+    Chargeable,
+    ConsensusParameters,
+    Contract,
+    Create,
+    Input,
+    Receipt,
+    ScriptExecutionResult,
 };
 use fuel_types::Word;
 
@@ -48,10 +91,11 @@ impl<'a, Tx> PredicateRunKind<'a, Tx> {
 }
 
 impl<T> Interpreter<PredicateStorage, T> {
-    /// Initialize the VM with the provided transaction and check all predicates defined in the
-    /// inputs.
+    /// Initialize the VM with the provided transaction and check all predicates defined
+    /// in the inputs.
     ///
-    /// The storage provider is not used since contract opcodes are not allowed for predicates.
+    /// The storage provider is not used since contract opcodes are not allowed for
+    /// predicates.
     pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
         params: ConsensusParameters,
@@ -66,11 +110,12 @@ impl<T> Interpreter<PredicateStorage, T> {
         Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params, gas_costs)
     }
 
-    /// Initialize the VM with the provided transaction, check all predicates defined in the
-    /// inputs and set the predicate_gas_used to be the actual gas consumed during execution for
-    /// each predicate.
+    /// Initialize the VM with the provided transaction, check all predicates defined in
+    /// the inputs and set the predicate_gas_used to be the actual gas consumed during
+    /// execution for each predicate.
     ///
-    /// The storage provider is not used since contract opcodes are not allowed for predicates.
+    /// The storage provider is not used since contract opcodes are not allowed for
+    /// predicates.
     pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         balances: InitialBalances,
@@ -80,7 +125,12 @@ impl<T> Interpreter<PredicateStorage, T> {
     where
         Tx: ExecutableTransaction,
     {
-        Self::run_predicate(PredicateRunKind::Estimating(transaction), balances, params, gas_costs)?;
+        Self::run_predicate(
+            PredicateRunKind::Estimating(transaction),
+            balances,
+            params,
+            gas_costs,
+        )?;
         Ok(())
     }
 
@@ -94,7 +144,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
     {
         if !kind.tx().check_predicate_owners(&params.chain_id) {
-            return Err(PredicateVerificationFailed::InvalidOwner);
+            return Err(PredicateVerificationFailed::InvalidOwner)
         }
 
         let mut cumulative_gas_used: Word = 0;
@@ -102,25 +152,33 @@ impl<T> Interpreter<PredicateStorage, T> {
         for i in 0..kind.tx().inputs().len() {
             let is_predicate = matches!(
                 kind.tx().inputs()[i],
-                Input::CoinPredicate(_) | Input::MessageCoinPredicate(_) | Input::MessageDataPredicate(_)
+                Input::CoinPredicate(_)
+                    | Input::MessageCoinPredicate(_)
+                    | Input::MessageDataPredicate(_)
             );
 
             if !is_predicate {
-                continue;
+                continue
             }
 
             if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), i) {
-                let mut vm = Interpreter::with_storage(PredicateStorage::default(), params, gas_costs.clone());
+                let mut vm = Interpreter::with_storage(
+                    PredicateStorage::default(),
+                    params,
+                    gas_costs.clone(),
+                );
 
                 let available_gas = match &kind {
                     PredicateRunKind::Verifying(tx) => {
-                        let context = Context::PredicateVerification { program: predicate };
+                        let context =
+                            Context::PredicateVerification { program: predicate };
 
-                        let available_gas = if let Some(x) = kind.tx().inputs()[i].predicate_gas_used() {
-                            x
-                        } else {
-                            return Err(PredicateVerificationFailed::GasNotSpecified);
-                        };
+                        let available_gas =
+                            if let Some(x) = kind.tx().inputs()[i].predicate_gas_used() {
+                                x
+                            } else {
+                                return Err(PredicateVerificationFailed::GasNotSpecified)
+                            };
 
                         vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
                         available_gas
@@ -131,7 +189,10 @@ impl<T> Interpreter<PredicateStorage, T> {
                             .max_gas_per_tx
                             .checked_sub(cumulative_gas_used)
                             .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
-                        let available_gas = core::cmp::min(params.max_gas_per_predicate, tx_available_gas);
+                        let available_gas = core::cmp::min(
+                            params.max_gas_per_predicate,
+                            tx_available_gas,
+                        );
 
                         vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
                         available_gas
@@ -152,23 +213,34 @@ impl<T> Interpreter<PredicateStorage, T> {
                     PredicateRunKind::Verifying(_) => {
                         if !is_successful {
                             result?;
-                            return Err(PredicateVerificationFailed::False);
+                            return Err(PredicateVerificationFailed::False)
                         }
 
                         if vm.remaining_gas() != 0 {
-                            return Err(PredicateVerificationFailed::GasMismatch);
+                            return Err(PredicateVerificationFailed::GasMismatch)
                         }
                     }
-                    PredicateRunKind::Estimating(tx) => match &mut tx.inputs_mut()[i] {
-                        Input::CoinPredicate(CoinPredicate { predicate_gas_used, .. })
-                        | Input::MessageCoinPredicate(MessageCoinPredicate { predicate_gas_used, .. })
-                        | Input::MessageDataPredicate(MessageDataPredicate { predicate_gas_used, .. }) => {
-                            *predicate_gas_used = gas_used;
+                    PredicateRunKind::Estimating(tx) => {
+                        match &mut tx.inputs_mut()[i] {
+                            Input::CoinPredicate(CoinPredicate {
+                                predicate_gas_used,
+                                ..
+                            })
+                            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                                predicate_gas_used,
+                                ..
+                            })
+                            | Input::MessageDataPredicate(MessageDataPredicate {
+                                predicate_gas_used,
+                                ..
+                            }) => {
+                                *predicate_gas_used = gas_used;
+                            }
+                            _ => {
+                                unreachable!("It was checked before during iteration over predicates")
+                            }
                         }
-                        _ => {
-                            unreachable!("It was checked before during iteration over predicates")
-                        }
-                    },
+                    }
                 }
             }
         }
@@ -208,24 +280,39 @@ where
             .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
 
         let metadata = create.metadata().as_ref();
-        debug_assert!(metadata.is_some(), "`deploy_inner` is called without cached metadata");
+        debug_assert!(
+            metadata.is_some(),
+            "`deploy_inner` is called without cached metadata"
+        );
         let salt = create.salt();
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
-        let root = metadata.map(|m| m.contract_root).unwrap_or(contract.root());
-        let storage_root = metadata
-            .map(|m| m.state_root)
-            .unwrap_or(Contract::initial_state_root(storage_slots.iter()));
-        let id = metadata
-            .map(|m| m.contract_id)
-            .unwrap_or(contract.id(salt, &root, &storage_root));
+        let root = if let Some(m) = metadata {
+            m.contract_root
+        } else {
+            contract.root()
+        };
+
+        let storage_root = if let Some(m) = metadata {
+            m.state_root
+        } else {
+            Contract::initial_state_root(storage_slots.iter())
+        };
+
+        let id = if let Some(m) = metadata {
+            m.contract_id
+        } else {
+            contract.id(salt, &root, &storage_root)
+        };
 
         // Prevent redeployment of contracts
         if storage
             .storage_contract_exists(&id)
             .map_err(InterpreterError::from_io)?
         {
-            return Err(InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed));
+            return Err(InterpreterError::Panic(
+                PanicReason::ContractIdAlreadyDeployed,
+            ))
         }
 
         storage
@@ -257,18 +344,25 @@ where
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
         let state = if let Some(create) = self.tx.as_create_mut() {
-            Self::deploy_inner(create, &mut self.storage, self.initial_balances.clone(), &self.params)?;
+            Self::deploy_inner(
+                create,
+                &mut self.storage,
+                self.initial_balances.clone(),
+                &self.params,
+            )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
                 if let Input::Contract(contract) = input {
-                    !self.check_contract_exists(&contract.contract_id).unwrap_or(false)
+                    !self
+                        .check_contract_exists(&contract.contract_id)
+                        .unwrap_or(false)
                 } else {
                     false
                 }
             }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotFound));
+                return Err(InterpreterError::Panic(PanicReason::ContractNotFound))
             }
 
             if let Some(script) = self.transaction().as_script() {
@@ -280,8 +374,8 @@ where
 
             // TODO set tree balance
 
-            // `Interpreter` supports only `Create` and `Script` transactions. It is not `Create` ->
-            // it is `Script`.
+            // `Interpreter` supports only `Create` and `Script` transactions. It is not
+            // `Create` -> it is `Script`.
             let program = if !self
                 .transaction()
                 .as_script()
@@ -324,9 +418,7 @@ where
 
                     // This isn't a specified case of an erroneous program and should be
                     // propagated. If applicable, OS errors will fall into this category.
-                    None => {
-                        return Err(e);
-                    }
+                    None => return Err(e),
                 },
             };
 
@@ -365,7 +457,7 @@ where
     pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
         loop {
             if self.registers[RegId::PC] >= VM_MAX_RAM {
-                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow));
+                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow))
             }
 
             // Check whether the instruction will be executed in a call context
@@ -376,28 +468,20 @@ where
             if in_call {
                 // Only reverts should terminate execution from a call context
                 if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r));
+                    return Ok(ProgramState::Revert(r))
                 }
             } else {
                 match state {
-                    ExecuteState::Return(r) => {
-                        return Ok(ProgramState::Return(r));
-                    }
+                    ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
 
-                    ExecuteState::ReturnData(d) => {
-                        return Ok(ProgramState::ReturnData(d));
-                    }
+                    ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
 
-                    ExecuteState::Revert(r) => {
-                        return Ok(ProgramState::Revert(r));
-                    }
+                    ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
 
                     ExecuteState::Proceed => (),
 
                     #[cfg(feature = "debug")]
-                    ExecuteState::DebugEvent(d) => {
-                        return Ok(ProgramState::RunProgram(d));
-                    }
+                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
                 }
             }
         }
@@ -423,21 +507,30 @@ where
         interpreter
             .transact(tx)
             .map(ProgramState::from)
-            .map(|state| StateTransition::new(state, interpreter.tx, interpreter.receipts.into()))
+            .map(|state| {
+                StateTransition::new(state, interpreter.tx, interpreter.receipts.into())
+            })
     }
 
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data
     /// that can be referenced from the interpreter instance itself.
-    pub fn transact(&mut self, tx: Checked<Tx>) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
+    pub fn transact(
+        &mut self,
+        tx: Checked<Tx>,
+    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         self.profiler.on_transaction(&state_result);
 
         let state = state_result?;
-        Ok(StateTransitionRef::new(state, self.transaction(), self.receipts()))
+        Ok(StateTransitionRef::new(
+            state,
+            self.transaction(),
+            self.receipts(),
+        ))
     }
 }
 
@@ -445,13 +538,18 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
 {
-    /// Deploys `Create` transaction without initialization VM and without invalidation of the
-    /// last state of execution of the `Script` transaction.
+    /// Deploys `Create` transaction without initialization VM and without invalidation of
+    /// the last state of execution of the `Script` transaction.
     ///
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (mut create, metadata) = tx.into();
-        Self::deploy_inner(&mut create, &mut self.storage, metadata.balances(), &self.params)?;
+        Self::deploy_inner(
+            &mut create,
+            &mut self.storage,
+            metadata.balances(),
+            &self.params,
+        )?;
         Ok(create)
     }
 }

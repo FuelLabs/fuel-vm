@@ -1,12 +1,30 @@
 //! Inter-contract call supporting structures
 
-use fuel_asm::{PanicReason, RegId};
-use fuel_types::bytes::{self, SizedBytes};
-use fuel_types::{mem_layout, AssetId, ContractId, MemLayout, MemLocType, Word};
+use fuel_asm::{
+    PanicReason,
+    RegId,
+};
+use fuel_types::{
+    bytes::{
+        self,
+        SizedBytes,
+    },
+    mem_layout,
+    AssetId,
+    ContractId,
+    MemLayout,
+    MemLocType,
+    Word,
+};
 
-use crate::consts::WORD_SIZE;
-use crate::consts::*;
-use std::io::{self, Write};
+use crate::consts::{
+    WORD_SIZE,
+    *,
+};
+use std::io::{
+    self,
+    Write,
+};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -73,7 +91,11 @@ impl From<[u8; Self::LEN]> for Call {
         let a = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.a));
         let b = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.b));
 
-        Self { to: to.into(), a, b }
+        Self {
+            to: to.into(),
+            a,
+            b,
+        }
     }
 }
 
@@ -120,7 +142,8 @@ impl TryFrom<&[u8]> for Call {
     fn try_from(bytes: &[u8]) -> Result<Self, PanicReason> {
         let mut call = Self::default();
 
-        call.write(bytes).map_err(|_| PanicReason::MalformedCallStructure)?;
+        call.write(bytes)
+            .map_err(|_| PanicReason::MalformedCallStructure)?;
 
         Ok(call)
     }
@@ -290,8 +313,15 @@ impl io::Read for CallFrame {
         bytes::store_at(buf, Self::layout(Self::LAYOUT.to), &self.to);
         bytes::store_at(buf, Self::layout(Self::LAYOUT.asset_id), &self.asset_id);
         let mut registers = [0u8; Self::LAYOUT.registers.size()];
-        for (reg, out) in self.registers.iter().zip(registers.chunks_exact_mut(WORD_SIZE)) {
-            bytes::store_number(out.try_into().expect("Can't fail as chunks are exact"), *reg);
+        for (reg, out) in self
+            .registers
+            .iter()
+            .zip(registers.chunks_exact_mut(WORD_SIZE))
+        {
+            bytes::store_number(
+                out.try_into().expect("Can't fail as chunks are exact"),
+                *reg,
+            );
         }
         bytes::store_at(buf, Self::layout(Self::LAYOUT.registers), &registers);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.code_size), self.code_size);
@@ -312,12 +342,19 @@ impl io::Write for CallFrame {
         let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
         let asset_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.asset_id));
         let registers = bytes::restore_at(buf, Self::layout(Self::LAYOUT.registers));
-        let code_size = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
+        let code_size =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
         let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
         let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
 
-        for (reg, word) in self.registers.iter_mut().zip(registers.chunks_exact(WORD_SIZE)) {
-            *reg = bytes::restore_number(word.try_into().expect("Can't fail as chunks are exact"));
+        for (reg, word) in self
+            .registers
+            .iter_mut()
+            .zip(registers.chunks_exact(WORD_SIZE))
+        {
+            *reg = bytes::restore_number(
+                word.try_into().expect("Can't fail as chunks are exact"),
+            );
         }
 
         self.to = to.into();

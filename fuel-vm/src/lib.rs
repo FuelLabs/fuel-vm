@@ -63,41 +63,109 @@ pub use fuel_types;
 pub mod prelude {
     //! Required implementations for full functionality
     #[doc(no_inline)]
-    pub use fuel_asm::{GMArgs, GTFArgs, Instruction, Opcode, PanicReason};
+    pub use fuel_asm::{
+        GMArgs,
+        GTFArgs,
+        Instruction,
+        Opcode,
+        PanicReason,
+    };
     #[doc(no_inline)]
-    pub use fuel_crypto::{Hasher, Message};
+    pub use fuel_crypto::{
+        Hasher,
+        Message,
+        PublicKey,
+        SecretKey,
+        Signature,
+    };
     #[doc(no_inline)]
-    pub use fuel_storage::{MerkleRoot, MerkleRootStorage, StorageAsMut, StorageAsRef, StorageInspect, StorageMutate};
+    pub use fuel_storage::{
+        MerkleRoot,
+        MerkleRootStorage,
+        StorageAsMut,
+        StorageAsRef,
+        StorageInspect,
+        StorageMutate,
+    };
     #[doc(no_inline)]
     pub use fuel_tx::*;
     #[doc(no_inline)]
     pub use fuel_types::{
-        bytes::{Deserializable, SerializableVec, SizedBytes},
-        Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, Immediate06, Immediate12, Immediate18,
-        Immediate24, RegisterId, Salt, Word,
+        bytes::{
+            Deserializable,
+            SerializableVec,
+            SizedBytes,
+        },
+        Address,
+        AssetId,
+        Bytes32,
+        Bytes4,
+        Bytes64,
+        Bytes8,
+        ContractId,
+        Immediate06,
+        Immediate12,
+        Immediate18,
+        Immediate24,
+        RegisterId,
+        Salt,
+        Word,
     };
 
-    pub use crate::backtrace::Backtrace;
-    pub use crate::call::{Call, CallFrame};
-    pub use crate::context::Context;
-    pub use crate::error::{Bug, BugId, BugVariant, Infallible, InterpreterError, RuntimeError};
-    pub use crate::gas::GasCosts;
-    pub use crate::gas::GasCostsValues;
-    pub use crate::interpreter::{ExecutableTransaction, Interpreter, MemoryRange};
-    pub use crate::memory_client::MemoryClient;
-    pub use crate::predicate::RuntimePredicate;
-    pub use crate::state::{Debugger, ProgramState, StateTransition, StateTransitionRef};
-    pub use crate::storage::{InterpreterStorage, MemoryStorage, PredicateStorage};
-    pub use crate::transactor::Transactor;
+    pub use crate::{
+        backtrace::Backtrace,
+        call::{
+            Call,
+            CallFrame,
+        },
+        context::Context,
+        error::{
+            Bug,
+            BugId,
+            BugVariant,
+            Infallible,
+            InterpreterError,
+            RuntimeError,
+        },
+        gas::{
+            GasCosts,
+            GasCostsValues,
+        },
+        interpreter::{
+            ExecutableTransaction,
+            Interpreter,
+            MemoryRange,
+        },
+        memory_client::MemoryClient,
+        predicate::RuntimePredicate,
+        state::{
+            Debugger,
+            ProgramState,
+            StateTransition,
+            StateTransitionRef,
+        },
+        storage::{
+            InterpreterStorage,
+            MemoryStorage,
+            PredicateStorage,
+        },
+        transactor::Transactor,
+    };
 
     #[cfg(feature = "debug")]
-    pub use crate::state::{Breakpoint, DebugEval};
+    pub use crate::state::{
+        Breakpoint,
+        DebugEval,
+    };
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub use crate::util::test_helpers::TestBuilder;
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::checked_transaction::{builder::TransactionBuilderExt, IntoChecked};
+    pub use crate::checked_transaction::{
+        builder::TransactionBuilderExt,
+        IntoChecked,
+    };
 
     #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
     pub use crate::util::gas_profiling::GasProfiler;
@@ -105,7 +173,14 @@ pub mod prelude {
     pub use crate::profiler::Profiler;
     #[cfg(feature = "profile-any")]
     pub use crate::profiler::{
-        CoverageProfilingData, GasProfilingData, InstructionLocation, PerLocationIter, PerLocationKeys,
-        PerLocationValues, ProfileReceiver, ProfilingData, StderrReceiver,
+        CoverageProfilingData,
+        GasProfilingData,
+        InstructionLocation,
+        PerLocationIter,
+        PerLocationKeys,
+        PerLocationValues,
+        ProfileReceiver,
+        ProfilingData,
+        StderrReceiver,
     };
 }

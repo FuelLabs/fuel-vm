@@ -1,5 +1,7 @@
-use crate::interpreter::memory::Memory;
-use crate::storage::MemoryStorage;
+use crate::{
+    interpreter::memory::Memory,
+    storage::MemoryStorage,
+};
 
 use super::*;
 use fuel_tx::Contract;
@@ -20,7 +22,8 @@ fn test_load_contract() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory[contract_id_mem_address as usize..contract_id_mem_address as usize + ContractId::LEN]
+    memory[contract_id_mem_address as usize
+        ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
@@ -58,7 +61,8 @@ fn test_code_copy() -> Result<(), RuntimeError> {
     let offset = 20;
     let num_bytes = 40;
 
-    memory[contract_id_mem_address as usize..contract_id_mem_address as usize + ContractId::LEN]
+    memory[contract_id_mem_address as usize
+        ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))

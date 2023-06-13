@@ -1,13 +1,28 @@
-use fuel_asm::PanicReason::{ArithmeticOverflow, ErrorFlag, MemoryOverflow};
-use fuel_asm::{op, GTFArgs, RegId};
+use fuel_asm::{
+    op,
+    GTFArgs,
+    PanicReason::{
+        ArithmeticOverflow,
+        ErrorFlag,
+        MemoryOverflow,
+    },
+    RegId,
+};
 use fuel_crypto::{Hasher, PublicKey, SecretKey, Signature};
 use fuel_tx::TransactionBuilder;
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-use sha3::{Digest, Keccak256};
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
+use sha3::{
+    Digest,
+    Keccak256,
+};
 
-use crate::prelude::*;
-use crate::util::test_helpers::check_expected_reason_for_instructions;
+use crate::{
+    prelude::*,
+    util::test_helpers::check_expected_reason_for_instructions,
+};
 
 #[test]
 fn ecrecover() {
@@ -61,7 +76,9 @@ fn ecrecover() {
         .finalize_checked(height, &gas_costs);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }
@@ -169,7 +186,11 @@ fn sha256() {
         op::ret(RegId::ONE),
     ].into_iter().collect();
 
-    let script_data = message.iter().copied().chain(hash.as_ref().iter().copied()).collect();
+    let script_data = message
+        .iter()
+        .copied()
+        .chain(hash.as_ref().iter().copied())
+        .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
@@ -180,7 +201,9 @@ fn sha256() {
         .finalize_checked(height, &gas_costs);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }
@@ -263,7 +286,11 @@ fn keccak256() {
         op::ret(RegId::ONE),
     ].into_iter().collect();
 
-    let script_data = message.iter().copied().chain(hash.iter().copied()).collect();
+    let script_data = message
+        .iter()
+        .copied()
+        .chain(hash.iter().copied())
+        .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
@@ -274,7 +301,9 @@ fn keccak256() {
         .finalize_checked(height, client.gas_costs());
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
     assert!(success);
 }

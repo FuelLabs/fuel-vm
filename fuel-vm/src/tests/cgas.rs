@@ -1,9 +1,16 @@
-use crate::prelude::*;
-use crate::script_with_data_offset;
-use fuel_asm::op;
-use fuel_asm::RegId;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use crate::{
+    prelude::*,
+    script_with_data_offset,
+};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 #[test]
 fn cgas_overflow_bug() {
@@ -91,7 +98,10 @@ fn cgas_overflow_bug() {
     assert!(!transfer_tx.should_revert());
 
     for receipt in transfer_tx.receipts() {
-        if let Receipt::Log { ra: cgas, rb: ggas, .. } = receipt {
+        if let Receipt::Log {
+            ra: cgas, rb: ggas, ..
+        } = receipt
+        {
             assert!(cgas <= ggas, "CGAS exceeded GGAS");
         }
     }

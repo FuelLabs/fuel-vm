@@ -1,14 +1,39 @@
-use super::internal::{clear_err, inc_pc, set_err};
-use super::memory::{read_bytes, try_mem_write, try_zeroize, OwnershipRegisters};
-use super::{ExecutableTransaction, Interpreter};
-use crate::constraints::reg_key::*;
-use crate::consts::{MEM_MAX_ACCESS_SIZE, MEM_SIZE, MIN_VM_MAX_RAM_USIZE_MAX, VM_MAX_RAM};
-use crate::error::RuntimeError;
+use super::{
+    internal::{
+        clear_err,
+        inc_pc,
+        set_err,
+    },
+    memory::{
+        try_mem_write,
+        try_zeroize,
+        OwnershipRegisters,
+    },
+    ExecutableTransaction,
+    Interpreter,
+};
+use crate::{
+    constraints::reg_key::*,
+    consts::*,
+    error::RuntimeError,
+};
 
-use crate::arith::{checked_add_word, checked_sub_word};
+use crate::arith::{
+    checked_add_word,
+    checked_sub_word,
+};
 use fuel_asm::PanicReason;
-use fuel_crypto::{Hasher, Message, PublicKey, Signature};
-use fuel_types::{Bytes32, Bytes64, Word};
+use fuel_crypto::{
+    Hasher,
+    Message,
+    PublicKey,
+    Signature,
+};
+use fuel_types::{
+    Bytes32,
+    Bytes64,
+    Word,
+};
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +42,12 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn secp256k1_recover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn secp256k1_recover(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
@@ -34,12 +64,22 @@ where
         ed25519_verify(&mut self.memory, err, pc, a, b, c)
     }
 
-    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn keccak256(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         keccak256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn sha256(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         sha256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
@@ -61,11 +101,12 @@ pub(crate) fn secp256k1_recover(
         || bx > MIN_VM_MAX_RAM_USIZE_MAX
         || cx > MIN_VM_MAX_RAM_USIZE_MAX
     {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     // TODO: These casts may overflow/truncate on 32-bit?
-    let (a, b, bx, c, cx) = (a as usize, b as usize, bx as usize, c as usize, cx as usize);
+    let (a, b, bx, c, cx) =
+        (a as usize, b as usize, bx as usize, c as usize, cx as usize);
 
     let sig_bytes = <&_>::try_from(&memory[b..bx]).expect("memory bounds checked");
     let msg_bytes = <&_>::try_from(&memory[c..cx]).expect("memory bounds checked");
@@ -141,7 +182,10 @@ pub(crate) fn keccak256(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    use sha3::{Digest, Keccak256};
+    use sha3::{
+        Digest,
+        Keccak256,
+    };
 
     let bc = checked_add_word(b, c)?;
 
@@ -149,7 +193,7 @@ pub(crate) fn keccak256(
         || c > MEM_MAX_ACCESS_SIZE
         || bc > MIN_VM_MAX_RAM_USIZE_MAX
     {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     let (a, b, bc) = (a as usize, b as usize, bc as usize);
@@ -177,7 +221,7 @@ pub(crate) fn sha256(
         || c > MEM_MAX_ACCESS_SIZE
         || bc > MIN_VM_MAX_RAM_USIZE_MAX
     {
-        return Err(PanicReason::MemoryOverflow.into());
+        return Err(PanicReason::MemoryOverflow.into())
     }
 
     let (a, b, bc) = (a as usize, b as usize, bc as usize);

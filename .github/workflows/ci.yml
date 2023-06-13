@@ -15,7 +15,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.67.1
+  RUST_VERSION: 1.69.0
+  NIGHTLY_RUST_VERSION: nightly-2023-05-23
 
 jobs:
   cargo:
@@ -24,8 +25,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - command: fmt
-            args: --all -- --check
           - command: clippy
             args: --all-targets --all-features -- -D warnings -D clippy::dbg_macro
           - command: check
@@ -74,12 +73,25 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
-          components: "clippy, rustfmt"
+          components: "clippy"
       - name: Install Cargo Make
         uses: davidB/rust-cargo-make@v1
         with:
           version: "0.36.4"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
+
+  rustfmt:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.NIGHTLY_RUST_VERSION }}
+          components: rustfmt
+
+      - name: Rustfmt check
+        run: cargo +${{ env.NIGHTLY_RUST_VERSION }} fmt --all -- --check
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
@@ -88,16 +100,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+      - name: setup binstall
+        uses: taiki-e/install-action@cargo-binstall
       - name: Install Cargo.toml linter
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-toml-lint
-          version: "0.1"
-      - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: cargo binstall --no-confirm cargo-sort
+      - name: Run Cargo.toml sort check
+        run: cargo sort -w --check
 
   verifications-complete:
     needs:
+      - rustfmt
       - cargo
       - cargo-toml-fmt-check
     runs-on: ubuntu-latest

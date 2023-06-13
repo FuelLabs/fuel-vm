@@ -5,7 +5,11 @@ use fuel_types::Immediate18;
 use super::test_helpers;
 use rstest::rstest;
 
-use test_helpers::{assert_panics, assert_success, run_script};
+use test_helpers::{
+    assert_panics,
+    assert_success,
+    run_script,
+};
 
 /// Setup some useful values
 /// * 0x31 to all ones, i.e. max word
@@ -308,7 +312,9 @@ fn spec_incr_pc_by_four(
 }
 
 #[rstest]
-fn spec_can_write_allowed_flag_combinations(#[values(0b00, 0b01, 0b10, 0b11)] flags: Immediate18) {
+fn spec_can_write_allowed_flag_combinations(
+    #[values(0b00, 0b01, 0b10, 0b11)] flags: Immediate18,
+) {
     let mut script = common_setup();
     script.push(op::movi(0x20, flags));
     script.push(op::flag(0x20));

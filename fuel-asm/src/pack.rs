@@ -1,6 +1,12 @@
 //! Functions for packing instruction data into bytes or u32s.
 
-use crate::{Imm06, Imm12, Imm18, Imm24, RegId};
+use crate::{
+    Imm06,
+    Imm12,
+    Imm18,
+    Imm24,
+    RegId,
+};
 
 pub(super) fn bytes_from_ra(ra: RegId) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra(ra).to_be_bytes())
@@ -14,11 +20,21 @@ pub(super) fn bytes_from_ra_rb_rc(ra: RegId, rb: RegId, rc: RegId) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra_rb_rc(ra, rb, rc).to_be_bytes())
 }
 
-pub(super) fn bytes_from_ra_rb_rc_rd(ra: RegId, rb: RegId, rc: RegId, rd: RegId) -> [u8; 3] {
+pub(super) fn bytes_from_ra_rb_rc_rd(
+    ra: RegId,
+    rb: RegId,
+    rc: RegId,
+    rd: RegId,
+) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra_rb_rc_rd(ra, rb, rc, rd).to_be_bytes())
 }
 
-pub(super) fn bytes_from_ra_rb_rc_imm06(ra: RegId, rb: RegId, rc: RegId, imm: Imm06) -> [u8; 3] {
+pub(super) fn bytes_from_ra_rb_rc_imm06(
+    ra: RegId,
+    rb: RegId,
+    rc: RegId,
+    imm: Imm06,
+) -> [u8; 3] {
     u8x3_from_u8x4(u32_from_ra_rb_rc_imm06(ra, rb, rc, imm).to_be_bytes())
 }
 

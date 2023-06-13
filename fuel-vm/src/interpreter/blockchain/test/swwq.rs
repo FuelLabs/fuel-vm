@@ -1,7 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use crate::storage::ContractsState;
-use crate::storage::MemoryStorage;
+use crate::storage::{
+    ContractsState,
+    MemoryStorage,
+};
 
 use super::*;
 use fuel_storage::StorageAsMut;
@@ -96,7 +98,10 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &Bytes32::new(v))
+            .insert(
+                &(&ContractId::default(), &Bytes32::new(k)).into(),
+                &Bytes32::new(v),
+            )
             .unwrap();
     }
 
@@ -169,5 +174,6 @@ fn test_state_write_qword_input(
     source_memory_address: Word,
     num_slots: Word,
 ) -> Result<(), RuntimeError> {
-    StateWriteQWord::new(start_key_memory_address, source_memory_address, num_slots).map(|_| ())
+    StateWriteQWord::new(start_key_memory_address, source_memory_address, num_slots)
+        .map(|_| ())
 }

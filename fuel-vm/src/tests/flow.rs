@@ -1,5 +1,13 @@
-use crate::{consts::*, prelude::*, script_with_data_offset, util::test_helpers::TestBuilder};
-use fuel_asm::{op, RegId};
+use crate::{
+    consts::*,
+    prelude::*,
+    script_with_data_offset,
+    util::test_helpers::TestBuilder,
+};
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_crypto::Hasher;
 use itertools::Itertools;
 
@@ -47,7 +55,9 @@ fn code_copy() {
 
     let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
     let contract_size = program.len();
-    let contract_id = test_context.setup_contract(program_ops, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
 
     let (script, _) = script_with_data_offset!(
         data_offset,
@@ -78,7 +88,9 @@ fn code_copy() {
         .execute();
 
     let receipts = result.receipts();
-    let ret = receipts.first().expect("A `RET` opcode was part of the program.");
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
 
     assert_eq!(1, ret.val().expect("A constant `1` was returned."));
 }
@@ -123,7 +135,10 @@ fn call() {
     let receipts = result.receipts();
 
     assert_eq!(receipts[0].id(), None);
-    assert_eq!(receipts[0].to().expect("Receipt value failed").to_owned(), contract_id);
+    assert_eq!(
+        receipts[0].to().expect("Receipt value failed").to_owned(),
+        contract_id
+    );
     assert_eq!(receipts[1].ra().expect("Receipt value failed"), 0x11);
     assert_eq!(receipts[1].rb().expect("Receipt value failed"), 0x2a);
     assert_eq!(receipts[1].rc().expect("Receipt value failed"), 0x3b);
@@ -145,7 +160,9 @@ fn call_frame_code_offset() {
     ];
 
     let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
-    let contract_id = test_context.setup_contract(program_ops, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
 
     let (script, _) = script_with_data_offset!(
         data_offset,
@@ -254,7 +271,10 @@ fn repeated_nested_calls() {
     // setup a contract which immediately reverts
     let contract_id = test_context
         .setup_contract(
-            vec![op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS), op::ret(RegId::ONE)],
+            vec![
+                op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
             None,
             None,
         )
@@ -365,7 +385,9 @@ fn revert() {
         .contract_output(&contract_id)
         .execute();
     let receipts = result.receipts();
-    let state = test_context.get_storage().contract_state(&contract_id, &key);
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
@@ -400,14 +422,19 @@ fn revert() {
         .fee_input()
         .contract_output(&contract_id)
         .execute();
-    let state = test_context.get_storage().contract_state(&contract_id, &key);
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
 
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
 
     // Expect the correct receipt
     let receipts = result.receipts();
 
-    assert_eq!(receipts[1].ra().expect("Register value expected"), val + rev);
+    assert_eq!(
+        receipts[1].ra().expect("Register value expected"),
+        val + rev
+    );
     assert_eq!(receipts[1].rb().expect("Register value expected"), val);
 
     match receipts[3] {

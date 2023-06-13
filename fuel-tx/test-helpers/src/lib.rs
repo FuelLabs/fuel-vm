@@ -39,15 +39,34 @@ where
 mod use_std {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field, Buildable, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction, TransactionBuilder,
+        field,
+        Buildable,
+        Contract,
+        Create,
+        Finalizable,
+        Input,
+        Mint,
+        Output,
+        Script,
+        Transaction,
+        TransactionBuilder,
     };
     use fuel_types::bytes::Deserializable;
-    use rand::distributions::{Distribution, Uniform};
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{
+        distributions::{
+            Distribution,
+            Uniform,
+        },
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    };
     use std::marker::PhantomData;
 
-    use crate::{generate_bytes, generate_nonempty_padded_bytes};
+    use crate::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
 
     pub struct TransactionFactory<R, Tx>
     where
@@ -151,7 +170,10 @@ mod use_std {
         R: Rng,
         Tx: Buildable,
     {
-        fn fill_transaction(&mut self, builder: &mut TransactionBuilder<Tx>) -> Vec<SecretKey> {
+        fn fill_transaction(
+            &mut self,
+            builder: &mut TransactionBuilder<Tx>,
+        ) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
@@ -266,7 +288,13 @@ mod use_std {
 
             input_message_keys.iter().for_each(|(t, k)| match t {
                 MessageType::MessageCoin => {
-                    builder.add_unsigned_message_input(*k, self.rng.gen(), self.rng.gen(), self.rng.gen(), vec![]);
+                    builder.add_unsigned_message_input(
+                        *k,
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        vec![],
+                    );
                 }
                 MessageType::MessageData => {
                     builder.add_unsigned_message_input(
@@ -324,8 +352,10 @@ mod use_std {
         }
 
         pub fn transaction_with_keys(&mut self) -> (Script, Vec<SecretKey>) {
-            let mut builder =
-                TransactionBuilder::<Script>::script(generate_bytes(&mut self.rng), generate_bytes(&mut self.rng));
+            let mut builder = TransactionBuilder::<Script>::script(
+                generate_bytes(&mut self.rng),
+                generate_bytes(&mut self.rng),
+            );
 
             let keys = self.fill_transaction(&mut builder);
             (builder.finalize(), keys)
@@ -337,7 +367,8 @@ mod use_std {
         R: Rng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder = TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
+            let mut builder =
+                TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
 
             self.fill_outputs(&mut builder);
             builder.finalize()

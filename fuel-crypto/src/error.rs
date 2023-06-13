@@ -49,7 +49,11 @@ mod use_std {
     use super::*;
     use coins_bip39::MnemonicError;
     use secp256k1::Error as Secp256k1Error;
-    use std::{error, fmt, io};
+    use std::{
+        error,
+        fmt,
+        io,
+    };
 
     impl From<Secp256k1Error> for Error {
         fn from(secp: Secp256k1Error) -> Self {

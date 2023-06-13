@@ -3,7 +3,10 @@ use std::mem;
 
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
-use fuel_types::{bytes::SerializableVec, Bytes32};
+use fuel_types::{
+    bytes::SerializableVec,
+    Bytes32,
+};
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct ReceiptsCtx {
@@ -115,8 +118,10 @@ impl<'a> Drop for ReceiptsCtxMut<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto::ephemeral_merkle_root;
-    use crate::interpreter::receipts::ReceiptsCtx;
+    use crate::{
+        crypto::ephemeral_merkle_root,
+        interpreter::receipts::ReceiptsCtx,
+    };
     use fuel_tx::Receipt;
     use fuel_types::bytes::SerializableVec;
     use std::iter;

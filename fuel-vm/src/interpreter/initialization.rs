@@ -1,15 +1,31 @@
-use super::{ExecutableTransaction, InitialBalances, Interpreter, RuntimeBalances};
-use crate::checked_transaction::{Checked, IntoChecked};
-use crate::consts::*;
-use crate::context::Context;
-use crate::error::{Bug, BugId, InterpreterError};
-use crate::storage::InterpreterStorage;
+use super::{
+    ExecutableTransaction,
+    InitialBalances,
+    Interpreter,
+    RuntimeBalances,
+};
+use crate::{
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+    },
+    consts::*,
+    context::Context,
+    error::{
+        Bug,
+        BugId,
+        InterpreterError,
+    },
+    storage::InterpreterStorage,
+};
 
 use fuel_asm::RegId;
 use fuel_types::Word;
 
-use crate::error::BugVariant::GlobalGasUnderflow;
-use crate::interpreter::CheckedMetadata;
+use crate::{
+    error::BugVariant::GlobalGasUnderflow,
+    interpreter::CheckedMetadata,
+};
 use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
@@ -87,12 +103,15 @@ where
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
-    /// Initialize the VM with a given transaction, backed by a storage provider that allows
-    /// execution of contract opcodes.
+    /// Initialize the VM with a given transaction, backed by a storage provider that
+    /// allows execution of contract opcodes.
     ///
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
-        let block_height = self.storage.block_height().map_err(InterpreterError::from_io)?;
+        let block_height = self
+            .storage
+            .block_height()
+            .map_err(InterpreterError::from_io)?;
 
         self.context = Context::Script { block_height };
 

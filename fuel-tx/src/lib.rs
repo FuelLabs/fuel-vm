@@ -16,8 +16,22 @@ extern crate core;
 pub mod consts;
 mod tx_pointer;
 
-pub use fuel_asm::{PanicInstruction, PanicReason};
-pub use fuel_types::{Address, AssetId, Bytes32, Bytes4, Bytes64, Bytes8, ContractId, MessageId, Salt, Word};
+pub use fuel_asm::{
+    PanicInstruction,
+    PanicReason,
+};
+pub use fuel_types::{
+    Address,
+    AssetId,
+    Bytes32,
+    Bytes4,
+    Bytes64,
+    Bytes8,
+    ContractId,
+    MessageId,
+    Salt,
+    Word,
+};
 pub use tx_pointer::TxPointer;
 
 #[cfg(feature = "builder")]
@@ -36,20 +50,49 @@ mod transaction;
 mod tests;
 
 #[cfg(feature = "builder")]
-pub use builder::{Buildable, Finalizable, TransactionBuilder};
+pub use builder::{
+    Buildable,
+    Finalizable,
+    TransactionBuilder,
+};
 
 #[cfg(feature = "alloc")]
-pub use receipt::{Receipt, ScriptExecutionResult};
+pub use receipt::{
+    Receipt,
+    ScriptExecutionResult,
+};
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    field, input, input::Input, input::InputRepr, Cacheable, Chargeable, CheckError, ConsensusParameters, Create,
-    Executable, FormatValidityChecks, Mint, Output, OutputRepr, Script, StorageSlot, Transaction, TransactionFee,
-    TransactionRepr, TxId, UtxoId, Witness,
+    field,
+    input,
+    input::Input,
+    input::InputRepr,
+    Cacheable,
+    Chargeable,
+    CheckError,
+    ConsensusParameters,
+    Create,
+    Executable,
+    FormatValidityChecks,
+    Mint,
+    Output,
+    OutputRepr,
+    Script,
+    StorageSlot,
+    Transaction,
+    TransactionFee,
+    TransactionRepr,
+    TxId,
+    UtxoId,
+    Witness,
 };
 
 #[cfg(feature = "std")]
-pub use transaction::{Signable, UniqueIdentifier};
+pub use transaction::{
+    Signable,
+    UniqueIdentifier,
+};
 
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]

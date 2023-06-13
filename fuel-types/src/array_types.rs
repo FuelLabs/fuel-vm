@@ -1,15 +1,26 @@
 // serde-big-array doesn't allow documentation of its generated structure
 #![allow(missing_docs)]
-use core::array::TryFromSliceError;
-use core::borrow::Borrow;
-use core::borrow::BorrowMut;
-use core::convert::TryFrom;
-use core::ops::{Deref, DerefMut};
-use core::{fmt, str};
+use core::{
+    array::TryFromSliceError,
+    borrow::{
+        Borrow,
+        BorrowMut,
+    },
+    convert::TryFrom,
+    fmt,
+    ops::{
+        Deref,
+        DerefMut,
+    },
+    str,
+};
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -84,8 +95,8 @@ macro_rules! key_methods {
             /// # Safety
             ///
             /// This function will not panic if the length of the slice is smaller than
-            /// `Self::LEN`. Instead, it will cause undefined behavior and read random disowned
-            /// bytes
+            /// `Self::LEN`. Instead, it will cause undefined behavior and read random
+            /// disowned bytes
             pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
                 $i($crate::bytes::from_slice_unchecked(bytes))
             }
@@ -102,11 +113,11 @@ macro_rules! key_methods {
             /// # Safety
             /// Assumes the type is `repr[transparent]`.
             pub fn from_bytes_ref(bytes: &[u8; $s]) -> &Self {
-                // The interpreter will frequently make references to keys and values using
-                // logically checked slices.
+                // The interpreter will frequently make references to keys and values
+                // using logically checked slices.
                 //
-                // This function will save unnecessary copy to owned slices for the interpreter
-                // access
+                // This function will save unnecessary copy to owned slices for the
+                // interpreter access
                 #[allow(unsafe_code)]
                 unsafe {
                     &*(bytes.as_ptr() as *const Self)
@@ -121,7 +132,10 @@ macro_rules! key_methods {
 
         #[cfg(feature = "random")]
         impl rand::Fill for $i {
-            fn try_fill<R: rand::Rng + ?Sized>(&mut self, rng: &mut R) -> Result<(), rand::Error> {
+            fn try_fill<R: rand::Rng + ?Sized>(
+                &mut self,
+                rng: &mut R,
+            ) -> Result<(), rand::Error> {
                 rng.fill_bytes(self.as_mut());
 
                 Ok(())
@@ -193,10 +207,11 @@ macro_rules! key_methods {
                 }
 
                 match f.width() {
-                    Some(w) if w > 0 => self
-                        .0
-                        .chunks(2 * Self::LEN / w)
-                        .try_for_each(|c| write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))),
+                    Some(w) if w > 0 => {
+                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
+                            write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                        })
+                    }
 
                     _ => self.0.iter().try_for_each(|b| write!(f, "{:02x}", &b)),
                 }
@@ -210,10 +225,11 @@ macro_rules! key_methods {
                 }
 
                 match f.width() {
-                    Some(w) if w > 0 => self
-                        .0
-                        .chunks(2 * Self::LEN / w)
-                        .try_for_each(|c| write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))),
+                    Some(w) if w > 0 => {
+                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
+                            write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                        })
+                    }
 
                     _ => self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b)),
                 }
@@ -348,7 +364,10 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
 /// Roundtrip encode/decode tests
 #[cfg(all(test, feature = "serde"))]
 mod tests {
-    use rand::{rngs::StdRng, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        SeedableRng,
+    };
 
     use super::*;
 
@@ -362,7 +381,8 @@ mod tests {
             serialized,
             "\"7bbd8a4ea06e94461b959ab18d35802bbac3cf47e2bf29195f7db2ce41630cd7\""
         );
-        let recreated: Address = serde_json::from_str(&serialized).expect("Deserialization failed");
+        let recreated: Address =
+            serde_json::from_str(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }
 
@@ -375,7 +395,8 @@ mod tests {
         let expected_vec = original.0.to_vec();
         assert_eq!(serialized[0], 32);
         assert_eq!(&serialized[1..], &expected_vec);
-        let recreated: Address = postcard::from_bytes(&serialized).expect("Deserialization failed");
+        let recreated: Address =
+            postcard::from_bytes(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }
 
@@ -384,7 +405,8 @@ mod tests {
     fn test_not_human_readable_incorrect_deser() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let original: Address = rng.gen();
-        let mut serialized = postcard::to_stdvec(&original).expect("Serialization failed");
+        let mut serialized =
+            postcard::to_stdvec(&original).expect("Serialization failed");
         serialized.pop();
         let res: Result<Address, _> = postcard::from_bytes(&serialized);
         res.expect_err("Deserialization should have failed");
@@ -396,7 +418,8 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(8586);
         let original: Address = rng.gen();
         let serialized = bincode::serialize(&original).expect("Serialization failed");
-        let recreated: Address = bincode::deserialize(&serialized).expect("Deserialization failed");
+        let recreated: Address =
+            bincode::deserialize(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);
     }
 }

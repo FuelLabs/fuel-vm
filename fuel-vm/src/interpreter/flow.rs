@@ -1,29 +1,79 @@
-use super::contract::{balance_decrease, balance_increase, contract_size};
-use super::gas::{dependent_gas_charge, ProfileGas};
-use super::internal::{
-    append_receipt, current_contract, external_asset_id_balance_sub, inc_pc, internal_contract_or_default,
-    set_frame_pointer, AppendReceipt,
+use super::{
+    contract::{
+        balance_decrease,
+        balance_increase,
+        contract_size,
+    },
+    gas::{
+        dependent_gas_charge,
+        ProfileGas,
+    },
+    internal::{
+        append_receipt,
+        current_contract,
+        external_asset_id_balance_sub,
+        inc_pc,
+        internal_contract_or_default,
+        set_frame_pointer,
+        AppendReceipt,
+    },
+    ExecutableTransaction,
+    Interpreter,
+    MemoryRange,
+    RuntimeBalances,
 };
-use super::{ExecutableTransaction, Interpreter, MemoryRange, RuntimeBalances};
-use crate::arith;
-use crate::call::{Call, CallFrame};
-use crate::constraints::reg_key::*;
-use crate::constraints::*;
-use crate::consts::*;
-use crate::context::Context;
-use crate::error::RuntimeError;
-use crate::gas::DependentCost;
-use crate::interpreter::receipts::ReceiptsCtx;
-use crate::interpreter::PanicContext;
-use crate::profiler::Profiler;
-use crate::storage::{ContractsAssets, ContractsAssetsStorage, ContractsRawCode, InterpreterStorage};
+use crate::{
+    arith,
+    call::{
+        Call,
+        CallFrame,
+    },
+    constraints::{
+        reg_key::*,
+        *,
+    },
+    consts::*,
+    context::Context,
+    error::RuntimeError,
+    gas::DependentCost,
+    interpreter::{
+        receipts::ReceiptsCtx,
+        PanicContext,
+    },
+    profiler::Profiler,
+    storage::{
+        ContractsAssets,
+        ContractsAssetsStorage,
+        ContractsRawCode,
+        InterpreterStorage,
+    },
+};
 
-use fuel_asm::{Instruction, PanicInstruction, RegId};
+use fuel_asm::{
+    Instruction,
+    PanicInstruction,
+    RegId,
+};
 use fuel_crypto::Hasher;
-use fuel_storage::{StorageAsRef, StorageInspect, StorageRead, StorageSize};
-use fuel_tx::{ConsensusParameters, PanicReason, Receipt, Script};
-use fuel_types::bytes::SerializableVec;
-use fuel_types::{AssetId, Bytes32, ContractId, Word};
+use fuel_storage::{
+    StorageAsRef,
+    StorageInspect,
+    StorageRead,
+    StorageSize,
+};
+use fuel_tx::{
+    ConsensusParameters,
+    PanicReason,
+    Receipt,
+    Script,
+};
+use fuel_types::{
+    bytes::SerializableVec,
+    AssetId,
+    Bytes32,
+    ContractId,
+    Word,
+};
 use std::cmp;
 
 #[cfg(test)]
@@ -43,7 +93,9 @@ where
     }
 
     pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
@@ -60,7 +112,9 @@ where
     }
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
@@ -77,22 +131,30 @@ where
     }
 
     pub(crate) fn revert(&mut self, a: Word) {
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
-            .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
+                .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
         let append = AppendReceipt {
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
             tx_offset: self.params.tx_offset(),
             memory: &mut self.memory,
         };
-        revert(append, current_contract, self.registers.pc(), self.registers.is(), a)
+        revert(
+            append,
+            current_contract,
+            self.registers.pc(),
+            self.registers.is(),
+            a,
+        )
     }
 
     pub(crate) fn append_panic_receipt(&mut self, result: PanicInstruction) {
         let pc = self.registers[RegId::PC];
         let is = self.registers[RegId::IS];
 
-        let mut receipt = Receipt::panic(self.internal_contract_or_default(), result, pc, is);
+        let mut receipt =
+            Receipt::panic(self.internal_contract_or_default(), result, pc, is);
 
         match self.panic_context {
             PanicContext::None => {}
@@ -130,12 +192,16 @@ impl RetCtx<'_> {
         self.return_from_context(receipt)
     }
 
-    pub(crate) fn return_from_context(mut self, receipt: Receipt) -> Result<(), RuntimeError> {
+    pub(crate) fn return_from_context(
+        mut self,
+        receipt: Receipt,
+    ) -> Result<(), RuntimeError> {
         if let Some(frame) = self.frames.pop() {
             let registers = &mut self.registers;
             let context = &mut self.context;
 
-            registers[RegId::CGAS] = arith::add_word(registers[RegId::CGAS], frame.context_gas())?;
+            registers[RegId::CGAS] =
+                arith::add_word(registers[RegId::CGAS], frame.context_gas())?;
 
             let cgas = registers[RegId::CGAS];
             let ggas = registers[RegId::GGAS];
@@ -160,7 +226,7 @@ impl RetCtx<'_> {
 
     pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
         if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         let ab = (a + b) as usize;
@@ -185,8 +251,19 @@ impl RetCtx<'_> {
     }
 }
 
-pub(crate) fn revert(append: AppendReceipt, current_contract: Option<ContractId>, pc: Reg<PC>, is: Reg<IS>, a: Word) {
-    let receipt = Receipt::revert(current_contract.unwrap_or_else(ContractId::zeroed), a, *pc, *is);
+pub(crate) fn revert(
+    append: AppendReceipt,
+    current_contract: Option<ContractId>,
+    pc: Reg<PC>,
+    is: Reg<IS>,
+    a: Word,
+) {
+    let receipt = Receipt::revert(
+        current_contract.unwrap_or_else(ContractId::zeroed),
+        a,
+        *pc,
+        *is,
+    );
 
     append_receipt(append, receipt);
 }
@@ -238,14 +315,19 @@ impl JumpArgs {
         self
     }
 
-    pub(crate) fn jump(&self, is: Reg<IS>, mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
+    pub(crate) fn jump(
+        &self,
+        is: Reg<IS>,
+        mut pc: RegMut<PC>,
+    ) -> Result<(), RuntimeError> {
         if !self.condition {
-            return inc_pc(pc);
+            return inc_pc(pc)
         }
 
         let offset_instructions = match self.mode {
             JumpMode::Absolute => self.dynamic.saturating_add(self.fixed),
-            // Here +1 is added since jumping to the jump instruction itself doesn't make sense
+            // Here +1 is added since jumping to the jump instruction itself doesn't make
+            // sense
             JumpMode::RelativeForwards | JumpMode::RelativeBackwards => {
                 self.dynamic.saturating_add(self.fixed).saturating_add(1)
             }
@@ -262,7 +344,7 @@ impl JumpArgs {
         };
 
         if target_addr >= VM_MAX_RAM {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         *pc = target_addr;
@@ -276,7 +358,23 @@ where
     Tx: ExecutableTransaction,
 {
     /// Prepare a call instruction for execution
-    pub(crate) fn prepare_call(
+    pub fn prepare_call(
+        &mut self,
+        ra: RegId,
+        rb: RegId,
+        rc: RegId,
+        rd: RegId,
+    ) -> Result<(), RuntimeError> {
+        self.prepare_call_inner(
+            self.registers[ra],
+            self.registers[rb],
+            self.registers[rc],
+            self.registers[rd],
+        )
+    }
+
+    /// Prepare a call instruction for execution
+    fn prepare_call_inner(
         &mut self,
         call_params_mem_address: Word,
         amount_of_coins_to_forward: Word,
@@ -289,7 +387,9 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
-        let current_contract = current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?.copied();
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
         let input_contracts = self.tx.input_contracts().copied().collect();
 
@@ -387,14 +487,22 @@ struct PrepareCallCtx<'vm, S> {
 impl<'vm, S> PrepareCallCtx<'vm, S> {
     fn prepare_call(mut self) -> Result<(), RuntimeError>
     where
-        S: StorageSize<ContractsRawCode> + ContractsAssetsStorage + StorageRead<ContractsRawCode> + StorageAsRef,
+        S: StorageSize<ContractsRawCode>
+            + ContractsAssetsStorage
+            + StorageRead<ContractsRawCode>
+            + StorageAsRef,
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let call = self.memory.call_params.try_from(self.memory.memory)?;
         let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
 
-        let mut frame = call_frame(self.registers.copy_registers(), &self.storage, call, asset_id)?;
+        let mut frame = call_frame(
+            self.registers.copy_registers(),
+            &self.storage,
+            call,
+            asset_id,
+        )?;
 
         let profiler = ProfileGas {
             pc: self.registers.system_registers.pc.as_ref(),
@@ -419,12 +527,21 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             )?;
         } else {
             let amount = self.params.amount_of_coins_to_forward;
-            external_asset_id_balance_sub(self.runtime_balances, self.memory.memory, frame.asset_id(), amount)?;
+            external_asset_id_balance_sub(
+                self.runtime_balances,
+                self.memory.memory,
+                frame.asset_id(),
+                amount,
+            )?;
         }
 
-        if !self.input_contracts.iter().any(|contract| call.to() == contract) {
+        if !self
+            .input_contracts
+            .iter()
+            .any(|contract| call.to() == contract)
+        {
             *self.panic_context = PanicContext::ContractId(*call.to());
-            return Err(PanicReason::ContractNotInInputs.into());
+            return Err(PanicReason::ContractNotInInputs.into())
         }
 
         // credit contract asset_id balance
@@ -451,9 +568,10 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
 
         if len > *self.registers.system_registers.hp
-            || *self.registers.system_registers.sp > *self.registers.system_registers.hp - len
+            || *self.registers.system_registers.sp
+                > *self.registers.system_registers.hp - len
         {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
         let id = internal_contract_or_default(
             self.context,
@@ -464,11 +582,16 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
         let old_sp = *self.registers.system_registers.sp;
         let new_sp = arith::checked_add_word(old_sp, len)?;
 
-        set_frame_pointer(self.context, self.registers.system_registers.fp.as_mut(), old_sp);
+        set_frame_pointer(
+            self.context,
+            self.registers.system_registers.fp.as_mut(),
+            old_sp,
+        );
         *self.registers.system_registers.sp = new_sp;
         *self.registers.system_registers.ssp = new_sp;
 
-        let code_frame_mem_range = MemoryRange::new(*self.registers.system_registers.fp, len)?;
+        let code_frame_mem_range =
+            MemoryRange::new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(
             &frame,
             frame_bytes,
@@ -523,7 +646,10 @@ where
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
     code_frame_range.shrink_end((frame.code_size() + frame.code_size_padding()) as usize);
-    code_frame_range.clone().write(memory).copy_from_slice(&frame_bytes);
+    code_frame_range
+        .clone()
+        .write(memory)
+        .copy_from_slice(&frame_bytes);
 
     let mut code_range = code_mem_range.clone();
     code_range.grow_start(CallFrame::serialized_size());
@@ -534,12 +660,13 @@ where
         .map_err(RuntimeError::from_io)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
-        return Err(PanicReason::ContractMismatch.into());
+        return Err(PanicReason::ContractMismatch.into())
     }
 
     if frame.code_size_padding() > 0 {
         let mut padding_range = code_mem_range;
-        padding_range.grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
+        padding_range
+            .grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
         padding_range.write(memory).fill(0);
     }
     Ok(code_frame_range.end as Word)
@@ -599,7 +726,12 @@ impl<'reg> From<&'reg mut [Word; VM_REGISTER_COUNT]> for PrepareCallRegisters<'r
     }
 }
 
-impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, PrepareCallUnusedRegisters<'reg>) {
+impl<'reg> From<SystemRegisters<'reg>>
+    for (
+        PrepareCallSystemRegisters<'reg>,
+        PrepareCallUnusedRegisters<'reg>,
+    )
+{
     fn from(registers: SystemRegisters<'reg>) -> Self {
         let read = PrepareCallSystemRegisters {
             hp: registers.hp.into(),
@@ -628,13 +760,22 @@ impl<'reg> From<SystemRegisters<'reg>> for (PrepareCallSystemRegisters<'reg>, Pr
     }
 }
 
-impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)> for PrepareCallMemory<'mem> {
+impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)>
+    for PrepareCallMemory<'mem>
+{
     type Error = RuntimeError;
-    fn try_from((memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams)) -> Result<Self, Self::Error> {
+
+    fn try_from(
+        (memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams),
+    ) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,
-            call_params: CheckedMemValue::new::<{ Call::LEN }>(params.call_params_mem_address)?,
-            asset_id: CheckedMemValue::new::<{ AssetId::LEN }>(params.asset_id_mem_address)?,
+            call_params: CheckedMemValue::new::<{ Call::LEN }>(
+                params.call_params_mem_address,
+            )?,
+            asset_id: CheckedMemValue::new::<{ AssetId::LEN }>(
+                params.asset_id_mem_address,
+            )?,
         })
     }
 }

@@ -1,12 +1,37 @@
-use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
-use crate::transaction::{field, Chargeable, Create, Executable, Script};
-use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+use crate::{
+    transaction::{
+        field,
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            Witnesses,
+        },
+        Chargeable,
+        Create,
+        Executable,
+        Script,
+    },
+    Cacheable,
+    ConsensusParameters,
+    Input,
+    Mint,
+    Output,
+    StorageSlot,
+    Transaction,
+    TxPointer,
+    Witness,
+};
 
 #[cfg(feature = "std")]
 use crate::Signable;
 
 use fuel_crypto::SecretKey;
-use fuel_types::{BlockHeight, Nonce, Salt, Word};
+use fuel_types::{
+    BlockHeight,
+    Nonce,
+    Salt,
+    Word,
+};
 
 use alloc::vec::Vec;
 use std::collections::HashMap;
@@ -91,8 +116,8 @@ pub struct TransactionBuilder<Tx> {
     should_prepare_predicate: bool,
     parameters: ConsensusParameters,
 
-    // We take the key by reference so this lib won't have the responsibility to properly zeroize
-    // the keys
+    // We take the key by reference so this lib won't have the responsibility to properly
+    // zeroize the keys
     // Maps signing keys -> witness indexes
     sign_keys: HashMap<SecretKey, u8>,
 }
@@ -121,7 +146,11 @@ impl TransactionBuilder<Script> {
 }
 
 impl TransactionBuilder<Create> {
-    pub fn create(bytecode: Witness, salt: Salt, mut storage_slots: Vec<StorageSlot>) -> Self {
+    pub fn create(
+        bytecode: Witness,
+        salt: Salt,
+        mut storage_slots: Vec<StorageSlot>,
+    ) -> Self {
         // sort the storage slots before initializing the builder
         storage_slots.sort();
         let mut tx = Create {
@@ -231,16 +260,25 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let witness_index = self.upsert_secret(secret);
 
-        self.tx
-            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, tx_pointer, maturity, witness_index);
+        self.tx.add_unsigned_coin_input(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            witness_index,
+        );
 
         self
     }
 
     #[cfg(all(feature = "rand", feature = "std"))]
     pub fn add_random_fee_input(&mut self) -> &mut Self {
-        use rand::Rng;
-        use rand::SeedableRng;
+        use rand::{
+            Rng,
+            SeedableRng,
+        };
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
             rng.gen(),
@@ -266,8 +304,14 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let witness_index = self.upsert_secret(secret);
 
-        self.tx
-            .add_unsigned_message_input(sender, recipient, nonce, amount, data, witness_index);
+        self.tx.add_unsigned_message_input(
+            sender,
+            recipient,
+            nonce,
+            amount,
+            data,
+            witness_index,
+        );
 
         self
     }

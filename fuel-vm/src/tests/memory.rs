@@ -1,15 +1,21 @@
 use fuel_asm::PanicReason;
 use test_case::test_case;
 
-use fuel_asm::op;
-use fuel_asm::RegId;
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_tx::Receipt;
-use fuel_vm::consts::VM_MAX_RAM;
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    consts::VM_MAX_RAM,
+    prelude::*,
+};
 
-use super::test_helpers::assert_panics;
-use super::test_helpers::run_script;
-use super::test_helpers::set_full_word;
+use super::test_helpers::{
+    assert_panics,
+    run_script,
+    set_full_word,
+};
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
@@ -124,7 +130,11 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
         op::movi(0x10, (init_bytes - offset).try_into().unwrap()),
         op::sub(0x10, 0x10, RegId::SP),
         op::aloc(0x10),
-        op::cfei((if cause_error { offset } else { offset - 1 }).try_into().unwrap()),
+        op::cfei(
+            (if cause_error { offset } else { offset - 1 })
+                .try_into()
+                .unwrap(),
+        ),
         op::ret(RegId::ONE),
     ]);
 
@@ -216,7 +226,8 @@ fn test_mcl_and_mcli(
     #[values(true, false)] half: bool, // Clear only first count/2 bytes
     #[values(true, false)] mcli: bool, // Test mcli instead of mcl
 ) {
-    // Allocate count + 1 bytes of memory, so we can check that the last byte is not cleared
+    // Allocate count + 1 bytes of memory, so we can check that the last byte is not
+    // cleared
     let mut ops = vec![op::movi(0x10, count + 1), op::aloc(0x10), op::movi(0x11, 1)];
     // Fill with ones
     for i in 0..(count + 1) {
@@ -264,7 +275,8 @@ fn test_mcp_and_mcpi(
     #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
     #[values(true, false)] mcpi: bool, // Test mcpi instead of mcp
 ) {
-    // Allocate (count + 1) * 2 bytes of memory, so we can check that the last byte is not copied
+    // Allocate (count + 1) * 2 bytes of memory, so we can check that the last byte is not
+    // copied
     let mut ops = vec![
         op::movi(0x10, (count + 1) * 2),
         op::aloc(0x10),
@@ -273,7 +285,11 @@ fn test_mcp_and_mcpi(
     ];
     // Fill count + 1 bytes with ones, and the next count + 1 bytes with twos
     for i in 0..(count + 1) * 2 {
-        ops.push(op::sb(RegId::HP, if i < count + 1 { 0x11 } else { 0x12 }, i as u16));
+        ops.push(op::sb(
+            RegId::HP,
+            if i < count + 1 { 0x11 } else { 0x12 },
+            i as u16,
+        ));
     }
     // Compute dst address
     ops.push(op::addi(0x11, RegId::HP, (count + 1) as u16));
@@ -348,7 +364,7 @@ fn test_meq(
     if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
         if count == 0 {
             assert_eq!(*ra, 1); // Empty ranges always equal
-            return;
+            return
         }
         match pattern {
             "equal" => {

@@ -1,11 +1,18 @@
-use crate::prelude::*;
-use crate::script_with_data_offset;
-use crate::util::test_helpers::TestBuilder;
-use fuel_asm::op;
-use fuel_asm::RegId;
+use crate::{
+    prelude::*,
+    script_with_data_offset,
+    util::test_helpers::TestBuilder,
+};
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_tx::Witness;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 #[test]
 fn prevent_contract_id_redeployment() {
@@ -61,11 +68,16 @@ fn prevent_contract_id_redeployment() {
         .expect("failed to generate checked tx");
 
     // deploy contract
-    client.deploy(create.clone()).expect("First create should be executed");
+    client
+        .deploy(create.clone())
+        .expect("First create should be executed");
     let mut txtor: Transactor<_, _> = client.into();
     // second deployment should fail
     let result = txtor.deploy(create).unwrap_err();
-    assert_eq!(result, InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed));
+    assert_eq!(
+        result,
+        InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed)
+    );
 }
 
 #[test]
@@ -123,7 +135,10 @@ fn mint_burn() {
     );
 
     let result = test_context
-        .start_script(script_check_balance.clone(), script_data_check_balance.clone())
+        .start_script(
+            script_check_balance.clone(),
+            script_data_check_balance.clone(),
+        )
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
@@ -142,7 +157,10 @@ fn mint_burn() {
         .execute();
 
     let result = test_context
-        .start_script(script_check_balance.clone(), script_data_check_balance.clone())
+        .start_script(
+            script_check_balance.clone(),
+            script_data_check_balance.clone(),
+        )
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
@@ -165,7 +183,10 @@ fn mint_burn() {
     assert!(result.should_revert());
 
     let result = test_context
-        .start_script(script_check_balance.clone(), script_data_check_balance.clone())
+        .start_script(
+            script_check_balance.clone(),
+            script_data_check_balance.clone(),
+        )
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
@@ -189,7 +210,10 @@ fn mint_burn() {
     balance -= burn;
 
     let result = test_context
-        .start_script(script_check_balance.clone(), script_data_check_balance.clone())
+        .start_script(
+            script_check_balance.clone(),
+            script_data_check_balance.clone(),
+        )
         .gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
@@ -251,7 +275,9 @@ fn call_increases_contract_asset_balance_and_balance_register() {
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
-        Call::new(contract_id, 0, offset as Word).to_bytes().as_slice(),
+        Call::new(contract_id, 0, offset as Word)
+            .to_bytes()
+            .as_slice(),
     ]
     .into_iter()
     .flatten()
@@ -347,7 +373,8 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
     // initiate the call between contracts
@@ -368,7 +395,8 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
     // verify balance transfer occurred
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, call_amount);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance - call_amount);
 
     // verify balance register of source contract
@@ -380,7 +408,8 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
 }
 
 #[test]
-fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance() {
+fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance(
+) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
@@ -433,7 +462,8 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
     // initiate the transfer between contracts
@@ -454,7 +484,8 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     // verify balance transfer occurred
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, transfer_amount);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance - transfer_amount);
 }
 
@@ -514,7 +545,8 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 
     let transfer_tx = test_context
@@ -534,6 +566,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
     // verify balance transfer did not occur
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
     assert_eq!(dest_balance, 0);
-    let source_balance = test_context.get_contract_balance(&sender_contract_id, &asset_id);
+    let source_balance =
+        test_context.get_contract_balance(&sender_contract_id, &asset_id);
     assert_eq!(source_balance, initial_internal_balance);
 }

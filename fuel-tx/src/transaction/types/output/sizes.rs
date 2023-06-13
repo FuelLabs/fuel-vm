@@ -1,10 +1,12 @@
 use fuel_asm::Word;
-use fuel_types::bytes::WORD_SIZE;
-use fuel_types::mem_layout;
-use fuel_types::Address;
-use fuel_types::AssetId;
-use fuel_types::Bytes32;
-use fuel_types::ContractId;
+use fuel_types::{
+    bytes::WORD_SIZE,
+    mem_layout,
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+};
 
 pub struct CoinSizes;
 mem_layout!(

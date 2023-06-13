@@ -1,7 +1,9 @@
 use fuel_crypto::SecretKey;
 
-use crate::context::Context;
-use crate::interpreter::memory::Memory;
+use crate::{
+    context::Context,
+    interpreter::memory::Memory,
+};
 
 use super::*;
 
@@ -111,7 +113,14 @@ fn test_keccak256() -> Result<(), RuntimeError> {
     let hash = 2100;
     let bytes_address = 0;
     let num_bytes = 100;
-    keccak256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
+    keccak256(
+        &mut memory,
+        owner,
+        RegMut::new(&mut pc),
+        hash,
+        bytes_address,
+        num_bytes,
+    )?;
     assert_eq!(pc, 8);
     assert_ne!(&memory[hash as usize..hash as usize + 32], &[1u8; 32][..]);
     Ok(())
@@ -133,7 +142,14 @@ fn test_sha256() -> Result<(), RuntimeError> {
     let hash = 2100;
     let bytes_address = 0;
     let num_bytes = 100;
-    sha256(&mut memory, owner, RegMut::new(&mut pc), hash, bytes_address, num_bytes)?;
+    sha256(
+        &mut memory,
+        owner,
+        RegMut::new(&mut pc),
+        hash,
+        bytes_address,
+        num_bytes,
+    )?;
     assert_eq!(pc, 8);
     assert_ne!(&memory[hash as usize..hash as usize + 32], &[1u8; 32][..]);
     Ok(())

@@ -1,11 +1,24 @@
 extern crate core;
 
-use rand::{seq::IteratorRandom, thread_rng, Rng};
-use sha2::{Digest, Sha256};
+use rand::{
+    seq::IteratorRandom,
+    thread_rng,
+    Rng,
+};
+use sha2::{
+    Digest,
+    Sha256,
+};
 
 use crate::{
-    binary::{MerkleTree, Primitive},
-    common::{Bytes32, StorageMap},
+    binary::{
+        MerkleTree,
+        Primitive,
+    },
+    common::{
+        Bytes32,
+        StorageMap,
+    },
 };
 use fuel_merkle_test_helpers::binary::MerkleTree as ReferenceMerkleTree;
 use fuel_storage::Mappable;
@@ -15,14 +28,16 @@ struct TestTable;
 impl Mappable for TestTable {
     type Key = Self::OwnedKey;
     type OwnedKey = u64;
-    type Value = Self::OwnedValue;
     type OwnedValue = Primitive;
+    type Value = Self::OwnedValue;
 }
 
 // During test setup, we randomly sample the pool of test data to generate the
 // leaf set for the test and reference Merkle trees. Each test consists of a
 // number of iterations, and at each iteration we specify a larger sample size.
-const SAMPLE_SIZES: &[usize] = &[1, 2, 5, 7, 8, 9, 64, 500, 512, 1000, 1024, 2048, 5000, 10000];
+const SAMPLE_SIZES: &[usize] = &[
+    1, 2, 5, 7, 8, 9, 64, 500, 512, 1000, 1024, 2048, 5000, 10000,
+];
 
 fn sum(data: &[u8]) -> Bytes32 {
     let mut hash = Sha256::new();
@@ -39,7 +54,10 @@ fn test_roots() {
 
     let mut rng = thread_rng();
     for samples in SAMPLE_SIZES {
-        let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, *samples);
+        let sample_data = test_data
+            .iter()
+            .cloned()
+            .choose_multiple(&mut rng, *samples);
 
         let expected_root = {
             let mut reference_tree = ReferenceMerkleTree::new();
@@ -71,7 +89,10 @@ fn test_prove() {
 
     let mut rng = thread_rng();
     for samples in SAMPLE_SIZES {
-        let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, *samples);
+        let sample_data = test_data
+            .iter()
+            .cloned()
+            .choose_multiple(&mut rng, *samples);
         let index = rng.gen_range(0..*samples) as u64;
 
         let expected_proof = {
@@ -105,7 +126,10 @@ fn test_load() {
 
     let mut rng = thread_rng();
     for samples in SAMPLE_SIZES {
-        let sample_data = test_data.iter().cloned().choose_multiple(&mut rng, *samples);
+        let sample_data = test_data
+            .iter()
+            .cloned()
+            .choose_multiple(&mut rng, *samples);
 
         let mut storage = StorageMap::<TestTable>::new();
 

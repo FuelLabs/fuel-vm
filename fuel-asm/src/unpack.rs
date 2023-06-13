@@ -1,6 +1,12 @@
 //! Functions for unpacking instruction data from bytes or u32s.
 
-use crate::{Imm06, Imm12, Imm18, Imm24, RegId};
+use crate::{
+    Imm06,
+    Imm12,
+    Imm18,
+    Imm24,
+    RegId,
+};
 
 pub(super) fn rd_from_bytes(bs: [u8; 3]) -> RegId {
     rd_from_u32(u32::from_be_bytes(u8x4_from_u8x3(bs)))

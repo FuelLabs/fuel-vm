@@ -2,7 +2,10 @@
 
 use crate::interpreter::MemoryRange;
 
-use fuel_tx::{field, ConsensusParameters};
+use fuel_tx::{
+    field,
+    ConsensusParameters,
+};
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -33,7 +36,10 @@ impl RuntimePredicate {
         let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
         let addr = ofs.saturating_add(params.tx_offset());
         let range = MemoryRange::new(addr, len).expect("Invalid memory range");
-        Some(Self { program: range, idx })
+        Some(Self {
+            program: range,
+            idx,
+        })
     }
 }
 
@@ -43,8 +49,11 @@ fn from_tx_works() {
     use fuel_tx::TransactionBuilder;
     use fuel_types::bytes;
     use fuel_vm::prelude::*;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    };
 
     use std::iter;
 
@@ -113,8 +122,8 @@ fn from_tx_works() {
 
         // fetch the input predicate
         let idx = 0;
-        let runtime =
-            RuntimePredicate::from_tx(&params, tx.as_ref(), idx).expect("failed to generate predicate from valid tx");
+        let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx)
+            .expect("failed to generate predicate from valid tx");
 
         assert_eq!(idx, runtime.idx());
 
@@ -136,7 +145,11 @@ fn from_tx_works() {
         // assert we are testing an edge case
         assert_ne!(0, pad);
 
-        let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
+        let padded_predicate: Vec<u8> = predicate
+            .iter()
+            .copied()
+            .chain(iter::repeat(0u8).take(pad))
+            .collect();
 
         let program = runtime.program();
         let program = &interpreter.memory()[program.usizes()];

@@ -1,8 +1,18 @@
-use crate::state::{Breakpoint, DebugEval, ProgramState};
+use crate::state::{
+    Breakpoint,
+    DebugEval,
+    ProgramState,
+};
 
-use fuel_types::{ContractId, Word};
+use fuel_types::{
+    ContractId,
+    Word,
+};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 #[derive(Debug, Default, Clone)]
 /// Debugger implementation for the VM.
@@ -65,7 +75,7 @@ impl Debugger {
             return match last_state {
                 Some(s) if s == current => DebugEval::Continue,
                 _ => current.into(),
-            };
+            }
         }
 
         self.breakpoints

@@ -1,5 +1,7 @@
-use crate::interpreter::memory::Memory;
-use crate::storage::MemoryStorage;
+use crate::{
+    interpreter::memory::Memory,
+    storage::MemoryStorage,
+};
 
 use super::*;
 use fuel_storage::StorageAsMut;
@@ -14,7 +16,12 @@ use test_case::test_case;
 #[test_case(false, 1, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when contract id not in memory")]
 #[test_case(false, 0, 100, 101 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn too much")]
 #[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
-fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
+fn test_burn(
+    external: bool,
+    fp: Word,
+    initialize: impl Into<Option<Word>>,
+    amount: Word,
+) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
@@ -64,7 +71,12 @@ fn test_burn(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amou
 #[test_case(false, 0, 0, Word::MAX => Ok(()); "Mint max from zero")]
 #[test_case(true, 0, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't mint from external context")]
 #[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
-fn test_mint(external: bool, fp: Word, initialize: impl Into<Option<Word>>, amount: Word) -> Result<(), RuntimeError> {
+fn test_mint(
+    external: bool,
+    fp: Word,
+    initialize: impl Into<Option<Word>>,
+    amount: Word,
+) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
@@ -168,7 +180,8 @@ fn test_code_root() {
         },
     };
     let mut pc = 4;
-    code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).expect_err("Contract is not found");
+    code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0)
+        .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
     storage
@@ -219,7 +232,9 @@ fn test_code_size() {
         is: Reg::new(&is),
     };
     let mut result = 0;
-    input.code_size(&mut result, 1).expect_err("Contract is not found");
+    input
+        .code_size(&mut result, 1)
+        .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
     let input = CodeSizeCtx {
@@ -247,8 +262,14 @@ fn test_timestamp() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut pc = 4;
     let mut result = 0;
-    timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 1)
-        .expect_err("Height is greater then current block height");
+    timestamp(
+        &storage,
+        Default::default(),
+        RegMut::new(&mut pc),
+        &mut result,
+        1,
+    )
+    .expect_err("Height is greater then current block height");
     timestamp(
         &storage,
         u32::MAX.into(),
@@ -259,7 +280,14 @@ fn test_timestamp() {
     .expect_err("Height doesn't fit into a u32");
     assert_eq!(pc, 4);
 
-    timestamp(&storage, Default::default(), RegMut::new(&mut pc), &mut result, 0).unwrap();
+    timestamp(
+        &storage,
+        Default::default(),
+        RegMut::new(&mut pc),
+        &mut result,
+        0,
+    )
+    .unwrap();
     assert_eq!(pc, 8);
 
     timestamp(&storage, 20.into(), RegMut::new(&mut pc), &mut result, 19).unwrap();

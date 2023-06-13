@@ -1,6 +1,13 @@
-use crate::binary::{leaf_sum, node_sum};
-use crate::common::Bytes32;
-use crate::common::ProofSet;
+use crate::{
+    binary::{
+        leaf_sum,
+        node_sum,
+    },
+    common::{
+        Bytes32,
+        ProofSet,
+    },
+};
 
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
@@ -10,11 +17,11 @@ pub fn verify<T: AsRef<[u8]>>(
     num_leaves: u64,
 ) -> bool {
     if proof_index >= num_leaves {
-        return false;
+        return false
     }
 
     if proof_set.is_empty() {
-        return false;
+        return false
     }
 
     let mut height = 0usize;
@@ -23,7 +30,7 @@ pub fn verify<T: AsRef<[u8]>>(
 
     let digest = leaf_sum(digest.as_ref());
     if digest != sum {
-        return false;
+        return false
     }
 
     let mut stable_end = proof_index;
@@ -32,13 +39,13 @@ pub fn verify<T: AsRef<[u8]>>(
         let subtree_start_index = proof_index / (1 << height) * (1 << height);
         let subtree_end_index = subtree_start_index + (1 << height) - 1;
         if subtree_end_index >= num_leaves {
-            break;
+            break
         }
 
         stable_end = subtree_end_index;
 
         if proof_set.len() <= height {
-            return false;
+            return false
         }
 
         let proof_data = proof_set[height];
@@ -53,7 +60,7 @@ pub fn verify<T: AsRef<[u8]>>(
 
     if stable_end != num_leaves - 1 {
         if proof_set.len() <= height {
-            return false;
+            return false
         }
         let proof_data = proof_set[height];
         sum = node_sum(&sum, &proof_data);
@@ -72,9 +79,13 @@ pub fn verify<T: AsRef<[u8]>>(
 #[cfg(test)]
 mod test {
     use super::verify;
-    use crate::binary::MerkleTree;
-    use crate::binary::Primitive;
-    use crate::common::StorageMap;
+    use crate::{
+        binary::{
+            MerkleTree,
+            Primitive,
+        },
+        common::StorageMap,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::Mappable;
 
@@ -84,8 +95,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = u64;
-        type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
+        type Value = Self::OwnedValue;
     }
 
     #[test]
@@ -116,7 +127,8 @@ mod test {
     }
 
     #[test]
-    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root() {
+    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root(
+    ) {
         // Check the Merkle root of one tree against the computed Merkle root of
         // another tree's proof set: because the two roots come from different
         // trees, the comparison should fail.

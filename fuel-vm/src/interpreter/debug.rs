@@ -98,17 +98,21 @@ fn breakpoint_script() {
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 
-    suite.into_iter().fold(state, |state, (breakpoint, registers)| {
-        let debug = state.debug_ref().expect("Expected breakpoint");
-        let b = debug.breakpoint().expect("State without expected breakpoint");
+    suite
+        .into_iter()
+        .fold(state, |state, (breakpoint, registers)| {
+            let debug = state.debug_ref().expect("Expected breakpoint");
+            let b = debug
+                .breakpoint()
+                .expect("State without expected breakpoint");
 
-        assert_eq!(&breakpoint, b);
-        registers.into_iter().for_each(|(r, w)| {
-            assert_eq!(w, vm.registers()[r]);
+            assert_eq!(&breakpoint, b);
+            registers.into_iter().for_each(|(r, w)| {
+                assert_eq!(w, vm.registers()[r]);
+            });
+
+            vm.resume().expect("Failed to resume")
         });
-
-        vm.resume().expect("Failed to resume")
-    });
 }
 
 #[test]
@@ -147,7 +151,9 @@ fn single_stepping() {
     let mut stops = Vec::new();
 
     while let Some(debug) = state.debug_ref() {
-        let b = debug.breakpoint().expect("State without expected breakpoint");
+        let b = debug
+            .breakpoint()
+            .expect("State without expected breakpoint");
 
         stops.push(b.pc());
 

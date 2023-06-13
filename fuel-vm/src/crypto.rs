@@ -18,8 +18,11 @@ where
 #[cfg(feature = "random")]
 fn ephemeral_merkle_root_returns_the_expected_root() {
     use fuel_crypto::Hasher;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    };
 
     use crate::prelude::*;
 
@@ -53,14 +56,26 @@ fn ephemeral_merkle_root_returns_the_expected_root() {
     let d = Hasher::default().chain([LEAF_PREFIX]).chain(d).digest();
     let e = Hasher::default().chain([LEAF_PREFIX]).chain(e).digest();
 
-    let a = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
-    let b = Hasher::default().chain([NODE_PREFIX]).extend_chain([c, d]).digest();
+    let a = Hasher::default()
+        .chain([NODE_PREFIX])
+        .extend_chain([a, b])
+        .digest();
+    let b = Hasher::default()
+        .chain([NODE_PREFIX])
+        .extend_chain([c, d])
+        .digest();
     let c = e;
 
-    let a = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
+    let a = Hasher::default()
+        .chain([NODE_PREFIX])
+        .extend_chain([a, b])
+        .digest();
     let b = c;
 
-    let root = Hasher::default().chain([NODE_PREFIX]).extend_chain([a, b]).digest();
+    let root = Hasher::default()
+        .chain([NODE_PREFIX])
+        .extend_chain([a, b])
+        .digest();
     let root_p = ephemeral_merkle_root(initial.iter());
 
     assert_eq!(root, root_p);

@@ -26,9 +26,11 @@ fn test_gas_charge(input: GasChargeInput) -> Result<GasChargeOutput, RuntimeErro
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| GasChargeOutput {
-        cgas: *cgas,
-        ggas: *ggas,
+    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| {
+        GasChargeOutput {
+            cgas: *cgas,
+            ggas: *ggas,
+        }
     })
 }
 
@@ -39,7 +41,8 @@ fn test_gas_charges_ggas_on_out_of_gas() {
     let gas = 20;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas).expect_err("Gas charge should fail");
+    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas)
+        .expect_err("Gas charge should fail");
     assert_eq!(*ggas, 5);
     assert_eq!(*cgas, 0);
 }
@@ -91,7 +94,9 @@ struct DepGasChargeInput {
         gas_cost: DependentCost{base: 1, dep_per_unit: 5}
     } => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "unit with not enough cgas"
 )]
-fn test_dependent_gas_charge(input: DepGasChargeInput) -> Result<GasChargeOutput, RuntimeError> {
+fn test_dependent_gas_charge(
+    input: DepGasChargeInput,
+) -> Result<GasChargeOutput, RuntimeError> {
     let DepGasChargeInput { input, gas_cost } = input;
     let GasChargeInput {
         mut cgas,
@@ -100,8 +105,9 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> Result<GasChargeOutput
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    dependent_gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor).map(|_| GasChargeOutput {
-        cgas: *cgas,
-        ggas: *ggas,
-    })
+    dependent_gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor)
+        .map(|_| GasChargeOutput {
+            cgas: *cgas,
+            ggas: *ggas,
+        })
 }

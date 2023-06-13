@@ -1,7 +1,11 @@
 use super::*;
 use crate::checked_transaction::IntoChecked;
 use fuel_asm::PanicReason;
-use fuel_tx::{ConsensusParameters, Finalizable, TransactionBuilder};
+use fuel_tx::{
+    ConsensusParameters,
+    Finalizable,
+    TransactionBuilder,
+};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -14,11 +18,16 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     };
     let opcode = random_instruction.opcode();
 
-    // ignore if rA/rB isn't set to writeable register and the opcode should write to that register
+    // ignore if rA/rB isn't set to writeable register and the opcode should write to that
+    // register
     let [ra, rb, _, _] = random_instruction.reg_ids();
     match (ra, rb) {
-        (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
-        (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
+        (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => {
+            return TestResult::discard()
+        }
+        (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => {
+            return TestResult::discard()
+        }
         _ => (),
     }
 
@@ -39,14 +48,15 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let res = vm.instruction(raw_random_instruction);
 
     if writes_to_ra(opcode) || writes_to_rb(opcode) {
-        // if this opcode writes to $rA or $rB, expect an error since we're attempting to use a reserved register
-        // This assumes that writeable register is validated before other properties of the instruction.
+        // if this opcode writes to $rA or $rB, expect an error since we're attempting to
+        // use a reserved register This assumes that writeable register is
+        // validated before other properties of the instruction.
         match res.as_ref().map_err(|e| e.panic_reason()) {
             // expected failure
             Err(Some(PanicReason::ReservedRegisterNotWritable)) => {}
             // Some opcodes may run out of gas if they access too much data.
-            // Simply discard these results as an alternative to structural fuzzing that avoids
-            // out of gas errors.
+            // Simply discard these results as an alternative to structural fuzzing that
+            // avoids out of gas errors.
             Err(Some(PanicReason::OutOfGas)) => return TestResult::discard(),
             // Some opcodes parse the immediate value as a part of the instruction itself,
             // and thus fail before the destination register writability check occurs.
@@ -55,15 +65,16 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
                     (opcode, &res)
-                ));
+                ))
             }
         }
     } else if matches!(
         res,
         Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
     ) {
-        // throw err if a ReservedRegisterNotWritable err was detected outside our writes_to_ra/b check
-        // This would likely happen if the opcode wasn't properly marked as true in `writes_to_ra/b`
+        // throw err if a ReservedRegisterNotWritable err was detected outside our
+        // writes_to_ra/b check This would likely happen if the opcode wasn't
+        // properly marked as true in `writes_to_ra/b`
         return TestResult::error(format!(
             "unexpected ReservedRegisterNotWritable, test configuration may be faulty {:?}",
             (opcode, &res)
@@ -76,10 +87,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     // erroneous register access. This is not a comprehensive set of all possible
     // writeable violations but more can be added.
     if vm.registers[RegId::ZERO] != 0 {
-        return TestResult::error("reserved register was modified!");
+        return TestResult::error("reserved register was modified!")
     }
     if vm.registers[RegId::ONE] != 1 {
-        return TestResult::error("reserved register was modified!");
+        return TestResult::error("reserved register was modified!")
     }
 
     TestResult::passed()

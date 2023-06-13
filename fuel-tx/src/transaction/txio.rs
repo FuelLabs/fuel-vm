@@ -1,10 +1,24 @@
 use super::TransactionRepr;
-use crate::{Create, Mint, Script, Transaction};
+use crate::{
+    Create,
+    Mint,
+    Script,
+    Transaction,
+};
 
-use fuel_types::bytes::{self, SizedBytes, WORD_SIZE};
-use fuel_types::Word;
+use fuel_types::{
+    bytes::{
+        self,
+        SizedBytes,
+        WORD_SIZE,
+    },
+    Word,
+};
 
-use std::io::{self, Write};
+use std::io::{
+    self,
+    Write,
+};
 
 impl Transaction {
     pub fn try_from_bytes(bytes: &[u8]) -> io::Result<(usize, Self)> {
@@ -20,7 +34,7 @@ impl io::Read for Transaction {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
         if buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         match self {

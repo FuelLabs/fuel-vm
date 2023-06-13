@@ -1,10 +1,26 @@
-use crate::input::fmt_as_field;
-use crate::input::sizes::CoinSizes;
-use crate::transaction::types::input::AsField;
-use crate::{TxPointer, UtxoId};
+use crate::{
+    input::{
+        fmt_as_field,
+        sizes::CoinSizes,
+    },
+    transaction::types::input::AsField,
+    TxPointer,
+    UtxoId,
+};
 use derivative::Derivative;
-use fuel_types::bytes::{Deserializable, SizedBytes};
-use fuel_types::{bytes, Address, AssetId, BlockHeight, MemLayout, MemLocType, Word};
+use fuel_types::{
+    bytes,
+    bytes::{
+        Deserializable,
+        SizedBytes,
+    },
+    Address,
+    AssetId,
+    BlockHeight,
+    MemLayout,
+    MemLocType,
+    Word,
+};
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -33,10 +49,10 @@ pub trait CoinSpecification: private::Seal {
 pub struct Signed;
 
 impl CoinSpecification for Signed {
-    type Witness = u8;
     type Predicate = Empty;
     type PredicateData = Empty;
     type PredicateGasUsed = Empty;
+    type Witness = u8;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,10 +60,10 @@ impl CoinSpecification for Signed {
 pub struct Predicate;
 
 impl CoinSpecification for Predicate {
-    type Witness = Empty;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
+    type Witness = Empty;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,33 +71,34 @@ impl CoinSpecification for Predicate {
 pub struct Full;
 
 impl CoinSpecification for Full {
-    type Witness = u8;
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
+    type Witness = u8;
 }
 
 /// It is a full representation of the coin from the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
 ///
-/// The specification defines the layout of the [`Coin`] in the serialized form for the `fuel-vm`.
-/// But on the business logic level, we don't use all fields at the same time. It is why in the
-/// [`super::Input`] the coin is represented by several forms based on the usage context.
-/// Leaving some fields empty reduces the memory consumption by the structure and erases the
-/// empty useless fields.
+/// The specification defines the layout of the [`Coin`] in the serialized form for the
+/// `fuel-vm`. But on the business logic level, we don't use all fields at the same time.
+/// It is why in the [`super::Input`] the coin is represented by several forms based on
+/// the usage context. Leaving some fields empty reduces the memory consumption by the
+/// structure and erases the empty useless fields.
 ///
-/// The [`CoinSpecification`] trait specifies the sub-coin for the corresponding usage context.
-/// It allows us to write the common logic of all sub-coins without the overhead and duplication.
+/// The [`CoinSpecification`] trait specifies the sub-coin for the corresponding usage
+/// context. It allows us to write the common logic of all sub-coins without the overhead
+/// and duplication.
 ///
 /// Sub-coin:
-/// - [`Signed`] - means that the coin should be signed by the `owner`,
-///     and the signature(witness) should be stored under the `witness_index` index
-///     in the `witnesses` vector of the [`crate::Transaction`].
-/// - [`Predicate`] - means that the coin is not signed, and the `owner` is a `predicate` bytecode.
-///     The merkle root from the `predicate` should be equal to the `owner`.
-/// - [`Full`] - is used during the deserialization of the coin.
-///     It should be transformed into [`Signed`] or [`Predicate`] sub-coin.
-///     If the `predicate` is empty, it is [`Signed`], else [`Predicate`].
+/// - [`Signed`] - means that the coin should be signed by the `owner`, and the
+///   signature(witness) should be stored under the `witness_index` index in the
+///   `witnesses` vector of the [`crate::Transaction`].
+/// - [`Predicate`] - means that the coin is not signed, and the `owner` is a `predicate`
+///   bytecode. The merkle root from the `predicate` should be equal to the `owner`.
+/// - [`Full`] - is used during the deserialization of the coin. It should be transformed
+///   into [`Signed`] or [`Predicate`] sub-coin. If the `predicate` is empty, it is
+///   [`Signed`], else [`Predicate`].
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -130,11 +147,12 @@ where
         } else {
             0
         };
-        let predicate_date_size = if let Some(predicate_data) = self.predicate_data.as_field() {
-            bytes::padded_len(predicate_data.as_slice())
-        } else {
-            0
-        };
+        let predicate_date_size =
+            if let Some(predicate_data) = self.predicate_data.as_field() {
+                bytes::padded_len(predicate_data.as_slice())
+            } else {
+                0
+            };
 
         CoinSizes::LEN + predicate_size + predicate_date_size
     }
@@ -148,7 +166,7 @@ where
     fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
         let serialized_size = self.serialized_size();
         if full_buf.len() < serialized_size {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let Self {
@@ -173,7 +191,7 @@ where
 
         let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
         if n != S::LAYOUT.utxo_id.size() {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
@@ -182,7 +200,7 @@ where
 
         let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
         if n != S::LAYOUT.tx_pointer.size() {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let witness_index = if let Some(witness_index) = witness_index.as_field() {
@@ -192,16 +210,21 @@ where
             0
         };
 
-        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
-            *predicate_gas_used
-        } else {
-            // predicate gas used zeroed for coin predicate
-            0
-        };
+        let predicate_gas_used =
+            if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+                *predicate_gas_used
+            } else {
+                // predicate gas used zeroed for coin predicate
+                0
+            };
 
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
         bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_gas_used),
+            predicate_gas_used as Word,
+        );
 
         let predicate_len = if let Some(predicate) = predicate.as_field() {
             predicate.len()
@@ -215,12 +238,23 @@ where
             0
         };
 
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_len),
+            predicate_len as Word,
+        );
 
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_data_len),
+            predicate_data_len as Word,
+        );
 
         let buf = if let Some(predicate) = predicate.as_field() {
-            let (_, buf) = bytes::store_raw_bytes(full_buf.get_mut(LEN..).ok_or(bytes::eof())?, predicate.as_slice())?;
+            let (_, buf) = bytes::store_raw_bytes(
+                full_buf.get_mut(LEN..).ok_or(bytes::eof())?,
+                predicate.as_slice(),
+            )?;
             buf
         } else {
             buf
@@ -273,21 +307,28 @@ where
         let maturity = bytes::restore_u32_at(buf, S::layout(S::LAYOUT.maturity)).into();
         self.maturity = maturity;
 
-        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        let predicate_gas_used =
+            bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             *predicate_gas_used_field = predicate_gas_used;
         }
 
-        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
-        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
+        let predicate_len =
+            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+        let predicate_data_len =
+            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
-        let (size, predicate, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, predicate_len)?;
+        let (size, predicate, buf) = bytes::restore_raw_bytes(
+            full_buf.get(LEN..).ok_or(bytes::eof())?,
+            predicate_len,
+        )?;
         n += size;
         if let Some(predicate_field) = self.predicate.as_mut_field() {
             *predicate_field = predicate;
         }
 
-        let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
+        let (size, predicate_data, _) =
+            bytes::restore_raw_bytes(buf, predicate_data_len)?;
         n += size;
         if let Some(predicate_data_field) = self.predicate_data.as_mut_field() {
             *predicate_data_field = predicate_data;

@@ -77,24 +77,30 @@ impl TransactionFee {
         let min_gas = bytes_gas.checked_add(gas_used_by_predicates)?;
         let max_gas = bytes_gas.checked_add(gas_limit)?;
 
-        let max_gas_to_pay = max_gas
-            .checked_mul(gas_price)
-            .and_then(|total| num_integer::div_ceil(total as u128, factor).try_into().ok());
+        let max_gas_to_pay = max_gas.checked_mul(gas_price).and_then(|total| {
+            num_integer::div_ceil(total as u128, factor).try_into().ok()
+        });
 
-        let min_gas_to_pay = min_gas
-            .checked_mul(gas_price)
-            .and_then(|bytes| num_integer::div_ceil(bytes as u128, factor).try_into().ok());
+        let min_gas_to_pay = min_gas.checked_mul(gas_price).and_then(|bytes| {
+            num_integer::div_ceil(bytes as u128, factor).try_into().ok()
+        });
 
         min_gas_to_pay
             .zip(max_gas_to_pay)
-            .map(|(min_gas_to_pay, max_gas_to_pay)| Self::new(min_gas_to_pay, max_gas_to_pay, min_gas, max_gas))
+            .map(|(min_gas_to_pay, max_gas_to_pay)| {
+                Self::new(min_gas_to_pay, max_gas_to_pay, min_gas, max_gas)
+            })
     }
 
-    /// Attempt to calculate a gas as asset value, using the price factor defined in the consensus
-    /// parameters.
+    /// Attempt to calculate a gas as asset value, using the price factor defined in the
+    /// consensus parameters.
     ///
     /// Will return `None` if overflow occurs
-    pub fn gas_refund_value(params: &ConsensusParameters, gas: Word, price: Word) -> Option<Word> {
+    pub fn gas_refund_value(
+        params: &ConsensusParameters,
+        gas: Word,
+        price: Word,
+    ) -> Option<Word> {
         let gas = gas as u128;
         let price = price as u128;
         let factor = params.gas_price_factor as u128;
@@ -107,13 +113,22 @@ impl TransactionFee {
     /// Attempt to create a transaction fee from parameters and transaction internals
     ///
     /// Will return `None` if arithmetic overflow occurs.
-    pub fn checked_from_tx<T: Chargeable>(params: &ConsensusParameters, tx: &T) -> Option<Self> {
+    pub fn checked_from_tx<T: Chargeable>(
+        params: &ConsensusParameters,
+        tx: &T,
+    ) -> Option<Self> {
         let metered_bytes = tx.metered_bytes_size() as Word;
         let gas_used_by_predicates = tx.gas_used_by_predicates();
         let gas_limit = tx.limit();
         let gas_price = tx.price();
 
-        Self::checked_from_values(params, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
+        Self::checked_from_values(
+            params,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
     }
 }
 
@@ -134,7 +149,11 @@ pub trait Chargeable {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ConsensusParameters, TransactionFee, Word};
+    use crate::{
+        ConsensusParameters,
+        TransactionFee,
+        Word,
+    };
 
     const PARAMS: ConsensusParameters = ConsensusParameters::DEFAULT
         .with_gas_per_byte(2)
@@ -147,9 +166,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let fee =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .expect("failed to calculate fee");
+        let fee = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .expect("failed to calculate fee");
 
         let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
         let expected = expected * gas_price;
@@ -167,9 +191,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let fee =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .expect("failed to calculate fee");
+        let fee = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .expect("failed to calculate fee");
 
         let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
         let expected = expected * gas_price;
@@ -189,9 +218,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 0;
 
-        let fee =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .expect("failed to calculate fee");
+        let fee = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .expect("failed to calculate fee");
 
         let expected = 0u64;
 
@@ -206,9 +240,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .is_none();
 
         assert!(overflow);
     }
@@ -220,9 +259,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .is_none();
 
         assert!(overflow);
     }
@@ -234,9 +278,14 @@ mod tests {
         let gas_limit = Word::MAX;
         let gas_price = 11;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .is_none();
 
         assert!(overflow);
     }
@@ -248,9 +297,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = Word::MAX;
 
-        let overflow =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .is_none();
+        let overflow = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .is_none();
 
         assert!(overflow);
     }
@@ -262,9 +316,14 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
-        let fee =
-            TransactionFee::checked_from_values(&PARAMS, metered_bytes, gas_used_by_predicates, gas_limit, gas_price)
-                .expect("failed to calculate fee");
+        let fee = TransactionFee::checked_from_values(
+            &PARAMS,
+            metered_bytes,
+            gas_used_by_predicates,
+            gas_limit,
+            gas_price,
+        )
+        .expect("failed to calculate fee");
 
         assert!(fee.min_fee > fee.max_fee);
     }

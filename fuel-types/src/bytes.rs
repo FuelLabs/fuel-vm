@@ -25,7 +25,8 @@ pub const fn padded_len(bytes: &[u8]) -> usize {
 pub const fn padded_len_usize(len: usize) -> usize {
     let pad = len % WORD_SIZE;
 
-    // `pad != 0` is checked because we shouldn't pad in case the length is already well-formed.
+    // `pad != 0` is checked because we shouldn't pad in case the length is already
+    // well-formed.
     //
     // Example being `w := WORD_SIZE` and `x := 2 · w`
     //
@@ -96,8 +97,8 @@ pub fn restore_array_from_slice<const N: usize>(buf: &[u8]) -> [u8; N] {
 ///
 /// # Safety
 ///
-/// This function will not panic if the length of the slice is smaller than `N`. Instead, it will
-/// cause undefined behavior and read random disowned bytes.
+/// This function will not panic if the length of the slice is smaller than `N`. Instead,
+/// it will cause undefined behavior and read random disowned bytes.
 pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
     let ptr = buf.as_ptr() as *const [u8; N];
 
@@ -168,20 +169,26 @@ mod use_std {
 
     /// End of file error representation.
     pub fn eof() -> io::Error {
-        io::Error::new(io::ErrorKind::UnexpectedEof, "The provided buffer is not big enough!")
+        io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "The provided buffer is not big enough!",
+        )
     }
 
-    /// Attempt to store into the provided buffer the length of `bytes` as big-endian, and then
-    /// the bytes itself. The `bytes` will be padded to be word-aligned.
+    /// Attempt to store into the provided buffer the length of `bytes` as big-endian, and
+    /// then the bytes itself. The `bytes` will be padded to be word-aligned.
     ///
-    /// If the buffer is big enough to store length+bytes, will return the amount of bytes written
-    /// and the remainder of the buffer. Return [`std::io::Error`] otherwise.
-    pub fn store_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
+    /// If the buffer is big enough to store length+bytes, will return the amount of bytes
+    /// written and the remainder of the buffer. Return [`std::io::Error`] otherwise.
+    pub fn store_bytes<'a>(
+        mut buf: &'a mut [u8],
+        bytes: &[u8],
+    ) -> io::Result<(usize, &'a mut [u8])> {
         let len = (bytes.len() as Word).to_be_bytes();
         let pad = bytes.len() % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
         if buf.len() < WORD_SIZE + bytes.len() + pad {
-            return Err(eof());
+            return Err(eof())
         }
 
         buf[..WORD_SIZE].copy_from_slice(&len);
@@ -198,16 +205,20 @@ mod use_std {
         Ok((WORD_SIZE + bytes.len() + pad, buf))
     }
 
-    /// Attempt to store into the provided buffer the provided bytes. They will be padded to be
-    /// word-aligned.
+    /// Attempt to store into the provided buffer the provided bytes. They will be padded
+    /// to be word-aligned.
     ///
-    /// If the buffer is big enough to store the padded bytes, will return the amount of bytes
-    /// written and the remainder of the buffer. Return [`std::io::Error`] otherwise.
-    pub fn store_raw_bytes<'a>(mut buf: &'a mut [u8], bytes: &[u8]) -> io::Result<(usize, &'a mut [u8])> {
+    /// If the buffer is big enough to store the padded bytes, will return the amount of
+    /// bytes written and the remainder of the buffer. Return [`std::io::Error`]
+    /// otherwise.
+    pub fn store_raw_bytes<'a>(
+        mut buf: &'a mut [u8],
+        bytes: &[u8],
+    ) -> io::Result<(usize, &'a mut [u8])> {
         let pad = bytes.len() % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
         if buf.len() < bytes.len() + pad {
-            return Err(eof());
+            return Err(eof())
         }
 
         buf[..bytes.len()].copy_from_slice(bytes);
@@ -223,7 +234,8 @@ mod use_std {
 
     /// Attempt to restore a variable size bytes from a buffer.
     ///
-    /// Will read the length, the bytes amount (word-aligned), and return the remainder buffer.
+    /// Will read the length, the bytes amount (word-aligned), and return the remainder
+    /// buffer.
     pub fn restore_bytes(mut buf: &[u8]) -> io::Result<(usize, Vec<u8>, &[u8])> {
         // Safety: chunks_exact will guarantee the size of the slice is correct
         let len = buf
@@ -238,7 +250,7 @@ mod use_std {
         let pad = len % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
         if buf.len() < len + pad {
-            return Err(eof());
+            return Err(eof())
         }
 
         let data = Vec::from(&buf[..len]);
@@ -248,11 +260,14 @@ mod use_std {
     }
 
     /// Attempt to restore a variable size bytes with the length specified as argument.
-    pub fn restore_raw_bytes(buf: &[u8], len: usize) -> io::Result<(usize, Vec<u8>, &[u8])> {
+    pub fn restore_raw_bytes(
+        buf: &[u8],
+        len: usize,
+    ) -> io::Result<(usize, Vec<u8>, &[u8])> {
         let pad = len % WORD_SIZE;
         let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
         if buf.len() < len + pad {
-            return Err(eof());
+            return Err(eof())
         }
 
         let data = Vec::from(&buf[..len]);
@@ -261,8 +276,12 @@ mod use_std {
         Ok((len + pad, data, buf))
     }
 
-    /// Store a statically sized array into a buffer, returning the remainder of the buffer.
-    pub fn store_array<'a, const N: usize>(buf: &'a mut [u8], array: &[u8; N]) -> io::Result<&'a mut [u8]> {
+    /// Store a statically sized array into a buffer, returning the remainder of the
+    /// buffer.
+    pub fn store_array<'a, const N: usize>(
+        buf: &'a mut [u8],
+        array: &[u8; N],
+    ) -> io::Result<&'a mut [u8]> {
         buf.chunks_exact_mut(N)
             .next()
             .map(|chunk| chunk.copy_from_slice(array))
@@ -271,8 +290,8 @@ mod use_std {
         Ok(&mut buf[N..])
     }
 
-    /// Restore a statically sized array from a buffer, returning the array and the remainder of
-    /// the buffer.
+    /// Restore a statically sized array from a buffer, returning the array and the
+    /// remainder of the buffer.
     pub fn restore_array<const N: usize>(buf: &[u8]) -> io::Result<([u8; N], &[u8])> {
         <[u8; N]>::try_from(&buf[..N])
             .map_err(|_| eof())

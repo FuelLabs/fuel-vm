@@ -1,7 +1,13 @@
-use fuel_tx::*;
-use fuel_tx::{field::Outputs, Executable};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_tx::{
+    field::Outputs,
+    Executable,
+    *,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 #[test]
 fn output_variable_prepare_init_zeroes_recipient_and_amount() {
@@ -23,7 +29,11 @@ fn output_variable_prepare_init_zeroes_recipient_and_amount() {
         .cloned()
         .expect("failed to fetch output");
 
-    let output_p = tx.outputs().first().cloned().expect("failed to fetch output");
+    let output_p = tx
+        .outputs()
+        .first()
+        .cloned()
+        .expect("failed to fetch output");
 
     assert_ne!(zeroed, variable);
     assert_eq!(zeroed, output);

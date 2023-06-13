@@ -19,6 +19,11 @@ Description of the upcoming release here.
 
 ### Changed
 
+#### Breaking
+
+- [#477](https://github.com/FuelLabs/fuel-vm/pull/477): The `PanicReason::UnknownPanicReason` is `0x00`.
+    The `PanicReason` now implements `From<u8>` instead of `TryFrom<u8>` and can't return an error anymore.
+
 - [#478](https://github.com/FuelLabs/fuel-vm/pull/478): The `memcopy` method is updated
     and returns `MemoryWriteOverlap` instead of `MemoryOverflow`.
 
@@ -29,11 +34,8 @@ Description of the upcoming release here.
     leaves by setting the leaf key to the hash of an existing leaf or node. This is 
     done by removing the insertion of the leaf using the leaf key.
 
-
 - [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Fixed bug with not-working `CreateMetadata`.
 
-
-- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Fixed bug with not-working `CreateMetadata`.
 
 #### Breaking
 
@@ -50,6 +52,7 @@ Description of the upcoming release here.
 ### Removed
 
 - [#478](https://github.com/FuelLabs/fuel-vm/pull/478): The `CheckedMemRange` is replaced by the `MemoryRange`.
+
 
 ## [Version 0.33.0]
 

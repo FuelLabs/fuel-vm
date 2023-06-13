@@ -5,6 +5,7 @@ use super::{
         set_err,
     },
     memory::{
+        read_bytes,
         try_mem_write,
         try_zeroize,
         OwnershipRegisters,
@@ -53,13 +54,23 @@ where
         secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
     }
 
-    pub(crate) fn secp256r1_recover(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn secp256r1_recover(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
     }
 
-    pub(crate) fn ed25519_verify(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn ed25519_verify(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         ed25519_verify(&mut self.memory, err, pc, a, b, c)
     }

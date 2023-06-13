@@ -8,7 +8,12 @@ use fuel_asm::{
     },
     RegId,
 };
-use fuel_crypto::{Hasher, PublicKey, SecretKey, Signature};
+use fuel_crypto::{
+    Hasher,
+    PublicKey,
+    SecretKey,
+    Signature,
+};
 use fuel_tx::TransactionBuilder;
 use rand::{
     rngs::StdRng,

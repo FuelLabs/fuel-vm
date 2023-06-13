@@ -74,7 +74,10 @@ impl fmt::Display for SecretKey {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
-    use crate::Error;
+    use crate::{
+        Error,
+        PublicKey,
+    };
     use coins_bip32::path::DerivationPath;
     use coins_bip39::{
         English,

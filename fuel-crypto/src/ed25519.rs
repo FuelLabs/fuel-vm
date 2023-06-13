@@ -1,12 +1,22 @@
 //! ED25519 signature verification
 
-use ed25519_dalek::{Signature, Verifier};
-use fuel_types::{Bytes32, Bytes64};
+use ed25519_dalek::{
+    Signature,
+    Verifier,
+};
+use fuel_types::{
+    Bytes32,
+    Bytes64,
+};
 
 use crate::Error;
 
 /// Verify a signature against a message digest and a public key.
-pub fn verify(pub_key: &Bytes32, signature: &Bytes64, message: &Bytes32) -> Result<(), Error> {
+pub fn verify(
+    pub_key: &Bytes32,
+    signature: &Bytes64,
+    message: &Bytes32,
+) -> Result<(), Error> {
     let Ok(signature) = Signature::from_bytes(&**signature) else {
         return Err(Error::InvalidSignature);
     };

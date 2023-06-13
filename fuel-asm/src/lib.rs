@@ -493,11 +493,11 @@ impl Opcode {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
             | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
             | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | RET
-            | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19 | K256 | S256 | NOOP | FLAG | ADDI | ANDI
-            | DIVI | EXPI | MODI | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI
-            | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
-            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
-            | GTF => true,
+            | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19 | K256 | S256 | NOOP | FLAG
+            | ADDI | ANDI | DIVI | EXPI | MODI | MULI | MLDV | ORI | SLLI | SRLI
+            | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI
+            | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI
+            | CFE | CFS | GTF => true,
             _ => false,
         }
     }

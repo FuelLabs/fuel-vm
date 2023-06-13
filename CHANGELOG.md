@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+### Added
+
+- [#484](https://github.com/FuelLabs/fuel-vm/pull/484/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
+
 ### Fixed
 
 - [#482](https://github.com/FuelLabs/fuel-vm/pull/482): This PR address a security issue where updates to a Sparse Merkle Tree could deliberately overwrite existing leaves by setting the leaf key to the hash of an existing leaf or node. This is done by removing the insertion of the leaf using the leaf key.
@@ -17,6 +21,7 @@ Description of the upcoming release here.
 - [#386](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
     that the new `$sp` value isn't below `$ssp`, allowing write access to non-owned
     memory. This is now fixed, and attempting to set an incorrect `$sp` value panics.
+- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Removes apparently unused `Signer` and `Keystore` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
 
 ## [Version 0.33.0]
 

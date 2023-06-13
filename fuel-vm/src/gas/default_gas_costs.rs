@@ -20,6 +20,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         divi: 1,
         eck1: 1703,
         ecr1: 6000,
+        ed19: 2000,
         eq: 1,
         exp: 1,
         expi: 1,

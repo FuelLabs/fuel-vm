@@ -3,7 +3,7 @@ use core::fmt;
 use core::ops::Deref;
 use fuel_types::{Bytes32, Bytes64};
 
-/// Asymmetric public key
+/// Asymmetric secp256k1 public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
@@ -80,8 +80,9 @@ impl fmt::Display for PublicKey {
 
 #[cfg(feature = "std")]
 mod use_std {
+    use super::super::*;
     use super::*;
-    use crate::{Error, SecretKey};
+    use crate::Error;
 
     use secp256k1::{
         constants::UNCOMPRESSED_PUBLIC_KEY_SIZE, Error as Secp256k1Error, PublicKey as Secp256k1PublicKey, Secp256k1,

@@ -110,7 +110,8 @@ impl str::FromStr for Signature {
 
 #[cfg(feature = "std")]
 mod use_std {
-    use crate::{Error, Message, PublicKey, SecretKey, Signature};
+    use super::super::{PublicKey, SecretKey, Signature};
+    use crate::{Error, Message};
 
     use lazy_static::lazy_static;
     use secp256k1::{

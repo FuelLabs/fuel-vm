@@ -65,7 +65,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use fuel_asm::{GMArgs, GTFArgs, Instruction, Opcode, PanicReason};
     #[doc(no_inline)]
-    pub use fuel_crypto::{Hasher, Message, PublicKey, SecretKey, Signature};
+    pub use fuel_crypto::{Hasher, Message};
     #[doc(no_inline)]
     pub use fuel_storage::{MerkleRoot, MerkleRootStorage, StorageAsMut, StorageAsRef, StorageInspect, StorageMutate};
     #[doc(no_inline)]

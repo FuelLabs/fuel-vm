@@ -10,12 +10,12 @@ Description of the upcoming release here.
 
 ## [Version 0.34.0]
 
-The release contains fixes for critical issues that we found before the audit. 
-Mainly it affected SMT and related code. The redundant code was removed in 
-several places and replaced with more evident logic.
-
-The functionality of the SMT was extended to provide more flexibility and 
-select the most performant API.
+This release contains fixes for critical issues that we found before the audit. 
+Mainly, these changes pertain to the Sparse Merkle Tree (SMT) and related 
+code. The SMT API was extended to provide more flexibility and to allow users 
+to select the most appropriate method their performance needs. Where possible, 
+sequential SMT updates were replaced with constructors that take in a complete 
+data set.
 
 ### Added
 

@@ -13,9 +13,9 @@ Description of the upcoming release here.
 This release contains fixes for critical issues that we found before the audit. 
 Mainly, these changes pertain to the Sparse Merkle Tree (SMT) and related 
 code. The SMT API was extended to provide more flexibility and to allow users 
-to select the most appropriate method their performance needs. Where possible, 
-sequential SMT updates were replaced with constructors that take in a complete 
-data set.
+to select the most appropriate method for their performance needs. Where 
+possible, sequential SMT updates were replaced with constructors that take in a
+complete data set.
 
 ### Added
 

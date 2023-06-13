@@ -353,15 +353,11 @@ where
             }
         } {
             // Merge the two front heads of the list into a single head
-            let joined_head = {
-                let mut head = self.head.take().expect("Expected head to be present");
-                let mut head_next =
-                    head.take_next().expect("Expected next to be present");
-                let joined_head = join_subtrees(&mut head_next, &mut head);
-                self.storage
-                    .insert(&joined_head.node().key(), &joined_head.node().into())?;
-                joined_head
-            };
+            let mut head = self.head.take().expect("Expected head to be present");
+            let mut head_next = head.take_next().expect("Expected next to be present");
+            let joined_head = join_subtrees(&mut head_next, &mut head);
+            self.storage
+                .insert(&joined_head.node().key(), &joined_head.node().into())?;
             self.head = Some(joined_head);
         }
 

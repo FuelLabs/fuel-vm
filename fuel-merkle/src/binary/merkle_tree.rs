@@ -379,14 +379,12 @@ where
     Table: Mappable<Key = u64, OwnedValue = Primitive, Value = Primitive>,
     Storage: StorageMutateInfallible<Table>,
 {
-    let mut current = subtree.clone();
-    while current.next().is_some() {
-        let mut head = current;
-        let mut head_next = head.take_next().unwrap();
-        current = join_subtrees(&mut head_next, &mut head);
-        storage.insert(&current.node().key(), &current.node().as_ref().into());
+    let mut head = subtree.clone();
+    while let Some(mut head_next) = head.take_next() {
+        head = join_subtrees(&mut head_next, &mut head);
+        storage.insert(&head.node().key(), &head.node().as_ref().into());
     }
-    current.node().clone()
+    head.node().clone()
 }
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ strum = { version = "0.24", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 bincode = { workspace = true }
-fuel-asm = { workspace = true, features = ["serde"] }
+fuel-asm = { path = ".", features = ["serde"] }
 rstest = "0.16"
 
 [features]

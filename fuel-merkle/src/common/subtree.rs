@@ -15,11 +15,11 @@ impl<T> Subtree<T> {
     }
 
     pub fn next(&self) -> Option<&Subtree<T>> {
-        self.next.as_ref().map(|next| next.as_ref())
+        self.next.as_ref().map(AsRef::as_ref)
     }
 
     pub fn next_mut(&mut self) -> Option<&mut Subtree<T>> {
-        self.next.as_mut().map(|next| next.as_mut())
+        self.next.as_mut().map(AsMut::as_mut)
     }
 
     pub fn take_next(&mut self) -> Option<Subtree<T>> {

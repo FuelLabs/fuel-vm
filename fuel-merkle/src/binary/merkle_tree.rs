@@ -343,12 +343,17 @@ where
 
     fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
         while {
+            // Iterate through all subtrees in tree to see which subtrees can be
+            // merged. Two subtrees will be merged if, and only if, their heads
+            // are at the same height.
             if let Some((head, next)) = self
                 .head()
                 .and_then(|head| head.next().map(|next| (head, next)))
             {
                 head.node().height() == next.node().height()
             } else {
+                // This head belongs to the last subtree and merging is
+                // complete.
                 false
             }
         } {

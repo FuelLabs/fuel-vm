@@ -1,11 +1,18 @@
 //! Exposed constructors API for the [`Interpreter`]
 
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
-use crate::context::Context;
-use crate::interpreter::PanicContext;
-use crate::state::Debugger;
-use crate::storage::MemoryStorage;
-use crate::{consts::*, gas::GasCosts};
+use super::{
+    ExecutableTransaction,
+    Interpreter,
+    RuntimeBalances,
+};
+use crate::{
+    consts::*,
+    context::Context,
+    gas::GasCosts,
+    interpreter::PanicContext,
+    state::Debugger,
+    storage::MemoryStorage,
+};
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;
@@ -23,10 +30,16 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
+    pub fn with_storage(
+        storage: S,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; MEM_SIZE].try_into().expect("Failed to allocate memory"),
+            memory: vec![0; MEM_SIZE]
+                .try_into()
+                .expect("Failed to allocate memory"),
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),

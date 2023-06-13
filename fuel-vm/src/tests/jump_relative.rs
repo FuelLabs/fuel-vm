@@ -1,11 +1,24 @@
-use fuel_asm::{op, Imm18, Instruction, PanicReason, RegId};
+use fuel_asm::{
+    op,
+    Imm18,
+    Instruction,
+    PanicReason,
+    RegId,
+};
 use fuel_tx::Receipt;
 use rstest::rstest;
 
-use super::test_helpers::{assert_panics, assert_success, run_script};
+use super::test_helpers::{
+    assert_panics,
+    assert_success,
+    run_script,
+};
 
 #[rstest]
-fn relative_jump_forwards(#[values(0, 1, 2)] offset: u32, #[values("jmp", "jnz", "jne")] condition: &'static str) {
+fn relative_jump_forwards(
+    #[values(0, 1, 2)] offset: u32,
+    #[values("jmp", "jnz", "jne")] condition: &'static str,
+) {
     #[rustfmt::skip]
     let script = vec![
         op::movi(0x20, 2 - offset),
@@ -25,7 +38,10 @@ fn relative_jump_forwards(#[values(0, 1, 2)] offset: u32, #[values("jmp", "jnz",
 }
 
 #[rstest]
-fn relative_jump_backwards(#[values(0, 1, 2)] offset: u32, #[values("jmp", "jnz", "jne")] condition: &'static str) {
+fn relative_jump_backwards(
+    #[values(0, 1, 2)] offset: u32,
+    #[values("jmp", "jnz", "jne")] condition: &'static str,
+) {
     #[rustfmt::skip]
     let script = vec![
         op::movi(0x20, 2 - offset),

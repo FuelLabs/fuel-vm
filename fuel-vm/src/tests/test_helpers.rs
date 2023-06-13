@@ -1,4 +1,7 @@
-use fuel_asm::{op, Instruction};
+use fuel_asm::{
+    op,
+    Instruction,
+};
 use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
@@ -24,7 +27,11 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &ConsensusParameters::DEFAULT, client.gas_costs())
+        .into_checked(
+            Default::default(),
+            &ConsensusParameters::DEFAULT,
+            client.gas_costs(),
+        )
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()
@@ -54,7 +61,11 @@ pub fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     let n = receipts.len();
     assert!(n >= 2, "Invalid receipts len");
     if let Receipt::Panic { reason: pr, .. } = receipts.get(n - 2).unwrap() {
-        assert_eq!(*pr.reason(), reason, "Panic reason differs for the expected reason");
+        assert_eq!(
+            *pr.reason(),
+            reason,
+            "Panic reason differs for the expected reason"
+        );
     } else {
         unreachable!("No script receipt for a paniced tx");
     }

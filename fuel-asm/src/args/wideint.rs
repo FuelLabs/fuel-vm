@@ -46,7 +46,7 @@ impl CompareArgs {
         let indirect_rhs = ((bits.0 >> 5) & 1) == 1;
         let reserved = (bits.0 >> 3) & 0b11;
         if reserved != 0 {
-            return None;
+            return None
         }
         let mode = CompareMode::from_repr(bits.0 & 0b111)?;
         Some(Self { mode, indirect_rhs })
@@ -125,7 +125,7 @@ impl MulArgs {
         let indirect_lhs = ((bits.0 >> 4) & 1) == 1;
         let indirect_rhs = ((bits.0 >> 5) & 1) == 1;
         if (bits.0 & 0b1111) != 0 {
-            return None;
+            return None
         }
         Some(Self {
             indirect_lhs,
@@ -154,7 +154,7 @@ impl DivArgs {
     pub fn from_imm(bits: Imm06) -> Option<Self> {
         let indirect_rhs = ((bits.0 >> 5) & 1) == 1;
         if (bits.0 & 0b11111) != 0 {
-            return None;
+            return None
         }
         Some(Self { indirect_rhs })
     }
@@ -205,7 +205,10 @@ mod tests {
     }
 
     #[rstest::rstest]
-    fn encode_decode_mul(#[values(true, false)] indirect_lhs: bool, #[values(true, false)] indirect_rhs: bool) {
+    fn encode_decode_mul(
+        #[values(true, false)] indirect_lhs: bool,
+        #[values(true, false)] indirect_rhs: bool,
+    ) {
         let orig = MulArgs {
             indirect_lhs,
             indirect_rhs,

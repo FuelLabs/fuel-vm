@@ -1,14 +1,24 @@
-use crate::{LayoutType, MemLoc, MemLocType, Word};
-use core::borrow::Borrow;
-use core::ops::Index;
-use core::ops::IndexMut;
-use core::ops::Range;
+use crate::{
+    LayoutType,
+    MemLoc,
+    MemLocType,
+    Word,
+};
+use core::{
+    borrow::Borrow,
+    ops::{
+        Index,
+        IndexMut,
+        Range,
+    },
+};
 
 /// Memory size of a [`Word`]
 pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
 /// Compile time assert that the array is big enough to contain the memory location.
-const fn check_range_bounds<const ARR: usize, const ADDR: usize, const SIZE: usize>() -> Range<usize> {
+const fn check_range_bounds<const ARR: usize, const ADDR: usize, const SIZE: usize>(
+) -> Range<usize> {
     assert!(
         ARR >= ADDR + SIZE,
         "ARR length must be greater than or equal to sub arrays ADDR + SIZE"
@@ -23,14 +33,16 @@ pub(super) trait SubArray<const ARR: usize, const ADDR: usize, const SIZE: usize
     /// Compile-time checked range of the sub-array.
     const RANGE: Range<usize> = check_range_bounds::<ARR, ADDR, SIZE>();
 
-    /// Creates a new sub-array from the parent array where the size is checked at compile time.
+    /// Creates a new sub-array from the parent array where the size is checked at compile
+    /// time.
     fn sub_array(&self) -> [u8; SIZE] {
         self[Self::RANGE]
             .try_into()
             .expect("This can't ever fail due to the compile-time check")
     }
 
-    /// Creates a new fixed size slice from the parent array where the size is checked at compile time.
+    /// Creates a new fixed size slice from the parent array where the size is checked at
+    /// compile time.
     fn sized_slice(&self) -> &[u8; SIZE] {
         (&self[Self::RANGE])
             .try_into()
@@ -42,7 +54,8 @@ pub(super) trait SubArray<const ARR: usize, const ADDR: usize, const SIZE: usize
 pub(super) trait SubArrayMut<const ARR: usize, const ADDR: usize, const SIZE: usize>:
     SubArray<ARR, ADDR, SIZE> + IndexMut<Range<usize>>
 {
-    /// Creates a new mutable sub-array from the parent array where the size is checked at compile time.
+    /// Creates a new mutable sub-array from the parent array where the size is checked at
+    /// compile time.
     fn sized_slice_mut(&mut self) -> &mut [u8; SIZE] {
         (&mut self[Self::RANGE])
             .try_into()
@@ -50,8 +63,14 @@ pub(super) trait SubArrayMut<const ARR: usize, const ADDR: usize, const SIZE: us
     }
 }
 
-impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArray<ARR, ADDR, SIZE> for [u8; ARR] {}
-impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArrayMut<ARR, ADDR, SIZE> for [u8; ARR] {}
+impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArray<ARR, ADDR, SIZE>
+    for [u8; ARR]
+{
+}
+impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArrayMut<ARR, ADDR, SIZE>
+    for [u8; ARR]
+{
+}
 
 /// Store a number at a specific location in this buffer.
 pub fn store_number_at<const ARR: usize, const ADDR: usize, const SIZE: usize, T>(
@@ -92,7 +111,10 @@ where
 
 /// Read a word-padded u8 from a specific location in a buffer.
 /// Won't compile if the buffer is too small.
-pub fn restore_u8_at<const ARR: usize, const ADDR: usize, T>(buf: &[u8; ARR], loc: LayoutType<ADDR, WORD_SIZE, T>) -> u8
+pub fn restore_u8_at<const ARR: usize, const ADDR: usize, T>(
+    buf: &[u8; ARR],
+    loc: LayoutType<ADDR, WORD_SIZE, T>,
+) -> u8
 where
     T: MemLocType<ADDR, WORD_SIZE, Type = u8>,
 {
@@ -217,7 +239,9 @@ pub fn from_loc<const ARR: usize, const ADDR: usize, const SIZE: usize>(
 /// let mem = [0u8; 1];
 /// let _: &[u8; 2] = from_array_ref(&mem);
 /// ```
-pub fn from_array_ref<const ARR: usize, const SIZE: usize>(buf: &[u8; ARR]) -> &[u8; SIZE] {
+pub fn from_array_ref<const ARR: usize, const SIZE: usize>(
+    buf: &[u8; ARR],
+) -> &[u8; SIZE] {
     SubArray::<ARR, 0, SIZE>::sized_slice(buf)
 }
 
@@ -233,7 +257,9 @@ pub fn from_array_ref<const ARR: usize, const SIZE: usize>(buf: &[u8; ARR]) -> &
 /// let mem = [0u8; 1];
 /// let _: &mut [u8; 2] = from_array_mut(&mut mem);
 /// ```
-pub fn from_array_mut<const ARR: usize, const SIZE: usize>(buf: &mut [u8; ARR]) -> &mut [u8; SIZE] {
+pub fn from_array_mut<const ARR: usize, const SIZE: usize>(
+    buf: &mut [u8; ARR],
+) -> &mut [u8; SIZE] {
     SubArrayMut::<ARR, 0, SIZE>::sized_slice_mut(buf)
 }
 

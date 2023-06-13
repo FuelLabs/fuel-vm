@@ -1,9 +1,18 @@
 use fuel_types::{
-    bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, BlockHeight, MemLayout, MemLocType,
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    mem_layout,
+    BlockHeight,
+    MemLayout,
+    MemLocType,
 };
 
-use core::{fmt, str};
+use core::{
+    fmt,
+    str,
+};
 
 #[cfg(feature = "std")]
 use fuel_types::bytes;
@@ -13,7 +22,10 @@ use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -37,7 +49,10 @@ impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;
 
     pub const fn new(block_height: BlockHeight, tx_index: u16) -> Self {
-        Self { block_height, tx_index }
+        Self {
+            block_height,
+            tx_index,
+        }
     }
 
     pub const fn block_height(&self) -> BlockHeight {
@@ -81,7 +96,7 @@ impl str::FromStr for TxPointer {
         const ERR: &str = "Invalid encoded byte";
 
         if s.len() != 12 {
-            return Err(ERR);
+            return Err(ERR)
         }
 
         let block_height = u32::from_str_radix(&s[..8], 16).map_err(|_| ERR)?;
@@ -105,7 +120,8 @@ impl io::Write for TxPointer {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        let block_height = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.block_height)).into();
+        let block_height =
+            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.block_height)).into();
         let tx_index = bytes::restore_u16_at(buf, Self::layout(Self::LAYOUT.tx_index));
 
         self.block_height = block_height;
@@ -127,7 +143,11 @@ impl io::Read for TxPointer {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.block_height), *self.block_height);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.block_height),
+            *self.block_height,
+        );
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.tx_index), self.tx_index);
 
         Ok(Self::LEN)
@@ -157,10 +177,14 @@ fn fmt_encode_decode() {
 
         #[cfg(feature = "std")]
         {
-            use fuel_types::bytes::{Deserializable, SerializableVec};
+            use fuel_types::bytes::{
+                Deserializable,
+                SerializableVec,
+            };
 
             let bytes = tx_pointer.clone().to_bytes();
-            let tx_pointer_p = TxPointer::from_bytes(&bytes).expect("failed to deserialize");
+            let tx_pointer_p =
+                TxPointer::from_bytes(&bytes).expect("failed to deserialize");
 
             assert_eq!(tx_pointer, tx_pointer_p);
         }

@@ -1,14 +1,38 @@
-use crate::receipt::sizes::{
-    CallSizesLayout, LogDataSizesLayout, LogSizesLayout, MessageOutSizesLayout, PanicSizesLayout,
-    ReturnDataSizesLayout, ReturnSizesLayout, RevertSizesLayout, ScriptResultSizesLayout, TransferOutSizesLayout,
-    TransferSizesLayout,
+use crate::{
+    receipt::sizes::{
+        CallSizesLayout,
+        LogDataSizesLayout,
+        LogSizesLayout,
+        MessageOutSizesLayout,
+        PanicSizesLayout,
+        ReturnDataSizesLayout,
+        ReturnSizesLayout,
+        RevertSizesLayout,
+        ScriptResultSizesLayout,
+        TransferOutSizesLayout,
+        TransferSizesLayout,
+    },
+    Output,
 };
-use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::PanicInstruction;
-use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{fmt_truncated_hex, Address, AssetId, Bytes32, ContractId, MessageId, Nonce, Word};
+use fuel_types::{
+    bytes::{
+        self,
+        padded_len_usize,
+        SizedBytes,
+        WORD_SIZE,
+    },
+    fmt_truncated_hex,
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+    MessageId,
+    Nonce,
+    Word,
+};
 
 #[cfg(feature = "std")]
 mod receipt_std;
@@ -160,7 +184,14 @@ impl Receipt {
         Self::Return { id, val, pc, is }
     }
 
-    pub fn return_data(id: ContractId, ptr: Word, digest: Bytes32, data: Vec<u8>, pc: Word, is: Word) -> Self {
+    pub fn return_data(
+        id: ContractId,
+        ptr: Word,
+        digest: Bytes32,
+        data: Vec<u8>,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         let len = bytes::padded_len(&data) as Word;
 
         Self::return_data_with_len(id, ptr, len, digest, data, pc, is)
@@ -186,7 +217,12 @@ impl Receipt {
         }
     }
 
-    pub const fn panic(id: ContractId, reason: PanicInstruction, pc: Word, is: Word) -> Self {
+    pub const fn panic(
+        id: ContractId,
+        reason: PanicInstruction,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Panic {
             id,
             reason,
@@ -198,7 +234,8 @@ impl Receipt {
 
     pub fn with_panic_contract_id(mut self, _contract_id: Option<ContractId>) -> Self {
         if let Receipt::Panic {
-            ref mut contract_id, ..
+            ref mut contract_id,
+            ..
         } = self
         {
             *contract_id = _contract_id;
@@ -210,7 +247,15 @@ impl Receipt {
         Self::Revert { id, ra, pc, is }
     }
 
-    pub const fn log(id: ContractId, ra: Word, rb: Word, rc: Word, rd: Word, pc: Word, is: Word) -> Self {
+    pub const fn log(
+        id: ContractId,
+        ra: Word,
+        rb: Word,
+        rc: Word,
+        rd: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Log {
             id,
             ra,
@@ -261,7 +306,14 @@ impl Receipt {
         }
     }
 
-    pub const fn transfer(id: ContractId, to: ContractId, amount: Word, asset_id: AssetId, pc: Word, is: Word) -> Self {
+    pub const fn transfer(
+        id: ContractId,
+        to: ContractId,
+        amount: Word,
+        asset_id: AssetId,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Transfer {
             id,
             to,
@@ -557,7 +609,13 @@ impl Receipt {
                 nonce,
                 data,
                 ..
-            } => Some(compute_message_id(sender, recipient, nonce, *amount, data.as_slice())),
+            } => Some(compute_message_id(
+                sender,
+                recipient,
+                nonce,
+                *amount,
+                data.as_slice(),
+            )),
             _ => None,
         }
     }
@@ -608,7 +666,13 @@ impl Receipt {
 }
 
 fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
-    id.and_then(|id| if id != &ContractId::zeroed() { Some(id) } else { None })
+    id.and_then(|id| {
+        if id != &ContractId::zeroed() {
+            Some(id)
+        } else {
+            None
+        }
+    })
 }
 
 impl SizedBytes for Receipt {

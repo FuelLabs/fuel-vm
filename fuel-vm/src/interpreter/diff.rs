@@ -4,35 +4,49 @@
 //! This module is experimental work in progress and currently only used in testing
 //! although it could potentially stabilize to be used in production.
 
-use std::any::Any;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::ops::AddAssign;
-use std::sync::Arc;
+use std::{
+    any::Any,
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    fmt::Debug,
+    hash::Hash,
+    ops::AddAssign,
+    sync::Arc,
+};
 
 use fuel_asm::Word;
-use fuel_storage::Mappable;
-use fuel_storage::MerkleRootStorage;
-use fuel_storage::StorageInspect;
-use fuel_storage::StorageMutate;
-use fuel_tx::Contract;
-use fuel_tx::Receipt;
+use fuel_storage::{
+    Mappable,
+    MerkleRootStorage,
+    StorageInspect,
+    StorageMutate,
+};
+use fuel_tx::{
+    Contract,
+    Receipt,
+};
 use fuel_types::AssetId;
 
-use crate::call::CallFrame;
-use crate::context::Context;
-use crate::storage::ContractsAssets;
-use crate::storage::ContractsInfo;
-use crate::storage::ContractsRawCode;
-use crate::storage::ContractsState;
+use crate::{
+    call::CallFrame,
+    context::Context,
+    storage::{
+        ContractsAssets,
+        ContractsInfo,
+        ContractsRawCode,
+        ContractsState,
+    },
+};
 
-use super::balances::Balance;
-use super::receipts::ReceiptsCtx;
-use super::ExecutableTransaction;
-use super::Interpreter;
-use super::PanicContext;
+use super::{
+    balances::Balance,
+    receipts::ReceiptsCtx,
+    ExecutableTransaction,
+    Interpreter,
+    PanicContext,
+};
 use storage::*;
 
 mod storage;
@@ -214,7 +228,9 @@ where
 {
     let a_keys: HashSet<_> = a.keys().collect();
     let b_keys: HashSet<_> = b.keys().collect();
-    capture_map_state_inner(a, &a_keys, b, &b_keys).map(change).collect()
+    capture_map_state_inner(a, &a_keys, b, &b_keys)
+        .map(change)
+        .collect()
 }
 
 fn capture_map_state_inner<'iter, K, V>(
@@ -281,7 +297,10 @@ where
         })
     })
 }
-fn capture_vec_state_inner<'iter, I, T>(a: I, b: I) -> impl Iterator<Item = (usize, Option<T>, Option<T>)> + 'iter
+fn capture_vec_state_inner<'iter, I, T>(
+    a: I,
+    b: I,
+) -> impl Iterator<Item = (usize, Option<T>, Option<T>)> + 'iter
 where
     T: 'static + std::cmp::PartialEq + Clone,
     I: Iterator<Item = &'iter T> + 'iter,
@@ -298,15 +317,23 @@ where
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
-    /// The diff function generates a diff of VM state, represented by the Diff struct, between two VMs internal states.
+    /// The diff function generates a diff of VM state, represented by the Diff struct,
+    /// between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
     where
         Tx: PartialEq + Clone + Debug + 'static,
     {
-        let mut diff = Diff { changes: Vec::new() };
-        let registers = capture_buffer_state(self.registers.iter(), other.registers.iter(), Change::Register);
+        let mut diff = Diff {
+            changes: Vec::new(),
+        };
+        let registers = capture_buffer_state(
+            self.registers.iter(),
+            other.registers.iter(),
+            Change::Register,
+        );
         diff.changes.extend(registers);
-        let frames = capture_vec_state(self.frames.iter(), other.frames.iter(), Change::Frame);
+        let frames =
+            capture_vec_state(self.frames.iter(), other.frames.iter(), Change::Frame);
         diff.changes.extend(frames);
         let receipts = capture_vec_state(
             self.receipts.as_ref().iter(),
@@ -314,7 +341,11 @@ impl<S, Tx> Interpreter<S, Tx> {
             Change::Receipt,
         );
         diff.changes.extend(receipts);
-        let balances = capture_map_state(self.balances.as_ref(), other.balances.as_ref(), Change::Balance);
+        let balances = capture_map_state(
+            self.balances.as_ref(),
+            other.balances.as_ref(),
+            Change::Balance,
+        );
         diff.changes.extend(balances);
 
         let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
@@ -365,9 +396,13 @@ impl<S, Tx> Interpreter<S, Tx> {
         Tx: Clone + 'static,
     {
         match change {
-            Change::Register(Previous(VecState { index, value })) => self.registers[*index] = *value,
+            Change::Register(Previous(VecState { index, value })) => {
+                self.registers[*index] = *value
+            }
             Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
-            Change::Receipt(Previous(value)) => invert_receipts_ctx(&mut self.receipts, value),
+            Change::Receipt(Previous(value)) => {
+                invert_receipts_ctx(&mut self.receipts, value)
+            }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
             Change::Memory(Previous(Memory { start, bytes })) => {
                 self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])

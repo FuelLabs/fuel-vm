@@ -1,15 +1,29 @@
-use crate::input::fmt_as_field;
-use crate::input::sizes::MessageSizes;
-use crate::transaction::types::input::AsField;
+use crate::{
+    input::{
+        fmt_as_field,
+        sizes::MessageSizes,
+    },
+    transaction::types::input::AsField,
+};
 use derivative::Derivative;
-use fuel_types::bytes::SizedBytes;
-use fuel_types::{bytes, Address, MemLayout, MemLocType, MessageId, Nonce, Word};
+use fuel_types::{
+    bytes,
+    bytes::SizedBytes,
+    Address,
+    MemLayout,
+    MemLocType,
+    MessageId,
+    Nonce,
+    Word,
+};
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
-pub type MessageDataPredicate = Message<specifications::MessageData<specifications::Predicate>>;
+pub type MessageDataPredicate =
+    Message<specifications::MessageData<specifications::Predicate>>;
 pub type MessageCoinSigned = Message<specifications::MessageCoin<specifications::Signed>>;
-pub type MessageCoinPredicate = Message<specifications::MessageCoin<specifications::Predicate>>;
+pub type MessageCoinPredicate =
+    Message<specifications::MessageCoin<specifications::Predicate>>;
 
 type Empty = ();
 
@@ -33,45 +47,48 @@ pub trait MessageSpecification: private::Seal {
 }
 
 pub mod specifications {
-    use super::{Empty, MessageSpecification};
+    use super::{
+        Empty,
+        MessageSpecification,
+    };
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
-    /// signature(witness) should be stored under the `witness_index` index in the `witnesses`
-    /// vector of the [`crate::Transaction`].
+    /// signature(witness) should be stored under the `witness_index` index in the
+    /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct Signed;
 
-    /// The type means that the message is not signed, and the `owner` is a `predicate` bytecode.
-    /// The merkle root from the `predicate` should be equal to the `owner`.
+    /// The type means that the message is not signed, and the `owner` is a `predicate`
+    /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct Predicate;
 
-    /// The retrayable message metadata. It is a message that can't be used as a coin to pay for
-    /// fees but can be used to pass metadata to the contract. It may have a non-zero `value`
-    /// that will be transferred to the contract as a native asset during the execution.
-    /// If the execution of the transaction fails, the metadata is not consumed and can be
-    /// used later until successful execution.
+    /// The retrayable message metadata. It is a message that can't be used as a coin to
+    /// pay for fees but can be used to pass metadata to the contract. It may have a
+    /// non-zero `value` that will be transferred to the contract as a native asset
+    /// during the execution. If the execution of the transaction fails, the metadata
+    /// is not consumed and can be used later until successful execution.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
-        type Witness = u8;
         type Data = Vec<u8>;
         type Predicate = Empty;
         type PredicateData = Empty;
         type PredicateGasUsed = Empty;
+        type Witness = u8;
     }
 
     impl MessageSpecification for MessageData<Predicate> {
-        type Witness = Empty;
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
+        type Witness = Empty;
     }
 
     /// The spendable message acts as a standard coin.
@@ -80,36 +97,37 @@ pub mod specifications {
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageCoin<Signed> {
-        type Witness = u8;
         type Data = Empty;
         type Predicate = Empty;
         type PredicateData = Empty;
         type PredicateGasUsed = Empty;
+        type Witness = u8;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
-        type Witness = Empty;
         type Data = Empty;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
+        type Witness = Empty;
     }
 
-    /// The type is used to represent the full message. It is used during the deserialization of
-    /// the message to determine the final type.
-    /// If the `data` field is empty, it should be transformed into [`MessageData`]. Otherwise
-    /// into [`MessageCoin`].
-    /// If the `predicate` is empty, the usage rules should be [`Signed`], else [`Predicate`].
+    /// The type is used to represent the full message. It is used during the
+    /// deserialization of the message to determine the final type.
+    /// If the `data` field is empty, it should be transformed into [`MessageData`].
+    /// Otherwise into [`MessageCoin`].
+    /// If the `predicate` is empty, the usage rules should be [`Signed`], else
+    /// [`Predicate`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct Full;
 
     impl MessageSpecification for Full {
-        type Witness = u8;
         type Data = Vec<u8>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
+        type Witness = u8;
     }
 }
 
@@ -117,14 +135,14 @@ pub mod specifications {
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage.
 ///
 /// The specification defines the layout of the [`Message`] in the serialized form for
-/// the `fuel-vm`. But on the business logic level, we don't use all fields at the same time.
-/// It is why in the [`super::Input`] the message is represented by several forms based on
-/// the usage context. Leaving some fields empty reduces the memory consumption by the
-/// structure and erases the empty useless fields.
+/// the `fuel-vm`. But on the business logic level, we don't use all fields at the same
+/// time. It is why in the [`super::Input`] the message is represented by several forms
+/// based on the usage context. Leaving some fields empty reduces the memory consumption
+/// by the structure and erases the empty useless fields.
 ///
 /// The [`MessageSpecification`] trait specifies the sub-messages for the corresponding
-/// usage context. It allows us to write the common logic of all sub-messages without the overhead
-/// and duplication.
+/// usage context. It allows us to write the common logic of all sub-messages without the
+/// overhead and duplication.
 ///
 /// Sub-messages from [`specifications`]:
 /// - [`specifications::MessageData`] with [`specifications::Signed`] usage rules.
@@ -198,11 +216,12 @@ where
         } else {
             0
         };
-        let predicate_date_size = if let Some(predicate_data) = self.predicate_data.as_field() {
-            bytes::padded_len(predicate_data.as_slice())
-        } else {
-            0
-        };
+        let predicate_date_size =
+            if let Some(predicate_data) = self.predicate_data.as_field() {
+                bytes::padded_len(predicate_data.as_slice())
+            } else {
+                0
+            };
 
         MessageSizes::LEN + data_size + predicate_size + predicate_date_size
     }
@@ -216,7 +235,7 @@ where
     fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
         let serialized_size = self.serialized_size();
         if full_buf.len() < serialized_size {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let Self {
@@ -250,12 +269,17 @@ where
         };
         bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
 
-        let predicate_gas_used = if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
-            *predicate_gas_used
-        } else {
-            0
-        };
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used), predicate_gas_used as Word);
+        let predicate_gas_used =
+            if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
+                *predicate_gas_used
+            } else {
+                0
+            };
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_gas_used),
+            predicate_gas_used as Word,
+        );
 
         let data_size = if let Some(data) = data.as_field() {
             data.len()
@@ -269,14 +293,22 @@ where
         } else {
             0
         };
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_len), predicate_len as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_len),
+            predicate_len as Word,
+        );
 
         let predicate_data_len = if let Some(predicate_data) = predicate_data.as_field() {
             predicate_data.len()
         } else {
             0
         };
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.predicate_data_len), predicate_data_len as Word);
+        bytes::store_number_at(
+            buf,
+            S::layout(S::LAYOUT.predicate_data_len),
+            predicate_data_len as Word,
+        );
 
         let buf = full_buf.get_mut(LEN..).ok_or(bytes::eof())?;
         let buf = if let Some(data) = data.as_field() {
@@ -329,16 +361,20 @@ where
             *witness_index_field = witness_index;
         }
 
-        let predicate_gas_used = bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
+        let predicate_gas_used =
+            bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             *predicate_gas_used_field = predicate_gas_used;
         }
 
         let data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.data_len));
-        let predicate_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
-        let predicate_data_len = bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
+        let predicate_len =
+            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
+        let predicate_data_len =
+            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
 
-        let (size, data, buf) = bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
+        let (size, data, buf) =
+            bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
         n += size;
         if let Some(data_field) = self.data.as_mut_field() {
             *data_field = data;
@@ -350,7 +386,8 @@ where
             *predicate_field = predicate;
         }
 
-        let (size, predicate_data, _) = bytes::restore_raw_bytes(buf, predicate_data_len)?;
+        let (size, predicate_data, _) =
+            bytes::restore_raw_bytes(buf, predicate_data_len)?;
         n += size;
         if let Some(predicate_data_field) = self.predicate_data.as_mut_field() {
             *predicate_data_field = predicate_data;

@@ -1,12 +1,19 @@
 //! Runtime interpreter error implementation
 
-use fuel_asm::{PanicInstruction, PanicReason, RawInstruction};
+use fuel_asm::{
+    PanicInstruction,
+    PanicReason,
+    RawInstruction,
+};
 use fuel_tx::CheckError;
 use thiserror::Error;
 
-use std::convert::Infallible as StdInfallible;
-use std::error::Error as StdError;
-use std::{fmt, io};
+use std::{
+    convert::Infallible as StdInfallible,
+    error::Error as StdError,
+    fmt,
+    io,
+};
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -44,7 +51,9 @@ impl InterpreterError {
     /// Describe the error as recoverable or halt.
     pub fn from_runtime(error: RuntimeError, instruction: RawInstruction) -> Self {
         match error {
-            RuntimeError::Recoverable(reason) => Self::PanicInstruction(PanicInstruction::error(reason, instruction)),
+            RuntimeError::Recoverable(reason) => {
+                Self::PanicInstruction(PanicInstruction::error(reason, instruction))
+            }
             _ => Self::from(error),
         }
     }
@@ -263,7 +272,9 @@ impl From<PredicateVerificationFailed> for CheckError {
 impl From<InterpreterError> for PredicateVerificationFailed {
     fn from(error: InterpreterError) -> Self {
         match error {
-            error if error.panic_reason() == Some(PanicReason::OutOfGas) => PredicateVerificationFailed::OutOfGas,
+            error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
+                PredicateVerificationFailed::OutOfGas
+            }
             InterpreterError::Io(e) => PredicateVerificationFailed::Io(e),
             _ => PredicateVerificationFailed::False,
         }

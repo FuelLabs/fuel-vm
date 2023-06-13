@@ -57,7 +57,15 @@ fn get_chain_id(context: Context, chain_id: u64) {
     if context.is_internal() {
         frames.push(CallFrame::default());
     }
-    metadata(&context, &params, &frames, RegMut::new(&mut pc), &mut result, imm).unwrap();
+    metadata(
+        &context,
+        &params,
+        &frames,
+        RegMut::new(&mut pc),
+        &mut result,
+        imm,
+    )
+    .unwrap();
 
     assert_eq!(result, chain_id);
 }

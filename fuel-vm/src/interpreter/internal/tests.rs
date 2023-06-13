@@ -1,11 +1,21 @@
-use crate::constraints::reg_key::RegMut;
-use crate::interpreter::internal::{external_asset_id_balance_sub, set_variable_output};
-use crate::prelude::*;
+use crate::{
+    constraints::reg_key::RegMut,
+    interpreter::internal::{
+        external_asset_id_balance_sub,
+        set_variable_output,
+    },
+    prelude::*,
+};
 use fuel_asm::op;
-use fuel_tx::field::Outputs;
-use fuel_tx::TransactionBuilder;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_tx::{
+    field::Outputs,
+    TransactionBuilder,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 use std::io::Write;
 
 use super::inc_pc;
@@ -27,7 +37,14 @@ fn external_balance() {
     let mut tx = TransactionBuilder::script(script, Default::default());
 
     balances.iter().copied().for_each(|(asset, amount)| {
-        tx.add_unsigned_coin_input(rng.gen(), rng.gen(), amount, asset, rng.gen(), maturity);
+        tx.add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            amount,
+            asset,
+            rng.gen(),
+            maturity,
+        );
     });
 
     let tx = tx
@@ -40,11 +57,36 @@ fn external_balance() {
     vm.init_script(tx).expect("Failed to init VM!");
 
     for (asset_id, amount) in balances {
-        assert!(external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, amount + 1).is_err());
-        external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, amount - 10).unwrap();
-        assert!(external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 11).is_err());
-        external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10).unwrap();
-        assert!(external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 1).is_err());
+        assert!(external_asset_id_balance_sub(
+            &mut vm.balances,
+            &mut vm.memory,
+            &asset_id,
+            amount + 1
+        )
+        .is_err());
+        external_asset_id_balance_sub(
+            &mut vm.balances,
+            &mut vm.memory,
+            &asset_id,
+            amount - 10,
+        )
+        .unwrap();
+        assert!(external_asset_id_balance_sub(
+            &mut vm.balances,
+            &mut vm.memory,
+            &asset_id,
+            11
+        )
+        .is_err());
+        external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10)
+            .unwrap();
+        assert!(external_asset_id_balance_sub(
+            &mut vm.balances,
+            &mut vm.memory,
+            &asset_id,
+            1
+        )
+        .is_err());
     }
 }
 
@@ -79,7 +121,14 @@ fn variable_output_updates_in_memory() {
     // increase variable output
     let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
 
-    set_variable_output(&mut vm.tx, &mut vm.memory, vm.params.tx_offset(), 0, variable).unwrap();
+    set_variable_output(
+        &mut vm.tx,
+        &mut vm.memory,
+        vm.params.tx_offset(),
+        0,
+        variable,
+    )
+    .unwrap();
 
     // verify the referenced tx output is updated properly
     assert!(matches!(
@@ -91,7 +140,8 @@ fn variable_output_updates_in_memory() {
 
     // verify the vm memory is updated properly
     let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
-    let mut mem_output = Output::variable(Default::default(), Default::default(), Default::default());
+    let mut mem_output =
+        Output::variable(Default::default(), Default::default(), Default::default());
     let _ = mem_output.write(&vm.memory()[position..]).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
 }

@@ -1,7 +1,14 @@
-use fuel_crypto::borrown::Borrown;
-use fuel_crypto::{Keystore, Message, SecretKey, Signer};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
+use fuel_crypto::{
+    borrown::Borrown,
+    Keystore,
+    Message,
+    SecretKey,
+    Signer,
+};
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
 
 use std::io;
 

@@ -1,7 +1,9 @@
 //! Tools for gas instrumentalization
 
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{
+    ops::Deref,
+    sync::Arc,
+};
 
 use fuel_types::Word;
 
@@ -93,12 +95,12 @@ impl GasUnit {
 
         // the values are defined empirically from tests performed in fuel-core-benches.
         //
-        // the worst case scenario of execution is a memory write for chunks larger than the OS
-        // page size, that is commonly set to `4096` bytes.
+        // the worst case scenario of execution is a memory write for chunks larger than
+        // the OS page size, that is commonly set to `4096` bytes.
         //
-        // the storage, as expected from a production-ready implementation, didn't present alarming
-        // computing power demand from increased operations because tree-seek should be, in worst
-        // case scenario, logarithmic.
+        // the storage, as expected from a production-ready implementation, didn't present
+        // alarming computing power demand from increased operations because
+        // tree-seek should be, in worst case scenario, logarithmic.
         match self {
             // base price for pc inc
             Atom(_) => 10,
@@ -114,17 +116,22 @@ impl GasUnit {
             Hash(_) => 300,
             // memory ownership branching check
             MemoryOwnership(_) => 20,
-            // memory read per page. should increase exponentially to the number of used pages
+            // memory read per page. should increase exponentially to the number of used
+            // pages
             MemoryRead(_) => 15,
-            // memory write per page. should increase exponentially to the number of used pages
+            // memory write per page. should increase exponentially to the number of used
+            // pages
             MemoryWrite(_) => 20,
             // native ecrecover operation
             Recover(_) => 950,
-            // storage read. the storage backend should offer logarithmic worst case scenarios
+            // storage read. the storage backend should offer logarithmic worst case
+            // scenarios
             StorageReadTree(_) => 75,
-            // storage write. the storage backend should offer logarithmic worst case scenarios
+            // storage write. the storage backend should offer logarithmic worst case
+            // scenarios
             StorageWriteTree(_) => 150,
-            // storage write word. the storage backend should offer logarithmic worst case scenarios
+            // storage write word. the storage backend should offer logarithmic worst case
+            // scenarios
             StorageWriteWord(_) => 130,
             // accumulated cost for different operations
             Accumulated(c) => *c,

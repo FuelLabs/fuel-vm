@@ -1,15 +1,38 @@
 use crate::consts::*;
-use fuel_asm::{op, GMArgs, GTFArgs, RegId};
+use fuel_asm::{
+    op,
+    GMArgs,
+    GTFArgs,
+    RegId,
+};
 use fuel_crypto::Hasher;
 use fuel_tx::{
-    field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
-    Finalizable, Receipt, Script, TransactionBuilder,
+    field::{
+        Inputs,
+        Outputs,
+        ReceiptsRoot,
+        Script as ScriptField,
+        Witnesses,
+    },
+    Finalizable,
+    Receipt,
+    Script,
+    TransactionBuilder,
 };
-use fuel_types::{bytes, BlockHeight};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fuel_types::{
+    bytes,
+    BlockHeight,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
-use crate::prelude::GasCosts;
-use crate::prelude::*;
+use crate::prelude::{
+    GasCosts,
+    *,
+};
 
 #[test]
 fn metadata() {
@@ -57,9 +80,11 @@ fn metadata() {
         .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
-        .transact(tx)
-        .is_success());
+    assert!(
+        Transactor::new(&mut storage, Default::default(), gas_costs.clone())
+            .transact(tx)
+            .is_success()
+    );
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -69,16 +94,23 @@ fn metadata() {
         op::move_(0x10, RegId::HP),
     ];
 
-    contract_metadata.as_ref().iter().enumerate().for_each(|(i, b)| {
-        routine_call_metadata_contract.push(op::movi(0x11, *b as Immediate18));
-        routine_call_metadata_contract.push(op::sb(0x10, 0x11, i as Immediate12));
-    });
+    contract_metadata
+        .as_ref()
+        .iter()
+        .enumerate()
+        .for_each(|(i, b)| {
+            routine_call_metadata_contract.push(op::movi(0x11, *b as Immediate18));
+            routine_call_metadata_contract.push(op::sb(0x10, 0x11, i as Immediate12));
+        });
 
     routine_call_metadata_contract.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     routine_call_metadata_contract.push(op::ret(RegId::ONE));
 
     let salt: Salt = rng.gen();
-    let program: Witness = routine_call_metadata_contract.into_iter().collect::<Vec<u8>>().into();
+    let program: Witness = routine_call_metadata_contract
+        .into_iter()
+        .collect::<Vec<u8>>()
+        .into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
@@ -98,9 +130,11 @@ fn metadata() {
         .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
-        .transact(tx)
-        .is_success());
+    assert!(
+        Transactor::new(&mut storage, Default::default(), gas_costs.clone())
+            .transact(tx)
+            .is_success()
+    );
 
     let mut inputs = vec![];
     let mut outputs = vec![];
@@ -129,15 +163,20 @@ fn metadata() {
         op::move_(0x10, RegId::HP),
     ];
 
-    contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
-        script.push(op::movi(0x11, *b as Immediate18));
-        script.push(op::sb(0x10, 0x11, i as Immediate12));
-    });
+    contract_call
+        .as_ref()
+        .iter()
+        .enumerate()
+        .for_each(|(i, b)| {
+            script.push(op::movi(0x11, *b as Immediate18));
+            script.push(op::sb(0x10, 0x11, i as Immediate12));
+        });
 
     script.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     script.push(op::ret(RegId::ONE));
 
-    #[allow(clippy::iter_cloned_collect)] // collection is also perfomring a type conversion
+    #[allow(clippy::iter_cloned_collect)]
+    // collection is also perfomring a type conversion
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
@@ -170,7 +209,9 @@ fn metadata() {
     assert_eq!(0, ra);
 
     let contract_call = Hasher::hash(contract_call.as_ref());
-    let digest = receipts[4].digest().expect("GetCaller should return contract Id");
+    let digest = receipts[4]
+        .digest()
+        .expect("GetCaller should return contract Id");
     assert_eq!(&contract_call, digest);
 }
 
@@ -229,7 +270,8 @@ fn get_transaction_fields() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+    let contract_id =
+        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
@@ -244,7 +286,8 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
+    let owner =
+        Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -290,7 +333,14 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), rng.gen(), maturity)
+        .add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            input,
+            AssetId::zeroed(),
+            rng.gen(),
+            maturity,
+        )
         .add_input(input_coin_predicate)
         .add_input(Input::contract(
             rng.gen(),
@@ -300,11 +350,28 @@ fn get_transaction_fields() {
             contract_id,
         ))
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
-        .add_output(Output::contract(contract_input_index, rng.gen(), state_root))
+        .add_output(Output::contract(
+            contract_input_index,
+            rng.gen(),
+            state_root,
+        ))
         .add_witness(Witness::from(b"some-data".to_vec()))
-        .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), message_amount, message_data.clone())
+        .add_unsigned_message_input(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            message_amount,
+            message_data.clone(),
+        )
         .add_input(message_predicate)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
+        .add_unsigned_coin_input(
+            rng.gen(),
+            rng.gen(),
+            asset_amt,
+            asset,
+            rng.gen(),
+            maturity,
+        )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .with_params(params)
         .finalize_checked(height, &GasCosts::free());
@@ -313,9 +380,12 @@ fn get_transaction_fields() {
     let outputs = tx.as_ref().outputs();
     let witnesses = tx.as_ref().witnesses();
 
-    let inputs_bytes: Vec<Vec<u8>> = inputs.iter().map(|i| i.clone().to_bytes()).collect();
-    let outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
-    let witnesses_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.clone().to_bytes()).collect();
+    let inputs_bytes: Vec<Vec<u8>> =
+        inputs.iter().map(|i| i.clone().to_bytes()).collect();
+    let outputs_bytes: Vec<Vec<u8>> =
+        outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let witnesses_bytes: Vec<Vec<u8>> =
+        witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
     let receipts_root = tx.as_ref().receipts_root();
 
@@ -352,7 +422,8 @@ fn get_transaction_fields() {
     // hardcoded metadata of script len so it can be checked at runtime
     let script_reserved_words = 300 * WORD_SIZE;
     let script_offset = params.tx_offset() + Script::script_offset_static();
-    let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
+    let script_data_offset =
+        script_offset + bytes::padded_len_usize(script_reserved_words);
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
     // Maybe use predicates to check create context?
@@ -783,7 +854,9 @@ fn get_transaction_fields() {
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);
 }

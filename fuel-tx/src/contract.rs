@@ -1,23 +1,39 @@
-use crate::{CheckError, StorageSlot, Transaction};
+use crate::{
+    CheckError,
+    StorageSlot,
+    Transaction,
+};
 
 use derivative::Derivative;
 use fuel_crypto::Hasher;
-use fuel_merkle::binary::in_memory::MerkleTree as BinaryMerkleTree;
-use fuel_merkle::sparse::{in_memory::MerkleTree as SparseMerkleTree, MerkleTreeKey};
-use fuel_types::{fmt_truncated_hex, Bytes32, ContractId, Salt};
+use fuel_merkle::{
+    binary::in_memory::MerkleTree as BinaryMerkleTree,
+    sparse::{
+        in_memory::MerkleTree as SparseMerkleTree,
+        MerkleTreeKey,
+    },
+};
+use fuel_types::{
+    fmt_truncated_hex,
+    Bytes32,
+    ContractId,
+    Salt,
+};
 
 use alloc::vec::Vec;
-use core::iter;
-use core::ops::Deref;
+use core::{
+    iter,
+    ops::Deref,
+};
 
-/// The target size of Merkle tree leaves in bytes. Contract code will will be divided into chunks
-/// of this size and pushed to the Merkle tree.
+/// The target size of Merkle tree leaves in bytes. Contract code will will be divided
+/// into chunks of this size and pushed to the Merkle tree.
 ///
 /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id
 const LEAF_SIZE: usize = 16 * 1024;
-/// In the event that contract code cannot be divided evenly by the `LEAF_SIZE`, the remainder must
-/// be padded to the nearest multiple of 8 bytes. Padding is achieved by repeating the
-/// `PADDING_BYTE`.
+/// In the event that contract code cannot be divided evenly by the `LEAF_SIZE`, the
+/// remainder must be padded to the nearest multiple of 8 bytes. Padding is achieved by
+/// repeating the `PADDING_BYTE`.
 const PADDING_BYTE: u8 = 0u8;
 const MULTIPLE: usize = 8;
 
@@ -30,13 +46,16 @@ fn next_multiple<const N: usize>(x: usize) -> usize {
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Deployable representation of a contract code.
-pub struct Contract(#[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>);
+pub struct Contract(
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>,
+);
 
 impl Contract {
-    /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state root.
+    /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state
+    /// root.
     pub const EMPTY_CONTRACT_ID: ContractId = ContractId::new([
-        55, 187, 13, 108, 165, 51, 58, 230, 74, 109, 215, 229, 33, 69, 82, 120, 81, 4, 85, 54, 172, 30, 84, 115, 226,
-        164, 0, 99, 103, 189, 154, 243,
+        55, 187, 13, 108, 165, 51, 58, 230, 74, 109, 215, 229, 33, 69, 82, 120, 81, 4,
+        85, 54, 172, 30, 84, 115, 226, 164, 0, 99, 103, 189, 154, 243,
     ]);
 
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
@@ -75,9 +94,12 @@ impl Contract {
     where
         I: Iterator<Item = &'a StorageSlot>,
     {
-        let root = SparseMerkleTree::root_from_set(
-            storage_slots.map(|slot| (MerkleTreeKey::new(*slot.key().deref()), *slot.value().deref())),
-        );
+        let root = SparseMerkleTree::root_from_set(storage_slots.map(|slot| {
+            (
+                MerkleTreeKey::new(*slot.key().deref()),
+                *slot.value().deref(),
+            )
+        }));
 
         root.into()
     }
@@ -152,16 +174,25 @@ impl TryFrom<&Transaction> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_types::{bytes::WORD_SIZE, Bytes64};
+    use fuel_types::{
+        bytes::WORD_SIZE,
+        Bytes64,
+    };
     use itertools::Itertools;
     use quickcheck_macros::quickcheck;
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        RngCore,
+        SeedableRng,
+    };
     use rstest::rstest;
 
     // safe-guard against breaking changes to the code root calculation for valid
     // sizes of bytecode (multiples of instruction size in bytes (half-word))
     #[rstest]
-    fn code_root_snapshot(#[values(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100)] instructions: usize) {
+    fn code_root_snapshot(
+        #[values(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100)] instructions: usize,
+    ) {
         let mut rng = StdRng::seed_from_u64(100);
         let code_len = instructions * WORD_SIZE / 2;
         let mut code = alloc::vec![0u8; code_len];
@@ -194,8 +225,13 @@ mod tests {
     }
 
     #[rstest]
-    fn state_root_snapshot(#[values(Vec::new(), vec![Bytes64::new([1u8; 64])])] state_slot_bytes: Vec<Bytes64>) {
-        let slots: Vec<StorageSlot> = state_slot_bytes.iter().map(Into::into).collect_vec();
+    fn state_root_snapshot(
+        #[values(Vec::new(), vec![Bytes64::new([1u8; 64])])] state_slot_bytes: Vec<
+            Bytes64,
+        >,
+    ) {
+        let slots: Vec<StorageSlot> =
+            state_slot_bytes.iter().map(Into::into).collect_vec();
         let state_root = Contract::initial_state_root(&mut slots.iter());
         // take root snapshot
         insta::with_settings!(

@@ -1,7 +1,16 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use fuel_merkle::common::Bytes32;
-use fuel_merkle::sparse::in_memory;
-use fuel_merkle::sparse::MerkleTreeKey;
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
+use fuel_merkle::{
+    common::Bytes32,
+    sparse::{
+        in_memory,
+        MerkleTreeKey,
+    },
+};
 use rand::Rng;
 
 fn random_bytes32<R>(rng: &mut R) -> Bytes32
@@ -54,8 +63,10 @@ where
 }
 
 fn sparse_merkle_tree(c: &mut Criterion) {
-    use rand::rngs::StdRng;
-    use rand::SeedableRng;
+    use rand::{
+        rngs::StdRng,
+        SeedableRng,
+    };
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));

@@ -1,5 +1,7 @@
-use super::consts::*;
-use super::Input;
+use super::{
+    consts::*,
+    Input,
+};
 
 #[cfg(feature = "std")]
 use fuel_types::Word;

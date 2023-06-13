@@ -34,7 +34,8 @@ impl<const N: usize> Msb for [u8; N] {
         let byte_index = index / 8;
         // The bit within the containing byte
         let byte_bit_index = index % 8;
-        self.get(byte_index).and_then(|byte| byte.get_bit(byte_bit_index))
+        self.get(byte_index)
+            .and_then(|byte| byte.get_bit(byte_bit_index))
     }
 
     fn common_prefix_count(&self, other: &Self) -> usize {
@@ -45,7 +46,7 @@ impl<const N: usize> Msb for [u8; N] {
             // similar bits from left to right. For equal bytes, this will be 8.
             count += (byte1 ^ byte2).leading_zeros();
             if byte1 != byte2 {
-                break;
+                break
             }
         }
         count as usize
@@ -54,7 +55,13 @@ impl<const N: usize> Msb for [u8; N] {
 
 #[cfg(test)]
 mod test {
-    use crate::common::{Bytes1, Bytes2, Bytes4, Bytes8, Msb};
+    use crate::common::{
+        Bytes1,
+        Bytes2,
+        Bytes4,
+        Bytes8,
+        Msb,
+    };
     use core::mem::size_of;
 
     #[test]
@@ -113,7 +120,8 @@ mod test {
         const NUM_BITS: usize = size_of::<Bytes8>() * 8;
 
         let bytes: Bytes8 = [
-            0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010,
+            0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010,
+            0b10101010, 0b10101010,
         ];
         let expected_n = u64::from_be_bytes(bytes);
 

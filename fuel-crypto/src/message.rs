@@ -1,6 +1,8 @@
 use crate::Hasher;
-use core::fmt;
-use core::ops::Deref;
+use core::{
+    fmt,
+    ops::Deref,
+};
 pub use fuel_types::Bytes32;
 
 /// Normalized signature message

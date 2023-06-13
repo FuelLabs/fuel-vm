@@ -1,7 +1,13 @@
-use crate::common::{Bytes32, Bytes8};
+use crate::common::{
+    Bytes32,
+    Bytes8,
+};
 
 use alloc::string::String;
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
 
 pub trait KeyFormatting {
     type PrettyType: fmt::Display;

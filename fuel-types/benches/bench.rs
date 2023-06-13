@@ -1,4 +1,8 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
 
 #[cfg(feature = "unsafe")]
 use criterion::black_box;
@@ -67,7 +71,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let size = 64 * 1024 * 1024;
     let mut memory = vec![0u8; size];
 
-    for i in [1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431] {
+    for i in [
+        1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431,
+    ] {
         c.bench_with_input(BenchmarkId::new("copy_nonover", i), &i, |b, i| {
             b.iter(|| {
                 let src = &memory[0_usize] as *const u8;
@@ -79,14 +85,18 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             })
         });
     }
-    for i in [1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431] {
+    for i in [
+        1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431,
+    ] {
         c.bench_with_input(BenchmarkId::new("copy", i), &i, |b, i| {
             b.iter(|| {
                 memory.copy_within(0..*i, size / 2_usize);
             })
         });
     }
-    for i in [1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431] {
+    for i in [
+        1, 4, 16, 64, 512, 8192, 32768, 131072, 1048576, 16777216, 33554431,
+    ] {
         c.bench_with_input(BenchmarkId::new("copy_split", i), &i, |b, i| {
             b.iter(|| {
                 let (a, b) = memory.split_at_mut(size / 2_usize);

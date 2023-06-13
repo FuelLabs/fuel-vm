@@ -1,11 +1,25 @@
-use fuel_tx::field::{
-    Inputs, Outputs, ReceiptsRoot, Salt as SaltField, StorageSlots, TxPointer as TxPointerField, Witnesses,
+use fuel_tx::{
+    field::{
+        Inputs,
+        Outputs,
+        ReceiptsRoot,
+        Salt as SaltField,
+        StorageSlots,
+        TxPointer as TxPointerField,
+        Witnesses,
+    },
+    *,
 };
-use fuel_tx::*;
 use fuel_tx_test_helpers::TransactionFactory;
-use fuel_types::bytes::{Deserializable, SerializableVec};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_types::bytes::{
+    Deserializable,
+    SerializableVec,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 // Assert everything is tested. If some of these bools fails, just increase the number of
 // cases
@@ -36,10 +50,17 @@ struct TestedFields {
     output_contract_created_id: bool,
 }
 
-fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
+fn common_parts_create_and_script<Tx: Buildable>(
+    tx: &Tx,
+    bytes: &[u8],
+    cases: &mut TestedFields,
+) {
     tx.inputs().iter().enumerate().for_each(|(idx, i)| {
-        let input_ofs = tx.inputs_offset_at(idx).expect("failed to fetch input offset");
-        let i_p = Input::from_bytes(&bytes[input_ofs..]).expect("failed to deserialize input");
+        let input_ofs = tx
+            .inputs_offset_at(idx)
+            .expect("failed to fetch input offset");
+        let i_p =
+            Input::from_bytes(&bytes[input_ofs..]).expect("failed to deserialize input");
 
         assert_eq!(i, &i_p);
 
@@ -47,7 +68,8 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             cases.utxo_id = true;
 
             let ofs = input_ofs + i.repr().utxo_id_offset().expect("input have utxo_id");
-            let utxo_id_p = UtxoId::from_bytes(&bytes[ofs..]).expect("failed to deserialize utxo id");
+            let utxo_id_p =
+                UtxoId::from_bytes(&bytes[ofs..]).expect("failed to deserialize utxo id");
 
             assert_eq!(utxo_id, &utxo_id_p);
         }
@@ -56,7 +78,8 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
             cases.owner = true;
 
             let ofs = input_ofs + i.repr().owner_offset().expect("input contains owner");
-            let owner_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
+            let owner_p =
+                Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(owner, owner_p);
         }
@@ -67,15 +90,19 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                 cases.asset_id = true;
 
                 let ofs = input_ofs + offset;
-                let asset_id_p = AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + AssetId::LEN]).unwrap();
+                let asset_id_p =
+                    AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + AssetId::LEN])
+                        .unwrap();
 
                 assert_eq!(asset_id, asset_id_p);
             }
         }
 
         if let Some(predicate) = i.input_predicate() {
-            cases.predicate_coin = cases.predicate_coin || i.is_coin() && !predicate.is_empty();
-            cases.predicate_message = cases.predicate_message || i.is_message() && !predicate.is_empty();
+            cases.predicate_coin =
+                cases.predicate_coin || i.is_coin() && !predicate.is_empty();
+            cases.predicate_message =
+                cases.predicate_message || i.is_message() && !predicate.is_empty();
 
             let ofs = input_ofs + i.predicate_offset().expect("input contains predicate");
             let predicate_p = &bytes[ofs..ofs + predicate.len()];
@@ -84,10 +111,14 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         }
 
         if let Some(predicate_data) = i.input_predicate_data() {
-            cases.predicate_data_coin = cases.predicate_data_coin || i.is_coin() && !predicate_data.is_empty();
-            cases.predicate_data_message = cases.predicate_data_message || i.is_message() && !predicate_data.is_empty();
+            cases.predicate_data_coin =
+                cases.predicate_data_coin || i.is_coin() && !predicate_data.is_empty();
+            cases.predicate_data_message = cases.predicate_data_message
+                || i.is_message() && !predicate_data.is_empty();
 
-            let ofs = input_ofs + i.predicate_data_offset().expect("input contains predicate data");
+            let ofs = input_ofs
+                + i.predicate_data_offset()
+                    .expect("input contains predicate data");
             let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
 
             assert_eq!(predicate_data, predicate_data_p);
@@ -101,7 +132,8 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_balance_root_offset()
                     .expect("input contains balance root");
 
-            let balance_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
+            let balance_root_p =
+                Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -114,7 +146,8 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
                     .contract_state_root_offset()
                     .expect("input contains state root");
 
-            let state_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
+            let state_root_p =
+                Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(state_root, state_root_p);
         }
@@ -122,9 +155,14 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(contract_id) = i.contract_id() {
             cases.contract_id = true;
 
-            let ofs = input_ofs + i.repr().contract_id_offset().expect("input contains contract id");
+            let ofs = input_ofs
+                + i.repr()
+                    .contract_id_offset()
+                    .expect("input contains contract id");
 
-            let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
+            let contract_id_p =
+                ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN])
+                    .unwrap();
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -132,9 +170,13 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(sender) = i.sender() {
             cases.sender = true;
 
-            let ofs = input_ofs + i.repr().message_sender_offset().expect("input contains sender");
+            let ofs = input_ofs
+                + i.repr()
+                    .message_sender_offset()
+                    .expect("input contains sender");
 
-            let sender_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
+            let sender_p =
+                Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(sender, sender_p);
         }
@@ -142,9 +184,13 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
         if let Some(recipient) = i.recipient() {
             cases.recipient = true;
 
-            let ofs = input_ofs + i.repr().message_recipient_offset().expect("input contains recipient");
+            let ofs = input_ofs
+                + i.repr()
+                    .message_recipient_offset()
+                    .expect("input contains recipient");
 
-            let recipient_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
+            let recipient_p =
+                Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(recipient, recipient_p);
         }
@@ -160,9 +206,11 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
         if i.is_message() {
             if let Some(predicate) = i.input_predicate() {
-                cases.message_predicate = cases.message_predicate || !predicate.is_empty();
+                cases.message_predicate =
+                    cases.message_predicate || !predicate.is_empty();
 
-                let ofs = input_ofs + i.predicate_offset().expect("input contains predicate");
+                let ofs =
+                    input_ofs + i.predicate_offset().expect("input contains predicate");
                 let predicate_p = &bytes[ofs..ofs + predicate.len()];
 
                 assert_eq!(predicate, predicate_p);
@@ -171,9 +219,12 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
         if i.is_message() {
             if let Some(predicate_data) = i.input_predicate_data() {
-                cases.message_predicate_data = cases.message_predicate_data || !predicate_data.is_empty();
+                cases.message_predicate_data =
+                    cases.message_predicate_data || !predicate_data.is_empty();
 
-                let ofs = input_ofs + i.predicate_data_offset().expect("input contains predicate data");
+                let ofs = input_ofs
+                    + i.predicate_data_offset()
+                        .expect("input contains predicate data");
                 let predicate_data_p = &bytes[ofs..ofs + predicate_data.len()];
 
                 assert_eq!(predicate_data, predicate_data_p);
@@ -186,8 +237,11 @@ fn common_parts_create_and_script<Tx: Buildable>(tx: &Tx, bytes: &[u8], cases: &
 
 fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
     tx.outputs().iter().enumerate().for_each(|(idx, o)| {
-        let output_ofs = tx.outputs_offset_at(idx).expect("failed to fetch output offset");
-        let o_p = Output::from_bytes(&bytes[output_ofs..]).expect("failed to deserialize output");
+        let output_ofs = tx
+            .outputs_offset_at(idx)
+            .expect("failed to fetch output offset");
+        let o_p = Output::from_bytes(&bytes[output_ofs..])
+            .expect("failed to deserialize output");
 
         assert_eq!(o, &o_p);
 
@@ -195,7 +249,8 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             cases.output_to = true;
 
             let ofs = output_ofs + o.repr().to_offset().expect("output have to");
-            let to_p = Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
+            let to_p =
+                Address::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(to, to_p);
         }
@@ -203,8 +258,10 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
         if let Some(asset_id) = o.asset_id() {
             cases.output_asset_id = true;
 
-            let ofs = output_ofs + o.repr().asset_id_offset().expect("output have asset id");
-            let asset_id_p = AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
+            let ofs =
+                output_ofs + o.repr().asset_id_offset().expect("output have asset id");
+            let asset_id_p =
+                AssetId::from_bytes_ref_checked(&bytes[ofs..ofs + Address::LEN]).unwrap();
 
             assert_eq!(asset_id, asset_id_p);
         }
@@ -216,7 +273,8 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
                 + o.repr()
                     .contract_balance_root_offset()
                     .expect("output have balance root");
-            let balance_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
+            let balance_root_p =
+                Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(balance_root, balance_root_p);
         }
@@ -224,7 +282,9 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
         if let Some(state_root) = o.state_root() {
             let ofs = if o.is_contract() {
                 cases.output_contract_state_root = true;
-                o.repr().contract_state_root_offset().expect("output have state root")
+                o.repr()
+                    .contract_state_root_offset()
+                    .expect("output have state root")
             } else {
                 cases.output_contract_created_state_root = true;
                 o.repr()
@@ -233,7 +293,8 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
             };
 
             let ofs = output_ofs + ofs;
-            let state_root_p = Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
+            let state_root_p =
+                Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN]).unwrap();
 
             assert_eq!(state_root, state_root_p);
         }
@@ -241,8 +302,13 @@ fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) 
         if let Some(contract_id) = o.contract_id() {
             cases.output_contract_created_id = true;
 
-            let ofs = output_ofs + o.repr().contract_id_offset().expect("output have contract id");
-            let contract_id_p = ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN]).unwrap();
+            let ofs = output_ofs
+                + o.repr()
+                    .contract_id_offset()
+                    .expect("output have contract id");
+            let contract_id_p =
+                ContractId::from_bytes_ref_checked(&bytes[ofs..ofs + ContractId::LEN])
+                    .unwrap();
 
             assert_eq!(contract_id, contract_id_p);
         }
@@ -254,10 +320,10 @@ fn tx_offset_create() {
     let mut cases = TestedFields::default();
     let number_cases = 100;
 
-    // The seed will define how the transaction factory will generate a new transaction. Different
-    // seeds might implicate on how many of the cases we cover - since we assert coverage for all
-    // scenarios with the boolean variables above, we need to pick a seed that, with low number of
-    // cases, will cover everything.
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Create>::from_seed(1295)
         .take(number_cases)
         .for_each(|(mut tx, _)| {
@@ -266,21 +332,29 @@ fn tx_offset_create() {
             cases.salt = true;
 
             let ofs = tx.salt_offset();
-            let salt_p = Salt::from_bytes_ref_checked(&bytes[ofs..ofs + Salt::LEN]).unwrap();
+            let salt_p =
+                Salt::from_bytes_ref_checked(&bytes[ofs..ofs + Salt::LEN]).unwrap();
 
             assert_eq!(tx.salt(), salt_p);
 
-            tx.storage_slots().iter().enumerate().for_each(|(idx, slot)| {
-                cases.slots = true;
+            tx.storage_slots()
+                .iter()
+                .enumerate()
+                .for_each(|(idx, slot)| {
+                    cases.slots = true;
 
-                let ofs = tx.storage_slots_offset_at(idx).expect("tx with slots contains offsets");
+                    let ofs = tx
+                        .storage_slots_offset_at(idx)
+                        .expect("tx with slots contains offsets");
 
-                let bytes = Bytes64::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes64::LEN]).unwrap();
+                    let bytes =
+                        Bytes64::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes64::LEN])
+                            .unwrap();
 
-                let slot_p = StorageSlot::from(bytes);
+                    let slot_p = StorageSlot::from(bytes);
 
-                assert_eq!(slot, &slot_p);
-            });
+                    assert_eq!(slot, &slot_p);
+                });
 
             common_parts_create_and_script(&tx, &bytes, &mut cases);
         });
@@ -315,10 +389,10 @@ fn tx_offset_script() {
     let mut cases = TestedFields::default();
     let number_cases = 100;
 
-    // The seed will define how the transaction factory will generate a new transaction. Different
-    // seeds might implicate on how many of the cases we cover - since we assert coverage for all
-    // scenarios with the boolean variables above, we need to pick a seed that, with low number of
-    // cases, will cover everything.
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Script>::from_seed(1295)
         .take(number_cases)
         .for_each(|(mut tx, _)| {
@@ -354,25 +428,26 @@ fn tx_offset_mint() {
     let mut cases = TestedFields::default();
     let number_cases = 100;
 
-    // The seed will define how the transaction factory will generate a new transaction. Different
-    // seeds might implicate on how many of the cases we cover - since we assert coverage for all
-    // scenarios with the boolean variables above, we need to pick a seed that, with low number of
-    // cases, will cover everything.
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Mint>::from_seed(1295)
         .take(number_cases)
         .for_each(|mut tx| {
             let bytes = tx.to_bytes();
 
             let ofs = tx.tx_pointer_offset();
-            let tx_pointer_p =
-                TxPointer::from_bytes(&bytes[ofs..ofs + TxPointer::LEN]).expect("Should decode `TxPointer`");
+            let tx_pointer_p = TxPointer::from_bytes(&bytes[ofs..ofs + TxPointer::LEN])
+                .expect("Should decode `TxPointer`");
 
             assert_eq!(*tx.tx_pointer(), tx_pointer_p);
 
             outputs_assert(&tx, &bytes, &mut cases);
         });
 
-    // Actually, `Mint` transaction works only with `Coin`s, but let's test all possible outputs.
+    // Actually, `Mint` transaction works only with `Coin`s, but let's test all possible
+    // outputs.
     assert!(cases.output_to);
     assert!(cases.output_asset_id);
     assert!(cases.output_balance_root);
@@ -398,7 +473,8 @@ fn iow_offset() {
                 let offset = tx.inputs_offset_at(x).unwrap();
                 let offset_p = tx_p.inputs_offset_at(x).unwrap();
 
-                let input = Input::from_bytes(&bytes[offset..]).expect("Failed to deserialize input!");
+                let input = Input::from_bytes(&bytes[offset..])
+                    .expect("Failed to deserialize input!");
 
                 assert_eq!(i, &input);
                 assert_eq!(offset, offset_p);
@@ -408,7 +484,8 @@ fn iow_offset() {
                 let offset = tx.outputs_offset_at(x).unwrap();
                 let offset_p = tx_p.outputs_offset_at(x).unwrap();
 
-                let output = Output::from_bytes(&bytes[offset..]).expect("Failed to deserialize output!");
+                let output = Output::from_bytes(&bytes[offset..])
+                    .expect("Failed to deserialize output!");
 
                 assert_eq!(o, &output);
                 assert_eq!(offset, offset_p);
@@ -418,7 +495,8 @@ fn iow_offset() {
                 let offset = tx.witnesses_offset_at(x).unwrap();
                 let offset_p = tx_p.witnesses_offset_at(x).unwrap();
 
-                let witness = Witness::from_bytes(&bytes[offset..]).expect("Failed to deserialize witness!");
+                let witness = Witness::from_bytes(&bytes[offset..])
+                    .expect("Failed to deserialize witness!");
 
                 assert_eq!(w, &witness);
                 assert_eq!(offset, offset_p);

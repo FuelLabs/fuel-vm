@@ -1,8 +1,18 @@
-use fuel_types::{bytes, mem_layout, Bytes32, Bytes64, MemLayout, MemLocType};
+use fuel_types::{
+    bytes,
+    mem_layout,
+    Bytes32,
+    Bytes64,
+    MemLayout,
+    MemLocType,
+};
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 

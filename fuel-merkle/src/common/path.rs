@@ -1,4 +1,7 @@
-use crate::common::{Bit, Msb};
+use crate::common::{
+    Bit,
+    Msb,
+};
 
 pub enum Instruction {
     Left,

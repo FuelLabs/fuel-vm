@@ -1,9 +1,20 @@
 use crate::TxId;
 
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{mem_layout, Bytes32, MemLayout, MemLocType};
+use fuel_types::{
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    mem_layout,
+    Bytes32,
+    MemLayout,
+    MemLocType,
+};
 
-use core::{fmt, str};
+use core::{
+    fmt,
+    str,
+};
 
 #[cfg(feature = "std")]
 use fuel_types::bytes;
@@ -13,7 +24,10 @@ use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -36,7 +50,10 @@ impl UtxoId {
     pub const LEN: usize = <Self as MemLayout>::LEN;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
-        Self { tx_id, output_index }
+        Self {
+            tx_id,
+            output_index,
+        }
     }
 
     pub const fn tx_id(&self) -> &TxId {
@@ -117,7 +134,8 @@ impl io::Write for UtxoId {
             .ok_or(bytes::eof())?;
 
         let tx_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.tx_id));
-        let output_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
+        let output_index =
+            bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
 
         self.tx_id = tx_id.into();
         self.output_index = output_index;
@@ -140,7 +158,11 @@ impl io::Read for UtxoId {
             .ok_or(bytes::eof())?;
 
         bytes::store_at(buf, Self::layout(Self::LAYOUT.tx_id), &self.tx_id);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.output_index), self.output_index);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.output_index),
+            self.output_index,
+        );
 
         Ok(Self::LEN)
     }
@@ -174,7 +196,9 @@ mod tests {
 
     #[test]
     fn from_str_utxo_id() -> Result<(), &'static str> {
-        let utxo_id = UtxoId::from_str("0x0c0000000000000000000000000000000000000000000000000000000000000b1a")?;
+        let utxo_id = UtxoId::from_str(
+            "0x0c0000000000000000000000000000000000000000000000000000000000000b1a",
+        )?;
 
         assert_eq!(utxo_id.output_index, 26);
         assert_eq!(utxo_id.tx_id[31], 11);

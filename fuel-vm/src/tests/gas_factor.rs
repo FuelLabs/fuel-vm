@@ -30,7 +30,8 @@ fn gas_factor_rounds_correctly() {
         .change_output(AssetId::default())
         .build();
 
-    let fee = TransactionFee::checked_from_tx(&params, transaction.transaction()).expect("failed to calculate fee");
+    let fee = TransactionFee::checked_from_tx(&params, transaction.transaction())
+        .expect("failed to calculate fee");
 
     let profiler = GasProfiler::default();
 
@@ -53,8 +54,8 @@ fn gas_factor_rounds_correctly() {
     let gas_used = profiler.total_gas();
 
     let gas_remainder = gas_limit - gas_used;
-    let refund =
-        TransactionFee::gas_refund_value(&params, gas_remainder, gas_price).expect("failed to calculate refund");
+    let refund = TransactionFee::gas_refund_value(&params, gas_remainder, gas_price)
+        .expect("failed to calculate refund");
 
     assert_eq!(change, initial_balance + refund);
 }

@@ -1,17 +1,36 @@
 use ethnum::U256;
 
-use fuel_asm::{wideint::*, PanicReason};
-use fuel_types::{RegisterId, Word};
+use fuel_asm::{
+    wideint::*,
+    PanicReason,
+};
+use fuel_types::{
+    RegisterId,
+    Word,
+};
 
-use super::super::{internal::inc_pc, is_unsafe_math, is_wrapping, ExecutableTransaction, Interpreter};
-use crate::interpreter::memory::{read_bytes, write_bytes};
-use crate::{constraints::reg_key::*, error::RuntimeError};
+use super::super::{
+    internal::inc_pc,
+    is_unsafe_math,
+    is_wrapping,
+    ExecutableTransaction,
+    Interpreter,
+};
+use crate::{
+    constraints::reg_key::*,
+    error::RuntimeError,
+    interpreter::memory::{
+        read_bytes,
+        write_bytes,
+    },
+};
 
-// This macro is used to duplicate the implementation for both 128-bit and 256-bit versions.
-// It takes two type parameters: the current type and type that has double-width of it.
-// The appropriate type is chosen based on benchmarks for each operation.
-// Currently, `primitive_types` is used for anything requiring division, modulo or 512-bit precision.
-// Otherwise, `ethnum` is used for 256-bit operations, and the builtin `u128` for 128-bit operations.
+// This macro is used to duplicate the implementation for both 128-bit and 256-bit
+// versions. It takes two type parameters: the current type and type that has double-width
+// of it. The appropriate type is chosen based on benchmarks for each operation.
+// Currently, `primitive_types` is used for anything requiring division, modulo or 512-bit
+// precision. Otherwise, `ethnum` is used for 256-bit operations, and the builtin `u128`
+// for 128-bit operations.
 macro_rules! wideint_ops {
     ($t:ident, $wider_t:ident) => {
         paste::paste! {

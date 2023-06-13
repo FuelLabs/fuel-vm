@@ -3,11 +3,12 @@ use test_case::test_case;
 
 #[test]
 fn can_split() {
-    let mut reg: [Word; VM_REGISTER_COUNT] = std::iter::successors(Some(0), |x| Some(x + 1))
-        .take(VM_REGISTER_COUNT)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let mut reg: [Word; VM_REGISTER_COUNT] =
+        std::iter::successors(Some(0), |x| Some(x + 1))
+            .take(VM_REGISTER_COUNT)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
     let expect = reg;
 
     let (r, w) = split_registers(&mut reg);
@@ -69,11 +70,12 @@ fn can_split() {
 #[test_case(3, 1 => Some((3, 1)))]
 #[test_case(4, 2 => Some((4, 2)))]
 fn can_split_writes(a: usize, b: usize) -> Option<(Word, Word)> {
-    let mut reg: [Word; VM_REGISTER_PROGRAM_COUNT] = std::iter::successors(Some(0), |x| Some(x + 1))
-        .take(VM_REGISTER_PROGRAM_COUNT)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let mut reg: [Word; VM_REGISTER_PROGRAM_COUNT] =
+        std::iter::successors(Some(0), |x| Some(x + 1))
+            .take(VM_REGISTER_PROGRAM_COUNT)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
     let s = VM_REGISTER_SYSTEM_COUNT;
     let mut reg = ProgramRegisters(&mut reg);
     reg.get_mut_two(WriteRegKey(s + a), WriteRegKey(s + b))

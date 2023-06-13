@@ -57,7 +57,12 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeErr
 #[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b < ac <= bc")]
 #[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a <= b < ac")]
 #[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a < bc <= ac")]
-fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+fn test_memcopy(
+    has_ownership: bool,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);
     let mut pc = 4;
@@ -94,9 +99,11 @@ fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), Ru
 #[test_case(0, MEM_MAX_ACCESS_SIZE/2, MEM_MAX_ACCESS_SIZE/2 => Ok(()); "maximum range of addressable memory")]
 fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    let r = (b as usize).min(MEM_SIZE)..((b as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
+    let r = (b as usize).min(MEM_SIZE)
+        ..((b as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
     memory[r].fill(2u8);
-    let r = (c as usize).min(MEM_SIZE)..((c as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
+    let r = (c as usize).min(MEM_SIZE)
+        ..((c as usize).min(MEM_SIZE) + (d as usize).min(MEM_SIZE)).min(MEM_SIZE);
     memory[r].fill(2u8);
     let mut pc = 4;
     let mut result = 0;
@@ -116,7 +123,13 @@ fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
 #[test_case(true, u64::MAX, 0, u64::MAX, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on equality check for overflowing addition")]
 #[test_case(false, 0, 0, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on zero check for underflowing subtraction")]
 #[test_case(false, 8, 8, u64::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Panics on sp < ssp")]
-fn test_stack_pointer_overflow(add: bool, mut sp: Word, ssp: Word, hp: Word, v: Word) -> Result<(), RuntimeError> {
+fn test_stack_pointer_overflow(
+    add: bool,
+    mut sp: Word,
+    ssp: Word,
+    hp: Word,
+    v: Word,
+) -> Result<(), RuntimeError> {
     let mut pc = 4;
     let old_sp = sp;
 
@@ -169,20 +182,24 @@ fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
     // create a mutable memory with size `MEM_SIZE`
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
 
-    // calculate start location where 8 bytes of value will be stored based on `b` and `c` values.
+    // calculate start location where 8 bytes of value will be stored based on `b` and `c`
+    // values.
     let start = (b as usize + (c as usize * 8)).min(MEM_SIZE - 8);
 
-    // write 2u8 to a slice of memory (starting at the 'start' location with a length of 8)
+    // write 2u8 to a slice of memory (starting at the 'start' location with a length of
+    // 8)
     memory[start..start + 8].copy_from_slice(&[2u8; 8]);
 
     // initialize pc to 4 and result to 0
     let mut pc = 4;
     let mut result = 0;
 
-    // read the memory from the calculated location and store it in `result`, also increment the `pc` by one word(8 bytes).
+    // read the memory from the calculated location and store it in `result`, also
+    // increment the `pc` by one word(8 bytes).
     load_word(&memory, RegMut::new(&mut pc), &mut result, b, c)?;
 
-    // ensure that `pc` is 8 now and the result matches [2u8; 8] i.e., 2 bytes repeated 8 times.
+    // ensure that `pc` is 8 now and the result matches [2u8; 8] i.e., 2 bytes repeated 8
+    // times.
     assert_eq!(pc, 8);
     assert_eq!(result, Word::from_be_bytes([2u8; 8]));
 
@@ -193,7 +210,12 @@ fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
 #[test_case(false, VM_MAX_RAM - 1, 100, 2 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow on heap")]
 #[test_case(false, 0, 100, VM_MAX_RAM - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow on stack")]
 #[test_case(true, VM_MAX_RAM, 1, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow by address range")]
-fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+fn test_store_byte(
+    has_ownership: bool,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
@@ -221,7 +243,12 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(),
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a word")]
 #[test_case(true, 20, 30, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to memory overflow")]
 #[test_case(false, 20, 30, 40 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to not having ownership of the range")]
-fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+fn test_store_word(
+    has_ownership: bool,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {

@@ -1,20 +1,26 @@
 //! Types to help constrain inputs to functions to only what is used.
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::ops::{
+    Deref,
+    DerefMut,
+};
 
 use fuel_asm::Word;
 use fuel_types::ContractId;
 
-use crate::consts::MEM_SIZE;
-use crate::prelude::MemoryRange;
-use crate::prelude::RuntimeError;
+use crate::{
+    consts::MEM_SIZE,
+    prelude::{
+        MemoryRange,
+        RuntimeError,
+    },
+};
 
 pub mod reg_key;
 
 /// A range of memory that has been checked that it fits into the VM memory.
 #[derive(Clone)]
-// TODO: Replace `LEN` constant with a generic object that implements some trait that knows
-//  the static size of the generic.
+// TODO: Replace `LEN` constant with a generic object that implements some trait that
+// knows  the static size of the generic.
 pub struct CheckedMemConstLen<const LEN: usize>(MemoryRange);
 
 /// A range of memory that has been checked that it fits into the VM memory.
@@ -71,16 +77,16 @@ impl<const LEN: usize> CheckedMemConstLen<LEN> {
 
     /// Get the memory slice for this range.
     pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8; LEN] {
-        (&memory[self.0.usizes()])
-            .try_into()
-            .expect("This is always correct as the address and LEN are checked on construction.")
+        (&memory[self.0.usizes()]).try_into().expect(
+            "This is always correct as the address and LEN are checked on construction.",
+        )
     }
 
     /// Get the mutable memory slice for this range.
     pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8; LEN] {
-        (&mut memory[self.0.usizes()])
-            .try_into()
-            .expect("This is always correct as the address and LEN are checked on construction.")
+        (&mut memory[self.0.usizes()]).try_into().expect(
+            "This is always correct as the address and LEN are checked on construction.",
+        )
     }
 }
 

@@ -1,18 +1,51 @@
-use crate::transaction::{
-    compute_transaction_id,
-    field::{
-        BytecodeLength, BytecodeWitnessIndex, GasLimit, GasPrice, Inputs, Maturity, Outputs, Salt as SaltField,
-        StorageSlots, Witnesses,
+use crate::{
+    transaction::{
+        compute_transaction_id,
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            GasLimit,
+            GasPrice,
+            Inputs,
+            Maturity,
+            Outputs,
+            Salt as SaltField,
+            StorageSlots,
+            Witnesses,
+        },
+        metadata::CommonMetadata,
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
     },
-    metadata::CommonMetadata,
-    validity::{check_common_part, FormatValidityChecks},
+    Chargeable,
+    CheckError,
+    ConsensusParameters,
+    Contract,
+    Input,
+    Output,
+    StorageSlot,
+    TxId,
+    Witness,
 };
-use crate::{Chargeable, CheckError, ConsensusParameters, Contract, Input, Output, StorageSlot, TxId, Witness};
 use derivative::Derivative;
-use fuel_types::{bytes, AssetId, BlockHeight, Bytes32, ChainId, ContractId, Salt, Word};
 use fuel_types::{
-    bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, MemLayout, MemLocType,
+    bytes,
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    mem_layout,
+    AssetId,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+    ContractId,
+    MemLayout,
+    MemLocType,
+    Salt,
+    Word,
 };
 
 #[cfg(feature = "alloc")]
@@ -123,14 +156,17 @@ impl Create {
 impl crate::UniqueIdentifier for Create {
     fn id(&self, chain_id: &ChainId) -> TxId {
         if let Some(id) = self.cached_id() {
-            return id;
+            return id
         }
 
         let mut clone = self.clone();
 
         // Empties fields that should be zero during the signing.
         clone.inputs_mut().iter_mut().for_each(Input::prepare_sign);
-        clone.outputs_mut().iter_mut().for_each(Output::prepare_sign);
+        clone
+            .outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
         compute_transaction_id(chain_id, &mut clone)
@@ -162,7 +198,8 @@ impl Chargeable for Create {
         let mut cumulative_predicate_gas: Word = 0;
         for input in self.inputs() {
             if let Some(predicate_gas_used) = input.predicate_gas_used() {
-                cumulative_predicate_gas = cumulative_predicate_gas.saturating_add(predicate_gas_used);
+                cumulative_predicate_gas =
+                    cumulative_predicate_gas.saturating_add(predicate_gas_used);
             }
         }
         cumulative_predicate_gas
@@ -176,12 +213,23 @@ impl FormatValidityChecks for Create {
 
         let id = self.id(chain_id);
 
-        // There will be at most len(witnesses) - 1 signatures to cache, as one of the witnesses will be bytecode
-        let mut recovery_cache = Some(HashMap::with_capacity(max(self.witnesses().len() - 1, 1)));
+        // There will be at most len(witnesses) - 1 signatures to cache, as one of the
+        // witnesses will be bytecode
+        let mut recovery_cache =
+            Some(HashMap::with_capacity(max(self.witnesses().len() - 1, 1)));
 
-        self.inputs().iter().enumerate().try_for_each(|(index, input)| {
-            input.check_signature(index, &id, &self.witnesses, chain_id, &mut recovery_cache)
-        })?;
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.check_signature(
+                    index,
+                    &id,
+                    &self.witnesses,
+                    chain_id,
+                    &mut recovery_cache,
+                )
+            })?;
 
         Ok(())
     }
@@ -199,26 +247,35 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > parameters.contract_max_size || bytecode_witness_len / 4 != self.bytecode_length {
-            return Err(CheckError::TransactionCreateBytecodeLen);
+        if bytecode_witness_len > parameters.contract_max_size
+            || bytecode_witness_len / 4 != self.bytecode_length
+        {
+            return Err(CheckError::TransactionCreateBytecodeLen)
         }
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
         if self.storage_slots.len() > parameters.max_storage_slots as usize {
-            return Err(CheckError::TransactionCreateStorageSlotMax);
+            return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 
         // Verify storage slots are sorted
-        if !self.storage_slots.as_slice().windows(2).all(|s| s[0] < s[1]) {
-            return Err(CheckError::TransactionCreateStorageSlotOrder);
+        if !self
+            .storage_slots
+            .as_slice()
+            .windows(2)
+            .all(|s| s[0] < s[1])
+        {
+            return Err(CheckError::TransactionCreateStorageSlotOrder)
         }
 
         self.inputs
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| match input {
-                Input::Contract(_) => Err(CheckError::TransactionCreateInputContract { index }),
+                Input::Contract(_) => {
+                    Err(CheckError::TransactionCreateInputContract { index })
+                }
                 Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
                     Err(CheckError::TransactionCreateMessageData { index })
                 }
@@ -229,21 +286,26 @@ impl FormatValidityChecks for Create {
             self.metadata.is_some(),
             "`check_without_signatures` is called without cached metadata"
         );
-        let (state_root_calculated, contract_id_calculated) = if let Some(metadata) = &self.metadata {
-            (metadata.state_root, metadata.contract_id)
-        } else {
-            let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
-            (metadata.state_root, metadata.contract_id)
-        };
+        let (state_root_calculated, contract_id_calculated) =
+            if let Some(metadata) = &self.metadata {
+                (metadata.state_root, metadata.contract_id)
+            } else {
+                let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
+                (metadata.state_root, metadata.contract_id)
+            };
 
         let mut contract_created = false;
         self.outputs
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
-                Output::Contract { .. } => Err(CheckError::TransactionCreateOutputContract { index }),
+                Output::Contract { .. } => {
+                    Err(CheckError::TransactionCreateOutputContract { index })
+                }
 
-                Output::Variable { .. } => Err(CheckError::TransactionCreateOutputVariable { index }),
+                Output::Variable { .. } => {
+                    Err(CheckError::TransactionCreateOutputVariable { index })
+                }
 
                 Output::Change { asset_id, .. } if asset_id != &AssetId::BASE => {
                     Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
@@ -252,14 +314,23 @@ impl FormatValidityChecks for Create {
                 Output::ContractCreated {
                     contract_id,
                     state_root,
-                } if contract_id != &contract_id_calculated || state_root != &state_root_calculated => {
-                    Err(CheckError::TransactionCreateOutputContractCreatedDoesntMatch { index })
+                } if contract_id != &contract_id_calculated
+                    || state_root != &state_root_calculated =>
+                {
+                    Err(
+                        CheckError::TransactionCreateOutputContractCreatedDoesntMatch {
+                            index,
+                        },
+                    )
                 }
 
-                // TODO: Output::ContractCreated { contract_id, state_root } if contract_id == &id && state_root == &storage_root
+                // TODO: Output::ContractCreated { contract_id, state_root } if
+                // contract_id == &id && state_root == &storage_root
                 //  maybe move from `fuel-vm` to here
                 Output::ContractCreated { .. } if contract_created => {
-                    Err(CheckError::TransactionCreateOutputContractCreatedMultiple { index })
+                    Err(CheckError::TransactionCreateOutputContractCreatedMultiple {
+                        index,
+                    })
                 }
 
                 Output::ContractCreated { .. } => {
@@ -290,7 +361,12 @@ impl crate::Cacheable for Create {
 
 impl SizedBytes for Create {
     fn serialized_size(&self) -> usize {
-        self.witnesses_offset() + self.witnesses().iter().map(|w| w.serialized_size()).sum::<usize>()
+        self.witnesses_offset()
+            + self
+                .witnesses()
+                .iter()
+                .map(|w| w.serialized_size())
+                .sum::<usize>()
     }
 }
 
@@ -311,7 +387,7 @@ mod field {
 
         #[inline(always)]
         fn gas_price_offset_static() -> usize {
-            WORD_SIZE /* `Transaction` enum discriminant */
+            WORD_SIZE // `Transaction` enum discriminant
         }
     }
 
@@ -444,7 +520,8 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            Self::storage_slots_offset_static() + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+            Self::storage_slots_offset_static()
+                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
         }
 
         #[inline(always)]
@@ -454,7 +531,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_offset.get(idx).cloned();
+                return inputs_offset.get(idx).cloned()
             }
 
             if idx < self.inputs.len() {
@@ -479,13 +556,15 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_predicate_offset.get(idx).cloned().unwrap_or(None);
+                return inputs_predicate_offset.get(idx).cloned().unwrap_or(None)
             }
 
             self.inputs().get(idx).and_then(|input| {
                 input
                     .predicate_offset()
-                    .and_then(|predicate| self.inputs_offset_at(idx).map(|inputs| inputs + predicate))
+                    .and_then(|predicate| {
+                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                    })
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
         }
@@ -505,10 +584,15 @@ mod field {
         #[inline(always)]
         fn outputs_offset(&self) -> usize {
             if let Some(CreateMetadata { outputs_offset, .. }) = &self.metadata {
-                return *outputs_offset;
+                return *outputs_offset
             }
 
-            self.inputs_offset() + self.inputs().iter().map(|i| i.serialized_size()).sum::<usize>()
+            self.inputs_offset()
+                + self
+                    .inputs()
+                    .iter()
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>()
         }
 
         #[inline(always)]
@@ -518,7 +602,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return outputs_offset.get(idx).cloned();
+                return outputs_offset.get(idx).cloned()
             }
 
             if idx < self.outputs.len() {
@@ -550,11 +634,19 @@ mod field {
 
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
-            if let Some(CreateMetadata { witnesses_offset, .. }) = &self.metadata {
-                return *witnesses_offset;
+            if let Some(CreateMetadata {
+                witnesses_offset, ..
+            }) = &self.metadata
+            {
+                return *witnesses_offset
             }
 
-            self.outputs_offset() + self.outputs().iter().map(|i| i.serialized_size()).sum::<usize>()
+            self.outputs_offset()
+                + self
+                    .outputs()
+                    .iter()
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>()
         }
 
         #[inline(always)]
@@ -564,7 +656,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset.get(idx).cloned();
+                return witnesses_offset.get(idx).cloned()
             }
 
             if idx < self.witnesses.len() {
@@ -589,7 +681,7 @@ impl io::Read for Create {
     fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
         if full_buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
         let buf: &mut [_; Self::LEN] = full_buf
             .get_mut(..Self::LEN)
@@ -618,7 +710,11 @@ impl io::Read for Create {
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
         bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length), *bytecode_length);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.bytecode_length),
+            *bytecode_length,
+        );
         bytes::store_number_at(
             buf,
             Self::layout(Self::LAYOUT.bytecode_witness_index),
@@ -629,9 +725,21 @@ impl io::Read for Create {
             Self::layout(Self::LAYOUT.storage_slots_len),
             storage_slots.len() as Word,
         );
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.inputs_len), inputs.len() as Word);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.witnesses_len), witnesses.len() as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.inputs_len),
+            inputs.len() as Word,
+        );
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.outputs_len),
+            outputs.len() as Word,
+        );
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.witnesses_len),
+            witnesses.len() as Word,
+        );
         bytes::store_at(buf, Self::layout(Self::LAYOUT.salt), salt);
 
         let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
@@ -643,11 +751,13 @@ impl io::Read for Create {
             let storage_len = storage_slot.read(buf)?;
             slot_len += storage_len;
             if storage_len != StorageSlot::SLOT_SIZE {
-                return Err(bytes::eof());
+                return Err(bytes::eof())
             }
         }
 
-        let mut buf = full_buf.get_mut(Self::LEN + slot_len..).ok_or(bytes::eof())?;
+        let mut buf = full_buf
+            .get_mut(Self::LEN + slot_len..)
+            .ok_or(bytes::eof())?;
         for input in self.inputs.iter_mut() {
             let input_len = input.read(buf)?;
             buf = &mut buf[input_len..];
@@ -682,18 +792,27 @@ impl io::Write for Create {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "The provided identifier to the `Create` is invalid!",
-            ));
+            ))
         }
 
-        let gas_price = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
-        let gas_limit = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity = bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
-        let bytecode_length = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length));
-        let bytecode_witness_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.bytecode_witness_index));
-        let storage_slots_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.storage_slots_len));
-        let inputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
-        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
-        let witnesses_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
+        let gas_price =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
+        let gas_limit =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
+        let maturity =
+            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
+        let bytecode_length =
+            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length));
+        let bytecode_witness_index =
+            bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.bytecode_witness_index));
+        let storage_slots_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.storage_slots_len));
+        let inputs_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
+        let outputs_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
+        let witnesses_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
         let salt = bytes::restore_at(buf, Self::layout(Self::LAYOUT.salt));
 
         let salt = salt.into();
@@ -746,9 +865,15 @@ impl io::Write for Create {
 
     fn flush(&mut self) -> io::Result<()> {
         self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
-        self.witnesses.iter_mut().try_for_each(|witness| witness.flush())?;
-        self.storage_slots.iter_mut().try_for_each(|slot| slot.flush())?;
+        self.outputs
+            .iter_mut()
+            .try_for_each(|output| output.flush())?;
+        self.witnesses
+            .iter_mut()
+            .try_for_each(|witness| witness.flush())?;
+        self.storage_slots
+            .iter_mut()
+            .try_for_each(|slot| slot.flush())?;
 
         Ok(())
     }
@@ -789,9 +914,13 @@ mod tests {
             })
             .collect::<Vec<StorageSlot>>();
 
-        let mut tx = crate::TransactionBuilder::create(vec![].into(), Salt::zeroed(), storage_slots)
-            .add_random_fee_input()
-            .finalize();
+        let mut tx = crate::TransactionBuilder::create(
+            vec![].into(),
+            Salt::zeroed(),
+            storage_slots,
+        )
+        .add_random_fee_input()
+        .finalize();
         tx.storage_slots.reverse();
 
         let err = tx
@@ -808,11 +937,15 @@ mod tests {
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
 
-        let err = crate::TransactionBuilder::create(vec![].into(), Salt::zeroed(), storage_slots)
-            .add_random_fee_input()
-            .finalize()
-            .check(0.into(), &ConsensusParameters::default())
-            .expect_err("Expected erroneous transaction");
+        let err = crate::TransactionBuilder::create(
+            vec![].into(),
+            Salt::zeroed(),
+            storage_slots,
+        )
+        .add_random_fee_input()
+        .finalize()
+        .check(0.into(), &ConsensusParameters::default())
+        .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
     }

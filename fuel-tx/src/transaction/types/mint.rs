@@ -1,15 +1,31 @@
-use crate::transaction::{
-    compute_transaction_id,
-    field::{Outputs, TxPointer as TxPointerField},
-    validity::FormatValidityChecks,
+use crate::{
+    transaction::{
+        compute_transaction_id,
+        field::{
+            Outputs,
+            TxPointer as TxPointerField,
+        },
+        validity::FormatValidityChecks,
+    },
+    CheckError,
+    ConsensusParameters,
+    Output,
+    TxPointer,
 };
-use crate::{CheckError, ConsensusParameters, Output, TxPointer};
 use derivative::Derivative;
 use fuel_types::{
-    bytes::{SizedBytes, WORD_SIZE},
-    mem_layout, BlockHeight, ChainId, MemLayout, MemLocType,
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    mem_layout,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+    MemLayout,
+    MemLocType,
+    Word,
 };
-use fuel_types::{Bytes32, Word};
 
 #[cfg(feature = "std")]
 use std::io;
@@ -18,7 +34,10 @@ use std::io;
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::{self, Deserializable};
+use fuel_types::bytes::{
+    self,
+    Deserializable,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {
@@ -66,7 +85,8 @@ impl MintMetadata {
 /// The definition of the `Mint` transaction from the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transactionmint
 ///
-/// This transaction can be created by the block producer and included in the block only by it.
+/// This transaction can be created by the block producer and included in the block only
+/// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derivative(Eq, PartialEq, Hash)]
@@ -91,7 +111,7 @@ mem_layout!(
 impl crate::UniqueIdentifier for Mint {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id;
+            return id
         }
 
         let mut clone = self.clone();
@@ -115,22 +135,24 @@ impl FormatValidityChecks for Mint {
         parameters: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         if self.outputs().len() > parameters.max_outputs as usize {
-            return Err(CheckError::TransactionOutputsMax);
+            return Err(CheckError::TransactionOutputsMax)
         }
         if self.tx_pointer().block_height() != block_height {
-            return Err(CheckError::TransactionMintIncorrectBlockHeight);
+            return Err(CheckError::TransactionMintIncorrectBlockHeight)
         }
 
         let mut assets = Vec::new();
         for output in self.outputs() {
             if let Output::Coin { asset_id, .. } = output {
                 if assets.contains(asset_id) {
-                    return Err(CheckError::TransactionOutputCoinAssetIdDuplicated(*asset_id));
+                    return Err(CheckError::TransactionOutputCoinAssetIdDuplicated(
+                        *asset_id,
+                    ))
                 } else {
                     assets.push(*asset_id);
                 }
             } else {
-                return Err(CheckError::TransactionMintOutputIsNotCoin);
+                return Err(CheckError::TransactionMintOutputIsNotCoin)
             }
         }
 
@@ -153,7 +175,12 @@ impl crate::Cacheable for Mint {
 
 impl SizedBytes for Mint {
     fn serialized_size(&self) -> usize {
-        self.outputs_offset() + self.outputs().iter().map(|w| w.serialized_size()).sum::<usize>()
+        self.outputs_offset()
+            + self
+                .outputs()
+                .iter()
+                .map(|w| w.serialized_size())
+                .sum::<usize>()
     }
 }
 
@@ -173,7 +200,7 @@ mod field {
 
         #[inline(always)]
         fn tx_pointer_static() -> usize {
-            WORD_SIZE /* `Transaction` enum discriminant */
+            WORD_SIZE // `Transaction` enum discriminant
         }
     }
 
@@ -191,16 +218,19 @@ mod field {
         #[inline(always)]
         fn outputs_offset(&self) -> usize {
             if let Some(MintMetadata { outputs_offset, .. }) = &self.metadata {
-                return *outputs_offset;
+                return *outputs_offset
             }
 
-            self.tx_pointer_offset() + TxPointer::LEN + WORD_SIZE /* Outputs size */
+            self.tx_pointer_offset() + TxPointer::LEN + WORD_SIZE // Outputs size
         }
 
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(MintMetadata { outputs_offset_at, .. }) = &self.metadata {
-                return outputs_offset_at.get(idx).cloned();
+            if let Some(MintMetadata {
+                outputs_offset_at, ..
+            }) = &self.metadata
+            {
+                return outputs_offset_at.get(idx).cloned()
             }
 
             if idx < self.outputs.len() {
@@ -225,7 +255,7 @@ impl io::Read for Mint {
     fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
         let serialized_size = self.serialized_size();
         if full_buf.len() < serialized_size {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let buf: &mut [_; Self::LEN] = full_buf
@@ -233,7 +263,11 @@ impl io::Read for Mint {
             .and_then(|slice| slice.try_into().ok())
             .ok_or(bytes::eof())?;
 
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.repr), crate::TransactionRepr::Mint as u8);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.repr),
+            crate::TransactionRepr::Mint as u8,
+        );
         let Mint {
             tx_pointer,
             outputs,
@@ -242,9 +276,13 @@ impl io::Read for Mint {
 
         let n = tx_pointer.read(&mut buf[Self::LAYOUT.tx_pointer.range()])?;
         if n != Self::LAYOUT.tx_pointer.size() {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.outputs_len), outputs.len() as Word);
+        bytes::store_number_at(
+            buf,
+            Self::layout(Self::LAYOUT.outputs_len),
+            outputs.len() as Word,
+        );
 
         let mut buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
         for output in outputs {
@@ -261,7 +299,7 @@ impl io::Write for Mint {
     fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
         let mut n = crate::consts::TRANSACTION_MINT_FIXED_SIZE;
         if full_buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let buf: &[_; Self::LEN] = full_buf
@@ -275,12 +313,13 @@ impl io::Write for Mint {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "The provided identifier to the `Script` is invalid!",
-            ));
+            ))
         }
 
         // Safety: buffer size is checked
         let tx_pointer = TxPointer::from_bytes(&buf[Self::LAYOUT.tx_pointer.range()])?;
-        let outputs_len = bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
+        let outputs_len =
+            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
 
         let mut buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
         let mut outputs = vec![Output::default(); outputs_len];
@@ -300,7 +339,9 @@ impl io::Write for Mint {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.outputs.iter_mut().try_for_each(|output| output.flush())?;
+        self.outputs
+            .iter_mut()
+            .try_for_each(|output| output.flush())?;
 
         Ok(())
     }

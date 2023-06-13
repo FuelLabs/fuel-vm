@@ -1,7 +1,9 @@
 use fuel_types::Bytes32;
 
-use core::fmt;
-use core::ops::Deref;
+use core::{
+    fmt,
+    ops::Deref,
+};
 
 use zeroize::Zeroize;
 
@@ -17,7 +19,8 @@ impl SecretKey {
 
     /// Construct a `SecretKey` directly from its bytes.
     ///
-    /// This constructor expects the given bytes to be a valid secret key. Validity is unchecked.
+    /// This constructor expects the given bytes to be a valid secret key. Validity is
+    /// unchecked.
     #[cfg(feature = "std")]
     fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes.into())
@@ -71,17 +74,31 @@ impl fmt::Display for SecretKey {
 #[cfg(feature = "std")]
 mod use_std {
     use super::*;
-    use crate::{Error, PublicKey};
+    use crate::{
+        Error,
+        PublicKey,
+    };
     use coins_bip32::path::DerivationPath;
-    use coins_bip39::{English, Mnemonic};
-    use core::borrow::Borrow;
-    use core::str;
-    use secp256k1::{Error as Secp256k1Error, SecretKey as Secp256k1SecretKey};
+    use coins_bip39::{
+        English,
+        Mnemonic,
+    };
+    use core::{
+        borrow::Borrow,
+        str,
+    };
+    use secp256k1::{
+        Error as Secp256k1Error,
+        SecretKey as Secp256k1SecretKey,
+    };
     use std::str::FromStr;
 
     #[cfg(feature = "random")]
     use rand::{
-        distributions::{Distribution, Standard},
+        distributions::{
+            Distribution,
+            Standard,
+        },
         Rng,
     };
 
@@ -100,13 +117,13 @@ mod use_std {
             //
             // Need to improve; generate random bytes and truncate to the field.
             //
-            // We don't call `Secp256k1SecretKey::new` here because the `rand` requirements
-            // are outdated and inconsistent.
+            // We don't call `Secp256k1SecretKey::new` here because the `rand`
+            // requirements are outdated and inconsistent.
             let mut secret = Bytes32::zeroed();
             loop {
                 rng.fill(secret.as_mut());
                 if secret_key_bytes_valid(&secret).is_ok() {
-                    break;
+                    break
                 }
             }
             Self(secret)
@@ -116,15 +133,22 @@ mod use_std {
         /// Both are passed as `&str`. If you want to manually create a `DerivationPath`
         /// and `Mnemonic`, use [`SecretKey::new_from_mnemonic`].
         /// The derivation path is a list of integers, each representing a child index.
-        pub fn new_from_mnemonic_phrase_with_path(phrase: &str, path: &str) -> Result<Self, Error> {
+        pub fn new_from_mnemonic_phrase_with_path(
+            phrase: &str,
+            path: &str,
+        ) -> Result<Self, Error> {
             let mnemonic = Mnemonic::<W>::new_from_phrase(phrase)?;
             let path = DerivationPath::from_str(path)?;
             Self::new_from_mnemonic(path, mnemonic)
         }
 
         /// Generate a new secret key from a `DerivationPath` and `Mnemonic`.
-        /// If you want to pass strings instead, use [`SecretKey::new_from_mnemonic_phrase_with_path`].
-        pub fn new_from_mnemonic(d: DerivationPath, m: Mnemonic<W>) -> Result<Self, Error> {
+        /// If you want to pass strings instead, use
+        /// [`SecretKey::new_from_mnemonic_phrase_with_path`].
+        pub fn new_from_mnemonic(
+            d: DerivationPath,
+            m: Mnemonic<W>,
+        ) -> Result<Self, Error> {
             let derived_priv_key = m.derive_key(d, None)?;
             let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
             let bytes: [u8; Self::LEN] = key.to_bytes().into();
@@ -181,7 +205,10 @@ mod use_std {
 
     #[cfg(feature = "random")]
     impl rand::Fill for SecretKey {
-        fn try_fill<R: rand::Rng + ?Sized>(&mut self, rng: &mut R) -> Result<(), rand::Error> {
+        fn try_fill<R: rand::Rng + ?Sized>(
+            &mut self,
+            rng: &mut R,
+        ) -> Result<(), rand::Error> {
             *self = Self::random(rng);
 
             Ok(())
@@ -197,6 +224,8 @@ mod use_std {
 
     /// Check if the secret key byte representation is within the curve.
     fn secret_key_bytes_valid(bytes: &[u8; SecretKey::LEN]) -> Result<(), Error> {
-        secp256k1::SecretKey::from_slice(bytes).map(|_| ()).map_err(Into::into)
+        secp256k1::SecretKey::from_slice(bytes)
+            .map(|_| ())
+            .map_err(Into::into)
     }
 }

@@ -1,23 +1,36 @@
-use crate::sparse::merkle_tree::MerkleTreeKey;
 use crate::{
-    common::{Bytes32, StorageMap},
-    sparse::{self, Primitive},
-    storage::{Mappable, StorageInspect, StorageMutate},
+    common::{
+        Bytes32,
+        StorageMap,
+    },
+    sparse::{
+        self,
+        merkle_tree::MerkleTreeKey,
+        Primitive,
+    },
+    storage::{
+        Mappable,
+        StorageInspect,
+        StorageMutate,
+    },
 };
-use alloc::borrow::Cow;
-use alloc::vec::Vec;
+use alloc::{
+    borrow::Cow,
+    vec::Vec,
+};
 
-/// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse merkle
-/// tree, where the storage key is `Bytes32` and the value is the [`Buffer`](crate::sparse::Buffer)
-/// (raw presentation of the [`Node`](crate::sparse::Node)).
+/// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse
+/// merkle tree, where the storage key is `Bytes32` and the value is the
+/// [`Buffer`](crate::sparse::Buffer) (raw presentation of the
+/// [`Node`](crate::sparse::Node)).
 #[derive(Debug)]
 pub struct NodesTable;
 
 impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
     type OwnedKey = Bytes32;
-    type Value = Self::OwnedValue;
     type OwnedValue = Primitive;
+    type Value = Self::OwnedValue;
 }
 
 type Storage = StorageMap<NodesTable>;
@@ -47,7 +60,8 @@ impl MerkleTree {
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
-        let tree = SparseMerkleTree::from_set(Storage::new(), set).expect("`Storage` can't return error");
+        let tree = SparseMerkleTree::from_set(Storage::new(), set)
+            .expect("`Storage` can't return error");
         Self { tree }
     }
 
@@ -80,7 +94,11 @@ impl MerkleTree {
         }
 
         impl StorageMutate<NodesTable> for EmptyStorage {
-            fn insert(&mut self, _: &Bytes32, _: &Primitive) -> Result<Option<Primitive>, Self::Error> {
+            fn insert(
+                &mut self,
+                _: &Bytes32,
+                _: &Primitive,
+            ) -> Result<Option<Primitive>, Self::Error> {
                 Ok(None)
             }
 
@@ -89,8 +107,9 @@ impl MerkleTree {
             }
         }
 
-        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage::default(), set)
-            .expect("`Storage` can't return error");
+        let tree =
+            sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage::default(), set)
+                .expect("`Storage` can't return error");
         tree.root()
     }
 
@@ -125,7 +144,11 @@ impl MerkleTree {
         }
 
         impl StorageMutate<NodesTable> for VectorStorage {
-            fn insert(&mut self, key: &Bytes32, value: &Primitive) -> Result<Option<Primitive>, Self::Error> {
+            fn insert(
+                &mut self,
+                key: &Bytes32,
+                value: &Primitive,
+            ) -> Result<Option<Primitive>, Self::Error> {
                 self.storage.push((*key, *value));
                 Ok(None)
             }
@@ -135,8 +158,9 @@ impl MerkleTree {
             }
         }
 
-        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
-            .expect("`Storage` can't return error");
+        let tree =
+            sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
+                .expect("`Storage` can't return error");
         let root = tree.root();
         let nodes = tree.into_storage().storage;
 
@@ -175,7 +199,8 @@ mod test {
     fn test_empty_root() {
         let tree = MerkleTree::new();
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -186,7 +211,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root =
+            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -198,7 +224,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x01"), b"DATA");
 
         let root = tree.root();
-        let expected_root = "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
+        let expected_root =
+            "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -211,7 +238,8 @@ mod test {
         tree.update(key(b"\x00\x00\x00\x02"), b"DATA");
 
         let root = tree.root();
-        let expected_root = "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
+        let expected_root =
+            "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -223,7 +251,8 @@ mod test {
         tree.delete(key(b"\x00\x00\x00\x00"));
 
         let root = tree.root();
-        let expected_root = "0000000000000000000000000000000000000000000000000000000000000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -236,7 +265,8 @@ mod test {
         tree.delete(key(b"\x00\x00\x00\x01"));
 
         let root = tree.root();
-        let expected_root = "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
+        let expected_root =
+            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
         assert_eq!(hex::encode(root), expected_root);
     }
 }

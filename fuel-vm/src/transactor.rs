@@ -1,14 +1,32 @@
 //! State machine of the interpreter.
 
-use crate::checked_transaction::{Checked, IntoChecked};
-use crate::error::InterpreterError;
-use crate::gas::GasCosts;
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
-use crate::state::{StateTransition, StateTransitionRef};
-use crate::storage::InterpreterStorage;
-use crate::{backtrace::Backtrace, state::ProgramState};
+use crate::{
+    backtrace::Backtrace,
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+    },
+    error::InterpreterError,
+    gas::GasCosts,
+    interpreter::{
+        CheckedMetadata,
+        ExecutableTransaction,
+        Interpreter,
+    },
+    state::{
+        ProgramState,
+        StateTransition,
+        StateTransitionRef,
+    },
+    storage::InterpreterStorage,
+};
 
-use fuel_tx::{ConsensusParameters, Create, Receipt, Script};
+use fuel_tx::{
+    ConsensusParameters,
+    Create,
+    Receipt,
+    Script,
+};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -38,8 +56,13 @@ where
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
     pub fn state_transition(&'a self) -> Option<StateTransitionRef<'a, Tx>> {
-        self.program_state
-            .map(|state| StateTransitionRef::new(state, self.interpreter.transaction(), self.interpreter.receipts()))
+        self.program_state.map(|state| {
+            StateTransitionRef::new(
+                state,
+                self.interpreter.transaction(),
+                self.interpreter.receipts(),
+            )
+        })
     }
 
     /// State transition representation after the execution of a transaction.
@@ -74,7 +97,8 @@ where
 
     /// Returns true if last transaction execution was erroneous
     pub const fn is_reverted(&self) -> bool {
-        self.error.is_some() || matches!(self.program_state, Some(ProgramState::Revert(_)))
+        self.error.is_some()
+            || matches!(self.program_state, Some(ProgramState::Revert(_)))
     }
 
     /// Result representation of the last executed transaction.
@@ -120,7 +144,9 @@ impl<S> Transactor<S, Script> {
     /// Follows the same criteria as [`Self::state_transition`] to return
     /// `None`.
     pub fn receipts(&self) -> Option<&[Receipt]> {
-        self.program_state.is_some().then(|| self.interpreter.receipts())
+        self.program_state
+            .is_some()
+            .then(|| self.interpreter.receipts())
     }
 
     /// Generate a backtrace when at least one receipt of `ScriptResult` was
@@ -138,7 +164,10 @@ where
     S: InterpreterStorage,
 {
     /// Deploys `Create` checked transactions.
-    pub fn deploy(&mut self, checked: Checked<Create>) -> Result<Create, InterpreterError> {
+    pub fn deploy(
+        &mut self,
+        checked: Checked<Create>,
+    ) -> Result<Create, InterpreterError> {
         self.interpreter.deploy(checked)
     }
 }

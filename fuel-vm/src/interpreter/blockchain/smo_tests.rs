@@ -1,5 +1,10 @@
-use crate::interpreter::contract::balance as contract_balance;
-use crate::{interpreter::memory::Memory, storage::MemoryStorage};
+use crate::{
+    interpreter::{
+        contract::balance as contract_balance,
+        memory::Memory,
+    },
+    storage::MemoryStorage,
+};
 
 use super::*;
 
@@ -18,7 +23,8 @@ struct Input {
     internal: bool,
     max_message_data_length: Word,
     memory: Vec<(usize, Vec<u8>)>,
-    /// Initial balance of the zeroed AssedId, same for both default contract and external context
+    /// Initial balance of the zeroed AssedId, same for both default contract and
+    /// external context
     initial_balance: Word,
 }
 
@@ -201,10 +207,15 @@ fn test_smo(
     let mut tx = Create::default();
     let mut storage = MemoryStorage::new(Default::default(), Address::default());
     storage
-        .merkle_contract_asset_id_balance_insert(&ContractId::default(), &asset, initial_balance)
+        .merkle_contract_asset_id_balance_insert(
+            &ContractId::default(),
+            &asset,
+            initial_balance,
+        )
         .unwrap();
     let mut balances =
-        RuntimeBalances::try_from_iter([(asset, initial_balance)].into_iter()).expect("Should be valid balance");
+        RuntimeBalances::try_from_iter([(asset, initial_balance)].into_iter())
+            .expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
     let input = MessageOutputCtx {
@@ -215,7 +226,11 @@ fn test_smo(
         tx: &mut tx,
         balances: &mut balances,
         storage: &mut storage,
-        current_contract: if internal { Some(ContractId::default()) } else { None },
+        current_contract: if internal {
+            Some(ContractId::default())
+        } else {
+            None
+        },
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         recipient_mem_address,
@@ -228,7 +243,8 @@ fn test_smo(
 
     Ok(Output {
         receipts,
-        internal_balance: contract_balance(&storage, &ContractId::default(), &asset).unwrap(),
+        internal_balance: contract_balance(&storage, &ContractId::default(), &asset)
+            .unwrap(),
         external_balance: balances.balance(&asset).unwrap(),
     })
 }

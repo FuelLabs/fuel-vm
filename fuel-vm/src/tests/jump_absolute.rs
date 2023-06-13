@@ -1,5 +1,8 @@
 use super::test_helpers::run_script;
-use fuel_asm::{op, RegId};
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_vm::prelude::*;
 
 #[test]

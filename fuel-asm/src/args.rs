@@ -1,6 +1,9 @@
 use crate::PanicReason;
 
-use fuel_types::{Immediate12, Immediate18};
+use fuel_types::{
+    Immediate12,
+    Immediate18,
+};
 
 pub mod wideint;
 
@@ -14,8 +17,8 @@ const GM_GET_CHAIN_ID: u8 = 0x04;
 #[repr(u8)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-// The VM is the only who should match this struct, and it *MUST* always perform exhaustive match
-// so all offered variants are covered.
+// The VM is the only who should match this struct, and it *MUST* always perform
+// exhaustive match so all offered variants are covered.
 pub enum GMArgs {
     /// Get if caller is external.
     IsCallerExternal = GM_IS_CALLER_EXTERNAL,
@@ -128,8 +131,8 @@ const GTF_WITNESS_DATA: u16 = 0x302;
 #[repr(u16)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-// The VM is the only who should match this struct, and it *MUST* always perform exhaustive match
-// so all offered variants are covered.
+// The VM is the only who should match this struct, and it *MUST* always perform
+// exhaustive match so all offered variants are covered.
 pub enum GTFArgs {
     /// Set `$rA` to `tx.type`
     Type = GTF_TYPE,
@@ -392,7 +395,9 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_COIN_WITNESS_INDEX => Ok(Self::InputCoinWitnessIndex),
             GTF_INPUT_COIN_MATURITY => Ok(Self::InputCoinMaturity),
             GTF_INPUT_COIN_PREDICATE_LENGTH => Ok(Self::InputCoinPredicateLength),
-            GTF_INPUT_COIN_PREDICATE_DATA_LENGTH => Ok(Self::InputCoinPredicateDataLength),
+            GTF_INPUT_COIN_PREDICATE_DATA_LENGTH => {
+                Ok(Self::InputCoinPredicateDataLength)
+            }
             GTF_INPUT_COIN_PREDICATE => Ok(Self::InputCoinPredicate),
             GTF_INPUT_COIN_PREDICATE_DATA => Ok(Self::InputCoinPredicateData),
             GTF_INPUT_COIN_PREDICATE_GAS_USED => Ok(Self::InputCoinPredicateGasUsed),
@@ -409,11 +414,15 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_INPUT_MESSAGE_WITNESS_INDEX => Ok(Self::InputMessageWitnessIndex),
             GTF_INPUT_MESSAGE_DATA_LENGTH => Ok(Self::InputMessageDataLength),
             GTF_INPUT_MESSAGE_PREDICATE_LENGTH => Ok(Self::InputMessagePredicateLength),
-            GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH => Ok(Self::InputMessagePredicateDataLength),
+            GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH => {
+                Ok(Self::InputMessagePredicateDataLength)
+            }
             GTF_INPUT_MESSAGE_DATA => Ok(Self::InputMessageData),
             GTF_INPUT_MESSAGE_PREDICATE => Ok(Self::InputMessagePredicate),
             GTF_INPUT_MESSAGE_PREDICATE_DATA => Ok(Self::InputMessagePredicateData),
-            GTF_INPUT_MESSAGE_PREDICATE_GAS_USED => Ok(Self::InputMessagePredicateGasUsed),
+            GTF_INPUT_MESSAGE_PREDICATE_GAS_USED => {
+                Ok(Self::InputMessagePredicateGasUsed)
+            }
             GTF_OUTPUT_TYPE => Ok(Self::OutputType),
             GTF_OUTPUT_COIN_TO => Ok(Self::OutputCoinTo),
             GTF_OUTPUT_COIN_AMOUNT => Ok(Self::OutputCoinAmount),
@@ -421,8 +430,12 @@ impl TryFrom<Immediate12> for GTFArgs {
             GTF_OUTPUT_CONTRACT_INPUT_INDEX => Ok(Self::OutputContractInputIndex),
             GTF_OUTPUT_CONTRACT_BALANCE_ROOT => Ok(Self::OutputContractBalanceRoot),
             GTF_OUTPUT_CONTRACT_STATE_ROOT => Ok(Self::OutputContractStateRoot),
-            GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID => Ok(Self::OutputContractCreatedContractId),
-            GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT => Ok(Self::OutputContractCreatedStateRoot),
+            GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID => {
+                Ok(Self::OutputContractCreatedContractId)
+            }
+            GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT => {
+                Ok(Self::OutputContractCreatedStateRoot)
+            }
             GTF_WITNESS_DATA_LENGTH => Ok(Self::WitnessDataLength),
             GTF_WITNESS_DATA => Ok(Self::WitnessData),
             _ => Err(PanicReason::InvalidMetadataIdentifier),

@@ -1,11 +1,15 @@
 use fuel_asm::op;
 use fuel_tx::Script;
-use fuel_types::AssetId;
-use fuel_types::ContractId;
+use fuel_types::{
+    AssetId,
+    ContractId,
+};
 use test_case::test_case;
 
-use crate::consts::*;
-use crate::storage::MemoryStorage;
+use crate::{
+    consts::*,
+    storage::MemoryStorage,
+};
 
 use super::*;
 
@@ -127,7 +131,10 @@ fn reset_vm_state_receipts() {
 #[test_case(&[1, 3], &[2] => vec![(0, Some(1), Some(2)), (1, Some(3), None)])]
 #[test_case(&[1], &[2, 4] => vec![(0, Some(1), Some(2)), (1, None, Some(4))])]
 #[test_case(&[1, 3], &[2, 4] => vec![(0, Some(1), Some(2)), (1, Some(3), Some(4))])]
-fn test_capture_vec_state(a: &[u32], b: &[u32]) -> Vec<(usize, Option<u32>, Option<u32>)> {
+fn test_capture_vec_state(
+    a: &[u32],
+    b: &[u32],
+) -> Vec<(usize, Option<u32>, Option<u32>)> {
     capture_vec_state_inner(a.iter(), b.iter()).collect()
 }
 
@@ -138,7 +145,10 @@ fn test_capture_vec_state(a: &[u32], b: &[u32]) -> Vec<(usize, Option<u32>, Opti
 #[test_case(&[], &[(12, 22), (13, 23)] => vec![(12, None, 12, Some(22)), (13, None, 13, Some(23))])]
 #[test_case(&[(12, 22)], &[(13, 22)] => vec![(12, Some(22), 12, None), (13, None, 13, Some(22))])]
 #[test_case(&[(12, 22), (13, 23)], &[(14, 24)] => vec![(12, Some(22), 12, None), (13, Some(23), 13, None), (14, None, 14, Some(24))])]
-fn test_capture_map_state(a: &[(u32, u32)], b: &[(u32, u32)]) -> Vec<(u32, Option<u32>, u32, Option<u32>)> {
+fn test_capture_map_state(
+    a: &[(u32, u32)],
+    b: &[(u32, u32)],
+) -> Vec<(u32, Option<u32>, u32, Option<u32>)> {
     let a: HashMap<u32, u32> = a.iter().copied().collect();
     let a_keys = a.keys().collect();
     let b: HashMap<u32, u32> = b.iter().copied().collect();

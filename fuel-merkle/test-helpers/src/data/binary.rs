@@ -1,12 +1,18 @@
 use fuel_merkle::binary::verify;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use std::convert::TryInto;
 
 use fuel_merkle::common::Bytes32;
 
 use crate::{
     binary::verify as verify_from_test_helper,
-    data::{EncodedValue, TestError},
+    data::{
+        EncodedValue,
+        TestError,
+    },
 };
 
 #[derive(Serialize, Deserialize)]
@@ -32,7 +38,8 @@ impl ProofTest {
             .map(|v| v.into_bytes().unwrap().as_slice().try_into().unwrap())
             .collect::<Vec<Bytes32>>();
         let data = self.data.into_bytes()?;
-        let verification = verify(&root, data, &proof_set, self.proof_index, self.num_leaves);
+        let verification =
+            verify(&root, data, &proof_set, self.proof_index, self.num_leaves);
         let verification_from_test_helper =
             verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
         let expected_verification = self.expected_verification;

@@ -1,15 +1,36 @@
 use crate::{
     common::{
         error::DeserializeError,
-        node::{ChildError, ChildResult, Node as NodeTrait, ParentNode as ParentNodeTrait},
-        path::{ComparablePath, Instruction, Path},
-        Bytes32, Prefix,
+        node::{
+            ChildError,
+            ChildResult,
+            Node as NodeTrait,
+            ParentNode as ParentNodeTrait,
+        },
+        path::{
+            ComparablePath,
+            Instruction,
+            Path,
+        },
+        Bytes32,
+        Prefix,
     },
-    sparse::{hash::sum, zero_sum, Primitive},
-    storage::{Mappable, StorageInspect},
+    sparse::{
+        hash::sum,
+        zero_sum,
+        Primitive,
+    },
+    storage::{
+        Mappable,
+        StorageInspect,
+    },
 };
 
-use core::{cmp, fmt, marker::PhantomData};
+use core::{
+    cmp,
+    fmt,
+    marker::PhantomData,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum Node {
@@ -24,7 +45,11 @@ pub(crate) enum Node {
 }
 
 impl Node {
-    fn calculate_hash(prefix: &Prefix, bytes_lo: &Bytes32, bytes_hi: &Bytes32) -> Bytes32 {
+    fn calculate_hash(
+        prefix: &Prefix,
+        bytes_lo: &Bytes32,
+        bytes_hi: &Bytes32,
+    ) -> Bytes32 {
         use digest::Digest;
         let mut hash = sha2::Sha256::new();
         hash.update(prefix);
@@ -37,7 +62,12 @@ impl Node {
         Node::key_size_in_bits()
     }
 
-    pub fn new(height: u32, prefix: Prefix, bytes_lo: Bytes32, bytes_hi: Bytes32) -> Self {
+    pub fn new(
+        height: u32,
+        prefix: Prefix,
+        bytes_lo: Bytes32,
+        bytes_hi: Bytes32,
+    ) -> Self {
         Self::Node {
             hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
             height,
@@ -70,7 +100,11 @@ impl Node {
         }
     }
 
-    pub fn create_node_on_path(path: &dyn Path, path_node: &Node, side_node: &Node) -> Self {
+    pub fn create_node_on_path(
+        path: &dyn Path,
+        path_node: &Node,
+        side_node: &Node,
+    ) -> Self {
         if path_node.is_leaf() && side_node.is_leaf() {
             // When joining two leaves, the joined node is found where the paths
             // of the two leaves diverge. The joined node may be a direct parent
@@ -80,8 +114,12 @@ impl Node {
             let parent_depth = path_node.common_path_length(side_node);
             let parent_height = (Node::max_height() - parent_depth) as u32;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => Node::create_node(path_node, side_node, parent_height),
-                Instruction::Right => Node::create_node(side_node, path_node, parent_height),
+                Instruction::Left => {
+                    Node::create_node(path_node, side_node, parent_height)
+                }
+                Instruction::Right => {
+                    Node::create_node(side_node, path_node, parent_height)
+                }
             }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
@@ -91,8 +129,12 @@ impl Node {
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height as usize;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => Node::create_node(path_node, side_node, parent_height),
-                Instruction::Right => Node::create_node(side_node, path_node, parent_height),
+                Instruction::Left => {
+                    Node::create_node(path_node, side_node, parent_height)
+                }
+                Instruction::Right => {
+                    Node::create_node(side_node, path_node, parent_height)
+                }
             }
         }
     }
@@ -304,11 +346,11 @@ where
 
     fn left_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
-            return Err(ChildError::NodeIsLeaf);
+            return Err(ChildError::NodeIsLeaf)
         }
         let key = self.node.left_child_key();
         if key == zero_sum() {
-            return Ok(Self::new(self.storage, Node::create_placeholder()));
+            return Ok(Self::new(self.storage, Node::create_placeholder()))
         }
         let primitive = self
             .storage
@@ -324,11 +366,11 @@ where
 
     fn right_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
-            return Err(ChildError::NodeIsLeaf);
+            return Err(ChildError::NodeIsLeaf)
         }
         let key = self.node.right_child_key();
         if key == zero_sum() {
-            return Ok(Self::new(self.storage, Node::create_placeholder()));
+            return Ok(Self::new(self.storage, Node::create_placeholder()))
         }
         let primitive = self
             .storage
@@ -370,8 +412,18 @@ where
 #[cfg(test)]
 mod test_node {
     use crate::{
-        common::{error::DeserializeError, Bytes32, Prefix, PrefixError},
-        sparse::{hash::sum, zero_sum, Node, Primitive},
+        common::{
+            error::DeserializeError,
+            Bytes32,
+            Prefix,
+            PrefixError,
+        },
+        sparse::{
+            hash::sum,
+            zero_sum,
+            Node,
+            Primitive,
+        },
     };
 
     fn leaf_hash(key: &Bytes32, data: &[u8]) -> Bytes32 {
@@ -402,8 +454,14 @@ mod test_node {
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 1);
         assert_eq!(node.prefix(), Prefix::Node);
-        assert_eq!(*node.left_child_key(), leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
-        assert_eq!(*node.right_child_key(), leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
+        assert_eq!(
+            *node.left_child_key(),
+            leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32])
+        );
+        assert_eq!(
+            *node.right_child_key(),
+            leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32])
+        );
     }
 
     #[test]
@@ -444,7 +502,8 @@ mod test_node {
         let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
 
         // Should return Error; prefix 0xff is does not represent a node or leaf
-        let err = Node::try_from(primitive).expect_err("Expected try_from() to be Error; got OK");
+        let err = Node::try_from(primitive)
+            .expect_err("Expected try_from() to be Error; got OK");
         assert!(matches!(
             err,
             DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
@@ -455,7 +514,8 @@ mod test_node {
     /// ```node = (0x00, k, h(serialize(d)))```
     #[test]
     fn test_leaf_primitive_returns_expected_primitive() {
-        let expected_primitive = (0_u32, Prefix::Leaf as u8, sum(b"LEAF"), sum([1u8; 32]));
+        let expected_primitive =
+            (0_u32, Prefix::Leaf as u8, sum(b"LEAF"), sum([1u8; 32]));
 
         let leaf = Node::create_leaf(&sum(b"LEAF"), [1u8; 32]);
         let primitive = Primitive::from(&leaf);
@@ -504,8 +564,10 @@ mod test_node {
     fn test_node_hash_returns_expected_hash_value() {
         let mut expected_buffer = [0u8; 65];
         expected_buffer[0..1].clone_from_slice(Prefix::Node.as_ref());
-        expected_buffer[1..33].clone_from_slice(&leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
-        expected_buffer[33..65].clone_from_slice(&leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
+        expected_buffer[1..33]
+            .clone_from_slice(&leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
+        expected_buffer[33..65]
+            .clone_from_slice(&leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
         let expected_value = sum(expected_buffer);
 
         let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), [1u8; 32]);
@@ -522,11 +584,25 @@ mod test_storage_node {
     use crate::{
         common::{
             error::DeserializeError,
-            node::{ChildError, ParentNode},
-            Bytes32, PrefixError, StorageMap,
+            node::{
+                ChildError,
+                ParentNode,
+            },
+            Bytes32,
+            PrefixError,
+            StorageMap,
         },
-        sparse::{hash::sum, node::StorageNodeError, Node, Primitive, StorageNode},
-        storage::{Mappable, StorageMutate},
+        sparse::{
+            hash::sum,
+            node::StorageNodeError,
+            Node,
+            Primitive,
+            StorageNode,
+        },
+        storage::{
+            Mappable,
+            StorageMutate,
+        },
     };
 
     pub struct TestTable;
@@ -534,8 +610,8 @@ mod test_storage_node {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
+        type Value = Self::OwnedValue;
     }
 
     #[test]
@@ -690,9 +766,9 @@ mod test_storage_node {
 
         assert!(matches!(
             err,
-            ChildError::Error(StorageNodeError::DeserializeError(DeserializeError::PrefixError(
-                PrefixError::InvalidPrefix(0xff)
-            )))
+            ChildError::Error(StorageNodeError::DeserializeError(
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
+            ))
         ));
     }
 
@@ -712,9 +788,9 @@ mod test_storage_node {
 
         assert!(matches!(
             err,
-            ChildError::Error(StorageNodeError::DeserializeError(DeserializeError::PrefixError(
-                PrefixError::InvalidPrefix(0xff)
-            )))
+            ChildError::Error(StorageNodeError::DeserializeError(
+                DeserializeError::PrefixError(PrefixError::InvalidPrefix(0xff))
+            ))
         ));
     }
 }

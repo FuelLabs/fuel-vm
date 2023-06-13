@@ -1,7 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use crate::storage::ContractsState;
-use crate::storage::MemoryStorage;
+use crate::storage::{
+    ContractsState,
+    MemoryStorage,
+};
 
 use super::*;
 use fuel_storage::StorageAsMut;
@@ -72,7 +74,10 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &Bytes32::new(v))
+            .insert(
+                &(&ContractId::default(), &Bytes32::new(k)).into(),
+                &Bytes32::new(v),
+            )
             .unwrap();
     }
 
@@ -115,6 +120,9 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
     => matches Ok(_)
     ; "Pass when $rA + 32 == VM_MAX_RAM"
 )]
-fn test_state_clear_qword_input(start_key_memory_address: Word, num_slots: Word) -> Result<(), RuntimeError> {
+fn test_state_clear_qword_input(
+    start_key_memory_address: Word,
+    num_slots: Word,
+) -> Result<(), RuntimeError> {
     StateClearQWord::new(start_key_memory_address, num_slots).map(|_| ())
 }

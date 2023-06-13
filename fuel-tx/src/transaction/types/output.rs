@@ -1,11 +1,23 @@
 use fuel_crypto::Hasher;
-use fuel_types::{bytes, MemLayout, MemLocType, Nonce};
-use fuel_types::{Address, AssetId, Bytes32, ContractId, Word};
+use fuel_types::{
+    bytes,
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+    MemLayout,
+    MemLocType,
+    Nonce,
+    Word,
+};
 
 use core::mem;
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
+use fuel_types::bytes::{
+    SizedBytes,
+    WORD_SIZE,
+};
 
 #[cfg(feature = "std")]
 use std::io;
@@ -64,7 +76,9 @@ impl Default for Output {
 impl bytes::SizedBytes for Output {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => OUTPUT_CCV_SIZE,
+            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => {
+                OUTPUT_CCV_SIZE
+            }
 
             Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
 
@@ -79,10 +93,18 @@ impl Output {
     }
 
     pub const fn coin(to: Address, amount: Word, asset_id: AssetId) -> Self {
-        Self::Coin { to, amount, asset_id }
+        Self::Coin {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
-    pub const fn contract(input_index: u8, balance_root: Bytes32, state_root: Bytes32) -> Self {
+    pub const fn contract(
+        input_index: u8,
+        balance_root: Bytes32,
+        state_root: Bytes32,
+    ) -> Self {
         Self::Contract {
             input_index,
             balance_root,
@@ -91,11 +113,19 @@ impl Output {
     }
 
     pub const fn change(to: Address, amount: Word, asset_id: AssetId) -> Self {
-        Self::Change { to, amount, asset_id }
+        Self::Change {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
     pub const fn variable(to: Address, amount: Word, asset_id: AssetId) -> Self {
-        Self::Variable { to, amount, asset_id }
+        Self::Variable {
+            to,
+            amount,
+            asset_id,
+        }
     }
 
     pub const fn contract_created(contract_id: ContractId, state_root: Bytes32) -> Self {
@@ -107,25 +137,27 @@ impl Output {
 
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
-            Output::Coin { asset_id, .. } | Output::Change { asset_id, .. } | Output::Variable { asset_id, .. } => {
-                Some(asset_id)
-            }
+            Output::Coin { asset_id, .. }
+            | Output::Change { asset_id, .. }
+            | Output::Variable { asset_id, .. } => Some(asset_id),
             _ => None,
         }
     }
 
     pub const fn to(&self) -> Option<&Address> {
         match self {
-            Output::Coin { to, .. } | Output::Change { to, .. } | Output::Variable { to, .. } => Some(to),
+            Output::Coin { to, .. }
+            | Output::Change { to, .. }
+            | Output::Variable { to, .. } => Some(to),
             _ => None,
         }
     }
 
     pub const fn amount(&self) -> Option<Word> {
         match self {
-            Output::Coin { amount, .. } | Output::Change { amount, .. } | Output::Variable { amount, .. } => {
-                Some(*amount)
-            }
+            Output::Coin { amount, .. }
+            | Output::Change { amount, .. }
+            | Output::Variable { amount, .. } => Some(*amount),
             _ => None,
         }
     }
@@ -146,7 +178,8 @@ impl Output {
 
     pub const fn state_root(&self) -> Option<&Bytes32> {
         match self {
-            Output::Contract { state_root, .. } | Output::ContractCreated { state_root, .. } => Some(state_root),
+            Output::Contract { state_root, .. }
+            | Output::ContractCreated { state_root, .. } => Some(state_root),
             _ => None,
         }
     }
@@ -199,7 +232,10 @@ impl Output {
             }
 
             Output::Variable {
-                to, amount, asset_id, ..
+                to,
+                amount,
+                asset_id,
+                ..
             } => {
                 mem::take(to);
                 mem::take(amount);
@@ -218,7 +254,11 @@ impl Output {
                 mem::take(amount);
             }
 
-            Output::Variable { to, amount, asset_id } => {
+            Output::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
                 mem::take(to);
                 mem::take(amount);
                 mem::take(asset_id);
@@ -239,15 +279,27 @@ impl io::Read for Output {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = self.serialized_size();
         if buf.len() < n {
-            return Err(bytes::eof());
+            return Err(bytes::eof())
         }
 
         let identifier: OutputRepr = self.into();
 
         match self {
-            Self::Coin { to, amount, asset_id }
-            | Self::Change { to, amount, asset_id }
-            | Self::Variable { to, amount, asset_id } => {
+            Self::Coin {
+                to,
+                amount,
+                asset_id,
+            }
+            | Self::Change {
+                to,
+                amount,
+                asset_id,
+            }
+            | Self::Variable {
+                to,
+                amount,
+                asset_id,
+            } => {
                 type S = CoinSizes;
                 let buf: &mut [_; S::LEN] = buf
                     .get_mut(..S::LEN)
@@ -275,7 +327,11 @@ impl io::Read for Output {
 
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
 
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.input_index), *input_index);
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.input_index),
+                    *input_index,
+                );
                 bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
 
                 bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
@@ -330,9 +386,27 @@ impl io::Write for Output {
                 let asset_id = asset_id.into();
 
                 match identifier {
-                    OutputRepr::Coin => *self = Self::Coin { to, amount, asset_id },
-                    OutputRepr::Change => *self = Self::Change { to, amount, asset_id },
-                    OutputRepr::Variable => *self = Self::Variable { to, amount, asset_id },
+                    OutputRepr::Coin => {
+                        *self = Self::Coin {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
+                    OutputRepr::Change => {
+                        *self = Self::Change {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
+                    OutputRepr::Variable => {
+                        *self = Self::Variable {
+                            to,
+                            amount,
+                            asset_id,
+                        }
+                    }
 
                     _ => unreachable!(),
                 }
@@ -347,8 +421,10 @@ impl io::Write for Output {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                let input_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.input_index));
-                let balance_root = bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
+                let input_index =
+                    bytes::restore_u8_at(buf, S::layout(S::LAYOUT.input_index));
+                let balance_root =
+                    bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
                 let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
 
                 let balance_root = balance_root.into();
@@ -370,7 +446,8 @@ impl io::Write for Output {
                     .and_then(|slice| slice.try_into().ok())
                     .ok_or(bytes::eof())?;
 
-                let contract_id = bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
+                let contract_id =
+                    bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
                 let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
 
                 let contract_id = contract_id.into();

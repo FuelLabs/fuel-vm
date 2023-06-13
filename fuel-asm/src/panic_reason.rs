@@ -1,12 +1,14 @@
-use core::{convert, fmt};
+use core::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(u8)]
 #[non_exhaustive]
 /// Panic reason representation for the interpreter.
 pub enum PanicReason {
+    /// The byte can't be mapped to any known `PanicReason`.
+    UnknownPanicReason = 0x00,
     /// Found `RVRT` instruction.
     Revert = 0x01,
     /// Execution ran out of gas.
@@ -82,8 +84,6 @@ pub enum PanicReason {
     ArithmeticError = 0x23,
     /// The contract instruction is not allowed in predicates.
     ContractInstructionNotAllowed = 0x24,
-    /// The byte can't be mapped to any known `PanicReason`.
-    UnknownPanicReason = 0x25,
 }
 
 impl fmt::Display for PanicReason {
@@ -99,28 +99,11 @@ impl std::error::Error for PanicReason {
     }
 }
 
-// TODO: Remove this - `Infallible` has nothing to do with `PanicReason`.
-impl From<convert::Infallible> for PanicReason {
-    fn from(_i: convert::Infallible) -> Self {
-        unreachable!()
-    }
-}
-
-/// Failed to parse a `u8` as a valid panic reason.
-#[derive(Debug, Eq, PartialEq)]
-pub struct InvalidPanicReason;
-
-impl TryFrom<u8> for PanicReason {
-    type Error = InvalidPanicReason;
-
+impl From<u8> for PanicReason {
     /// Converts the `u8` into a `PanicReason`.
-    fn try_from(b: u8) -> Result<Self, Self::Error> {
-        if b == 0 {
-            return Err(InvalidPanicReason);
-        }
-
+    fn from(b: u8) -> Self {
         use PanicReason::*;
-        let reason = match b {
+        match b {
             0x01 => Revert,
             0x02 => OutOfGas,
             0x03 => TransactionValidity,
@@ -158,18 +141,7 @@ impl TryFrom<u8> for PanicReason {
             0x23 => ArithmeticError,
             0x24 => ContractInstructionNotAllowed,
             _ => UnknownPanicReason,
-        };
-
-        Ok(reason)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<InvalidPanicReason> for std::io::Error {
-    fn from(_: InvalidPanicReason) -> Self {
-        use std::io;
-
-        io::Error::new(io::ErrorKind::InvalidInput, "Panic reason can't be zero")
+        }
     }
 }
 
@@ -191,20 +163,21 @@ impl From<core::array::TryFromSliceError> for PanicReason {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     #[test]
     fn test_u8_panic_reason_round_trip() {
-        const LAST_PANIC_REASON: u8 = PanicReason::UnknownPanicReason as u8;
-        let reason = PanicReason::try_from(0);
-        assert!(reason.is_err());
+        let last_known_panic_reason: u8 = PanicReason::iter().last().unwrap() as u8 + 1;
+        let reason = PanicReason::from(0);
+        assert_eq!(reason, PanicReason::UnknownPanicReason);
 
-        for i in 1..LAST_PANIC_REASON {
+        for i in 1..last_known_panic_reason {
             let reason = PanicReason::try_from(i).unwrap();
             let i2 = reason as u8;
             assert_eq!(i, i2);
         }
-        for i in LAST_PANIC_REASON..=255 {
-            let reason = PanicReason::try_from(i).unwrap();
+        for i in last_known_panic_reason..=255 {
+            let reason = PanicReason::from(i);
             let i2 = reason as u8;
             assert_eq!(PanicReason::UnknownPanicReason as u8, i2);
         }

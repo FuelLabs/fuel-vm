@@ -365,7 +365,7 @@ impl io::Write for Receipt {
 
                 let id = id.into();
 
-                *self = Self::panic(id, PanicInstruction::try_from(reason)?, pc, is);
+                *self = Self::panic(id, PanicInstruction::from(reason), pc, is);
             }
 
             ReceiptRepr::Revert => {

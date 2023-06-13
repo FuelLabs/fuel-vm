@@ -21,10 +21,7 @@ use crate::{
     },
 };
 
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -52,7 +49,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 #[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    head: Option<Box<Subtree<Node>>>,
+    head: Option<Subtree<Node>>,
     leaves_count: u64,
     phantom_table: PhantomData<TableType>,
 }
@@ -71,7 +68,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         }
     }
 
-    fn head(&self) -> Option<&Box<Subtree<Node>>> {
+    fn head(&self) -> Option<&Subtree<Node>> {
         self.head.as_ref()
     }
 
@@ -313,7 +310,7 @@ where
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned()
                 .into();
-            let next = Box::new(Subtree::<Node>::new(node, current_head));
+            let next = Subtree::<Node>::new(node, current_head);
             current_head = Some(next);
         }
 
@@ -332,7 +329,7 @@ where
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
-        let head = Box::new(Subtree::<Node>::new(node, next));
+        let head = Subtree::<Node>::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 
@@ -365,7 +362,7 @@ where
                     .insert(&joined_head.node().key(), &joined_head.node().into())?;
                 joined_head
             };
-            self.head = Some(Box::new(joined_head));
+            self.head = Some(joined_head);
         }
 
         Ok(())

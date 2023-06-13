@@ -7,20 +7,23 @@ pub struct Subtree<T> {
 }
 
 impl<T> Subtree<T> {
-    pub fn new(node: T, next: Option<Box<Subtree<T>>>) -> Self {
-        Self { node, next }
+    pub fn new(node: T, next: Option<Subtree<T>>) -> Self {
+        Self {
+            node,
+            next: next.map(Box::new),
+        }
     }
 
-    pub fn next(&self) -> Option<&Box<Subtree<T>>> {
-        self.next.as_ref()
+    pub fn next(&self) -> Option<&Subtree<T>> {
+        self.next.as_ref().map(|next| next.as_ref())
     }
 
-    pub fn next_mut(&mut self) -> Option<&mut Box<Subtree<T>>> {
-        self.next.as_mut()
+    pub fn next_mut(&mut self) -> Option<&mut Subtree<T>> {
+        self.next.as_mut().map(|next| next.as_mut())
     }
 
-    pub fn take_next(&mut self) -> Option<Box<Subtree<T>>> {
-        self.next.take()
+    pub fn take_next(&mut self) -> Option<Subtree<T>> {
+        self.next.take().map(|next| *next)
     }
 
     pub fn node(&self) -> &T {

@@ -310,7 +310,7 @@ where
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned()
                 .into();
-            let next = Subtree::<Node>::new(node, current_head);
+            let next = Subtree::new(node, current_head);
             current_head = Some(next);
         }
 
@@ -329,7 +329,7 @@ where
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
-        let head = Subtree::<Node>::new(node, next);
+        let head = Subtree::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 

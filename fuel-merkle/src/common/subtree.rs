@@ -11,16 +11,16 @@ impl<T> Subtree<T> {
         Self { node, next }
     }
 
-    pub fn next(&self) -> &Option<Box<Subtree<T>>> {
-        &self.next
+    pub fn next(&self) -> Option<&Box<Subtree<T>>> {
+        self.next.as_ref()
     }
 
-    pub fn next_mut(&mut self) -> &mut Option<Box<Subtree<T>>> {
-        &mut self.next
+    pub fn next_mut(&mut self) -> Option<&mut Box<Subtree<T>>> {
+        self.next.as_mut()
     }
 
     pub fn take_next(&mut self) -> Option<Box<Subtree<T>>> {
-        self.next_mut().take()
+        self.next.take()
     }
 
     pub fn node(&self) -> &T {
@@ -32,6 +32,6 @@ impl<T> Subtree<T> {
     }
 
     pub fn next_node(&self) -> Option<&T> {
-        self.next().as_ref().map(|next| next.node())
+        self.next().map(|next| next.node())
     }
 }

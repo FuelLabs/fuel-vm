@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+### Changed
+
+- [#492](https://github.com/FuelLabs/fuel-vm/pull/492) Minor improvements to BMT
+    internals, including a reduction in usage of `Box`, using `expect(...)` over
+    `unwrap()`, and additional comments.
+
 ## [Version 0.34.0]
 
 This release contains fixes for critical issues that we found before the audit. 

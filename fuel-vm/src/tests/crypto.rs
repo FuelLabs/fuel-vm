@@ -181,7 +181,8 @@ fn secp256r1_recover() {
     let message = Message::new(message);
 
     let secret_key = SigningKey::random(rng);
-    let (signature, _recovery_id) = secret_key.sign_recoverable(&*message).unwrap();
+    let (signature, _recovery_id) =
+        secret_key.sign_prehash_recoverable(&*message).unwrap();
     let public_key = secret_key.verifying_key();
 
     #[rustfmt::skip]
@@ -189,7 +190,7 @@ fn secp256r1_recover() {
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
-        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::movi(0x10, 64),
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         op::ecr1(0x11, 0x20, 0x21),
@@ -203,7 +204,11 @@ fn secp256r1_recover() {
         .iter()
         .copied()
         .chain(message.as_ref().iter().copied())
-        .chain(public_key.to_sec1_bytes().iter().copied())
+        .chain(
+            public_key.to_encoded_point(false).to_bytes()[1..]
+                .iter()
+                .copied(),
+        )
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)

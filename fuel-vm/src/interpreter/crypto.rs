@@ -136,14 +136,15 @@ pub(crate) fn secp256r1_recover(
 ) -> Result<(), RuntimeError> {
     let sig = Bytes64::from(read_bytes(memory, b)?);
     let msg = Bytes32::from(read_bytes(memory, c)?);
+    let message = Message::from_bytes_ref(&msg);
 
-    match fuel_crypto::secp256r1::recover(&sig, &msg) {
+    match fuel_crypto::secp256r1::recover(&sig, message) {
         Ok(pub_key) => {
             try_mem_write(a, &*pub_key, owner, memory)?;
             clear_err(err);
         }
         Err(_) => {
-            try_zeroize(a as usize, PublicKey::LEN, owner, memory)?;
+            try_zeroize(a, Bytes32::LEN, owner, memory)?;
             set_err(err);
         }
     }
@@ -162,8 +163,9 @@ pub(crate) fn ed25519_verify(
     let pub_key = Bytes32::from(read_bytes(memory, a)?);
     let sig = Bytes64::from(read_bytes(memory, b)?);
     let msg = Bytes32::from(read_bytes(memory, c)?);
+    let message = Message::from_bytes_ref(&msg);
 
-    if fuel_crypto::ed25519::verify(&pub_key, &sig, &msg).is_ok() {
+    if fuel_crypto::ed25519::verify(&pub_key, &sig, message).is_ok() {
         clear_err(err);
     } else {
         set_err(err);

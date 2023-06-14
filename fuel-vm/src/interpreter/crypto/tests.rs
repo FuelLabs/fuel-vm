@@ -1,4 +1,8 @@
 use fuel_crypto::SecretKey;
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
 
 use crate::{
     context::Context,
@@ -54,6 +58,10 @@ fn test_recover_secp256k1() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_recover_secp256r1() -> Result<(), RuntimeError> {
+    use p256::ecdsa::SigningKey;
+
+    let mut rng = &mut StdRng::seed_from_u64(8586);
+
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
@@ -71,12 +79,16 @@ fn test_recover_secp256r1() -> Result<(), RuntimeError> {
     let sig_address = 0;
     let msg_address = 64;
 
-    let secret = SecretKey::try_from(&[2u8; 32][..]).unwrap();
-    let public_key = PublicKey::from(&secret);
-    let message = Message::new([3u8; 100]);
-    let signature = Signature::sign(&secret, &message);
+    let signing_key = SigningKey::random(&mut rng);
+    let verifying_key = signing_key.verifying_key();
 
-    memory[sig_address..sig_address + Signature::LEN].copy_from_slice(signature.as_ref());
+    let message = Message::new([3u8; 100]);
+    let (signature, _recovery_id) = signing_key
+        .sign_prehash_recoverable(&*message)
+        .expect("Failed to sign");
+
+    memory[sig_address..sig_address + Bytes64::LEN]
+        .copy_from_slice(&signature.to_bytes());
     memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
 
     secp256r1_recover(
@@ -91,8 +103,8 @@ fn test_recover_secp256r1() -> Result<(), RuntimeError> {
     assert_eq!(pc, 8);
     assert_eq!(err, 0);
     assert_eq!(
-        &memory[recovered as usize..recovered as usize + PublicKey::LEN],
-        public_key.as_ref()
+        &memory[recovered as usize..recovered as usize + Bytes64::LEN],
+        &verifying_key.to_encoded_point(false).to_bytes()[1..]
     );
     Ok(())
 }
@@ -115,10 +127,10 @@ fn test_verify_ed25519() -> Result<(), RuntimeError> {
     let message = Message::new([3u8; 100]);
     let signature = keypair.sign(&*message);
 
-
     memory[sig_address..sig_address + Signature::LEN].copy_from_slice(signature.as_ref());
     memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
-    memory[pubkey_address..pubkey_address + Bytes32::LEN].copy_from_slice(keypair.public.as_ref());
+    memory[pubkey_address..pubkey_address + Bytes32::LEN]
+        .copy_from_slice(keypair.public.as_ref());
 
     ed25519_verify(
         &mut memory,

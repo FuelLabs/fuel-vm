@@ -9,13 +9,16 @@ use fuel_types::{
     Bytes64,
 };
 
-use crate::Error;
+use crate::{
+    Error,
+    Message,
+};
 
 /// Verify a signature against a message digest and a public key.
 pub fn verify(
     pub_key: &Bytes32,
     signature: &Bytes64,
-    message: &Bytes32,
+    message: &Message,
 ) -> Result<(), Error> {
     let Ok(signature) = Signature::from_bytes(&**signature) else {
         return Err(Error::InvalidSignature);

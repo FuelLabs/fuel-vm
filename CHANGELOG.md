@@ -8,11 +8,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Version 0.34.1]
+
+Mainly new opcodes prices and small performance improvements in the `BinaryMerkleTree`.
+
 ### Changed
 
 - [#492](https://github.com/FuelLabs/fuel-vm/pull/492) Minor improvements to BMT
     internals, including a reduction in usage of `Box`, using `expect(...)` over
     `unwrap()`, and additional comments.
+
+#### Breaking
+
+- [#493](https://github.com/FuelLabs/fuel-vm/pull/493) The default `GasCostsValues`
+    is updated according to the benches with `fuel-core 0.19`. 
+    It may break some unit tests that compare actual gas usage with expected.
 
 ## [Version 0.34.0]
 

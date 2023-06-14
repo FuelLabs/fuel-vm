@@ -21,10 +21,7 @@ use crate::{
     },
 };
 
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -52,7 +49,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 #[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    head: Option<Box<Subtree<Node>>>,
+    head: Option<Subtree<Node>>,
     leaves_count: u64,
     phantom_table: PhantomData<TableType>,
 }
@@ -69,6 +66,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
             None => *Self::empty_root(),
             Some(ref node) => *node.hash(),
         }
+    }
+
+    fn head(&self) -> Option<&Subtree<Node>> {
+        self.head.as_ref()
     }
 
     pub fn leaves_count(&self) -> u64 {
@@ -95,8 +96,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     /// not held in persistent storage, and these nodes will be available to the
     /// callee.
     fn root_node(&self, scratch_storage: &mut StorageMap<NodesTable>) -> Option<Node> {
-        self.head
-            .as_ref()
+        self.head()
             .map(|head| build_root_node(head, scratch_storage))
     }
 
@@ -310,7 +310,7 @@ where
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned()
                 .into();
-            let next = Box::new(Subtree::<Node>::new(node, current_head));
+            let next = Subtree::new(node, current_head);
             current_head = Some(next);
         }
 
@@ -329,7 +329,7 @@ where
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
-        let head = Box::new(Subtree::<Node>::new(node, next));
+        let head = Subtree::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 
@@ -342,27 +342,28 @@ where
     //
 
     fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
-        loop {
-            let current = self.head.as_ref().unwrap();
-            if !(current.next().is_some()
-                && current.node().position().height()
-                    == current.next_node().unwrap().position().height())
+        while {
+            // Iterate through all subtrees in the tree to see which subtrees
+            // can be merged. Two consecutive subtrees will be merged if, and
+            // only if, their heads are the same height.
+            if let Some((head, next)) = self
+                .head()
+                .and_then(|head| head.next().map(|next| (head, next)))
             {
-                break
+                head.node().height() == next.node().height()
+            } else {
+                // This head belongs to the last subtree and merging is
+                // complete.
+                false
             }
-
+        } {
             // Merge the two front heads of the list into a single head
-            let joined_head = {
-                let mut head = self.head.take().unwrap();
-                let mut head_next = head.take_next().unwrap();
-                let joined_head = join_subtrees(&mut head_next, &mut head);
-                self.storage.insert(
-                    &joined_head.node().key(),
-                    &joined_head.node().as_ref().into(),
-                )?;
-                joined_head
-            };
-            self.head = Some(Box::new(joined_head));
+            let mut head = self.head.take().expect("Expected head to be present");
+            let mut head_next = head.take_next().expect("Expected next to be present");
+            let joined_head = join_subtrees(&mut head_next, &mut head);
+            self.storage
+                .insert(&joined_head.node().key(), &joined_head.node().into())?;
+            self.head = Some(joined_head);
         }
 
         Ok(())
@@ -379,14 +380,12 @@ where
     Table: Mappable<Key = u64, OwnedValue = Primitive, Value = Primitive>,
     Storage: StorageMutateInfallible<Table>,
 {
-    let mut current = subtree.clone();
-    while current.next().is_some() {
-        let mut head = current;
-        let mut head_next = head.take_next().unwrap();
-        current = join_subtrees(&mut head_next, &mut head);
-        storage.insert(&current.node().key(), &current.node().as_ref().into());
+    let mut head = subtree.clone();
+    while let Some(mut head_next) = head.take_next() {
+        head = join_subtrees(&mut head_next, &mut head);
+        storage.insert(&head.node().key(), &head.node().into());
     }
-    current.node().clone()
+    head.node().clone()
 }
 
 #[cfg(test)]

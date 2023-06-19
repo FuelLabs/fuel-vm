@@ -87,6 +87,141 @@ fn secp256k1_recover() {
 
     assert!(success);
 }
+
+#[test]
+fn ecrecover_tx_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut client = MemoryClient::default();
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+    let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
+
+    let secret = SecretKey::random(rng);
+    let public = secret.public_key();
+
+    #[rustfmt::skip]
+    let script = vec![
+        // 0x21 is a address of the singer of the witness
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::move_(0x21, 0x20),
+        // 0x22 is a witness - signature
+        op::gtf_args(0x22, 0x00, GTFArgs::WitnessData),
+        // TxId is stored in the first 32 bytes of the memory
+        // Store it into register 0x23
+        op::movi(0x23, 0),
+        // Allocate space for the recovered public key
+        // 0x10 contains the size of the public key = PublicKey::LEN
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x11, RegId::HP),
+        // Recover public key into `0x11` from `0x22` signature and TxId `0x23`
+        op::ecr(0x11, 0x22, 0x23),
+        // Compare address `0x21` from script data with with recovered `0x11`
+        // for length `0x10` = PublicKey::LEN
+        op::meq(0x12, 0x21, 0x11, 0x10),
+        op::ret(0x12),
+    ].into_iter().collect();
+
+    let script_data = public.as_ref().to_vec();
+
+    let mut tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .add_random_fee_input()
+        .finalize();
+
+    tx.sign_inputs(&secret, &params.chain_id);
+    let tx = tx.into_checked(height, &params, &gas_costs).unwrap();
+
+    let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Return{ val, .. } if *val == 1));
+
+    assert!(success);
+}
+
+#[test]
+fn ecrecover_tx_id_predicate() {
+    use crate::checked_transaction::EstimatePredicates;
+    use rand::Rng;
+    let rng = &mut StdRng::seed_from_u64(1234u64);
+
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let params = ConsensusParameters::default();
+    let gas_costs = GasCosts::default();
+
+    let secret = SecretKey::random(rng);
+    let public = secret.public_key();
+
+    #[rustfmt::skip]
+    let predicate = vec![
+        // 0x21 is a address of the singer of the witness
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::move_(0x21, 0x20),
+        // 0x22 is a witness - signature
+        op::gtf_args(0x22, 0x00, GTFArgs::WitnessData),
+        // TxId is stored in the first 32 bytes of the memory
+        // Store it into register 0x23
+        op::movi(0x23, 0),
+        // Allocate space for the recovered public key
+        // 0x10 contains the size of the public key = PublicKey::LEN
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x11, RegId::HP),
+        // Recover public key into `0x11` from `0x22` signature and TxId `0x23`
+        op::ecr(0x11, 0x22, 0x23),
+        // Compare address `0x21` from script data with with recovered `0x11`
+        // for length `0x10` = PublicKey::LEN
+        op::meq(0x12, 0x21, 0x11, 0x10),
+        op::ret(0x12),
+    ].into_iter().collect();
+
+    let script_data = public.as_ref().to_vec();
+
+    let input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate, &params.chain_id),
+        1000,
+        rng.gen(),
+        Default::default(),
+        rng.gen(),
+        0,
+        predicate,
+        vec![],
+    );
+
+    let mut tx = TransactionBuilder::script(vec![], script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .with_params(params)
+        .add_input(input)
+        .add_unsigned_coin_input(
+            secret,
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            Default::default(),
+            Default::default(),
+        )
+        .finalize();
+
+    tx.estimate_predicates(&params, &gas_costs)
+        .expect("Should estimate predicate successfully");
+    tx.into_checked(maturity, &params, &gas_costs)
+        .expect("Should check predicate successfully");
+}
+
 #[test]
 fn secp256k1_recover_error() {
     let rng = &mut StdRng::seed_from_u64(2322u64);

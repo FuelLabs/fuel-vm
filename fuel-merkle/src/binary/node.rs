@@ -45,6 +45,10 @@ impl Node {
     pub fn hash(&self) -> &Bytes32 {
         &self.hash
     }
+
+    pub fn height(&self) -> u32 {
+        self.position().height()
+    }
 }
 
 impl AsRef<Node> for Node {

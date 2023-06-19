@@ -14,7 +14,6 @@ use fuel_storage::{
     StorageMutate,
 };
 
-use alloc::boxed::Box;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -52,7 +51,7 @@ pub enum MerkleTreeError {
 /// description above.
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    head: Option<Box<Subtree<Node>>>,
+    head: Option<Subtree<Node>>,
     phantom_table: PhantomData<TableType>,
 }
 
@@ -90,7 +89,7 @@ where
         self.storage.insert(node.hash(), &node)?;
 
         let next = self.head.take();
-        let head = Box::new(Subtree::<Node>::new(node, next));
+        let head = Subtree::<Node>::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 
@@ -142,7 +141,7 @@ where
         &mut self,
         lhs: &mut Subtree<Node>,
         rhs: &mut Subtree<Node>,
-    ) -> Result<Box<Subtree<Node>>, StorageError> {
+    ) -> Result<Subtree<Node>, StorageError> {
         let height = lhs.node().height() + 1;
         let joined_node = Node::create_node(
             height,
@@ -155,7 +154,7 @@ where
 
         let joined_head = Subtree::new(joined_node, lhs.take_next());
 
-        Ok(Box::new(joined_head))
+        Ok(joined_head)
     }
 }
 

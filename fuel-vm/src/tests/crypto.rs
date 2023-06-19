@@ -8,6 +8,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_crypto::{
+    secp256r1::encode_pubkey,
     Hasher,
     PublicKey,
     SecretKey,
@@ -204,11 +205,7 @@ fn secp256r1_recover() {
         .iter()
         .copied()
         .chain(message.as_ref().iter().copied())
-        .chain(
-            public_key.to_encoded_point(false).to_bytes()[1..]
-                .iter()
-                .copied(),
-        )
+        .chain(encode_pubkey(*public_key))
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)

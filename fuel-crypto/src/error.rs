@@ -16,6 +16,9 @@ pub enum Error {
     /// Invalid secp256k1 signature
     InvalidSignature,
 
+    /// Coudln't sign the message
+    FailedToSign,
+
     /// The provided key wasn't found
     KeyNotFound,
 

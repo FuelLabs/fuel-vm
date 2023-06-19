@@ -58,6 +58,7 @@ fn test_recover_secp256k1() -> Result<(), RuntimeError> {
 
 #[test]
 fn test_recover_secp256r1() -> Result<(), RuntimeError> {
+    use fuel_crypto::secp256r1::encode_pubkey;
     use p256::ecdsa::SigningKey;
 
     let mut rng = &mut StdRng::seed_from_u64(8586);
@@ -83,12 +84,10 @@ fn test_recover_secp256r1() -> Result<(), RuntimeError> {
     let verifying_key = signing_key.verifying_key();
 
     let message = Message::new([3u8; 100]);
-    let (signature, _recovery_id) = signing_key
-        .sign_prehash_recoverable(&*message)
-        .expect("Failed to sign");
+    let signature = fuel_crypto::secp256r1::sign_prehashed(&signing_key, &message)
+        .expect("Signing failed");
 
-    memory[sig_address..sig_address + Bytes64::LEN]
-        .copy_from_slice(&signature.to_bytes());
+    memory[sig_address..sig_address + Bytes64::LEN].copy_from_slice(&*signature);
     memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
 
     secp256r1_recover(
@@ -104,7 +103,7 @@ fn test_recover_secp256r1() -> Result<(), RuntimeError> {
     assert_eq!(err, 0);
     assert_eq!(
         &memory[recovered as usize..recovered as usize + Bytes64::LEN],
-        &verifying_key.to_encoded_point(false).to_bytes()[1..]
+        &encode_pubkey(*verifying_key)
     );
     Ok(())
 }

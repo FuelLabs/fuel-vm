@@ -27,7 +27,6 @@ zeroize = { version = "1.5", features = ["derive"] }
 [dev-dependencies]
 bincode = { workspace = true }
 criterion = "0.4"
-fuel-crypto = { path = ".", default-features = false, features = ["random"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }
 sha2 = "0.10"
 

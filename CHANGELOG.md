@@ -10,11 +10,11 @@ Description of the upcoming release here.
 
 ### Added
 
-- [#484](https://github.com/FuelLabs/fuel-vm/pull/484/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
 
 ### Breaking
 
-- [#484](https://github.com/FuelLabs/fuel-vm/pull/484/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
 
 ## [Version 0.34.1]
 
@@ -77,7 +77,6 @@ complete data set.
 - [#473](https://github.com/FuelLabs/fuel-vm/pull/473): CFS and CFSI were not validating
     that the new `$sp` value isn't below `$ssp`, allowing write access to non-owned
     memory. This is now fixed, and attempting to set an incorrect `$sp` value panics.
-- [#484](https://github.com/FuelLabs/fuel-vm/pull/484): Removes apparently unused `Signer` and `Keystore` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
 
 - [#485](https://github.com/FuelLabs/fuel-vm/pull/485): This PR addresses a security
     issue where the user may manipulate the structure of the Sparse Merkle Tree. 

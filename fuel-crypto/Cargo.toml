@@ -25,6 +25,7 @@ sha2 = { version = "0.10", default-features = false }
 zeroize = { version = "1.5", features = ["derive"] }
 
 [dev-dependencies]
+fuel-crypto = { workspace = true, features = ["random"] }
 bincode = { workspace = true }
 criterion = "0.4"
 k256 = { version = "0.11", features = [ "ecdsa" ] }

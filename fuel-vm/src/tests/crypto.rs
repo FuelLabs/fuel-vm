@@ -120,7 +120,7 @@ fn ecrecover_tx_id() {
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         // Recover public key into `0x11` from `0x22` signature and TxId `0x23`
-        op::ecr(0x11, 0x22, 0x23),
+        op::eck1(0x11, 0x22, 0x23),
         // Compare address `0x21` from script data with with recovered `0x11`
         // for length `0x10` = PublicKey::LEN
         op::meq(0x12, 0x21, 0x11, 0x10),
@@ -179,7 +179,7 @@ fn ecrecover_tx_id_predicate() {
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         // Recover public key into `0x11` from `0x22` signature and TxId `0x23`
-        op::ecr(0x11, 0x22, 0x23),
+        op::eck1(0x11, 0x22, 0x23),
         // Compare address `0x21` from script data with with recovered `0x11`
         // for length `0x10` = PublicKey::LEN
         op::meq(0x12, 0x21, 0x11, 0x10),

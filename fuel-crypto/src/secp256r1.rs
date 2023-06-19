@@ -4,7 +4,7 @@ use crate::{
     Error,
     Message,
 };
-use coins_bip32::prelude::RecoveryId;
+use ecdsa::RecoveryId;
 use fuel_types::Bytes64;
 use p256::ecdsa::{
     Signature,

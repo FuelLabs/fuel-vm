@@ -97,219 +97,219 @@ impl CheckRegId for u8 {
 // this works, see the `fuel_asm::macros` module level documentation.
 impl_instructions! {
     "Adds two registers."
-    0x10 ADD add [RegId RegId RegId]
+    0x10 ADD add [dst: RegId lhs: RegId rhs: RegId]
     "Bitwise ANDs two registers."
-    0x11 AND and [RegId RegId RegId]
+    0x11 AND and [dst: RegId lhs: RegId rhs: RegId]
     "Divides two registers."
-    0x12 DIV div [RegId RegId RegId]
+    0x12 DIV div [dst: RegId lhs: RegId rhs: RegId]
     "Compares two registers for equality."
-    0x13 EQ eq [RegId RegId RegId]
+    0x13 EQ eq [dst: RegId lhs: RegId rhs: RegId]
     "Raises one register to the power of another."
-    0x14 EXP exp [RegId RegId RegId]
+    0x14 EXP exp [dst: RegId lhs: RegId rhs: RegId]
     "Compares two registers for greater-than."
-    0x15 GT gt [RegId RegId RegId]
+    0x15 GT gt [dst: RegId lhs: RegId rhs: RegId]
     "Compares two registers for less-than."
-    0x16 LT lt [RegId RegId RegId]
+    0x16 LT lt [dst: RegId lhs: RegId rhs: RegId]
     "The integer logarithm of a register."
-    0x17 MLOG mlog [RegId RegId RegId]
+    0x17 MLOG mlog [dst: RegId lhs: RegId rhs: RegId]
     "The integer root of a register."
-    0x18 MROO mroo [RegId RegId RegId]
+    0x18 MROO mroo [dst: RegId lhs: RegId rhs: RegId]
     "Modulo remainder of two registers."
-    0x19 MOD mod_ [RegId RegId RegId]
+    0x19 MOD mod_ [dst: RegId lhs: RegId rhs: RegId]
     "Copy from one register to another."
-    0x1A MOVE move_ [RegId RegId]
+    0x1A MOVE move_ [dst: RegId src: RegId]
     "Multiplies two registers."
-    0x1B MUL mul [RegId RegId RegId]
+    0x1B MUL mul [dst: RegId lhs: RegId rhs: RegId]
     "Bitwise NOT a register."
-    0x1C NOT not [RegId RegId]
+    0x1C NOT not [dst: RegId arg: RegId]
     "Bitwise ORs two registers."
-    0x1D OR or [RegId RegId RegId]
+    0x1D OR or [dst: RegId lhs: RegId rhs: RegId]
     "Left shifts a register by a register."
-    0x1E SLL sll [RegId RegId RegId]
+    0x1E SLL sll [dst: RegId lhs: RegId rhs: RegId]
     "Right shifts a register by a register."
-    0x1F SRL srl [RegId RegId RegId]
+    0x1F SRL srl [dst: RegId lhs: RegId rhs: RegId]
     "Subtracts two registers."
-    0x20 SUB sub [RegId RegId RegId]
+    0x20 SUB sub [dst: RegId lhs: RegId rhs: RegId]
     "Bitwise XORs two registers."
-    0x21 XOR xor [RegId RegId RegId]
+    0x21 XOR xor [dst: RegId lhs: RegId rhs: RegId]
     "Fused multiply-divide with arbitrary precision intermediate step."
-    0x22 MLDV mldv [RegId RegId RegId RegId]
+    0x22 MLDV mldv [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
 
     "Return from context."
-    0x24 RET ret [RegId]
+    0x24 RET ret [value: RegId]
     "Return from context with data."
-    0x25 RETD retd [RegId RegId]
+    0x25 RETD retd [addr: RegId len: RegId]
     "Allocate a number of bytes from the heap."
-    0x26 ALOC aloc [RegId]
+    0x26 ALOC aloc [bytes: RegId]
     "Clear a variable number of bytes in memory."
-    0x27 MCL mcl [RegId RegId]
+    0x27 MCL mcl [dst_addr: RegId len: RegId]
     "Copy a variable number of bytes in memory."
-    0x28 MCP mcp [RegId RegId RegId]
+    0x28 MCP mcp [dst_addr: RegId src_addr: RegId len: RegId]
     "Compare bytes in memory."
-    0x29 MEQ meq [RegId RegId RegId RegId]
+    0x29 MEQ meq [result: RegId lhs_addr: RegId rhs_addr: RegId len: RegId]
     "Get block header hash for height."
-    0x2A BHSH bhsh [RegId RegId]
+    0x2A BHSH bhsh [dst: RegId heigth: RegId]
     "Get current block height."
-    0x2B BHEI bhei [RegId]
+    0x2B BHEI bhei [dst: RegId]
     "Burn coins of the current contract's asset ID."
-    0x2C BURN burn [RegId]
+    0x2C BURN burn [count: RegId]
     "Call a contract."
-    0x2D CALL call [RegId RegId RegId RegId]
+    0x2D CALL call [target_struct: RegId fwd_coins: RegId asset_id_addr: RegId fwd_gas: RegId]
     "Copy contract code for a contract."
-    0x2E CCP ccp [RegId RegId RegId RegId]
+    0x2E CCP ccp [dst_addr: RegId contract_id_addr: RegId offset: RegId len: RegId]
     "Get code root of a contract."
-    0x2F CROO croo [RegId RegId]
+    0x2F CROO croo [dst_addr: RegId contract_id_addr: RegId]
     "Get code size of a contract."
-    0x30 CSIZ csiz [RegId RegId]
+    0x30 CSIZ csiz [dst: RegId contract_id_addr: RegId]
     "Get current block proposer's address."
-    0x31 CB cb [RegId]
+    0x31 CB cb [dst: RegId]
     "Load a contract's code as executable."
-    0x32 LDC ldc [RegId RegId RegId]
+    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId]
     "Log an event."
-    0x33 LOG log [RegId RegId RegId RegId]
+    0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."
-    0x34 LOGD logd [RegId RegId RegId RegId]
+    0x34 LOGD logd [a: RegId b: RegId addr: RegId len: RegId]
     "Mint coins of the current contract's asset ID."
-    0x35 MINT mint [RegId]
+    0x35 MINT mint [amount: RegId]
     "Halt execution, reverting state changes and returning a value."
-    0x36 RVRT rvrt [RegId]
+    0x36 RVRT rvrt [value: RegId]
     "Clear a series of slots from contract storage."
-    0x37 SCWQ scwq [RegId RegId RegId]
+    0x37 SCWQ scwq [key_addr: RegId status: RegId lenq: RegId]
     "Load a word from contract storage."
-    0x38 SRW srw [RegId RegId RegId]
+    0x38 SRW srw [dst: RegId status: RegId key_addr: RegId]
     "Load a series of 32 byte slots from contract storage."
-    0x39 SRWQ srwq [RegId RegId RegId RegId]
+    0x39 SRWQ srwq [dst_addr: RegId status: RegId key_addr:RegId lenq: RegId]
     "Store a word in contract storage."
-    0x3A SWW sww [RegId RegId RegId]
+    0x3A SWW sww [key_addr: RegId status: RegId value: RegId]
     "Store a series of 32 byte slots in contract storage."
-    0x3B SWWQ swwq [RegId RegId RegId RegId]
+    0x3B SWWQ swwq [key_addr: RegId status: RegId src_addr: RegId lenq: RegId]
     "Transfer coins to a contract unconditionally."
-    0x3C TR tr [RegId RegId RegId]
+    0x3C TR tr [contract_id_addr: RegId amount: RegId asset_id_addr: RegId]
     "Transfer coins to a variable output."
-    0x3D TRO tro [RegId RegId RegId RegId]
-    "The 64-byte Secp256k1 public key (x, y) recovered from 64-byte signature on 32-byte message."
-    0x3E ECK1 eck1 [RegId RegId RegId]
+    0x3D TRO tro [contract_id_addr: RegId output_index: RegId amount: RegId asset_id_addr: RegId]
+    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message."
+    0x3E ECK1 eck1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
     "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message."
-    0x3F ECR1 ecr1 [RegId RegId RegId]
+    0x3F ECR1 ecr1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
     "Verify ED25519 public key and signature match a 32-byte message."
-    0x40 ED19 ed19 [RegId RegId RegId]
+    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
     "The keccak-256 hash of a slice."
-    0x41 K256 k256 [RegId RegId RegId]
+    0x41 K256 k256 [dst_addr: RegId src_addr: RegId len: RegId]
     "The SHA-2-256 hash of a slice."
-    0x42 S256 s256 [RegId RegId RegId]
+    0x42 S256 s256 [dst_addr: RegId src_addr: RegId len: RegId]
     "Get timestamp of block at given height."
-    0x43 TIME time [RegId RegId]
+    0x43 TIME time [dst: RegId heigth: RegId]
 
     "Performs no operation."
     0x47 NOOP noop []
     "Set flag register to a register."
-    0x48 FLAG flag [RegId]
+    0x48 FLAG flag [value: RegId]
     "Get the balance of contract of an asset ID."
-    0x49 BAL bal [RegId RegId RegId]
+    0x49 BAL bal [dst: RegId asset_id_addr: RegId contract_id_addr: RegId]
     "Dynamic jump."
-    0x4A JMP jmp [RegId]
+    0x4A JMP jmp [abs_target: RegId]
     "Conditional dynamic jump."
-    0x4B JNE jne [RegId RegId RegId]
+    0x4B JNE jne [abs_target: RegId lhs: RegId rhs: RegId]
     "Send a message to recipient address with call abi, coins, and output."
-    0x4C SMO smo [RegId RegId RegId RegId]
+    0x4C SMO smo [recipient_addr: RegId data_addr: RegId data_len: RegId coins: RegId]
 
     "Adds a register and an immediate value."
-    0x50 ADDI addi [RegId RegId Imm12]
+    0x50 ADDI addi [dst: RegId lhs: RegId rhs: Imm12]
     "Bitwise ANDs a register and an immediate value."
-    0x51 ANDI andi [RegId RegId Imm12]
+    0x51 ANDI andi [dst: RegId lhs: RegId rhs: Imm12]
     "Divides a register and an immediate value."
-    0x52 DIVI divi [RegId RegId Imm12]
+    0x52 DIVI divi [dst: RegId lhs: RegId rhs: Imm12]
     "Raises one register to the power of an immediate value."
-    0x53 EXPI expi [RegId RegId Imm12]
+    0x53 EXPI expi [dst: RegId lhs: RegId rhs: Imm12]
     "Modulo remainder of a register and an immediate value."
-    0x54 MODI modi [RegId RegId Imm12]
+    0x54 MODI modi [dst: RegId lhs: RegId rhs: Imm12]
     "Multiplies a register and an immediate value."
-    0x55 MULI muli [RegId RegId Imm12]
+    0x55 MULI muli [dst: RegId lhs: RegId rhs: Imm12]
     "Bitwise ORs a register and an immediate value."
-    0x56 ORI ori [RegId RegId Imm12]
+    0x56 ORI ori [dst: RegId lhs: RegId rhs: Imm12]
     "Left shifts a register by an immediate value."
-    0x57 SLLI slli [RegId RegId Imm12]
+    0x57 SLLI slli [dst: RegId lhs: RegId rhs: Imm12]
     "Right shifts a register by an immediate value."
-    0x58 SRLI srli [RegId RegId Imm12]
+    0x58 SRLI srli [dst: RegId lhs: RegId rhs: Imm12]
     "Subtracts a register and an immediate value."
-    0x59 SUBI subi [RegId RegId Imm12]
+    0x59 SUBI subi [dst: RegId lhs: RegId rhs: Imm12]
     "Bitwise XORs a register and an immediate value."
-    0x5A XORI xori [RegId RegId Imm12]
+    0x5A XORI xori [dst: RegId lhs: RegId rhs: Imm12]
     "Conditional jump."
-    0x5B JNEI jnei [RegId RegId Imm12]
+    0x5B JNEI jnei [cond_lhs: RegId cond_rhs: RegId abs_target: Imm12]
     "A byte is loaded from the specified address offset by an immediate value."
-    0x5C LB lb [RegId RegId Imm12]
+    0x5C LB lb [dst: RegId addr: RegId offset: Imm12]
     "A word is loaded from the specified address offset by an immediate value."
-    0x5D LW lw [RegId RegId Imm12]
+    0x5D LW lw [dst: RegId addr: RegId offset: Imm12]
     "Write the least significant byte of a register to memory."
-    0x5E SB sb [RegId RegId Imm12]
+    0x5E SB sb [addr: RegId value: RegId offset: Imm12]
     "Write a register to memory."
-    0x5F SW sw [RegId RegId Imm12]
+    0x5F SW sw [addr: RegId value: RegId offset: Imm12]
     "Copy an immediate number of bytes in memory."
-    0x60 MCPI mcpi [RegId RegId Imm12]
+    0x60 MCPI mcpi [dst_addr: RegId src_addr: RegId len: Imm12]
     "Get transaction fields."
-    0x61 GTF gtf [RegId RegId Imm12]
+    0x61 GTF gtf [dst: RegId arg: RegId selector: Imm12]
 
     "Clear an immediate number of bytes in memory."
-    0x70 MCLI mcli [RegId Imm18]
+    0x70 MCLI mcli [addr: RegId count: Imm18]
     "Get metadata from memory."
-    0x71 GM gm [RegId Imm18]
+    0x71 GM gm [dst: RegId selector: Imm18]
     "Copy immediate value into a register"
-    0x72 MOVI movi [RegId Imm18]
+    0x72 MOVI movi [dst: RegId val: Imm18]
     "Conditional jump against zero."
-    0x73 JNZI jnzi [RegId Imm18]
+    0x73 JNZI jnzi [cond_nz: RegId abs_target: Imm18]
     "Unconditional dynamic relative jump forwards, with a constant offset."
-    0x74 JMPF jmpf [RegId Imm18]
+    0x74 JMPF jmpf [dynamic: RegId fixed: Imm18]
     "Unconditional dynamic relative jump backwards, with a constant offset."
-    0x75 JMPB jmpb [RegId Imm18]
+    0x75 JMPB jmpb [dynamic: RegId fixed: Imm18]
     "Dynamic relative jump forwards, conditional against zero, with a constant offset."
-    0x76 JNZF jnzf [RegId RegId Imm12]
+    0x76 JNZF jnzf [cond_nz: RegId dynamic: RegId fixed: Imm12]
     "Dynamic relative jump backwards, conditional against zero, with a constant offset."
-    0x77 JNZB jnzb [RegId RegId Imm12]
+    0x77 JNZB jnzb [cond_nz: RegId dynamic: RegId fixed: Imm12]
     "Dynamic relative jump forwards, conditional on comparsion, with a constant offset."
-    0x78 JNEF jnef [RegId RegId RegId Imm06]
+    0x78 JNEF jnef [cond_lhs: RegId cond_rhs: RegId dynamic: RegId fixed: Imm06]
     "Dynamic relative jump backwards, conditional on comparsion, with a constant offset."
-    0x79 JNEB jneb [RegId RegId RegId Imm06]
+    0x79 JNEB jneb [cond_lhs: RegId cond_rhs: RegId dynamic: RegId fixed: Imm06]
 
     "Jump."
-    0x90 JI ji [Imm24]
+    0x90 JI ji [abs_target: Imm24]
     "Extend the current call frame's stack by an immediate value."
-    0x91 CFEI cfei [Imm24]
+    0x91 CFEI cfei [amount: Imm24]
     "Shrink the current call frame's stack by an immediate value."
-    0x92 CFSI cfsi [Imm24]
+    0x92 CFSI cfsi [amount: Imm24]
     "Extend the current call frame's stack"
-    0x93 CFE cfe [RegId]
+    0x93 CFE cfe [amount: RegId]
     "Shrink the current call frame's stack"
-    0x94 CFS cfs [RegId]
+    0x94 CFS cfs [amount: RegId]
 
     "Compare 128bit integers"
-    0xa0 WDCM wdcm [RegId RegId RegId Imm06]
+    0xa0 WDCM wdcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Compare 256bit integers"
-    0xa1 WQCM wqcm [RegId RegId RegId Imm06]
+    0xa1 WQCM wqcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Simple 128bit operations"
-    0xa2 WDOP wdop [RegId RegId RegId Imm06]
+    0xa2 WDOP wdop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Simple 256bit operations"
-    0xa3 WQOP wqop [RegId RegId RegId Imm06]
+    0xa3 WQOP wqop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Multiply 128bit"
-    0xa4 WDML wdml [RegId RegId RegId Imm06]
+    0xa4 WDML wdml [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Multiply 256bit"
-    0xa5 WQML wqml [RegId RegId RegId Imm06]
+    0xa5 WQML wqml [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Divide 128bit"
-    0xa6 WDDV wddv [RegId RegId RegId Imm06]
+    0xa6 WDDV wddv [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Divide 256bit"
-    0xa7 WQDV wqdv [RegId RegId RegId Imm06]
+    0xa7 WQDV wqdv [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
     "Fused multiply-divide 128bit"
-    0xa8 WDMD wdmd [RegId RegId RegId RegId]
+    0xa8 WDMD wdmd [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
     "Fused multiply-divide 256bit"
-    0xa9 WQMD wqmd [RegId RegId RegId RegId]
+    0xa9 WQMD wqmd [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
     "AddMod 128bit"
-    0xaa WDAM wdam [RegId RegId RegId RegId]
+    0xaa WDAM wdam [dst: RegId add_lhs: RegId add_rhs: RegId modulo: RegId]
     "AddMod 256bit"
-    0xab WQAM wqam [RegId RegId RegId RegId]
+    0xab WQAM wqam [dst: RegId add_lhs: RegId add_rhs: RegId modulo: RegId]
     "MulMod 128bit"
-    0xac WDMM wdmm [RegId RegId RegId RegId]
+    0xac WDMM wdmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
     "MulMod 256bit"
-    0xad WQMM wqmm [RegId RegId RegId RegId]
+    0xad WQMM wqmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
 }
 
 impl Instruction {

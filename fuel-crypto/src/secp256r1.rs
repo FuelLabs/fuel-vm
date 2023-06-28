@@ -14,8 +14,8 @@ use p256::ecdsa::{
 
 /// Combines recovery id with the signature bytes. See the following link for explanation.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md#public-key-cryptography
-/// Panics if the highest bit of byte at index 32 is set, as this indicates non-normalized signature.
-/// Panics if the recovery id is in reduced-x form.
+/// Panics if the highest bit of byte at index 32 is set, as this indicates non-normalized
+/// signature. Panics if the recovery id is in reduced-x form.
 fn encode_signature(signature: Signature, recovery_id: RecoveryId) -> [u8; 64] {
     let mut signature: [u8; 64] = signature.to_bytes().into();
     assert!(signature[32] >> 7 == 0, "Non-normalized signature");

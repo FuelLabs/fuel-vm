@@ -277,6 +277,14 @@ impl_instructions! {
     0x93 CFE cfe [amount: RegId]
     "Shrink the current call frame's stack"
     0x94 CFS cfs [amount: RegId]
+    "Push a bitmask-selected set of registers in range 16..40 to the stack."
+    0x95 PSHL pshl [bitmask: Imm24]
+    "Push a bitmask-selected set of registers in range 40..64 to the stack."
+    0x96 PSHH pshh [bitmask: Imm24]
+    "Pop a bitmask-selected set of registers in range 16..40 to the stack."
+    0x97 POPL popl [bitmask: Imm24]
+    "Pop a bitmask-selected set of registers in range 40..64 to the stack."
+    0x98 POPH poph [bitmask: Imm24]
 
     "Compare 128bit integers"
     0xa0 WDCM wdcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
@@ -488,12 +496,12 @@ impl Opcode {
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
             | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
-            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | RET
-            | ALOC | MCL | MCP | MEQ | ECR | K256 | S256 | NOOP | FLAG | ADDI | ANDI
-            | DIVI | EXPI | MODI | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI
-            | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
-            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
-            | GTF => true,
+            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
+            | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECR | K256 | S256
+            | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI | MLDV | ORI
+            | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM
+            | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB
+            | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }

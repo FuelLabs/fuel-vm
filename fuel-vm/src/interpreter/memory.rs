@@ -11,6 +11,7 @@ use crate::{
 };
 
 use fuel_asm::{
+    Imm24,
     PanicReason,
     RegId,
 };
@@ -189,6 +190,42 @@ where
         stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v)
     }
 
+    pub(crate) fn push_selected_registers(
+        &mut self,
+        segment: ProgramRegistersSegment,
+        bitmask: Imm24,
+    ) -> Result<(), RuntimeError> {
+        let (SystemRegisters { sp, hp, pc, .. }, program_regs) =
+            split_registers(&mut self.registers);
+        push_selected_registers(
+            &mut self.memory,
+            sp,
+            hp.as_ref(),
+            pc,
+            &program_regs,
+            segment,
+            bitmask,
+        )
+    }
+
+    pub(crate) fn pop_selected_registers(
+        &mut self,
+        segment: ProgramRegistersSegment,
+        bitmask: Imm24,
+    ) -> Result<(), RuntimeError> {
+        let (SystemRegisters { sp, ssp, pc, .. }, mut program_regs) =
+            split_registers(&mut self.registers);
+        pop_selected_registers(
+            &mut self.memory,
+            sp,
+            ssp.as_ref(),
+            pc,
+            &mut program_regs,
+            segment,
+            bitmask,
+        )
+    }
+
     pub(crate) fn load_byte(
         &mut self,
         ra: RegisterId,
@@ -285,6 +322,74 @@ where
 
         inc_pc(pc)
     }
+}
+
+pub(crate) fn push_selected_registers(
+    memory: &mut [u8; MEM_SIZE],
+    mut sp: RegMut<SP>,
+    hp: Reg<HP>,
+    pc: RegMut<PC>,
+    program_regs: &ProgramRegisters,
+    segment: ProgramRegistersSegment,
+    bitmask: Imm24,
+) -> Result<(), RuntimeError> {
+    let bitmask = bitmask.to_u32();
+
+    // First compute the new stack pointer, as that's the only error condition
+    let count = bitmask.count_ones();
+    let stack_range = MemoryRange::new(*sp, (count as u64) * 8)?;
+    let new_sp = stack_range.words().end;
+    if new_sp > *hp {
+        return Err(PanicReason::MemoryOverflow.into())
+    }
+
+    // Write the registers to the stack
+    let mut it = memory[stack_range.usizes()].chunks_exact_mut(8);
+    for (i, reg) in program_regs.segment(segment).iter().enumerate() {
+        if (bitmask & (1 << i)) != 0 {
+            it.next().unwrap().copy_from_slice(&reg.to_be_bytes());
+        }
+    }
+
+    // Apply changes to system registers
+    *sp = new_sp;
+    inc_pc(pc)
+}
+
+pub(crate) fn pop_selected_registers(
+    memory: &[u8; MEM_SIZE],
+    mut sp: RegMut<SP>,
+    ssp: Reg<SSP>,
+    pc: RegMut<PC>,
+    program_regs: &mut ProgramRegisters,
+    segment: ProgramRegistersSegment,
+    bitmask: Imm24,
+) -> Result<(), RuntimeError> {
+    let bitmask = bitmask.to_u32();
+
+    // First compute the new stack pointer, as that's the only error condition
+    let count = bitmask.count_ones();
+    let new_sp = sp
+        .checked_sub((count as u64) * 8)
+        .ok_or(PanicReason::MemoryOverflow)?;
+    if new_sp < *ssp {
+        return Err(PanicReason::MemoryOverflow.into())
+    }
+    let stack_range = MemoryRange::new(*sp, new_sp)?.usizes();
+
+    // Restore registers from the stack
+    let mut it = memory[stack_range].chunks_exact(8);
+    for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
+        if (bitmask & (1 << i)) != 0 {
+            let mut buf = [0u8; 8];
+            buf.copy_from_slice(it.next().expect("Count mismatch"));
+            *reg = Word::from_be_bytes(buf);
+        }
+    }
+
+    // Apply changes to system registers
+    *sp = new_sp;
+    inc_pc(pc)
 }
 
 pub(crate) fn load_byte(

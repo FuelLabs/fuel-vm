@@ -1,9 +1,6 @@
 //! ED25519 signature verification
 
-use ed25519_dalek::{
-    Signature,
-    Verifier,
-};
+use ed25519_dalek::Signature;
 use fuel_types::{
     Bytes32,
     Bytes64,
@@ -28,7 +25,7 @@ pub fn verify(
         return Err(Error::InvalidPublicKey);
     };
 
-    if pub_key.verify(&**message, &signature).is_ok() {
+    if pub_key.verify_strict(&**message, &signature).is_ok() {
         Ok(())
     } else {
         Err(Error::InvalidSignature)

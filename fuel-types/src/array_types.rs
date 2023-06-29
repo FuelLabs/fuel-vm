@@ -31,6 +31,7 @@ macro_rules! key {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic array type.
         #[repr(transparent)]
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -49,6 +50,7 @@ macro_rules! key_with_big_array {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic type.
         #[repr(transparent)]
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -127,6 +129,29 @@ macro_rules! key_methods {
             /// The memory size of the type by the method.
             pub const fn size(&self) -> usize {
                 Self::LEN
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $i {
+            /// Bytes constructor.
+            pub fn from_bytes(bytes: &[u8]) -> Self {
+                Self(bytes.try_into().expect(
+                    format!("The size of the arrays it not {} size", $s).as_str(),
+                ))
+            }
+
+            /// Zeroes bytes constructor.
+            #[wasm_bindgen(js_name = zeroed)]
+            pub fn zeroed_typescritp() -> $i {
+                Self::zeroed()
+            }
+
+            /// The memory size of the type by the method.
+            #[wasm_bindgen(js_name = size)]
+            pub fn size_typescript(&self) -> usize {
+                self.size()
             }
         }
 
@@ -331,7 +356,7 @@ impl ContractId {
 
 impl AssetId {
     /// The base native asset of the Fuel protocol.
-    pub const BASE: AssetId = AssetId::zeroed();
+    pub const BASE: AssetId = AssetId::new([0; 32]);
 }
 
 impl From<u64> for Nonce {

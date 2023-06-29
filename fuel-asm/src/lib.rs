@@ -3,9 +3,14 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
-#![warn(missing_docs)]
-#![warn(unsafe_code)]
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
+
+#[cfg(feature = "wee_alloc")]
+// Use `wee_alloc` as the global allocator.
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 mod args;
 mod panic_instruction;
@@ -36,22 +41,27 @@ pub use panic_reason::PanicReason;
 
 /// Represents a 6-bit register ID, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct RegId(u8);
 
 /// Represents a 6-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm06(u8);
 
 /// Represents a 12-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm12(u16);
 
 /// Represents a 18-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm18(u32);
 
 /// Represents a 24-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm24(u32);
 
 /// An instruction in its raw, packed, unparsed representation.
@@ -363,16 +373,124 @@ impl RegId {
         Self(u & 0b_0011_1111)
     }
 
+    /// A const alternative to the `Into<u8>` implementation.
+    pub const fn to_u8(self) -> u8 {
+        self.0
+    }
+}
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+impl RegId {
     /// Construct a register ID from the given value.
     ///
     /// Returns `None` if the value is outside the 6-bit value range.
-    pub fn new_checked(u: u8) -> Option<Self> {
+    pub fn new_checked(u: u8) -> Option<RegId> {
         let r = Self::new(u);
         (r.0 == u).then_some(r)
     }
+}
+
+#[cfg(feature = "typescript")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+impl RegId {
+    /// Received balance for this context.
+    pub fn bal() -> Self {
+        Self::BAL
+    }
+
+    /// Remaining gas in the context.
+    pub fn cgas() -> Self {
+        Self::CGAS
+    }
+
+    /// Error codes for particular operations.
+    pub fn err() -> Self {
+        Self::ERR
+    }
+
+    /// Flags register.
+    pub fn flag() -> Self {
+        Self::FLAG
+    }
+
+    /// Frame pointer. Memory address of beginning of current call frame.
+    pub fn fp() -> Self {
+        Self::FP
+    }
+
+    /// Remaining gas globally.
+    pub fn ggas() -> Self {
+        Self::GGAS
+    }
+
+    /// Heap pointer. Memory address below the current bottom of the heap (points to free
+    /// memory).
+    pub fn hp() -> Self {
+        Self::HP
+    }
+
+    /// Instructions start. Pointer to the start of the currently-executing code.
+    pub fn is() -> Self {
+        Self::IS
+    }
+
+    /// Contains overflow/underflow of addition, subtraction, and multiplication.
+    pub fn of() -> Self {
+        Self::OF
+    }
+
+    /// Contains one (1), for convenience.
+    pub fn one() -> Self {
+        Self::ONE
+    }
+
+    /// The program counter. Memory address of the current instruction.
+    pub fn pc() -> Self {
+        Self::PC
+    }
+
+    /// Return value or pointer.
+    pub fn ret() -> Self {
+        Self::RET
+    }
+
+    /// Return value length in bytes.
+    pub fn retl() -> Self {
+        Self::RETL
+    }
+
+    /// Stack pointer. Memory address on top of current writable stack area (points to
+    /// free memory).
+    pub fn sp() -> Self {
+        Self::SP
+    }
+
+    /// Stack start pointer. Memory address of bottom of current writable stack area.
+    pub fn spp() -> Self {
+        Self::SSP
+    }
+
+    /// Smallest writable register.
+    pub fn writable() -> Self {
+        Self::WRITABLE
+    }
+
+    /// Contains zero (0), for convenience.
+    pub fn zero() -> Self {
+        Self::ZERO
+    }
+
+    /// Construct a register ID from the given value.
+    ///
+    /// The given value will be masked to 6 bits.
+    #[wasm_bindgen(constructor)]
+    pub fn new_typescript(u: u8) -> Self {
+        Self(u & 0b_0011_1111)
+    }
 
     /// A const alternative to the `Into<u8>` implementation.
-    pub const fn to_u8(self) -> u8 {
+    #[wasm_bindgen(js_name = to_u8)]
+    pub fn to_u8_typescript(self) -> u8 {
         self.0
     }
 }

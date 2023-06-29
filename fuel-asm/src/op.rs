@@ -23,6 +23,7 @@ use super::{
 #[doc(inline)]
 pub use super::_op::*;
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl GM {
     /// Construct a `GM` instruction from its arguments.
     pub fn from_args(ra: RegId, args: GMArgs) -> Self {
@@ -30,6 +31,7 @@ impl GM {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl GTF {
     /// Construct a `GTF` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, args: GTFArgs) -> Self {
@@ -42,6 +44,17 @@ pub fn gm_args<A: CheckRegId>(ra: A, args: GMArgs) -> Instruction {
     Instruction::GM(GM::from_args(ra.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `GM` instruction from its arguments.
+    pub fn gm_args(ra: u8, args: GMArgs) -> TypescriptInstruction {
+        Instruction::GM(GM::from_args(ra.check(), args)).into()
+    }
+};
+
 /// Construct a `GM` instruction from its arguments.
 pub fn gtf_args<A: CheckRegId, B: CheckRegId>(
     ra: A,
@@ -51,6 +64,18 @@ pub fn gtf_args<A: CheckRegId, B: CheckRegId>(
     Instruction::GTF(GTF::from_args(ra.check(), rb.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `GM` instruction from its arguments.
+    pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> TypescriptInstruction {
+        Instruction::GTF(GTF::from_args(ra.check(), rb.check(), args)).into()
+    }
+};
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDCM {
     /// Construct a `WDCM` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: CompareArgs) -> Self {
@@ -58,6 +83,7 @@ impl WDCM {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQCM {
     /// Construct a `WQCM` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: CompareArgs) -> Self {
@@ -65,6 +91,7 @@ impl WQCM {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDOP {
     /// Construct a `WDOP` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MathArgs) -> Self {
@@ -72,6 +99,7 @@ impl WDOP {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQOP {
     /// Construct a `WQOP` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MathArgs) -> Self {
@@ -79,6 +107,7 @@ impl WQOP {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDML {
     /// Construct a `WDML` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MulArgs) -> Self {
@@ -86,6 +115,7 @@ impl WDML {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQML {
     /// Construct a `WQML` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MulArgs) -> Self {
@@ -93,6 +123,7 @@ impl WQML {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDDV {
     /// Construct a `WDDV` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: DivArgs) -> Self {
@@ -100,6 +131,7 @@ impl WDDV {
     }
 }
 
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQDV {
     /// Construct a `WQDV` instruction from its arguments.
     pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: DivArgs) -> Self {
@@ -117,6 +149,18 @@ pub fn wdcm_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     Instruction::WDCM(WDCM::from_args(ra.check(), rb.check(), rc.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WDCM` instruction from its arguments.
+    pub fn wdcm_args(ra: u8, rb: u8, rc: u8, args: CompareArgs) -> TypescriptInstruction {
+        Instruction::WDCM(WDCM::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
+
 /// Construct a `WQCM` instruction from its arguments.
 pub fn wqcm_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
@@ -126,6 +170,18 @@ pub fn wqcm_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
 ) -> Instruction {
     Instruction::WQCM(WQCM::from_args(ra.check(), rb.check(), rc.check(), args))
 }
+
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WQCM` instruction from its arguments.
+    pub fn wqcm_args(ra: u8, rb: u8, rc: u8, args: CompareArgs) -> TypescriptInstruction {
+        Instruction::WQCM(WQCM::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
 
 /// Construct a `WDOP` instruction from its arguments.
 pub fn wdop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
@@ -137,6 +193,18 @@ pub fn wdop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     Instruction::WDOP(WDOP::from_args(ra.check(), rb.check(), rc.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WDOP` instruction from its arguments.
+    pub fn wdop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> TypescriptInstruction {
+        Instruction::WDOP(WDOP::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
+
 /// Construct a `WQOP` instruction from its arguments.
 pub fn wqop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
@@ -146,6 +214,18 @@ pub fn wqop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
 ) -> Instruction {
     Instruction::WQOP(WQOP::from_args(ra.check(), rb.check(), rc.check(), args))
 }
+
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WQOP` instruction from its arguments.
+    pub fn wqop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> TypescriptInstruction {
+        Instruction::WQOP(WQOP::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
 
 /// Construct a `WDML` instruction from its arguments.
 pub fn wdml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
@@ -157,6 +237,18 @@ pub fn wdml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     Instruction::WDML(WDML::from_args(ra.check(), rb.check(), rc.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WDML` instruction from its arguments.
+    pub fn wdml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> TypescriptInstruction {
+        Instruction::WDML(WDML::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
+
 /// Construct a `WQML` instruction from its arguments.
 pub fn wqml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
@@ -166,6 +258,18 @@ pub fn wqml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
 ) -> Instruction {
     Instruction::WQML(WQML::from_args(ra.check(), rb.check(), rc.check(), args))
 }
+
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WQML` instruction from its arguments.
+    pub fn wqml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> TypescriptInstruction {
+        Instruction::WQML(WQML::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
 
 /// Construct a `WDDV` instruction from its arguments.
 pub fn wddv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
@@ -177,6 +281,18 @@ pub fn wddv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     Instruction::WDDV(WDDV::from_args(ra.check(), rb.check(), rc.check(), args))
 }
 
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WDDV` instruction from its arguments.
+    pub fn wddv_arg(ra: u8, rb: u8, rc: u8, args: DivArgs) -> TypescriptInstruction {
+        Instruction::WDDV(WDDV::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};
+
 /// Construct a `WQDV` instruction from its arguments.
 pub fn wqdv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
@@ -186,3 +302,15 @@ pub fn wqdv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
 ) -> Instruction {
     Instruction::WQDV(WQDV::from_args(ra.check(), rb.check(), rc.check(), args))
 }
+
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WQDV` instruction from its arguments.
+    pub fn wqdv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> TypescriptInstruction {
+        Instruction::WQDV(WQDV::from_args(ra.check(), rb.check(), rc.check(), args))
+            .into()
+    }
+};

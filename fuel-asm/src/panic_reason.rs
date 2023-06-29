@@ -1,6 +1,7 @@
 use core::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(u8)]

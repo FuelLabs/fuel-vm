@@ -14,6 +14,7 @@ const GM_GET_CHAIN_ID: u8 = 0x04;
 
 /// Argument list for GM (get metadata) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[repr(u8)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
@@ -21,16 +22,16 @@ const GM_GET_CHAIN_ID: u8 = 0x04;
 // exhaustive match so all offered variants are covered.
 pub enum GMArgs {
     /// Get if caller is external.
-    IsCallerExternal = GM_IS_CALLER_EXTERNAL,
+    IsCallerExternal = 0x01,
 
     /// Get caller's contract ID.
-    GetCaller = GM_GET_CALLER,
+    GetCaller = 0x02,
 
     /// Get index of current predicate.
-    GetVerifyingPredicate = GM_GET_VERIFYING_PREDICATE,
+    GetVerifyingPredicate = 0x03,
 
     /// Get the Chain ID this VM is operating within
-    GetChainId = GM_GET_CHAIN_ID,
+    GetChainId = 0x04,
 }
 
 impl TryFrom<Immediate18> for GMArgs {
@@ -128,6 +129,7 @@ const GTF_WITNESS_DATA: u16 = 0x302;
 
 /// Argument list for GTF (get tx fields) instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[repr(u16)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
@@ -135,220 +137,220 @@ const GTF_WITNESS_DATA: u16 = 0x302;
 // exhaustive match so all offered variants are covered.
 pub enum GTFArgs {
     /// Set `$rA` to `tx.type`
-    Type = GTF_TYPE,
+    Type = 0x001,
 
     /// Set `$rA` to `tx.gasPrice`
-    ScriptGasPrice = GTF_SCRIPT_GAS_PRICE,
+    ScriptGasPrice = 0x002,
 
     /// Set `$rA` to `tx.gasLimit`
-    ScriptGasLimit = GTF_SCRIPT_GAS_LIMIT,
+    ScriptGasLimit = 0x003,
 
     /// Set `$rA` to `tx.maturity`
-    ScriptMaturity = GTF_SCRIPT_MATURITY,
+    ScriptMaturity = 0x004,
 
     /// Set `$rA` to `tx.scriptLength`
-    ScriptLength = GTF_SCRIPT_LENGTH,
+    ScriptLength = 0x005,
 
     /// Set `$rA` to `tx.scriptDataLength`
-    ScriptDataLength = GTF_SCRIPT_DATA_LENGTH,
+    ScriptDataLength = 0x006,
 
     /// Set `$rA` to `tx.inputsCount`
-    ScriptInputsCount = GTF_SCRIPT_INPUTS_COUNT,
+    ScriptInputsCount = 0x007,
 
     /// Set `$rA` to `tx.outputsCount`
-    ScriptOutputsCount = GTF_SCRIPT_OUTPUTS_COUNT,
+    ScriptOutputsCount = 0x008,
 
     /// Set `$rA` to `tx.witnessesCount`
-    ScriptWitnessesCound = GTF_SCRIPT_WITNESSES_COUNT,
+    ScriptWitnessesCound = 0x009,
 
     /// Set `$rA` to `Memory address of tx.receiptsRoot`
-    ScriptReceiptsRoot = GTF_SCRIPT_RECEIPTS_ROOT,
+    ScriptReceiptsRoot = 0x00A,
 
     /// Set `$rA` to `Memory address of tx.script`
-    Script = GTF_SCRIPT,
+    Script = 0x00B,
 
     /// Set `$rA` to `Memory address of tx.scriptData`
-    ScriptData = GTF_SCRIPT_DATA,
+    ScriptData = 0x00C,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB]`
-    ScriptInputAtIndex = GTF_SCRIPT_INPUT_AT_INDEX,
+    ScriptInputAtIndex = 0x00D,
 
     /// Set `$rA` to `Memory address of t.outputs[$rB]`
-    ScriptOutputAtIndex = GTF_SCRIPT_OUTPUT_AT_INDEX,
+    ScriptOutputAtIndex = 0x00E,
 
     /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
-    ScriptWitnessAtIndex = GTF_SCRIPT_WITNESS_AT_INDEX,
+    ScriptWitnessAtIndex = 0x00F,
 
     /// Set `$rA` to `tx.gasPrice`
-    CreateGasPrice = GTF_CREATE_GAS_PRICE,
+    CreateGasPrice = 0x010,
 
     /// Set `$rA` to `tx.gasLimit`
-    CreateGasLimit = GTF_CREATE_GAS_LIMIT,
+    CreateGasLimit = 0x011,
 
     /// Set `$rA` to `tx.maturity`
-    CreateMaturity = GTF_CREATE_MATURITY,
+    CreateMaturity = 0x012,
 
     /// Set `$rA` to `tx.bytecodeLength`
-    CreateBytecodeLength = GTF_CREATE_BYTECODE_LENGTH,
+    CreateBytecodeLength = 0x013,
 
     /// Set `$rA` to `tx.bytecodeWitnessIndex`
-    CreateBytecodeWitnessIndex = GTF_CREATE_BYTECODE_WITNESS_INDEX,
+    CreateBytecodeWitnessIndex = 0x014,
 
     /// Set `$rA` to `tx.storageSlotsCount`
-    CreateStorageSlotsCount = GTF_CREATE_STORAGE_SLOTS_COUNT,
+    CreateStorageSlotsCount = 0x015,
 
     /// Set `$rA` to `tx.inputsCount`
-    CreateInputsCount = GTF_CREATE_INPUTS_COUNT,
+    CreateInputsCount = 0x016,
 
     /// Set `$rA` to `tx.outputsCount`
-    CreateOutputsCount = GTF_CREATE_OUTPUTS_COUNT,
+    CreateOutputsCount = 0x017,
 
     /// Set `$rA` to `tx.witnessesCount`
-    CreateWitnessesCount = GTF_CREATE_WITNESSES_COUNT,
+    CreateWitnessesCount = 0x018,
 
     /// Set `$rA` to `Memory address of tx.salt`
-    CreateSalt = GTF_CREATE_SALT,
+    CreateSalt = 0x019,
 
     /// Set `$rA` to `Memory address of tx.storageSlots[$rB]`
-    CreateStorageSlotAtIndex = GTF_CREATE_STORAGE_SLOT_AT_INDEX,
+    CreateStorageSlotAtIndex = 0x01A,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB]`
-    CreateInputAtIndex = GTF_CREATE_INPUT_AT_INDEX,
+    CreateInputAtIndex = 0x01B,
 
     /// Set `$rA` to `Memory address of t.outputs[$rB]`
-    CreateOutputAtIndex = GTF_CREATE_OUTPUT_AT_INDEX,
+    CreateOutputAtIndex = 0x01C,
 
     /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
-    CreateWitnessAtIndex = GTF_CREATE_WITNESS_AT_INDEX,
+    CreateWitnessAtIndex = 0x01D,
 
     /// Set `$rA` to `tx.inputs[$rB].type`
-    InputType = GTF_INPUT_TYPE,
+    InputType = 0x101,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
-    InputCoinTxId = GTF_INPUT_COIN_TX_ID,
+    InputCoinTxId = 0x102,
 
     /// Set `$rA` to `tx.inputs[$rB].outputIndex`
-    InputCoinOutputIndex = GTF_INPUT_COIN_OUTPUT_INDEX,
+    InputCoinOutputIndex = 0x103,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].owner`
-    InputCoinOwner = GTF_INPUT_COIN_OWNER,
+    InputCoinOwner = 0x104,
 
     /// Set `$rA` to `tx.inputs[$rB].amount`
-    InputCoinAmount = GTF_INPUT_COIN_AMOUNT,
+    InputCoinAmount = 0x105,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].asset_id`
-    InputCoinAssetId = GTF_INPUT_COIN_ASSET_ID,
+    InputCoinAssetId = 0x106,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].txPointer`
-    InputCoinTxPointer = GTF_INPUT_COIN_TX_POINTER,
+    InputCoinTxPointer = 0x107,
 
     /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
-    InputCoinWitnessIndex = GTF_INPUT_COIN_WITNESS_INDEX,
+    InputCoinWitnessIndex = 0x108,
 
     /// Set `$rA` to `tx.inputs[$rB].maturity`
-    InputCoinMaturity = GTF_INPUT_COIN_MATURITY,
+    InputCoinMaturity = 0x109,
 
     /// Set `$rA` to `tx.inputs[$rB].predicateLength`
-    InputCoinPredicateLength = GTF_INPUT_COIN_PREDICATE_LENGTH,
+    InputCoinPredicateLength = 0x10A,
 
     /// Set `$rA` to `tx.inputs[$rB].predicateDataLength`
-    InputCoinPredicateDataLength = GTF_INPUT_COIN_PREDICATE_DATA_LENGTH,
+    InputCoinPredicateDataLength = 0x10B,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicate`
-    InputCoinPredicate = GTF_INPUT_COIN_PREDICATE,
+    InputCoinPredicate = 0x10C,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
-    InputCoinPredicateData = GTF_INPUT_COIN_PREDICATE_DATA,
+    InputCoinPredicateData = 0x10D,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
-    InputCoinPredicateGasUsed = GTF_INPUT_COIN_PREDICATE_GAS_USED,
+    InputCoinPredicateGasUsed = 0x10E,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
-    InputContractTxId = GTF_INPUT_CONTRACT_TX_ID,
+    InputContractTxId = 0x10F,
 
     /// Set `$rA` to `tx.inputs[$rB].outputIndex`
-    InputContractOutputIndex = GTF_INPUT_CONTRACT_OUTPUT_INDEX,
+    InputContractOutputIndex = 0x110,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].balanceRoot`
-    InputContractBalanceRoot = GTF_INPUT_CONTRACT_BALANCE_ROOT,
+    InputContractBalanceRoot = 0x111,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].stateRoot`
-    InputContractStateRoot = GTF_INPUT_CONTRACT_STATE_ROOT,
+    InputContractStateRoot = 0x112,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].txPointer`
-    InputContractTxPointer = GTF_INPUT_CONTRACT_TX_POINTER,
+    InputContractTxPointer = 0x113,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].contractID`
-    InputContractId = GTF_INPUT_CONTRACT_ID,
+    InputContractId = 0x114,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].sender`
-    InputMessageSender = GTF_INPUT_MESSAGE_SENDER,
+    InputMessageSender = 0x115,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].recipient`
-    InputMessageRecipient = GTF_INPUT_MESSAGE_RECIPIENT,
+    InputMessageRecipient = 0x116,
 
     /// Set `$rA` to `tx.inputs[$rB].amount`
-    InputMessageAmount = GTF_INPUT_MESSAGE_AMOUNT,
+    InputMessageAmount = 0x117,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].nonce`
-    InputMessageNonce = GTF_INPUT_MESSAGE_NONCE,
+    InputMessageNonce = 0x118,
 
     /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
-    InputMessageWitnessIndex = GTF_INPUT_MESSAGE_WITNESS_INDEX,
+    InputMessageWitnessIndex = 0x119,
 
     /// Set `$rA` to `tx.inputs[$rB].dataLength`
-    InputMessageDataLength = GTF_INPUT_MESSAGE_DATA_LENGTH,
+    InputMessageDataLength = 0x11A,
 
     /// Set `$rA` to `tx.inputs[$rB].predicateLength`
-    InputMessagePredicateLength = GTF_INPUT_MESSAGE_PREDICATE_LENGTH,
+    InputMessagePredicateLength = 0x11B,
 
     /// Set `$rA` to `tx.inputs[$rB].predicateDataLength`
-    InputMessagePredicateDataLength = GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH,
+    InputMessagePredicateDataLength = 0x11C,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].data`
-    InputMessageData = GTF_INPUT_MESSAGE_DATA,
+    InputMessageData = 0x11D,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicate`
-    InputMessagePredicate = GTF_INPUT_MESSAGE_PREDICATE,
+    InputMessagePredicate = 0x11E,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
-    InputMessagePredicateData = GTF_INPUT_MESSAGE_PREDICATE_DATA,
+    InputMessagePredicateData = 0x11F,
 
     /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
-    InputMessagePredicateGasUsed = GTF_INPUT_MESSAGE_PREDICATE_GAS_USED,
+    InputMessagePredicateGasUsed = 0x120,
 
     /// Set `$rA` to `tx.outputs[$rB].type`
-    OutputType = GTF_OUTPUT_TYPE,
+    OutputType = 0x201,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].to`
-    OutputCoinTo = GTF_OUTPUT_COIN_TO,
+    OutputCoinTo = 0x202,
 
     /// Set `$rA` to `tx.outputs[$rB].amount`
-    OutputCoinAmount = GTF_OUTPUT_COIN_AMOUNT,
+    OutputCoinAmount = 0x203,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].asset_id`
-    OutputCoinAssetId = GTF_OUTPUT_COIN_ASSET_ID,
+    OutputCoinAssetId = 0x204,
 
     /// Set `$rA` to `tx.outputs[$rB].inputIndex`
-    OutputContractInputIndex = GTF_OUTPUT_CONTRACT_INPUT_INDEX,
+    OutputContractInputIndex = 0x205,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].balanceRoot`
-    OutputContractBalanceRoot = GTF_OUTPUT_CONTRACT_BALANCE_ROOT,
+    OutputContractBalanceRoot = 0x206,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
-    OutputContractStateRoot = GTF_OUTPUT_CONTRACT_STATE_ROOT,
+    OutputContractStateRoot = 0x207,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].contractID`
-    OutputContractCreatedContractId = GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID,
+    OutputContractCreatedContractId = 0x208,
 
     /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
-    OutputContractCreatedStateRoot = GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT,
+    OutputContractCreatedStateRoot = 0x209,
 
     /// Set `$rA` to `tx.witnesses[$rB].dataLength`
-    WitnessDataLength = GTF_WITNESS_DATA_LENGTH,
+    WitnessDataLength = 0x301,
 
     /// Set `$rA` to `Memory address of tx.witnesses[$rB].data`
-    WitnessData = GTF_WITNESS_DATA,
+    WitnessData = 0x302,
 }
 
 impl TryFrom<Immediate12> for GTFArgs {

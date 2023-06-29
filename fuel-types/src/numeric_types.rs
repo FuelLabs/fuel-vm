@@ -33,6 +33,7 @@ macro_rules! key {
         #[repr(transparent)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         pub struct $i($t);
 
         key_methods!($i, $t);
@@ -69,6 +70,28 @@ macro_rules! key_methods {
 
                 /// Convert to usize.
                 pub const fn as_usize(&self) -> usize {
+                    self.0 as usize
+                }
+            }
+
+            #[cfg(feature = "typescript")]
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            impl $i {
+                #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+                /// Number constructor.
+                pub fn from_number(number: $t) -> Self {
+                    Self(number)
+                }
+
+                /// Convert to array of big endian bytes.
+                #[wasm_bindgen(js_name = to_bytes)]
+                pub fn to_bytes_typescript(self) -> Vec<u8> {
+                    self.to_bytes().to_vec()
+                }
+
+                /// Convert to usize.
+                #[wasm_bindgen(js_name = as_usize)]
+                pub fn as_usize_typescript(&self) -> usize {
                     self.0 as usize
                 }
             }

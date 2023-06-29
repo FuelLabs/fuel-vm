@@ -102,7 +102,7 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Script {
-        let receipts_root = Bytes32::zeroed();
+        let receipts_root = Bytes32::new([0; 32]);
 
         Script {
             gas_price,

@@ -33,6 +33,9 @@ mod tests;
 #[cfg(test)]
 mod allocation_tests;
 
+#[cfg(test)]
+mod stack_tests;
+
 /// Used to handle `Word` to `usize` conversions for memory addresses,
 /// as well as checking that the resulting value is withing the VM ram boundaries.
 pub trait ToAddr {
@@ -369,13 +372,14 @@ pub(crate) fn pop_selected_registers(
 
     // First compute the new stack pointer, as that's the only error condition
     let count = bitmask.count_ones();
+    let size_in_stack = (count as u64) * 8;
     let new_sp = sp
-        .checked_sub((count as u64) * 8)
+        .checked_sub(size_in_stack)
         .ok_or(PanicReason::MemoryOverflow)?;
     if new_sp < *ssp {
         return Err(PanicReason::MemoryOverflow.into())
     }
-    let stack_range = MemoryRange::new(*sp, new_sp)?.usizes();
+    let stack_range = MemoryRange::new(new_sp, size_in_stack)?.usizes();
 
     // Restore registers from the stack
     let mut it = memory[stack_range].chunks_exact(8);

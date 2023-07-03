@@ -219,7 +219,7 @@ where
         let (SystemRegisters { sp, ssp, pc, .. }, mut program_regs) =
             split_registers(&mut self.registers);
         pop_selected_registers(
-            &mut self.memory,
+            &self.memory,
             sp,
             ssp.as_ref(),
             pc,

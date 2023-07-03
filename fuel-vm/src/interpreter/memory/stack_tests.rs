@@ -1,4 +1,7 @@
-use fuel_asm::{Imm24, PanicReason};
+use fuel_asm::{
+    Imm24,
+    PanicReason,
+};
 
 use crate::{
     constraints::reg_key::*,
@@ -104,8 +107,10 @@ fn test_push_stack_overflow() {
         Imm24::new(1),
     );
 
-
-    assert_eq!(result, Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)));
+    assert_eq!(
+        result,
+        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    );
 }
 
 #[test]
@@ -128,7 +133,10 @@ fn test_pop_from_empty_stack() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(result, Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)));
+    assert_eq!(
+        result,
+        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    );
 }
 
 #[test]
@@ -151,5 +159,8 @@ fn test_pop_sp_overflow() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(result, Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)));
+    assert_eq!(
+        result,
+        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    );
 }

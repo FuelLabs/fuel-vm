@@ -115,7 +115,7 @@ fn test_push_stack_overflow() {
 
 #[test]
 fn test_pop_from_empty_stack() {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 32;
     let ssp = 16;
@@ -124,7 +124,7 @@ fn test_pop_from_empty_stack() {
     let mut regs = ProgramRegisters(&mut reg_values);
 
     let result = pop_selected_registers(
-        &mut memory,
+        &memory,
         RegMut::new(&mut sp),
         Reg::new(&ssp),
         RegMut::new(&mut pc),
@@ -141,7 +141,7 @@ fn test_pop_from_empty_stack() {
 
 #[test]
 fn test_pop_sp_overflow() {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 16;
     let ssp = 0;
@@ -150,7 +150,7 @@ fn test_pop_sp_overflow() {
     let mut regs = ProgramRegisters(&mut reg_values);
 
     let result = pop_selected_registers(
-        &mut memory,
+        &memory,
         RegMut::new(&mut sp),
         Reg::new(&ssp),
         RegMut::new(&mut pc),

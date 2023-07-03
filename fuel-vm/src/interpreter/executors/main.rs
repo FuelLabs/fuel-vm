@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests;
 
+use std::sync::Arc;
+
 use crate::{
     checked_transaction::{
         Checked,
         IntoChecked,
+        ParallelExecutor,
     },
     consts::*,
     context::Context,
@@ -110,6 +113,32 @@ impl<T> Interpreter<PredicateStorage, T> {
         Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params, gas_costs)
     }
 
+    /// Initialize the VM with the provided transaction and check all predicates defined
+    /// in the inputs in parallel.
+    ///
+    /// The storage provider is not used since contract opcodes are not allowed for
+    /// predicates.
+    pub async fn check_predicates_async<Tx, E>(
+        checked: Checked<Tx>,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<(PredicatesChecked, Checked<Tx>), PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction + Send + 'static,
+        <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        E: ParallelExecutor
+            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+    {
+        let tx = checked.transaction().clone();
+        let balances = checked.metadata().balances();
+
+        let predicates_checked =
+            Self::verify_predicate_async::<Tx, E>(tx, balances, params, gas_costs)
+                .await?;
+
+        Ok((predicates_checked, checked))
+    }
+
     /// Initialize the VM with the provided transaction, check all predicates defined in
     /// the inputs and set the predicate_gas_used to be the actual gas consumed during
     /// execution for each predicate.
@@ -132,6 +161,98 @@ impl<T> Interpreter<PredicateStorage, T> {
             gas_costs,
         )?;
         Ok(())
+    }
+
+    async fn verify_predicate_async<Tx, E>(
+        tx: Tx,
+        balances: InitialBalances,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction + Send + 'static,
+        E: ParallelExecutor
+            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+    {
+        if !tx.check_predicate_owners(&params.chain_id) {
+            return Err(PredicateVerificationFailed::InvalidOwner)
+        }
+
+        let mut verifications = vec![];
+
+        for index in 0..tx.inputs().len() {
+            let is_predicate = matches!(
+                tx.inputs()[index],
+                Input::CoinPredicate(_)
+                    | Input::MessageCoinPredicate(_)
+                    | Input::MessageDataPredicate(_)
+            );
+
+            if !is_predicate {
+                continue
+            }
+
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {
+                let gas_costs = gas_costs.clone();
+                let balances = balances.clone();
+
+                let tx = tx.clone();
+
+                let verify_task = E::create_task(move || {
+                    let mut vm = Interpreter::with_storage(
+                        PredicateStorage::default(),
+                        params,
+                        gas_costs,
+                    );
+
+                    let context = Context::PredicateVerification { program: predicate };
+
+                    let available_gas =
+                        if let Some(x) = tx.inputs()[index].predicate_gas_used() {
+                            x
+                        } else {
+                            return Err(PredicateVerificationFailed::GasNotSpecified)
+                        };
+
+                    vm.init_predicate(context, &tx, balances.clone(), available_gas)?;
+
+                    let result = vm.verify_predicate();
+                    let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
+
+                    let gas_used = available_gas
+                        .checked_sub(vm.remaining_gas())
+                        .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+
+                    if !is_successful {
+                        result?;
+                        return Err(PredicateVerificationFailed::False)
+                    }
+
+                    if vm.remaining_gas() != 0 {
+                        return Err(PredicateVerificationFailed::GasMismatch)
+                    }
+
+                    Ok(gas_used)
+                });
+
+                verifications.push(verify_task);
+            }
+        }
+
+        let verifications = E::execute_tasks(verifications).await;
+        let cumulative_gas_used = verifications
+            .into_iter()
+            .try_fold(0, |acc, x| Ok::<u64, PredicateVerificationFailed>(acc + x?))?;
+
+        if cumulative_gas_used > tx.limit() {
+            return Err(
+                PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit,
+            )
+        }
+
+        Ok(PredicatesChecked {
+            gas_used: cumulative_gas_used,
+        })
     }
 
     fn run_predicate<Tx>(

@@ -356,7 +356,7 @@ impl ContractId {
 
 impl AssetId {
     /// The base native asset of the Fuel protocol.
-    pub const BASE: AssetId = AssetId::new([0; 32]);
+    pub const BASE: AssetId = AssetId::zeroed();
 }
 
 impl From<u64> for Nonce {

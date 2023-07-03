@@ -41,22 +41,19 @@ impl PanicInstruction {
     /// Represents an error described by a reason and an instruction.
     #[wasm_bindgen(constructor)]
     pub fn error_typescript(reason: PanicReason, instruction: RawInstruction) -> Self {
-        Self {
-            reason,
-            instruction,
-        }
+        Self::error(reason, instruction)
     }
 
     /// Underlying panic reason
     #[wasm_bindgen(js_name = reason)]
     pub fn reason_typescript(&self) -> PanicReason {
-        self.reason
+        *self.reason()
     }
 
     /// Underlying instruction
     #[wasm_bindgen(js_name = instruction)]
     pub fn instruction_typescript(&self) -> RawInstruction {
-        self.instruction
+        *self.instruction()
     }
 }
 

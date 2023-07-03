@@ -8,6 +8,9 @@
 #![deny(unused_crate_dependencies)]
 
 #[cfg(feature = "wee_alloc")]
+use wee_alloc as _;
+
+#[cfg(all(no_std, feature = "wee_alloc"))]
 // Use `wee_alloc` as the global allocator.
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -32,10 +35,13 @@ pub use args::{
     GMArgs,
     GTFArgs,
 };
-pub use fuel_types::{
-    RegisterId,
-    Word,
-};
+
+/// Register ID type
+pub type RegisterId = usize;
+
+/// Register value type
+pub type Word = u64;
+
 pub use panic_instruction::PanicInstruction;
 pub use panic_reason::PanicReason;
 
@@ -485,13 +491,13 @@ impl RegId {
     /// The given value will be masked to 6 bits.
     #[wasm_bindgen(constructor)]
     pub fn new_typescript(u: u8) -> Self {
-        Self(u & 0b_0011_1111)
+        Self::new(u)
     }
 
     /// A const alternative to the `Into<u8>` implementation.
     #[wasm_bindgen(js_name = to_u8)]
     pub fn to_u8_typescript(self) -> u8 {
-        self.0
+        self.to_u8()
     }
 }
 

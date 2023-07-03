@@ -93,7 +93,7 @@ impl MemoryStorage {
         contract: &ContractId,
         key: &Bytes32,
     ) -> Cow<'_, Bytes32> {
-        const DEFAULT_STATE: Bytes32 = Bytes32::new([0; 32]);
+        const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
 
         self.storage::<ContractsState>()
             .get(&(contract, key).into())

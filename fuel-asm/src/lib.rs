@@ -357,7 +357,7 @@ mod typescript {
     #[wasm_bindgen::prelude::wasm_bindgen]
     impl Instruction {
         /// Convenience method for converting to bytes
-        pub fn to_bytes(self) -> Vec<u8> {
+        pub fn to_bytes(&self) -> Vec<u8> {
             use core::ops::Deref;
             self.deref().to_bytes().to_vec()
         }

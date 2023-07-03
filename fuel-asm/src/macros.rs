@@ -207,7 +207,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8) -> TypescriptInstruction {
+            pub fn $op($ra: u8) -> typescript::Instruction {
                 crate::op::$op($ra).into()
             }
         };
@@ -224,7 +224,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $rb: u8) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $rb: u8) -> typescript::Instruction {
                 crate::op::$op($ra, $rb).into()
             }
         };
@@ -249,7 +249,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $rb: u8, $rc: u8) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $rb: u8, $rc: u8) -> typescript::Instruction {
                 crate::op::$op($ra, $rb, $rc).into()
             }
         };
@@ -275,7 +275,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $rb: u8, $rc: u8, $rd: u8) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $rb: u8, $rc: u8, $rd: u8) -> typescript::Instruction {
                 crate::op::$op($ra, $rb, $rc, $rd).into()
             }
         };
@@ -301,7 +301,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $rb: u8, $rc: u8, $imm: u8) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $rb: u8, $rc: u8, $imm: u8) -> typescript::Instruction {
                 crate::op::$op($ra, $rb, $rc, $imm).into()
             }
         };
@@ -326,7 +326,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $rb: u8, $imm: u16) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $rb: u8, $imm: u16) -> typescript::Instruction {
                 crate::op::$op($ra, $rb, $imm).into()
             }
         };
@@ -343,7 +343,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($ra: u8, $imm: u32) -> TypescriptInstruction {
+            pub fn $op($ra: u8, $imm: u32) -> typescript::Instruction {
                 crate::op::$op($ra, $imm).into()
             }
         };
@@ -360,7 +360,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op($imm: u32) -> TypescriptInstruction {
+            pub fn $op($imm: u32) -> typescript::Instruction {
                 crate::op::$op($imm).into()
             }
         };
@@ -377,7 +377,7 @@ macro_rules! op_constructor {
 
             #[wasm_bindgen::prelude::wasm_bindgen]
             #[doc = $doc]
-            pub fn $op() -> TypescriptInstruction {
+            pub fn $op() -> typescript::Instruction {
                 crate::op::$op().into()
             }
         };
@@ -1033,34 +1033,6 @@ macro_rules! impl_instructions {
                 $Op(op::$Op),
             )*
         }
-
-        /// Representation of a single instruction for the interpreter.
-        ///
-        /// The opcode is represented in the tag (variant), or may be retrieved in the
-        /// form of an `Opcode` byte using the `opcode` method.
-        ///
-        /// The register and immediate data associated with the instruction is represented
-        /// within an inner unit type wrapper around the 3 remaining bytes.
-        #[cfg(feature = "typescript")]
-        #[derive(Clone, Eq, Hash, PartialEq)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        #[wasm_bindgen::prelude::wasm_bindgen]
-        pub struct TypescriptInstruction(Box<Instruction>);
-
-        #[cfg(feature = "typescript")]
-        #[wasm_bindgen::prelude::wasm_bindgen]
-        impl TypescriptInstruction {
-            /// Convenience method for converting to bytes
-            pub fn to_bytes(self) -> Vec<u8> {
-                use core::ops::Deref;
-                self.deref().to_bytes().to_vec()
-            }
-
-            /// Size of an instruction in bytes
-            pub fn size() -> usize {
-                Instruction::SIZE
-            }
-        }
     };
 
     // Recursively generate a test constructor for each opcode
@@ -1116,9 +1088,9 @@ macro_rules! impl_instructions {
         }
 
         #[cfg(feature = "typescript")]
-        impl From<$Op> for TypescriptInstruction {
+        impl From<$Op> for typescript::Instruction {
             fn from(opcode: $Op) -> Self {
-                TypescriptInstruction(Box::new(opcode.into()))
+                typescript::Instruction::new(opcode.into())
             }
         }
 
@@ -1179,36 +1151,6 @@ macro_rules! impl_instructions {
             }
         }
 
-        #[cfg(feature = "typescript")]
-        impl core::ops::Deref for TypescriptInstruction {
-            type Target = Instruction;
-
-            fn deref(&self) -> &Instruction {
-                self.0.as_ref()
-            }
-        }
-
-        #[cfg(feature = "typescript")]
-        impl core::ops::DerefMut for TypescriptInstruction {
-            fn deref_mut(&mut self) -> &mut Instruction {
-                self.0.as_mut()
-            }
-        }
-
-        #[cfg(feature = "typescript")]
-        impl core::borrow::Borrow<Instruction> for TypescriptInstruction {
-            fn borrow(&self) -> &Instruction {
-                self.0.as_ref()
-            }
-        }
-
-        #[cfg(feature = "typescript")]
-        impl core::borrow::BorrowMut<Instruction> for TypescriptInstruction {
-            fn borrow_mut(&mut self) -> &mut Instruction {
-                self.0.as_mut()
-            }
-        }
-
         impl From<Instruction> for [u8; 4] {
             fn from(inst: Instruction) -> Self {
                 match inst {
@@ -1220,9 +1162,9 @@ macro_rules! impl_instructions {
         }
 
         #[cfg(feature = "typescript")]
-        impl From<Instruction> for TypescriptInstruction {
+        impl From<Instruction> for typescript::Instruction {
             fn from(inst: Instruction) -> Self {
-                TypescriptInstruction(Box::new(inst))
+                typescript::Instruction::new(inst)
             }
         }
 

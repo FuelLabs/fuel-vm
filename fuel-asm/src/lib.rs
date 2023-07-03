@@ -334,6 +334,67 @@ impl Instruction {
     }
 }
 
+#[cfg(feature = "typescript")]
+mod typescript {
+    /// Representation of a single instruction for the interpreter.
+    ///
+    /// The opcode is represented in the tag (variant), or may be retrieved in the
+    /// form of an `Opcode` byte using the `opcode` method.
+    ///
+    /// The register and immediate data associated with the instruction is represented
+    /// within an inner unit type wrapper around the 3 remaining bytes.
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub struct Instruction(Box<crate::Instruction>);
+
+    impl Instruction {
+        pub fn new(instruction: crate::Instruction) -> Self {
+            Self(Box::new(instruction))
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl Instruction {
+        /// Convenience method for converting to bytes
+        pub fn to_bytes(self) -> Vec<u8> {
+            use core::ops::Deref;
+            self.deref().to_bytes().to_vec()
+        }
+
+        /// Size of an instruction in bytes
+        pub fn size() -> usize {
+            crate::Instruction::SIZE
+        }
+    }
+
+    impl core::ops::Deref for Instruction {
+        type Target = crate::Instruction;
+
+        fn deref(&self) -> &crate::Instruction {
+            self.0.as_ref()
+        }
+    }
+
+    impl core::ops::DerefMut for Instruction {
+        fn deref_mut(&mut self) -> &mut crate::Instruction {
+            self.0.as_mut()
+        }
+    }
+
+    impl core::borrow::Borrow<crate::Instruction> for Instruction {
+        fn borrow(&self) -> &crate::Instruction {
+            self.0.as_ref()
+        }
+    }
+
+    impl core::borrow::BorrowMut<crate::Instruction> for Instruction {
+        fn borrow_mut(&mut self) -> &mut crate::Instruction {
+            self.0.as_mut()
+        }
+    }
+}
+
 impl RegId {
     /// Received balance for this context.
     pub const BAL: Self = Self(0x0B);

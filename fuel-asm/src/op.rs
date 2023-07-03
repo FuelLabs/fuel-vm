@@ -50,7 +50,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `GM` instruction from its arguments.
-    pub fn gm_args(ra: u8, args: GMArgs) -> TypescriptInstruction {
+    pub fn gm_args(ra: u8, args: GMArgs) -> typescript::Instruction {
         Instruction::GM(GM::from_args(ra.check(), args)).into()
     }
 };
@@ -70,7 +70,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `GM` instruction from its arguments.
-    pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> TypescriptInstruction {
+    pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> typescript::Instruction {
         Instruction::GTF(GTF::from_args(ra.check(), rb.check(), args)).into()
     }
 };
@@ -155,7 +155,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDCM` instruction from its arguments.
-    pub fn wdcm_args(ra: u8, rb: u8, rc: u8, args: CompareArgs) -> TypescriptInstruction {
+    pub fn wdcm_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: CompareArgs,
+    ) -> typescript::Instruction {
         crate::op::wdcm_args(ra, rb, rc, args).into()
     }
 };
@@ -176,7 +181,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQCM` instruction from its arguments.
-    pub fn wqcm_args(ra: u8, rb: u8, rc: u8, args: CompareArgs) -> TypescriptInstruction {
+    pub fn wqcm_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: CompareArgs,
+    ) -> typescript::Instruction {
         crate::op::wqcm_args(ra, rb, rc, args).into()
     }
 };
@@ -197,7 +207,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDOP` instruction from its arguments.
-    pub fn wdop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> TypescriptInstruction {
+    pub fn wdop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> typescript::Instruction {
         crate::op::wdop_args(ra, rb, rc, args).into()
     }
 };
@@ -218,7 +228,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQOP` instruction from its arguments.
-    pub fn wqop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> TypescriptInstruction {
+    pub fn wqop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> typescript::Instruction {
         crate::op::wqop_args(ra, rb, rc, args).into()
     }
 };
@@ -239,7 +249,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDML` instruction from its arguments.
-    pub fn wdml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> TypescriptInstruction {
+    pub fn wdml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> typescript::Instruction {
         crate::op::wdml_args(ra, rb, rc, args).into()
     }
 };
@@ -260,7 +270,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQML` instruction from its arguments.
-    pub fn wqml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> TypescriptInstruction {
+    pub fn wqml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> typescript::Instruction {
         crate::op::wqml_args(ra, rb, rc, args).into()
     }
 };
@@ -281,7 +291,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDDV` instruction from its arguments.
-    pub fn wddv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> TypescriptInstruction {
+    pub fn wddv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> typescript::Instruction {
         crate::op::wddv_args(ra, rb, rc, args).into()
     }
 };
@@ -302,7 +312,7 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQDV` instruction from its arguments.
-    pub fn wqdv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> TypescriptInstruction {
+    pub fn wqdv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> typescript::Instruction {
         crate::op::wqdv_args(ra, rb, rc, args).into()
     }
 };

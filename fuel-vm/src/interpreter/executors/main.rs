@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-use std::sync::Arc;
-
 use crate::{
     checked_transaction::{
         Checked,
@@ -119,24 +117,24 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
     pub async fn check_predicates_async<Tx, E>(
-        checked: Checked<Tx>,
+        checked: &Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
-    ) -> Result<(PredicatesChecked, Checked<Tx>), PredicateVerificationFailed>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor
             + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
     {
-        let tx = checked.transaction().clone();
+        let tx = checked.transaction();
         let balances = checked.metadata().balances();
 
         let predicates_checked =
             Self::verify_predicate_async::<Tx, E>(tx, balances, params, gas_costs)
                 .await?;
 
-        Ok((predicates_checked, checked))
+        Ok(predicates_checked)
     }
 
     /// Initialize the VM with the provided transaction, check all predicates defined in
@@ -164,7 +162,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     }
 
     async fn verify_predicate_async<Tx, E>(
-        tx: Tx,
+        tx: &Tx,
         balances: InitialBalances,
         params: ConsensusParameters,
         gas_costs: GasCosts,
@@ -192,11 +190,11 @@ impl<T> Interpreter<PredicateStorage, T> {
                 continue
             }
 
+            let tx = tx.clone();
+
             if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {
                 let gas_costs = gas_costs.clone();
                 let balances = balances.clone();
-
-                let tx = tx.clone();
 
                 let verify_task = E::create_task(move || {
                     let mut vm = Interpreter::with_storage(

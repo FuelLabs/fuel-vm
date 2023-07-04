@@ -256,7 +256,7 @@ pub trait ParallelExecutor {
 #[async_trait::async_trait]
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> CheckPredicates for Checked<Tx>
 where
-    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send,
+    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
     fn check_predicates(
         mut self,
@@ -285,20 +285,19 @@ where
             + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            let (predicates_checked, mut checked) =
+            let predicates_checked =
                 Interpreter::<PredicateStorage>::check_predicates_async::<_, E>(
-                    self,
+                    &self,
                     *params,
                     gas_costs.clone(),
                 )
                 .await?;
 
-            checked.checks_bitmask.insert(Checks::Predicates);
-            checked
-                .metadata
+            self.checks_bitmask.insert(Checks::Predicates);
+            self.metadata
                 .set_gas_used_by_predicates(predicates_checked.gas_used());
 
-            Ok(checked)
+            Ok(self)
         } else {
             Ok(self)
         }

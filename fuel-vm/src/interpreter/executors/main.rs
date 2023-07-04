@@ -238,9 +238,11 @@ impl<T> Interpreter<PredicateStorage, T> {
         }
 
         let verifications = E::execute_tasks(verifications).await;
-        let cumulative_gas_used = verifications
-            .into_iter()
-            .try_fold(0, |acc, x| Ok::<u64, PredicateVerificationFailed>(acc + x?))?;
+        let cumulative_gas_used =
+            verifications.into_iter().try_fold(0u64, |acc, gas_used| {
+                acc.checked_add(gas_used?)
+                    .ok_or(PredicateVerificationFailed::OutOfGas)
+            })?;
 
         if cumulative_gas_used > tx.limit() {
             return Err(

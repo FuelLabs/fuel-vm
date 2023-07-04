@@ -216,10 +216,7 @@ pub trait CheckPredicates: Sized {
     ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
-    async fn check_predicates_async<
-        E: ParallelExecutor
-            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
-    >(
+    async fn check_predicates_async<E: ParallelExecutor>(
         self,
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
@@ -240,17 +237,17 @@ pub trait EstimatePredicates: Sized {
 #[async_trait::async_trait]
 pub trait ParallelExecutor {
     /// Future created from a CPU-heavy task.
-    type Task: Future + Future<Output = Self::TaskResult> + Send + 'static;
-    /// Result of a CPU-heavy task.
-    type TaskResult;
+    type Task: Future + Send + 'static;
 
     /// Creates a Future from a CPU-heavy task.
     fn create_task<F>(func: F) -> Self::Task
     where
-        F: FnOnce() -> Self::TaskResult + Send + 'static;
+        F: FnOnce() -> Result<Word, PredicateVerificationFailed> + Send + 'static;
 
     /// Executes tasks created by `create_task` in parallel.
-    async fn execute_tasks(futures: Vec<Self::Task>) -> Vec<Self::TaskResult>;
+    async fn execute_tasks(
+        futures: Vec<Self::Task>,
+    ) -> Vec<Result<Word, PredicateVerificationFailed>>;
 }
 
 #[async_trait::async_trait]
@@ -281,8 +278,7 @@ where
         gas_costs: &GasCosts,
     ) -> Result<Self, CheckError>
     where
-        E: ParallelExecutor
-            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+        E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let predicates_checked =
@@ -395,8 +391,7 @@ impl CheckPredicates for Checked<Transaction> {
         gas_costs: &GasCosts,
     ) -> Result<Self, CheckError>
     where
-        E: ParallelExecutor
-            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+        E: ParallelExecutor,
     {
         let checked_transaction: CheckedTransaction = self.into();
 

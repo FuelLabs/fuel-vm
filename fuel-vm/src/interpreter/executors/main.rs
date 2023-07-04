@@ -124,8 +124,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
-        E: ParallelExecutor
-            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+        E: ParallelExecutor,
     {
         let tx = checked.transaction();
         let balances = checked.metadata().balances();
@@ -169,8 +168,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
-        E: ParallelExecutor
-            + ParallelExecutor<TaskResult = Result<Word, PredicateVerificationFailed>>,
+        E: ParallelExecutor,
     {
         if !tx.check_predicate_owners(&params.chain_id) {
             return Err(PredicateVerificationFailed::InvalidOwner)

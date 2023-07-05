@@ -134,7 +134,7 @@ fn from_tx_works() {
                 fuel_vm::context::Context::PredicateVerification {
                     program: Default::default()
                 },
-                tx.transaction(),
+                tx.transaction().clone(),
                 Default::default(),
                 tx.transaction().limit()
             )

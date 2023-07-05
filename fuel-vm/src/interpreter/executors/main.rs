@@ -210,7 +210,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                             return Err(PredicateVerificationFailed::GasNotSpecified)
                         };
 
-                    vm.init_predicate(context, &tx, balances.clone(), available_gas)?;
+                    vm.init_predicate(context, tx, balances, available_gas)?;
 
                     let result = vm.verify_predicate();
                     let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
@@ -280,7 +280,9 @@ impl<T> Interpreter<PredicateStorage, T> {
                 continue
             }
 
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), i) {
+            let tx = kind.tx().clone();
+
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, i) {
                 let mut vm = Interpreter::with_storage(
                     PredicateStorage::default(),
                     params,
@@ -288,7 +290,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                 );
 
                 let available_gas = match &kind {
-                    PredicateRunKind::Verifying(tx) => {
+                    PredicateRunKind::Verifying(_) => {
                         let context =
                             Context::PredicateVerification { program: predicate };
 
@@ -299,10 +301,10 @@ impl<T> Interpreter<PredicateStorage, T> {
                                 return Err(PredicateVerificationFailed::GasNotSpecified)
                             };
 
-                        vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
+                        vm.init_predicate(context, tx, balances.clone(), available_gas)?;
                         available_gas
                     }
-                    PredicateRunKind::Estimating(tx) => {
+                    PredicateRunKind::Estimating(_) => {
                         let context = Context::PredicateEstimation { program: predicate };
                         let tx_available_gas = params
                             .max_gas_per_tx
@@ -313,7 +315,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                             tx_available_gas,
                         );
 
-                        vm.init_predicate(context, *tx, balances.clone(), available_gas)?;
+                        vm.init_predicate(context, tx, balances.clone(), available_gas)?;
                         available_gas
                     }
                 };

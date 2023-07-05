@@ -85,12 +85,11 @@ where
     pub fn init_predicate(
         &mut self,
         context: Context,
-        tx: &Tx,
+        mut tx: Tx,
         balances: InitialBalances,
         gas_limit: Word,
     ) -> Result<(), InterpreterError> {
         self.context = context;
-        let mut tx = tx.clone();
         tx.prepare_init_predicate();
 
         self.init_inner(tx, balances, gas_limit)

@@ -196,9 +196,8 @@ impl<T> Interpreter<PredicateStorage, T> {
                 continue
             }
 
-            let mut tx = tx.clone();
-
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, tx, index) {
+                let mut tx = tx.clone();
                 let gas_costs = gas_costs.clone();
                 let balances = balances.clone();
 

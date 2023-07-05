@@ -82,17 +82,26 @@ enum PredicateRunKind<'a, Tx> {
     Estimating(&'a mut Tx),
 }
 
+impl<'a, Tx> PredicateRunKind<'a, Tx> {
+    fn tx(&self) -> &Tx {
+        match self {
+            PredicateRunKind::Verifying(tx) => tx,
+            PredicateRunKind::Estimating(tx) => tx,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum PredicateAction {
     Verifying,
     Estimating,
 }
 
-impl<'a, Tx> PredicateRunKind<'a, Tx> {
-    fn tx(&self) -> &Tx {
-        match self {
-            PredicateRunKind::Verifying(tx) => tx,
-            PredicateRunKind::Estimating(tx) => tx,
+impl<Tx> From<&PredicateRunKind<'_, Tx>> for PredicateAction {
+    fn from(kind: &PredicateRunKind<'_, Tx>) -> Self {
+        match kind {
+            PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
+            PredicateRunKind::Estimating(_) => PredicateAction::Estimating,
         }
     }
 }
@@ -123,7 +132,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
     pub async fn check_predicates_async<Tx, E>(
-        checked: &mut Checked<Tx>,
+        checked: &Checked<Tx>,
         params: ConsensusParameters,
         gas_costs: GasCosts,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
@@ -133,11 +142,10 @@ impl<T> Interpreter<PredicateStorage, T> {
         E: ParallelExecutor,
     {
         let balances = checked.metadata().balances();
-        let tx = checked.transaction_mut();
+        let tx = checked.transaction();
 
         let predicates_checked = Self::run_predicate_async::<Tx, E>(
-            PredicateAction::Verifying,
-            tx,
+            PredicateRunKind::Verifying(tx),
             balances,
             params,
             gas_costs,
@@ -172,8 +180,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     }
 
     async fn run_predicate_async<Tx, E>(
-        predicate_action: PredicateAction,
-        tx: &mut Tx,
+        mut kind: PredicateRunKind<'_, Tx>,
         balances: InitialBalances,
         params: ConsensusParameters,
         gas_costs: GasCosts,
@@ -183,10 +190,11 @@ impl<T> Interpreter<PredicateStorage, T> {
         E: ParallelExecutor,
     {
         let mut verifications = vec![];
+        let predicate_action = PredicateAction::from(&kind);
 
-        for index in 0..tx.inputs().len() {
+        for index in 0..kind.tx().inputs().len() {
             let is_predicate = matches!(
-                tx.inputs()[index],
+                kind.tx().inputs()[index],
                 Input::CoinPredicate(_)
                     | Input::MessageCoinPredicate(_)
                     | Input::MessageDataPredicate(_)
@@ -196,8 +204,9 @@ impl<T> Interpreter<PredicateStorage, T> {
                 continue
             }
 
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, tx, index) {
-                let tx = tx.clone();
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), index)
+            {
+                let tx = kind.tx().clone();
                 let gas_costs = gas_costs.clone();
                 let balances = balances.clone();
 
@@ -300,7 +309,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let verifications = E::execute_tasks(verifications).await;
 
-        if let PredicateAction::Estimating = predicate_action {
+        if let PredicateRunKind::Estimating(tx) = &mut kind {
             verifications
                 .iter()
                 .enumerate()
@@ -337,7 +346,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         match predicate_action {
             PredicateAction::Verifying => {
-                if cumulative_gas_used > tx.limit() {
+                if cumulative_gas_used > kind.tx().limit() {
                     return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
                 }
             }

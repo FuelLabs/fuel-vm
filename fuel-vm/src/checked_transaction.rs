@@ -105,11 +105,6 @@ impl<Tx: IntoChecked> Checked<Tx> {
         &self.transaction
     }
 
-    /// Returns a mutable reference on inner transaction.
-    pub fn transaction_mut(&mut self) -> &mut Tx {
-        &mut self.transaction
-    }
-
     /// Returns the metadata generated during the check for transaction.
     pub fn metadata(&self) -> &Tx::Metadata {
         &self.metadata
@@ -288,7 +283,7 @@ where
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let predicates_checked =
                 Interpreter::<PredicateStorage>::check_predicates_async::<_, E>(
-                    &mut self,
+                    &self,
                     *params,
                     gas_costs.clone(),
                 )

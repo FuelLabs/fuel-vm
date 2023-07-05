@@ -201,6 +201,11 @@ impl<T> Interpreter<PredicateStorage, T> {
                             recipient: address,
                             predicate,
                             ..
+                        })
+                        | Input::MessageCoinPredicate(MessageCoinPredicate {
+                            predicate,
+                            recipient: address,
+                            ..
                         }) => {
                             if !Input::is_predicate_owner_valid(
                                 address,

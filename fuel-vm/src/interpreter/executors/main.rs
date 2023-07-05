@@ -170,10 +170,6 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
-        if !tx.check_predicate_owners(&params.chain_id) {
-            return Err(PredicateVerificationFailed::InvalidOwner)
-        }
-
         let mut verifications = vec![];
 
         for index in 0..tx.inputs().len() {
@@ -195,6 +191,28 @@ impl<T> Interpreter<PredicateStorage, T> {
                 let balances = balances.clone();
 
                 let verify_task = E::create_task(move || {
+                    match &tx.inputs()[index] {
+                        Input::CoinPredicate(CoinPredicate {
+                            owner: address,
+                            predicate,
+                            ..
+                        })
+                        | Input::MessageDataPredicate(MessageDataPredicate {
+                            recipient: address,
+                            predicate,
+                            ..
+                        }) => {
+                            if !Input::is_predicate_owner_valid(
+                                address,
+                                predicate,
+                                &params.chain_id,
+                            ) {
+                                return Err(PredicateVerificationFailed::InvalidOwner)
+                            }
+                        }
+                        _ => {}
+                    }
+
                     let mut vm = Interpreter::with_storage(
                         PredicateStorage::default(),
                         params,

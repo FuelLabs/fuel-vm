@@ -253,7 +253,7 @@ async fn execute_gas_metered_predicates(
     };
 
     // parallel version
-    {
+    let parallel_gas_used = {
         let mut async_tx = transaction.clone();
         async_tx
             .estimate_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
@@ -271,8 +271,8 @@ async fn execute_gas_metered_predicates(
         )
         .await
         .map(|r| r.gas_used())
-        .map_err(|_| ())?;
-    }
+        .map_err(|_| ())?
+    };
 
     // sequential version
     transaction
@@ -283,9 +283,17 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(Default::default(), &Default::default())
         .expect("Should successfully create checked tranaction with predicate");
 
-    Interpreter::<PredicateStorage>::check_predicates(&tx, params, GasCosts::default())
-        .map(|r| r.gas_used())
-        .map_err(|_| ())
+    let seq_gas_used = Interpreter::<PredicateStorage>::check_predicates(
+        &tx,
+        params,
+        GasCosts::default(),
+    )
+    .map(|r| r.gas_used())
+    .map_err(|_| ())?;
+
+    assert_eq!(seq_gas_used, parallel_gas_used);
+
+    Ok(seq_gas_used)
 }
 
 #[tokio::test]

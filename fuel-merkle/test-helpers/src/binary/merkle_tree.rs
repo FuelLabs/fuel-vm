@@ -307,9 +307,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //       N3
         //      /  \
@@ -328,8 +326,8 @@ mod test {
         let node_3 = node_sum(&node_1, &node_2);
 
         assert_eq!(root, node_3);
-        assert_eq!(set[0], leaf_1);
-        assert_eq!(set[1], leaf_2);
+        assert_eq!(proof_set[0], leaf_2);
+        assert_eq!(proof_set[1], node_2);
     }
 
     #[test]
@@ -343,9 +341,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //          N4
         //         /  \
@@ -368,10 +364,9 @@ mod test {
         let node_4 = node_sum(&node_3, &leaf_5);
 
         assert_eq!(root, node_4);
-        assert_eq!(set[0], leaf_3);
-        assert_eq!(set[1], leaf_4);
-        assert_eq!(set[2], node_1);
-        assert_eq!(set[3], leaf_5);
+        assert_eq!(proof_set[0], leaf_4);
+        assert_eq!(proof_set[1], node_1);
+        assert_eq!(proof_set[2], leaf_5);
     }
 
     #[test]
@@ -385,9 +380,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //          N4
         //         /  \
@@ -410,17 +403,13 @@ mod test {
         let node_4 = node_sum(&node_3, &leaf_5);
 
         assert_eq!(root, node_4);
-        assert_eq!(set[0], leaf_5);
-        assert_eq!(set[1], node_3);
+        assert_eq!(proof_set[0], node_3);
     }
 
     #[test]
     fn prove_returns_the_root_of_the_empty_merkle_tree_when_no_leaves_are_added() {
         let mt = MerkleTree::new();
-
-        let proof = mt.prove();
-        let root = proof.0;
-
+        let (root, _proof_set) = mt.prove();
         let expected_root = empty_sum();
         assert_eq!(&root, expected_root);
     }
@@ -428,10 +417,7 @@ mod test {
     #[test]
     fn prove_returns_an_empty_proof_set_when_no_leaves_are_added() {
         let mt = MerkleTree::new();
-
-        let proof = mt.prove();
-        let set = proof.1;
-
-        assert_eq!(set.len(), 0);
+        let (_root, proof_set) = mt.prove();
+        assert!(proof_set.is_empty());
     }
 }

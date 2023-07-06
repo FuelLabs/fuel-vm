@@ -27,6 +27,7 @@ pub fn verify<T: AsRef<[u8]>>(
     loop {
         let subtree_start_index = proof_index / (1 << height) * (1 << height);
         let subtree_end_index = subtree_start_index + (1 << height) - 1;
+
         if subtree_end_index >= num_leaves {
             break
         }

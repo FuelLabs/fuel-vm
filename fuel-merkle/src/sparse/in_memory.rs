@@ -107,9 +107,8 @@ impl MerkleTree {
             }
         }
 
-        let tree =
-            sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage, set)
-                .expect("`Storage` can't return error");
+        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage, set)
+            .expect("`Storage` can't return error");
         tree.root()
     }
 

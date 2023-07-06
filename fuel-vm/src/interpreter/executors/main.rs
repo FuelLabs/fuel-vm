@@ -179,8 +179,35 @@ impl<T> Interpreter<PredicateStorage, T> {
         Ok(())
     }
 
+    /// Initialize the VM with the provided transaction, check all predicates defined in
+    /// the inputs and set the predicate_gas_used to be the actual gas consumed during
+    /// execution for each predicate.
+    ///
+    /// The storage provider is not used since contract opcodes are not allowed for
+    /// predicates.
+    pub async fn estimate_predicates_async<Tx, E>(
+        transaction: &mut Tx,
+        balances: InitialBalances,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+    ) -> Result<(), PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction + Send + 'static,
+        E: ParallelExecutor,
+    {
+        Self::run_predicate_async::<Tx, E>(
+            PredicateRunKind::Estimating(transaction),
+            balances,
+            params,
+            gas_costs,
+        )
+        .await?;
+
+        Ok(())
+    }
+
     async fn run_predicate_async<Tx, E>(
-        mut kind: PredicateRunKind<'_, Tx>,
+        kind: PredicateRunKind<'_, Tx>,
         balances: InitialBalances,
         params: ConsensusParameters,
         gas_costs: GasCosts,
@@ -189,7 +216,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
-        let mut verifications = vec![];
+        let mut checks = vec![];
         let predicate_action = PredicateAction::from(&kind);
 
         for index in 0..kind.tx().inputs().len() {
@@ -211,159 +238,31 @@ impl<T> Interpreter<PredicateStorage, T> {
                 let balances = balances.clone();
 
                 let verify_task = E::create_task(move || {
-                    match &tx.inputs()[index] {
-                        Input::CoinPredicate(CoinPredicate {
-                            owner: address,
-                            predicate,
-                            ..
-                        })
-                        | Input::MessageDataPredicate(MessageDataPredicate {
-                            recipient: address,
-                            predicate,
-                            ..
-                        })
-                        | Input::MessageCoinPredicate(MessageCoinPredicate {
-                            predicate,
-                            recipient: address,
-                            ..
-                        }) => {
-                            if !Input::is_predicate_owner_valid(
-                                address,
-                                predicate,
-                                &params.chain_id,
-                            ) {
-                                return Err(PredicateVerificationFailed::InvalidOwner)
-                            }
-                        }
-                        _ => {}
-                    }
+                    let gas_costs = gas_costs.clone();
+                    let balances = balances.clone();
 
-                    let mut vm = Interpreter::with_storage(
-                        PredicateStorage::default(),
+                    Self::check_predicate(
+                        tx,
+                        index,
                         params,
                         gas_costs,
-                    );
-
-                    let available_gas = match predicate_action {
-                        PredicateAction::Verifying => {
-                            let context =
-                                Context::PredicateVerification { program: predicate };
-                            let available_gas = if let Some(x) =
-                                tx.inputs()[index].predicate_gas_used()
-                            {
-                                x
-                            } else {
-                                return Err(PredicateVerificationFailed::GasNotSpecified)
-                            };
-
-                            vm.init_predicate(
-                                context,
-                                tx,
-                                balances.clone(),
-                                available_gas,
-                            )?;
-                            available_gas
-                        }
-                        PredicateAction::Estimating => {
-                            let context =
-                                Context::PredicateEstimation { program: predicate };
-                            let available_gas = core::cmp::min(
-                                params.max_gas_per_predicate,
-                                params.max_gas_per_tx,
-                            );
-
-                            vm.init_predicate(
-                                context,
-                                tx,
-                                balances.clone(),
-                                available_gas,
-                            )?;
-                            available_gas
-                        }
-                    };
-
-                    let result = vm.verify_predicate();
-                    let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
-
-                    let gas_used = available_gas
-                        .checked_sub(vm.remaining_gas())
-                        .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
-
-                    if let PredicateAction::Verifying = predicate_action {
-                        if !is_successful {
-                            result?;
-                            return Err(PredicateVerificationFailed::False)
-                        }
-
-                        if vm.remaining_gas() != 0 {
-                            return Err(PredicateVerificationFailed::GasMismatch)
-                        }
-                    }
-
-                    Ok(gas_used)
+                        balances,
+                        predicate_action,
+                        predicate,
+                    )
                 });
 
-                verifications.push(verify_task);
+                checks.push(verify_task);
             }
         }
 
-        let verifications = E::execute_tasks(verifications).await;
+        let checks = E::execute_tasks(checks).await;
 
-        if let PredicateRunKind::Estimating(tx) = &mut kind {
-            verifications
-                .iter()
-                .enumerate()
-                .for_each(|(index, gas_used)| {
-                    if let Ok(gas_used) = gas_used {
-                        match &mut tx.inputs_mut()[index] {
-                            Input::CoinPredicate(CoinPredicate {
-                                predicate_gas_used, ..
-                            })
-                            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                                predicate_gas_used,
-                                ..
-                            })
-                            | Input::MessageDataPredicate(MessageDataPredicate {
-                                predicate_gas_used,
-                                ..
-                            }) => {
-                                *predicate_gas_used = *gas_used;
-                            }
-                            _ => {
-                                unreachable!(
-                                    "It was checked before during iteration over predicates"
-                                )
-                            }}
-                    }
-                })
-        }
-
-        let cumulative_gas_used =
-            verifications.into_iter().try_fold(0u64, |acc, gas_used| {
-                acc.checked_add(gas_used?)
-                    .ok_or(PredicateVerificationFailed::OutOfGas)
-            })?;
-
-        match predicate_action {
-            PredicateAction::Verifying => {
-                if cumulative_gas_used > kind.tx().limit() {
-                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
-                }
-            }
-            PredicateAction::Estimating => {
-                if cumulative_gas_used > params.max_gas_per_tx {
-                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
-                }
-            }
-        }
-
-        Ok(PredicatesChecked {
-            gas_used: cumulative_gas_used,
-        })
+        Self::finalize_check_predicate(kind, checks, predicate_action, params)
     }
 
     fn run_predicate<Tx>(
-        mut kind: PredicateRunKind<Tx>,
+        kind: PredicateRunKind<Tx>,
         balances: InitialBalances,
         params: ConsensusParameters,
         gas_costs: GasCosts,
@@ -371,15 +270,12 @@ impl<T> Interpreter<PredicateStorage, T> {
     where
         Tx: ExecutableTransaction,
     {
-        if !kind.tx().check_predicate_owners(&params.chain_id) {
-            return Err(PredicateVerificationFailed::InvalidOwner)
-        }
+        let predicate_action = PredicateAction::from(&kind);
+        let mut checks = vec![];
 
-        let mut cumulative_gas_used: Word = 0;
-
-        for i in 0..kind.tx().inputs().len() {
+        for index in 0..kind.tx().inputs().len() {
             let is_predicate = matches!(
-                kind.tx().inputs()[i],
+                kind.tx().inputs()[index],
                 Input::CoinPredicate(_)
                     | Input::MessageCoinPredicate(_)
                     | Input::MessageDataPredicate(_)
@@ -391,97 +287,158 @@ impl<T> Interpreter<PredicateStorage, T> {
 
             let tx = kind.tx().clone();
 
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, i) {
-                let mut vm = Interpreter::with_storage(
-                    PredicateStorage::default(),
+            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {
+                let gas_costs = gas_costs.clone();
+                let balances = balances.clone();
+
+                checks.push(Self::check_predicate(
+                    tx,
+                    index,
                     params,
-                    gas_costs.clone(),
-                );
-
-                let available_gas = match &kind {
-                    PredicateRunKind::Verifying(_) => {
-                        let context =
-                            Context::PredicateVerification { program: predicate };
-
-                        let available_gas =
-                            if let Some(x) = kind.tx().inputs()[i].predicate_gas_used() {
-                                x
-                            } else {
-                                return Err(PredicateVerificationFailed::GasNotSpecified)
-                            };
-
-                        vm.init_predicate(context, tx, balances.clone(), available_gas)?;
-                        available_gas
-                    }
-                    PredicateRunKind::Estimating(_) => {
-                        let context = Context::PredicateEstimation { program: predicate };
-                        let tx_available_gas = params
-                            .max_gas_per_tx
-                            .checked_sub(cumulative_gas_used)
-                            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
-                        let available_gas = core::cmp::min(
-                            params.max_gas_per_predicate,
-                            tx_available_gas,
-                        );
-
-                        vm.init_predicate(context, tx, balances.clone(), available_gas)?;
-                        available_gas
-                    }
-                };
-
-                let result = vm.verify_predicate();
-                let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
-
-                let gas_used = available_gas
-                    .checked_sub(vm.remaining_gas())
-                    .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
-                cumulative_gas_used = cumulative_gas_used
-                    .checked_add(gas_used)
-                    .ok_or_else(|| PredicateVerificationFailed::OutOfGas)?;
-
-                match &mut kind {
-                    PredicateRunKind::Verifying(_) => {
-                        if !is_successful {
-                            result?;
-                            return Err(PredicateVerificationFailed::False)
-                        }
-
-                        if vm.remaining_gas() != 0 {
-                            return Err(PredicateVerificationFailed::GasMismatch)
-                        }
-                    }
-                    PredicateRunKind::Estimating(tx) => {
-                        match &mut tx.inputs_mut()[i] {
-                            Input::CoinPredicate(CoinPredicate {
-                                predicate_gas_used,
-                                ..
-                            })
-                            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                                predicate_gas_used,
-                                ..
-                            })
-                            | Input::MessageDataPredicate(MessageDataPredicate {
-                                predicate_gas_used,
-                                ..
-                            }) => {
-                                *predicate_gas_used = gas_used;
-                            }
-                            _ => {
-                                unreachable!("It was checked before during iteration over predicates")
-                            }
-                        }
-                    }
-                }
+                    gas_costs,
+                    balances,
+                    predicate_action,
+                    predicate,
+                ));
             }
         }
 
-        match kind {
-            PredicateRunKind::Verifying(tx) => {
-                if cumulative_gas_used > tx.limit() {
+        Self::finalize_check_predicate(kind, checks, predicate_action, params)
+    }
+
+    fn check_predicate<Tx>(
+        tx: Tx,
+        index: usize,
+        params: ConsensusParameters,
+        gas_costs: GasCosts,
+        balances: InitialBalances,
+        predicate_action: PredicateAction,
+        predicate: RuntimePredicate,
+    ) -> Result<Word, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        match &tx.inputs()[index] {
+            Input::CoinPredicate(CoinPredicate {
+                owner: address,
+                predicate,
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                recipient: address,
+                predicate,
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                predicate,
+                recipient: address,
+                ..
+            }) => {
+                if !Input::is_predicate_owner_valid(address, predicate, &params.chain_id)
+                {
+                    return Err(PredicateVerificationFailed::InvalidOwner)
+                }
+            }
+            _ => {}
+        }
+
+        let mut vm =
+            Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+
+        let available_gas = match predicate_action {
+            PredicateAction::Verifying => {
+                let context = Context::PredicateVerification { program: predicate };
+                let available_gas =
+                    if let Some(x) = tx.inputs()[index].predicate_gas_used() {
+                        x
+                    } else {
+                        return Err(PredicateVerificationFailed::GasNotSpecified)
+                    };
+
+                vm.init_predicate(context, tx, balances, available_gas)?;
+                available_gas
+            }
+            PredicateAction::Estimating => {
+                let context = Context::PredicateEstimation { program: predicate };
+                let available_gas =
+                    core::cmp::min(params.max_gas_per_predicate, params.max_gas_per_tx);
+
+                vm.init_predicate(context, tx, balances, available_gas)?;
+                available_gas
+            }
+        };
+
+        let result = vm.verify_predicate();
+        let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
+
+        let gas_used = available_gas
+            .checked_sub(vm.remaining_gas())
+            .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+
+        if let PredicateAction::Verifying = predicate_action {
+            if !is_successful {
+                result?;
+                return Err(PredicateVerificationFailed::False)
+            }
+
+            if vm.remaining_gas() != 0 {
+                return Err(PredicateVerificationFailed::GasMismatch)
+            }
+        }
+
+        Ok(gas_used)
+    }
+
+    fn finalize_check_predicate<Tx>(
+        mut kind: PredicateRunKind<Tx>,
+        checks: Vec<Result<Word, PredicateVerificationFailed>>,
+        predicate_action: PredicateAction,
+        params: ConsensusParameters,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        if let PredicateRunKind::Estimating(tx) = &mut kind {
+            checks.iter().enumerate().for_each(|(index, gas_used)| {
+                if let Ok(gas_used) = gas_used {
+                    match &mut tx.inputs_mut()[index] {
+                        Input::CoinPredicate(CoinPredicate {
+                            predicate_gas_used,
+                            ..
+                        })
+                        | Input::MessageCoinPredicate(MessageCoinPredicate {
+                            predicate_gas_used,
+                            ..
+                        })
+                        | Input::MessageDataPredicate(MessageDataPredicate {
+                            predicate_gas_used,
+                            ..
+                        }) => {
+                            *predicate_gas_used = *gas_used;
+                        }
+                        _ => {
+                            unreachable!(
+                                "It was checked before during iteration over predicates"
+                            )
+                        }
+                    }
+                }
+            })
+        }
+
+        let cumulative_gas_used =
+            checks.into_iter().try_fold(0u64, |acc, gas_used| {
+                acc.checked_add(gas_used?)
+                    .ok_or(PredicateVerificationFailed::OutOfGas)
+            })?;
+
+        match predicate_action {
+            PredicateAction::Verifying => {
+                if cumulative_gas_used > kind.tx().limit() {
                     return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
                 }
             }
-            PredicateRunKind::Estimating(_) => {
+            PredicateAction::Estimating => {
                 if cumulative_gas_used > params.max_gas_per_tx {
                     return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
                 }

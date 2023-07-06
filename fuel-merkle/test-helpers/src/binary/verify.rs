@@ -33,7 +33,7 @@ pub fn verify<T: AsRef<[u8]>>(
 
         stable_end = subtree_end_index;
 
-        if proof_set.len() <= height - 1 {
+        if proof_set.len() < height {
             return false
         }
 
@@ -48,7 +48,7 @@ pub fn verify<T: AsRef<[u8]>>(
     }
 
     if stable_end != num_leaves - 1 {
-        if proof_set.len() <= height - 1 {
+        if proof_set.len() < height {
             return false
         }
         let proof_data = proof_set[height - 1];
@@ -91,7 +91,7 @@ mod test {
         let (root, proof_set) = mt.prove();
         let verification = verify(
             &root,
-            &data[proof_index as usize].as_ref(),
+            &data[proof_index as usize],
             &proof_set,
             proof_index,
             data.len() as u64,

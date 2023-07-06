@@ -5,6 +5,7 @@ use crate::binary::{
     Data,
     Node,
 };
+use std::collections::VecDeque;
 
 type DataNode = Node<Data>;
 type ProofSet = Vec<Data>;
@@ -88,7 +89,10 @@ impl MerkleTree {
             current = current.take_next().unwrap();
         }
 
-        (self.root(), self.proof_set)
+        let root = self.root();
+        let mut proof_set = VecDeque::from(self.proof_set);
+        proof_set.pop_front();
+        (root, proof_set.into())
     }
 
     // PRIVATE

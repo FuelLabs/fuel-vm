@@ -9,7 +9,6 @@ use sha2::{
     Digest,
     Sha256,
 };
-use std::collections::VecDeque;
 
 use crate::{
     binary::{
@@ -102,12 +101,7 @@ fn test_prove() {
             for datum in sample_data.iter() {
                 reference_tree.push(datum);
             }
-
-            // Remove the leaf data from the proof set
-            let (root, proof_set) = reference_tree.prove();
-            let mut proof_set = VecDeque::from(proof_set);
-            proof_set.pop_front();
-            (root, proof_set.into())
+            reference_tree.prove()
         };
 
         let proof = {

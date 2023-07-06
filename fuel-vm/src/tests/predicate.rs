@@ -118,26 +118,31 @@ where
         .into_checked_basic(height, &Default::default())
         .expect("Should successfully convert into Checked");
 
-    // parallel version
-    {
-        if Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
+    let parallel_execution = {
+        Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
             &checked,
             Default::default(),
             gas_costs.clone(),
         )
         .await
-        .is_err()
-        {
-            return false
-        }
-    }
+        .map(|checked| checked.gas_used())
+    };
 
-    Interpreter::<PredicateStorage>::check_predicates(
+    let seq_execution = Interpreter::<PredicateStorage>::check_predicates(
         &checked,
         Default::default(),
         gas_costs,
     )
-    .is_ok()
+    .map(|checked| checked.gas_used());
+
+    match (parallel_execution, seq_execution) {
+        (Ok(p_gas_used), Ok(s_gas_used)) => {
+            assert_eq!(p_gas_used, s_gas_used);
+            true
+        }
+        (Err(_), Err(_)) => false,
+        _ => panic!("Parallel and sequential execution should return the same result"),
+    }
 }
 
 #[tokio::test]
@@ -367,15 +372,15 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     );
 
     // parallel version
-    {
-        let _ = builder
+    let p_tx_without_predicate = {
+        builder
             .clone()
             .with_params(params)
             .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
             .await
-            .expect("Predicate check failed even if we don't have any predicates");
-    }
+            .expect("Predicate check failed even if we don't have any predicates")
+    };
 
     let tx_without_predicate = builder
         .with_params(params)
@@ -419,13 +424,31 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version
-    {
-        let _ = checked
+    let (p_with_predicate, p_without_predicate) = {
+        let tx_with_predicate = checked
             .clone()
             .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
             .await
             .expect("Predicate check failed");
-    }
+
+        let mut client = MemoryClient::default();
+        client.transact(tx_with_predicate);
+        let receipts_with_predicate =
+            client.receipts().expect("Expected receipts").to_vec();
+        client.transact(p_tx_without_predicate);
+        let receipts_without_predicate =
+            client.receipts().expect("Expected receipts").to_vec();
+
+        assert!(
+            receipts_with_predicate[1].gas_used()
+                > receipts_without_predicate[1].gas_used()
+        );
+
+        (
+            receipts_with_predicate[1].gas_used(),
+            receipts_without_predicate[1].gas_used(),
+        )
+    };
 
     let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
@@ -440,6 +463,12 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
 
     assert!(
         receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used()
+    );
+
+    assert_eq!(p_with_predicate, receipts_with_predicate[1].gas_used());
+    assert_eq!(
+        p_without_predicate,
+        receipts_without_predicate[1].gas_used()
     );
 }
 
@@ -532,11 +561,23 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     // parallel version
     {
-        let _ = checked
+        let tx_with_predicate = checked
             .clone()
             .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
             .await
             .expect("Predicate check failed");
+
+        client.transact(tx_with_predicate);
+        let receipts_with_predicate =
+            client.receipts().expect("Expected receipts").to_vec();
+
+        // No panic for transaction without gas limit
+        assert_eq!(receipts_without_predicate[1].reason(), None);
+        // Panic with out of gas for transaction with predicate
+        assert_eq!(
+            receipts_with_predicate[0].reason().unwrap().reason(),
+            &OutOfGas
+        );
     }
 
     let tx_with_predicate = checked

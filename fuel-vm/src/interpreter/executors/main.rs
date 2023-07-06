@@ -227,9 +227,6 @@ impl<T> Interpreter<PredicateStorage, T> {
                 let balances = balances.clone();
 
                 let verify_task = E::create_task(move || {
-                    let gas_costs = gas_costs.clone();
-                    let balances = balances.clone();
-
                     Self::check_predicate(
                         tx,
                         index,

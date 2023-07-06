@@ -90,8 +90,12 @@ impl MerkleTree {
         }
 
         let root = self.root();
+
+        // The proof set starts with the hashed leaf data; remove the leaf data
+        // in order to conform with the proof set specification.
         let mut proof_set = VecDeque::from(self.proof_set);
         proof_set.pop_front();
+
         (root, proof_set.into())
     }
 

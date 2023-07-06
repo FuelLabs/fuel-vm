@@ -213,7 +213,7 @@ async fn recover_tx_id_predicate() {
         .finalize();
 
     {
-        // async version
+        // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
             .estimate_predicates_async::<TokioWithRayon>(&params, &gas_costs)
@@ -225,7 +225,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should check predicate successfully");
     }
 
-    // non-async version
+    // sequential version
     tx.estimate_predicates(&params, &gas_costs)
         .expect("Should estimate predicate successfully");
 

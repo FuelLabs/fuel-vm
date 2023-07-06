@@ -224,9 +224,17 @@ pub trait CheckPredicates: Sized {
 }
 
 /// Provides predicate estimation functionality for the transaction.
+#[async_trait::async_trait]
 pub trait EstimatePredicates: Sized {
     /// Estimates predicates of the transaction.
     fn estimate_predicates(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError>;
+
+    /// Estimates predicates of the transaction in parallel.
+    async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
@@ -251,8 +259,9 @@ pub trait ParallelExecutor {
 }
 
 #[async_trait::async_trait]
-impl<Tx: ExecutableTransaction + Send + Sync + 'static> CheckPredicates for Checked<Tx>
+impl<Tx> CheckPredicates for Checked<Tx>
 where
+    Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
     fn check_predicates(
@@ -300,7 +309,8 @@ where
     }
 }
 
-impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
+#[async_trait::async_trait]
+impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
     fn estimate_predicates(
         &mut self,
         params: &ConsensusParameters,
@@ -326,8 +336,40 @@ impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
         )?;
         Ok(())
     }
+
+    async fn estimate_predicates_async<E>(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError>
+    where
+        E: ParallelExecutor,
+    {
+        // validate fees and compute free balances
+        let AvailableBalances {
+            non_retryable_balances,
+            retryable_balance,
+            ..
+        } = initial_free_balances(self, params)?;
+
+        let balances: InitialBalances = InitialBalances {
+            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+            retryable: Some(RetryableAmount(retryable_balance)),
+        };
+
+        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(
+            self,
+            balances,
+            *params,
+            gas_costs.clone(),
+        )
+        .await?;
+
+        Ok(())
+    }
 }
 
+#[async_trait::async_trait]
 impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
@@ -337,6 +379,26 @@ impl EstimatePredicates for Transaction {
         match self {
             Transaction::Script(script) => script.estimate_predicates(params, gas_costs),
             Transaction::Create(create) => create.estimate_predicates(params, gas_costs),
+            Transaction::Mint(_) => Ok(()),
+        }
+    }
+
+    async fn estimate_predicates_async<E: ParallelExecutor>(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError> {
+        match self {
+            Transaction::Script(script) => {
+                script
+                    .estimate_predicates_async::<E>(params, gas_costs)
+                    .await
+            }
+            Transaction::Create(create) => {
+                create
+                    .estimate_predicates_async::<E>(params, gas_costs)
+                    .await
+            }
             Transaction::Mint(_) => Ok(()),
         }
     }

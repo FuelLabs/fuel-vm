@@ -181,7 +181,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
     /// Initialize the VM with the provided transaction, check all predicates defined in
     /// the inputs and set the predicate_gas_used to be the actual gas consumed during
-    /// execution for each predicate.
+    /// execution for each predicate in parallel.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.

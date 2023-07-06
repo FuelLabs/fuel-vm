@@ -220,17 +220,6 @@ impl<T> Interpreter<PredicateStorage, T> {
         let predicate_action = PredicateAction::from(&kind);
 
         for index in 0..kind.tx().inputs().len() {
-            let is_predicate = matches!(
-                kind.tx().inputs()[index],
-                Input::CoinPredicate(_)
-                    | Input::MessageCoinPredicate(_)
-                    | Input::MessageDataPredicate(_)
-            );
-
-            if !is_predicate {
-                continue
-            }
-
             if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), index)
             {
                 let tx = kind.tx().clone();
@@ -274,17 +263,6 @@ impl<T> Interpreter<PredicateStorage, T> {
         let mut checks = vec![];
 
         for index in 0..kind.tx().inputs().len() {
-            let is_predicate = matches!(
-                kind.tx().inputs()[index],
-                Input::CoinPredicate(_)
-                    | Input::MessageCoinPredicate(_)
-                    | Input::MessageDataPredicate(_)
-            );
-
-            if !is_predicate {
-                continue
-            }
-
             let tx = kind.tx().clone();
 
             if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {

@@ -14,17 +14,42 @@ use rand::{
     Rng,
     SeedableRng,
 };
+use tokio_rayon::AsyncRayonHandle;
 
-use crate::prelude::*;
+use crate::{
+    error::PredicateVerificationFailed,
+    prelude::*,
+};
 
 use crate::checked_transaction::{
     CheckPredicates,
     EstimatePredicates,
+    ParallelExecutor,
 };
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 
-fn execute_predicate<P>(
+pub struct TokioWithRayon;
+
+#[async_trait::async_trait]
+impl ParallelExecutor for TokioWithRayon {
+    type Task = AsyncRayonHandle<Result<Word, PredicateVerificationFailed>>;
+
+    fn create_task<F>(func: F) -> Self::Task
+    where
+        F: FnOnce() -> Result<Word, PredicateVerificationFailed> + Send + 'static,
+    {
+        tokio_rayon::spawn(func)
+    }
+
+    async fn execute_tasks(
+        futures: Vec<Self::Task>,
+    ) -> Vec<Result<Word, PredicateVerificationFailed>> {
+        futures::future::join_all(futures).await
+    }
+}
+
+async fn execute_predicate<P>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
@@ -92,6 +117,21 @@ where
     let checked = transaction
         .into_checked_basic(height, &Default::default())
         .expect("Should successfully convert into Checked");
+
+    // parallel version
+    {
+        if Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
+            &checked,
+            Default::default(),
+            gas_costs.clone(),
+        )
+        .await
+        .is_err()
+        {
+            return false
+        }
+    }
+
     Interpreter::<PredicateStorage>::check_predicates(
         &checked,
         Default::default(),
@@ -100,16 +140,16 @@ where
     .is_ok()
 }
 
-#[test]
-fn predicate_minimal() {
+#[tokio::test]
+async fn predicate_minimal() {
     let predicate = iter::once(op::ret(0x01));
     let data = vec![];
 
-    assert!(execute_predicate(predicate, data, 7));
+    assert!(execute_predicate(predicate, data, 7).await);
 }
 
-#[test]
-fn predicate() {
+#[tokio::test]
+async fn predicate() {
     let expected_data = 0x23 as Word;
     let expected_data = expected_data.to_be_bytes().to_vec();
 
@@ -130,16 +170,12 @@ fn predicate() {
         op::ret(0x10),
     ];
 
-    assert!(execute_predicate(
-        predicate.iter().copied(),
-        expected_data,
-        0
-    ));
-    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0));
+    assert!(execute_predicate(predicate.iter().copied(), expected_data, 0).await);
+    assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
 }
 
-#[test]
-fn get_verifying_predicate() {
+#[tokio::test]
+async fn get_verifying_predicate() {
     let indices = vec![0, 4, 5, 7, 11];
 
     for idx in indices {
@@ -151,12 +187,14 @@ fn get_verifying_predicate() {
             op::ret(0x10),
         ];
 
-        assert!(execute_predicate(predicate, vec![], idx as usize));
+        assert!(execute_predicate(predicate, vec![], idx as usize).await);
     }
 }
 
 /// Returns the amount of gas used if verification succeeds
-fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u64, ()> {
+async fn execute_gas_metered_predicates(
+    predicates: Vec<Vec<Instruction>>,
+) -> Result<u64, ()> {
     const GAS_LIMIT: Word = 10000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -213,6 +251,30 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         max_gas_per_predicate: GAS_LIMIT,
         ..Default::default()
     };
+
+    // parallel version
+    {
+        let mut async_tx = transaction.clone();
+        async_tx
+            .estimate_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .map_err(|_| ())?;
+
+        let tx = async_tx
+            .into_checked_basic(Default::default(), &Default::default())
+            .expect("Should successfully create checked tranaction with predicate");
+
+        Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
+            &tx,
+            params,
+            GasCosts::default(),
+        )
+        .await
+        .map(|r| r.gas_used())
+        .map_err(|_| ())?;
+    }
+
+    // sequential version
     transaction
         .estimate_predicates(&params, &GasCosts::default())
         .map_err(|_| ())?;
@@ -226,15 +288,20 @@ fn execute_gas_metered_predicates(predicates: Vec<Vec<Instruction>>) -> Result<u
         .map_err(|_| ())
 }
 
-#[test]
-fn predicate_gas_metering() {
+#[tokio::test]
+async fn predicate_gas_metering() {
     // This just succeeds
-    assert!(execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]]).is_ok());
+    assert!(
+        execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]])
+            .await
+            .is_ok()
+    );
 
     // This runs out of gas
     assert!(execute_gas_metered_predicates(vec![vec![
         op::ji(0), // Infinite loop
     ]])
+    .await
     .is_err());
 
     // Multiple Predicate Success
@@ -246,22 +313,26 @@ fn predicate_gas_metering() {
             op::ret(RegId::ONE)
         ],
     ])
+    .await
     .is_ok());
 
     // Running predicate gas used is combined properly
-    let gas_used_by: Vec<_> = (0..4)
-        .map(|n| {
-            execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]; n]).unwrap()
-        })
-        .collect();
+    let exe = (0..4).map(|n| async move {
+        execute_gas_metered_predicates(vec![vec![op::ret(RegId::ONE)]; n])
+            .await
+            .unwrap()
+    });
+
+    let gas_used_by: Vec<_> = futures::future::join_all(exe).await.into_iter().collect();
+
     assert_eq!(gas_used_by[0], 0);
     assert_ne!(gas_used_by[1], 0);
     assert_eq!(gas_used_by[1] * 2, gas_used_by[2]);
     assert_eq!(gas_used_by[1] * 3, gas_used_by[3]);
 }
 
-#[test]
-fn gas_used_by_predicates_is_deducted_from_script_gas() {
+#[tokio::test]
+async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;
@@ -286,6 +357,17 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         rng.gen(),
         Default::default(),
     );
+
+    // parallel version
+    {
+        let _ = builder
+            .clone()
+            .with_params(params)
+            .finalize_checked_basic(Default::default())
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .expect("Predicate check failed even if we don't have any predicates");
+    }
 
     let tx_without_predicate = builder
         .with_params(params)
@@ -328,6 +410,15 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
         .into_checked_basic(Default::default(), &params)
         .expect("Should successfully create checked tranaction with predicate");
 
+    // parallel version
+    {
+        let _ = checked
+            .clone()
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .expect("Predicate check failed");
+    }
+
     let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
@@ -344,8 +435,8 @@ fn gas_used_by_predicates_is_deducted_from_script_gas() {
     );
 }
 
-#[test]
-fn gas_used_by_predicates_causes_out_of_gas_during_script() {
+#[tokio::test]
+async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = ConsensusParameters::default();
 
@@ -376,6 +467,16 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         rng.gen(),
         Default::default(),
     );
+
+    // parallel version
+    {
+        let _ = builder
+            .clone()
+            .finalize_checked_basic(Default::default())
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .expect("Predicate check failed even if we don't have any predicates");
+    }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
@@ -421,6 +522,15 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .into_checked_basic(Default::default(), &params)
         .expect("Should successfully create checked tranaction with predicate");
 
+    // parallel version
+    {
+        let _ = checked
+            .clone()
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .expect("Predicate check failed");
+    }
+
     let tx_with_predicate = checked
         .check_predicates(&params, &GasCosts::default())
         .expect("Predicate check failed");
@@ -437,8 +547,8 @@ fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     );
 }
 
-#[test]
-fn gas_used_by_predicates_more_than_limit() {
+#[tokio::test]
+async fn gas_used_by_predicates_more_than_limit() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = ConsensusParameters::default();
 
@@ -469,6 +579,16 @@ fn gas_used_by_predicates_more_than_limit() {
         rng.gen(),
         Default::default(),
     );
+
+    // parallel version
+    {
+        let _ = builder
+            .clone()
+            .finalize_checked_basic(Default::default())
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await
+            .expect("Predicate check failed even if we don't have any predicates");
+    }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
@@ -510,6 +630,20 @@ fn gas_used_by_predicates_more_than_limit() {
     );
 
     builder.add_input(input);
+
+    // parallel version
+    {
+        let tx_with_predicate = builder
+            .clone()
+            .finalize_checked_basic(Default::default())
+            .check_predicates_async::<TokioWithRayon>(&params, &GasCosts::default())
+            .await;
+
+        assert_eq!(
+            tx_with_predicate.unwrap_err(),
+            CheckError::PredicateVerificationFailed
+        );
+    }
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())

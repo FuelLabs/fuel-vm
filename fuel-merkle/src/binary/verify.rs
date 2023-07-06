@@ -11,7 +11,7 @@ use crate::{
 
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
-    digest: T,
+    data: &T,
     proof_set: &ProofSet,
     proof_index: u64,
     num_leaves: u64,
@@ -24,16 +24,9 @@ pub fn verify<T: AsRef<[u8]>>(
         return false
     }
 
-    let mut height = 0usize;
-    let mut sum = proof_set[height];
-    height += 1;
-
-    let digest = leaf_sum(digest.as_ref());
-    if digest != sum {
-        return false
-    }
-
+    let mut height = 1usize;
     let mut stable_end = proof_index;
+    let mut sum = leaf_sum(data.as_ref());
 
     loop {
         let subtree_start_index = proof_index / (1 << height) * (1 << height);

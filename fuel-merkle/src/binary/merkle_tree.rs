@@ -172,14 +172,6 @@ where
 
         let root_position = self.root_position();
         let leaf_position = Position::from_leaf_index(proof_index);
-        let primitive = self
-            .storage
-            .get(&leaf_position.in_order_index())?
-            .ok_or(MerkleTreeError::LoadError(proof_index))?
-            .into_owned();
-        let leaf_node = Node::from(primitive);
-        proof_set.push(*leaf_node.hash());
-
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
             .path(&leaf_position, self.leaves_count)
             .iter()

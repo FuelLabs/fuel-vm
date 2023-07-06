@@ -136,6 +136,11 @@ macro_rules! key_methods {
         #[wasm_bindgen::prelude::wasm_bindgen]
         impl $i {
             /// Bytes constructor.
+            ///
+            /// # Panics
+            ///
+            /// This function will panic if the length of `buf` is smaller than
+            /// `Self::LEN`.
             pub fn from_bytes(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().expect(
                     format!("The size of the arrays it not {} size", $s).as_str(),
@@ -144,7 +149,7 @@ macro_rules! key_methods {
 
             /// Zeroes bytes constructor.
             #[wasm_bindgen(js_name = zeroed)]
-            pub fn zeroed_typescritp() -> $i {
+            pub fn zeroed_typescript() -> $i {
                 Self::zeroed()
             }
 

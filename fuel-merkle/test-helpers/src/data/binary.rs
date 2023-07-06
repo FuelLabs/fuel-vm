@@ -39,7 +39,7 @@ impl ProofTest {
             .collect::<Vec<Bytes32>>();
         let data = self.data.into_bytes()?;
         let verification =
-            verify(&root, data, &proof_set, self.proof_index, self.num_leaves);
+            verify(&root, &data, &proof_set, self.proof_index, self.num_leaves);
         let verification_from_test_helper =
             verify_from_test_helper(&root, &proof_set, self.proof_index, self.num_leaves);
         let expected_verification = self.expected_verification;

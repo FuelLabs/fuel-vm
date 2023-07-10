@@ -230,6 +230,25 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             call_params_mem_address: 0,
             amount_of_coins_to_forward: 20,
             asset_id_mem_address: 0,
+            amount_of_gas_to_forward: 100,
+        },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
+        context: Context::Script{ block_height: Default::default() },
+        balance: [(AssetId::default(), 30)].into_iter().collect(),
+        ..Default::default()
+    } => using check_output(Ok(Output{
+        reg: RegInput{hp: 1000, sp: 712, ssp: 712, fp: 100, pc: 700, is: 700, bal: 20, cgas: 29, ggas: 69 },
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 29, 0, 0, 700, 700)].into(),
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 69)]), 10, 0, 0)],
+        ..Default::default()
+    })); "the receipt shows forwarded gas correctly when limited by available gas"
+)]
+#[test_case(
+    Input{
+        params: PrepareCallParams {
+            call_params_mem_address: 0,
+            amount_of_coins_to_forward: 20,
+            asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },

@@ -609,7 +609,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             *frame.to(),
             self.params.amount_of_coins_to_forward,
             *frame.asset_id(),
-            self.params.amount_of_gas_to_forward,
+            forward_gas_amount,
             frame.a(),
             frame.b(),
             *self.registers.system_registers.pc,

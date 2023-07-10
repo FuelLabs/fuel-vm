@@ -172,14 +172,6 @@ where
 
         let root_position = self.root_position();
         let leaf_position = Position::from_leaf_index(proof_index);
-        let primitive = self
-            .storage
-            .get(&leaf_position.in_order_index())?
-            .ok_or(MerkleTreeError::LoadError(proof_index))?
-            .into_owned();
-        let leaf_node = Node::from(primitive);
-        proof_set.push(*leaf_node.hash());
-
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
             .path(&leaf_position, self.leaves_count)
             .iter()
@@ -653,12 +645,9 @@ mod test {
         let leaf_0 = leaf_sum(data[0]);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, leaf_0);
-            assert_eq!(set[0], leaf_0);
+            assert!(proof_set.is_empty());
         }
     }
 
@@ -690,44 +679,28 @@ mod test {
         let node_3 = node_sum(&node_1, &node_5);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
         }
     }
 
@@ -764,57 +737,37 @@ mod test {
         let node_7 = node_sum(&node_3, &leaf_4);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(4).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(4).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_4);
-            assert_eq!(set[1], node_3);
+            assert_eq!(proof_set[0], node_3);
         }
     }
 
@@ -859,80 +812,52 @@ mod test {
         let node_7 = node_sum(&node_3, &node_11);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(4).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(4).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_4);
-            assert_eq!(set[1], leaf_5);
-            assert_eq!(set[2], leaf_6);
-            assert_eq!(set[3], node_3);
+            assert_eq!(proof_set[0], leaf_5);
+            assert_eq!(proof_set[1], leaf_6);
+            assert_eq!(proof_set[2], node_3);
         }
         {
-            let proof = tree.prove(5).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(5).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_5);
-            assert_eq!(set[1], leaf_4);
-            assert_eq!(set[2], leaf_6);
-            assert_eq!(set[3], node_3);
+            assert_eq!(proof_set[0], leaf_4);
+            assert_eq!(proof_set[1], leaf_6);
+            assert_eq!(proof_set[2], node_3);
         }
         {
-            let proof = tree.prove(6).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(6).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_6);
-            assert_eq!(set[1], node_9);
-            assert_eq!(set[2], node_3);
+            assert_eq!(proof_set[0], node_9);
+            assert_eq!(proof_set[1], node_3);
         }
     }
 

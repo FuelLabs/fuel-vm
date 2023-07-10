@@ -2,8 +2,10 @@ use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
 };
+use std::iter;
 
 use super::*;
+use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
 use fuel_types::Salt;
 use test_case::test_case;
@@ -167,9 +169,10 @@ fn test_coinbase() {
 
 #[test]
 fn test_code_root() {
+    let contract_id = ContractId::new([3u8; ContractId::LEN]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
+    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -180,8 +183,20 @@ fn test_code_root() {
         },
     };
     let mut pc = 4;
-    code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0)
-        .expect_err("Contract is not found");
+    let input_contracts = vec![contract_id];
+    let mut panic_context = PanicContext::None;
+    CodeRootCtx {
+        memory: &mut memory,
+        touched_contracts: TouchedContracts::new(
+            input_contracts.iter(),
+            &mut panic_context,
+        ),
+        storage: &storage,
+        owner,
+        pc: RegMut::new(&mut pc),
+    }
+    .code_root(20, 0)
+    .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
     storage
@@ -200,16 +215,47 @@ fn test_code_root() {
             block_height: Default::default(),
         },
     };
-    code_root(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 0).unwrap();
+    CodeRootCtx {
+        memory: &mut memory,
+        touched_contracts: TouchedContracts::new(
+            input_contracts.iter(),
+            &mut panic_context,
+        ),
+        storage: &storage,
+        owner,
+        pc: RegMut::new(&mut pc),
+    }
+    .code_root(20, 0)
+    .unwrap();
     assert_eq!(pc, 8);
     assert_eq!(memory[20..20 + 32], [6u8; 32]);
+
+    let owner = OwnershipRegisters {
+        sp: 1000,
+        ssp: 1,
+        hp: 2000,
+        prev_hp: 3000,
+        context: Context::Script {
+            block_height: Default::default(),
+        },
+    };
+    CodeRootCtx {
+        memory: &mut memory,
+        touched_contracts: TouchedContracts::new(iter::empty(), &mut panic_context),
+        storage: &storage,
+        owner,
+        pc: RegMut::new(&mut pc),
+    }
+    .code_root(20, 0)
+    .expect_err("Contract is not in inputs");
 }
 
 #[test]
 fn test_code_size() {
+    let contract_id = ContractId::new([3u8; ContractId::LEN]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
+    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .write(&ContractId::from([3u8; 32]), vec![1u8; 100])
         .unwrap();
@@ -217,6 +263,8 @@ fn test_code_size() {
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
+    let input_contract = vec![contract_id];
+    let mut panic_context = PanicContext::None;
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
@@ -225,6 +273,10 @@ fn test_code_size() {
             dep_per_unit: 0,
         },
         profiler: &mut Profiler::default(),
+        touched_contracts: TouchedContracts::new(
+            input_contract.iter(),
+            &mut panic_context,
+        ),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -244,6 +296,10 @@ fn test_code_size() {
             base: 0,
             dep_per_unit: 0,
         },
+        touched_contracts: TouchedContracts::new(
+            input_contract.iter(),
+            &mut panic_context,
+        ),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -255,6 +311,26 @@ fn test_code_size() {
     input.code_size(&mut result, 0).unwrap();
     assert_eq!(pc, 8);
     assert_eq!(result, 100);
+
+    let input = CodeSizeCtx {
+        storage: &mut storage,
+        memory: &mut memory,
+        gas_cost: DependentCost {
+            base: 0,
+            dep_per_unit: 0,
+        },
+        touched_contracts: TouchedContracts::new(iter::empty(), &mut panic_context),
+        profiler: &mut Profiler::default(),
+        current_contract: None,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
+        pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
+    };
+    let mut result = 0;
+    input
+        .code_size(&mut result, 0)
+        .expect_err("The contract is not in the input");
 }
 
 #[test]

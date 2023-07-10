@@ -32,12 +32,15 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
         .unwrap();
     let mut pc = 4;
 
+    let mut panic_context = PanicContext::None;
     let input = ContractBalanceCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
-        input_contracts: [&contract_id].into_iter(),
-        panic_context: &mut PanicContext::None,
+        touched_contracts: TouchedContracts::new(
+            [&contract_id].into_iter(),
+            &mut panic_context,
+        ),
     };
     let mut result = 0;
 

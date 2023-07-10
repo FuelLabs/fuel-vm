@@ -12,6 +12,11 @@ Description of the upcoming release here.
 
 #### Breaking
 
+- [#502](https://github.com/FuelLabs/fuel-vm/pull/502) The algorithm used by the
+    binary Merkle tree for generating Merkle proofs has been updated to remove
+    the leaf data from the proof set. This change allows BMT proofs to conform
+    to the format expected by the Solidity contracts used for verifying proofs.
+
 - [#503](https://github.com/FuelLabs/fuel-vm/pull/503): Use correct amount of gas in call
     receipts when limited by cgas. Before this change, the `Receipt::Call` could show an incorrect value for the gas limit.
 
@@ -27,7 +32,6 @@ Description of the upcoming release here.
 - [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The charging for `DependentCost`
     was done incorrectly, devaluing the `dep_per_unit` part. After the fixing of 
     this, the execution should become much more expensive.
-
 
 ## [Version 0.34.1]
 

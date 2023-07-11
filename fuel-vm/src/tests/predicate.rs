@@ -33,18 +33,20 @@ pub struct TokioWithRayon;
 
 #[async_trait::async_trait]
 impl ParallelExecutor for TokioWithRayon {
-    type Task = AsyncRayonHandle<Result<Word, PredicateVerificationFailed>>;
+    type Task = AsyncRayonHandle<Result<(Word, usize), PredicateVerificationFailed>>;
 
     fn create_task<F>(func: F) -> Self::Task
     where
-        F: FnOnce() -> Result<Word, PredicateVerificationFailed> + Send + 'static,
+        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+            + Send
+            + 'static,
     {
         tokio_rayon::spawn(func)
     }
 
     async fn execute_tasks(
         futures: Vec<Self::Task>,
-    ) -> Vec<Result<Word, PredicateVerificationFailed>> {
+    ) -> Vec<Result<(Word, usize), PredicateVerificationFailed>> {
         futures::future::join_all(futures).await
     }
 }
@@ -412,7 +414,27 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
         vec![],
     );
 
+    // add non-predicate input before and after predicate input
+    // to check that predicate verification only handles predicate inputs
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
+
     builder.add_input(input);
+
+    builder.add_unsigned_coin_input(
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        AssetId::default(),
+        rng.gen(),
+        Default::default(),
+    );
 
     let mut transaction = builder.finalize();
     transaction

@@ -250,12 +250,14 @@ pub trait ParallelExecutor {
     /// Creates a Future from a CPU-heavy task.
     fn create_task<F>(func: F) -> Self::Task
     where
-        F: FnOnce() -> Result<Word, PredicateVerificationFailed> + Send + 'static;
+        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+            + Send
+            + 'static;
 
     /// Executes tasks created by `create_task` in parallel.
     async fn execute_tasks(
         futures: Vec<Self::Task>,
-    ) -> Vec<Result<Word, PredicateVerificationFailed>>;
+    ) -> Vec<Result<(Word, usize), PredicateVerificationFailed>>;
 }
 
 #[async_trait::async_trait]

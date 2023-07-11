@@ -289,7 +289,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         balances: InitialBalances,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
-    ) -> Result<Word, PredicateVerificationFailed>
+    ) -> Result<(Word, usize), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
@@ -361,12 +361,12 @@ impl<T> Interpreter<PredicateStorage, T> {
             }
         }
 
-        Ok(gas_used)
+        Ok((gas_used, index))
     }
 
     fn finalize_check_predicate<Tx>(
         mut kind: PredicateRunKind<Tx>,
-        checks: Vec<Result<Word, PredicateVerificationFailed>>,
+        checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
         predicate_action: PredicateAction,
         params: ConsensusParameters,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
@@ -374,9 +374,9 @@ impl<T> Interpreter<PredicateStorage, T> {
         Tx: ExecutableTransaction,
     {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
-            checks.iter().enumerate().for_each(|(index, gas_used)| {
-                if let Ok(gas_used) = gas_used {
-                    match &mut tx.inputs_mut()[index] {
+            checks.iter().for_each(|result| {
+                if let Ok((gas_used, index)) = result {
+                    match &mut tx.inputs_mut()[*index] {
                         Input::CoinPredicate(CoinPredicate {
                             predicate_gas_used,
                             ..
@@ -401,11 +401,10 @@ impl<T> Interpreter<PredicateStorage, T> {
             })
         }
 
-        let cumulative_gas_used =
-            checks.into_iter().try_fold(0u64, |acc, gas_used| {
-                acc.checked_add(gas_used?)
-                    .ok_or(PredicateVerificationFailed::OutOfGas)
-            })?;
+        let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
+            acc.checked_add(result.map(|(gas_used, _)| gas_used)?)
+                .ok_or(PredicateVerificationFailed::OutOfGas)
+        })?;
 
         match predicate_action {
             PredicateAction::Verifying => {

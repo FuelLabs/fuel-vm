@@ -21,8 +21,8 @@ use crate::{
     error::RuntimeError,
     interpreter::{
         receipts::ReceiptsCtx,
+        InputContracts,
         PanicContext,
-        TouchedContracts,
     },
     storage::{
         ContractsAssets,
@@ -73,7 +73,7 @@ where
             storage: &self.storage,
             memory: &mut self.memory,
             pc,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
@@ -155,7 +155,7 @@ struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     pc: RegMut<'vm, PC>,
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
 }
 
 impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
@@ -176,7 +176,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
-        self.touched_contracts.touch(contract)?;
+        self.input_contracts.check(contract)?;
 
         let balance = balance(self.storage, contract, asset_id)?;
 
@@ -231,8 +231,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let asset_id = AssetId::try_from(&self.memory[c as usize..cx as usize])
             .expect("Unreachable! Checked memory range");
 
-        TouchedContracts::new(self.tx.input_contracts(), panic_context)
-            .touch(&destination)?;
+        InputContracts::new(self.tx.input_contracts(), panic_context)
+            .check(&destination)?;
 
         if amount == 0 {
             return Err(PanicReason::NotEnoughBalance.into())

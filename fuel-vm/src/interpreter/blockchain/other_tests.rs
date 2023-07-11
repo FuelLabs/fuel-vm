@@ -187,10 +187,7 @@ fn test_code_root() {
     let mut panic_context = PanicContext::None;
     CodeRootCtx {
         memory: &mut memory,
-        touched_contracts: TouchedContracts::new(
-            input_contracts.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         storage: &storage,
         owner,
         pc: RegMut::new(&mut pc),
@@ -217,10 +214,7 @@ fn test_code_root() {
     };
     CodeRootCtx {
         memory: &mut memory,
-        touched_contracts: TouchedContracts::new(
-            input_contracts.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         storage: &storage,
         owner,
         pc: RegMut::new(&mut pc),
@@ -241,7 +235,7 @@ fn test_code_root() {
     };
     CodeRootCtx {
         memory: &mut memory,
-        touched_contracts: TouchedContracts::new(iter::empty(), &mut panic_context),
+        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
         storage: &storage,
         owner,
         pc: RegMut::new(&mut pc),
@@ -273,10 +267,7 @@ fn test_code_size() {
             dep_per_unit: 0,
         },
         profiler: &mut Profiler::default(),
-        touched_contracts: TouchedContracts::new(
-            input_contract.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -296,10 +287,7 @@ fn test_code_size() {
             base: 0,
             dep_per_unit: 0,
         },
-        touched_contracts: TouchedContracts::new(
-            input_contract.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -319,7 +307,7 @@ fn test_code_size() {
             base: 0,
             dep_per_unit: 0,
         },
-        touched_contracts: TouchedContracts::new(iter::empty(), &mut panic_context),
+        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),

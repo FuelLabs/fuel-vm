@@ -38,8 +38,8 @@ use crate::{
     gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
+        InputContracts,
         PanicContext,
-        TouchedContracts,
     },
     profiler::Profiler,
     storage::{
@@ -401,7 +401,7 @@ where
             gas_cost: self.gas_costs.call,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 input_contracts.iter(),
                 &mut self.panic_context,
             ),
@@ -476,7 +476,7 @@ struct PrepareCallCtx<'vm, S, I> {
     gas_cost: DependentCost,
     runtime_balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
     receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
     consensus: &'vm ConsensusParameters,
@@ -539,7 +539,7 @@ where
             )?;
         }
 
-        self.touched_contracts.touch(call.to())?;
+        self.input_contracts.check(call.to())?;
 
         // credit contract asset_id balance
         balance_increase(

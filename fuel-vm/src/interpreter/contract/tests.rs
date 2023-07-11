@@ -37,7 +37,7 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
-        touched_contracts: TouchedContracts::new(
+        input_contracts: InputContracts::new(
             [&contract_id].into_iter(),
             &mut panic_context,
         ),

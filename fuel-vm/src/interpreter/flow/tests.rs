@@ -367,10 +367,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
         gas_cost,
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
-        touched_contracts: TouchedContracts::new(
-            input_contracts.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         receipts: &mut receipts,
         script: script.as_mut(),
         consensus: &consensus,

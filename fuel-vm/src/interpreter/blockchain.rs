@@ -53,7 +53,7 @@ use crate::{
     gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
-        TouchedContracts,
+        InputContracts,
     },
     prelude::Profiler,
     storage::{
@@ -127,7 +127,7 @@ where
             memory: &mut self.memory,
             storage: &mut self.storage,
             contract_max_size: self.params.contract_max_size,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
@@ -174,7 +174,7 @@ where
         let owner = self.ownership_registers();
         let input = CodeCopyCtx {
             memory: &mut self.memory,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
@@ -218,7 +218,7 @@ where
         let owner = self.ownership_registers();
         CodeRootCtx {
             memory: &mut self.memory,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
@@ -249,7 +249,7 @@ where
             storage: &mut self.storage,
             gas_cost: self.gas_costs.csiz,
             profiler: &mut self.profiler,
-            touched_contracts: TouchedContracts::new(
+            input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
@@ -429,7 +429,7 @@ where
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut [u8; MEM_SIZE],
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
@@ -493,7 +493,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         // Safety: Memory bounds are checked and consistent
         let contract_id = ContractId::from_bytes_ref(contract_id);
 
-        self.touched_contracts.touch(contract_id)?;
+        self.input_contracts.check(contract_id)?;
 
         // fetch the storage contract
         let contract = super::contract::contract(self.storage, contract_id)?;
@@ -608,7 +608,7 @@ where
 
 struct CodeCopyCtx<'vm, S, I> {
     memory: &'vm mut [u8; MEM_SIZE],
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
@@ -641,7 +641,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
-        self.touched_contracts.touch(contract)?;
+        self.input_contracts.check(contract)?;
 
         let contract = super::contract::contract(self.storage, contract)?.into_owned();
 
@@ -701,7 +701,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 
 struct CodeRootCtx<'vm, S, I> {
     memory: &'vm mut [u8; MEM_SIZE],
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
@@ -721,7 +721,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
         let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
 
-        self.touched_contracts.touch(contract_id)?;
+        self.input_contracts.check(contract_id)?;
 
         let (_, root) = self
             .storage
@@ -742,7 +742,7 @@ struct CodeSizeCtx<'vm, S, I> {
     memory: &'vm mut [u8; MEM_SIZE],
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
-    touched_contracts: TouchedContracts<'vm, I>,
+    input_contracts: InputContracts<'vm, I>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -764,7 +764,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
 
         let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
 
-        self.touched_contracts.touch(contract_id)?;
+        self.input_contracts.check(contract_id)?;
 
         let len = contract_size(self.storage, contract_id)?;
         let profiler = ProfileGas {

@@ -37,10 +37,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
         contract_max_size: 100,
         storage: &storage,
         memory: &mut memory,
-        touched_contracts: TouchedContracts::new(
-            input_contracts.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         ssp: RegMut::new(&mut ssp),
         sp: RegMut::new(&mut sp),
         fp: Reg::new(&fp),
@@ -78,10 +75,7 @@ fn test_code_copy() -> Result<(), RuntimeError> {
     let input = CodeCopyCtx {
         storage: &storage,
         memory: &mut memory,
-        touched_contracts: TouchedContracts::new(
-            input_contracts.iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         pc: RegMut::new(&mut pc),
         owner: OwnershipRegisters {
             sp: 1000,

@@ -8,12 +8,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
-### Breaking
+### Fixed
+
+#### Breaking
 
 - [#502](https://github.com/FuelLabs/fuel-vm/pull/502) The algorithm used by the
     binary Merkle tree for generating Merkle proofs has been updated to remove
     the leaf data from the proof set. This change allows BMT proofs to conform
     to the format expected by the Solidity contracts used for verifying proofs.
+
+- [#503](https://github.com/FuelLabs/fuel-vm/pull/503): Use correct amount of gas in call
+    receipts when limited by cgas. Before this change, the `Receipt::Call` could show an incorrect value for the gas limit.
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The `CROO` and `CSIZ` opcodes require 
+    the existence of corresponding `ContractId` in the transaction's 
+    inputs(the same behavior as for the `CROO` opcode).
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The size of the contract 
+    was incorrectly padded. It affects the end of the call frame in the memory, 
+    making it not 8 bytes align. Also, it affects the cost of the contract 
+    call(in some cases, we charged less in some more).
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The charging for `DependentCost`
+    was done incorrectly, devaluing the `dep_per_unit` part. After the fixing of 
+    this, the execution should become much more expensive.
 
 ## [Version 0.34.1]
 

@@ -53,7 +53,7 @@ use crate::{
     gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
-        PanicContext,
+        InputContracts,
     },
     prelude::Profiler,
     storage::{
@@ -63,7 +63,6 @@ use crate::{
         InterpreterStorage,
     },
 };
-
 use fuel_asm::PanicReason;
 use fuel_storage::{
     StorageInspect,
@@ -128,8 +127,10 @@ where
             memory: &mut self.memory,
             storage: &mut self.storage,
             contract_max_size: self.params.contract_max_size,
-            input_contracts: self.tx.input_contracts(),
-            panic_context: &mut self.panic_context,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
             ssp,
             sp,
             fp: fp.as_ref(),
@@ -173,8 +174,10 @@ where
         let owner = self.ownership_registers();
         let input = CodeCopyCtx {
             memory: &mut self.memory,
-            input_contracts: self.tx.input_contracts(),
-            panic_context: &mut self.panic_context,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
             storage: &mut self.storage,
             owner,
             pc: self.registers.pc_mut(),
@@ -213,14 +216,17 @@ where
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
-        code_root(
-            &self.storage,
-            &mut self.memory,
+        CodeRootCtx {
+            memory: &mut self.memory,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
+            storage: &self.storage,
             owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-        )
+            pc: self.registers.pc_mut(),
+        }
+        .code_root(a, b)
     }
 
     pub(crate) fn code_size(
@@ -243,6 +249,10 @@ where
             storage: &mut self.storage,
             gas_cost: self.gas_costs.csiz,
             profiler: &mut self.profiler,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
             current_contract,
             cgas,
             ggas,
@@ -419,8 +429,7 @@ where
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: I,
-    panic_context: &'vm mut PanicContext,
+    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
@@ -484,11 +493,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         // Safety: Memory bounds are checked and consistent
         let contract_id = ContractId::from_bytes_ref(contract_id);
 
-        // the contract must be declared in the transaction inputs
-        if !self.input_contracts.any(|id| id == contract_id) {
-            *self.panic_context = PanicContext::ContractId(*contract_id);
-            return Err(PanicReason::ContractNotInInputs.into())
-        };
+        self.input_contracts.check(contract_id)?;
 
         // fetch the storage contract
         let contract = super::contract::contract(self.storage, contract_id)?;
@@ -603,8 +608,7 @@ where
 
 struct CodeCopyCtx<'vm, S, I> {
     memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: I,
-    panic_context: &'vm mut PanicContext,
+    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
@@ -637,10 +641,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
-        if !self.input_contracts.any(|input| input == contract) {
-            *self.panic_context = PanicContext::ContractId(*contract);
-            return Err(PanicReason::ContractNotInInputs.into())
-        }
+        self.input_contracts.check(contract)?;
 
         let contract = super::contract::contract(self.storage, contract)?.into_owned();
 
@@ -698,43 +699,50 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     inc_pc(pc)
 }
 
-pub(crate) fn code_root<S>(
-    storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+struct CodeRootCtx<'vm, S, I> {
+    memory: &'vm mut [u8; MEM_SIZE],
+    input_contracts: InputContracts<'vm, I>,
+    storage: &'vm S,
     owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-) -> Result<(), RuntimeError>
-where
-    S: InterpreterStorage,
-{
-    let ax = checked_add_word(a, Bytes32::LEN as Word)?;
-    let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
-
-    if ax > VM_MAX_RAM {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    let contract_id = ContractId::from_bytes_ref(contract_id.read(memory));
-
-    let (_, root) = storage
-        .storage_contract_root(contract_id)
-        .transpose()
-        .ok_or(PanicReason::ContractNotFound)?
-        .map_err(RuntimeError::from_io)?
-        .into_owned();
-
-    try_mem_write(a, root.as_ref(), owner, memory)?;
-
-    inc_pc(pc)
+    pc: RegMut<'vm, PC>,
 }
 
-struct CodeSizeCtx<'vm, S> {
+impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
+    pub(crate) fn code_root(mut self, a: Word, b: Word) -> Result<(), RuntimeError>
+    where
+        S: InterpreterStorage,
+    {
+        let ax = checked_add_word(a, Bytes32::LEN as Word)?;
+        let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
+
+        if ax > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow.into())
+        }
+
+        let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
+
+        self.input_contracts.check(contract_id)?;
+
+        let (_, root) = self
+            .storage
+            .storage_contract_root(contract_id)
+            .transpose()
+            .ok_or(PanicReason::ContractNotFound)?
+            .map_err(RuntimeError::from_io)?
+            .into_owned();
+
+        try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
+
+        inc_pc(self.pc)
+    }
+}
+
+struct CodeSizeCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
+    input_contracts: InputContracts<'vm, I>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -742,8 +750,12 @@ struct CodeSizeCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> CodeSizeCtx<'vm, S> {
-    pub(crate) fn code_size(self, result: &mut Word, b: Word) -> Result<(), RuntimeError>
+impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
+    pub(crate) fn code_size(
+        mut self,
+        result: &mut Word,
+        b: Word,
+    ) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>,
         <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
@@ -751,6 +763,8 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
         let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
+
+        self.input_contracts.check(contract_id)?;
 
         let len = contract_size(self.storage, contract_id)?;
         let profiler = ProfileGas {

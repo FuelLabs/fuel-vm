@@ -54,7 +54,6 @@ use fuel_asm::{
     PanicInstruction,
     RegId,
 };
-use fuel_crypto::Hasher;
 use fuel_storage::{
     StorageAsRef,
     StorageInspect,
@@ -230,17 +229,17 @@ impl RetCtx<'_> {
         }
 
         let ab = (a + b) as usize;
-        let digest = Hasher::hash(&self.append.memory[a as usize..ab]);
 
-        let receipt = Receipt::return_data_with_len(
+        let receipt = Receipt::return_data(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
-            b,
-            digest,
-            self.append.memory[a as usize..ab].to_vec(),
             self.registers[RegId::PC],
             self.registers[RegId::IS],
+            self.append.memory[a as usize..ab].to_vec(),
         );
+        let digest = *receipt
+            .digest()
+            .expect("Receipt is created above and `digest` should exist");
 
         self.registers[RegId::RET] = a;
         self.registers[RegId::RETL] = b;

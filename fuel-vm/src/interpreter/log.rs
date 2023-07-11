@@ -17,7 +17,6 @@ use crate::{
 };
 
 use fuel_asm::PanicReason;
-use fuel_crypto::Hasher;
 use fuel_tx::{
     Receipt,
     Script,
@@ -130,18 +129,15 @@ impl LogInput<'_> {
         }
 
         let cd = (c + d) as usize;
-        let digest = Hasher::hash(&self.memory[c as usize..cd]);
 
-        let receipt = Receipt::log_data_with_len(
+        let receipt = Receipt::log_data(
             internal_contract_or_default(self.context, self.fp, self.memory),
             a,
             b,
             c,
-            d,
-            digest,
-            self.memory[c as usize..cd].to_vec(),
             *self.pc,
             *self.is,
+            self.memory[c as usize..cd].to_vec(),
         );
 
         append_receipt(

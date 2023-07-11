@@ -17,14 +17,10 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::PanicInstruction;
+use fuel_crypto::Hasher;
 use fuel_types::{
-    bytes::{
-        self,
-        padded_len_usize,
-        SizedBytes,
-        WORD_SIZE,
-    },
-    fmt_truncated_hex,
+    bytes::SizedBytes,
+    fmt_option_truncated_hex,
     Address,
     AssetId,
     Bytes32,
@@ -74,10 +70,11 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        data: Option<Vec<u8>>,
     },
 
     Panic {
@@ -113,10 +110,11 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        data: Option<Vec<u8>>,
     },
 
     Transfer {
@@ -149,8 +147,9 @@ pub enum Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        data: Option<Vec<u8>>,
     },
 }
 
@@ -187,14 +186,20 @@ impl Receipt {
     pub fn return_data(
         id: ContractId,
         ptr: Word,
-        digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Vec<u8>,
     ) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::return_data_with_len(id, ptr, len, digest, data, pc, is)
+        let digest = Hasher::hash(&data);
+        Self::return_data_with_len(
+            id,
+            ptr,
+            data.len() as Word,
+            digest,
+            pc,
+            is,
+            Some(data),
+        )
     }
 
     pub const fn return_data_with_len(
@@ -202,18 +207,18 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::ReturnData {
             id,
             ptr,
             len,
             digest,
-            data,
             pc,
             is,
+            data,
         }
     }
 
@@ -272,14 +277,22 @@ impl Receipt {
         ra: Word,
         rb: Word,
         ptr: Word,
-        digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Vec<u8>,
     ) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is)
+        let digest = Hasher::hash(&data);
+        Self::log_data_with_len(
+            id,
+            ra,
+            rb,
+            ptr,
+            data.len() as Word,
+            digest,
+            pc,
+            is,
+            Some(data),
+        )
     }
 
     pub const fn log_data_with_len(
@@ -289,9 +302,9 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::LogData {
             id,
@@ -300,9 +313,9 @@ impl Receipt {
             ptr,
             len,
             digest,
-            data,
             pc,
             is,
+            data,
         }
     }
 
@@ -346,7 +359,7 @@ impl Receipt {
         Self::ScriptResult { result, gas_used }
     }
 
-    pub fn message_out_from_tx_output(
+    pub fn message_out(
         txid: &Bytes32,
         idx: Word,
         sender: Address,
@@ -357,20 +370,15 @@ impl Receipt {
         let nonce = Output::message_nonce(txid, idx);
         let digest = Output::message_digest(&data);
 
-        Self::message_out(sender, recipient, amount, nonce, digest, data)
-    }
-
-    pub fn message_out(
-        sender: Address,
-        recipient: Address,
-        amount: Word,
-        nonce: Nonce,
-        digest: Bytes32,
-        data: Vec<u8>,
-    ) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data)
+        Self::message_out_with_len(
+            sender,
+            recipient,
+            amount,
+            nonce,
+            data.len() as Word,
+            digest,
+            Some(data),
+        )
     }
 
     pub const fn message_out_with_len(
@@ -380,7 +388,7 @@ impl Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::MessageOut {
             sender,
@@ -541,9 +549,9 @@ impl Receipt {
 
     pub fn data(&self) -> Option<&[u8]> {
         match self {
-            Self::ReturnData { data, .. } => Some(data),
-            Self::LogData { data, .. } => Some(data),
-            Self::MessageOut { data, .. } => Some(data),
+            Self::ReturnData { data, .. } => data.as_ref().map(|data| data.as_slice()),
+            Self::LogData { data, .. } => data.as_ref().map(|data| data.as_slice()),
+            Self::MessageOut { data, .. } => data.as_ref().map(|data| data.as_slice()),
             _ => None,
         }
     }
@@ -609,13 +617,9 @@ impl Receipt {
                 nonce,
                 data,
                 ..
-            } => Some(compute_message_id(
-                sender,
-                recipient,
-                nonce,
-                *amount,
-                data.as_slice(),
-            )),
+            } => data.as_ref().map(|data| {
+                compute_message_id(sender, recipient, nonce, *amount, data.as_slice())
+            }),
             _ => None,
         }
     }
@@ -677,12 +681,7 @@ fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
 
 impl SizedBytes for Receipt {
     fn serialized_size(&self) -> usize {
-        let data_len = self
-            .data()
-            .map(|data| WORD_SIZE + padded_len_usize(data.len()))
-            .unwrap_or(0);
-
-        Self::variant_len_without_data(ReceiptRepr::from(self)) + data_len
+        Self::variant_len_without_data(ReceiptRepr::from(self))
     }
 }
 

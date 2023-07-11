@@ -33,6 +33,15 @@ Description of the upcoming release here.
     was done incorrectly, devaluing the `dep_per_unit` part. After the fixing of 
     this, the execution should become much more expensive.
 
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `data` field of the `Receipt` 
+    is not part of the canonical serialization and deserialization anymore. The SDK should use the 
+    `Receipt` type instead of `OpaqueReceipt`. The `Receipt.raw_payload` will be removed for the 
+    `fuel-core 0.20`. The `data` field is optional now. The SDK should update serialization and 
+    deserialization for `MessageOut`, `LogData`, and `ReturnData` receipts.
+
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `len` field of the `Receipt` 
+    is not padded anymore and represents an initial value.
+
 ## [Version 0.34.1]
 
 Mainly new opcodes prices and small performance improvements in the `BinaryMerkleTree`.

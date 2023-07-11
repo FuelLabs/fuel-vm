@@ -8,8 +8,6 @@ data:
   value: 8ac6d60867dc72a799812086355af4ed38f68642e3857aea2cc48c94586179d1
   encoding: hex
 proof_set:
-- value: d1b2f3f5c5a9e0b1d31e9c7060682c161cfd429abc6dc709588a0f7a8b989e6e
-  encoding: hex
 - value: 51159906d4d62672664766ed8757915c7c925cfee778b8b3359df37a73ebeca7
   encoding: hex
 - value: 2b4f180744f30b41daad98a0d9f80fd8302de65ef33487e75b3eec6122c8e3f3

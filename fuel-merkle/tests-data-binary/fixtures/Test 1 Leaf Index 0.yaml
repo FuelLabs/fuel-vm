@@ -7,9 +7,7 @@ root:
 data:
   value: 573e3ac3738932ec6c1bcb33981470f1cdcd34d0cc64f5b7168ec6f0b4a66295
   encoding: hex
-proof_set:
-- value: 40561de71f9ab9b37d9bb1194f96e73d9b24170d13e8fbe62216a5eddea86412
-  encoding: hex
+proof_set: []
 proof_index: 0
 num_leaves: 1
 expected_verification: true

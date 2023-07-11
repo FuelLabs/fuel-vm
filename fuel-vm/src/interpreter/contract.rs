@@ -21,6 +21,7 @@ use crate::{
     error::RuntimeError,
     interpreter::{
         receipts::ReceiptsCtx,
+        InputContracts,
         PanicContext,
     },
     storage::{
@@ -30,7 +31,6 @@ use crate::{
         InterpreterStorage,
     },
 };
-
 use fuel_asm::{
     PanicReason,
     RegisterId,
@@ -73,8 +73,10 @@ where
             storage: &self.storage,
             memory: &mut self.memory,
             pc,
-            panic_context: &mut self.panic_context,
-            input_contracts: self.tx.input_contracts(),
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
         };
         input.contract_balance(result, b, c)
     }
@@ -153,8 +155,7 @@ struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     pc: RegMut<'vm, PC>,
-    input_contracts: I,
-    panic_context: &'vm mut PanicContext,
+    input_contracts: InputContracts<'vm, I>,
 }
 
 impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
@@ -175,10 +176,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
-        if !self.input_contracts.any(|input| contract == input) {
-            *self.panic_context = PanicContext::ContractId(*contract);
-            return Err(PanicReason::ContractNotInInputs.into())
-        }
+        self.input_contracts.check(contract)?;
 
         let balance = balance(self.storage, contract, asset_id)?;
 
@@ -199,6 +197,7 @@ struct TransferCtx<'vm, S, Tx> {
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
 }
+
 impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     pub(crate) fn transfer(
         self,
@@ -232,14 +231,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let asset_id = AssetId::try_from(&self.memory[c as usize..cx as usize])
             .expect("Unreachable! Checked memory range");
 
-        if !self
-            .tx
-            .input_contracts()
-            .any(|contract| &destination == contract)
-        {
-            *panic_context = PanicContext::ContractId(destination);
-            return Err(PanicReason::ContractNotInInputs.into())
-        }
+        InputContracts::new(self.tx.input_contracts(), panic_context)
+            .check(&destination)?;
 
         if amount == 0 {
             return Err(PanicReason::NotEnoughBalance.into())

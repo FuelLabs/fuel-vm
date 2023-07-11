@@ -28,7 +28,7 @@ zeroize = { version = "1.5", features = ["derive"] }
 [dev-dependencies]
 bincode = { workspace = true }
 criterion = "0.4"
-fuel-crypto = { workspace = true, features = ["random"] }
+fuel-crypto = { workspace = true, features = ["random", "test-helpers"] }
 k256 = { version = "0.11", features = [ "ecdsa" ] }
 sha2 = "0.10"
 
@@ -41,6 +41,7 @@ serde = ["dep:serde", "fuel-types/serde"]
 # the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
 std = ["alloc", "coins-bip32", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "secp256k1/rand-std", "serde?/default"]
 wasm = ["secp256k1/rand"]
+test-helpers = []
 
 [[bench]]
 name = "signature"

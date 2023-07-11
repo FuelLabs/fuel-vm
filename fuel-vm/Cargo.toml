@@ -36,6 +36,7 @@ thiserror = "1.0"
 [dev-dependencies]
 ed25519-dalek = "1.0" # TODO: upgrade to 2.0 when it's released, and remove rand below
 ed25519-dalek_old_rand = { package = "rand", version = "0.7.3" }
+fuel-crypto = { workspace = true, features = ["test-helpers"] }
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { path = ".", default-features = false, features = ["test-helpers", "serde", "profile-coverage", "profile-gas"] }
 num-integer = "0.1.45"
@@ -57,4 +58,4 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["fuel-tx/builder", "random", "dep:anyhow"]
+test-helpers = ["fuel-tx/builder", "random", "dep:anyhow", "fuel-crypto/test-helpers"]

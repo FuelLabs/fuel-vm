@@ -8,7 +8,6 @@ use ecdsa::RecoveryId;
 use fuel_types::Bytes64;
 use p256::ecdsa::{
     Signature,
-    SigningKey,
     VerifyingKey,
 };
 
@@ -16,6 +15,7 @@ use p256::ecdsa::{
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md#public-key-cryptography
 /// Panics if the highest bit of byte at index 32 is set, as this indicates non-normalized
 /// signature. Panics if the recovery id is in reduced-x form.
+#[cfg(feature = "test-helpers")]
 fn encode_signature(signature: Signature, recovery_id: RecoveryId) -> [u8; 64] {
     let mut signature: [u8; 64] = signature.to_bytes().into();
     assert!(signature[32] >> 7 == 0, "Non-normalized signature");
@@ -39,8 +39,9 @@ fn decode_signature(mut signature: [u8; 64]) -> Option<(Signature, RecoveryId)> 
 }
 
 /// Sign a prehashed message. With the given key.
+#[cfg(feature = "test-helpers")]
 pub fn sign_prehashed(
-    signing_key: &SigningKey,
+    signing_key: &p256::ecdsa::SigningKey,
     message: &Message,
 ) -> Result<Bytes64, Error> {
     let (signature, _) = signing_key

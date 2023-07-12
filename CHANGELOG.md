@@ -8,7 +8,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+### Added
+
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
+    and made available async versions of verify and estimate predicates.
+    Updated tests to test for both parallel and sequential execution.
+    Fixed a bug in `transaction/check_predicate_owners`.
+
 ### Fixed
+
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Fixed a bug where `MessageCoinPredicate` wasn't checked for in `check_predicate_owners`.
 
 #### Breaking
 

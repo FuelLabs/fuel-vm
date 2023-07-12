@@ -941,7 +941,7 @@ where
         let msg_data = msg_data_range.read(self.memory).to_vec();
         let sender = Address::from_bytes_ref(sender.read(self.memory));
 
-        let receipt = Receipt::message_out_from_tx_output(
+        let receipt = Receipt::message_out(
             txid,
             self.receipts.len() as Word,
             *sender,

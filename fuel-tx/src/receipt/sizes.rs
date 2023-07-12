@@ -134,6 +134,5 @@ mem_layout!(
     amount: Word = WORD_SIZE,
     nonce: Nonce = {Nonce::LEN},
     len: Word = WORD_SIZE,
-    digest: Bytes32 = {Bytes32::LEN},
-    data_len: Word = WORD_SIZE
+    digest: Bytes32 = {Bytes32::LEN}
 );

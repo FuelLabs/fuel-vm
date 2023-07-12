@@ -12,6 +12,11 @@ Description of the upcoming release here.
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
 
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
+    and made available async versions of verify and estimate predicates.
+    Updated tests to test for both parallel and sequential execution.
+    Fixed a bug in `transaction/check_predicate_owners`.
+
 ### Removed
 
 #### Breaking
@@ -19,6 +24,8 @@ Description of the upcoming release here.
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
 
 ### Fixed
+
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Fixed a bug where `MessageCoinPredicate` wasn't checked for in `check_predicate_owners`.
 
 #### Breaking
 

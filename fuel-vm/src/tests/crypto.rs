@@ -26,6 +26,7 @@ use sha3::{
 
 use crate::{
     prelude::*,
+    tests::predicate::TokioWithRayon,
     util::test_helpers::check_expected_reason_for_instructions,
 };
 
@@ -148,8 +149,8 @@ fn ecrecover_tx_id() {
     assert!(success);
 }
 
-#[test]
-fn ecrecover_tx_id_predicate() {
+#[tokio::test]
+async fn recover_tx_id_predicate() {
     use crate::checked_transaction::EstimatePredicates;
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
@@ -216,8 +217,23 @@ fn ecrecover_tx_id_predicate() {
         )
         .finalize();
 
+    {
+        // parallel version
+        let mut tx_for_async = tx.clone();
+        tx_for_async
+            .estimate_predicates_async::<TokioWithRayon>(&params, &gas_costs)
+            .await
+            .expect("Should estimate predicate successfully");
+
+        tx_for_async
+            .into_checked(maturity, &params, &gas_costs)
+            .expect("Should check predicate successfully");
+    }
+
+    // sequential version
     tx.estimate_predicates(&params, &gas_costs)
         .expect("Should estimate predicate successfully");
+
     tx.into_checked(maturity, &params, &gas_costs)
         .expect("Should check predicate successfully");
 }

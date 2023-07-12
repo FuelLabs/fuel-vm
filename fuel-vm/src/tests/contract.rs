@@ -92,16 +92,20 @@ fn mint_burn() {
         op::lw(0x10, 0x10, 0),
         op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
         op::lw(0x11, 0x11, 0),
-        op::jnei(0x10, RegId::ZERO, 7),
-        op::mint(0x11),
-        op::ji(8),
-        op::burn(0x11),
+        // Allocate 32 bytes for the zeroed `sub_id`.
+        op::movi(0x15, Bytes32::LEN as u32),
+        op::aloc(0x15),
+        op::jnei(0x10, RegId::ZERO, 9),
+        // Mint `0x11` amount of an assets created from zeroed `sub_id`
+        op::mint(0x11, RegId::HP),
+        op::ji(10),
+        op::burn(0x11, RegId::HP),
         op::ret(RegId::ONE),
     ];
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let asset_id = AssetId::from(*contract_id);
+    let asset_id = contract_id.asset_id(&Bytes32::zeroed());
 
     let (script_call, _) = script_with_data_offset!(
         data_offset,

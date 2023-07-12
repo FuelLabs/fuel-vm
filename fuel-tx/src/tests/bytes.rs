@@ -266,6 +266,8 @@ fn receipt() {
             rng.gen(),
             vec![rng.gen()],
         ),
+        Receipt::mint(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::burn(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
     ];
 
     for panic_reason in PanicReason::iter() {

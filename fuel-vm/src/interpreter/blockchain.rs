@@ -68,7 +68,10 @@ use fuel_storage::{
     StorageInspect,
     StorageSize,
 };
-use fuel_tx::Receipt;
+use fuel_tx::{
+    ContractIdExt,
+    Receipt,
+};
 use fuel_types::{
     bytes,
     Address,
@@ -140,28 +143,42 @@ where
         input.load_contract_code(a, b, c)
     }
 
-    pub(crate) fn burn(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
-        burn(
-            &mut self.storage,
-            &self.memory,
-            &self.context,
-            fp.as_ref(),
+    pub(crate) fn burn(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let (SystemRegisters { fp, pc, is, .. }, _) =
+            split_registers(&mut self.registers);
+        BurnCtx {
+            storage: &mut self.storage,
+            context: &self.context,
+            append: AppendReceipt {
+                receipts: &mut self.receipts,
+                script: self.tx.as_script_mut(),
+                tx_offset: self.params.tx_offset(),
+                memory: &mut self.memory,
+            },
+            fp: fp.as_ref(),
             pc,
-            a,
-        )
+            is: is.as_ref(),
+        }
+        .burn(a, b)
     }
 
-    pub(crate) fn mint(&mut self, a: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
-        mint(
-            &mut self.storage,
-            &self.memory,
-            &self.context,
-            fp.as_ref(),
+    pub(crate) fn mint(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let (SystemRegisters { fp, pc, is, .. }, _) =
+            split_registers(&mut self.registers);
+        MindCtx {
+            storage: &mut self.storage,
+            context: &self.context,
+            append: AppendReceipt {
+                receipts: &mut self.receipts,
+                script: self.tx.as_script_mut(),
+                tx_offset: self.params.tx_offset(),
+                memory: &mut self.memory,
+            },
+            fp: fp.as_ref(),
             pc,
-            a,
-        )
+            is: is.as_ref(),
+        }
+        .mint(a, b)
     }
 
     pub(crate) fn code_copy(
@@ -550,60 +567,84 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
     }
 }
 
-pub(crate) fn burn<S>(
-    storage: &mut S,
-    memory: &[u8; MEM_SIZE],
-    context: &Context,
-    fp: Reg<FP>,
-    pc: RegMut<PC>,
-    a: Word,
-) -> Result<(), RuntimeError>
-where
-    S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
-{
-    let range = internal_contract_bounds(context, fp)?;
-
-    let contract = ContractId::from_bytes_ref(range.clone().read(memory));
-    let asset_id = AssetId::from_bytes_ref(range.read(memory));
-
-    let balance = balance(storage, contract, asset_id)?;
-    let balance = balance
-        .checked_sub(a)
-        .ok_or(PanicReason::NotEnoughBalance)?;
-
-    storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-        .map_err(RuntimeError::from_io)?;
-
-    inc_pc(pc)
+struct BurnCtx<'vm, S> {
+    storage: &'vm mut S,
+    context: &'vm Context,
+    append: AppendReceipt<'vm>,
+    fp: Reg<'vm, FP>,
+    pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
 }
 
-pub(crate) fn mint<S>(
-    storage: &mut S,
-    memory: &[u8; MEM_SIZE],
-    context: &Context,
-    fp: Reg<FP>,
-    pc: RegMut<PC>,
-    a: Word,
-) -> Result<(), RuntimeError>
+impl<'vm, S> BurnCtx<'vm, S>
 where
-    S: ContractsAssetsStorage + ?Sized,
+    S: ContractsAssetsStorage,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    let range = internal_contract_bounds(context, fp)?;
+    pub(crate) fn burn(self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let range = internal_contract_bounds(self.context, self.fp)?;
+        let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
+        let memory = &*self.append.memory;
 
-    let contract = ContractId::from_bytes_ref(range.clone().read(memory));
-    let asset_id = AssetId::from_bytes_ref(range.read(memory));
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
 
-    let balance = balance(storage, contract, asset_id)?;
-    let balance = checked_add_word(balance, a)?;
+        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let asset_id = contract_id.asset_id(sub_id);
 
-    storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-        .map_err(RuntimeError::from_io)?;
+        let balance = balance(self.storage, contract_id, &asset_id)?;
+        let balance = balance
+            .checked_sub(a)
+            .ok_or(PanicReason::NotEnoughBalance)?;
 
-    inc_pc(pc)
+        self.storage
+            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .map_err(RuntimeError::from_io)?;
+
+        let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
+
+        append_receipt(self.append, receipt);
+
+        inc_pc(self.pc)
+    }
+}
+
+struct MindCtx<'vm, S> {
+    storage: &'vm mut S,
+    context: &'vm Context,
+    append: AppendReceipt<'vm>,
+    fp: Reg<'vm, FP>,
+    pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
+}
+
+impl<'vm, S> MindCtx<'vm, S>
+where
+    S: ContractsAssetsStorage,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+{
+    pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let range = internal_contract_bounds(self.context, self.fp)?;
+        let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
+        let memory = &*self.append.memory;
+
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
+
+        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let asset_id = contract_id.asset_id(sub_id);
+
+        let balance = balance(self.storage, contract_id, &asset_id)?;
+        let balance = checked_add_word(balance, a)?;
+
+        self.storage
+            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .map_err(RuntimeError::from_io)?;
+
+        let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
+
+        append_receipt(self.append, receipt);
+
+        inc_pc(self.pc)
+    }
 }
 
 struct CodeCopyCtx<'vm, S, I> {

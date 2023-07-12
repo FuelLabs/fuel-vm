@@ -704,8 +704,8 @@ where
 
             Instruction::BURN(burn) => {
                 self.gas_charge(self.gas_costs.burn)?;
-                let a = burn.unpack();
-                self.burn(r!(a))?;
+                let (a, b) = burn.unpack();
+                self.burn(r!(a), r!(b))?;
             }
 
             Instruction::CALL(call) => {
@@ -759,8 +759,8 @@ where
 
             Instruction::MINT(mint) => {
                 self.gas_charge(self.gas_costs.mint)?;
-                let a = mint.unpack();
-                self.mint(r!(a))?;
+                let (a, b) = mint.unpack();
+                self.mint(r!(a), r!(b))?;
             }
 
             Instruction::SCWQ(scwq) => {

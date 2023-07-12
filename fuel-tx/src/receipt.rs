@@ -39,7 +39,13 @@ mod sizes;
 
 use receipt_repr::ReceiptRepr;
 
-use crate::input::message::compute_message_id;
+use crate::{
+    input::message::compute_message_id,
+    receipt::sizes::{
+        BurnSizesLayout,
+        MintSizesLayout,
+    },
+};
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
@@ -150,6 +156,20 @@ pub enum Receipt {
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
         data: Option<Vec<u8>>,
+    },
+    Mint {
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    },
+    Burn {
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
     },
 }
 
@@ -401,6 +421,38 @@ impl Receipt {
         }
     }
 
+    pub fn mint(
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        Self::Mint {
+            sub_id,
+            contract_id,
+            val,
+            pc,
+            is,
+        }
+    }
+
+    pub fn burn(
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        Self::Burn {
+            sub_id,
+            contract_id,
+            val,
+            pc,
+            is,
+        }
+    }
+
     #[inline(always)]
     pub fn id(&self) -> Option<&ContractId> {
         trim_contract_id(match self {
@@ -415,7 +467,17 @@ impl Receipt {
             Self::TransferOut { id, .. } => Some(id),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { contract_id, .. } => Some(contract_id),
+            Self::Burn { contract_id, .. } => Some(contract_id),
         })
+    }
+
+    pub const fn sub_id(&self) -> Option<&Bytes32> {
+        match self {
+            Self::Mint { sub_id, .. } => Some(sub_id),
+            Self::Burn { sub_id, .. } => Some(sub_id),
+            _ => None,
+        }
     }
 
     pub const fn pc(&self) -> Option<Word> {
@@ -431,6 +493,8 @@ impl Receipt {
             Self::TransferOut { pc, .. } => Some(*pc),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { pc, .. } => Some(*pc),
+            Self::Burn { pc, .. } => Some(*pc),
         }
     }
 
@@ -447,6 +511,8 @@ impl Receipt {
             Self::TransferOut { is, .. } => Some(*is),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { is, .. } => Some(*is),
+            Self::Burn { is, .. } => Some(*is),
         }
     }
 
@@ -509,6 +575,8 @@ impl Receipt {
     pub const fn val(&self) -> Option<Word> {
         match self {
             Self::Return { val, .. } => Some(*val),
+            Self::Mint { val, .. } => Some(*val),
+            Self::Burn { val, .. } => Some(*val),
             _ => None,
         }
     }
@@ -665,6 +733,8 @@ impl Receipt {
             ReceiptRepr::TransferOut => TransferOutSizesLayout::LEN,
             ReceiptRepr::ScriptResult => ScriptResultSizesLayout::LEN,
             ReceiptRepr::MessageOut => MessageOutSizesLayout::LEN,
+            ReceiptRepr::Mint => MintSizesLayout::LEN,
+            ReceiptRepr::Burn => BurnSizesLayout::LEN,
         }
     }
 }

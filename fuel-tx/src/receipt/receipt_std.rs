@@ -330,6 +330,56 @@ impl io::Read for Receipt {
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
                 bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
             }
+            Receipt::Mint {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                type S = MintSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Mint as u8,
+                );
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.sub_id), sub_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.val), *val);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
+            }
+            Receipt::Burn {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                type S = BurnSizes;
+                let buf: &mut [_; S::LEN] = buf
+                    .get_mut(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                bytes::store_number_at(
+                    buf,
+                    S::layout(S::LAYOUT.repr),
+                    ReceiptRepr::Burn as u8,
+                );
+
+                bytes::store_at(buf, S::layout(S::LAYOUT.sub_id), sub_id);
+                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.val), *val);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
+                bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
+            }
         }
 
         Ok(len)
@@ -565,6 +615,44 @@ impl io::Write for Receipt {
                     sender, recipient, amount, nonce, len, digest, None,
                 );
             }
+            ReceiptRepr::Mint => {
+                type S = MintSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let sub_id = bytes::restore_at(buf, S::layout(S::LAYOUT.sub_id));
+                let contract_id =
+                    bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
+                let val = bytes::restore_word_at(buf, S::layout(S::LAYOUT.val));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
+
+                let sub_id = sub_id.into();
+                let contract_id = contract_id.into();
+
+                *self = Self::mint(sub_id, contract_id, val, pc, is);
+            }
+            ReceiptRepr::Burn => {
+                type S = BurnSizes;
+                let buf: &[_; S::LEN] = full_buf
+                    .get(..S::LEN)
+                    .and_then(|slice| slice.try_into().ok())
+                    .ok_or(bytes::eof())?;
+
+                let sub_id = bytes::restore_at(buf, S::layout(S::LAYOUT.sub_id));
+                let contract_id =
+                    bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
+                let val = bytes::restore_word_at(buf, S::layout(S::LAYOUT.val));
+                let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
+                let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
+
+                let sub_id = sub_id.into();
+                let contract_id = contract_id.into();
+
+                *self = Self::burn(sub_id, contract_id, val, pc, is);
+            }
         }
 
         let n = self.serialized_size();
@@ -585,29 +673,5 @@ impl bytes::Deserializable for Receipt {
         let _ = instance.write(bytes)?;
 
         Ok(instance)
-    }
-}
-
-impl TryFrom<Word> for ReceiptRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Call),
-            0x01 => Ok(Self::Return),
-            0x02 => Ok(Self::ReturnData),
-            0x03 => Ok(Self::Panic),
-            0x04 => Ok(Self::Revert),
-            0x05 => Ok(Self::Log),
-            0x06 => Ok(Self::LogData),
-            0x07 => Ok(Self::Transfer),
-            0x08 => Ok(Self::TransferOut),
-            0x09 => Ok(Self::ScriptResult),
-            0x0A => Ok(Self::MessageOut),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier is invalid!",
-            )),
-        }
     }
 }

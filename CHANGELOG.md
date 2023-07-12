@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
+and made available async versions of verify and estimate predicates.
+Updated tests to test for both parallel and sequential execution.
+Fixed a bug in `transaction/check_predicate_owners`.
+
 ## [Version 0.34.1]
 
 Mainly new opcodes prices and small performance improvements in the `BinaryMerkleTree`.

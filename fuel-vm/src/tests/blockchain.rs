@@ -1331,7 +1331,7 @@ fn smo_instruction_works() {
         if let Some((recipient, transferred, data)) = message_receipt {
             assert_eq!(txid.as_ref(), recipient.as_ref());
             assert_eq!(message_output_amount, transferred);
-            assert_eq!(data, msg_data);
+            assert_eq!(data.unwrap(), msg_data);
         }
         // get gas used from script result
         let gas_used = if let Receipt::ScriptResult { gas_used, .. } =
@@ -1559,7 +1559,7 @@ fn block_hash_works(
         panic!("expected log receipt");
     };
 
-    assert_eq!(data, &*expected);
+    assert_eq!(data.as_ref().unwrap(), &*expected);
 }
 
 #[rstest::rstest]
@@ -1602,5 +1602,5 @@ fn coinbase_works() {
         panic!("expected log receipt");
     };
 
-    assert_eq!(data, &*expected);
+    assert_eq!(data.as_ref().unwrap(), &*expected);
 }

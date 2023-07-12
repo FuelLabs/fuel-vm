@@ -94,9 +94,9 @@ impl io::Read for Receipt {
                 ptr,
                 len,
                 digest,
-                data,
                 pc,
                 is,
+                ..
             } => {
                 let full_buf = buf;
                 type S = ReturnDataSizes;
@@ -117,11 +117,6 @@ impl io::Read for Receipt {
                 bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
-
-                bytes::store_bytes(
-                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
-                    data,
-                )?;
             }
 
             Self::Panic {
@@ -205,9 +200,9 @@ impl io::Read for Receipt {
                 ptr,
                 len,
                 digest,
-                data,
                 pc,
                 is,
+                ..
             } => {
                 let full_buf = buf;
                 type S = LogDataSizes;
@@ -230,11 +225,6 @@ impl io::Read for Receipt {
                 bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.pc), *pc);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.is), *is);
-
-                bytes::store_bytes(
-                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
-                    data,
-                )?;
             }
 
             Self::Transfer {
@@ -318,7 +308,7 @@ impl io::Read for Receipt {
                 nonce,
                 len,
                 digest,
-                data,
+                ..
             } => {
                 let full_buf = buf;
                 type S = MessageOutSizes;
@@ -339,11 +329,6 @@ impl io::Read for Receipt {
                 bytes::store_at(buf, S::layout(S::LAYOUT.nonce), nonce);
                 bytes::store_number_at(buf, S::layout(S::LAYOUT.len), *len);
                 bytes::store_at(buf, S::layout(S::LAYOUT.digest), digest);
-
-                bytes::store_bytes(
-                    full_buf.get_mut(S::LEN..).ok_or(bytes::eof())?,
-                    data,
-                )?;
             }
         }
 
@@ -418,13 +403,10 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) =
-                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
-
                 let id = id.into();
                 let digest = digest.into();
 
-                *self = Self::return_data_with_len(id, ptr, len, digest, data, pc, is);
+                *self = Self::return_data_with_len(id, ptr, len, digest, pc, is, None);
             }
 
             ReceiptRepr::Panic => {
@@ -497,14 +479,11 @@ impl io::Write for Receipt {
                 let pc = bytes::restore_word_at(buf, S::layout(S::LAYOUT.pc));
                 let is = bytes::restore_word_at(buf, S::layout(S::LAYOUT.is));
 
-                let (_, data, _) =
-                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
-
                 let id = id.into();
                 let digest = digest.into();
 
                 *self =
-                    Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is);
+                    Self::log_data_with_len(id, ra, rb, ptr, len, digest, pc, is, None);
             }
 
             ReceiptRepr::Transfer => {
@@ -577,16 +556,13 @@ impl io::Write for Receipt {
                 let len = bytes::restore_word_at(buf, S::layout(S::LAYOUT.len));
                 let digest = bytes::restore_at(buf, S::layout(S::LAYOUT.digest));
 
-                let (_, data, _) =
-                    bytes::restore_bytes(full_buf.get(S::LEN..).ok_or(bytes::eof())?)?;
-
                 let sender = sender.into();
                 let recipient = recipient.into();
                 let nonce = nonce.into();
                 let digest = digest.into();
 
                 *self = Self::message_out_with_len(
-                    sender, recipient, amount, nonce, len, digest, data,
+                    sender, recipient, amount, nonce, len, digest, None,
                 );
             }
         }

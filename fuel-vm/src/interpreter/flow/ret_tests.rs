@@ -143,9 +143,9 @@ fn test_return() {
             20,
             22,
             r,
-            vec![0u8; 22],
             expected[RegId::PC] - 4,
-            expected[RegId::IS]
+            expected[RegId::IS],
+            Some(vec![0u8; 22]),
         )
     );
 }

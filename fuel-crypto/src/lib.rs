@@ -9,6 +9,10 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
+#[cfg(test)]
+// Satisfy unused_crate_dependencies lint for self-dependency enabling test features
+use fuel_crypto as _;
+
 /// Required export to implement [`Keystore`].
 #[doc(no_inline)]
 pub use borrown;
@@ -30,24 +34,31 @@ pub use rand;
 
 mod error;
 mod hasher;
-mod keystore;
 mod message;
 mod mnemonic;
-mod public;
-mod secret;
-mod signature;
-mod signer;
+
+pub mod ed25519;
+pub mod secp256r1;
 
 #[cfg(test)]
 mod tests;
 
 pub use error::Error;
 pub use hasher::Hasher;
-pub use keystore::Keystore;
 pub use message::Message;
+
 #[cfg(all(feature = "std", feature = "random"))]
 pub use mnemonic::generate_mnemonic_phrase;
-pub use public::PublicKey;
-pub use secret::SecretKey;
-pub use signature::Signature;
-pub use signer::Signer;
+
+mod secp256k1 {
+    mod public;
+    mod secret;
+    mod signature;
+
+    pub use public::PublicKey;
+    pub use secret::SecretKey;
+    pub use signature::Signature;
+}
+
+// The default cryptographic primitives
+pub use self::secp256k1::*;

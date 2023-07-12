@@ -187,7 +187,7 @@
 //!     op::addi(0x10, 0x07, 1),   // set r[0x10] := `$hp + 1` (allocated heap)
 //!     op::move_(0x11, 0x04),     // set r[0x11] := $ssp
 //!     op::add(0x12, 0x04, 0x20), // set r[0x12] := `$ssp + r[0x20]`
-//!     op::ecr(0x10, 0x11, 0x12), // recover public key in memory[r[0x10], 64]
+//!     op::eck1(0x10, 0x11, 0x12),// recover public key in memory[r[0x10], 64]
 //!     op::ret(0x01),             // return `1`
 //! ];
 //! ```

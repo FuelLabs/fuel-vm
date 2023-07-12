@@ -52,7 +52,10 @@ use crate::input::{
         CoinSigned,
     },
     contract::Contract,
-    message::MessageDataPredicate,
+    message::{
+        MessageCoinPredicate,
+        MessageDataPredicate,
+    },
 };
 use input::*;
 
@@ -305,6 +308,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                     owner, predicate, ..
                 }) => Some((owner, predicate)),
                 Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient,
+                    predicate,
+                    ..
+                }) => Some((recipient, predicate)),
+                Input::MessageCoinPredicate(MessageCoinPredicate {
                     recipient,
                     predicate,
                     ..

@@ -1,4 +1,4 @@
-use fuel_crypto::*;
+use crate::*;
 
 #[test]
 fn digest() {

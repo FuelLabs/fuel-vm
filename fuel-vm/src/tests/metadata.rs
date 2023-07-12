@@ -258,7 +258,7 @@ fn get_transaction_fields() {
     let mut client = MemoryClient::default();
 
     let gas_price = 1;
-    let gas_limit = 1_000_000;
+    let gas_limit = 100_000_000;
     let maturity = 50.into();
     let height = 122.into();
     let input = 10_000_000;

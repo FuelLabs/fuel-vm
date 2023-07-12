@@ -38,6 +38,7 @@ use crate::{
     gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
+        InputContracts,
         PanicContext,
     },
     profiler::Profiler,
@@ -48,13 +49,11 @@ use crate::{
         InterpreterStorage,
     },
 };
-
 use fuel_asm::{
     Instruction,
     PanicInstruction,
     RegId,
 };
-use fuel_crypto::Hasher;
 use fuel_storage::{
     StorageAsRef,
     StorageInspect,
@@ -230,17 +229,17 @@ impl RetCtx<'_> {
         }
 
         let ab = (a + b) as usize;
-        let digest = Hasher::hash(&self.append.memory[a as usize..ab]);
 
-        let receipt = Receipt::return_data_with_len(
+        let receipt = Receipt::return_data(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
-            b,
-            digest,
-            self.append.memory[a as usize..ab].to_vec(),
             self.registers[RegId::PC],
             self.registers[RegId::IS],
+            self.append.memory[a as usize..ab].to_vec(),
         );
+        let digest = *receipt
+            .digest()
+            .expect("Receipt is created above and `digest` should exist");
 
         self.registers[RegId::RET] = a;
         self.registers[RegId::RETL] = b;
@@ -391,7 +390,7 @@ where
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
         let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
-        let input_contracts = self.tx.input_contracts().copied().collect();
+        let input_contracts = self.tx.input_contracts().copied().collect::<Vec<_>>();
 
         PrepareCallCtx {
             params,
@@ -401,8 +400,10 @@ where
             gas_cost: self.gas_costs.call,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
-            input_contracts,
-            panic_context: &mut self.panic_context,
+            input_contracts: InputContracts::new(
+                input_contracts.iter(),
+                &mut self.panic_context,
+            ),
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
             consensus: &self.params,
@@ -466,7 +467,7 @@ struct PrepareCallMemory<'a> {
     asset_id: CheckedMemValue<AssetId>,
 }
 
-struct PrepareCallCtx<'vm, S> {
+struct PrepareCallCtx<'vm, S, I> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: PrepareCallMemory<'vm>,
@@ -474,8 +475,7 @@ struct PrepareCallCtx<'vm, S> {
     gas_cost: DependentCost,
     runtime_balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
-    input_contracts: Vec<fuel_types::ContractId>,
-    panic_context: &'vm mut PanicContext,
+    input_contracts: InputContracts<'vm, I>,
     receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
     consensus: &'vm ConsensusParameters,
@@ -484,7 +484,10 @@ struct PrepareCallCtx<'vm, S> {
     profiler: &'vm mut Profiler,
 }
 
-impl<'vm, S> PrepareCallCtx<'vm, S> {
+impl<'vm, S, I> PrepareCallCtx<'vm, S, I>
+where
+    I: Iterator<Item = &'vm ContractId>,
+{
     fn prepare_call(mut self) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>
@@ -535,14 +538,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             )?;
         }
 
-        if !self
-            .input_contracts
-            .iter()
-            .any(|contract| call.to() == contract)
-        {
-            *self.panic_context = PanicContext::ContractId(*call.to());
-            return Err(PanicReason::ContractNotInInputs.into())
-        }
+        self.input_contracts.check(call.to())?;
 
         // credit contract asset_id balance
         balance_increase(
@@ -609,7 +605,7 @@ impl<'vm, S> PrepareCallCtx<'vm, S> {
             *frame.to(),
             self.params.amount_of_coins_to_forward,
             *frame.asset_id(),
-            self.params.amount_of_gas_to_forward,
+            forward_gas_amount,
             frame.a(),
             frame.b(),
             *self.registers.system_registers.pc,

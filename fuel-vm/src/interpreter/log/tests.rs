@@ -54,9 +54,9 @@ fn test_log() -> Result<(), RuntimeError> {
         3,
         4,
         *receipts[1].digest().unwrap(),
-        vec![1u8; 4],
         8,
         0,
+        Some(vec![1u8; 4]),
     );
     assert_eq!(receipts[1], expected);
 

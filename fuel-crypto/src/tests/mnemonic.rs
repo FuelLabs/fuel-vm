@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
+use crate::SecretKey;
 use coins_bip32::path::DerivationPath;
 use coins_bip39::{
     English,
     Mnemonic,
 };
-use fuel_crypto::SecretKey;
 
 type W = English;
 
@@ -49,7 +49,7 @@ fn random_mnemonic_phrase() {
     // create rng
     let mut rng = rand::thread_rng();
 
-    let phrase = fuel_crypto::generate_mnemonic_phrase(&mut rng, 12)
+    let phrase = crate::generate_mnemonic_phrase(&mut rng, 12)
         .expect("failed to generate mnemonic phrase");
 
     let _secret =

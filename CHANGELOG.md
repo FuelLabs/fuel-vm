@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+### Added
+
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
+
+### Removed
+
+#### Breaking
+
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
+
 ### Fixed
 
 #### Breaking

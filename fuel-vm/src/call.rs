@@ -258,7 +258,8 @@ impl CallFrame {
 
     /// Padding to the next word boundary.
     pub fn code_size_padding(&self) -> Word {
-        self.code_size() % WORD_SIZE as Word
+        const WORD_SIZE: Word = crate::consts::WORD_SIZE as Word;
+        (WORD_SIZE - self.code_size() % WORD_SIZE) % WORD_SIZE
     }
 
     /// Total code size including padding.

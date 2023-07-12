@@ -8,8 +8,6 @@ data:
   value: 424c66d6981633789ccbd0a8e142ccff24208943cd143f0e2dc5d84542cb2ead
   encoding: hex
 proof_set:
-- value: c00574a947cb3031d10fce0980c3711c70824c191e29c913f8da8b0d42da3c2e
-  encoding: hex
 - value: 5f7a260b5b5dc663ef6a338ba673c71ef611e4a5e52dc41e9bd82dd9a9507c30
   encoding: hex
 - value: 51dbb7b62080c64fbc976425d0032933d1126df6f223420b332297c8ca133cee

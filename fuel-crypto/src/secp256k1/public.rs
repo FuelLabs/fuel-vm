@@ -8,7 +8,7 @@ use fuel_types::{
     Bytes64,
 };
 
-/// Asymmetric public key
+/// Asymmetric secp256k1 public key
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]

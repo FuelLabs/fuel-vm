@@ -461,3 +461,27 @@ impl CheckedMetadata for CreateCheckedMetadata {
         self.gas_used_by_predicates = gas_used;
     }
 }
+
+pub(crate) struct InputContracts<'vm, I> {
+    tx_input_contracts: I,
+    panic_context: &'vm mut PanicContext,
+}
+
+impl<'vm, I: Iterator<Item = &'vm ContractId>> InputContracts<'vm, I> {
+    pub fn new(tx_input_contracts: I, panic_context: &'vm mut PanicContext) -> Self {
+        Self {
+            tx_input_contracts,
+            panic_context,
+        }
+    }
+
+    /// Checks that the contract is declared in the transaction inputs.
+    pub fn check(&mut self, contract: &ContractId) -> Result<(), PanicReason> {
+        if !self.tx_input_contracts.any(|input| input == contract) {
+            *self.panic_context = PanicContext::ContractId(*contract);
+            Err(PanicReason::ContractNotInInputs)
+        } else {
+            Ok(())
+        }
+    }
+}

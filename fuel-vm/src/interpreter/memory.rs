@@ -642,9 +642,9 @@ pub(crate) fn try_mem_write<A: ToAddr>(
     Ok(())
 }
 
-pub(crate) fn try_zeroize(
-    addr: usize,
-    len: usize,
+pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
+    addr: A,
+    len: B,
     registers: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {

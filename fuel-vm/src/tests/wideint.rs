@@ -165,6 +165,7 @@ fn incr_u128(
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
         let expected = v + 1;
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
@@ -197,6 +198,7 @@ fn incr_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let expected = v + 1;
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
@@ -283,6 +285,7 @@ fn incr_wrapping_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, 0);
@@ -314,6 +317,7 @@ fn incr_wrapping_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, 0);
@@ -395,6 +399,7 @@ fn multiply_overflow_wrapping_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, u128::MAX.wrapping_mul(u128::MAX));
@@ -426,6 +431,7 @@ fn multiply_overflow_wrapping_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, U256::MAX.wrapping_mul(U256::MAX));
@@ -459,6 +465,7 @@ fn multiply_ok_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, a * b);
@@ -492,6 +499,7 @@ fn multiply_ok_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a * b);
@@ -545,6 +553,7 @@ fn multiply_single_indirect_u128(
     let expected = a * u128::from(b);
 
     if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
@@ -553,6 +562,7 @@ fn multiply_single_indirect_u128(
     }
 
     if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, expected);
@@ -606,6 +616,7 @@ fn multiply_single_indirect_u256(
     let expected = a * U256::from(b);
 
     if let Receipt::LogData { data, .. } = lhs_receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, expected);
@@ -614,6 +625,7 @@ fn multiply_single_indirect_u256(
     }
 
     if let Receipt::LogData { data, .. } = rhs_receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, expected);
@@ -647,6 +659,7 @@ fn multiply_two_directs_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, u128::from(a * b));
@@ -680,6 +693,7 @@ fn multiply_two_directs_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, U256::from(a * b));
@@ -752,6 +766,7 @@ fn divide_by_zero_unsafemath_u128() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, 0);
@@ -780,6 +795,7 @@ fn divide_by_zero_unsafemath_u256() {
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, 0);
@@ -810,6 +826,7 @@ fn divide_ok_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, a / b);
@@ -840,6 +857,7 @@ fn divide_ok_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let result = U256::from_be_bytes(bytes);
         assert_eq!(result, a / b);
@@ -877,6 +895,7 @@ fn fused_mul_div_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
@@ -987,6 +1006,7 @@ fn fused_mul_div_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);
@@ -1088,6 +1108,7 @@ fn addmod_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
@@ -1126,6 +1147,7 @@ fn addmod_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);
@@ -1230,6 +1252,7 @@ fn mulmod_u128(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let v = u128::from_be_bytes(bytes);
         assert_eq!(v, expected);
@@ -1270,6 +1293,7 @@ fn mulmod_u256(
     let receipts = run_script(ops);
 
     if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+        let data = data.as_ref().unwrap();
         let bytes: [u8; 32] = data.clone().try_into().unwrap();
         let v = U256::from_be_bytes(bytes);
         assert_eq!(v, expected);

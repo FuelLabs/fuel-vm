@@ -203,9 +203,8 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             vec![rng.gen(), rng.gen()],
-            rng.gen(),
-            rng.gen(),
         ),
         Receipt::revert(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::log(
@@ -223,9 +222,8 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             vec![rng.gen(), rng.gen()],
-            rng.gen(),
-            rng.gen(),
         ),
         Receipt::transfer(
             rng.gen(),
@@ -261,7 +259,7 @@ fn receipt() {
             rng.gen(),
         ),
         Receipt::message_out(
-            rng.gen(),
+            &rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),

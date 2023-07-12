@@ -138,7 +138,7 @@ fn test_mint(
     let is = 0;
     const ORIGINAL_PC: Word = 4;
     let mut pc = ORIGINAL_PC;
-    MindCtx {
+    MintCtx {
         storage: &mut storage,
         context: &context,
         append: AppendReceipt {

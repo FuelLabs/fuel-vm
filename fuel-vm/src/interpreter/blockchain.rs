@@ -165,7 +165,7 @@ where
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
-        MindCtx {
+        MintCtx {
             storage: &mut self.storage,
             context: &self.context,
             append: AppendReceipt {
@@ -608,7 +608,7 @@ where
     }
 }
 
-struct MindCtx<'vm, S> {
+struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
     append: AppendReceipt<'vm>,
@@ -617,7 +617,7 @@ struct MindCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> MindCtx<'vm, S>
+impl<'vm, S> MintCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,

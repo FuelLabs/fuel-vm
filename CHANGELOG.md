@@ -10,10 +10,18 @@ Description of the upcoming release here.
 
 ### Added
 
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
+
 - [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
     and made available async versions of verify and estimate predicates.
     Updated tests to test for both parallel and sequential execution.
     Fixed a bug in `transaction/check_predicate_owners`.
+
+### Removed
+
+#### Breaking
+
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
 
 ### Fixed
 
@@ -41,6 +49,15 @@ Description of the upcoming release here.
 - [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The charging for `DependentCost`
     was done incorrectly, devaluing the `dep_per_unit` part. After the fixing of 
     this, the execution should become much more expensive.
+
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `data` field of the `Receipt` 
+    is not part of the canonical serialization and deserialization anymore. The SDK should use the 
+    `Receipt` type instead of `OpaqueReceipt`. The `Receipt.raw_payload` will be removed for the 
+    `fuel-core 0.20`. The `data` field is optional now. The SDK should update serialization and 
+    deserialization for `MessageOut`, `LogData`, and `ReturnData` receipts.
+
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `len` field of the `Receipt` 
+    is not padded anymore and represents an initial value.
 
 ## [Version 0.34.1]
 

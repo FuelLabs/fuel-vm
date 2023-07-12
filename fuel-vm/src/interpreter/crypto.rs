@@ -5,6 +5,7 @@ use super::{
         set_err,
     },
     memory::{
+        read_bytes,
         try_mem_write,
         try_zeroize,
         OwnershipRegisters,
@@ -14,12 +15,7 @@ use super::{
 };
 use crate::{
     constraints::reg_key::*,
-    consts::{
-        MEM_MAX_ACCESS_SIZE,
-        MEM_SIZE,
-        MIN_VM_MAX_RAM_USIZE_MAX,
-        VM_MAX_RAM,
-    },
+    consts::*,
     error::RuntimeError,
 };
 
@@ -47,7 +43,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn ecrecover(
+    pub(crate) fn secp256k1_recover(
         &mut self,
         a: Word,
         b: Word,
@@ -55,7 +51,28 @@ where
     ) -> Result<(), RuntimeError> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        ecrecover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
+    }
+
+    pub(crate) fn secp256r1_recover(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
+        let owner = self.ownership_registers();
+        let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
+        secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
+    }
+
+    pub(crate) fn ed25519_verify(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
+        let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
+        ed25519_verify(&mut self.memory, err, pc, a, b, c)
     }
 
     pub(crate) fn keccak256(
@@ -79,7 +96,7 @@ where
     }
 }
 
-pub(crate) fn ecrecover(
+pub(crate) fn secp256k1_recover(
     memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
@@ -88,24 +105,11 @@ pub(crate) fn ecrecover(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bx = checked_add_word(b, Bytes64::LEN as Word)?;
-    let cx = checked_add_word(c, Bytes32::LEN as Word)?;
+    let sig = Bytes64::from(read_bytes(memory, b)?);
+    let msg = Bytes32::from(read_bytes(memory, c)?);
 
-    if a > checked_sub_word(VM_MAX_RAM, Bytes64::LEN as Word)?
-        || bx > MIN_VM_MAX_RAM_USIZE_MAX
-        || cx > MIN_VM_MAX_RAM_USIZE_MAX
-    {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    // TODO: These casts may overflow/truncate on 32-bit?
-    let (a, b, bx, c, cx) =
-        (a as usize, b as usize, bx as usize, c as usize, cx as usize);
-
-    let sig_bytes = <&_>::try_from(&memory[b..bx]).expect("memory bounds checked");
-    let msg_bytes = <&_>::try_from(&memory[c..cx]).expect("memory bounds checked");
-    let signature = Signature::from_bytes_ref(sig_bytes);
-    let message = Message::from_bytes_ref(msg_bytes);
+    let signature = Signature::from_bytes_ref(&sig);
+    let message = Message::from_bytes_ref(&msg);
 
     match signature.recover(message) {
         Ok(pub_key) => {
@@ -116,6 +120,55 @@ pub(crate) fn ecrecover(
             try_zeroize(a, PublicKey::LEN, owner, memory)?;
             set_err(err);
         }
+    }
+
+    inc_pc(pc)
+}
+
+pub(crate) fn secp256r1_recover(
+    memory: &mut [u8; MEM_SIZE],
+    owner: OwnershipRegisters,
+    err: RegMut<ERR>,
+    pc: RegMut<PC>,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
+    let sig = Bytes64::from(read_bytes(memory, b)?);
+    let msg = Bytes32::from(read_bytes(memory, c)?);
+    let message = Message::from_bytes_ref(&msg);
+
+    match fuel_crypto::secp256r1::recover(&sig, message) {
+        Ok(pub_key) => {
+            try_mem_write(a, &*pub_key, owner, memory)?;
+            clear_err(err);
+        }
+        Err(_) => {
+            try_zeroize(a, Bytes32::LEN, owner, memory)?;
+            set_err(err);
+        }
+    }
+
+    inc_pc(pc)
+}
+
+pub(crate) fn ed25519_verify(
+    memory: &mut [u8; MEM_SIZE],
+    err: RegMut<ERR>,
+    pc: RegMut<PC>,
+    a: Word,
+    b: Word,
+    c: Word,
+) -> Result<(), RuntimeError> {
+    let pub_key = Bytes32::from(read_bytes(memory, a)?);
+    let sig = Bytes64::from(read_bytes(memory, b)?);
+    let msg = Bytes32::from(read_bytes(memory, c)?);
+    let message = Message::from_bytes_ref(&msg);
+
+    if fuel_crypto::ed25519::verify(&pub_key, &sig, message).is_ok() {
+        clear_err(err);
+    } else {
+        set_err(err);
     }
 
     inc_pc(pc)

@@ -10,25 +10,30 @@ use fuel_storage::StorageAsMut;
 use fuel_types::Salt;
 use test_case::test_case;
 
-#[test_case(false, 0, None, 0 => Ok(()); "Burn nothing")]
-#[test_case(false, 0, 0, 0 => Ok(()); "Burn is idempotent")]
-#[test_case(false, 0, 100, 100 => Ok(()); "Burn all")]
-#[test_case(false, 0, 100, 10 => Ok(()); "Burn some")]
-#[test_case(true, 0, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't burn from external context")]
-#[test_case(false, 1, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when contract id not in memory")]
-#[test_case(false, 0, 100, 101 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn too much")]
-#[test_case(false, 0, None, 1 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
+#[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Burn nothing")]
+#[test_case(false, 0, 0, 0, [0; 32] => Ok(()); "Burn is idempotent")]
+#[test_case(false, 0, 100, 100, [0; 32] => Ok(()); "Burn all")]
+#[test_case(false, 0, 100, 100, [15; 32] => Ok(()); "Burn all for another sub id")]
+#[test_case(false, 0, 100, 10, [0; 32] => Ok(()); "Burn some")]
+#[test_case(true, 0, 100, 10, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't burn from external context")]
+#[test_case(false, 1, 100, 10, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when contract id not in memory")]
+#[test_case(false, 0, 100, 101, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn too much")]
+#[test_case(false, 0, None, 1, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Can't burn when no balance")]
 fn test_burn(
     external: bool,
     fp: Word,
     initialize: impl Into<Option<Word>>,
     amount: Word,
+    sub_id: [u8; 32],
 ) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
-    let asset_id = AssetId::from([3u8; 32]);
+    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
+    memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
+        .copy_from_slice(sub_id.as_slice());
+    let sub_id = Bytes32::from(sub_id);
+    let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         storage
@@ -44,46 +49,73 @@ fn test_burn(
             block_height: Default::default(),
         }
     };
-    let mut pc = 4;
-    burn(
-        &mut storage,
-        &memory,
-        &context,
-        Reg::new(&fp),
-        RegMut::new(&mut pc),
-        amount,
-    )?;
+    let mut receipts = Default::default();
+    let mut script = Some(fuel_tx::Script::default());
+
+    let is = 0;
+    const ORIGINAL_PC: Word = 4;
+    let mut pc = ORIGINAL_PC;
+    BurnCtx {
+        storage: &mut storage,
+        context: &context,
+        append: AppendReceipt {
+            receipts: &mut receipts,
+            script: script.as_mut(),
+            tx_offset: 0,
+            memory: &mut memory,
+        },
+        fp: Reg::new(&fp),
+        pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
+    }
+    .burn(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
         .merkle_contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) - amount);
+    assert_eq!(receipts.len(), 1);
+    assert_eq!(
+        receipts[0],
+        Receipt::Burn {
+            sub_id,
+            contract_id,
+            val: amount,
+            pc: ORIGINAL_PC,
+            is
+        }
+    );
     Ok(())
 }
 
-#[test_case(false, 0, None, 0 => Ok(()); "Mint nothing")]
-#[test_case(false, 0, 0, 0 => Ok(()); "Mint is idempotent")]
-#[test_case(false, 0, 100, 0 => Ok(()); "Mint is idempotent any")]
-#[test_case(false, 0, 100, 100 => Ok(()); "Mint Double")]
-#[test_case(false, 0, 100, 10 => Ok(()); "Mint some")]
-#[test_case(false, 0, None, 10 => Ok(()); "Mint some from nothing")]
-#[test_case(false, 0, 0, 10 => Ok(()); "Mint some from zero")]
-#[test_case(false, 0, None, Word::MAX => Ok(()); "Mint max from nothing")]
-#[test_case(false, 0, 0, Word::MAX => Ok(()); "Mint max from zero")]
-#[test_case(true, 0, 100, 10 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't mint from external context")]
-#[test_case(false, 0, 1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
+#[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Mint nothing")]
+#[test_case(false, 0, 0, 0, [0; 32] => Ok(()); "Mint is idempotent")]
+#[test_case(false, 0, 100, 0, [0; 32] => Ok(()); "Mint is idempotent any")]
+#[test_case(false, 0, 100, 100, [0; 32] => Ok(()); "Mint Double")]
+#[test_case(false, 0, 100, 100, [15; 32] => Ok(()); "Mint Double for another sub id")]
+#[test_case(false, 0, 100, 10, [0; 32] => Ok(()); "Mint some")]
+#[test_case(false, 0, None, 10, [0; 32] => Ok(()); "Mint some from nothing")]
+#[test_case(false, 0, 0, 10, [0; 32] => Ok(()); "Mint some from zero")]
+#[test_case(false, 0, None, Word::MAX, [0; 32] => Ok(()); "Mint max from nothing")]
+#[test_case(false, 0, 0, Word::MAX, [0; 32] => Ok(()); "Mint max from zero")]
+#[test_case(true, 0, 100, 10, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't mint from external context")]
+#[test_case(false, 0, 1, Word::MAX, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
 fn test_mint(
     external: bool,
     fp: Word,
     initialize: impl Into<Option<Word>>,
     amount: Word,
+    sub_id: [u8; 32],
 ) -> Result<(), RuntimeError> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
-    let asset_id = AssetId::from([3u8; 32]);
+    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
+    memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
+        .copy_from_slice(sub_id.as_slice());
+    let sub_id = Bytes32::from(sub_id);
+    let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         storage
@@ -99,21 +131,44 @@ fn test_mint(
             block_height: Default::default(),
         }
     };
-    let mut pc = 4;
-    mint(
-        &mut storage,
-        &memory,
-        &context,
-        Reg::new(&fp),
-        RegMut::new(&mut pc),
-        amount,
-    )?;
+
+    let mut receipts = Default::default();
+    let mut script = Some(fuel_tx::Script::default());
+
+    let is = 0;
+    const ORIGINAL_PC: Word = 4;
+    let mut pc = ORIGINAL_PC;
+    MintCtx {
+        storage: &mut storage,
+        context: &context,
+        append: AppendReceipt {
+            receipts: &mut receipts,
+            script: script.as_mut(),
+            tx_offset: 0,
+            memory: &mut memory,
+        },
+        fp: Reg::new(&fp),
+        pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
+    }
+    .mint(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
         .merkle_contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) + amount);
+    assert_eq!(receipts.len(), 1);
+    assert_eq!(
+        receipts[0],
+        Receipt::Mint {
+            sub_id,
+            contract_id,
+            val: amount,
+            pc: ORIGINAL_PC,
+            is
+        }
+    );
     Ok(())
 }
 

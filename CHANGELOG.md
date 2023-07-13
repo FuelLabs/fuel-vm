@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Version 0.35.0]
+
+The release mostly fixes funding during the audit and integration with the bridge. But the release also contains some new features like:
+- Asynchronous predicate estimation/verification.
+- Multi-asset support per contract.
+- Support Secp256r1 signature recovery and Ed25519 verificaiton.
+
+
 ### Added
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.

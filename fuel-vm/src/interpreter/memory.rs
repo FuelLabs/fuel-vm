@@ -346,9 +346,7 @@ pub(crate) fn store_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, a, c, 1u64)?;
-    owner.verify_ownership(&range)?;
-    memory[range.start] = b as u8;
+    write_bytes(memory, owner, a.saturating_add(c), [b as u8])?;
     inc_pc(pc)
 }
 

@@ -260,19 +260,18 @@ fn test_store_byte_more(
         },
     };
 
-    let is_error = a+c >= memory.len() as u64;
+    let is_error = a + c >= memory.len() as u64;
     match store_byte(&mut memory, owner, RegMut::new(&mut pc), a, b, c) {
         Ok(_) => {
             assert!(!is_error);
             assert_eq!(memory[(a + c) as usize], b as u8);
-        },
+        }
         Err(e) => {
             dbg!(&e);
             assert!(is_error);
             assert_eq!(e, RuntimeError::Recoverable(PanicReason::MemoryOverflow));
-        },
+        }
     }
-
 
     Ok(())
 }

@@ -288,9 +288,7 @@ impl<'r> ProgramRegisters<'r> {
                 // Translate the `a` absolute register index to a program register index.
                 let a = a.translate();
                 // Split the array at the first register which is a.
-                let [i, rest @ ..] = &mut self.0[a..] else {
-                    return None
-                };
+                let [i, rest @ ..] = &mut self.0[a..] else { return None };
                 // Translate the `b` absolute register index to a program register index.
                 // Subtract 1 because the first register is `a`.
                 // Subtract `a` registers because we split the array at `a`.
@@ -305,9 +303,7 @@ impl<'r> ProgramRegisters<'r> {
                 // Translate the `b` absolute register index to a program register index.
                 let b = b.translate();
                 // Split the array at the first register which is b.
-                let [i, rest @ ..] = &mut self.0[b..] else {
-                    return None
-                };
+                let [i, rest @ ..] = &mut self.0[b..] else { return None };
                 // Translate the `a` absolute register index to a program register index.
                 // Subtract 1 because the first register is `b`.
                 // Subtract `b` registers because we split the array at `b`.

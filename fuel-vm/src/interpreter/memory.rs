@@ -575,7 +575,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
     if !owner.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOverflow.into())
+        return Err(PanicReason::MemoryOwnership.into())
     }
 
     memory[range.usizes()].copy_from_slice(&bytes);

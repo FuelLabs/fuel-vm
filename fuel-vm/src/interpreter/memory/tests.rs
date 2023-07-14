@@ -180,7 +180,7 @@ fn stack_alloc_ownership() {
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
     let range =
         MemoryRange::new(range.start, range.end - range.start).expect("Invalid range");
-    reg.has_ownership_range(&range)
+    reg.verify_ownership(&range).is_ok()
 }
 
 fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {

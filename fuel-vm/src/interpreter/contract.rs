@@ -9,6 +9,7 @@ use super::{
     },
     ExecutableTransaction,
     Interpreter,
+    MemoryRange,
     RuntimeBalances,
 };
 use crate::{
@@ -211,24 +212,13 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let cx = c
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
+        let a_range = MemoryRange::new(a, ContractId::LEN)?;
+        let c_range = MemoryRange::new(c, AssetId::LEN)?;
 
         let amount = b;
-        let destination = ContractId::try_from(&self.memory[a as usize..ax as usize])
+        let destination = ContractId::try_from(&self.memory[a_range.usizes()])
             .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[c as usize..cx as usize])
+        let asset_id = AssetId::try_from(&self.memory[c_range.usizes()])
             .expect("Unreachable! Checked memory range");
 
         InputContracts::new(self.tx.input_contracts(), panic_context)

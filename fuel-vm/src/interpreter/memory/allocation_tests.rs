@@ -19,7 +19,7 @@ fn test_malloc(mut hp: Word, sp: Word, a: Word) -> Result<Word, RuntimeError> {
 }
 
 #[test_case(true, 1, 10 => Ok(()); "Can clear some bytes")]
-#[test_case(false, 1, 10 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "No ownership")]
+#[test_case(false, 1, 10 => Err(RuntimeError::Recoverable(PanicReason::MemoryOwnership)); "No ownership")]
 #[test_case(true, 0, 10 => Ok(()); "Memory range starts at 0")]
 #[test_case(true, MEM_SIZE as Word - 10, 10 => Ok(()); "Memory range ends at last address")]
 #[test_case(true, 1, MEM_MAX_ACCESS_SIZE + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory range size exceeds limit")]
@@ -208,7 +208,7 @@ fn test_load_word(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a byte")]
 #[test_case(false, VM_MAX_RAM - 1, 100, 2 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow on heap")]
-#[test_case(false, 0, 100, VM_MAX_RAM - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow on stack")]
+#[test_case(false, 0, 100, VM_MAX_RAM - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOwnership)); "Memory overflow on stack")]
 #[test_case(true, VM_MAX_RAM, 1, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory overflow by address range")]
 fn test_store_byte(
     has_ownership: bool,
@@ -242,7 +242,7 @@ fn test_store_byte(
 
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a word")]
 #[test_case(true, 20, 30, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to memory overflow")]
-#[test_case(false, 20, 30, 40 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to not having ownership of the range")]
+#[test_case(false, 20, 30, 40 => Err(RuntimeError::Recoverable(PanicReason::MemoryOwnership)); "Fails due to not having ownership of the range")]
 fn test_store_word(
     has_ownership: bool,
     a: Word,

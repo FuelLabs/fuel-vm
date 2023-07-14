@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{
     context::Context,
     interpreter::memory::Memory,

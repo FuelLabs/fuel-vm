@@ -32,7 +32,6 @@ use fuel_asm::{
     op,
     Instruction,
     PanicReason::{
-        ArithmeticOverflow,
         ContractNotInInputs,
         ErrorFlag,
         ExpectedUnallocatedStack,
@@ -689,7 +688,7 @@ fn code_root_a_plus_32_overflow() {
         op::croo(reg_a, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_root, ArithmeticOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
 
 #[test]
@@ -1148,7 +1147,7 @@ fn state_w_qword_b_plus_32_over() {
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
 }
 
 #[test]

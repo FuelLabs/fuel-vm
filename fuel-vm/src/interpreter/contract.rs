@@ -7,6 +7,7 @@ use super::{
         set_variable_output,
         AppendReceipt,
     },
+    memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
     MemoryRange,
@@ -282,26 +283,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let dx = d
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
+        let to = Address::from(read_bytes(self.memory, a)?);
         let out_idx = b as usize;
-        let to = Address::try_from(&self.memory[a as usize..ax as usize])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[d as usize..dx as usize])
-            .expect("Unreachable! Checked memory range");
         let amount = c;
+        let asset_id = AssetId::from(read_bytes(self.memory, d)?);
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {

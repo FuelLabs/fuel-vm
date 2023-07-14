@@ -8,6 +8,7 @@ use super::{
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
+    MemoryRange,
 };
 use crate::{
     constraints::reg_key::*,
@@ -124,11 +125,11 @@ impl LogInput<'_> {
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
-        if d > MEM_MAX_ACCESS_SIZE || c > VM_MAX_RAM - d {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
+        let range = MemoryRange::new(c, d)?;
 
-        let cd = (c + d) as usize;
+        if d > MEM_MAX_ACCESS_SIZE {
+            return Err(PanicReason::MaxMemoryAccess.into())
+        }
 
         let receipt = Receipt::log_data(
             internal_contract_or_default(self.context, self.fp, self.memory),
@@ -137,7 +138,7 @@ impl LogInput<'_> {
             c,
             *self.pc,
             *self.is,
-            self.memory[c as usize..cd].to_vec(),
+            self.memory[range.usizes()].to_vec(),
         );
 
         append_receipt(

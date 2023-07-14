@@ -43,7 +43,7 @@ pub trait ToAddr {
 
 impl ToAddr for usize {
     fn to_addr(self) -> Result<usize, RuntimeError> {
-        if self >= MEM_SIZE {
+        if self > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into())
         }
         Ok(self)
@@ -319,15 +319,9 @@ pub(crate) fn load_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bc = b.saturating_add(c) as usize;
-
-    if bc >= VM_MAX_RAM as RegisterId {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result = memory[bc] as Word;
-
-        inc_pc(pc)
-    }
+    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1)?;
+    *result = memory[range.start] as Word;
+    inc_pc(pc)
 }
 
 pub(crate) fn load_word(
@@ -400,7 +394,7 @@ pub(crate) fn memclear(
     let range = MemoryRange::new(a, b)?;
     owner.verify_ownership(&range)?;
     if b > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
+        Err(PanicReason::MaxMemoryAccess.into())
     } else {
         memory[range.usizes()].fill(0);
         inc_pc(pc)
@@ -452,15 +446,13 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> Result<(), RuntimeError> {
-    let (bd, overflow) = b.overflowing_add(d);
-    let (cd, of) = c.overflowing_add(d);
-    let overflow = overflow || of;
+    let range1 = MemoryRange::new(b, d)?;
+    let range2 = MemoryRange::new(c, d)?;
 
-    if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
+    if d > MEM_MAX_ACCESS_SIZE {
+        Err(PanicReason::MaxMemoryAccess.into())
     } else {
-        *result =
-            (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
+        *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
 
         inc_pc(pc)
     }
@@ -582,14 +574,9 @@ pub(crate) fn read_bytes<const COUNT: usize>(
     memory: &[u8; MEM_SIZE],
     addr: Word,
 ) -> Result<[u8; COUNT], RuntimeError> {
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || end > VM_MAX_RAM as RegisterId {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
+    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
+    Ok(<[u8; COUNT]>::try_from(&memory[range.usizes()])
+        .unwrap_or_else(|_| unreachable!()))
 }
 
 /// Writes a constant-sized byte array to memory, performing overflow, memory range and

@@ -241,7 +241,7 @@ pub(crate) fn set_flag(
 
 pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
     pc.checked_add(Instruction::SIZE as Word)
-        .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
+        .ok_or_else(|| PanicReason::MemoryOverflow.into())
         .map(|i| *pc = i)
 }
 

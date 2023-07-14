@@ -8,16 +8,51 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Version 0.35.0]
+
+The release mostly fixes funding during the audit and integration with the bridge. But the release also contains some new features like:
+- Asynchronous predicate estimation/verification.
+- Multi-asset support per contract.
+- Support Secp256r1 signature recovery and Ed25519 verificaiton.
+
+
 ### Added
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/498): Adds `PSHL`, `PSHH`, `POPH` and `POPL` instructions, which allow cheap push and pop stack operations with multiple registers.
 
-- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500): Introduced `ParallelExecutor` trait
     and made available async versions of verify and estimate predicates.
     Updated tests to test for both parallel and sequential execution.
     Fixed a bug in `transaction/check_predicate_owners`.
+
+#### Breaking
+
+- [#506](https://github.com/FuelLabs/fuel-vm/pull/506): Added new `Mint` and `Burn` variants to `Receipt` enum.
+    It affects serialization and deserialization with new variants.
+
+### Changed
+
+#### Breaking
+
+- [#506](https://github.com/FuelLabs/fuel-vm/pull/506): The `mint` and `burn` 
+    opcodes accept a new `$rB` register. It is a sub-identifier used to generate an 
+    `AssetId` by [this rule](https://github.com/FuelLabs/fuel-specs/blob/SilentCicero-multi-token/src/identifiers/asset.md). 
+    This feature allows having multi-asset per one contract. It is a huge breaking change, and 
+    after this point, `ContractId` can't be equal to `AssetId`.
+
+    The conversion like `AssetId::from(*contract_id)` is no longer valid. Instead, the `ContractId` implements the `ContractIdExt` trait:
+    ```rust
+    /// Trait extends the functionality of the `ContractId` type.
+    pub trait ContractIdExt {
+        /// Creates an `AssetId` from the `ContractId` and `sub_id`.
+        fn asset_id(&self, sub_id: &Bytes32) -> AssetId;
+    }
+    ```
+
+- [#506](https://github.com/FuelLabs/fuel-vm/pull/506): The `mint` and `burn` 
+    opcodes affect the `receipts_root` of the `Script` transaction.
 
 ### Removed
 
@@ -27,11 +62,11 @@ Description of the upcoming release here.
 
 ### Fixed
 
-- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Fixed a bug where `MessageCoinPredicate` wasn't checked for in `check_predicate_owners`.
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500): Fixed a bug where `MessageCoinPredicate` wasn't checked for in `check_predicate_owners`.
 
 #### Breaking
 
-- [#502](https://github.com/FuelLabs/fuel-vm/pull/502) The algorithm used by the
+- [#502](https://github.com/FuelLabs/fuel-vm/pull/502): The algorithm used by the
     binary Merkle tree for generating Merkle proofs has been updated to remove
     the leaf data from the proof set. This change allows BMT proofs to conform
     to the format expected by the Solidity contracts used for verifying proofs.
@@ -67,13 +102,13 @@ Mainly new opcodes prices and small performance improvements in the `BinaryMerkl
 
 ### Changed
 
-- [#492](https://github.com/FuelLabs/fuel-vm/pull/492) Minor improvements to BMT
+- [#492](https://github.com/FuelLabs/fuel-vm/pull/492): Minor improvements to BMT
     internals, including a reduction in usage of `Box`, using `expect(...)` over
     `unwrap()`, and additional comments.
 
 #### Breaking
 
-- [#493](https://github.com/FuelLabs/fuel-vm/pull/493) The default `GasCostsValues`
+- [#493](https://github.com/FuelLabs/fuel-vm/pull/493): The default `GasCostsValues`
     is updated according to the benches with `fuel-core 0.19`. 
     It may break some unit tests that compare actual gas usage with expected.
 

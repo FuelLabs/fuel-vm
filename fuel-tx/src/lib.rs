@@ -100,3 +100,21 @@ pub use transaction::consensus_parameters::default_parameters;
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;
+
+/// Trait extends the functionality of the `ContractId` type.
+pub trait ContractIdExt {
+    /// Creates an `AssetId` from the `ContractId` and `sub_id`.
+    fn asset_id(&self, sub_id: &Bytes32) -> AssetId;
+}
+
+impl ContractIdExt for ContractId {
+    fn asset_id(&self, sub_id: &Bytes32) -> AssetId {
+        let hasher = fuel_crypto::Hasher::default();
+        AssetId::new(
+            *hasher
+                .chain(self.as_slice())
+                .chain(sub_id.as_slice())
+                .finalize(),
+        )
+    }
+}

@@ -136,3 +136,25 @@ mem_layout!(
     len: Word = WORD_SIZE,
     digest: Bytes32 = {Bytes32::LEN}
 );
+
+pub struct MintSizes;
+mem_layout!(
+    MintSizesLayout for MintSizes
+    repr: u8 = WORD_SIZE,
+    sub_id: Bytes32 = {Bytes32::LEN},
+    contract_id: ContractId = {ContractId::LEN},
+    val: Word = WORD_SIZE,
+    pc: Word = WORD_SIZE,
+    is: Word = WORD_SIZE
+);
+
+pub struct BurnSizes;
+mem_layout!(
+    BurnSizesLayout for BurnSizes
+    repr: u8 = WORD_SIZE,
+    sub_id: Bytes32 = {Bytes32::LEN},
+    contract_id: ContractId = {ContractId::LEN},
+    val: Word = WORD_SIZE,
+    pc: Word = WORD_SIZE,
+    is: Word = WORD_SIZE
+);

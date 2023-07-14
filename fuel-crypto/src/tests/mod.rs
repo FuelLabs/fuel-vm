@@ -5,7 +5,6 @@ use k256 as _;
 mod hasher;
 mod mnemonic;
 mod signature;
-mod signer;
 
 #[cfg(feature = "serde")]
 mod serde;

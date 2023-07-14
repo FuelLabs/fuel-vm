@@ -256,6 +256,7 @@ fn test_mcl_and_mcli(
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let data = data.as_ref().unwrap();
         let c = count as usize;
         assert_eq!(data.len(), c + 1);
         if half {
@@ -309,6 +310,7 @@ fn test_mcp_and_mcpi(
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let data = data.as_ref().unwrap();
         let c = count as usize;
         assert_eq!(data.len(), (c + 1) * 2);
         let mut expected = vec![1u8; c * 2 + 1];

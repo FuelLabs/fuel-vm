@@ -21,6 +21,7 @@ use fuel_types::{
 };
 
 use core::borrow::Borrow;
+use std::future::Future;
 
 mod balances;
 pub mod builder;
@@ -33,6 +34,7 @@ use crate::{
         initial_free_balances,
         AvailableBalances,
     },
+    error::PredicateVerificationFailed,
     gas::GasCosts,
     interpreter::{
         CheckedMetadata as CheckedMetadataAccessTrait,
@@ -204,6 +206,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
 }
 
 /// Provides predicate verification functionality for the transaction.
+#[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
     fn check_predicates(
@@ -211,9 +214,17 @@ pub trait CheckPredicates: Sized {
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
     ) -> Result<Self, CheckError>;
+
+    /// Performs predicates verification of the transaction in parallel.
+    async fn check_predicates_async<E: ParallelExecutor>(
+        self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<Self, CheckError>;
 }
 
 /// Provides predicate estimation functionality for the transaction.
+#[async_trait::async_trait]
 pub trait EstimatePredicates: Sized {
     /// Estimates predicates of the transaction.
     fn estimate_predicates(
@@ -221,11 +232,39 @@ pub trait EstimatePredicates: Sized {
         params: &ConsensusParameters,
         gas_costs: &GasCosts,
     ) -> Result<(), CheckError>;
+
+    /// Estimates predicates of the transaction in parallel.
+    async fn estimate_predicates_async<E: ParallelExecutor>(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError>;
 }
 
-impl<Tx: ExecutableTransaction> CheckPredicates for Checked<Tx>
+/// Executes CPU-heavy tasks in parallel.
+#[async_trait::async_trait]
+pub trait ParallelExecutor {
+    /// Future created from a CPU-heavy task.
+    type Task: Future + Send + 'static;
+
+    /// Creates a Future from a CPU-heavy task.
+    fn create_task<F>(func: F) -> Self::Task
+    where
+        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+            + Send
+            + 'static;
+
+    /// Executes tasks created by `create_task` in parallel.
+    async fn execute_tasks(
+        futures: Vec<Self::Task>,
+    ) -> Vec<Result<(Word, usize), PredicateVerificationFailed>>;
+}
+
+#[async_trait::async_trait]
+impl<Tx> CheckPredicates for Checked<Tx>
 where
-    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata,
+    Tx: ExecutableTransaction + Send + Sync + 'static,
+    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
     fn check_predicates(
         mut self,
@@ -243,9 +282,37 @@ where
         }
         Ok(self)
     }
+
+    async fn check_predicates_async<E>(
+        mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<Self, CheckError>
+    where
+        E: ParallelExecutor,
+    {
+        if !self.checks_bitmask.contains(Checks::Predicates) {
+            let predicates_checked =
+                Interpreter::<PredicateStorage>::check_predicates_async::<_, E>(
+                    &self,
+                    *params,
+                    gas_costs.clone(),
+                )
+                .await?;
+
+            self.checks_bitmask.insert(Checks::Predicates);
+            self.metadata
+                .set_gas_used_by_predicates(predicates_checked.gas_used());
+
+            Ok(self)
+        } else {
+            Ok(self)
+        }
+    }
 }
 
-impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
+#[async_trait::async_trait]
+impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
     fn estimate_predicates(
         &mut self,
         params: &ConsensusParameters,
@@ -271,8 +338,40 @@ impl<Tx: ExecutableTransaction> EstimatePredicates for Tx {
         )?;
         Ok(())
     }
+
+    async fn estimate_predicates_async<E>(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError>
+    where
+        E: ParallelExecutor,
+    {
+        // validate fees and compute free balances
+        let AvailableBalances {
+            non_retryable_balances,
+            retryable_balance,
+            ..
+        } = initial_free_balances(self, params)?;
+
+        let balances: InitialBalances = InitialBalances {
+            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
+            retryable: Some(RetryableAmount(retryable_balance)),
+        };
+
+        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(
+            self,
+            balances,
+            *params,
+            gas_costs.clone(),
+        )
+        .await?;
+
+        Ok(())
+    }
 }
 
+#[async_trait::async_trait]
 impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
@@ -285,8 +384,29 @@ impl EstimatePredicates for Transaction {
             Transaction::Mint(_) => Ok(()),
         }
     }
+
+    async fn estimate_predicates_async<E: ParallelExecutor>(
+        &mut self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<(), CheckError> {
+        match self {
+            Transaction::Script(script) => {
+                script
+                    .estimate_predicates_async::<E>(params, gas_costs)
+                    .await
+            }
+            Transaction::Create(create) => {
+                create
+                    .estimate_predicates_async::<E>(params, gas_costs)
+                    .await
+            }
+            Transaction::Mint(_) => Ok(()),
+        }
+    }
 }
 
+#[async_trait::async_trait]
 impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
@@ -296,8 +416,18 @@ impl CheckPredicates for Checked<Mint> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
     }
+
+    async fn check_predicates_async<E: ParallelExecutor>(
+        mut self,
+        _params: &ConsensusParameters,
+        _gas_costs: &GasCosts,
+    ) -> Result<Self, CheckError> {
+        self.checks_bitmask.insert(Checks::Predicates);
+        Ok(self)
+    }
 }
 
+#[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
     fn check_predicates(
         self,
@@ -316,6 +446,37 @@ impl CheckPredicates for Checked<Transaction> {
                 CheckPredicates::check_predicates(tx, params, gas_costs)?.into()
             }
         };
+        Ok(checked_transaction.into())
+    }
+
+    async fn check_predicates_async<E>(
+        self,
+        params: &ConsensusParameters,
+        gas_costs: &GasCosts,
+    ) -> Result<Self, CheckError>
+    where
+        E: ParallelExecutor,
+    {
+        let checked_transaction: CheckedTransaction = self.into();
+
+        let checked_transaction: CheckedTransaction = match checked_transaction {
+            CheckedTransaction::Script(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                    .await?
+                    .into()
+            }
+            CheckedTransaction::Create(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                    .await?
+                    .into()
+            }
+            CheckedTransaction::Mint(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                    .await?
+                    .into()
+            }
+        };
+
         Ok(checked_transaction.into())
     }
 }

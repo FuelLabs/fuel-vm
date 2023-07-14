@@ -5,7 +5,7 @@ use core::{
 };
 pub use fuel_types::Bytes32;
 
-/// Normalized signature message
+/// Normalized (hashed) message authenticated by a signature
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]

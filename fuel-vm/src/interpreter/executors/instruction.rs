@@ -799,10 +799,22 @@ where
                 self.timestamp(a.into(), r!(b))?;
             }
 
-            Instruction::ECR(ecr) => {
-                self.gas_charge(self.gas_costs.ecr)?;
-                let (a, b, c) = ecr.unpack();
-                self.ecrecover(r!(a), r!(b), r!(c))?;
+            Instruction::ECK1(eck1) => {
+                self.gas_charge(self.gas_costs.eck1)?;
+                let (a, b, c) = eck1.unpack();
+                self.secp256k1_recover(r!(a), r!(b), r!(c))?;
+            }
+
+            Instruction::ECR1(ecr1) => {
+                self.gas_charge(self.gas_costs.ecr1)?;
+                let (a, b, c) = ecr1.unpack();
+                self.secp256r1_recover(r!(a), r!(b), r!(c))?;
+            }
+
+            Instruction::ED19(ed19) => {
+                self.gas_charge(self.gas_costs.ed19)?;
+                let (a, b, c) = ed19.unpack();
+                self.ed25519_verify(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::K256(k256) => {

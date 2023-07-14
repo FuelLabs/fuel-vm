@@ -8,6 +8,57 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+### Added
+
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
+
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Introduced `ParallelExecutor` trait
+    and made available async versions of verify and estimate predicates.
+    Updated tests to test for both parallel and sequential execution.
+    Fixed a bug in `transaction/check_predicate_owners`.
+
+### Removed
+
+#### Breaking
+
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Removes apparently unused `Keystore` and `Signer` traits from `fuel-crypto`. Also renames `ECR` opcode to `ECK1`.
+
+### Fixed
+
+- [#500](https://github.com/FuelLabs/fuel-vm/pull/500) Fixed a bug where `MessageCoinPredicate` wasn't checked for in `check_predicate_owners`.
+
+#### Breaking
+
+- [#502](https://github.com/FuelLabs/fuel-vm/pull/502) The algorithm used by the
+    binary Merkle tree for generating Merkle proofs has been updated to remove
+    the leaf data from the proof set. This change allows BMT proofs to conform
+    to the format expected by the Solidity contracts used for verifying proofs.
+
+- [#503](https://github.com/FuelLabs/fuel-vm/pull/503): Use correct amount of gas in call
+    receipts when limited by cgas. Before this change, the `Receipt::Call` could show an incorrect value for the gas limit.
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The `CROO` and `CSIZ` opcodes require 
+    the existence of corresponding `ContractId` in the transaction's 
+    inputs(the same behavior as for the `CROO` opcode).
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The size of the contract 
+    was incorrectly padded. It affects the end of the call frame in the memory, 
+    making it not 8 bytes align. Also, it affects the cost of the contract 
+    call(in some cases, we charged less in some more).
+
+- [#504](https://github.com/FuelLabs/fuel-vm/pull/504): The charging for `DependentCost`
+    was done incorrectly, devaluing the `dep_per_unit` part. After the fixing of 
+    this, the execution should become much more expensive.
+
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `data` field of the `Receipt` 
+    is not part of the canonical serialization and deserialization anymore. The SDK should use the 
+    `Receipt` type instead of `OpaqueReceipt`. The `Receipt.raw_payload` will be removed for the 
+    `fuel-core 0.20`. The `data` field is optional now. The SDK should update serialization and 
+    deserialization for `MessageOut`, `LogData`, and `ReturnData` receipts.
+
+- [#505](https://github.com/FuelLabs/fuel-vm/pull/505): The `len` field of the `Receipt` 
+    is not padded anymore and represents an initial value.
+
 ## [Version 0.34.1]
 
 Mainly new opcodes prices and small performance improvements in the `BinaryMerkleTree`.

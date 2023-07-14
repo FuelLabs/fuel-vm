@@ -413,7 +413,7 @@ pub(crate) fn memcopy(
     let src_range = MemoryRange::new(b, c)?;
 
     if c > MEM_MAX_ACCESS_SIZE {
-        return Err(PanicReason::MemoryOverflow.into())
+        return Err(PanicReason::MaxMemoryAccess.into())
     }
 
     owner.verify_ownership(&dst_range)?;

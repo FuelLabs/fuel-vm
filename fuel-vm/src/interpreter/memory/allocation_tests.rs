@@ -267,7 +267,6 @@ fn test_store_byte_more(
             assert_eq!(memory[(a + c) as usize], b as u8);
         }
         Err(e) => {
-            dbg!(&e);
             assert!(is_error);
             assert_eq!(e, RuntimeError::Recoverable(PanicReason::MemoryOverflow));
         }

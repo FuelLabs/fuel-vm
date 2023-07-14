@@ -240,6 +240,43 @@ fn test_store_byte(
     Ok(())
 }
 
+#[rstest::rstest]
+fn test_store_byte_more(
+    #[values(0, 1, VM_MAX_RAM - 1, VM_MAX_RAM)] a: Word,
+    #[values(0, 1, 0xff, 0x100)] b: Word,
+    #[values(0, 1, 2)] c: Word,
+) -> Result<(), RuntimeError> {
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut pc = 4;
+
+    // Full ownership in heap
+    let owner = OwnershipRegisters {
+        sp: 0,
+        ssp: 0,
+        hp: 0,
+        prev_hp: VM_MAX_RAM,
+        context: Context::Script {
+            block_height: Default::default(),
+        },
+    };
+
+    let is_error = a+c >= memory.len() as u64;
+    match store_byte(&mut memory, owner, RegMut::new(&mut pc), a, b, c) {
+        Ok(_) => {
+            assert!(!is_error);
+            assert_eq!(memory[(a + c) as usize], b as u8);
+        },
+        Err(e) => {
+            dbg!(&e);
+            assert!(is_error);
+            assert_eq!(e, RuntimeError::Recoverable(PanicReason::MemoryOverflow));
+        },
+    }
+
+
+    Ok(())
+}
+
 #[test_case(true, 20, 30, 40 => Ok(()); "Can store a word")]
 #[test_case(true, 20, 30, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Fails due to memory overflow")]
 #[test_case(false, 20, 30, 40 => Err(RuntimeError::Recoverable(PanicReason::MemoryOwnership)); "Fails due to not having ownership of the range")]

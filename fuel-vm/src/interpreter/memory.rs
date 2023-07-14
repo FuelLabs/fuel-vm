@@ -319,7 +319,7 @@ pub(crate) fn load_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1)?;
+    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1u64)?;
     *result = memory[range.start] as Word;
     inc_pc(pc)
 }

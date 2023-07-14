@@ -10,7 +10,6 @@ use super::{
     memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
-    MemoryRange,
     RuntimeBalances,
 };
 use crate::{
@@ -213,14 +212,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let a_range = MemoryRange::new(a, ContractId::LEN)?;
-        let c_range = MemoryRange::new(c, AssetId::LEN)?;
-
+        let destination = ContractId::from(read_bytes(self.memory, a)?);
         let amount = b;
-        let destination = ContractId::try_from(&self.memory[a_range.usizes()])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[c_range.usizes()])
-            .expect("Unreachable! Checked memory range");
+        let asset_id = AssetId::from(read_bytes(self.memory, c)?);
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;

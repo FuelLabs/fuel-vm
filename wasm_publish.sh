@@ -40,3 +40,4 @@ EOM
 
 
 build_and_publish_wasm_pkg "fuel-asm"
+build_and_publish_wasm_pkg "fuel-types"

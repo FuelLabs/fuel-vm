@@ -36,12 +36,12 @@ use crate::{
         },
     },
     transaction::{
-        consensus_parameters::ConsensusParameters,
         field,
         Executable,
     },
 };
 pub use error::CheckError;
+use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 impl Input {
     #[cfg(feature = "std")]
@@ -51,15 +51,16 @@ impl Input {
         txhash: &Bytes32,
         outputs: &[Output],
         witnesses: &[Witness],
-        parameters: &ConsensusParameters,
+        predicate_params: &PredicateParameters,
+        chain_id: &ChainId,
         recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
-        self.check_without_signature(index, outputs, witnesses, parameters)?;
+        self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(
             index,
             txhash,
             witnesses,
-            &parameters.chain_id,
+            chain_id,
             recovery_cache,
         )?;
 
@@ -148,7 +149,7 @@ impl Input {
         index: usize,
         outputs: &[Output],
         witnesses: &[Witness],
-        parameters: &ConsensusParameters,
+        predicate_params: &PredicateParameters,
     ) -> Result<(), CheckError> {
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
@@ -162,7 +163,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() > parameters.max_predicate_length as usize =>
+                if predicate.len() > predicate_params.max_predicate_length as usize =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
@@ -174,7 +175,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) if predicate_data.len()
-                > parameters.max_predicate_data_length as usize =>
+                > predicate_params.max_predicate_data_length as usize =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
@@ -208,7 +209,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() > parameters.max_message_data_length as usize =>
+                    || data.len() > predicate_params.max_message_data_length as usize =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }
@@ -250,10 +251,14 @@ pub trait FormatValidityChecks {
     fn check(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        predicate_params: &PredicateParameters,
+        script_params: &ScriptParameters,
+        contract_params: &ContractParameters,
+        chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        self.check_without_signatures(block_height, parameters)?;
-        self.check_signatures(&parameters.chain_id)?;
+        self.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)?;
+        self.check_signatures(chain_id)?;
 
         Ok(())
     }
@@ -268,7 +273,11 @@ pub trait FormatValidityChecks {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        predicate_params: &PredicateParameters,
+        script_params: &ScriptParameters,
+        contract_params: &ContractParameters,
+        chain_id: &ChainId,
     ) -> Result<(), CheckError>;
 }
 
@@ -285,17 +294,21 @@ impl FormatValidityChecks for Transaction {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        predicate_params: &PredicateParameters,
+        script_params: &ScriptParameters,
+        contract_params: &ContractParameters,
+        chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => {
-                script.check_without_signatures(block_height, parameters)
+                script.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
             }
             Transaction::Create(create) => {
-                create.check_without_signatures(block_height, parameters)
+                create.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
             }
             Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, parameters)
+                mint.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
             }
         }
     }
@@ -304,7 +317,10 @@ impl FormatValidityChecks for Transaction {
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
-    parameters: &ConsensusParameters,
+    //
+    tx_params: &TxParameters,
+    //
+    predicate_params: &PredicateParameters,
 ) -> Result<(), CheckError>
 where
     T: field::GasPrice
@@ -314,7 +330,7 @@ where
         + field::Outputs
         + field::Witnesses,
 {
-    if tx.gas_limit() > &parameters.max_gas_per_tx {
+    if tx.gas_limit() > &tx_params.max_gas_per_tx {
         Err(CheckError::TransactionGasLimit)?
     }
 
@@ -322,15 +338,15 @@ where
         Err(CheckError::TransactionMaturity)?;
     }
 
-    if tx.inputs().len() > parameters.max_inputs as usize {
+    if tx.inputs().len() > tx_params.max_inputs as usize {
         Err(CheckError::TransactionInputsMax)?
     }
 
-    if tx.outputs().len() > parameters.max_outputs as usize {
+    if tx.outputs().len() > tx_params.max_outputs as usize {
         Err(CheckError::TransactionOutputsMax)?
     }
 
-    if tx.witnesses().len() > parameters.max_witnesses as usize {
+    if tx.witnesses().len() > tx_params.max_witnesses as usize {
         Err(CheckError::TransactionWitnessesMax)?
     }
 
@@ -401,7 +417,7 @@ where
         .iter()
         .enumerate()
         .try_for_each(|(index, input)| {
-            input.check_without_signature(index, tx.outputs(), tx.witnesses(), parameters)
+            input.check_without_signature(index, tx.outputs(), tx.witnesses(), predicate_params)
         })?;
 
     tx.outputs()

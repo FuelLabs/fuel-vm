@@ -8,7 +8,6 @@ use crate::{
         validity::FormatValidityChecks,
     },
     CheckError,
-    ConsensusParameters,
     Output,
     TxPointer,
 };
@@ -38,6 +37,7 @@ use fuel_types::bytes::{
     self,
     Deserializable,
 };
+use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {
@@ -132,9 +132,13 @@ impl FormatValidityChecks for Mint {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        _predicate_params: &PredicateParameters,
+        _script_params: &ScriptParameters,
+        _contract_params: &ContractParameters,
+        _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        if self.outputs().len() > parameters.max_outputs as usize {
+        if self.outputs().len() > tx_params.max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax)
         }
         if self.tx_pointer().block_height() != block_height {

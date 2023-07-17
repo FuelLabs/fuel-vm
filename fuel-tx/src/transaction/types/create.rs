@@ -21,7 +21,6 @@ use crate::{
     },
     Chargeable,
     CheckError,
-    ConsensusParameters,
     Contract,
     Input,
     Output,
@@ -55,6 +54,7 @@ use core::cmp::max;
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::io;
+use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -237,9 +237,13 @@ impl FormatValidityChecks for Create {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        predicate_params: &PredicateParameters,
+        _script_params: &ScriptParameters,
+        contract_params: &ContractParameters,
+        chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, parameters)?;
+        check_common_part(self, block_height, tx_params, predicate_params)?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -247,7 +251,7 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > parameters.contract_max_size
+        if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
             return Err(CheckError::TransactionCreateBytecodeLen)
@@ -255,7 +259,7 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() > parameters.max_storage_slots as usize {
+        if self.storage_slots.len() > contract_params.max_storage_slots as usize {
             return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 
@@ -290,7 +294,7 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
+                let metadata = CreateMetadata::compute(self, chain_id)?;
                 (metadata.state_root, metadata.contract_id)
             };
 

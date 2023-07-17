@@ -20,7 +20,6 @@ use crate::{
         Chargeable,
     },
     CheckError,
-    ConsensusParameters,
     Input,
     Output,
     Witness,
@@ -48,6 +47,7 @@ use alloc::vec::Vec;
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::io;
+use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -98,7 +98,7 @@ impl Default for Script {
 
         Self {
             gas_price: Default::default(),
-            gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
+            gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
             maturity: Default::default(),
             script,
             script_data: Default::default(),
@@ -195,15 +195,19 @@ impl FormatValidityChecks for Script {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        tx_params: &TxParameters,
+        predicate_params: &PredicateParameters,
+        script_params: &ScriptParameters,
+        _contract_params: &ContractParameters,
+        _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, parameters)?;
+        check_common_part(self, block_height, tx_params, predicate_params)?;
 
-        if self.script.len() > parameters.max_script_length as usize {
+        if self.script.len() > script_params.max_script_length as usize {
             Err(CheckError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len() > parameters.max_script_data_length as usize {
+        if self.script_data.len() > script_params.max_script_data_length as usize {
             Err(CheckError::TransactionScriptDataLength)?;
         }
 

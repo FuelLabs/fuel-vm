@@ -71,7 +71,7 @@ pub use transaction::{
     Cacheable,
     Chargeable,
     CheckError,
-    ConsensusParameters,
+    TxParameters, PredicateParameters, ScriptParameters, ContractParameters, FeeParameters,
     Create,
     Executable,
     FormatValidityChecks,

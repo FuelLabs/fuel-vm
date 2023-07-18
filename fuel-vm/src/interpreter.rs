@@ -23,15 +23,19 @@ use fuel_tx::{
     field,
     Chargeable,
     CheckError,
-    ConsensusParameters,
+    ContractParameters,
     Create,
     Executable,
+    FeeParameters,
     Output,
+    PredicateParameters,
     Receipt,
     Script,
+    ScriptParameters,
     Transaction,
     TransactionFee,
     TransactionRepr,
+    TxParameters,
     UniqueIdentifier,
 };
 use fuel_types::{
@@ -40,6 +44,7 @@ use fuel_types::{
         SizedBytes,
     },
     AssetId,
+    ChainId,
     ContractId,
     Word,
 };
@@ -109,7 +114,14 @@ pub struct Interpreter<S, Tx = ()> {
     balances: RuntimeBalances,
     gas_costs: GasCosts,
     profiler: Profiler,
-    params: ConsensusParameters,
+    fee_params: FeeParameters,
+    max_inputs: u64,
+    contract_max_size: u64,
+    tx_offset: usize,
+    chain_id: ChainId,
+    max_message_data_length: u64,
+    // script_params: ScriptParameters,
+    // fee_params: FeeParameters,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
@@ -157,9 +169,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.initial_balances
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        &self.params
+    pub fn max_inputs(&self) -> u64 {
+        self.max_inputs
     }
 
     /// Gas costs for opcodes
@@ -293,17 +304,17 @@ pub trait ExecutableTransaction:
     /// `balances` will contain the current state of the free balances
     fn update_outputs<I>(
         &mut self,
-        params: &ConsensusParameters,
         revert: bool,
         remaining_gas: Word,
         initial_balances: &InitialBalances,
         balances: &I,
+        fee_params: &FeeParameters,
     ) -> Result<(), CheckError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund =
-            TransactionFee::gas_refund_value(params, remaining_gas, self.price())
+            TransactionFee::gas_refund_value(fee_params, remaining_gas, self.price())
                 .ok_or(CheckError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {

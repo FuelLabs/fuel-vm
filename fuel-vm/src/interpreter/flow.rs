@@ -61,7 +61,6 @@ use fuel_storage::{
     StorageSize,
 };
 use fuel_tx::{
-    ConsensusParameters,
     PanicReason,
     Receipt,
     Script,
@@ -99,7 +98,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: &mut self.memory,
             },
             frames: &mut self.frames,
@@ -118,7 +117,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: &mut self.memory,
             },
             frames: &mut self.frames,
@@ -136,7 +135,7 @@ where
         let append = AppendReceipt {
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
-            tx_offset: self.params.tx_offset(),
+            tx_offset: self.tx_offset,
             memory: &mut self.memory,
         };
         revert(
@@ -369,6 +368,7 @@ where
             self.registers[rb],
             self.registers[rc],
             self.registers[rd],
+            self.tx_offset,
         )
     }
 
@@ -379,6 +379,7 @@ where
         amount_of_coins_to_forward: Word,
         asset_id_mem_address: Word,
         amount_of_gas_to_forward: Word,
+        tx_offset: usize,
     ) -> Result<(), RuntimeError> {
         let params = PrepareCallParams {
             call_params_mem_address,
@@ -406,7 +407,7 @@ where
             ),
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
-            consensus: &self.params,
+            tx_offset: 0,
             frames: &mut self.frames,
             current_contract,
             profiler: &mut self.profiler,
@@ -478,7 +479,7 @@ struct PrepareCallCtx<'vm, S, I> {
     input_contracts: InputContracts<'vm, I>,
     receipts: &'vm mut ReceiptsCtx,
     script: Option<&'vm mut Script>,
-    consensus: &'vm ConsensusParameters,
+    tx_offset: usize,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
     profiler: &'vm mut Profiler,
@@ -616,7 +617,7 @@ where
             AppendReceipt {
                 receipts: self.receipts,
                 script: self.script,
-                tx_offset: self.consensus.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: self.memory.memory,
             },
             receipt,

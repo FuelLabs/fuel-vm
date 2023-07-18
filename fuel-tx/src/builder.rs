@@ -12,12 +12,16 @@ use crate::{
         Script,
     },
     Cacheable,
-    ConsensusParameters,
+    ContractParameters,
+    FeeParameters,
     Input,
     Mint,
     Output,
+    PredicateParameters,
+    ScriptParameters,
     StorageSlot,
     Transaction,
+    TxParameters,
     TxPointer,
     Witness,
 };
@@ -28,6 +32,7 @@ use crate::Signable;
 use fuel_crypto::SecretKey;
 use fuel_types::{
     BlockHeight,
+    ChainId,
     Nonce,
     Salt,
     Word,
@@ -114,7 +119,12 @@ pub struct TransactionBuilder<Tx> {
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
-    parameters: ConsensusParameters,
+    tx_params: TxParameters,
+    predicate_params: PredicateParameters,
+    script_params: ScriptParameters,
+    contract_params: ContractParameters,
+    fee_params: FeeParameters,
+    chain_id: ChainId,
 
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
@@ -199,18 +209,47 @@ impl<Tx> TransactionBuilder<Tx> {
             should_prepare_script,
             should_prepare_predicate,
             sign_keys,
-            parameters: ConsensusParameters::DEFAULT,
+            tx_params: Default::default(),
+            predicate_params: Default::default(),
+            script_params: Default::default(),
+            contract_params: Default::default(),
+            fee_params: Default::default(),
+            chain_id: Default::default(),
         }
     }
 
-    pub fn get_params(&self) -> &ConsensusParameters {
-        &self.parameters
+    // pub fn get_params(&self) -> & {
+    //     &self.parameters
+    // }
+
+    pub fn get_tx_params(&self) -> &TxParameters {
+        &self.tx_params
     }
 
-    pub fn with_params(&mut self, parameters: ConsensusParameters) -> &mut Self {
-        self.parameters = parameters;
-        self
+    pub fn get_predicate_params(&self) -> &PredicateParameters {
+        &self.predicate_params
     }
+
+    pub fn get_script_params(&self) -> &ScriptParameters {
+        &self.script_params
+    }
+
+    pub fn get_contract_params(&self) -> &ContractParameters {
+        &self.contract_params
+    }
+
+    pub fn get_fee_params(&self) -> &FeeParameters {
+        &self.fee_params
+    }
+
+    pub fn get_chain_id(&self) -> &ChainId {
+        &self.chain_id
+    }
+
+    // pub fn with_params(&mut self, parameters: ConsensusParameters) -> &mut Self {
+    //     self.parameters = parameters;
+    //     self
+    // }
 }
 
 impl<Tx: Buildable> TransactionBuilder<Tx> {
@@ -373,9 +412,9 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self.sign_keys
             .iter()
-            .for_each(|(k, _)| tx.sign_inputs(k, &self.parameters.chain_id));
+            .for_each(|(k, _)| tx.sign_inputs(k, &self.chain_id));
 
-        tx.precompute(&self.parameters.chain_id)
+        tx.precompute(&self.chain_id)
             .expect("Should be able to calculate cache");
 
         tx
@@ -387,7 +426,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.parameters.chain_id)
+        tx.precompute(&self.chain_id)
             .expect("Should be able to calculate cache");
 
         tx
@@ -411,7 +450,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.parameters.chain_id)
+        tx.precompute(&self.chain_id)
             .expect("Should be able to calculate cache");
         tx
     }

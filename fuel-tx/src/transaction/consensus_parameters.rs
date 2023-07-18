@@ -11,52 +11,19 @@ const MAX_GAS: u64 = 100_000_000;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct ConsensusParameters {
-    /// Maximum contract size, in bytes.
-    pub contract_max_size: u64,
-    /// Maximum number of initial storage slots.
-    pub max_storage_slots: u64,
-    /// Maximum gas per predicate
-    pub max_gas_per_predicate: u64,
+pub struct FeeParameters {
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
     /// A fixed ratio linking metered bytes to gas price
     pub gas_per_byte: u64,
-    /// The unique identifier of this chain
-    pub chain_id: ChainId,
 }
 
-impl ConsensusParameters {
+impl FeeParameters {
     /// Default consensus parameters with settings suggested in fuel-specs
     pub const DEFAULT: Self = Self {
-        contract_max_size: 16 * 1024 * 1024,
-        max_storage_slots: 255,
-        max_gas_per_predicate: MAX_GAS,
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
-        chain_id: ChainId::new(0),
     };
-
-    /// Replace the max contract size with the given argument
-    pub const fn with_contract_max_size(mut self, contract_max_size: u64) -> Self {
-        self.contract_max_size = contract_max_size;
-        self
-    }
-
-    /// Replace the max storage slots with the given argument
-    pub const fn with_max_storage_slots(mut self, max_storage_slots: u64) -> Self {
-        self.max_storage_slots = max_storage_slots;
-        self
-    }
-
-    /// Replace the max gas per predicate with the given argument
-    pub const fn with_max_gas_per_predicate(
-        mut self,
-        max_gas_per_predicate: u64,
-    ) -> Self {
-        self.max_gas_per_predicate = max_gas_per_predicate;
-        self
-    }
 
     /// Replace the gas price factor with the given argument
     pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
@@ -70,7 +37,7 @@ impl ConsensusParameters {
     }
 }
 
-impl Default for ConsensusParameters {
+impl Default for FeeParameters {
     fn default() -> Self {
         Self::DEFAULT
     }
@@ -87,6 +54,8 @@ pub struct PredicateParameters {
     pub max_predicate_data_length: u64,
     /// Maximum length of message data, in bytes.
     pub max_message_data_length: u64,
+    /// Maximum gas spent per predicate
+    pub max_gas_per_predicate: u64,
 }
 
 impl PredicateParameters {
@@ -95,6 +64,7 @@ impl PredicateParameters {
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
         max_message_data_length: 1024 * 1024,
+        max_gas_per_predicate: MAX_GAS,
     };
 
     /// Replace the max predicate length with the given argument
@@ -266,18 +236,23 @@ impl Default for ContractParameters {
     }
 }
 
-
-
-
 /// Arbitrary default consensus parameters. While best-efforts are made to adjust these to
 /// reasonable settings, they may not be useful for every network instantiation.
 #[deprecated(since = "0.12.2", note = "use `ConsensusParameters` instead.")]
 pub mod default_parameters {
-    use super::ConsensusParameters;
+    use crate::{
+        transaction::consensus_parameters::{
+            PredicateParameters,
+            ScriptParameters,
+            TxParameters,
+            MAX_GAS,
+        },
+        ContractParameters,
+        FeeParameters,
+    };
     use fuel_types::ChainId;
-    use crate::transaction::consensus_parameters::{PredicateParameters, ScriptParameters, TxParameters};
 
-    pub const CONTRACT_MAX_SIZE: u64 = ConsensusParameters::DEFAULT.contract_max_size;
+    pub const CONTRACT_MAX_SIZE: u64 = ContractParameters::DEFAULT.contract_max_size;
     pub const MAX_INPUTS: u64 = TxParameters::DEFAULT.max_inputs;
     pub const MAX_OUTPUTS: u64 = TxParameters::DEFAULT.max_outputs;
     pub const MAX_WITNESSES: u64 = TxParameters::DEFAULT.max_witnesses;
@@ -287,7 +262,7 @@ pub mod default_parameters {
     pub const MAX_SCRIPT_DATA_LENGTH: u64 =
         ScriptParameters::DEFAULT.max_script_data_length;
 
-    pub const MAX_STORAGE_SLOTS: u64 = ConsensusParameters::DEFAULT.max_storage_slots;
+    pub const MAX_STORAGE_SLOTS: u64 = ContractParameters::DEFAULT.max_storage_slots;
 
     pub const MAX_PREDICATE_LENGTH: u64 =
         PredicateParameters::DEFAULT.max_predicate_length;
@@ -297,9 +272,9 @@ pub mod default_parameters {
         PredicateParameters::DEFAULT.max_message_data_length;
 
     pub const MAX_GAS_PER_PREDICATE: u64 =
-        ConsensusParameters::DEFAULT.max_gas_per_predicate;
-    pub const GAS_PRICE_FACTOR: u64 = ConsensusParameters::DEFAULT.gas_price_factor;
-    pub const GAS_PER_BYTE: u64 = ConsensusParameters::DEFAULT.gas_per_byte;
+        PredicateParameters::DEFAULT.max_gas_per_predicate;
+    pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
+    pub const GAS_PER_BYTE: u64 = FeeParameters::DEFAULT.gas_per_byte;
 
-    pub const CHAIN_ID: ChainId = ConsensusParameters::DEFAULT.chain_id;
+    pub const CHAIN_ID: ChainId = ChainId::new(0);
 }

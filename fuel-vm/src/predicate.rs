@@ -2,10 +2,7 @@
 
 use crate::interpreter::MemoryRange;
 
-use fuel_tx::{
-    field,
-    ConsensusParameters,
-};
+use fuel_tx::field;
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -29,12 +26,12 @@ impl RuntimePredicate {
     /// Create a new runtime predicate from a transaction, given the input index
     ///
     /// Return `None` if the tx input doesn't map to an input with a predicate
-    pub fn from_tx<T>(params: &ConsensusParameters, tx: &T, idx: usize) -> Option<Self>
+    pub fn from_tx<T>(tx: &T, tx_offset: usize, idx: usize) -> Option<Self>
     where
         T: field::Inputs,
     {
         let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
-        let addr = ofs.saturating_add(params.tx_offset());
+        let addr = ofs.saturating_add(tx_offset);
         let range = MemoryRange::new(addr, len).expect("Invalid memory range");
         Some(Self {
             program: range,

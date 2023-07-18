@@ -483,7 +483,6 @@ where
             && self.context == other.context
             && self.balances == other.balances
             && self.gas_costs == other.gas_costs
-            && self.params == other.params
             && self.panic_context == other.panic_context
     }
 }

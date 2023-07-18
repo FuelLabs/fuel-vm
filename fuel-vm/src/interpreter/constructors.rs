@@ -13,13 +13,18 @@ use crate::{
     state::Debugger,
     storage::MemoryStorage,
 };
+use fuel_tx::{
+    ContractParameters,
+    FeeParameters,
+    PredicateParameters,
+    TxParameters,
+};
+use fuel_types::ChainId;
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
-
-use fuel_tx::ConsensusParameters;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -32,8 +37,13 @@ where
     /// will provide full functionality.
     pub fn with_storage(
         storage: S,
-        params: ConsensusParameters,
         gas_costs: GasCosts,
+        max_inputs: u64,
+        contract_max_size: u64,
+        tx_offset: usize,
+        max_message_data_length: u64,
+        chain_id: ChainId,
+        fee_params: FeeParameters,
     ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
@@ -50,16 +60,21 @@ where
             balances: RuntimeBalances::default(),
             gas_costs,
             profiler: Profiler::default(),
-            params,
+            fee_params,
+            max_inputs,
+            contract_max_size,
+            tx_offset,
+            chain_id,
+            max_message_data_length,
             panic_context: PanicContext::None,
         }
     }
 
-    /// Set the consensus parameters for the interpreter
-    pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
-        self.params = params;
-        self
-    }
+    // /// Set the consensus parameters for the interpreter
+    // pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
+    //     self.params = params;
+    //     self
+    // }
 
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
@@ -89,7 +104,16 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default(), Default::default(), Default::default())
+        Self::with_storage(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
     }
 }
 

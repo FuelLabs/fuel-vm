@@ -54,7 +54,7 @@ where
         &mut self,
         idx: usize,
     ) -> Result<(), RuntimeError> {
-        update_memory_output(&mut self.tx, &mut self.memory, self.params.tx_offset(), idx)
+        update_memory_output(&mut self.tx, &mut self.memory, self.tx_offset, idx)
     }
 
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
@@ -62,7 +62,7 @@ where
             AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: &mut self.memory,
             },
             receipt,
@@ -207,7 +207,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     pub(crate) const fn tx_offset(&self) -> usize {
-        self.params().tx_offset()
+        self.tx_offset
     }
 
     pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {

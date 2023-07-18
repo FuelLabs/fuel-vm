@@ -22,11 +22,12 @@ use crate::{
 };
 
 use fuel_tx::{
-    ConsensusParameters,
     Create,
+    FeeParameters,
     Receipt,
     Script,
 };
+use fuel_types::ChainId;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -47,8 +48,27 @@ where
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
-    pub fn new(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
-        Interpreter::with_storage(storage, params, gas_costs).into()
+    pub fn new(
+        storage: S,
+        gas_costs: GasCosts,
+        max_inputs: u64,
+        contract_max_size: u64,
+        tx_offset: usize,
+        max_message_data_length: u64,
+        chain_id: ChainId,
+        fee_params: FeeParameters,
+    ) -> Self {
+        Interpreter::with_storage(
+            storage,
+            gas_costs,
+            max_inputs,
+            contract_max_size,
+            tx_offset,
+            max_message_data_length,
+            chain_id,
+            fee_params,
+        )
+        .into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -122,11 +142,11 @@ where
         &self.interpreter
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.interpreter.params()
-    }
-
+    // /// Consensus parameters
+    // pub const fn params(&self) -> &ConsensusParameters {
+    //     self.interpreter.params()
+    // }
+    //
     /// Gas costs of opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         self.interpreter.gas_costs()
@@ -253,6 +273,15 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::new(Default::default(), Default::default(), Default::default())
+        Self::new(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
     }
 }

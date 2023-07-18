@@ -10,11 +10,15 @@ use crate::{
 };
 
 use fuel_tx::{
-    ConsensusParameters,
+    ContractParameters,
     Create,
+    FeeParameters,
+    PredicateParameters,
     Receipt,
     Script,
+    TxParameters,
 };
+use fuel_types::ChainId;
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
@@ -38,11 +42,25 @@ impl MemoryClient {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
         storage: MemoryStorage,
-        params: ConsensusParameters,
         gas_costs: GasCosts,
+        max_inputs: u64,
+        contract_max_size: u64,
+        tx_offset: usize,
+        max_message_data_length: u64,
+        chain_id: ChainId,
+        fee_params: FeeParameters,
     ) -> Self {
         Self {
-            transactor: Transactor::new(storage, params, gas_costs),
+            transactor: Transactor::new(
+                storage,
+                gas_costs,
+                max_inputs,
+                contract_max_size,
+                tx_offset,
+                max_message_data_length,
+                chain_id,
+                fee_params,
+            ),
         }
     }
 
@@ -103,10 +121,10 @@ impl MemoryClient {
         self.as_mut().persist();
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.transactor.params()
-    }
+    // /// Consensus parameters
+    // pub const fn params(&self) -> &ConsensusParameters {
+    //     self.transactor.params()
+    // }
 
     /// Tx memory offset
     pub const fn tx_offset(&self) -> usize {
@@ -121,7 +139,24 @@ impl MemoryClient {
 
 impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
-        Self::new(s, Default::default(), Default::default())
+        let gas_costs = Default::default();
+        let max_inputs = TxParameters::DEFAULT.max_inputs;
+        let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
+        let tx_offset = TxParameters::default().tx_offset();
+        let max_message_data_length =
+            PredicateParameters::DEFAULT.max_message_data_length;
+        let chain_id = ChainId::default();
+        let fee_params = FeeParameters::default();
+        Self::new(
+            s,
+            gas_costs,
+            max_inputs,
+            contract_max_size,
+            tx_offset,
+            max_message_data_length,
+            chain_id,
+            fee_params,
+        )
     }
 }
 

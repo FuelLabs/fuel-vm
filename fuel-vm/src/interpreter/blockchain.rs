@@ -129,7 +129,7 @@ where
         let input = LoadContractCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
-            contract_max_size: self.params.contract_max_size,
+            contract_max_size: self.contract_max_size,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
@@ -152,7 +152,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: &mut self.memory,
             },
             fp: fp.as_ref(),
@@ -171,7 +171,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset: self.tx_offset,
                 memory: &mut self.memory,
             },
             fp: fp.as_ref(),
@@ -424,9 +424,9 @@ where
     ) -> Result<(), RuntimeError> {
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputCtx {
-            max_message_data_length: self.params.max_message_data_length,
+            max_message_data_length: self.max_message_data_length,
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset: self.tx_offset,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
             balances: &mut self.balances,

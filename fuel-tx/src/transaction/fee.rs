@@ -1,4 +1,4 @@
-use crate::ConsensusParameters;
+use crate::FeeParameters;
 use fuel_asm::Word;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -64,7 +64,7 @@ impl TransactionFee {
     ///
     /// Will return `None` if arithmetic overflow occurs or `max_fee` less than `min_fee`.
     pub fn checked_from_values(
-        params: &ConsensusParameters,
+        params: &FeeParameters,
         metered_bytes: Word,
         gas_used_by_predicates: Word,
         gas_limit: Word,
@@ -97,13 +97,13 @@ impl TransactionFee {
     ///
     /// Will return `None` if overflow occurs
     pub fn gas_refund_value(
-        params: &ConsensusParameters,
+        fee_params: &FeeParameters,
         gas: Word,
         price: Word,
     ) -> Option<Word> {
         let gas = gas as u128;
         let price = price as u128;
-        let factor = params.gas_price_factor as u128;
+        let factor = fee_params.gas_price_factor as u128;
 
         gas.checked_mul(price)
             .map(|g| num_integer::div_floor(g, factor))
@@ -114,7 +114,7 @@ impl TransactionFee {
     ///
     /// Will return `None` if arithmetic overflow occurs.
     pub fn checked_from_tx<T: Chargeable>(
-        params: &ConsensusParameters,
+        params: &FeeParameters,
         tx: &T,
     ) -> Option<Self> {
         let metered_bytes = tx.metered_bytes_size() as Word;

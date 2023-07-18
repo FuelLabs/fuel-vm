@@ -19,7 +19,7 @@ where
     fn finalize_checked(
         &mut self,
         height: BlockHeight,
-        gas_costs: &GasCosts,
+        gas_costs: GasCosts,
     ) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
@@ -35,16 +35,45 @@ where
     fn finalize_checked(
         &mut self,
         height: BlockHeight,
-        gas_costs: &GasCosts,
+        gas_costs: GasCosts,
     ) -> Checked<Tx> {
+        let tx_params = self.get_tx_params().clone();
+        let predicate_params = self.get_predicate_params().clone();
+        let script_params = self.get_script_params().clone();
+        let contract_params = self.get_contract_params().clone();
+        let fee_params = self.get_fee_params().clone();
+        let chain_id = self.get_chain_id().clone();
         self.finalize()
-            .into_checked(height, self.get_params(), gas_costs)
+            .into_checked(
+                height,
+                &tx_params,
+                &predicate_params,
+                &script_params,
+                &contract_params,
+                &fee_params,
+                chain_id,
+                gas_costs,
+            )
             .expect("failed to check tx")
     }
 
     fn finalize_checked_basic(&mut self, height: BlockHeight) -> Checked<Tx> {
+        let tx_params = self.get_tx_params().clone();
+        let predicate_params = self.get_predicate_params().clone();
+        let script_params = self.get_script_params().clone();
+        let contract_params = self.get_contract_params().clone();
+        let fee_params = self.get_fee_params().clone();
+        let chain_id = self.get_chain_id().clone();
         self.finalize()
-            .into_checked_basic(height, self.get_params())
+            .into_checked_basic(
+                height,
+                &tx_params,
+                &predicate_params,
+                &script_params,
+                &contract_params,
+                &fee_params,
+                &chain_id,
+            )
             .expect("failed to check tx")
     }
 }

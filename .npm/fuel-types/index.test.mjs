@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import * as types from './dist/web/index.mjs'
 
-describe('fuel-types [cjs]', () => {
+describe('fuel-types [esm]', () => {
 
   it('should export all types', () => {
 

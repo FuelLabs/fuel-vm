@@ -1,41 +1,44 @@
 #!/usr/bin/env bash
 
+write_template ()
+{
+  FROM=$1
+  TO=$2
+  NAME_DASHED=$3
+  NAME_UNDERSCORED=$4
+
+  echo "$(cat ${FROM} | sed -r "s/{{NAME_DASHED}}/${NAME_DASHED}/g" | sed -r "s/{{NAME_UNDERSCORED}}/${NAME_UNDERSCORED}/g")" > ${TO}
+
+}
+
 
 build_and_publish_wasm_pkg ()
 {
-  dash_name=$1
-  underscore_name=$(echo "${dash_name}" | sed -r 's/-/_/g')
+  NAME_DASHED=$1
+  NAME_UNDERSCORED=$(echo "${NAME_DASHED}" | sed -r 's/-/_/g')
 
-  rm -rf .npm/${dash_name}/{src,dist}
+  rm -rf .npm/${NAME_DASHED}/{src,dist}
 
-  # building & optimizing wasm
-  cargo rustc -p ${dash_name} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --release
-  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/${underscore_name}.wasm --out-dir .npm/${dash_name}/src
-  wasm-opt .npm/${dash_name}/src/${underscore_name}_bg.wasm -o .npm/${dash_name}/src/${underscore_name}_bg.wasm -Oz
+  cargo rustc -p ${NAME_DASHED} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --release
+  wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/${NAME_UNDERSCORED}.wasm --out-dir .npm/${NAME_DASHED}/src
+  wasm-opt .npm/${NAME_DASHED}/src/${NAME_UNDERSCORED}_bg.wasm -o .npm/${NAME_DASHED}/src/${NAME_UNDERSCORED}_bg.wasm -Oz
 
-  # creating entrypoint for loading everything
-cat > .npm/${dash_name}/src/index.js <<EOM
-  import init from './${underscore_name}.js'
-  import wasm from './${underscore_name}_bg.wasm'
+  write_template .npm/.templates/README.md .npm/${NAME_DASHED}/README.md ${NAME_DASHED} ${NAME_UNDERSCORED}
+  write_template .npm/.templates/package.json .npm/${NAME_DASHED}/package.json ${NAME_DASHED} ${NAME_UNDERSCORED}
+  write_template .npm/.templates/pnpm-lock.yaml .npm/${NAME_DASHED}/pnpm-lock.yaml ${NAME_DASHED} ${NAME_UNDERSCORED}
+  write_template .npm/.templates/rollup.config.mjs .npm/${NAME_DASHED}/rollup.config.mjs ${NAME_DASHED} ${NAME_UNDERSCORED}
+  write_template .npm/.templates/index.js .npm/${NAME_DASHED}/src/index.js ${NAME_DASHED} ${NAME_UNDERSCORED}
 
-  init(wasm())
+  # commenting out all `new URL()` and `fetch()` calls for great compatibility with JS bundlers
+  sed -i.bkp -r 's;(input = new URL.+);//\1;g' .npm/${NAME_DASHED}/src/${NAME_UNDERSCORED}.js
+  sed -i.bkp -r 's;(input = fetch.+);//\1;g' .npm/${NAME_DASHED}/src/${NAME_UNDERSCORED}.js
+  rm .npm/${NAME_DASHED}/src/${NAME_UNDERSCORED}.js.bkp
 
-  export * from './${underscore_name}.js'
-EOM
+  pnpm -C .npm/${NAME_DASHED} install
+  pnpm -C .npm/${NAME_DASHED} build
+  pnpm -C .npm/${NAME_DASHED} test
 
-  # commenting `new URL()` and `fetch()` calls (plays nice with other bundlers)
-  sed -i.bkp -r 's;(input = new URL.+);//\1;g' .npm/${dash_name}/src/${underscore_name}.js
-  sed -i.bkp -r 's;(input = fetch.+);//\1;g' .npm/${dash_name}/src/${underscore_name}.js
-
-  # removing backup file (after sed replacement)
-  rm .npm/${dash_name}/src/${underscore_name}.js.bkp
-
-  # building and testing npm package
-  pnpm -C .npm/${dash_name} install
-  pnpm -C .npm/${dash_name} build
-  pnpm -C .npm/${dash_name} test
-
-  # TODO: publish logic will go here...
+  # TODO: publish logic will go here
 }
 
 

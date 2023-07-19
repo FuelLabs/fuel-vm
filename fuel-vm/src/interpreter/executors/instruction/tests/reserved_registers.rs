@@ -2,9 +2,9 @@ use super::*;
 use crate::checked_transaction::IntoChecked;
 use fuel_asm::PanicReason;
 use fuel_tx::{
-    ConsensusParameters,
     Finalizable,
     TransactionBuilder,
+    TxParameters,
 };
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
@@ -33,15 +33,24 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     let mut vm = Interpreter::with_memory_storage();
 
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(params.max_gas_per_tx)
+        .gas_limit(tx_params.max_gas_per_tx)
         .add_random_fee_input()
         .finalize();
     let tx = tx
-        .into_checked(block_height, &params, vm.gas_costs())
+        .into_checked(
+            block_height,
+            &tx_params,
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            Default::default(),
+            vm.gas_costs().to_owned(),
+        )
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");

@@ -2,10 +2,7 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::{
-    ConsensusParameters,
-    TransactionBuilder,
-};
+use fuel_tx::TransactionBuilder;
 use rand::{
     rngs::StdRng,
     Rng,
@@ -13,7 +10,10 @@ use rand::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicates,
+    checked_transaction::{
+        CheckPredicateParams,
+        CheckPredicates,
+    },
     interpreter::CheckedMetadata,
     prelude::*,
 };
@@ -21,7 +21,7 @@ use crate::{
 #[test]
 fn estimate_gas_gives_proper_gas_used() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let params = ConsensusParameters::default();
+    let params = CheckPredicateParams::default();
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
@@ -53,7 +53,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params, &GasCosts::default())
+        .check_predicates(params.clone())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -91,13 +91,30 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(Default::default(), &params, &GasCosts::default())
+        .into_checked(
+            Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            Default::default(),
+            GasCosts::default(),
+        )
         .is_err());
 
     // create checked transaction to get access to balances from metadata
     let unestimated_checked = transaction
         .clone()
-        .into_checked_basic(Default::default(), &params)
+        .into_checked_basic(
+            Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+        )
         .expect("Should successfully create checked tranaction with predicate");
 
     let balances = unestimated_checked.metadata().balances();
@@ -106,12 +123,20 @@ fn estimate_gas_gives_proper_gas_used() {
         &mut transaction,
         balances,
         params,
-        GasCosts::default(),
     )
     .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
     assert!(transaction
-        .into_checked(Default::default(), &params, &GasCosts::default())
+        .into_checked(
+            Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            Default::default(),
+            GasCosts::default(),
+        )
         .is_ok());
 }

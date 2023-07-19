@@ -56,7 +56,6 @@ fn from_tx_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let params = ConsensusParameters::default();
     let height = 1.into();
 
     #[rustfmt::skip]
@@ -106,20 +105,20 @@ fn from_tx_works() {
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .with_params(params)
             .add_input(i)
             .add_random_fee_input()
             .finalize_checked_basic(height);
 
         // assert invalid idx wont panic
         let idx = 1;
-        let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx);
+        let tx_offset = TxParameters::DEFAULT.tx_offset();
+        let runtime = RuntimePredicate::from_tx(tx.as_ref(), tx_offset, idx);
 
         assert!(runtime.is_none());
 
         // fetch the input predicate
         let idx = 0;
-        let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx)
+        let runtime = RuntimePredicate::from_tx(tx.as_ref(), tx_offset, idx)
             .expect("failed to generate predicate from valid tx");
 
         assert_eq!(idx, runtime.idx());

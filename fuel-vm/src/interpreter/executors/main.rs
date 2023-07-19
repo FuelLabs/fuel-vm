@@ -61,7 +61,6 @@ use fuel_tx::{
     },
     Chargeable,
     Contract,
-    ContractParameters,
     Create,
     FeeParameters,
     Input,
@@ -263,7 +262,6 @@ impl<T> Interpreter<PredicateStorage, T> {
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
-                let gas_costs = params.gas_costs.clone();
                 let balances = balances.clone();
 
                 checks.push(Self::check_predicate(

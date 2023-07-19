@@ -47,6 +47,12 @@ use fuel_types::{
     Word,
 };
 
+use crate::transaction::consensus_parameters::{
+    ContractParameters,
+    PredicateParameters,
+    ScriptParameters,
+    TxParameters,
+};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 use core::cmp::max;
@@ -54,7 +60,6 @@ use core::cmp::max;
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::io;
-use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -928,7 +933,14 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::default())
+            .check(
+                0.into(),
+                &TxParameters::default(),
+                &PredicateParameters::default(),
+                &ScriptParameters::default(),
+                &ContractParameters::default(),
+                &ChainId::new(0),
+            )
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -948,7 +960,14 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParameters::default())
+        .check(
+            0.into(),
+            &TxParameters::default(),
+            &PredicateParameters::default(),
+            &ScriptParameters::default(),
+            &ContractParameters::default(),
+            &ChainId::new(0),
+        )
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

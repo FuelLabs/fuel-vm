@@ -368,7 +368,6 @@ where
             self.registers[rb],
             self.registers[rc],
             self.registers[rd],
-            self.tx_offset,
         )
     }
 
@@ -379,7 +378,6 @@ where
         amount_of_coins_to_forward: Word,
         asset_id_mem_address: Word,
         amount_of_gas_to_forward: Word,
-        tx_offset: usize,
     ) -> Result<(), RuntimeError> {
         let params = PrepareCallParams {
             call_params_mem_address,

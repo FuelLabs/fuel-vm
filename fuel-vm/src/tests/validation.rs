@@ -13,7 +13,6 @@ fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
     const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(2);
 
-    let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -31,8 +30,7 @@ fn transaction_can_be_executed_after_maturity() {
     )
     .gas_limit(100)
     .maturity(MATURITY)
-    .with_params(params)
-    .finalize_checked(BLOCK_HEIGHT, &gas_costs);
+    .finalize_checked(BLOCK_HEIGHT, gas_costs);
 
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)

@@ -246,10 +246,36 @@ impl<Tx> TransactionBuilder<Tx> {
         &self.chain_id
     }
 
-    // pub fn with_params(&mut self, parameters: ConsensusParameters) -> &mut Self {
-    //     self.parameters = parameters;
-    //     self
-    // }
+    pub fn with_tx_params(&mut self, tx_params: TxParameters) -> &mut Self {
+        self.tx_params = tx_params;
+        self
+    }
+
+    pub fn with_predicate_params(
+        &mut self,
+        predicate_params: PredicateParameters,
+    ) -> &mut Self {
+        self.predicate_params = predicate_params;
+        self
+    }
+
+    pub fn with_script_params(&mut self, script_params: ScriptParameters) -> &mut Self {
+        self.script_params = script_params;
+        self
+    }
+
+    pub fn with_contract_params(
+        &mut self,
+        contract_params: ContractParameters,
+    ) -> &mut Self {
+        self.contract_params = contract_params;
+        self
+    }
+
+    pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
+        self.fee_params = fee_params;
+        self
+    }
 }
 
 impl<Tx: Buildable> TransactionBuilder<Tx> {

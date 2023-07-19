@@ -18,7 +18,6 @@ fn profile_gas() {
     let gas_limit = 1_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Deploy contract with loops
     let reg_a = 0x20;
@@ -46,8 +45,7 @@ fn profile_gas() {
                 .gas_limit(gas_limit)
                 .gas_price(gas_price)
                 .maturity(maturity)
-                .with_params(params)
-                .finalize_checked(height, &GasCosts::default());
+                .finalize_checked(height, GasCosts::default());
 
         let output = GasProfiler::default();
 

@@ -145,7 +145,6 @@ pub mod mint {
         Checked,
         IntoChecked,
     };
-    use crate::prelude::GasCosts;
     use fuel_tx::{
         Cacheable,
         CheckError,
@@ -172,7 +171,7 @@ pub mod mint {
             predicate_params: &PredicateParameters,
             script_params: &ScriptParameters,
             contract_params: &ContractParameters,
-            fee_params: &FeeParameters,
+            _fee_params: &FeeParameters,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;

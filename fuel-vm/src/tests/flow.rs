@@ -73,7 +73,7 @@ fn code_copy() {
             op::meq(0x30, 0x21, 0x10, 0x12),
             op::ret(0x30),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let mut script_data = contract_id.to_vec();
@@ -118,7 +118,7 @@ fn call() {
             op::call(0x10, RegId::ZERO, 0x10, 0x10),
             op::ret(0x30),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let mut script_data = contract_id.to_vec();
@@ -172,7 +172,7 @@ fn call_frame_code_offset() {
             op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let mut script_data = vec![];
@@ -234,7 +234,7 @@ fn revert_from_call_immediately_ends_execution() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
         .into_iter()
@@ -353,7 +353,7 @@ fn revert() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let mut script_data = vec![];

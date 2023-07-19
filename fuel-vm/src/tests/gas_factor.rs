@@ -1,7 +1,10 @@
 use fuel_asm::op;
 use fuel_vm::prelude::*;
 
-use fuel_tx::field::Outputs;
+use fuel_tx::{
+    field::Outputs,
+    FeeParameters,
+};
 use std::iter;
 
 #[test]
@@ -13,7 +16,7 @@ fn gas_factor_rounds_correctly() {
     let factor = 5479f64;
     let gas_price = 6197;
 
-    let params = ConsensusParameters::default().with_gas_price_factor(factor as Word);
+    let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
 
     // Random script to consume some gas
     let script = iter::repeat(op::add(0x10, 0x00, 0x01))
@@ -23,20 +26,18 @@ fn gas_factor_rounds_correctly() {
 
     let transaction = TestBuilder::new(2322u64)
         .start_script(script, vec![])
-        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
         .build();
 
-    let fee = TransactionFee::checked_from_tx(&params, transaction.transaction())
+    let fee = TransactionFee::checked_from_tx(&fee_params, transaction.transaction())
         .expect("failed to calculate fee");
 
     let profiler = GasProfiler::default();
 
     let change = Interpreter::with_memory_storage()
-        .with_params(params)
         .with_profiler(profiler.clone())
         .transact(transaction)
         .expect("failed to execute transaction")
@@ -54,7 +55,7 @@ fn gas_factor_rounds_correctly() {
     let gas_used = profiler.total_gas();
 
     let gas_remainder = gas_limit - gas_used;
-    let refund = TransactionFee::gas_refund_value(&params, gas_remainder, gas_price)
+    let refund = TransactionFee::gas_refund_value(&fee_params, gas_remainder, gas_price)
         .expect("failed to calculate refund");
 
     assert_eq!(change, initial_balance + refund);

@@ -34,17 +34,45 @@ fn reset_vm_state() {
     assert_eq!(a, b);
 }
 
+use fuel_tx::{
+    ContractParameters,
+    FeeParameters,
+    PredicateParameters,
+    TxParameters,
+};
+
+use crate::gas::GasCosts;
+use fuel_types::ChainId;
+
 #[test]
 fn record_and_invert_storage() {
+    let gas_costs = GasCosts::default();
+    let max_inputs = TxParameters::DEFAULT.max_inputs;
+    let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
+    let tx_offset = TxParameters::default().tx_offset();
+    let max_message_data_length = PredicateParameters::DEFAULT.max_message_data_length;
+    let chain_id = ChainId::default();
+    let fee_params = FeeParameters::default();
+
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),
-        Default::default(),
-        Default::default(),
+        gas_costs.clone(),
+        max_inputs,
+        contract_max_size,
+        tx_offset,
+        max_message_data_length,
+        chain_id,
+        fee_params,
     );
     let mut b = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),
-        Default::default(),
-        Default::default(),
+        gas_costs,
+        max_inputs,
+        contract_max_size,
+        tx_offset,
+        max_message_data_length,
+        chain_id,
+        fee_params,
     );
 
     <Record<_> as StorageMutate<ContractsAssets>>::insert(

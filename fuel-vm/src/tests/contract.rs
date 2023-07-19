@@ -8,6 +8,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::Witness;
+use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
     Rng,
@@ -63,8 +64,25 @@ fn prevent_contract_id_redeployment() {
         Default::default(),
         1,
     );
+
+    let tx_params = TxParameters::default();
+    let predicate_params = PredicateParameters::default();
+    let script_params = ScriptParameters::default();
+    let contract_params = ContractParameters::default();
+    let fee_params = FeeParameters::default();
+    let chain_id = ChainId::default();
+    let gas_costs = GasCosts::default();
+
     let create = create
-        .into_checked_basic(1.into(), &ConsensusParameters::default())
+        .into_checked_basic(
+            1.into(),
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+            &chain_id,
+        )
         .expect("failed to generate checked tx");
 
     // deploy contract
@@ -114,7 +132,7 @@ fn mint_burn() {
             op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_call_data = Call::new(contract_id, 0, balance).to_bytes();
 
@@ -135,7 +153,7 @@ fn mint_burn() {
             op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let result = test_context
@@ -275,7 +293,7 @@ fn call_increases_contract_asset_balance_and_balance_register() {
             op::call(0x10, 0x11, 0x12, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -360,7 +378,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -449,7 +467,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -532,7 +550,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),

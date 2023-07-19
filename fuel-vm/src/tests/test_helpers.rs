@@ -2,6 +2,8 @@ use fuel_asm::{
     op,
     Instruction,
 };
+use fuel_tx::TxParameters;
+use fuel_types::ChainId;
 use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
@@ -21,6 +23,14 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
 
+    let tx_params = TxParameters::default();
+    let predicate_params = PredicateParameters::default();
+    let script_params = ScriptParameters::default();
+    let contract_params = ContractParameters::default();
+    let fee_params = FeeParameters::default();
+    let chain_id = ChainId::default();
+    let gas_costs = GasCosts::default();
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)
         .gas_limit(1_000_000)
@@ -29,8 +39,13 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .finalize()
         .into_checked(
             Default::default(),
-            &ConsensusParameters::DEFAULT,
-            client.gas_costs(),
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+            chain_id,
+            gas_costs.clone(),
         )
         .expect("failed to generate a checked tx");
     client.transact(tx);

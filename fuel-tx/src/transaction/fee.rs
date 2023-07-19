@@ -150,12 +150,12 @@ pub trait Chargeable {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ConsensusParameters,
+        FeeParameters,
         TransactionFee,
         Word,
     };
 
-    const PARAMS: ConsensusParameters = ConsensusParameters::DEFAULT
+    const PARAMS: FeeParameters = FeeParameters::DEFAULT
         .with_gas_per_byte(2)
         .with_gas_price_factor(3);
 

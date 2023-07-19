@@ -15,11 +15,11 @@ fn test_metadata() {
     let imm = 0x03;
     metadata(
         &context,
-        &ConsensusParameters::DEFAULT,
         &frames,
         RegMut::new(&mut pc),
         &mut result,
         imm,
+        ChainId::new(0),
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -51,19 +51,17 @@ fn get_chain_id(context: Context, chain_id: u64) {
     let mut pc = 4;
     let mut result = 1;
     let imm = GMArgs::GetChainId as Immediate18;
-    let mut params = ConsensusParameters::DEFAULT;
-    params.chain_id = chain_id.into();
 
     if context.is_internal() {
         frames.push(CallFrame::default());
     }
     metadata(
         &context,
-        &params,
         &frames,
         RegMut::new(&mut pc),
         &mut result,
         imm,
+        chain_id.into(),
     )
     .unwrap();
 

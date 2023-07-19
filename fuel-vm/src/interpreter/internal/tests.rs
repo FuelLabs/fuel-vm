@@ -52,7 +52,7 @@ fn external_balance() {
         .gas_limit(gas_limit)
         .gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, &Default::default());
+        .finalize_checked(height, Default::default());
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -113,7 +113,16 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, vm.params(), vm.gas_costs())
+        .into_checked(
+            height,
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            &Default::default(),
+            Default::default(),
+            vm.gas_costs().to_owned(),
+        )
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");
@@ -121,14 +130,7 @@ fn variable_output_updates_in_memory() {
     // increase variable output
     let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
 
-    set_variable_output(
-        &mut vm.tx,
-        &mut vm.memory,
-        vm.params.tx_offset(),
-        0,
-        variable,
-    )
-    .unwrap();
+    set_variable_output(&mut vm.tx, &mut vm.memory, vm.tx_offset, 0, variable).unwrap();
 
     // verify the referenced tx output is updated properly
     assert!(matches!(

@@ -5,7 +5,13 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::Receipt;
+use fuel_tx::{
+    PredicateParameters,
+    Receipt,
+    ScriptParameters,
+    TxParameters,
+};
+use fuel_types::ChainId;
 use fuel_vm::{
     consts::VM_MAX_RAM,
     prelude::*,
@@ -24,7 +30,12 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
+    let predicate_params = PredicateParameters::default();
+    let script_params = ScriptParameters::default();
+    let contract_params = ContractParameters::default();
+    let fee_params = FeeParameters::default();
+    let chain_id = ChainId::default();
     let gas_costs = GasCosts::default();
 
     let script = program.into_iter().collect();
@@ -35,10 +46,28 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(
+            height,
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+            chain_id,
+            gas_costs.clone(),
+        )
         .expect("failed to check tx");
 
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
+    let mut vm = Transactor::new(
+        storage,
+        gas_costs,
+        tx_params.max_inputs,
+        contract_params.contract_max_size,
+        tx_params.tx_offset(),
+        predicate_params.max_message_data_length,
+        chain_id,
+        fee_params,
+    );
     vm.transact(tx);
     vm
 }

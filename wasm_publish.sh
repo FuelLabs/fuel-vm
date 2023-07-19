@@ -21,7 +21,7 @@ write_template ()
 }
 
 
-build_and_publish_wasm_pkg ()
+build_wasm_npm_pkg_for ()
 {
   NAME_DASHED=$1
   NAME_UNDERSCORED=$(echo "${NAME_DASHED}" | sed -r 's/-/_/g')
@@ -48,10 +48,8 @@ build_and_publish_wasm_pkg ()
   pnpm -C ${PACKAGE_DIR} install
   pnpm -C ${PACKAGE_DIR} build
   pnpm -C ${PACKAGE_DIR} test
-
-  # TODO: publish logic will go here
 }
 
 
-build_and_publish_wasm_pkg "fuel-asm"
-build_and_publish_wasm_pkg "fuel-types"
+build_wasm_npm_pkg_for "fuel-asm"
+build_wasm_npm_pkg_for "fuel-types"

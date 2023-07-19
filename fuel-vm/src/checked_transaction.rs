@@ -1276,7 +1276,7 @@ mod tests {
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
         let params = CheckPredicateParams {
-            gas_costs,
+            gas_costs: gas_costs.clone(),
             ..Default::default()
         };
 
@@ -1290,7 +1290,7 @@ mod tests {
                 &ContractParameters::default(),
                 &Default::default(),
                 ChainId::new(0),
-                Default::default(),
+                gas_costs,
             )
             .unwrap()
             // Sets Checks::Predicates

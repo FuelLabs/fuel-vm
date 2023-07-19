@@ -434,11 +434,13 @@ fn ldc_reason_helper(
     let contract_params = ContractParameters::default();
     let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
+
+    // make gas costs free
+    let gas_costs = GasCosts::free();
 
     let mut client = MemoryClient::new(
         MemoryStorage::default(),
-        Default::default(),
+        gas_costs.clone(),
         tx_params.max_inputs,
         contract_params.contract_max_size,
         tx_params.tx_offset(),

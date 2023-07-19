@@ -38,7 +38,7 @@ build_wasm_npm_pkg_for ()
   cargo rustc -p ${NAME_DASHED} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --release
   wasm-bindgen --target web ./target/wasm32-unknown-unknown/release/${NAME_UNDERSCORED}.wasm --out-dir ${PACKAGE_DIR}/src
   wasm-opt ${PACKAGE_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -o ${PACKAGE_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -Oz
-  cd -
+  cd ~-
 
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} README.md
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} package.json

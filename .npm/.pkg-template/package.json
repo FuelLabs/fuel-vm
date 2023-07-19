@@ -1,6 +1,6 @@
 {
-  "name": "{{NAME_DASHED}}",
-  "version": "{{VERSION}}",
+  "name": "@fuels/vm-{{PKG_NAME}}",
+  "version": "{{PKG_VERSION}}",
   "description": "WASM version of `{{NAME_DASHED}}` Rust crate",
   "author": "Fuel Labs <contact@fuel.sh> (https://fuel.network/)",
   "main": "dist/node/index.cjs",

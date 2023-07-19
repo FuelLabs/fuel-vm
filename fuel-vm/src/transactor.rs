@@ -22,10 +22,13 @@ use crate::{
 };
 
 use fuel_tx::{
+    ContractParameters,
     Create,
     FeeParameters,
+    PredicateParameters,
     Receipt,
     Script,
+    TxParameters,
 };
 use fuel_types::ChainId;
 
@@ -273,15 +276,23 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
+        let gas_costs = Default::default();
+        let max_inputs = TxParameters::DEFAULT.max_inputs;
+        let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
+        let tx_offset = TxParameters::default().tx_offset();
+        let max_message_data_length =
+            PredicateParameters::DEFAULT.max_message_data_length;
+        let chain_id = ChainId::default();
+        let fee_params = FeeParameters::default();
         Self::new(
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
-            Default::default(),
+            S::default(),
+            gas_costs,
+            max_inputs,
+            contract_max_size,
+            tx_offset,
+            max_message_data_length,
+            chain_id,
+            fee_params,
         )
     }
 }

@@ -1,13 +1,14 @@
-README.md
-package.json
-pnpm-lock.yaml
-
 src
 dist
 node_modules
+
+README.md
+package.json
+pnpm-lock.yaml
 rollup.config.mjs
 
-!.templates/README.md
-!.templates/package.json
-!.templates/pnpm-lock.yaml
-!.templates/rollup.config.mjs
+!.pkg-template/src
+!.pkg-template/README.md
+!.pkg-template/package.json
+!.pkg-template/pnpm-lock.yaml
+!.pkg-template/rollup.config.mjs

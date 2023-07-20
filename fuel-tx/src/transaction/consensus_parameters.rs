@@ -280,11 +280,13 @@ pub mod default_parameters {
 /// A collection of parameters for convenience
 #[derive(Debug, Clone, Copy)]
 pub struct ConsensusParams<'a> {
-    tx_params: &'a TxParameters,
-    predicate_params: &'a PredicateParameters,
-    script_params: &'a ScriptParameters,
-    contract_params: &'a ContractParameters,
-    fee_params: &'a FeeParameters,
+    // TODO: This should be pub(crate) for the `fuel_tx` tests, but for some reason the
+    // tests can't see the fields with `pub(crate)`
+    pub tx_params: &'a TxParameters,
+    pub predicate_params: &'a PredicateParameters,
+    pub script_params: &'a ScriptParameters,
+    pub contract_params: &'a ContractParameters,
+    pub fee_params: &'a FeeParameters,
 }
 
 impl<'a> ConsensusParams<'a> {

@@ -21,6 +21,7 @@ use crate::{
     },
     Chargeable,
     CheckError,
+    ConsensusParams,
     Contract,
     Input,
     Output,
@@ -47,12 +48,6 @@ use fuel_types::{
     Word,
 };
 
-use crate::transaction::consensus_parameters::{
-    ContractParameters,
-    PredicateParameters,
-    ScriptParameters,
-    TxParameters,
-};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 use core::cmp::max;
@@ -242,13 +237,15 @@ impl FormatValidityChecks for Create {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        predicate_params: &PredicateParameters,
-        _script_params: &ScriptParameters,
-        contract_params: &ContractParameters,
+        consensus_params: ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, tx_params, predicate_params)?;
+        check_common_part(
+            self,
+            block_height,
+            consensus_params.tx_params(),
+            consensus_params.predicate_params(),
+        )?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -256,7 +253,7 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > contract_params.contract_max_size
+        if bytecode_witness_len > consensus_params.contract_params().contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
             return Err(CheckError::TransactionCreateBytecodeLen)
@@ -264,7 +261,9 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() > contract_params.max_storage_slots as usize {
+        if self.storage_slots.len()
+            > consensus_params.contract_params().max_storage_slots as usize
+        {
             return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 
@@ -933,14 +932,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(
-                0.into(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &ChainId::new(0),
-            )
+            .check(0.into(), ConsensusParams::standard(), &ChainId::new(0))
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -960,14 +952,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(
-            0.into(),
-            &TxParameters::default(),
-            &PredicateParameters::default(),
-            &ScriptParameters::default(),
-            &ContractParameters::default(),
-            &ChainId::new(0),
-        )
+        .check(0.into(), ConsensusParams::standard(), &ChainId::new(0))
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

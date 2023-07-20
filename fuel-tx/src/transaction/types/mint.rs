@@ -8,6 +8,7 @@ use crate::{
         validity::FormatValidityChecks,
     },
     CheckError,
+    ConsensusParams,
     Output,
     TxPointer,
 };
@@ -32,12 +33,6 @@ use std::io;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use crate::transaction::consensus_parameters::{
-    ContractParameters,
-    PredicateParameters,
-    ScriptParameters,
-    TxParameters,
-};
 #[cfg(feature = "std")]
 use fuel_types::bytes::{
     self,
@@ -137,13 +132,10 @@ impl FormatValidityChecks for Mint {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        _predicate_params: &PredicateParameters,
-        _script_params: &ScriptParameters,
-        _contract_params: &ContractParameters,
+        consensus_params: ConsensusParams,
         _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        if self.outputs().len() > tx_params.max_outputs as usize {
+        if self.outputs().len() > consensus_params.tx_params().max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax)
         }
         if self.tx_pointer().block_height() != block_height {

@@ -20,6 +20,7 @@ use crate::{
         Chargeable,
     },
     CheckError,
+    ConsensusParams,
     Input,
     Output,
     Witness,
@@ -41,12 +42,7 @@ use fuel_types::{
     Word,
 };
 
-use crate::transaction::consensus_parameters::{
-    ContractParameters,
-    PredicateParameters,
-    ScriptParameters,
-    TxParameters,
-};
+use crate::transaction::consensus_parameters::TxParameters;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
@@ -200,19 +196,24 @@ impl FormatValidityChecks for Script {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        predicate_params: &PredicateParameters,
-        script_params: &ScriptParameters,
-        _contract_params: &ContractParameters,
+        consensus_params: ConsensusParams,
         _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, tx_params, predicate_params)?;
+        check_common_part(
+            self,
+            block_height,
+            consensus_params.tx_params(),
+            consensus_params.predicate_params(),
+        )?;
 
-        if self.script.len() > script_params.max_script_length as usize {
+        if self.script.len() > consensus_params.script_params().max_script_length as usize
+        {
             Err(CheckError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len() > script_params.max_script_data_length as usize {
+        if self.script_data.len()
+            > consensus_params.script_params().max_script_data_length as usize
+        {
             Err(CheckError::TransactionScriptDataLength)?;
         }
 

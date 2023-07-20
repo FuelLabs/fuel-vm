@@ -32,12 +32,17 @@ use std::io;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+use crate::transaction::consensus_parameters::{
+    ContractParameters,
+    PredicateParameters,
+    ScriptParameters,
+    TxParameters,
+};
 #[cfg(feature = "std")]
 use fuel_types::bytes::{
     self,
     Deserializable,
 };
-use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {

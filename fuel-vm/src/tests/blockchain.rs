@@ -394,7 +394,7 @@ fn load_external_contract_code() {
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+            .into_checked(height, consensus_params, chain_id, gas_costs)
             .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -439,7 +439,7 @@ fn ldc_reason_helper(
         tx_offset: tx_params.tx_offset(),
         max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
-        fee_params: fee_params.clone(),
+        fee_params,
     };
 
     let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
@@ -502,7 +502,7 @@ fn ldc_reason_helper(
                 .maturity(maturity)
                 .add_random_fee_input()
                 .finalize()
-                .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+                .into_checked(height, consensus_params, chain_id, gas_costs)
                 .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
@@ -556,7 +556,7 @@ fn ldc_reason_helper(
                 .add_random_fee_input()
                 .add_output(output1)
                 .finalize()
-                .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+                .into_checked(height, consensus_params, chain_id, gas_costs)
                 .expect("failed to check tx");
     }
 

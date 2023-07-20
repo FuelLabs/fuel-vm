@@ -36,12 +36,17 @@ use crate::{
         },
     },
     transaction::{
+        consensus_parameters::{
+            ContractParameters,
+            PredicateParameters,
+            ScriptParameters,
+            TxParameters,
+        },
         field,
         Executable,
     },
 };
 pub use error::CheckError;
-use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 impl Input {
     #[cfg(feature = "std")]
@@ -56,13 +61,7 @@ impl Input {
         recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
-        self.check_signature(
-            index,
-            txhash,
-            witnesses,
-            chain_id,
-            recovery_cache,
-        )?;
+        self.check_signature(index, txhash, witnesses, chain_id, recovery_cache)?;
 
         Ok(())
     }
@@ -257,7 +256,14 @@ pub trait FormatValidityChecks {
         contract_params: &ContractParameters,
         chain_id: &ChainId,
     ) -> Result<(), CheckError> {
-        self.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)?;
+        self.check_without_signatures(
+            block_height,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            chain_id,
+        )?;
         self.check_signatures(chain_id)?;
 
         Ok(())
@@ -301,15 +307,30 @@ impl FormatValidityChecks for Transaction {
         chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => {
-                script.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
-            }
-            Transaction::Create(create) => {
-                create.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
-            }
-            Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, tx_params, predicate_params, script_params, contract_params, chain_id)
-            }
+            Transaction::Script(script) => script.check_without_signatures(
+                block_height,
+                tx_params,
+                predicate_params,
+                script_params,
+                contract_params,
+                chain_id,
+            ),
+            Transaction::Create(create) => create.check_without_signatures(
+                block_height,
+                tx_params,
+                predicate_params,
+                script_params,
+                contract_params,
+                chain_id,
+            ),
+            Transaction::Mint(mint) => mint.check_without_signatures(
+                block_height,
+                tx_params,
+                predicate_params,
+                script_params,
+                contract_params,
+                chain_id,
+            ),
         }
     }
 }
@@ -417,7 +438,12 @@ where
         .iter()
         .enumerate()
         .try_for_each(|(index, input)| {
-            input.check_without_signature(index, tx.outputs(), tx.witnesses(), predicate_params)
+            input.check_without_signature(
+                index,
+                tx.outputs(),
+                tx.witnesses(),
+                predicate_params,
+            )
         })?;
 
     tx.outputs()

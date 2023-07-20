@@ -25,7 +25,7 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
-        .with_fee_params(fee_params.clone())
+        .with_fee_params(fee_params)
         .start_script(script, vec![])
         .gas_price(gas_price)
         .gas_limit(gas_limit)
@@ -39,7 +39,7 @@ fn gas_factor_rounds_correctly() {
     let profiler = GasProfiler::default();
 
     let change = Interpreter::with_memory_storage()
-        .with_fee_params(fee_params.clone())
+        .with_fee_params(fee_params)
         .with_profiler(profiler.clone())
         .transact(transaction)
         .expect("failed to execute transaction")

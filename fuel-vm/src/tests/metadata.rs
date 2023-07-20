@@ -224,7 +224,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, consensus_params, chain_id, gas_costs)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams {
@@ -276,7 +276,7 @@ fn get_metadata_chain_id() {
         contract_max_size: ContractParameters::DEFAULT.contract_max_size,
         tx_offset: TxParameters::DEFAULT.tx_offset(),
         max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
-        chain_id: chain_id.clone(),
+        chain_id,
         fee_params: FeeParameters::default(),
     };
 
@@ -303,7 +303,7 @@ fn get_metadata_chain_id() {
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
-        .with_chain_id(chain_id.clone())
+        .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
         .into_checked(height, consensus_params, chain_id, gas_costs)

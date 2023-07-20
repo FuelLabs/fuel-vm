@@ -142,11 +142,11 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     );
 
     let consensus_params = ConsensusParams::new(
-        &context.get_tx_params(),
-        &context.get_predicate_params(),
-        &context.get_script_params(),
-        &context.get_contract_params(),
-        &context.get_fee_params(),
+        context.get_tx_params(),
+        context.get_predicate_params(),
+        context.get_script_params(),
+        context.get_contract_params(),
+        context.get_fee_params(),
     );
     let create = create
         .into_checked_basic(

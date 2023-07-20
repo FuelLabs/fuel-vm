@@ -167,6 +167,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.initial_balances
     }
 
+    /// Get max_inputs value
     pub fn max_inputs(&self) -> u64 {
         self.max_inputs
     }
@@ -191,6 +192,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.profiler
     }
 
+    /// Modify the FeeParameters
     pub fn with_fee_params(mut self, fee_params: FeeParameters) -> Self {
         self.fee_params = fee_params;
         self

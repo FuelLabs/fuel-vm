@@ -181,6 +181,7 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
     }
 }
 
+/// A collection of parameters for convenience
 #[derive(Debug, Clone, Copy)]
 pub struct ConsensusParams<'a> {
     tx_params: &'a TxParameters,
@@ -191,6 +192,7 @@ pub struct ConsensusParams<'a> {
 }
 
 impl<'a> ConsensusParams<'a> {
+    /// Constructor for the `ConsensusParams` with Standard values
     pub fn standard() -> Self {
         Self {
             tx_params: &TxParameters::DEFAULT,
@@ -201,6 +203,7 @@ impl<'a> ConsensusParams<'a> {
         }
     }
 
+    /// Constructor for the `ConsensusParams`
     pub fn new(
         tx_params: &'a TxParameters,
         predicate_params: &'a PredicateParameters,
@@ -217,22 +220,27 @@ impl<'a> ConsensusParams<'a> {
         }
     }
 
+    /// Get the transaction parameters
     pub fn tx_params(&self) -> &TxParameters {
         self.tx_params
     }
 
+    /// Get the predicate parameters
     pub fn predicate_params(&self) -> &PredicateParameters {
         self.predicate_params
     }
 
+    /// Get the script parameters
     pub fn script_params(&self) -> &ScriptParameters {
         self.script_params
     }
 
+    /// Get the contract parameters
     pub fn contract_params(&self) -> &ContractParameters {
         self.contract_params
     }
 
+    /// Get the fee parameters
     pub fn fee_params(&self) -> &FeeParameters {
         self.fee_params
     }
@@ -267,7 +275,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
                 .predicate_params()
                 .max_message_data_length,
             tx_offset: consensus_params.tx_params().tx_offset(),
-            fee_params: consensus_params.fee_params().clone(),
+            fee_params: *consensus_params.fee_params(),
         };
         self.into_checked_basic(block_height, consensus_params, &chain_id)?
             .check_signatures(&chain_id)?
@@ -278,26 +286,31 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        // tx_params: &TxParameters,
-        // predicate_params: &PredicateParameters,
-        // script_params: &ScriptParameters,
-        // contract_params: &ContractParameters,
-        // fee_params: &FeeParameters,
         consensus_params: ConsensusParams<'_>,
         chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError>;
 }
 
+/// The parameters needed for checking a predicate
 #[derive(Debug, Clone)]
 pub struct CheckPredicateParams {
+    /// Gas costs for opcodes
     pub gas_costs: GasCosts,
+    /// Chain ID
     pub chain_id: ChainId,
+    /// Maximum gas per predicate
     pub max_gas_per_predicate: u64,
+    /// Maximum gas per transaction
     pub max_gas_per_tx: u64,
+    /// Maximum number of inputs
     pub max_inputs: u64,
+    /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
+    /// Maximum length of the message data
     pub max_message_data_length: u64,
+    /// Offset of the transaction data in the memory
     pub tx_offset: usize,
+    /// Fee parameters
     pub fee_params: FeeParameters,
 }
 

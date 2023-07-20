@@ -127,6 +127,5 @@ fn estimate_gas_gives_proper_gas_used() {
         Default::default(),
         GasCosts::default(),
     );
-    dbg!(&check_res);
     assert!(check_res.is_ok());
 }

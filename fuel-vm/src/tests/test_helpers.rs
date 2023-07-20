@@ -48,12 +48,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            Default::default(),
-            consensus_params,
-            chain_id,
-            gas_costs.clone(),
-        )
+        .into_checked(Default::default(), consensus_params, chain_id, gas_costs)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

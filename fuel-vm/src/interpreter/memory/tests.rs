@@ -27,7 +27,7 @@ fn memcopy() {
         &predicate_params,
         &script_params,
         &contract_params,
-        &fee_params,
+        fee_params,
     );
 
     let tx = tx

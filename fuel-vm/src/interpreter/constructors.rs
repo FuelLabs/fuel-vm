@@ -26,14 +26,22 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
+/// Interpreter parameters
 #[derive(Debug, Clone)]
 pub struct InterpreterParams {
+    /// Gas costs
     pub gas_costs: GasCosts,
+    /// Maximum number of inputs
     pub max_inputs: u64,
+    /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
+    /// Offset of the transaction data in the memory
     pub tx_offset: usize,
+    /// Maximum length of the message data
     pub max_message_data_length: u64,
+    /// Chain ID
     pub chain_id: ChainId,
+    /// Fee parameters
     pub fee_params: FeeParameters,
 }
 

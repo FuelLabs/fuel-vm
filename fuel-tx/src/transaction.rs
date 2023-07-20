@@ -31,13 +31,12 @@ mod txio;
 
 pub mod consensus_parameters;
 
-
 pub use consensus_parameters::{
     ContractParameters,
+    FeeParameters,
     PredicateParameters,
     ScriptParameters,
     TxParameters,
-    FeeParameters,
 };
 
 pub use fee::{

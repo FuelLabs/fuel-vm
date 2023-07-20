@@ -41,13 +41,18 @@ use fuel_types::{
     Word,
 };
 
+use crate::transaction::consensus_parameters::{
+    ContractParameters,
+    PredicateParameters,
+    ScriptParameters,
+    TxParameters,
+};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::io;
-use crate::transaction::consensus_parameters::{ContractParameters, PredicateParameters, ScriptParameters, TxParameters};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {

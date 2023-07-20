@@ -182,16 +182,16 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.9
+
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
           cache: "pnpm"
           node-version: 18.14.1
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8.6.9
 
       - name: Build and Test packages
         run: |

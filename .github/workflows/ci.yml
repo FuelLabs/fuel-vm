@@ -34,7 +34,7 @@ jobs:
           - command: check
             args: --all-targets -p fuel-crypto
           - command: check
-            args: --all-targets -p fuel-merkle          
+            args: --all-targets -p fuel-merkle
           - command: check
             args: --all-targets -p fuel-storage
           - command: check
@@ -160,7 +160,7 @@ jobs:
         uses: katyo/publish-crates@v2
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-  
+
   cargo_audit:
     runs-on: ubuntu-latest
     continue-on-error: true

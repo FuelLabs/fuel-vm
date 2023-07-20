@@ -210,6 +210,6 @@ jobs:
 
       - name: Publish
         run: |
-          pnpm -C .npm publish -r --tag --dry-run
+          pnpm -C .npm publish -r --tag --dry-run --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

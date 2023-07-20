@@ -206,7 +206,6 @@ jobs:
 
       - name: Publish
         run: |
-          npm whoami
           pnpm -C .npm publish -r --tag --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

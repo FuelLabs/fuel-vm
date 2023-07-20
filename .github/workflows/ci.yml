@@ -181,6 +181,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "wasm32-unknown-unknown"
 
       - name: Installing required crates
         run: cargo install wasm-bindgen-cli wasm-opt

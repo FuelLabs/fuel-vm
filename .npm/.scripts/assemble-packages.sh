@@ -46,7 +46,7 @@ build_wasm_npm_pkg_for ()
   # wasm-opt ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -o ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -Oz
   # cd ~-
 
-  # write_template ${NAME_DASHED} ${NAME_UNDERSCORED} README.md
+  write_template ${NAME_DASHED} ${NAME_UNDERSCORED} README.md
   # write_template ${NAME_DASHED} ${NAME_UNDERSCORED} package.json
   # # write_template ${NAME_DASHED} ${NAME_UNDERSCORED} pnpm-lock.yaml
   # write_template ${NAME_DASHED} ${NAME_UNDERSCORED} rollup.config.mjs

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
 NPM_DIR=${ROOT_DIR}/.npm
+PKGS_DIR=${NPM_DIR}/packages
 
 
 write_template ()
@@ -10,8 +11,8 @@ write_template ()
   NAME_UNDERSCORED=$2
   TEMPLATE=$3
 
-  PKG_TEMPLATE_DIR=${NPM_DIR}/.pkg-template
-  PKG_DIR=${NPM_DIR}/${NAME_DASHED}
+  PKG_TEMPLATE_DIR=${NPM_DIR}/.scripts/template
+  PKG_DIR=${PKGS_DIR}/${NAME_DASHED}
 
   PKG_NAME=$(echo "${NAME_DASHED}" | sed -r 's/fuel-//g')
   PKG_VERSION=$(cat ${ROOT_DIR}/Cargo.toml | sed -nr 's/^version = "([^"]+)"/\1/p')
@@ -32,7 +33,7 @@ build_wasm_npm_pkg_for ()
   NAME_DASHED=$1
   NAME_UNDERSCORED=$(echo "${NAME_DASHED}" | sed -r 's/-/_/g')
 
-  PKG_DIR=${NPM_DIR}/${NAME_DASHED}
+  PKG_DIR=${PKGS_DIR}/${NAME_DASHED}
 
   rm -rf ${PKG_DIR}/{src,dist}
 
@@ -44,7 +45,7 @@ build_wasm_npm_pkg_for ()
 
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} README.md
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} package.json
-  write_template ${NAME_DASHED} ${NAME_UNDERSCORED} pnpm-lock.yaml
+  # write_template ${NAME_DASHED} ${NAME_UNDERSCORED} pnpm-lock.yaml
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} rollup.config.mjs
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index.js
 
@@ -52,10 +53,6 @@ build_wasm_npm_pkg_for ()
   sed -i.bkp -r 's;(input = new URL.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
   sed -i.bkp -r 's;(input = fetch.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
   rm ${PKG_DIR}/src/${NAME_UNDERSCORED}.js.bkp
-
-  pnpm -C ${PKG_DIR} install
-  pnpm -C ${PKG_DIR} build
-  pnpm -C ${PKG_DIR} test
 }
 
 

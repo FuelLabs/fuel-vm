@@ -1,14 +1,6 @@
-src
-dist
+.turbo
 node_modules
 
-README.md
-package.json
-pnpm-lock.yaml
-rollup.config.mjs
-
-!.pkg-template/src
-!.pkg-template/README.md
-!.pkg-template/package.json
-!.pkg-template/pnpm-lock.yaml
-!.pkg-template/rollup.config.mjs
+packages/*/*
+!packages/*/index.test.cjs
+!packages/*/index.test.mjs

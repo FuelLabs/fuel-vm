@@ -30,10 +30,6 @@ importers:
         specifier: ^1.10.9
         version: 1.10.9
 
-  packages/fuel-asm: {}
-
-  packages/fuel-types: {}
-
 packages:
 
   /@babel/code-frame@7.22.5:

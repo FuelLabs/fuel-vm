@@ -208,8 +208,12 @@ jobs:
           pnpm -C .npm install
           pnpm -C .npm all
 
+      - name: Ensure NPM access
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish
-        run: |
-          pnpm -C .npm publish -r --no-git-checks --dry-run
+        run: pnpm -C .npm publish -r --no-git-checks --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -188,6 +188,11 @@ impl<S, Tx> Interpreter<S, Tx> {
     pub const fn profiler(&self) -> &Profiler {
         &self.profiler
     }
+
+    pub fn with_fee_params(mut self, fee_params: FeeParameters) -> Self {
+        self.fee_params = fee_params;
+        self
+    }
 }
 
 pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {

@@ -618,6 +618,8 @@ where
             )?;
             self.update_transaction_outputs()?;
 
+            let a = 1 + 1;
+
             program
         };
 

@@ -13,7 +13,7 @@ fn gas_factor_rounds_correctly() {
     let gas_limit = 1_000_000;
 
     // arbitrary non-negligible primes
-    let factor = 5479f64;
+    let factor = 5479_f64;
     let gas_price = 6197;
 
     let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
@@ -25,6 +25,7 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
+        .with_fee_params(fee_params.clone())
         .start_script(script, vec![])
         .gas_price(gas_price)
         .gas_limit(gas_limit)
@@ -38,6 +39,7 @@ fn gas_factor_rounds_correctly() {
     let profiler = GasProfiler::default();
 
     let change = Interpreter::with_memory_storage()
+        .with_fee_params(fee_params.clone())
         .with_profiler(profiler.clone())
         .transact(transaction)
         .expect("failed to execute transaction")

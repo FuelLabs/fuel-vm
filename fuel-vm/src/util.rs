@@ -311,6 +311,13 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
+            self.builder.with_tx_params(self.tx_params.clone());
+            self.builder
+                .with_predicate_params(self.predicate_params.clone());
+            self.builder.with_script_params(self.script_params.clone());
+            self.builder
+                .with_contract_params(self.contract_params.clone());
+            self.builder.with_fee_params(self.fee_params.clone());
             self.builder
                 .finalize_checked(self.block_height, self.gas_costs.clone())
         }
@@ -341,6 +348,11 @@ pub mod test_helpers {
 
         pub fn get_gas_costs(&self) -> &GasCosts {
             &self.gas_costs
+        }
+
+        pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut TestBuilder {
+            self.fee_params = fee_params;
+            self
         }
 
         pub fn build_get_balance_tx(

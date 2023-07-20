@@ -1,9 +1,9 @@
 {
+  "private": true,
   "name": "@fuels/wasm-packages",
   "version": "0.0.0",
-  "description": "WASM version of Rust crates as NPM packages",
+  "description": "Workspacde for building WASM versions of Rust crates",
   "author": "Fuel Labs <contact@fuel.sh> (https://fuel.network/)",
-  "private": true,
   "engines": {
     "node": ">= 18.14.1",
     "pnpm": ">= 8.1.1"

@@ -169,3 +169,38 @@ jobs:
       - uses: rustsec/audit-check@v1.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-wasm-packages:
+    needs:
+      # - publish
+      - verifications-complete
+    # if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "pnpm"
+          node-version: 18.14.1
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.9
+
+      - name: Build and Test packages
+        run: |
+          pnpm -C .npm install
+          pnpm -C .npm all
+
+      - name: Publish
+        run: |
+          npm whoami
+          pnpm -C .npm publish -r --tag --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

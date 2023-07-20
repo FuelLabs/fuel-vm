@@ -70,12 +70,6 @@ where
         }
     }
 
-    // /// Set the consensus parameters for the interpreter
-    // pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
-    //     self.params = params;
-    //     self
-    // }
-
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self

@@ -1,6 +1,7 @@
 use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
+use fuel_types::ChainId;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -52,7 +53,13 @@ fn breakpoint_script() {
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
+    let predicate_params = PredicateParameters::default();
+    let script_params = ScriptParameters::default();
+    let contract_params = ContractParameters::default();
+    let fee_params = FeeParameters::default();
+    let chain_id = ChainId::default();
+    let gas_costs = GasCosts::default();
 
     let script = [
         op::addi(0x10, RegId::ZERO, 8),
@@ -69,7 +76,16 @@ fn breakpoint_script() {
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(
+            height,
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+            chain_id,
+            gas_costs,
+        )
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -122,7 +138,13 @@ fn single_stepping() {
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
+    let predicate_params = PredicateParameters::default();
+    let script_params = ScriptParameters::default();
+    let contract_params = ContractParameters::default();
+    let fee_params = FeeParameters::default();
+    let chain_id = ChainId::default();
+    let gas_costs = GasCosts::default();
 
     // Repeats the middle two instructions five times
     let script = [
@@ -138,7 +160,16 @@ fn single_stepping() {
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(
+            height,
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+            chain_id,
+            gas_costs,
+        )
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

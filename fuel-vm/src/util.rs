@@ -10,7 +10,7 @@
 /// ```
 /// use fuel_asm::{op, RegId};
 /// use fuel_types::{Immediate18, Word};
-/// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
+/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
 ///
@@ -39,7 +39,7 @@
 ///         op::call(0x10, 0x11, 0x12, 0x13),
 ///         op::ret(RegId::ONE),
 ///     ],
-///     ConsensusParameters::DEFAULT.tx_offset()
+///     TxParameters::DEFAULT.tx_offset()
 /// );
 /// ```
 #[macro_export]

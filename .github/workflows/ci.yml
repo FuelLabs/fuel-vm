@@ -182,6 +182,9 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
+      - name: Installing required crates
+        run: cargo install wasm-bindgen-cli wasm-opt
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v2
         with:

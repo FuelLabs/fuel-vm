@@ -1,7 +1,6 @@
 use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
-use fuel_types::ChainId;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

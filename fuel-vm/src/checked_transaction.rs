@@ -205,7 +205,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     where
         Checked<Self>: CheckPredicates,
     {
-        let params = CheckPredicateParams {
+        let check_predicate_params = CheckPredicateParams {
             gas_costs,
             chain_id,
             max_gas_per_predicate: predicate_params.max_gas_per_predicate,
@@ -226,7 +226,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
             &chain_id,
         )?
         .check_signatures(&chain_id)?
-        .check_predicates(params)
+        .check_predicates(check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.

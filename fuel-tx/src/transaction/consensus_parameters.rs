@@ -2,7 +2,6 @@ use fuel_types::{
     bytes::WORD_SIZE,
     AssetId,
     Bytes32,
-    ChainId,
 };
 
 const MAX_GAS: u64 = 100_000_000;
@@ -245,7 +244,6 @@ pub mod default_parameters {
             PredicateParameters,
             ScriptParameters,
             TxParameters,
-            MAX_GAS,
         },
         ContractParameters,
         FeeParameters,

@@ -64,10 +64,8 @@ use fuel_tx::{
     Create,
     FeeParameters,
     Input,
-    PredicateParameters,
     Receipt,
     ScriptExecutionResult,
-    TxParameters,
 };
 use fuel_types::{
     ChainId,

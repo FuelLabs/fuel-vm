@@ -37,12 +37,12 @@ where
         height: BlockHeight,
         gas_costs: GasCosts,
     ) -> Checked<Tx> {
-        let tx_params = self.get_tx_params().clone();
-        let predicate_params = self.get_predicate_params().clone();
-        let script_params = self.get_script_params().clone();
-        let contract_params = self.get_contract_params().clone();
-        let fee_params = self.get_fee_params().clone();
-        let chain_id = self.get_chain_id().clone();
+        let tx_params = *self.get_tx_params();
+        let predicate_params = *self.get_predicate_params();
+        let script_params = *self.get_script_params();
+        let contract_params = *self.get_contract_params();
+        let fee_params = *self.get_fee_params();
+        let chain_id = *self.get_chain_id();
         self.finalize()
             .into_checked(
                 height,
@@ -58,12 +58,12 @@ where
     }
 
     fn finalize_checked_basic(&mut self, height: BlockHeight) -> Checked<Tx> {
-        let tx_params = self.get_tx_params().clone();
-        let predicate_params = self.get_predicate_params().clone();
-        let script_params = self.get_script_params().clone();
-        let contract_params = self.get_contract_params().clone();
-        let fee_params = self.get_fee_params().clone();
-        let chain_id = self.get_chain_id().clone();
+        let tx_params = *self.get_tx_params();
+        let predicate_params = *self.get_predicate_params();
+        let script_params = *self.get_script_params();
+        let contract_params = *self.get_contract_params();
+        let fee_params = *self.get_fee_params();
+        let chain_id = *self.get_chain_id();
         self.finalize()
             .into_checked_basic(
                 height,

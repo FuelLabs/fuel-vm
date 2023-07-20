@@ -1,10 +1,4 @@
-use super::{
-    CONTRACT_PARAMS,
-    PREDICATE_PARAMS,
-    SCRIPT_PARAMS,
-    TX_PARAMS,
-};
-use itertools::chain;
+use super::PREDICATE_PARAMS;
 
 use fuel_crypto::{
     PublicKey,

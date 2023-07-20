@@ -1,24 +1,43 @@
 # WASM version of Rust Crates
 
-In order to test things locally, first install:
+You'll find all the routines to publish selected Rust crates as NPM packages here.
+
+# Testing Locally
+
+To get started and test things locally, you'll need to:
 
 ```shell
+# install the required crates
 cargo install wasm-bindgen-cli wasm-opt
-```
 
-Then ensure you have the needed target:
-
-```shell
+# ensure you have the needed target
 rustup target add wasm32-unknown-unknown
-```
 
-Finally, run these inside the `.npm` directory:
-
-```
+# then install deps, generate wasm files, build and test the package
 pnpm install
 pnpm run wasm
 pnpm run build
 pnpm run test
 ```
 
-This should output ready-to-publish packages inside of `.npm/packages`.
+# Output
+
+The above commands will give ready-to-publish packages inside `.npm/packages`.
+
+```shell
+.npm
+├── .scripts
+│   └── assemble-packages.sh
+├── packages
+│   ├── fuel-asm   # <—— package #1
+│   └── fuel-types # <—— package #2
+└── package.json
+```
+
+# How does it work?
+
+For an in-depth understanding, check:
+ - `.npm/package.json`
+ - `.npm/.scripts/assemble-packages.sh`
+ - `.github/workflows/ci.yml`
+    - _Look for the `publish_wasm_packages` job_

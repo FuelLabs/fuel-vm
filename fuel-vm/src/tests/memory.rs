@@ -14,6 +14,7 @@ use fuel_tx::{
 use fuel_types::ChainId;
 use fuel_vm::{
     consts::VM_MAX_RAM,
+    interpreter::InterpreterParams,
     prelude::*,
 };
 
@@ -58,16 +59,17 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
-    let mut vm = Transactor::new(
-        storage,
+    let interpreter_params = InterpreterParams {
         gas_costs,
-        tx_params.max_inputs,
-        contract_params.contract_max_size,
-        tx_params.tx_offset(),
-        predicate_params.max_message_data_length,
+        max_inputs: tx_params.max_inputs,
+        contract_max_size: contract_params.contract_max_size,
+        tx_offset: tx_params.tx_offset(),
+        max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
         fee_params,
-    );
+    };
+
+    let mut vm = Transactor::new(storage, interpreter_params);
     vm.transact(tx);
     vm
 }

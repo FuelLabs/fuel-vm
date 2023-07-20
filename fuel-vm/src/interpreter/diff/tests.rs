@@ -41,7 +41,10 @@ use fuel_tx::{
     TxParameters,
 };
 
-use crate::gas::GasCosts;
+use crate::{
+    gas::GasCosts,
+    interpreter::InterpreterParams,
+};
 use fuel_types::ChainId;
 
 #[test]
@@ -54,18 +57,7 @@ fn record_and_invert_storage() {
     let chain_id = ChainId::default();
     let fee_params = FeeParameters::default();
 
-    let a = Interpreter::<_, Script>::with_storage(
-        Record::new(MemoryStorage::default()),
-        gas_costs.clone(),
-        max_inputs,
-        contract_max_size,
-        tx_offset,
-        max_message_data_length,
-        chain_id,
-        fee_params,
-    );
-    let mut b = Interpreter::<_, Script>::with_storage(
-        Record::new(MemoryStorage::default()),
+    let interpreter_params = InterpreterParams {
         gas_costs,
         max_inputs,
         contract_max_size,
@@ -73,6 +65,15 @@ fn record_and_invert_storage() {
         max_message_data_length,
         chain_id,
         fee_params,
+    };
+
+    let a = Interpreter::<_, Script>::with_storage(
+        Record::new(MemoryStorage::default()),
+        interpreter_params.clone(),
+    );
+    let mut b = Interpreter::<_, Script>::with_storage(
+        Record::new(MemoryStorage::default()),
+        interpreter_params,
     );
 
     <Record<_> as StorageMutate<ContractsAssets>>::insert(

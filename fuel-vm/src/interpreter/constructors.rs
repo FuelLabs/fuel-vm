@@ -26,6 +26,17 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
+#[derive(Debug, Clone)]
+pub struct InterpreterParams {
+    pub gas_costs: GasCosts,
+    pub max_inputs: u64,
+    pub contract_max_size: u64,
+    pub tx_offset: usize,
+    pub max_message_data_length: u64,
+    pub chain_id: ChainId,
+    pub fee_params: FeeParameters,
+}
+
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: Default,
@@ -35,16 +46,7 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(
-        storage: S,
-        gas_costs: GasCosts,
-        max_inputs: u64,
-        contract_max_size: u64,
-        tx_offset: usize,
-        max_message_data_length: u64,
-        chain_id: ChainId,
-        fee_params: FeeParameters,
-    ) -> Self {
+    pub fn with_storage(storage: S, params: InterpreterParams) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; MEM_SIZE]
@@ -58,14 +60,14 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            gas_costs,
+            gas_costs: params.gas_costs,
             profiler: Profiler::default(),
-            fee_params,
-            max_inputs,
-            contract_max_size,
-            tx_offset,
-            chain_id,
-            max_message_data_length,
+            fee_params: params.fee_params,
+            max_inputs: params.max_inputs,
+            contract_max_size: params.contract_max_size,
+            tx_offset: params.tx_offset,
+            chain_id: params.chain_id,
+            max_message_data_length: params.max_message_data_length,
             panic_context: PanicContext::None,
         }
     }
@@ -98,24 +100,16 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        let gas_costs = Default::default();
-        let max_inputs = TxParameters::DEFAULT.max_inputs;
-        let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
-        let tx_offset = TxParameters::default().tx_offset();
-        let max_message_data_length =
-            PredicateParameters::DEFAULT.max_message_data_length;
-        let chain_id = ChainId::default();
-        let fee_params = FeeParameters::default();
-        Self::with_storage(
-            Default::default(),
-            gas_costs,
-            max_inputs,
-            contract_max_size,
-            tx_offset,
-            max_message_data_length,
-            chain_id,
-            fee_params,
-        )
+        let params = InterpreterParams {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::default().tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+        };
+        Self::with_storage(Default::default(), params)
     }
 }
 

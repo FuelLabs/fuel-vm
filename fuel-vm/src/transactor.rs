@@ -21,6 +21,7 @@ use crate::{
     storage::InterpreterStorage,
 };
 
+use crate::interpreter::InterpreterParams;
 use fuel_tx::{
     ContractParameters,
     Create,
@@ -51,27 +52,8 @@ where
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
-    pub fn new(
-        storage: S,
-        gas_costs: GasCosts,
-        max_inputs: u64,
-        contract_max_size: u64,
-        tx_offset: usize,
-        max_message_data_length: u64,
-        chain_id: ChainId,
-        fee_params: FeeParameters,
-    ) -> Self {
-        Interpreter::with_storage(
-            storage,
-            gas_costs,
-            max_inputs,
-            contract_max_size,
-            tx_offset,
-            max_message_data_length,
-            chain_id,
-            fee_params,
-        )
-        .into()
+    pub fn new(storage: S, interpreter_params: InterpreterParams) -> Self {
+        Interpreter::with_storage(storage, interpreter_params).into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -276,23 +258,15 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        let gas_costs = Default::default();
-        let max_inputs = TxParameters::DEFAULT.max_inputs;
-        let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
-        let tx_offset = TxParameters::default().tx_offset();
-        let max_message_data_length =
-            PredicateParameters::DEFAULT.max_message_data_length;
-        let chain_id = ChainId::default();
-        let fee_params = FeeParameters::default();
-        Self::new(
-            S::default(),
-            gas_costs,
-            max_inputs,
-            contract_max_size,
-            tx_offset,
-            max_message_data_length,
-            chain_id,
-            fee_params,
-        )
+        let interpreter_params = InterpreterParams {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::default().tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+        };
+        Self::new(S::default(), interpreter_params)
     }
 }

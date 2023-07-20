@@ -9,6 +9,7 @@ use crate::{
     transactor::Transactor,
 };
 
+use crate::interpreter::InterpreterParams;
 use fuel_tx::{
     ContractParameters,
     Create,
@@ -50,17 +51,17 @@ impl MemoryClient {
         chain_id: ChainId,
         fee_params: FeeParameters,
     ) -> Self {
+        let interpreter_params = InterpreterParams {
+            gas_costs,
+            max_inputs,
+            contract_max_size,
+            tx_offset,
+            max_message_data_length,
+            chain_id,
+            fee_params,
+        };
         Self {
-            transactor: Transactor::new(
-                storage,
-                gas_costs,
-                max_inputs,
-                contract_max_size,
-                tx_offset,
-                max_message_data_length,
-                chain_id,
-                fee_params,
-            ),
+            transactor: Transactor::new(storage, interpreter_params),
         }
     }
 

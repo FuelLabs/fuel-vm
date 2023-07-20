@@ -1,4 +1,7 @@
-use crate::consts::*;
+use crate::{
+    consts::*,
+    interpreter::InterpreterParams,
+};
 use fuel_asm::{
     op,
     GMArgs,
@@ -95,19 +98,20 @@ fn metadata() {
         .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
-    // Deploy the contract into the blockchain
-    assert!(Transactor::new(
-        &mut storage,
-        Default::default(),
-        tx_params.max_inputs,
-        contract_params.contract_max_size,
-        tx_params.tx_offset(),
-        predicate_params.max_message_data_length,
+    let interpreter_params = InterpreterParams {
+        gas_costs: Default::default(),
+        max_inputs: tx_params.max_inputs,
+        contract_max_size: contract_params.contract_max_size,
+        tx_offset: tx_params.tx_offset(),
+        max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
-        fee_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+        fee_params,
+    };
+
+    // Deploy the contract into the blockchain
+    assert!(Transactor::new(&mut storage, interpreter_params)
+        .transact(tx)
+        .is_success());
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -152,19 +156,20 @@ fn metadata() {
         .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
-    // Deploy the contract into the blockchain
-    assert!(Transactor::new(
-        &mut storage,
-        Default::default(),
-        tx_params.max_inputs,
-        contract_params.contract_max_size,
-        tx_params.tx_offset(),
-        predicate_params.max_message_data_length,
+    let interpreter_params = InterpreterParams {
+        gas_costs: Default::default(),
+        max_inputs: tx_params.max_inputs,
+        contract_max_size: contract_params.contract_max_size,
+        tx_offset: tx_params.tx_offset(),
+        max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
-        fee_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+        fee_params,
+    };
+
+    // Deploy the contract into the blockchain
+    assert!(Transactor::new(&mut storage, interpreter_params,)
+        .transact(tx)
+        .is_success());
 
     let mut inputs = vec![];
     let mut outputs = vec![];
@@ -222,20 +227,21 @@ fn metadata() {
         .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(
-        &mut storage,
-        Default::default(),
-        tx_params.max_inputs,
-        contract_params.contract_max_size,
-        tx_params.tx_offset(),
-        predicate_params.max_message_data_length,
+    let interpreter_params = InterpreterParams {
+        gas_costs: Default::default(),
+        max_inputs: tx_params.max_inputs,
+        contract_max_size: contract_params.contract_max_size,
+        tx_offset: tx_params.tx_offset(),
+        max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
-        fee_params.clone(),
-    )
-    .transact(tx)
-    .receipts()
-    .expect("Failed to transact")
-    .to_owned();
+        fee_params,
+    };
+
+    let receipts = Transactor::new(&mut storage, interpreter_params)
+        .transact(tx)
+        .receipts()
+        .expect("Failed to transact")
+        .to_owned();
 
     let ra = receipts[1]
         .ra()

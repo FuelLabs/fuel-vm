@@ -40,6 +40,7 @@ use crate::{
 use crate::{
     checked_transaction::CheckPredicateParams,
     error::BugVariant::GlobalGasUnderflow,
+    interpreter::constructors::InterpreterParams,
 };
 use fuel_asm::{
     PanicReason,
@@ -316,16 +317,18 @@ impl<T> Interpreter<PredicateStorage, T> {
             _ => {}
         }
 
-        let mut vm = Interpreter::with_storage(
-            PredicateStorage::default(),
-            params.gas_costs.clone(),
-            params.max_inputs,
-            params.contract_max_size,
-            params.tx_offset,
-            params.max_message_data_length,
-            params.chain_id,
-            params.fee_params,
-        );
+        let interpreter_params = InterpreterParams {
+            gas_costs: params.gas_costs,
+            max_inputs: params.max_inputs,
+            contract_max_size: params.contract_max_size,
+            tx_offset: params.tx_offset,
+            max_message_data_length: params.max_message_data_length,
+            chain_id: params.chain_id,
+            fee_params: params.fee_params,
+        };
+
+        let mut vm =
+            Interpreter::with_storage(PredicateStorage::default(), interpreter_params);
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {
@@ -668,24 +671,9 @@ where
     pub fn transact_owned(
         storage: S,
         tx: Checked<Tx>,
-        gas_costs: GasCosts,
-        max_inputs: u64,
-        contract_max_size: u64,
-        tx_offset: usize,
-        max_message_data_length: u64,
-        chain_id: ChainId,
-        fee_params: FeeParameters,
+        params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError> {
-        let mut interpreter = Interpreter::with_storage(
-            storage,
-            gas_costs,
-            max_inputs,
-            contract_max_size,
-            tx_offset,
-            max_message_data_length,
-            chain_id,
-            fee_params,
-        );
+        let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
             .map(ProgramState::from)

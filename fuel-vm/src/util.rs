@@ -101,6 +101,7 @@ pub mod test_helpers {
         interpreter::{
             CheckedMetadata,
             ExecutableTransaction,
+            InterpreterParams,
         },
         prelude::{
             Backtrace,
@@ -502,16 +503,17 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.gas_costs.clone(),
-                self.tx_params.max_inputs,
-                self.contract_params.contract_max_size,
-                self.tx_params.tx_offset(),
-                self.predicate_params.max_message_data_length,
-                self.chain_id,
-                self.fee_params,
-            );
+            let interpreter_params = InterpreterParams {
+                gas_costs: self.gas_costs.clone(),
+                max_inputs: self.tx_params.max_inputs,
+                contract_max_size: self.contract_params.contract_max_size,
+                tx_offset: self.tx_params.tx_offset(),
+                max_message_data_length: self.predicate_params.max_message_data_length,
+                chain_id: self.chain_id,
+                fee_params: self.fee_params,
+            };
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -520,16 +522,17 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.gas_costs.clone(),
-                self.tx_params.max_inputs,
-                self.contract_params.contract_max_size,
-                self.tx_params.tx_offset(),
-                self.predicate_params.max_message_data_length,
-                self.chain_id,
-                self.fee_params,
-            );
+            let interpreter_params = InterpreterParams {
+                gas_costs: self.gas_costs.clone(),
+                max_inputs: self.tx_params.max_inputs,
+                contract_max_size: self.contract_params.contract_max_size,
+                tx_offset: self.tx_params.tx_offset(),
+                max_message_data_length: self.predicate_params.max_message_data_length,
+                chain_id: self.chain_id,
+                fee_params: self.fee_params,
+            };
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -538,16 +541,17 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.gas_costs.clone(),
-                self.tx_params.max_inputs,
-                self.contract_params.contract_max_size,
-                self.tx_params.tx_offset(),
-                self.predicate_params.max_message_data_length,
-                self.chain_id,
-                self.fee_params,
-            );
+            let interpreter_params = InterpreterParams {
+                gas_costs: self.gas_costs.clone(),
+                max_inputs: self.tx_params.max_inputs,
+                contract_max_size: self.contract_params.contract_max_size,
+                tx_offset: self.tx_params.tx_offset(),
+                max_message_data_length: self.predicate_params.max_message_data_length,
+                chain_id: self.chain_id,
+                fee_params: self.fee_params,
+            };
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
 
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();

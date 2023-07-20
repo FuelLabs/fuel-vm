@@ -83,6 +83,8 @@ use crate::checked_transaction::{
     ScriptCheckedMetadata,
 };
 
+pub use constructors::InterpreterParams;
+
 use self::{
     memory::Memory,
     receipts::ReceiptsCtx,

@@ -266,24 +266,21 @@ fn get_metadata_chain_id() {
     let gas_limit = 1_000_000;
     let height = BlockHeight::default();
 
-    let chain_id = rng.gen();
+    let chain_id: ChainId = rng.gen();
     let gas_costs = GasCosts::default();
-    let max_inputs = TxParameters::DEFAULT.max_inputs;
-    let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
-    let tx_offset = TxParameters::DEFAULT.tx_offset();
-    let max_message_data_length = PredicateParameters::DEFAULT.max_message_data_length;
     let fee_params = FeeParameters::default();
 
-    let mut client = MemoryClient::new(
-        Default::default(),
-        gas_costs.clone(),
-        max_inputs,
-        contract_max_size,
-        tx_offset,
-        max_message_data_length,
-        chain_id,
-        fee_params.clone(),
-    );
+    let interpreter_params = InterpreterParams {
+        gas_costs: Default::default(),
+        max_inputs: TxParameters::DEFAULT.max_inputs,
+        contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+        tx_offset: TxParameters::DEFAULT.tx_offset(),
+        max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+        chain_id: chain_id.clone(),
+        fee_params: FeeParameters::default(),
+    };
+
+    let mut client = MemoryClient::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
         let get_chain_id = vec![

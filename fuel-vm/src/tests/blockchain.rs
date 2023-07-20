@@ -28,6 +28,8 @@ use crate::{
     prelude::*,
 };
 
+use crate::interpreter::InterpreterParams;
+
 use crate::{
     checked_transaction::ConsensusParams,
     script_with_data_offset,
@@ -430,16 +432,17 @@ fn ldc_reason_helper(
     // make gas costs free
     let gas_costs = GasCosts::free();
 
-    let mut client = MemoryClient::new(
-        MemoryStorage::default(),
-        gas_costs.clone(),
-        tx_params.max_inputs,
-        contract_params.contract_max_size,
-        tx_params.tx_offset(),
-        predicate_params.max_message_data_length,
+    let interpreter_params = InterpreterParams {
+        gas_costs: gas_costs.clone(),
+        max_inputs: tx_params.max_inputs,
+        contract_max_size: contract_params.contract_max_size,
+        tx_offset: tx_params.tx_offset(),
+        max_message_data_length: predicate_params.max_message_data_length,
         chain_id,
-        fee_params.clone(),
-    );
+        fee_params: fee_params.clone(),
+    };
+
+    let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;

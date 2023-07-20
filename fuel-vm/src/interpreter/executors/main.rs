@@ -16,7 +16,6 @@ use crate::{
         InterpreterError,
         PredicateVerificationFailed,
     },
-    gas::GasCosts,
     interpreter::{
         CheckedMetadata,
         ExecutableTransaction,
@@ -68,10 +67,7 @@ use fuel_tx::{
     Receipt,
     ScriptExecutionResult,
 };
-use fuel_types::{
-    ChainId,
-    Word,
-};
+use fuel_types::Word;
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]

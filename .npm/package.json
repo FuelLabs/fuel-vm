@@ -2,7 +2,7 @@
   "private": true,
   "name": "@fuels/wasm-packages",
   "version": "0.0.0",
-  "description": "Workspacde for building WASM versions of Rust crates",
+  "description": "Workspace for building WASM versions of Rust crates",
   "author": "Fuel Labs <contact@fuel.sh> (https://fuel.network/)",
   "engines": {
     "node": ">= 18.14.1",

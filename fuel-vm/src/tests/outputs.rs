@@ -1,4 +1,5 @@
 use crate::{
+    checked_transaction::ConsensusParams,
     prelude::{
         field::Outputs,
         *,
@@ -139,14 +140,18 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         Default::default(),
         1,
     );
+
+    let consensus_params = ConsensusParams::new(
+        &context.get_tx_params(),
+        &context.get_predicate_params(),
+        &context.get_script_params(),
+        &context.get_contract_params(),
+        &context.get_fee_params(),
+    );
     let create = create
         .into_checked_basic(
             context.get_block_height(),
-            context.get_tx_params(),
-            context.get_predicate_params(),
-            context.get_script_params(),
-            context.get_contract_params(),
-            context.get_fee_params(),
+            consensus_params,
             &context.get_chain_id(),
         )
         .expect("failed to generate checked tx");

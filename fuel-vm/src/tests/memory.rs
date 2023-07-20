@@ -22,6 +22,7 @@ use super::test_helpers::{
     run_script,
     set_full_word,
 };
+use fuel_vm::checked_transaction::ConsensusParams;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
@@ -38,6 +39,14 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let chain_id = ChainId::default();
     let gas_costs = GasCosts::default();
 
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let script = program.into_iter().collect();
 
     let tx = TransactionBuilder::script(script, vec![])
@@ -46,16 +55,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs.clone(),
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
     let mut vm = Transactor::new(

@@ -1,5 +1,11 @@
 use super::*;
-use crate::checked_transaction::IntoChecked;
+use crate::{
+    checked_transaction::{
+        ConsensusParams,
+        IntoChecked,
+    },
+    prelude::FeeParameters,
+};
 use fuel_asm::PanicReason;
 use fuel_tx::{
     Finalizable,
@@ -40,14 +46,24 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .gas_limit(tx_params.max_gas_per_tx)
         .add_random_fee_input()
         .finalize();
+
+    let predicate_params = Default::default();
+    let script_params = Default::default();
+    let contract_params = Default::default();
+    let fee_params = FeeParameters::default().with_gas_price_factor(1);
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let tx = tx
         .into_checked(
             block_height,
-            &tx_params,
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            consensus_params,
             Default::default(),
             vm.gas_costs().to_owned(),
         )

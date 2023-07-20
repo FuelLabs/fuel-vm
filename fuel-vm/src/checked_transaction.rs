@@ -142,11 +142,7 @@ where
         Tx::default()
             .into_checked(
                 Default::default(),
-                &Default::default(),
-                &Default::default(),
-                &Default::default(),
-                &Default::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -185,6 +181,63 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ConsensusParams<'a> {
+    tx_params: &'a TxParameters,
+    predicate_params: &'a PredicateParameters,
+    script_params: &'a ScriptParameters,
+    contract_params: &'a ContractParameters,
+    fee_params: &'a FeeParameters,
+}
+
+impl<'a> ConsensusParams<'a> {
+    pub fn standard() -> Self {
+        Self {
+            tx_params: &TxParameters::DEFAULT,
+            predicate_params: &PredicateParameters::DEFAULT,
+            script_params: &ScriptParameters::DEFAULT,
+            contract_params: &ContractParameters::DEFAULT,
+            fee_params: &FeeParameters::DEFAULT,
+        }
+    }
+
+    pub fn new(
+        tx_params: &'a TxParameters,
+        predicate_params: &'a PredicateParameters,
+        script_params: &'a ScriptParameters,
+        contract_params: &'a ContractParameters,
+        fee_params: &'a FeeParameters,
+    ) -> Self {
+        Self {
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+        }
+    }
+
+    pub fn tx_params(&self) -> &TxParameters {
+        self.tx_params
+    }
+
+    pub fn predicate_params(&self) -> &PredicateParameters {
+        self.predicate_params
+    }
+
+    pub fn script_params(&self) -> &ScriptParameters {
+        self.script_params
+    }
+
+    pub fn contract_params(&self) -> &ContractParameters {
+        self.contract_params
+    }
+
+    pub fn fee_params(&self) -> &FeeParameters {
+        self.fee_params
+    }
+}
+
 /// Performs checks for a transaction
 pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
@@ -194,11 +247,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked(
         self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        predicate_params: &PredicateParameters,
-        script_params: &ScriptParameters,
-        contract_params: &ContractParameters,
-        fee_params: &FeeParameters,
+        consensus_params: ConsensusParams<'_>,
         chain_id: ChainId,
         gas_costs: GasCosts,
     ) -> Result<Checked<Self>, CheckError>
@@ -208,36 +257,33 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         let check_predicate_params = CheckPredicateParams {
             gas_costs,
             chain_id,
-            max_gas_per_predicate: predicate_params.max_gas_per_predicate,
-            max_gas_per_tx: tx_params.max_gas_per_tx,
-            max_inputs: tx_params.max_inputs,
-            contract_max_size: contract_params.contract_max_size,
-            max_message_data_length: predicate_params.max_message_data_length,
-            tx_offset: tx_params.tx_offset(),
-            fee_params: fee_params.clone(),
+            max_gas_per_predicate: consensus_params
+                .predicate_params()
+                .max_gas_per_predicate,
+            max_gas_per_tx: consensus_params.tx_params().max_gas_per_tx,
+            max_inputs: consensus_params.tx_params().max_inputs,
+            contract_max_size: consensus_params.contract_params().contract_max_size,
+            max_message_data_length: consensus_params
+                .predicate_params()
+                .max_message_data_length,
+            tx_offset: consensus_params.tx_params().tx_offset(),
+            fee_params: consensus_params.fee_params().clone(),
         };
-        self.into_checked_basic(
-            block_height,
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            &chain_id,
-        )?
-        .check_signatures(&chain_id)?
-        .check_predicates(check_predicate_params)
+        self.into_checked_basic(block_height, consensus_params, &chain_id)?
+            .check_signatures(&chain_id)?
+            .check_predicates(check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        predicate_params: &PredicateParameters,
-        script_params: &ScriptParameters,
-        contract_params: &ContractParameters,
-        fee_params: &FeeParameters,
+        // tx_params: &TxParameters,
+        // predicate_params: &PredicateParameters,
+        // script_params: &ScriptParameters,
+        // contract_params: &ContractParameters,
+        // fee_params: &FeeParameters,
+        consensus_params: ConsensusParams<'_>,
         chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError>;
 }
@@ -626,53 +672,25 @@ impl IntoChecked for Transaction {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        tx_params: &TxParameters,
-        predicate_params: &PredicateParameters,
-        script_params: &ScriptParameters,
-        contract_params: &ContractParameters,
-        fee_params: &FeeParameters,
+        consensus_params: ConsensusParams<'_>,
         chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script
-                    .into_checked_basic(
-                        block_height,
-                        tx_params,
-                        predicate_params,
-                        script_params,
-                        contract_params,
-                        fee_params,
-                        chain_id,
-                    )?
+                    .into_checked_basic(block_height, consensus_params, chain_id)?
                     .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
-                    .into_checked_basic(
-                        block_height,
-                        tx_params,
-                        predicate_params,
-                        script_params,
-                        contract_params,
-                        fee_params,
-                        chain_id,
-                    )?
+                    .into_checked_basic(block_height, consensus_params, chain_id)?
                     .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
-                    .into_checked_basic(
-                        block_height,
-                        tx_params,
-                        predicate_params,
-                        script_params,
-                        contract_params,
-                        fee_params,
-                        chain_id,
-                    )?
+                    .into_checked_basic(block_height, consensus_params, chain_id)?
                     .into();
                 (transaction.into(), metadata.into())
             }
@@ -714,11 +732,7 @@ mod tests {
             .clone()
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -745,11 +759,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -774,11 +784,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -809,11 +815,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -856,11 +858,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -1028,11 +1026,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -1059,18 +1053,28 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let tx_params = TxParameters::default();
+        let predicate_params = PredicateParameters::default();
+        let script_params = ScriptParameters::default();
+        let contract_params = ContractParameters::default();
+        let fee_params = FeeParameters::default().with_gas_price_factor(factor);
+
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
+
         let err = transaction
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &FeeParameters::default().with_gas_price_factor(factor),
+                consensus_params,
                 ChainId::new(0),
                 Default::default(),
             )
-            .expect_err("insufficient fee amount expected");
+            .expect_err("overflow expected");
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
@@ -1092,18 +1096,28 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let tx_params = TxParameters::default();
+        let predicate_params = PredicateParameters::default();
+        let script_params = ScriptParameters::default();
+        let contract_params = ContractParameters::default();
+        let fee_params = FeeParameters::default().with_gas_price_factor(factor);
+
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
+
         let err = transaction
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &FeeParameters::default().with_gas_price_factor(factor),
+                consensus_params,
                 ChainId::new(0),
                 Default::default(),
             )
-            .expect_err("insufficient fee amount expected");
+            .expect_err("overflow expected");
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
@@ -1122,14 +1136,24 @@ mod tests {
         let gas_limit = 0; // ensure only bytes are included in fee
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let tx_params = TxParameters::default();
+        let predicate_params = PredicateParameters::default();
+        let script_params = ScriptParameters::default();
+        let contract_params = ContractParameters::default();
+        let fee_params = FeeParameters::default().with_gas_price_factor(1);
+
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
+
         let err = transaction
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &FeeParameters::default().with_gas_price_factor(1),
+                consensus_params,
                 ChainId::new(0),
                 Default::default(),
             )
@@ -1147,14 +1171,24 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let tx_params = TxParameters::default();
+        let predicate_params = PredicateParameters::default();
+        let script_params = ScriptParameters::default();
+        let contract_params = ContractParameters::default();
+        let fee_params = FeeParameters::default().with_gas_price_factor(1);
+
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
+
         let err = transaction
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &FeeParameters::default().with_gas_price_factor(1),
+                consensus_params,
                 ChainId::new(0),
                 Default::default(),
             )
@@ -1198,11 +1232,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 Default::default(),
             )
@@ -1227,11 +1257,7 @@ mod tests {
         let checked = tx
             .into_checked_basic(
                 block_height,
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 &ChainId::new(0),
             )
             .unwrap();
@@ -1249,11 +1275,7 @@ mod tests {
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 chain_id,
                 Default::default(),
             )
@@ -1284,11 +1306,7 @@ mod tests {
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 ChainId::new(0),
                 gas_costs,
             )

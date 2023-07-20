@@ -1,7 +1,10 @@
 use std::ops::Range;
 
 use super::*;
-use crate::prelude::*;
+use crate::{
+    checked_transaction::ConsensusParams,
+    prelude::*,
+};
 use fuel_asm::op;
 use test_case::test_case;
 
@@ -14,14 +17,23 @@ fn memcopy() {
         .add_random_fee_input()
         .finalize();
 
+    let predicate_params = Default::default();
+    let script_params = Default::default();
+    let contract_params = Default::default();
+    let fee_params = &Default::default();
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let tx = tx
         .into_checked(
             Default::default(),
-            &tx_params,
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            consensus_params,
             Default::default(),
             vm.gas_costs().to_owned(),
         )
@@ -83,11 +95,7 @@ fn memrange() {
         .finalize()
         .into_checked(
             Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             Default::default(),
             Default::default(),
         )
@@ -122,11 +130,7 @@ fn stack_alloc_ownership() {
         .finalize()
         .into_checked(
             Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             Default::default(),
             Default::default(),
         )

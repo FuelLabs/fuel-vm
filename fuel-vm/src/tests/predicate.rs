@@ -21,6 +21,7 @@ use crate::{
 use crate::checked_transaction::{
     CheckPredicateParams,
     CheckPredicates,
+    ConsensusParams,
     EstimatePredicates,
     ParallelExecutor,
 };
@@ -116,15 +117,7 @@ where
     let gas_costs = GasCosts::free();
 
     let checked = transaction
-        .into_checked_basic(
-            height,
-            &TxParameters::default(),
-            &PredicateParameters::default(),
-            &ScriptParameters::default(),
-            &ContractParameters::default(),
-            &Default::default(),
-            &ChainId::default(),
-        )
+        .into_checked_basic(height, ConsensusParams::standard(), &ChainId::default())
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams {
@@ -278,11 +271,7 @@ async fn execute_gas_metered_predicates(
         let tx = async_tx
             .into_checked_basic(
                 Default::default(),
-                &TxParameters::default(),
-                &PredicateParameters::default(),
-                &ScriptParameters::default(),
-                &ContractParameters::default(),
-                &Default::default(),
+                ConsensusParams::standard(),
                 &ChainId::default(),
             )
             .expect("Should successfully create checked tranaction with predicate");
@@ -304,11 +293,7 @@ async fn execute_gas_metered_predicates(
     let tx = transaction
         .into_checked_basic(
             Default::default(),
-            &TxParameters::default(),
-            &PredicateParameters::default(),
-            &ScriptParameters::default(),
-            &ContractParameters::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             &ChainId::default(),
         )
         .expect("Should successfully create checked tranaction with predicate");
@@ -461,11 +446,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let checked = transaction
         .into_checked_basic(
             Default::default(),
-            &TxParameters::default(),
-            &PredicateParameters::default(),
-            &ScriptParameters::default(),
-            &ContractParameters::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             &ChainId::default(),
         )
         .expect("Should successfully create checked tranaction with predicate");
@@ -605,11 +586,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let checked = transaction
         .into_checked_basic(
             Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             &Default::default(),
         )
         .expect("Should successfully create checked tranaction with predicate");

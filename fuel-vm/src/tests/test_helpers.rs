@@ -4,7 +4,10 @@ use fuel_asm::{
 };
 use fuel_tx::TxParameters;
 use fuel_types::ChainId;
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    checked_transaction::ConsensusParams,
+    prelude::*,
+};
 
 /// Set a register `r` to a Word-sized number value using left-shifts
 pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
@@ -31,6 +34,14 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let chain_id = ChainId::default();
     let gas_costs = GasCosts::default();
 
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)
         .gas_limit(1_000_000)
@@ -39,11 +50,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .finalize()
         .into_checked(
             Default::default(),
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            consensus_params,
             chain_id,
             gas_costs.clone(),
         )

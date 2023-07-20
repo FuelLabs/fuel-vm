@@ -26,7 +26,10 @@ use sha3::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        CheckPredicateParams,
+        ConsensusParams,
+    },
     prelude::*,
     tests::predicate::TokioWithRayon,
     util::test_helpers::check_expected_reason_for_instructions,
@@ -42,7 +45,6 @@ fn secp256k1_recover() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -105,7 +107,6 @@ fn ecrecover_tx_id() {
     let public = secret.public_key();
     let chain_id = ChainId::default();
 
-    let check_params = CheckPredicateParams::default();
     let tx_params = TxParameters::default();
     let predicate_params = PredicateParameters::default();
     let script_params = ScriptParameters::default();
@@ -145,17 +146,16 @@ fn ecrecover_tx_id() {
         .finalize();
 
     tx.sign_inputs(&secret, &chain_id);
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
     let tx = tx
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs,
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs)
         .unwrap();
 
     let receipts = client.transact(tx);
@@ -187,6 +187,14 @@ async fn recover_tx_id_predicate() {
     let contract_params = ContractParameters::default();
     let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
 
     #[rustfmt::skip]
     let predicate = vec![
@@ -249,16 +257,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(
-                maturity,
-                &tx_params,
-                &predicate_params,
-                &script_params,
-                &contract_params,
-                &fee_params,
-                chain_id,
-                gas_costs.clone(),
-            )
+            .into_checked(maturity, consensus_params, chain_id, gas_costs.clone())
             .expect("Should check predicate successfully");
     }
 
@@ -266,17 +265,8 @@ async fn recover_tx_id_predicate() {
     tx.estimate_predicates(check_params.clone())
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(
-        maturity,
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
-        chain_id,
-        gas_costs,
-    )
-    .expect("Should check predicate successfully");
+    tx.into_checked(maturity, consensus_params, chain_id, gas_costs)
+        .expect("Should check predicate successfully");
 }
 
 #[test]
@@ -367,7 +357,6 @@ fn secp256r1_recover() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let gas_costs = GasCosts::default();
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);
@@ -499,7 +488,6 @@ fn ed25519_verify() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let gas_costs = GasCosts::default();
 
     let keypair =
         ed25519_dalek::Keypair::generate(&mut ed25519_dalek_old_rand::rngs::OsRng {});
@@ -628,7 +616,6 @@ fn sha256() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let gas_costs = GasCosts::default();
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let hash = Hasher::hash(message);

@@ -5,7 +5,10 @@ use super::{
     IntoChecked,
 };
 use crate::{
-    checked_transaction::CheckPredicates,
+    checked_transaction::{
+        CheckPredicates,
+        ConsensusParams,
+    },
     prelude::*,
 };
 use fuel_types::BlockHeight;
@@ -42,18 +45,17 @@ where
         let script_params = *self.get_script_params();
         let contract_params = *self.get_contract_params();
         let fee_params = *self.get_fee_params();
+
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
         let chain_id = *self.get_chain_id();
         self.finalize()
-            .into_checked(
-                height,
-                &tx_params,
-                &predicate_params,
-                &script_params,
-                &contract_params,
-                &fee_params,
-                chain_id,
-                gas_costs,
-            )
+            .into_checked(height, consensus_params, chain_id, gas_costs)
             .expect("failed to check tx")
     }
 
@@ -63,17 +65,16 @@ where
         let script_params = *self.get_script_params();
         let contract_params = *self.get_contract_params();
         let fee_params = *self.get_fee_params();
+        let consensus_params = ConsensusParams::new(
+            &tx_params,
+            &predicate_params,
+            &script_params,
+            &contract_params,
+            &fee_params,
+        );
         let chain_id = *self.get_chain_id();
         self.finalize()
-            .into_checked_basic(
-                height,
-                &tx_params,
-                &predicate_params,
-                &script_params,
-                &contract_params,
-                &fee_params,
-                &chain_id,
-            )
+            .into_checked_basic(height, consensus_params, &chain_id)
             .expect("failed to check tx")
     }
 }

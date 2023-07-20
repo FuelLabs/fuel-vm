@@ -1,4 +1,5 @@
 use crate::{
+    checked_transaction::ConsensusParams,
     prelude::*,
     script_with_data_offset,
     util::test_helpers::TestBuilder,
@@ -71,18 +72,17 @@ fn prevent_contract_id_redeployment() {
     let contract_params = ContractParameters::default();
     let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
 
     let create = create
-        .into_checked_basic(
-            1.into(),
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            &chain_id,
-        )
+        .into_checked_basic(1.into(), consensus_params, &chain_id)
         .expect("failed to generate checked tx");
 
     // deploy contract

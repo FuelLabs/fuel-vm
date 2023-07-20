@@ -97,6 +97,7 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use crate::{
+        checked_transaction::ConsensusParams,
         interpreter::{
             CheckedMetadata,
             ExecutableTransaction,
@@ -409,6 +410,14 @@ pub mod test_helpers {
             let contract_root = contract.root();
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
+            let consensus_params = ConsensusParams::new(
+                &self.tx_params,
+                &self.predicate_params,
+                &self.script_params,
+                &self.contract_params,
+                &self.fee_params,
+            );
+
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .gas_price(self.gas_price)
                 .gas_limit(self.gas_limit)
@@ -418,11 +427,7 @@ pub mod test_helpers {
                 .finalize()
                 .into_checked(
                     self.block_height,
-                    &self.tx_params,
-                    &self.predicate_params,
-                    &self.script_params,
-                    &self.contract_params,
-                    &self.fee_params,
+                    consensus_params,
                     self.chain_id,
                     self.gas_costs.clone(),
                 )

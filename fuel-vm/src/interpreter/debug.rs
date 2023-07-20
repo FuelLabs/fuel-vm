@@ -46,7 +46,9 @@ where
 
 #[test]
 fn breakpoint_script() {
+    use crate::checked_transaction::ConsensusParams;
     use fuel_asm::op;
+    use fuel_types::ChainId;
 
     let mut vm = Interpreter::with_memory_storage();
 
@@ -71,20 +73,19 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs,
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -132,7 +133,10 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
+    use crate::checked_transaction::ConsensusParams;
     use fuel_asm::op;
+    use fuel_types::ChainId;
+
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_limit = 1_000_000;
@@ -155,20 +159,19 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs,
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

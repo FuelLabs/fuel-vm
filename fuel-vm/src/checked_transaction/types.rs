@@ -60,18 +60,16 @@ pub mod create {
         Checked,
         IntoChecked,
     };
-    use crate::checked_transaction::NonRetryableFreeBalances;
+    use crate::checked_transaction::{
+        ConsensusParams,
+        NonRetryableFreeBalances,
+    };
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ContractParameters,
         Create,
-        FeeParameters,
         FormatValidityChecks,
-        PredicateParameters,
-        ScriptParameters,
         TransactionFee,
-        TxParameters,
     };
     use fuel_types::{
         BlockHeight,
@@ -99,20 +97,16 @@ pub mod create {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            tx_params: &TxParameters,
-            predicate_params: &PredicateParameters,
-            script_params: &ScriptParameters,
-            contract_params: &ContractParameters,
-            fee_params: &FeeParameters,
+            consensus_params: ConsensusParams<'_>,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;
             self.check_without_signatures(
                 block_height,
-                tx_params,
-                predicate_params,
-                script_params,
-                contract_params,
+                consensus_params.tx_params(),
+                consensus_params.predicate_params(),
+                consensus_params.script_params(),
+                consensus_params.contract_params(),
                 chain_id,
             )?;
 
@@ -121,7 +115,7 @@ pub mod create {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, fee_params)?;
+            } = initial_free_balances(&self, consensus_params.fee_params())?;
             assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
@@ -145,16 +139,12 @@ pub mod mint {
         Checked,
         IntoChecked,
     };
+    use crate::checked_transaction::ConsensusParams;
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ContractParameters,
-        FeeParameters,
         FormatValidityChecks,
         Mint,
-        PredicateParameters,
-        ScriptParameters,
-        TxParameters,
     };
     use fuel_types::{
         BlockHeight,
@@ -167,20 +157,16 @@ pub mod mint {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            tx_params: &TxParameters,
-            predicate_params: &PredicateParameters,
-            script_params: &ScriptParameters,
-            contract_params: &ContractParameters,
-            _fee_params: &FeeParameters,
+            consensus_params: ConsensusParams<'_>,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;
             self.check_without_signatures(
                 block_height,
-                tx_params,
-                predicate_params,
-                script_params,
-                contract_params,
+                consensus_params.tx_params(),
+                consensus_params.predicate_params(),
+                consensus_params.script_params(),
+                consensus_params.contract_params(),
                 chain_id,
             )?;
 
@@ -200,20 +186,16 @@ pub mod script {
         IntoChecked,
     };
     use crate::checked_transaction::{
+        ConsensusParams,
         NonRetryableFreeBalances,
         RetryableAmount,
     };
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ContractParameters,
-        FeeParameters,
         FormatValidityChecks,
-        PredicateParameters,
         Script,
-        ScriptParameters,
         TransactionFee,
-        TxParameters,
     };
     use fuel_types::{
         BlockHeight,
@@ -243,20 +225,16 @@ pub mod script {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            tx_params: &TxParameters,
-            predicate_params: &PredicateParameters,
-            script_params: &ScriptParameters,
-            contract_params: &ContractParameters,
-            fee_params: &FeeParameters,
+            consensus_params: ConsensusParams<'_>,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;
             self.check_without_signatures(
                 block_height,
-                tx_params,
-                predicate_params,
-                script_params,
-                contract_params,
+                consensus_params.tx_params(),
+                consensus_params.predicate_params(),
+                consensus_params.script_params(),
+                consensus_params.contract_params(),
                 chain_id,
             )?;
 
@@ -265,7 +243,7 @@ pub mod script {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, fee_params)?;
+            } = initial_free_balances(&self, consensus_params.fee_params())?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),

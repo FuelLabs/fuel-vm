@@ -30,11 +30,13 @@ use rand::{
     SeedableRng,
 };
 
-use crate::prelude::{
-    GasCosts,
-    *,
+use crate::{
+    checked_transaction::ConsensusParams,
+    prelude::{
+        GasCosts,
+        *,
+    },
 };
-
 #[test]
 fn metadata() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -52,6 +54,14 @@ fn metadata() {
     let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
     let gas_costs = GasCosts::default();
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -82,16 +92,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs.clone(),
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -148,16 +149,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs.clone(),
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
     // Deploy the contract into the blockchain
@@ -227,16 +219,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            height,
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
-            chain_id,
-            gas_costs.clone(),
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
         .expect("failed to check tx");
 
     let receipts = Transactor::new(
@@ -302,21 +285,25 @@ fn get_metadata_chain_id() {
         op::ret(0x10),
     ];
 
+    let tx_params = Default::default();
+    let predicate_params = Default::default();
+    let script_params = Default::default();
+    let contract_params = Default::default();
+
+    let consensus_params = ConsensusParams::new(
+        &tx_params,
+        &predicate_params,
+        &script_params,
+        &contract_params,
+        &fee_params,
+    );
+
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
         .with_chain_id(chain_id.clone())
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            height,
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &fee_params,
-            chain_id,
-            gas_costs,
-        )
+        .into_checked(height, consensus_params, chain_id, gas_costs)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -341,10 +328,6 @@ fn get_transaction_fields() {
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
 
     let contract: Witness = vec![op::ret(0x01)].into_iter().collect::<Vec<u8>>().into();

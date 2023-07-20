@@ -13,6 +13,7 @@ use crate::{
     checked_transaction::{
         CheckPredicateParams,
         CheckPredicates,
+        ConsensusParams,
     },
     interpreter::CheckedMetadata,
     prelude::*,
@@ -93,11 +94,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked(
             Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             Default::default(),
             GasCosts::default(),
         )
@@ -108,11 +105,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked_basic(
             Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             &Default::default(),
         )
         .expect("Should successfully create checked tranaction with predicate");
@@ -130,11 +123,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let check_res = transaction.into_checked(
         Default::default(),
-        &Default::default(),
-        &Default::default(),
-        &Default::default(),
-        &Default::default(),
-        &Default::default(),
+        ConsensusParams::standard(),
         Default::default(),
         GasCosts::default(),
     );

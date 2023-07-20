@@ -1,4 +1,5 @@
 use crate::{
+    checked_transaction::ConsensusParams,
     constraints::reg_key::RegMut,
     interpreter::internal::{
         external_asset_id_balance_sub,
@@ -115,11 +116,7 @@ fn variable_output_updates_in_memory() {
         .finalize()
         .into_checked(
             height,
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
-            &Default::default(),
+            ConsensusParams::standard(),
             Default::default(),
             vm.gas_costs().to_owned(),
         )

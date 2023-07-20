@@ -192,6 +192,8 @@ jobs:
         with:
           cache: "pnpm"
           node-version: 18.14.1
+          node-version-file: ".npm/package.json"
+          cache-dependency-path: ".npm/pnpm-lock.yaml"
 
       - name: Build and Test packages
         run: |

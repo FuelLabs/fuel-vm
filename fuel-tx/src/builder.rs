@@ -305,6 +305,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    pub fn with_chain_id(&mut self, chain_id: ChainId) -> &mut Self {
+        self.chain_id = chain_id;
+        self
+    }
+
     pub fn maturity(&mut self, maturity: BlockHeight) -> &mut Self {
         self.tx.set_maturity(maturity);
 

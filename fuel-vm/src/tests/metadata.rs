@@ -304,6 +304,7 @@ fn get_metadata_chain_id() {
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
+        .with_chain_id(chain_id.clone())
         .add_random_fee_input()
         .finalize()
         .into_checked(

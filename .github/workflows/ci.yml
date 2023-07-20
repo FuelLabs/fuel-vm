@@ -170,10 +170,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-    needs:
-      # - publish
-      - verifications-complete
   publish_wasm_packages:
+    # needs:
+    #   - publish
+    #   - verifications-complete
     # if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     steps:

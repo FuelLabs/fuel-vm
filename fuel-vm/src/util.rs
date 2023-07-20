@@ -97,7 +97,6 @@ pub mod test_helpers {
     use anyhow::anyhow;
 
     use crate::{
-        checked_transaction::ConsensusParams,
         interpreter::{
             CheckedMetadata,
             ExecutableTransaction,
@@ -117,6 +116,7 @@ pub mod test_helpers {
     };
     use fuel_tx::{
         field::Outputs,
+        ConsensusParams,
         Contract,
         ContractParameters,
         Create,

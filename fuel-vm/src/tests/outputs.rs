@@ -1,5 +1,4 @@
 use crate::{
-    checked_transaction::ConsensusParams,
     prelude::{
         field::Outputs,
         *,
@@ -14,7 +13,10 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::Witness;
+use fuel_tx::{
+    ConsensusParams,
+    Witness,
+};
 use rand::{
     rngs::StdRng,
     Rng,

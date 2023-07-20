@@ -17,6 +17,7 @@ use fuel_tx::{
         Script as ScriptField,
         Witnesses,
     },
+    ConsensusParams,
     Finalizable,
     Receipt,
     Script,
@@ -33,12 +34,9 @@ use rand::{
     SeedableRng,
 };
 
-use crate::{
-    checked_transaction::ConsensusParams,
-    prelude::{
-        GasCosts,
-        *,
-    },
+use crate::prelude::{
+    GasCosts,
+    *,
 };
 #[test]
 fn metadata() {

@@ -21,12 +21,12 @@ use crate::{
 use crate::checked_transaction::{
     CheckPredicateParams,
     CheckPredicates,
-    ConsensusParams,
     EstimatePredicates,
     ParallelExecutor,
 };
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
+use fuel_tx::ConsensusParams;
 use fuel_types::ChainId;
 
 pub struct TokioWithRayon;

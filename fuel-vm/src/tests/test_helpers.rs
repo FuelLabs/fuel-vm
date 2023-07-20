@@ -2,12 +2,12 @@ use fuel_asm::{
     op,
     Instruction,
 };
-use fuel_tx::TxParameters;
-use fuel_types::ChainId;
-use fuel_vm::{
-    checked_transaction::ConsensusParams,
-    prelude::*,
+use fuel_tx::{
+    ConsensusParams,
+    TxParameters,
 };
+use fuel_types::ChainId;
+use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
 pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {

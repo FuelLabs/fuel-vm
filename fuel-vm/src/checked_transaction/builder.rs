@@ -5,12 +5,10 @@ use super::{
     IntoChecked,
 };
 use crate::{
-    checked_transaction::{
-        CheckPredicates,
-        ConsensusParams,
-    },
+    checked_transaction::CheckPredicates,
     prelude::*,
 };
+use fuel_tx::ConsensusParams;
 use fuel_types::BlockHeight;
 
 /// Extension trait for [`fuel_tx::TransactionBuilder`] adding finalization methods

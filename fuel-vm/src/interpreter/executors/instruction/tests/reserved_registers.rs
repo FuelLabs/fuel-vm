@@ -1,13 +1,11 @@
 use super::*;
 use crate::{
-    checked_transaction::{
-        ConsensusParams,
-        IntoChecked,
-    },
+    checked_transaction::IntoChecked,
     prelude::FeeParameters,
 };
 use fuel_asm::PanicReason;
 use fuel_tx::{
+    ConsensusParams,
     Finalizable,
     TransactionBuilder,
     TxParameters,

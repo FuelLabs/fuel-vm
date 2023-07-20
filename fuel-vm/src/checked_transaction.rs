@@ -20,6 +20,7 @@ use fuel_types::{
 };
 
 use core::borrow::Borrow;
+use fuel_tx::ConsensusParams;
 use std::future::Future;
 
 mod balances;
@@ -178,71 +179,6 @@ impl<Tx: IntoChecked> AsMut<Tx> for Checked<Tx> {
 impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
     fn borrow(&self) -> &Tx {
         self.transaction()
-    }
-}
-
-/// A collection of parameters for convenience
-#[derive(Debug, Clone, Copy)]
-pub struct ConsensusParams<'a> {
-    tx_params: &'a TxParameters,
-    predicate_params: &'a PredicateParameters,
-    script_params: &'a ScriptParameters,
-    contract_params: &'a ContractParameters,
-    fee_params: &'a FeeParameters,
-}
-
-impl<'a> ConsensusParams<'a> {
-    /// Constructor for the `ConsensusParams` with Standard values
-    pub fn standard() -> Self {
-        Self {
-            tx_params: &TxParameters::DEFAULT,
-            predicate_params: &PredicateParameters::DEFAULT,
-            script_params: &ScriptParameters::DEFAULT,
-            contract_params: &ContractParameters::DEFAULT,
-            fee_params: &FeeParameters::DEFAULT,
-        }
-    }
-
-    /// Constructor for the `ConsensusParams`
-    pub fn new(
-        tx_params: &'a TxParameters,
-        predicate_params: &'a PredicateParameters,
-        script_params: &'a ScriptParameters,
-        contract_params: &'a ContractParameters,
-        fee_params: &'a FeeParameters,
-    ) -> Self {
-        Self {
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-        }
-    }
-
-    /// Get the transaction parameters
-    pub fn tx_params(&self) -> &TxParameters {
-        self.tx_params
-    }
-
-    /// Get the predicate parameters
-    pub fn predicate_params(&self) -> &PredicateParameters {
-        self.predicate_params
-    }
-
-    /// Get the script parameters
-    pub fn script_params(&self) -> &ScriptParameters {
-        self.script_params
-    }
-
-    /// Get the contract parameters
-    pub fn contract_params(&self) -> &ContractParameters {
-        self.contract_params
-    }
-
-    /// Get the fee parameters
-    pub fn fee_params(&self) -> &FeeParameters {
-        self.fee_params
     }
 }
 

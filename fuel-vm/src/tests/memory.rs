@@ -23,7 +23,7 @@ use super::test_helpers::{
     run_script,
     set_full_word,
 };
-use fuel_vm::checked_transaction::ConsensusParams;
+use fuel_tx::ConsensusParams;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();

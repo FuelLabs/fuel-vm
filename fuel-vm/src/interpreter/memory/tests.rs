@@ -1,11 +1,9 @@
 use std::ops::Range;
 
 use super::*;
-use crate::{
-    checked_transaction::ConsensusParams,
-    prelude::*,
-};
+use crate::prelude::*;
 use fuel_asm::op;
+use fuel_tx::ConsensusParams;
 use test_case::test_case;
 
 #[test]

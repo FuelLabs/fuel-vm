@@ -1,5 +1,4 @@
 use crate::{
-    checked_transaction::ConsensusParams,
     constraints::reg_key::RegMut,
     interpreter::internal::{
         external_asset_id_balance_sub,
@@ -10,6 +9,7 @@ use crate::{
 use fuel_asm::op;
 use fuel_tx::{
     field::Outputs,
+    ConsensusParams,
     TransactionBuilder,
 };
 use rand::{

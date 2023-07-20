@@ -14,7 +14,10 @@ use fuel_crypto::{
     SecretKey,
     Signature,
 };
-use fuel_tx::TransactionBuilder;
+use fuel_tx::{
+    ConsensusParams,
+    TransactionBuilder,
+};
 use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
@@ -26,10 +29,7 @@ use sha3::{
 };
 
 use crate::{
-    checked_transaction::{
-        CheckPredicateParams,
-        ConsensusParams,
-    },
+    checked_transaction::CheckPredicateParams,
     prelude::*,
     tests::predicate::TokioWithRayon,
     util::test_helpers::check_expected_reason_for_instructions,

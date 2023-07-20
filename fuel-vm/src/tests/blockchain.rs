@@ -30,10 +30,7 @@ use crate::{
 
 use crate::interpreter::InterpreterParams;
 
-use crate::{
-    checked_transaction::ConsensusParams,
-    script_with_data_offset,
-};
+use crate::script_with_data_offset;
 use fuel_asm::{
     op,
     Instruction,
@@ -45,7 +42,10 @@ use fuel_asm::{
         MemoryOverflow,
     },
 };
-use fuel_tx::field::Script as ScriptField;
+use fuel_tx::{
+    field::Script as ScriptField,
+    ConsensusParams,
+};
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 const SET_STATUS_REG: u8 = 0x39;

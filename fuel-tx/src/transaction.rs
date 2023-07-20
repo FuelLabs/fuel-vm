@@ -32,6 +32,7 @@ mod txio;
 pub mod consensus_parameters;
 
 pub use consensus_parameters::{
+    ConsensusParams,
     ContractParameters,
     FeeParameters,
     PredicateParameters,

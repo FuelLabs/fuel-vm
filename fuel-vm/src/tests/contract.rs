@@ -1,5 +1,4 @@
 use crate::{
-    checked_transaction::ConsensusParams,
     prelude::*,
     script_with_data_offset,
     util::test_helpers::TestBuilder,
@@ -8,7 +7,10 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::Witness;
+use fuel_tx::{
+    ConsensusParams,
+    Witness,
+};
 use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,

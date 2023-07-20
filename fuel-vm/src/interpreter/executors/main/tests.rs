@@ -2,7 +2,10 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::TransactionBuilder;
+use fuel_tx::{
+    ConsensusParams,
+    TransactionBuilder,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -13,7 +16,6 @@ use crate::{
     checked_transaction::{
         CheckPredicateParams,
         CheckPredicates,
-        ConsensusParams,
     },
     interpreter::CheckedMetadata,
     prelude::*,

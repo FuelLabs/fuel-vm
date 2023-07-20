@@ -46,8 +46,8 @@ where
 
 #[test]
 fn breakpoint_script() {
-    use crate::checked_transaction::ConsensusParams;
     use fuel_asm::op;
+    use fuel_tx::ConsensusParams;
     use fuel_types::ChainId;
 
     let mut vm = Interpreter::with_memory_storage();
@@ -133,8 +133,8 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
-    use crate::checked_transaction::ConsensusParams;
     use fuel_asm::op;
+    use fuel_tx::ConsensusParams;
     use fuel_types::ChainId;
 
     let mut vm = Interpreter::with_memory_storage();

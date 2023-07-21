@@ -41,3 +41,33 @@ For an in-depth understanding, check:
  - `.npm/.scripts/prepare-wasm-packages.sh`
  - `.github/workflows/ci.yml`
     - _Look for the `publish_wasm_packages` job_
+
+# Using local sym-linked packages
+
+First, we need to link our `packages` package globally in our local `global pnpm store`:
+
+```sh
+cd packages/fuel-asm
+pnpm link -g
+```
+
+Let's check it out:
+
+```sh
+pnpm list -g
+```
+
+You should see something like:
+
+```
+@fuels/vm-asm link:<...>/fuel-vm/.npm/packages/fuel-asm
+```
+
+Cool, now on the root directory of your desired project `my-local-project`:
+
+```sh
+cd my-local-project
+pnpm link -g @fuels/vm-asm
+```
+
+Done — you're using the local version of `@fuels/vm-asm`.

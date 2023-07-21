@@ -10,10 +10,10 @@
   },
   "packageManager": "pnpm@8.1.1",
   "scripts": {
-    "wasm": ".scripts/assemble-packages.sh",
+    "wasm": ".scripts/prepare-wasm-packages.sh",
     "build": "turbo run build",
     "test": "turbo run test",
-    "all": "pnpm run-s wasm build test"
+    "pack:all": "pnpm run-s wasm build test"
   },
   "license": "Apache-2.0",
   "devDependencies": {

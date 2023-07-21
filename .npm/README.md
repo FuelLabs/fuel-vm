@@ -27,7 +27,7 @@ The above commands will give ready-to-publish packages inside `.npm/packages`.
 ```shell
 .npm
 ├── .scripts
-│   └── assemble-packages.sh
+│   └── prepare-wasm-packages
 ├── packages
 │   ├── fuel-asm   # <—— package #1
 │   └── fuel-types # <—— package #2
@@ -38,6 +38,6 @@ The above commands will give ready-to-publish packages inside `.npm/packages`.
 
 For an in-depth understanding, check:
  - `.npm/package.json`
- - `.npm/.scripts/assemble-packages.sh`
+ - `.npm/.scripts/prepare-wasm-packages.sh`
  - `.github/workflows/ci.yml`
     - _Look for the `publish_wasm_packages` job_

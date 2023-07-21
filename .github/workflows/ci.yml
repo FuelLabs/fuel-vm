@@ -207,7 +207,7 @@ jobs:
       - name: Build and Test packages
         run: |
           pnpm -C .npm install
-          pnpm -C .npm all
+          pnpm -C .npm pack:all
 
       - name: Ensure NPM access
         run: npm whoami

@@ -12,6 +12,7 @@ use crate::{
         Script,
     },
     Cacheable,
+    ConsensusParams,
     ContractParameters,
     FeeParameters,
     Input,
@@ -119,12 +120,7 @@ pub struct TransactionBuilder<Tx> {
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
-    tx_params: TxParameters,
-    predicate_params: PredicateParameters,
-    script_params: ScriptParameters,
-    contract_params: ContractParameters,
-    fee_params: FeeParameters,
-    chain_id: ChainId,
+    params: ConsensusParams,
 
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
@@ -204,50 +200,48 @@ impl<Tx> TransactionBuilder<Tx> {
         let should_prepare_predicate = false;
         let sign_keys = HashMap::new();
 
+        // TODO: What is a default chain id?
+        let chain_id = ChainId::default();
+
         Self {
             tx,
             should_prepare_script,
             should_prepare_predicate,
+            params: ConsensusParams::standard(chain_id),
             sign_keys,
-            tx_params: Default::default(),
-            predicate_params: Default::default(),
-            script_params: Default::default(),
-            contract_params: Default::default(),
-            fee_params: Default::default(),
-            chain_id: Default::default(),
         }
     }
 
-    // pub fn get_params(&self) -> ConsensusParams {
-    //     &self.parameters
-    // }
+    pub fn get_params(&self) -> &ConsensusParams {
+        &self.params
+    }
 
     pub fn get_tx_params(&self) -> &TxParameters {
-        &self.tx_params
+        &self.params.tx_params()
     }
 
     pub fn get_predicate_params(&self) -> &PredicateParameters {
-        &self.predicate_params
+        &self.params.predicate_params()
     }
 
     pub fn get_script_params(&self) -> &ScriptParameters {
-        &self.script_params
+        &self.params.script_params()
     }
 
     pub fn get_contract_params(&self) -> &ContractParameters {
-        &self.contract_params
+        &self.params.contract_params()
     }
 
     pub fn get_fee_params(&self) -> &FeeParameters {
-        &self.fee_params
+        &self.params.fee_params()
     }
 
-    pub fn get_chain_id(&self) -> &ChainId {
-        &self.chain_id
+    pub fn get_chain_id(&self) -> ChainId {
+        self.params.chain_id()
     }
 
     pub fn with_tx_params(&mut self, tx_params: TxParameters) -> &mut Self {
-        self.tx_params = tx_params;
+        self.params.tx_params = tx_params;
         self
     }
 
@@ -255,12 +249,12 @@ impl<Tx> TransactionBuilder<Tx> {
         &mut self,
         predicate_params: PredicateParameters,
     ) -> &mut Self {
-        self.predicate_params = predicate_params;
+        self.params.predicate_params = predicate_params;
         self
     }
 
     pub fn with_script_params(&mut self, script_params: ScriptParameters) -> &mut Self {
-        self.script_params = script_params;
+        self.params.script_params = script_params;
         self
     }
 
@@ -268,12 +262,12 @@ impl<Tx> TransactionBuilder<Tx> {
         &mut self,
         contract_params: ContractParameters,
     ) -> &mut Self {
-        self.contract_params = contract_params;
+        self.params.contract_params = contract_params;
         self
     }
 
     pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
-        self.fee_params = fee_params;
+        self.params.fee_params = fee_params;
         self
     }
 }
@@ -306,7 +300,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn with_chain_id(&mut self, chain_id: ChainId) -> &mut Self {
-        self.chain_id = chain_id;
+        self.params.chain_id = chain_id;
         self
     }
 
@@ -443,9 +437,9 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self.sign_keys
             .iter()
-            .for_each(|(k, _)| tx.sign_inputs(k, &self.chain_id));
+            .for_each(|(k, _)| tx.sign_inputs(k, &self.get_chain_id()));
 
-        tx.precompute(&self.chain_id)
+        tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
 
         tx
@@ -457,7 +451,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.chain_id)
+        tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
 
         tx
@@ -481,7 +475,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.chain_id)
+        tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
         tx
     }

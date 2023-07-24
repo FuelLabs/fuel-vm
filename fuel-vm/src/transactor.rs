@@ -7,7 +7,6 @@ use crate::{
         IntoChecked,
     },
     error::InterpreterError,
-    gas::GasCosts,
     interpreter::{
         CheckedMetadata,
         ExecutableTransaction,
@@ -26,6 +25,7 @@ use fuel_tx::{
     ContractParameters,
     Create,
     FeeParameters,
+    GasCosts,
     PredicateParameters,
     Receipt,
     Script,

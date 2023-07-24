@@ -2,12 +2,22 @@ use fuel_types::{
     bytes::WORD_SIZE,
     AssetId,
     Bytes32,
+    ChainId,
+};
+
+pub mod gas;
+
+pub use gas::{
+    DependentCost,
+    GasCosts,
+    GasCostsValues,
+    GasUnit,
 };
 
 const MAX_GAS: u64 = 100_000_000;
 
 /// A collection of parameters for convenience
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ConsensusParams {
     // TODO: This should be pub(crate) for the `fuel_tx` tests, but for some reason the
     // tests can't see the fields with `pub(crate)`
@@ -16,17 +26,21 @@ pub struct ConsensusParams {
     pub script_params: ScriptParameters,
     pub contract_params: ContractParameters,
     pub fee_params: FeeParameters,
+    pub chain_id: ChainId,
+    pub gas_costs: GasCosts,
 }
 
 impl ConsensusParams {
     /// Constructor for the `ConsensusParams` with Standard values
-    pub fn standard() -> Self {
+    pub fn standard(chain_id: ChainId) -> Self {
         Self {
             tx_params: TxParameters::DEFAULT,
             predicate_params: PredicateParameters::DEFAULT,
             script_params: ScriptParameters::DEFAULT,
             contract_params: ContractParameters::DEFAULT,
             fee_params: FeeParameters::DEFAULT,
+            chain_id,
+            gas_costs: GasCosts::default(),
         }
     }
 
@@ -37,6 +51,8 @@ impl ConsensusParams {
         script_params: ScriptParameters,
         contract_params: ContractParameters,
         fee_params: FeeParameters,
+        chain_id: ChainId,
+        gas_costs: GasCosts,
     ) -> Self {
         Self {
             tx_params,
@@ -44,6 +60,8 @@ impl ConsensusParams {
             script_params,
             contract_params,
             fee_params,
+            chain_id,
+            gas_costs,
         }
     }
 
@@ -70,6 +88,16 @@ impl ConsensusParams {
     /// Get the fee parameters
     pub fn fee_params(&self) -> &FeeParameters {
         &self.fee_params
+    }
+
+    /// Get the chain ID
+    pub fn chain_id(&self) -> ChainId {
+        self.chain_id
+    }
+
+    /// Get the gas costs
+    pub fn gas_costs(&self) -> &GasCosts {
+        &self.gas_costs
     }
 }
 

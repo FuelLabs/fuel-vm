@@ -3,7 +3,6 @@
 use crate::{
     backtrace::Backtrace,
     checked_transaction::Checked,
-    gas::GasCosts,
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
@@ -14,6 +13,7 @@ use fuel_tx::{
     ContractParameters,
     Create,
     FeeParameters,
+    GasCosts,
     PredicateParameters,
     Receipt,
     Script,

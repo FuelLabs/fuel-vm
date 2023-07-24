@@ -35,7 +35,6 @@ use crate::{
         AvailableBalances,
     },
     error::PredicateVerificationFailed,
-    gas::GasCosts,
     interpreter::{
         CheckedMetadata as CheckedMetadataAccessTrait,
         InitialBalances,
@@ -192,30 +191,14 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        chain_id: ChainId,
-        gas_costs: GasCosts,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
-        let check_predicate_params = CheckPredicateParams {
-            gas_costs,
-            chain_id,
-            max_gas_per_predicate: consensus_params
-                .predicate_params()
-                .max_gas_per_predicate,
-            max_gas_per_tx: consensus_params.tx_params().max_gas_per_tx,
-            max_inputs: consensus_params.tx_params().max_inputs,
-            contract_max_size: consensus_params.contract_params().contract_max_size,
-            max_message_data_length: consensus_params
-                .predicate_params()
-                .max_message_data_length,
-            tx_offset: consensus_params.tx_params().tx_offset(),
-            fee_params: *consensus_params.fee_params(),
-        };
-        self.into_checked_basic(block_height, consensus_params, &chain_id)?
-            .check_signatures(&chain_id)?
-            .check_predicates(check_predicate_params)
+        let check_predicate_params = consensus_params.into();
+        self.into_checked_basic(block_height, consensus_params)?
+            .check_signatures(&consensus_params.chain_id)?
+            .check_predicates(&check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -223,7 +206,6 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError>;
 }
 
@@ -266,16 +248,32 @@ impl Default for CheckPredicateParams {
     }
 }
 
+impl From<&ConsensusParams> for CheckPredicateParams {
+    fn from(value: &ConsensusParams) -> Self {
+        CheckPredicateParams {
+            gas_costs: value.gas_costs().clone(),
+            chain_id: value.chain_id,
+            max_gas_per_predicate: value.predicate_params().max_gas_per_predicate,
+            max_gas_per_tx: value.tx_params().max_gas_per_tx,
+            max_inputs: value.tx_params().max_inputs,
+            contract_max_size: value.contract_params().contract_max_size,
+            max_message_data_length: value.predicate_params().max_message_data_length,
+            tx_offset: value.tx_params().tx_offset(),
+            fee_params: *(value.fee_params()),
+        }
+    }
+}
+
 /// Provides predicate verification functionality for the transaction.
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(self, params: CheckPredicateParams) -> Result<Self, CheckError>;
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>;
 }
 
@@ -285,13 +283,13 @@ pub trait EstimatePredicates: Sized {
     /// Estimates predicates of the transaction.
     fn estimate_predicates(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 }
 
@@ -322,7 +320,7 @@ where
 {
     fn check_predicates(
         mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let checked =
@@ -335,7 +333,7 @@ where
 
     async fn check_predicates_async<E>(
         mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -362,7 +360,7 @@ where
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
     fn estimate_predicates(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         // validate fees and compute free balances
         let AvailableBalances {
@@ -382,7 +380,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 
     async fn estimate_predicates_async<E>(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
@@ -412,7 +410,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => script.estimate_predicates(params),
@@ -423,7 +421,7 @@ impl EstimatePredicates for Transaction {
 
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => {
@@ -441,7 +439,7 @@ impl EstimatePredicates for Transaction {
 impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
-        _params: CheckPredicateParams,
+        _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -449,7 +447,7 @@ impl CheckPredicates for Checked<Mint> {
 
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
-        _params: CheckPredicateParams,
+        _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -458,7 +456,7 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(self, params: CheckPredicateParams) -> Result<Self, CheckError> {
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
@@ -476,7 +474,7 @@ impl CheckPredicates for Checked<Transaction> {
 
     async fn check_predicates_async<E>(
         mut self,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -622,24 +620,23 @@ impl IntoChecked for Transaction {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script
-                    .into_checked_basic(block_height, consensus_params, chain_id)?
+                    .into_checked_basic(block_height, consensus_params)?
                     .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
-                    .into_checked_basic(block_height, consensus_params, chain_id)?
+                    .into_checked_basic(block_height, consensus_params)?
                     .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
-                    .into_checked_basic(block_height, consensus_params, chain_id)?
+                    .into_checked_basic(block_height, consensus_params)?
                     .into();
                 (transaction.into(), metadata.into())
             }

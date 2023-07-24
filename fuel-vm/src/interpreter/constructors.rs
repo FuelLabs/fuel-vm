@@ -8,7 +8,6 @@ use super::{
 use crate::{
     consts::*,
     context::Context,
-    gas::GasCosts,
     interpreter::PanicContext,
     state::Debugger,
     storage::MemoryStorage,
@@ -16,6 +15,7 @@ use crate::{
 use fuel_tx::{
     ContractParameters,
     FeeParameters,
+    GasCosts,
     PredicateParameters,
     TxParameters,
 };

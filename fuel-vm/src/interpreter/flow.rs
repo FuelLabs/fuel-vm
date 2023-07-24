@@ -35,7 +35,6 @@ use crate::{
     consts::*,
     context::Context,
     error::RuntimeError,
-    gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
@@ -61,6 +60,7 @@ use fuel_storage::{
     StorageSize,
 };
 use fuel_tx::{
+    DependentCost,
     PanicReason,
     Receipt,
     Script,

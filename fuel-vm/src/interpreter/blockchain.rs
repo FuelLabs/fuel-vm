@@ -50,7 +50,6 @@ use crate::{
         BugVariant,
         RuntimeError,
     },
-    gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
@@ -70,6 +69,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     ContractIdExt,
+    DependentCost,
     Receipt,
 };
 use fuel_types::{

@@ -71,7 +71,6 @@ pub mod create {
     };
     use fuel_types::{
         BlockHeight,
-        ChainId,
         Word,
     };
 
@@ -96,10 +95,10 @@ pub mod create {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParams,
-            chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, chain_id)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -137,10 +136,7 @@ pub mod mint {
         FormatValidityChecks,
         Mint,
     };
-    use fuel_types::{
-        BlockHeight,
-        ChainId,
-    };
+    use fuel_types::BlockHeight;
 
     impl IntoChecked for Mint {
         type Metadata = ();
@@ -149,10 +145,10 @@ pub mod mint {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParams,
-            chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, chain_id)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -183,7 +179,6 @@ pub mod script {
     };
     use fuel_types::{
         BlockHeight,
-        ChainId,
         Word,
     };
 
@@ -210,10 +205,10 @@ pub mod script {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParams,
-            chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, chain_id)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
 
             // validate fees and compute free balances
             let AvailableBalances {

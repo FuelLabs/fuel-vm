@@ -5,7 +5,6 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
-    gas::GasCosts,
     state::Debugger,
 };
 use std::{
@@ -26,6 +25,7 @@ use fuel_tx::{
     Create,
     Executable,
     FeeParameters,
+    GasCosts,
     Output,
     Receipt,
     Script,

@@ -117,7 +117,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -135,7 +135,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub async fn check_predicates_async<Tx, E>(
         checked: &Checked<Tx>,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -164,7 +164,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         balances: InitialBalances,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -182,7 +182,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
         balances: InitialBalances,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -201,7 +201,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
         balances: InitialBalances,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -243,7 +243,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     fn run_predicate<Tx>(
         kind: PredicateRunKind<'_, Tx>,
         balances: InitialBalances,
-        params: CheckPredicateParams,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,

@@ -48,19 +48,11 @@ where
 fn breakpoint_script() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParams;
-    use fuel_types::ChainId;
 
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
 
     let script = [
         op::addi(0x10, RegId::ZERO, 8),
@@ -73,15 +65,7 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
+    let consensus_params = ConsensusParams::standard(Default::default());
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
@@ -137,19 +121,11 @@ fn breakpoint_script() {
 fn single_stepping() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParams;
-    use fuel_types::ChainId;
 
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
 
     // Repeats the middle two instructions five times
     let script = [
@@ -161,15 +137,7 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
+    let consensus_params = ConsensusParams::standard(Default::default());
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)

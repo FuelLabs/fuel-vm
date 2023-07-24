@@ -223,8 +223,6 @@ fn get_metadata_chain_id() {
     let height = BlockHeight::default();
 
     let chain_id: ChainId = rng.gen();
-    let gas_costs = GasCosts::default();
-    let fee_params = FeeParameters::default();
 
     let interpreter_params = InterpreterParams {
         gas_costs: Default::default(),
@@ -244,20 +242,7 @@ fn get_metadata_chain_id() {
         op::ret(0x10),
     ];
 
-    let tx_params = Default::default();
-    let predicate_params = Default::default();
-    let script_params = Default::default();
-    let contract_params = Default::default();
-
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
+    let consensus_params = ConsensusParams::standard(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)

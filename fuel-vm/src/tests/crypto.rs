@@ -101,17 +101,10 @@ fn ecrecover_tx_id() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
     let chain_id = ChainId::default();
-
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
 
     #[rustfmt::skip]
     let script = vec![
@@ -147,15 +140,7 @@ fn ecrecover_tx_id() {
 
     tx.sign_inputs(&secret, &chain_id);
 
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
+    let consensus_params = ConsensusParams::standard(Default::default());
     let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);

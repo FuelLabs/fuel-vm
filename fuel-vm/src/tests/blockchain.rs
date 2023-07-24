@@ -273,14 +273,6 @@ fn load_external_contract_code() {
     let maturity = Default::default();
     let height = Default::default();
 
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
-
     // Start by creating and deploying a new example contract
     let contract_code = vec![
         op::log(RegId::ONE, RegId::ONE, RegId::ONE, RegId::ONE),
@@ -299,15 +291,7 @@ fn load_external_contract_code() {
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs.clone(),
-    );
+    let consensus_params = ConsensusParams::standard(Default::default());
 
     let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
         .gas_price(gas_price)
@@ -357,16 +341,6 @@ fn load_external_contract_code() {
         op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), // Log digest of the loaded code
         op::noop(),                         // Patched to the jump later
     ]);
-
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
 
     let tx_deploy_loader = TransactionBuilder::script(
         #[allow(clippy::iter_cloned_collect)]
@@ -436,15 +410,17 @@ fn ldc_reason_helper(
     // make gas costs free
     let gas_costs = GasCosts::free();
 
-    let interpreter_params = InterpreterParams {
-        gas_costs: gas_costs.clone(),
-        max_inputs: tx_params.max_inputs,
-        contract_max_size: contract_params.contract_max_size,
-        tx_offset: tx_params.tx_offset(),
-        max_message_data_length: predicate_params.max_message_data_length,
-        chain_id,
+    let consensus_params = ConsensusParams::new(
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
         fee_params,
-    };
+        chain_id,
+        gas_costs,
+    );
+
+    let interpreter_params = InterpreterParams::from(&consensus_params);
 
     let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
 
@@ -470,16 +446,6 @@ fn ldc_reason_helper(
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
-
-    let consensus_params = ConsensusParams::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
-        gas_costs,
-    );
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)

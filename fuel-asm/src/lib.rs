@@ -167,8 +167,8 @@ impl_instructions! {
     0x2A BHSH bhsh [dst: RegId heigth: RegId]
     "Get current block height."
     0x2B BHEI bhei [dst: RegId]
-    "Burn coins of the current contract's asset ID."
-    0x2C BURN burn [count: RegId]
+    "Burns `amount` coins of the asset ID created from `sub_id` for the current contract."
+    0x2C BURN burn [amount: RegId sub_id_addr: RegId]
     "Call a contract."
     0x2D CALL call [target_struct: RegId fwd_coins: RegId asset_id_addr: RegId fwd_gas: RegId]
     "Copy contract code for a contract."
@@ -185,8 +185,8 @@ impl_instructions! {
     0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."
     0x34 LOGD logd [a: RegId b: RegId addr: RegId len: RegId]
-    "Mint coins of the current contract's asset ID."
-    0x35 MINT mint [amount: RegId]
+    "Mints `amount` coins of the asset ID created from `sub_id` for the current contract."
+    0x35 MINT mint [amount: RegId sub_id_addr: RegId]
     "Halt execution, reverting state changes and returning a value."
     0x36 RVRT rvrt [value: RegId]
     "Clear a series of slots from contract storage."

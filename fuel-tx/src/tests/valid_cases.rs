@@ -26,7 +26,7 @@ pub const PREDICATE_PARAMS: PredicateParameters = PredicateParameters::DEFAULT;
 
 pub const FEE_PARAMS: FeeParameters = FeeParameters::DEFAULT;
 
-pub const CHAIN_ID: ChainId = ChainId::new(0);
+pub const CHAIN_ID: ChainId = ChainId::default();
 
 pub const PARAMS: ConsensusParams = ConsensusParams {
     tx_params: &TX_PARAMS,

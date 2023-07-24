@@ -932,7 +932,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), ConsensusParams::standard(), &ChainId::new(0))
+            .check(0.into(), ConsensusParams::standard(), &ChainId::default())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -952,7 +952,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), ConsensusParams::standard(), &ChainId::new(0))
+        .check(0.into(), ConsensusParams::standard(), &ChainId::default())
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

@@ -236,7 +236,7 @@ async fn execute_gas_metered_predicates(
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
 
-        let owner = Input::predicate_owner(&predicate, &ChainId::new(0));
+        let owner = Input::predicate_owner(&predicate, &ChainId::default());
         let input = Input::coin_predicate(
             rng.gen(),
             owner,

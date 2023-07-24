@@ -194,7 +194,7 @@ pub mod test_helpers {
                 script_params: Default::default(),
                 contract_params: Default::default(),
                 fee_params: Default::default(),
-                chain_id: ChainId::new(0),
+                chain_id: ChainId::default(),
             }
         }
 

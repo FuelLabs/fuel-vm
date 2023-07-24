@@ -211,7 +211,7 @@ mod tests {
 
         f(&mut tx_p);
 
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
 
         assert_eq!(tx.id(&chain_id), tx_p.id(&chain_id));
         assert_eq!(tx.id(&chain_id), tx_q.id(&chain_id));
@@ -227,7 +227,7 @@ mod tests {
 
         let tx_q = tx_p.clone();
 
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
 
         assert_ne!(tx.id(&chain_id), tx_p.id(&chain_id));
         assert_ne!(tx.id(&chain_id), tx_q.id(&chain_id));

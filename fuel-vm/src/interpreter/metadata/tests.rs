@@ -19,7 +19,7 @@ fn test_metadata() {
         RegMut::new(&mut pc),
         &mut result,
         imm,
-        ChainId::new(0),
+        ChainId::default(),
     )
     .unwrap();
     assert_eq!(pc, 8);

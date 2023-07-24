@@ -144,7 +144,7 @@ where
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect("default tx should produce a valid fully checked transaction")
@@ -682,7 +682,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect("Expected valid transaction");
@@ -709,7 +709,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect("Expected valid transaction");
@@ -734,7 +734,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect("Expected valid transaction");
@@ -765,7 +765,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("Expected valid transaction");
@@ -808,7 +808,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("Expected valid transaction");
@@ -976,7 +976,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("Expected invalid transaction");
@@ -1020,7 +1020,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 consensus_params,
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("overflow expected");
@@ -1063,7 +1063,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 consensus_params,
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("overflow expected");
@@ -1103,7 +1103,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 consensus_params,
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("overflow expected");
@@ -1138,7 +1138,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 consensus_params,
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("overflow expected");
@@ -1182,7 +1182,7 @@ mod tests {
             .into_checked(
                 Default::default(),
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 Default::default(),
             )
             .expect_err("Expected valid transaction");
@@ -1207,7 +1207,7 @@ mod tests {
             .into_checked_basic(
                 block_height,
                 ConsensusParams::standard(),
-                &ChainId::new(0),
+                &ChainId::default(),
             )
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
@@ -1256,7 +1256,7 @@ mod tests {
             .into_checked(
                 block_height,
                 ConsensusParams::standard(),
-                ChainId::new(0),
+                ChainId::default(),
                 gas_costs,
             )
             .unwrap()
@@ -1356,7 +1356,7 @@ mod tests {
     ) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
-        let owner = Input::predicate_owner(&predicate, &ChainId::new(0));
+        let owner = Input::predicate_owner(&predicate, &ChainId::default());
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)

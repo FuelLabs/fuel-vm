@@ -950,7 +950,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an owner of the coin
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
         let owner: Address = Input::predicate_owner(&predicate, &chain_id);
 
         let tx =
@@ -1000,7 +1000,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
         assert!(!tx.check_predicate_owners(&chain_id));
     }
 
@@ -1010,7 +1010,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an recipient(owner) of the message
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
         let recipient: Address = Input::predicate_owner(&predicate, &chain_id);
 
         let tx =
@@ -1058,7 +1058,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::new(0);
+        let chain_id = ChainId::default();
         assert!(!tx.check_predicate_owners(&chain_id));
     }
 }

@@ -469,7 +469,7 @@ fn iow_offset() {
             let bytes = tx.to_bytes();
 
             let mut tx_p = tx.clone();
-            let chain_id = ChainId::new(0);
+            let chain_id = ChainId::default();
             tx_p.precompute(&chain_id)
                 .expect("Should be able to calculate cache");
 

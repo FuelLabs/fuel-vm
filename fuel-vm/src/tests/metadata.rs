@@ -351,7 +351,7 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&predicate, &ChainId::new(0));
+    let owner = Input::predicate_owner(&predicate, &ChainId::default());
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,

@@ -53,9 +53,10 @@ where
         ra: RegisterId,
         imm: Immediate18,
     ) -> Result<(), RuntimeError> {
+        let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.frames, pc, result, imm, self.chain_id)
+        metadata(&self.context, &self.frames, pc, result, imm, chain_id)
     }
 
     pub(crate) fn get_transaction_field(
@@ -64,11 +65,12 @@ where
         b: Word,
         imm: Immediate12,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = GTFInput {
             tx: &self.tx,
-            tx_offset: self.tx_offset,
+            tx_offset,
             pc,
         };
         input.get_transaction_field(result, b, imm)

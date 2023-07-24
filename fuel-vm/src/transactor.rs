@@ -138,7 +138,7 @@ where
     }
 
     /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
+    pub fn tx_offset(&self) -> usize {
         self.interpreter.tx_offset()
     }
 }

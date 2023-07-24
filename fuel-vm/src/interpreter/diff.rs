@@ -482,7 +482,7 @@ where
             && self.initial_balances == other.initial_balances
             && self.context == other.context
             && self.balances == other.balances
-            && self.gas_costs == other.gas_costs
+            && self.gas_costs() == other.gas_costs()
             && self.panic_context == other.panic_context
     }
 }

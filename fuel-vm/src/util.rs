@@ -319,7 +319,7 @@ pub mod test_helpers {
             self.builder.with_contract_params(self.contract_params);
             self.builder.with_fee_params(self.fee_params);
             self.builder
-                .finalize_checked(self.block_height, self.gas_costs.clone())
+                .finalize_checked(self.block_height, self.gas_costs().clone())
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -430,7 +430,7 @@ pub mod test_helpers {
                     self.block_height,
                     consensus_params,
                     self.chain_id,
-                    self.gas_costs.clone(),
+                    self.gas_costs().clone(),
                 )
                 .expect("failed to check tx");
 

@@ -54,15 +54,17 @@ where
         &mut self,
         idx: usize,
     ) -> Result<(), RuntimeError> {
-        update_memory_output(&mut self.tx, &mut self.memory, self.tx_offset, idx)
+        let tx_offset = self.tx_offset();
+        update_memory_output(&mut self.tx, &mut self.memory, tx_offset, idx)
     }
 
     pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
+        let tx_offset = self.tx_offset();
         append_receipt(
             AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
+                tx_offset,
                 memory: &mut self.memory,
             },
             receipt,
@@ -204,10 +206,6 @@ impl<S, Tx> Interpreter<S, Tx> {
             self.registers.fp(),
             self.memory.as_ref(),
         )
-    }
-
-    pub(crate) const fn tx_offset(&self) -> usize {
-        self.tx_offset
     }
 
     pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {

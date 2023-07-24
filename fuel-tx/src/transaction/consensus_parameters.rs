@@ -45,7 +45,7 @@ impl ConsensusParams {
     }
 
     /// Constructor for the `ConsensusParams`
-    pub fn new(
+    pub const fn new(
         tx_params: TxParameters,
         predicate_params: PredicateParameters,
         script_params: ScriptParameters,

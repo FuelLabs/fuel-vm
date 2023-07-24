@@ -94,11 +94,12 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
+        let tx_offset = self.tx_offset();
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
+                tx_offset,
                 memory: &mut self.memory,
             },
             frames: &mut self.frames,
@@ -113,11 +114,12 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
+        let tx_offset = self.tx_offset();
         let input = RetCtx {
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
+                tx_offset,
                 memory: &mut self.memory,
             },
             frames: &mut self.frames,
@@ -132,10 +134,11 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
                 .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
+        let tx_offset = self.tx_offset();
         let append = AppendReceipt {
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
-            tx_offset: self.tx_offset,
+            tx_offset,
             memory: &mut self.memory,
         };
         revert(
@@ -385,6 +388,7 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
+        let gas_cost = self.gas_costs().call.clone();
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -396,7 +400,7 @@ where
             registers: (&mut self.registers).into(),
             memory,
             context: &mut self.context,
-            gas_cost: self.gas_costs.call,
+            gas_cost,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
             input_contracts: InputContracts::new(

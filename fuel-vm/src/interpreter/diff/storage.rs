@@ -96,15 +96,9 @@ where
             debugger: self.debugger,
             context: self.context,
             balances: self.balances,
-            gas_costs: self.gas_costs,
             panic_context: self.panic_context,
             profiler: self.profiler,
-            fee_params: self.fee_params,
-            max_inputs: self.max_inputs,
-            contract_max_size: self.contract_max_size,
-            tx_offset: self.tx_offset,
-            chain_id: self.chain_id,
-            max_message_data_length: self.max_message_data_length,
+            interpreter_params: self.interpreter_params,
         }
     }
 
@@ -175,15 +169,9 @@ where
             debugger: self.debugger,
             context: self.context,
             balances: self.balances,
-            gas_costs: self.gas_costs,
             panic_context: self.panic_context,
             profiler: self.profiler,
-            fee_params: self.fee_params,
-            max_inputs: self.max_inputs,
-            contract_max_size: self.contract_max_size,
-            tx_offset: self.tx_offset,
-            chain_id: self.chain_id,
-            max_message_data_length: self.max_message_data_length,
+            interpreter_params: self.interpreter_params,
         }
     }
 

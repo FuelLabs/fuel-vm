@@ -39,7 +39,7 @@ use crate::{
 use crate::{
     checked_transaction::CheckPredicateParams,
     error::BugVariant::GlobalGasUnderflow,
-    interpreter::constructors::InterpreterParams,
+    interpreter::InterpreterParams,
 };
 use fuel_asm::{
     PanicReason,
@@ -510,12 +510,13 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
+        let fee_params = *self.fee_params();
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
                 &mut self.storage,
                 self.initial_balances.clone(),
-                &self.fee_params,
+                &fee_params,
             )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
@@ -605,9 +606,10 @@ where
 
             let revert = matches!(program, ProgramState::Revert(_));
             let remaining_gas = self.remaining_gas();
+            let fee_params = *self.fee_params();
             Self::finalize_outputs(
                 &mut self.tx,
-                &self.fee_params,
+                &fee_params,
                 revert,
                 remaining_gas,
                 &self.initial_balances,
@@ -710,11 +712,12 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (mut create, metadata) = tx.into();
+        let fee_params = *self.fee_params();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
-            &self.fee_params,
+            &fee_params,
         )?;
         Ok(create)
     }

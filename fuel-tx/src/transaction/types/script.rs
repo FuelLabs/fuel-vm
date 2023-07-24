@@ -205,15 +205,12 @@ impl FormatValidityChecks for Script {
             consensus_params.tx_params(),
             consensus_params.predicate_params(),
         )?;
-
-        if self.script.len() > consensus_params.script_params().max_script_length as usize
-        {
+        let script_params = consensus_params.script_params();
+        if self.script.len() > script_params.max_script_length as usize {
             Err(CheckError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len()
-            > consensus_params.script_params().max_script_data_length as usize
-        {
+        if self.script_data.len() > script_params.max_script_data_length as usize {
             Err(CheckError::TransactionScriptDataLength)?;
         }
 

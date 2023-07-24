@@ -388,7 +388,7 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
-        let gas_cost = self.gas_costs().call.clone();
+        let gas_cost = self.gas_costs().call;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();

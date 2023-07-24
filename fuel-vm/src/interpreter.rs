@@ -201,22 +201,27 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.interpreter_params.gas_costs
     }
 
+    /// Get the Fee Parameters
     pub fn fee_params(&self) -> &FeeParameters {
         &self.interpreter_params.fee_params
     }
 
+    /// Get contract_max_size value
     pub fn contract_max_size(&self) -> u64 {
         self.interpreter_params.contract_max_size
     }
 
+    /// Get tx_offset value
     pub fn tx_offset(&self) -> usize {
         self.interpreter_params.tx_offset
     }
 
+    /// Get max_message_data_length value
     pub fn max_message_data_length(&self) -> u64 {
         self.interpreter_params.max_message_data_length
     }
 
+    /// Get the chain id
     pub fn chain_id(&self) -> ChainId {
         self.interpreter_params.chain_id
     }

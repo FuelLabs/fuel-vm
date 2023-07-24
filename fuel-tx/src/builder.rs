@@ -218,23 +218,23 @@ impl<Tx> TransactionBuilder<Tx> {
     }
 
     pub fn get_tx_params(&self) -> &TxParameters {
-        &self.params.tx_params()
+        self.params.tx_params()
     }
 
     pub fn get_predicate_params(&self) -> &PredicateParameters {
-        &self.params.predicate_params()
+        self.params.predicate_params()
     }
 
     pub fn get_script_params(&self) -> &ScriptParameters {
-        &self.params.script_params()
+        self.params.script_params()
     }
 
     pub fn get_contract_params(&self) -> &ContractParameters {
-        &self.params.contract_params()
+        self.params.contract_params()
     }
 
     pub fn get_fee_params(&self) -> &FeeParameters {
-        &self.params.fee_params()
+        self.params.fee_params()
     }
 
     pub fn get_chain_id(&self) -> ChainId {

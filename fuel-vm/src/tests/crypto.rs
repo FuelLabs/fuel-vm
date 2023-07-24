@@ -175,7 +175,6 @@ async fn recover_tx_id_predicate() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();

@@ -5,12 +5,7 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::{
-    PredicateParameters,
-    Receipt,
-    ScriptParameters,
-    TxParameters,
-};
+use fuel_tx::Receipt;
 use fuel_types::ChainId;
 use fuel_vm::{
     consts::VM_MAX_RAM,

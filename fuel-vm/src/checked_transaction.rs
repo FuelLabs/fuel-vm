@@ -1213,7 +1213,7 @@ mod tests {
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
         let consensus_params = ConsensusParams {
-            gas_costs: gas_costs.clone(),
+            gas_costs,
             ..ConsensusParams::standard(Default::default())
         };
 

@@ -37,13 +37,6 @@ fn reset_vm_state() {
     assert_eq!(a, b);
 }
 
-use fuel_tx::{
-    ContractParameters,
-    FeeParameters,
-    PredicateParameters,
-    TxParameters,
-};
-
 use crate::interpreter::InterpreterParams;
 use fuel_types::ChainId;
 

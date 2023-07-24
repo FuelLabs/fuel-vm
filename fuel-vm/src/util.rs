@@ -317,23 +317,23 @@ pub mod test_helpers {
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
-            &self.consensus_params.tx_params()
+            self.consensus_params.tx_params()
         }
 
         pub fn get_predicate_params(&self) -> &PredicateParameters {
-            &self.consensus_params.predicate_params()
+            self.consensus_params.predicate_params()
         }
 
         pub fn get_script_params(&self) -> &ScriptParameters {
-            &self.consensus_params.script_params()
+            self.consensus_params.script_params()
         }
 
         pub fn get_contract_params(&self) -> &ContractParameters {
-            &self.consensus_params.contract_params()
+            self.consensus_params.contract_params()
         }
 
         pub fn get_fee_params(&self) -> &FeeParameters {
-            &self.consensus_params.fee_params()
+            self.consensus_params.fee_params()
         }
 
         pub fn get_chain_id(&self) -> ChainId {
@@ -341,7 +341,7 @@ pub mod test_helpers {
         }
 
         pub fn get_gas_costs(&self) -> &GasCosts {
-            &self.consensus_params.gas_costs()
+            self.consensus_params.gas_costs()
         }
 
         pub fn build_get_balance_tx(
@@ -479,7 +479,7 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params = InterpreterParams::from(&self.consensus_params);
             let mut transactor =
                 Transactor::new(self.storage.clone(), interpreter_params);
 

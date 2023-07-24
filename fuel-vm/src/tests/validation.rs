@@ -13,8 +13,6 @@ fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
     const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(2);
 
-    let gas_costs = GasCosts::default();
-
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(
         Some(op::ret(1)).into_iter().collect(),

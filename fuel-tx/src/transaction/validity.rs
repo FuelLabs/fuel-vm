@@ -249,7 +249,7 @@ pub trait FormatValidityChecks {
     fn check(
         &self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: &ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, consensus_params, chain_id)?;
@@ -268,7 +268,7 @@ pub trait FormatValidityChecks {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: &ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<(), CheckError>;
 }
@@ -286,7 +286,7 @@ impl FormatValidityChecks for Transaction {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: &ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         match self {

@@ -191,7 +191,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked(
         self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams<'_>,
+        consensus_params: &ConsensusParams,
         chain_id: ChainId,
         gas_costs: GasCosts,
     ) -> Result<Checked<Self>, CheckError>
@@ -222,7 +222,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams<'_>,
+        consensus_params: &ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError>;
 }
@@ -621,7 +621,7 @@ impl IntoChecked for Transaction {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams<'_>,
+        consensus_params: &ConsensusParams,
         chain_id: &ChainId,
     ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {

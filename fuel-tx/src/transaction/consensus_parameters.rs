@@ -6,25 +6,37 @@ use fuel_types::{
 
 const MAX_GAS: u64 = 100_000_000;
 
-impl<'a> ConsensusParams<'a> {
+/// A collection of parameters for convenience
+#[derive(Debug, Clone, Copy)]
+pub struct ConsensusParams {
+    // TODO: This should be pub(crate) for the `fuel_tx` tests, but for some reason the
+    // tests can't see the fields with `pub(crate)`
+    pub tx_params: TxParameters,
+    pub predicate_params: PredicateParameters,
+    pub script_params: ScriptParameters,
+    pub contract_params: ContractParameters,
+    pub fee_params: FeeParameters,
+}
+
+impl ConsensusParams {
     /// Constructor for the `ConsensusParams` with Standard values
     pub fn standard() -> Self {
         Self {
-            tx_params: &TxParameters::DEFAULT,
-            predicate_params: &PredicateParameters::DEFAULT,
-            script_params: &ScriptParameters::DEFAULT,
-            contract_params: &ContractParameters::DEFAULT,
-            fee_params: &FeeParameters::DEFAULT,
+            tx_params: TxParameters::DEFAULT,
+            predicate_params: PredicateParameters::DEFAULT,
+            script_params: ScriptParameters::DEFAULT,
+            contract_params: ContractParameters::DEFAULT,
+            fee_params: FeeParameters::DEFAULT,
         }
     }
 
     /// Constructor for the `ConsensusParams`
     pub fn new(
-        tx_params: &'a TxParameters,
-        predicate_params: &'a PredicateParameters,
-        script_params: &'a ScriptParameters,
-        contract_params: &'a ContractParameters,
-        fee_params: &'a FeeParameters,
+        tx_params: TxParameters,
+        predicate_params: PredicateParameters,
+        script_params: ScriptParameters,
+        contract_params: ContractParameters,
+        fee_params: FeeParameters,
     ) -> Self {
         Self {
             tx_params,
@@ -37,27 +49,27 @@ impl<'a> ConsensusParams<'a> {
 
     /// Get the transaction parameters
     pub fn tx_params(&self) -> &TxParameters {
-        self.tx_params
+        &self.tx_params
     }
 
     /// Get the predicate parameters
     pub fn predicate_params(&self) -> &PredicateParameters {
-        self.predicate_params
+        &self.predicate_params
     }
 
     /// Get the script parameters
     pub fn script_params(&self) -> &ScriptParameters {
-        self.script_params
+        &self.script_params
     }
 
     /// Get the contract parameters
     pub fn contract_params(&self) -> &ContractParameters {
-        self.contract_params
+        &self.contract_params
     }
 
     /// Get the fee parameters
     pub fn fee_params(&self) -> &FeeParameters {
-        self.fee_params
+        &self.fee_params
     }
 }
 
@@ -329,17 +341,5 @@ pub mod default_parameters {
     pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = FeeParameters::DEFAULT.gas_per_byte;
 
-    pub const CHAIN_ID: ChainId = ChainId::default();
-}
-
-/// A collection of parameters for convenience
-#[derive(Debug, Clone, Copy)]
-pub struct ConsensusParams<'a> {
-    // TODO: This should be pub(crate) for the `fuel_tx` tests, but for some reason the
-    // tests can't see the fields with `pub(crate)`
-    pub tx_params: &'a TxParameters,
-    pub predicate_params: &'a PredicateParameters,
-    pub script_params: &'a ScriptParameters,
-    pub contract_params: &'a ContractParameters,
-    pub fee_params: &'a FeeParameters,
+    pub const CHAIN_ID: ChainId = ChainId::new(0);
 }

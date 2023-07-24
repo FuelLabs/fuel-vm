@@ -45,15 +45,15 @@ where
         let fee_params = *self.get_fee_params();
 
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
         );
         let chain_id = *self.get_chain_id();
         self.finalize()
-            .into_checked(height, consensus_params, chain_id, gas_costs)
+            .into_checked(height, &consensus_params, chain_id, gas_costs)
             .expect("failed to check tx")
     }
 
@@ -64,15 +64,15 @@ where
         let contract_params = *self.get_contract_params();
         let fee_params = *self.get_fee_params();
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
         );
         let chain_id = *self.get_chain_id();
         self.finalize()
-            .into_checked_basic(height, consensus_params, &chain_id)
+            .into_checked_basic(height, &consensus_params, &chain_id)
             .expect("failed to check tx")
     }
 }

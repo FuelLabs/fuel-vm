@@ -132,7 +132,7 @@ impl FormatValidityChecks for Mint {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: &ConsensusParams,
         _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         if self.outputs().len() > consensus_params.tx_params().max_outputs as usize {

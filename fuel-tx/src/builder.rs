@@ -218,7 +218,7 @@ impl<Tx> TransactionBuilder<Tx> {
         }
     }
 
-    // pub fn get_params(&self) -> & {
+    // pub fn get_params(&self) -> ConsensusParams {
     //     &self.parameters
     // }
 

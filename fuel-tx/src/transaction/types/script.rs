@@ -196,7 +196,7 @@ impl FormatValidityChecks for Script {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: &ConsensusParams,
         _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         check_common_part(

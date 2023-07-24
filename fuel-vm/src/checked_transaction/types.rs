@@ -95,7 +95,7 @@ pub mod create {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: ConsensusParams<'_>,
+            consensus_params: &ConsensusParams,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;
@@ -148,7 +148,7 @@ pub mod mint {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: ConsensusParams<'_>,
+            consensus_params: &ConsensusParams,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;
@@ -209,7 +209,7 @@ pub mod script {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: ConsensusParams<'_>,
+            consensus_params: &ConsensusParams,
             chain_id: &ChainId,
         ) -> Result<Checked<Self>, CheckError> {
             self.precompute(chain_id)?;

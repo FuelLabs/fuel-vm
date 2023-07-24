@@ -200,12 +200,34 @@ macro_rules! op_constructor {
         pub fn $op<A: CheckRegId>($ra: A) -> Instruction {
             $Op::new($ra.check()).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8) -> typescript::Instruction {
+                crate::op::$op($ra).into()
+            }
+        };
     };
     ($doc:literal $Op:ident $op:ident[$ra:ident : RegId $rb:ident : RegId]) => {
         #[doc = $doc]
         pub fn $op<A: CheckRegId, B: CheckRegId>($ra: A, $rb: B) -> Instruction {
             $Op::new($ra.check(), $rb.check()).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $rb: u8) -> typescript::Instruction {
+                crate::op::$op($ra, $rb).into()
+            }
+        };
     };
     (
         $doc:literal
@@ -220,6 +242,17 @@ macro_rules! op_constructor {
         ) -> Instruction {
             $Op::new($ra.check(), $rb.check(), $rc.check()).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $rb: u8, $rc: u8) -> typescript::Instruction {
+                crate::op::$op($ra, $rb, $rc).into()
+            }
+        };
     };
     (
         $doc:literal
@@ -235,6 +268,17 @@ macro_rules! op_constructor {
         ) -> Instruction {
             $Op::new($ra.check(), $rb.check(), $rc.check(), $rd.check()).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $rb: u8, $rc: u8, $rd: u8) -> typescript::Instruction {
+                crate::op::$op($ra, $rb, $rc, $rd).into()
+            }
+        };
     };
     (
         $doc:literal
@@ -250,6 +294,17 @@ macro_rules! op_constructor {
         ) -> Instruction {
             $Op::new($ra.check(), $rb.check(), $rc.check(), check_imm06($imm)).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $rb: u8, $rc: u8, $imm: u8) -> typescript::Instruction {
+                crate::op::$op($ra, $rb, $rc, $imm).into()
+            }
+        };
     };
     (
         $doc:literal
@@ -264,144 +319,345 @@ macro_rules! op_constructor {
         ) -> Instruction {
             $Op::new($ra.check(), $rb.check(), check_imm12($imm)).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $rb: u8, $imm: u16) -> typescript::Instruction {
+                crate::op::$op($ra, $rb, $imm).into()
+            }
+        };
     };
     ($doc:literal $Op:ident $op:ident[$ra:ident : RegId $imm:ident : Imm18]) => {
         #[doc = $doc]
         pub fn $op<A: CheckRegId>($ra: A, $imm: u32) -> Instruction {
             $Op::new($ra.check(), check_imm18($imm)).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($ra: u8, $imm: u32) -> typescript::Instruction {
+                crate::op::$op($ra, $imm).into()
+            }
+        };
     };
     ($doc:literal $Op:ident $op:ident[$imm:ident : Imm24]) => {
         #[doc = $doc]
         pub fn $op($imm: u32) -> Instruction {
             $Op::new(check_imm24($imm)).into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op($imm: u32) -> typescript::Instruction {
+                crate::op::$op($imm).into()
+            }
+        };
     };
     ($doc:literal $Op:ident $op:ident[]) => {
         #[doc = $doc]
         pub fn $op() -> Instruction {
             $Op::new().into()
         }
+
+        #[cfg(feature = "typescript")]
+        const _: () = {
+            use super::*;
+
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[doc = $doc]
+            pub fn $op() -> typescript::Instruction {
+                crate::op::$op().into()
+            }
+        };
     };
 }
 
 // Generate approriate `new` constructor for the instruction
 macro_rules! op_new {
     // Generate a constructor based on the field layout.
-    ($ra:ident : RegId) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId) -> Self {
-            Self(pack::bytes_from_ra($ra))
+    ($Op:ident $ra:ident : RegId) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId) -> Self {
+                Self(pack::bytes_from_ra($ra))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($ra: RegId) -> Self {
+                Self::new($ra)
+            }
         }
     };
-    ($ra:ident : RegId $rb:ident : RegId) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $rb: RegId) -> Self {
-            Self(pack::bytes_from_ra_rb($ra, $rb))
+    ($Op:ident $ra:ident : RegId $rb:ident : RegId) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $rb: RegId) -> Self {
+                Self(pack::bytes_from_ra_rb($ra, $rb))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($ra: RegId, $rb: RegId) -> Self {
+                Self::new($ra, $rb)
+            }
         }
     };
-    ($ra:ident : RegId $rb:ident : RegId $rc:ident : RegId) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $rb: RegId, $rc: RegId) -> Self {
-            Self(pack::bytes_from_ra_rb_rc($ra, $rb, $rc))
+    ($Op:ident $ra:ident : RegId $rb:ident : RegId $rc:ident : RegId) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $rb: RegId, $rc: RegId) -> Self {
+                Self(pack::bytes_from_ra_rb_rc($ra, $rb, $rc))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($ra: RegId, $rb: RegId, $rc: RegId) -> Self {
+                Self::new($ra, $rb, $rc)
+            }
         }
     };
-    ($ra:ident : RegId $rb:ident : RegId $rc:ident : RegId $rd:ident : RegId) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $rb: RegId, $rc: RegId, $rd: RegId) -> Self {
-            Self(pack::bytes_from_ra_rb_rc_rd($ra, $rb, $rc, $rd))
+    (
+        $Op:ident $ra:ident : RegId $rb:ident : RegId $rc:ident : RegId $rd:ident : RegId
+    ) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $rb: RegId, $rc: RegId, $rd: RegId) -> Self {
+                Self(pack::bytes_from_ra_rb_rc_rd($ra, $rb, $rc, $rd))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript(
+                $ra: RegId,
+                $rb: RegId,
+                $rc: RegId,
+                $rd: RegId,
+            ) -> Self {
+                Self::new($ra, $rb, $rc, $rd)
+            }
         }
     };
-    ($ra:ident : RegId $rb:ident : RegId $rc:ident : RegId $imm:ident : Imm06) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $rb: RegId, $rc: RegId, $imm: Imm06) -> Self {
-            Self(pack::bytes_from_ra_rb_rc_imm06($ra, $rb, $rc, $imm))
+    (
+        $Op:ident
+        $ra:ident : RegId
+        $rb:ident : RegId
+        $rc:ident : RegId
+        $imm:ident : Imm06
+    ) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $rb: RegId, $rc: RegId, $imm: Imm06) -> Self {
+                Self(pack::bytes_from_ra_rb_rc_imm06($ra, $rb, $rc, $imm))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript(
+                $ra: RegId,
+                $rb: RegId,
+                $rc: RegId,
+                $imm: Imm06,
+            ) -> Self {
+                Self::new($ra, $rb, $rc, $imm)
+            }
         }
     };
-    ($ra:ident : RegId $rb:ident : RegId $imm:ident : Imm12) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $rb: RegId, $imm: Imm12) -> Self {
-            Self(pack::bytes_from_ra_rb_imm12($ra, $rb, $imm))
+    ($Op:ident $ra:ident : RegId $rb:ident : RegId $imm:ident : Imm12) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $rb: RegId, $imm: Imm12) -> Self {
+                Self(pack::bytes_from_ra_rb_imm12($ra, $rb, $imm))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($ra: RegId, $rb: RegId, $imm: Imm12) -> Self {
+                Self::new($ra, $rb, $imm)
+            }
         }
     };
-    ($ra:ident : RegId $imm:ident : Imm18) => {
-        /// Construct the instruction from its parts.
-        pub fn new($ra: RegId, $imm: Imm18) -> Self {
-            Self(pack::bytes_from_ra_imm18($ra, $imm))
+    ($Op:ident $ra:ident : RegId $imm:ident : Imm18) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($ra: RegId, $imm: Imm18) -> Self {
+                Self(pack::bytes_from_ra_imm18($ra, $imm))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($ra: RegId, $imm: Imm18) -> Self {
+                Self::new($ra, $imm)
+            }
         }
     };
-    ($imm:ident : Imm24) => {
-        /// Construct the instruction from its parts.
-        pub fn new($imm: Imm24) -> Self {
-            Self(pack::bytes_from_imm24($imm))
+    ($Op:ident $imm:ident : Imm24) => {
+        impl $Op {
+            /// Construct the instruction from its parts.
+            pub fn new($imm: Imm24) -> Self {
+                Self(pack::bytes_from_imm24($imm))
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction from its parts.
+            pub fn new_typescript($imm: Imm24) -> Self {
+                Self::new($imm)
+            }
         }
     };
-    () => {
-        /// Construct the instruction.
-        #[allow(clippy::new_without_default)]
-        pub fn new() -> Self {
-            Self([0; 3])
+    ($Op:ident) => {
+        impl $Op {
+            /// Construct the instruction.
+            #[allow(clippy::new_without_default)]
+            pub fn new() -> Self {
+                Self([0; 3])
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        impl $Op {
+            #[wasm_bindgen(constructor)]
+            /// Construct the instruction.
+            #[allow(clippy::new_without_default)]
+            pub fn new_typescript() -> Self {
+                Self::new()
+            }
         }
     };
 }
 
 // Generate an accessor method for each field. Recurse based on layout.
 macro_rules! op_accessors {
-    ($ra:ident: RegId) => {
-        /// Access the ID for register A.
-        pub fn ra(&self) -> RegId {
-            unpack::ra_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId) => {
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the ID for register A.
+            pub fn ra(&self) -> RegId {
+                unpack::ra_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $rb:ident: RegId) => {
-        op_accessors!($ra: RegId);
-        /// Access the ID for register B.
-        pub fn rb(&self) -> RegId {
-            unpack::rb_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $rb:ident: RegId) => {
+        op_accessors!($Op ra: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the ID for register B.
+            pub fn rb(&self) -> RegId {
+                unpack::rb_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $rb:ident: RegId $rc:ident: RegId) => {
-        op_accessors!($ra: RegId $rb: RegId);
-        /// Access the ID for register C.
-        pub fn rc(&self) -> RegId {
-            unpack::rc_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $rb:ident: RegId $rc:ident: RegId) => {
+        op_accessors!($Op $ra: RegId $rb: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the ID for register C.
+            pub fn rc(&self) -> RegId {
+                unpack::rc_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $rb:ident: RegId $rc:ident: RegId $rd:ident: RegId) => {
-        op_accessors!($ra: RegId $rb: RegId $rc: RegId);
-        /// Access the ID for register D.
-        pub fn rd(&self) -> RegId {
-            unpack::rd_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $rb:ident: RegId $rc:ident: RegId $rd:ident: RegId) => {
+        op_accessors!($Op $ra: RegId $rb: RegId $rc: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the ID for register D.
+            pub fn rd(&self) -> RegId {
+                unpack::rd_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $rb:ident: RegId $rc:ident: RegId $imm:ident: Imm06) => {
-        op_accessors!($ra: RegId rb: RegId $rc: RegId);
-        /// Access the 6-bit immediate value.
-        pub fn imm06(&self) -> Imm06 {
-            unpack::imm06_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $rb:ident: RegId $rc:ident: RegId $imm:ident: Imm06) => {
+        op_accessors!($Op $ra: RegId rb: RegId $rc: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the 6-bit immediate value.
+            pub fn imm06(&self) -> Imm06 {
+                unpack::imm06_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $rb:ident: RegId $imm:ident: Imm12) => {
-        op_accessors!($ra: RegId $rb: RegId);
-        /// Access the 12-bit immediate value.
-        pub fn imm12(&self) -> Imm12 {
-            unpack::imm12_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $rb:ident: RegId $imm:ident: Imm12) => {
+        op_accessors!($Op $ra: RegId $rb: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the 12-bit immediate value.
+            pub fn imm12(&self) -> Imm12 {
+                unpack::imm12_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: RegId $imm:ident: Imm18) => {
-        op_accessors!($ra: RegId);
-        /// Access the 18-bit immediate value.
-        pub fn imm18(&self) -> Imm18 {
-            unpack::imm18_from_bytes(self.0)
+    ($Op:ident $ra:ident: RegId $imm:ident: Imm18) => {
+        op_accessors!($Op $ra: RegId);
+
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the 18-bit immediate value.
+            pub fn imm18(&self) -> Imm18 {
+                unpack::imm18_from_bytes(self.0)
+            }
         }
     };
-    ($ra:ident: Imm24) => {
-        /// Access the 24-bit immediate value.
-        pub fn imm24(&self) -> Imm24 {
-            unpack::imm24_from_bytes(self.0)
+    ($Op:ident $ra:ident: Imm24) => {
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        impl $Op {
+            /// Access the 24-bit immediate value.
+            pub fn imm24(&self) -> Imm24 {
+                unpack::imm24_from_bytes(self.0)
+            }
         }
     };
-    () => {};
+    ($Op:ident) => {};
 }
 
 // Generate a method for converting the instruction into its parts.
@@ -736,6 +992,7 @@ macro_rules! decl_op_struct {
         #[doc = $doc]
         #[derive(Clone, Copy, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         pub struct $Op(pub (super) [u8; 3]);
         decl_op_struct!($($rest)*);
     };
@@ -794,9 +1051,12 @@ macro_rules! impl_instructions {
         impl $Op {
             /// The associated 8-bit Opcode value.
             pub const OPCODE: Opcode = Opcode::$Op;
+        }
 
-            op_new!($($fname: $field)*);
-            op_accessors!($($fname: $field)*);
+        op_new!($Op $($fname: $field)*);
+        op_accessors!($Op $($fname: $field)*);
+
+        impl $Op {
             op_unpack!($($field)*);
             op_reg_ids!($($field)*);
         }
@@ -824,6 +1084,13 @@ macro_rules! impl_instructions {
         impl From<$Op> for Instruction {
             fn from(op: $Op) -> Self {
                 Instruction::$Op(op)
+            }
+        }
+
+        #[cfg(feature = "typescript")]
+        impl From<$Op> for typescript::Instruction {
+            fn from(opcode: $Op) -> Self {
+                typescript::Instruction::new(opcode.into())
             }
         }
 
@@ -894,6 +1161,13 @@ macro_rules! impl_instructions {
             }
         }
 
+        #[cfg(feature = "typescript")]
+        impl From<Instruction> for typescript::Instruction {
+            fn from(inst: Instruction) -> Self {
+                typescript::Instruction::new(inst)
+            }
+        }
+
         impl core::convert::TryFrom<[u8; 4]> for Instruction {
             type Error = InvalidOpcode;
             fn try_from([op, a, b, c]: [u8; 4]) -> Result<Self, Self::Error> {
@@ -930,4 +1204,31 @@ macro_rules! impl_instructions {
         impl_instructions!(impl_instruction $($tts)*);
         impl_instructions!(impl_opcode_test_construct $($tts)*);
     };
+}
+
+/// Defines the enum with `TryFrom` trait implementation.
+#[macro_export]
+macro_rules! enum_try_from {
+    (
+        $(#[$meta:meta])* $vis:vis enum $name:ident {
+            $($(#[$vmeta:meta])* $vname:ident $(= $val:expr)?,)*
+        },
+        $from:ident
+    ) => {
+        $(#[$meta])*
+        $vis enum $name {
+            $($(#[$vmeta])* $vname $(= $val)?,)*
+        }
+
+        impl core::convert::TryFrom<$from> for $name {
+            type Error = $crate::PanicReason;
+
+            fn try_from(v: $from) -> Result<Self, Self::Error> {
+                match v {
+                    $(x if x == $name::$vname as $from => Ok($name::$vname),)*
+                    _ => Err($crate::PanicReason::InvalidMetadataIdentifier),
+                }
+            }
+        }
+    }
 }

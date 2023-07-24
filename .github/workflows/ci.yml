@@ -34,7 +34,7 @@ jobs:
           - command: check
             args: --all-targets -p fuel-crypto
           - command: check
-            args: --all-targets -p fuel-merkle          
+            args: --all-targets -p fuel-merkle
           - command: check
             args: --all-targets -p fuel-storage
           - command: check
@@ -51,6 +51,10 @@ jobs:
             args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
+          - command: rustc
+            args: --target wasm32-unknown-unknown -p fuel-types --features typescript --crate-type=cdylib
+          - command: rustc
+            args: --target wasm32-unknown-unknown -p fuel-asm --features typescript --crate-type=cdylib
           - command: make
             args: check
           - command: test
@@ -156,7 +160,7 @@ jobs:
         uses: katyo/publish-crates@v2
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-  
+
   cargo_audit:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -165,3 +169,52 @@ jobs:
       - uses: rustsec/audit-check@v1.4.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_wasm_packages:
+    needs:
+      - publish
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            fetch-depth: 0
+            ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "wasm32-unknown-unknown"
+
+      - name: Installing required crates
+        run: cargo install wasm-bindgen-cli wasm-opt
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "pnpm"
+          node-version: 18.14.1
+          node-version-file: ".npm/package.json"
+          cache-dependency-path: ".npm/pnpm-lock.yaml"
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build and Test packages
+        run: |
+          pnpm -C .npm install
+          pnpm -C .npm pack:all
+
+      - name: Ensure NPM access
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        run: pnpm -C .npm publish -r --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Version 0.35.1]
+
+### Added
+
+- [#499](https://github.com/FuelLabs/fuel-vm/pull/499/): The `wasm_bindgen` support of `fuel-asm` and `fuel-types`.
+    Each new release also publish a typescript analog of the `fuel-asm` and `fuel-types` crates to the npm.
+    
+
 ## [Version 0.35.0]
 
 The release mostly fixes funding during the audit and integration with the bridge. But the release also contains some new features like:

@@ -300,11 +300,13 @@ fn load_external_contract_code() {
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs.clone(),
     );
 
     let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
@@ -314,7 +316,7 @@ fn load_external_contract_code() {
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -357,11 +359,13 @@ fn load_external_contract_code() {
     ]);
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let tx_deploy_loader = TransactionBuilder::script(
@@ -376,7 +380,7 @@ fn load_external_contract_code() {
     .add_random_fee_input()
     .add_output(output1)
     .finalize()
-    .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+    .into_checked(height, &consensus_params)
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -394,7 +398,7 @@ fn load_external_contract_code() {
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, consensus_params, chain_id, gas_costs)
+            .into_checked(height, &consensus_params)
             .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -468,11 +472,13 @@ fn ldc_reason_helper(
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
@@ -482,7 +488,7 @@ fn ldc_reason_helper(
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -502,7 +508,7 @@ fn ldc_reason_helper(
                 .maturity(maturity)
                 .add_random_fee_input()
                 .finalize()
-                .into_checked(height, consensus_params, chain_id, gas_costs)
+                .into_checked(height, &consensus_params)
                 .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
@@ -538,7 +544,7 @@ fn ldc_reason_helper(
         .add_random_fee_input()
         .add_output(output1)
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
         // Patch the code with correct jump address
@@ -556,7 +562,7 @@ fn ldc_reason_helper(
                 .add_random_fee_input()
                 .add_output(output1)
                 .finalize()
-                .into_checked(height, consensus_params, chain_id, gas_costs)
+                .into_checked(height, &consensus_params)
                 .expect("failed to check tx");
     }
 
@@ -1349,7 +1355,7 @@ fn smo_instruction_works() {
                 asset_id: Default::default(),
             })
             .add_random_fee_input()
-            .finalize_checked(block_height, client.gas_costs().to_owned());
+            .finalize_checked(block_height);
 
         let non_retryable_free_balance =
             tx.metadata().non_retryable_balances[&AssetId::BASE];
@@ -1486,7 +1492,7 @@ fn timestamp_works() {
             .gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
-            .finalize_checked(block_height, client.gas_costs().to_owned());
+            .finalize_checked(block_height);
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
@@ -1542,7 +1548,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height, client.gas_costs().to_owned());
+        .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
@@ -1593,7 +1599,7 @@ fn block_hash_works(
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height, client.gas_costs().to_owned());
+        .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
@@ -1633,7 +1639,7 @@ fn coinbase_works() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(10.into(), client.gas_costs().to_owned());
+        .finalize_checked(10.into());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {

@@ -32,21 +32,8 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
 
-    let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
-    );
+    let consensus_params = ConsensusParams::standard(ChainId::default());
 
     let script = program.into_iter().collect();
 
@@ -56,18 +43,10 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams {
-        gas_costs,
-        max_inputs: tx_params.max_inputs,
-        contract_max_size: contract_params.contract_max_size,
-        tx_offset: tx_params.tx_offset(),
-        max_message_data_length: predicate_params.max_message_data_length,
-        chain_id,
-        fee_params,
-    };
+    let interpreter_params = InterpreterParams::from(&consensus_params);
 
     let mut vm = Transactor::new(storage, interpreter_params);
     vm.transact(tx);

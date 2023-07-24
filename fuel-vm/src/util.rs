@@ -85,7 +85,6 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        gas::GasCosts,
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -122,6 +121,7 @@ pub mod test_helpers {
         Create,
         FeeParameters,
         Finalizable,
+        GasCosts,
         Input,
         Output,
         PredicateParameters,
@@ -168,14 +168,8 @@ pub mod test_helpers {
         gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
-        gas_costs: GasCosts,
         block_height: BlockHeight,
-        tx_params: TxParameters,
-        predicate_params: PredicateParameters,
-        script_params: ScriptParameters,
-        contract_params: ContractParameters,
-        fee_params: FeeParameters,
-        chain_id: ChainId,
+        consensus_params: ConsensusParams,
     }
 
     impl TestBuilder {
@@ -187,14 +181,8 @@ pub mod test_helpers {
                 gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
-                gas_costs: Default::default(),
                 block_height: Default::default(),
-                tx_params: Default::default(),
-                predicate_params: Default::default(),
-                script_params: Default::default(),
-                contract_params: Default::default(),
-                fee_params: Default::default(),
-                chain_id: ChainId::default(),
+                consensus_params: ConsensusParams::standard(ChainId::default()),
             }
         }
 
@@ -312,47 +300,48 @@ pub mod test_helpers {
             self
         }
 
+        pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut TestBuilder {
+            self.consensus_params.fee_params = fee_params;
+            self
+        }
+
         pub fn build(&mut self) -> Checked<Script> {
-            self.builder.with_tx_params(self.tx_params);
-            self.builder.with_predicate_params(self.predicate_params);
-            self.builder.with_script_params(self.script_params);
-            self.builder.with_contract_params(self.contract_params);
-            self.builder.with_fee_params(self.fee_params);
+            self.builder.with_tx_params(*self.get_tx_params());
             self.builder
-                .finalize_checked(self.block_height, self.gas_costs().clone())
+                .with_contract_params(*self.get_contract_params());
+            self.builder
+                .with_predicate_params(*self.get_predicate_params());
+            self.builder.with_script_params(*self.get_script_params());
+            self.builder.with_fee_params(*self.get_fee_params());
+            self.builder.finalize_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
-            &self.tx_params
+            &self.consensus_params.tx_params()
         }
 
         pub fn get_predicate_params(&self) -> &PredicateParameters {
-            &self.predicate_params
+            &self.consensus_params.predicate_params()
         }
 
         pub fn get_script_params(&self) -> &ScriptParameters {
-            &self.script_params
+            &self.consensus_params.script_params()
         }
 
         pub fn get_contract_params(&self) -> &ContractParameters {
-            &self.contract_params
+            &self.consensus_params.contract_params()
         }
 
         pub fn get_fee_params(&self) -> &FeeParameters {
-            &self.fee_params
+            &self.consensus_params.fee_params()
         }
 
         pub fn get_chain_id(&self) -> ChainId {
-            self.chain_id
+            self.consensus_params.chain_id()
         }
 
         pub fn get_gas_costs(&self) -> &GasCosts {
-            &self.gas_costs
-        }
-
-        pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut TestBuilder {
-            self.fee_params = fee_params;
-            self
+            &self.consensus_params.gas_costs()
         }
 
         pub fn build_get_balance_tx(
@@ -411,14 +400,6 @@ pub mod test_helpers {
             let contract_root = contract.root();
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
-            let consensus_params = ConsensusParams::new(
-                &self.tx_params,
-                &self.predicate_params,
-                &self.script_params,
-                &self.contract_params,
-                &self.fee_params,
-            );
-
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .gas_price(self.gas_price)
                 .gas_limit(self.gas_limit)
@@ -426,12 +407,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(
-                    self.block_height,
-                    consensus_params,
-                    self.chain_id,
-                    self.gas_costs().clone(),
-                )
+                .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -483,7 +459,7 @@ pub mod test_helpers {
 
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
-            let tx_offset = self.tx_params.tx_offset();
+            let tx_offset = self.get_tx_params().tx_offset();
             let tx_mem = &interpreter.memory()
                 [tx_offset..(tx_offset + transaction.serialized_size())];
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
@@ -503,15 +479,7 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let interpreter_params = InterpreterParams {
-                gas_costs: self.gas_costs.clone(),
-                max_inputs: self.tx_params.max_inputs,
-                contract_max_size: self.contract_params.contract_max_size,
-                tx_offset: self.tx_params.tx_offset(),
-                max_message_data_length: self.predicate_params.max_message_data_length,
-                chain_id: self.chain_id,
-                fee_params: self.fee_params,
-            };
+            let interpreter_params = (&self.consensus_params).into();
             let mut transactor =
                 Transactor::new(self.storage.clone(), interpreter_params);
 
@@ -522,15 +490,7 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let interpreter_params = InterpreterParams {
-                gas_costs: self.gas_costs.clone(),
-                max_inputs: self.tx_params.max_inputs,
-                contract_max_size: self.contract_params.contract_max_size,
-                tx_offset: self.tx_params.tx_offset(),
-                max_message_data_length: self.predicate_params.max_message_data_length,
-                chain_id: self.chain_id,
-                fee_params: self.fee_params,
-            };
+            let interpreter_params = (&self.consensus_params).into();
             let mut transactor =
                 Transactor::new(self.storage.clone(), interpreter_params);
 
@@ -541,15 +501,7 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let interpreter_params = InterpreterParams {
-                gas_costs: self.gas_costs.clone(),
-                max_inputs: self.tx_params.max_inputs,
-                contract_max_size: self.contract_params.contract_max_size,
-                tx_offset: self.tx_params.tx_offset(),
-                max_message_data_length: self.predicate_params.max_message_data_length,
-                chain_id: self.chain_id,
-                fee_params: self.fee_params,
-            };
+            let interpreter_params = (&self.consensus_params).into();
             let mut transactor =
                 Transactor::new(self.storage.clone(), interpreter_params);
 
@@ -588,7 +540,7 @@ pub mod test_helpers {
             let tx = TestBuilder::build_get_balance_tx(
                 contract_id,
                 asset_id,
-                self.tx_params.tx_offset(),
+                self.consensus_params.tx_params().tx_offset(),
             );
             let state = self
                 .execute_tx(tx)
@@ -635,7 +587,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, client.gas_costs().to_owned());
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -671,7 +623,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, client.gas_costs().to_owned());
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

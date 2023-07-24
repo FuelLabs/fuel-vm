@@ -133,7 +133,6 @@ impl FormatValidityChecks for Mint {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         if self.outputs().len() > consensus_params.tx_params().max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax)

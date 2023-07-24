@@ -144,18 +144,16 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     );
 
     let consensus_params = ConsensusParams::new(
-        context.get_tx_params(),
-        context.get_predicate_params(),
-        context.get_script_params(),
-        context.get_contract_params(),
-        context.get_fee_params(),
+        *context.get_tx_params(),
+        *context.get_predicate_params(),
+        *context.get_script_params(),
+        *context.get_contract_params(),
+        *context.get_fee_params(),
+        context.get_chain_id(),
+        context.get_gas_costs().to_owned(),
     );
     let create = create
-        .into_checked_basic(
-            context.get_block_height(),
-            consensus_params,
-            &context.get_chain_id(),
-        )
+        .into_checked_basic(context.get_block_height(), &consensus_params)
         .expect("failed to generate checked tx");
 
     let state = context.deploy(create).expect("Create should be executed");

@@ -56,7 +56,7 @@ fn code_coverage() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height, GasCosts::default());
+        .finalize_checked(height);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {

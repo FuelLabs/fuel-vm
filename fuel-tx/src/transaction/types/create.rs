@@ -238,7 +238,6 @@ impl FormatValidityChecks for Create {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         check_common_part(
             self,
@@ -294,13 +293,14 @@ impl FormatValidityChecks for Create {
             self.metadata.is_some(),
             "`check_without_signatures` is called without cached metadata"
         );
-        let (state_root_calculated, contract_id_calculated) =
-            if let Some(metadata) = &self.metadata {
-                (metadata.state_root, metadata.contract_id)
-            } else {
-                let metadata = CreateMetadata::compute(self, chain_id)?;
-                (metadata.state_root, metadata.contract_id)
-            };
+        let (state_root_calculated, contract_id_calculated) = if let Some(metadata) =
+            &self.metadata
+        {
+            (metadata.state_root, metadata.contract_id)
+        } else {
+            let metadata = CreateMetadata::compute(self, &consensus_params.chain_id())?;
+            (metadata.state_root, metadata.contract_id)
+        };
 
         let mut contract_created = false;
         self.outputs
@@ -932,7 +932,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), ConsensusParams::standard(), &ChainId::default())
+            .check(0.into(), &ConsensusParams::standard(ChainId::default()))
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -952,7 +952,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), ConsensusParams::standard(), &ChainId::default())
+        .check(0.into(), &ConsensusParams::standard(ChainId::default()))
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

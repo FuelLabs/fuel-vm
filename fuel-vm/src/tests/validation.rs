@@ -30,7 +30,7 @@ fn transaction_can_be_executed_after_maturity() {
     )
     .gas_limit(100)
     .maturity(MATURITY)
-    .finalize_checked(BLOCK_HEIGHT, gas_costs);
+    .finalize_checked(BLOCK_HEIGHT);
 
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)

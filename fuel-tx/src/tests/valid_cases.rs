@@ -28,13 +28,17 @@ pub const FEE_PARAMS: FeeParameters = FeeParameters::DEFAULT;
 
 pub const CHAIN_ID: ChainId = ChainId::new(0);
 
-pub const PARAMS: ConsensusParams = ConsensusParams {
-    tx_params: TX_PARAMS,
-    predicate_params: PREDICATE_PARAMS,
-    script_params: SCRIPT_PARAMS,
-    contract_params: CONTRACT_PARAMS,
-    fee_params: FEE_PARAMS,
-};
+pub fn test_params() -> ConsensusParams {
+    ConsensusParams::new(
+        TX_PARAMS,
+        PREDICATE_PARAMS,
+        SCRIPT_PARAMS,
+        CONTRACT_PARAMS,
+        FEE_PARAMS,
+        CHAIN_ID,
+        Default::default(),
+    )
+}
 
 mod input;
 mod output;

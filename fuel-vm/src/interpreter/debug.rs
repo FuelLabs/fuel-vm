@@ -74,18 +74,20 @@ fn breakpoint_script() {
     .collect();
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs)
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -160,18 +162,20 @@ fn single_stepping() {
     .collect();
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs)
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

@@ -98,7 +98,7 @@ pub mod create {
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -148,7 +148,7 @@ pub mod mint {
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -208,7 +208,7 @@ pub mod script {
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, &chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {

@@ -56,7 +56,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(params.clone())
+        .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -96,9 +96,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked(
             Default::default(),
-            ConsensusParams::standard(),
-            Default::default(),
-            GasCosts::default(),
+            &ConsensusParams::standard(Default::default()),
         )
         .is_err());
 
@@ -107,8 +105,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked_basic(
             Default::default(),
-            ConsensusParams::standard(),
-            &Default::default(),
+            &ConsensusParams::standard(Default::default()),
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -117,7 +114,7 @@ fn estimate_gas_gives_proper_gas_used() {
     Interpreter::<PredicateStorage>::estimate_predicates(
         &mut transaction,
         balances,
-        params,
+        &params,
     )
     .expect("Should successfully estimate predicates");
 
@@ -125,9 +122,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let check_res = transaction.into_checked(
         Default::default(),
-        ConsensusParams::standard(),
-        Default::default(),
-        GasCosts::default(),
+        &ConsensusParams::standard(Default::default()),
     );
     assert!(check_res.is_ok());
 }

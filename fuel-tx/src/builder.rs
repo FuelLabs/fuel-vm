@@ -15,6 +15,7 @@ use crate::{
     ConsensusParams,
     ContractParameters,
     FeeParameters,
+    GasCosts,
     Input,
     Mint,
     Output,
@@ -268,6 +269,11 @@ impl<Tx> TransactionBuilder<Tx> {
 
     pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
         self.params.fee_params = fee_params;
+        self
+    }
+
+    pub fn with_gas_costs(&mut self, gas_costs: GasCosts) -> &mut Self {
+        self.params.gas_costs = gas_costs;
         self
     }
 }

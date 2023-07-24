@@ -1,5 +1,8 @@
 use fuel_asm::op;
-use fuel_tx::Script;
+use fuel_tx::{
+    ConsensusParams,
+    Script,
+};
 use fuel_types::{
     AssetId,
     ContractId,
@@ -41,31 +44,13 @@ use fuel_tx::{
     TxParameters,
 };
 
-use crate::{
-    gas::GasCosts,
-    interpreter::InterpreterParams,
-};
+use crate::interpreter::InterpreterParams;
 use fuel_types::ChainId;
 
 #[test]
 fn record_and_invert_storage() {
-    let gas_costs = GasCosts::default();
-    let max_inputs = TxParameters::DEFAULT.max_inputs;
-    let contract_max_size = ContractParameters::DEFAULT.contract_max_size;
-    let tx_offset = TxParameters::default().tx_offset();
-    let max_message_data_length = PredicateParameters::DEFAULT.max_message_data_length;
-    let chain_id = ChainId::default();
-    let fee_params = FeeParameters::default();
-
-    let interpreter_params = InterpreterParams {
-        gas_costs,
-        max_inputs,
-        contract_max_size,
-        tx_offset,
-        max_message_data_length,
-        chain_id,
-        fee_params,
-    };
+    let interpreter_params =
+        InterpreterParams::from(&ConsensusParams::standard(ChainId::default()));
 
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),

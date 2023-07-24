@@ -1,10 +1,13 @@
 use fuel_asm::op;
 use fuel_vm::prelude::*;
 
+use crate::fuel_types::ChainId;
 use fuel_tx::{
     field::Outputs,
+    ConsensusParams,
     FeeParameters,
 };
+use fuel_vm::interpreter::InterpreterParams;
 use std::iter;
 
 #[test]
@@ -38,16 +41,25 @@ fn gas_factor_rounds_correctly() {
 
     let profiler = GasProfiler::default();
 
-    let change = Interpreter::with_memory_storage()
-        .with_fee_params(fee_params)
+    let consensus_params = ConsensusParams {
+        fee_params,
+        ..ConsensusParams::standard(ChainId::default())
+    };
+
+    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let storage = MemoryStorage::default();
+
+    let mut interpreter = Interpreter::with_storage(storage, interpreter_params);
+    let res = interpreter
         .with_profiler(profiler.clone())
         .transact(transaction)
-        .expect("failed to execute transaction")
+        .expect("failed to execute transaction");
+    let change = res
         .tx()
         .outputs()
         .iter()
         .find_map(|o| match o {
-            Output::Change { amount, .. } => Some(*amount),
+            Output::Change { amount, .. } => Some(amount),
             _ => None,
         })
         .expect("failed to fetch change");
@@ -60,5 +72,5 @@ fn gas_factor_rounds_correctly() {
     let refund = TransactionFee::gas_refund_value(&fee_params, gas_remainder, gas_price)
         .expect("failed to calculate refund");
 
-    assert_eq!(change, initial_balance + refund);
+    assert_eq!(*change, initial_balance + refund);
 }

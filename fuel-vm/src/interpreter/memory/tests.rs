@@ -21,20 +21,17 @@ fn memcopy() {
     let fee_params = &Default::default();
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        *fee_params,
+        Default::default(),
+        vm.gas_costs().to_owned(),
     );
 
     let tx = tx
-        .into_checked(
-            Default::default(),
-            consensus_params,
-            Default::default(),
-            vm.gas_costs().to_owned(),
-        )
+        .into_checked(Default::default(), &consensus_params)
         .expect("default tx should produce a valid checked transaction");
 
     vm.init_script(tx).expect("Failed to init VM");
@@ -93,9 +90,7 @@ fn memrange() {
         .finalize()
         .into_checked(
             Default::default(),
-            ConsensusParams::standard(),
-            Default::default(),
-            Default::default(),
+            &ConsensusParams::standard(Default::default()),
         )
         .expect("Empty script should be valid");
     let mut vm = Interpreter::with_memory_storage();
@@ -128,9 +123,7 @@ fn stack_alloc_ownership() {
         .finalize()
         .into_checked(
             Default::default(),
-            ConsensusParams::standard(),
-            Default::default(),
-            Default::default(),
+            &ConsensusParams::standard(Default::default()),
         )
         .expect("Empty script should be valid");
     vm.init_script(tx).expect("Failed to init VM");

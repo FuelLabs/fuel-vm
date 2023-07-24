@@ -68,23 +68,12 @@ fn prevent_contract_id_redeployment() {
         1,
     );
 
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
 
-    let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
-    );
+    let consensus_params = ConsensusParams::standard(chain_id);
 
     let create = create
-        .into_checked_basic(1.into(), consensus_params, &chain_id)
+        .into_checked_basic(1.into(), &consensus_params)
         .expect("failed to generate checked tx");
 
     // deploy contract

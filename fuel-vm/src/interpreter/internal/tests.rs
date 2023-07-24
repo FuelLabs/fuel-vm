@@ -53,7 +53,7 @@ fn external_balance() {
         .gas_limit(gas_limit)
         .gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, Default::default());
+        .finalize_checked(height);
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -109,25 +109,31 @@ fn variable_output_updates_in_memory() {
         asset_id: rng.gen(),
     };
 
+    let consensus_params = ConsensusParams {
+        tx_params: Default::default(),
+        fee_params: Default::default(),
+        predicate_params: Default::default(),
+        script_params: Default::default(),
+        contract_params: Default::default(),
+        chain_id: Default::default(),
+        gas_costs: vm.gas_costs().to_owned(),
+    };
+
     let tx = TransactionBuilder::script(vec![], vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(
-            height,
-            ConsensusParams::standard(),
-            Default::default(),
-            vm.gas_costs().to_owned(),
-        )
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");
 
     // increase variable output
     let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
+    let tx_offset = vm.tx_offset();
 
-    set_variable_output(&mut vm.tx, &mut vm.memory, vm.tx_offset, 0, variable).unwrap();
+    set_variable_output(&mut vm.tx, &mut vm.memory, tx_offset, 0, variable).unwrap();
 
     // verify the referenced tx output is updated properly
     assert!(matches!(

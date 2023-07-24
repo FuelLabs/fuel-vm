@@ -18,7 +18,6 @@ use crate::{
 use fuel_tx::{
     ContractParameters,
     FeeParameters,
-    GasCosts,
     PredicateParameters,
     TxParameters,
 };

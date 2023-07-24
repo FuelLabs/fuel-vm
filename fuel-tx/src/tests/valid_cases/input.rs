@@ -156,11 +156,7 @@ fn coin_signed() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(
-            block_height,
-            ConsensusParams::standard(),
-            &ChainId::default(),
-        )
+        .check(block_height, &ConsensusParams::standard(Default::default()))
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err);
@@ -421,7 +417,7 @@ fn message_metadata() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, ConsensusParams::standard(), &chain_id)
+        .check(block_height, &ConsensusParams::standard(chain_id))
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -589,7 +585,7 @@ fn message_message_coin() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, ConsensusParams::standard(), &chain_id)
+        .check(block_height, &ConsensusParams::standard(chain_id))
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -702,8 +698,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .finalize()
         .check_without_signatures(
             Default::default(),
-            ConsensusParams::standard(),
-            &Default::default(),
+            &ConsensusParams::standard(ChainId::default()),
         )
         .expect_err("Expected checkable failure");
 
@@ -741,8 +736,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         .finalize()
         .check_without_signatures(
             Default::default(),
-            ConsensusParams::standard(),
-            &Default::default(),
+            &ConsensusParams::standard(ChainId::default()),
         )
         .expect_err("Expected checkable failure");
 
@@ -778,8 +772,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .finalize()
         .check_without_signatures(
             Default::default(),
-            ConsensusParams::standard(),
-            &Default::default(),
+            &ConsensusParams::standard(ChainId::default()),
         )
         .expect_err("Expected checkable failure");
 
@@ -816,8 +809,7 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .finalize()
         .check_without_signatures(
             Default::default(),
-            ConsensusParams::standard(),
-            &Default::default(),
+            &ConsensusParams::standard(ChainId::default()),
         )
         .expect("Duplicated UTXO id is valid for contract input");
 }

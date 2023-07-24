@@ -197,7 +197,6 @@ impl FormatValidityChecks for Script {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParams,
-        _chain_id: &ChainId,
     ) -> Result<(), CheckError> {
         check_common_part(
             self,

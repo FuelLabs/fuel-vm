@@ -81,7 +81,7 @@ fn secp256k1_recover() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -148,15 +148,15 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
-    let tx = tx
-        .into_checked(height, consensus_params, chain_id, gas_costs)
-        .unwrap();
+    let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -181,20 +181,9 @@ async fn recover_tx_id_predicate() {
     let public = secret.public_key();
 
     let check_params = CheckPredicateParams::default();
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
     let chain_id = ChainId::default();
 
-    let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
-    );
+    let consensus_params = ConsensusParams::standard(chain_id);
 
     #[rustfmt::skip]
     let predicate = vec![
@@ -252,20 +241,20 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(check_params.clone())
+            .estimate_predicates_async::<TokioWithRayon>(&check_params)
             .await
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, consensus_params, chain_id, gas_costs.clone())
+            .into_checked(maturity, &consensus_params)
             .expect("Should check predicate successfully");
     }
 
     // sequential version
-    tx.estimate_predicates(check_params.clone())
+    tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, consensus_params, chain_id, gas_costs)
+    tx.into_checked(maturity, &consensus_params)
         .expect("Should check predicate successfully");
 }
 
@@ -393,7 +382,7 @@ fn secp256r1_recover() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -522,7 +511,7 @@ fn ed25519_verify() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -645,7 +634,7 @@ fn sha256() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -743,7 +732,7 @@ fn keccak256() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts

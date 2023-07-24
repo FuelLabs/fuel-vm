@@ -48,21 +48,8 @@ fn metadata() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-    let gas_costs = GasCosts::default();
 
-    let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
-    );
+    let consensus_params = ConsensusParams::standard(ChainId::default());
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -93,21 +80,13 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams {
-        gas_costs: Default::default(),
-        max_inputs: tx_params.max_inputs,
-        contract_max_size: contract_params.contract_max_size,
-        tx_offset: tx_params.tx_offset(),
-        max_message_data_length: predicate_params.max_message_data_length,
-        chain_id,
-        fee_params,
-    };
+    let interpreter_params = InterpreterParams::from(&consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, interpreter_params)
+    assert!(Transactor::new(&mut storage, interpreter_params.clone())
         .transact(tx)
         .is_success());
 
@@ -151,21 +130,10 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs.clone())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams {
-        gas_costs: Default::default(),
-        max_inputs: tx_params.max_inputs,
-        contract_max_size: contract_params.contract_max_size,
-        tx_offset: tx_params.tx_offset(),
-        max_message_data_length: predicate_params.max_message_data_length,
-        chain_id,
-        fee_params,
-    };
-
-    // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, interpreter_params,)
+    assert!(Transactor::new(&mut storage, interpreter_params.clone())
         .transact(tx)
         .is_success());
 
@@ -222,18 +190,8 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
-
-    let interpreter_params = InterpreterParams {
-        gas_costs: Default::default(),
-        max_inputs: tx_params.max_inputs,
-        contract_max_size: contract_params.contract_max_size,
-        tx_offset: tx_params.tx_offset(),
-        max_message_data_length: predicate_params.max_message_data_length,
-        chain_id,
-        fee_params,
-    };
 
     let receipts = Transactor::new(&mut storage, interpreter_params)
         .transact(tx)
@@ -292,11 +250,13 @@ fn get_metadata_chain_id() {
     let contract_params = Default::default();
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
@@ -304,7 +264,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, consensus_params, chain_id, gas_costs)
+        .into_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -319,6 +279,7 @@ fn get_metadata_chain_id() {
 #[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::free();
 
     let mut client = MemoryClient::default();
 
@@ -342,7 +303,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height, client.gas_costs().to_owned());
+        .finalize_checked(height);
 
     client.deploy(tx);
 
@@ -395,6 +356,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .prepare_script(true)
         .maturity(maturity)
+        .with_gas_costs(gas_costs)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .add_unsigned_coin_input(
@@ -437,7 +399,7 @@ fn get_transaction_fields() {
             maturity,
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height, GasCosts::free());
+        .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

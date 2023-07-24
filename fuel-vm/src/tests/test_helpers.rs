@@ -35,11 +35,13 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let gas_costs = GasCosts::default();
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        chain_id,
+        gas_costs,
     );
 
     let tx = TransactionBuilder::script(script, vec![])
@@ -48,7 +50,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), consensus_params, chain_id, gas_costs)
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

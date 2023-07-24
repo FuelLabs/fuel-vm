@@ -45,7 +45,7 @@ fn profile_gas() {
                 .gas_limit(gas_limit)
                 .gas_price(gas_price)
                 .maturity(maturity)
-                .finalize_checked(height, GasCosts::default());
+                .finalize_checked(height);
 
         let output = GasProfiler::default();
 

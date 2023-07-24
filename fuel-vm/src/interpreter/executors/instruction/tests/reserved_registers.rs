@@ -51,20 +51,17 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
     let consensus_params = ConsensusParams::new(
-        &tx_params,
-        &predicate_params,
-        &script_params,
-        &contract_params,
-        &fee_params,
+        tx_params,
+        predicate_params,
+        script_params,
+        contract_params,
+        fee_params,
+        Default::default(),
+        vm.gas_costs().to_owned(),
     );
 
     let tx = tx
-        .into_checked(
-            block_height,
-            consensus_params,
-            Default::default(),
-            vm.gas_costs().to_owned(),
-        )
+        .into_checked(block_height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");

@@ -142,9 +142,7 @@ where
         Tx::default()
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(ChainId::default()),
             )
             .expect("default tx should produce a valid fully checked transaction")
     }
@@ -678,9 +676,7 @@ mod tests {
             .clone()
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -705,9 +701,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -730,9 +724,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -761,9 +753,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -804,9 +794,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -972,9 +960,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect_err("Expected invalid transaction");
 
@@ -1006,20 +992,17 @@ mod tests {
         let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            Default::default(),
+            Default::default(),
         );
 
         let err = transaction
-            .into_checked(
-                Default::default(),
-                consensus_params,
-                ChainId::default(),
-                Default::default(),
-            )
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         let provided = match err {
@@ -1049,20 +1032,17 @@ mod tests {
         let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            Default::default(),
+            Default::default(),
         );
 
         let err = transaction
-            .into_checked(
-                Default::default(),
-                consensus_params,
-                ChainId::default(),
-                Default::default(),
-            )
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         let provided = match err {
@@ -1089,20 +1069,17 @@ mod tests {
         let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            Default::default(),
+            Default::default(),
         );
 
         let err = transaction
-            .into_checked(
-                Default::default(),
-                consensus_params,
-                ChainId::default(),
-                Default::default(),
-            )
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -1124,20 +1101,17 @@ mod tests {
         let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
         let consensus_params = ConsensusParams::new(
-            &tx_params,
-            &predicate_params,
-            &script_params,
-            &contract_params,
-            &fee_params,
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            Default::default(),
+            Default::default(),
         );
 
         let err = transaction
-            .into_checked(
-                Default::default(),
-                consensus_params,
-                ChainId::default(),
-                Default::default(),
-            )
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -1178,9 +1152,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                ConsensusParams::standard(),
-                ChainId::default(),
-                Default::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -1203,8 +1175,7 @@ mod tests {
         let checked = tx
             .into_checked_basic(
                 block_height,
-                ConsensusParams::standard(),
-                &ChainId::default(),
+                &ConsensusParams::standard(Default::default()),
             )
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
@@ -1221,9 +1192,7 @@ mod tests {
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                ConsensusParams::standard(),
-                chain_id,
-                Default::default(),
+                &ConsensusParams::standard(chain_id),
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1243,22 +1212,22 @@ mod tests {
 
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
-        let params = CheckPredicateParams {
+        let consensus_params = ConsensusParams {
             gas_costs: gas_costs.clone(),
-            ..Default::default()
+            ..ConsensusParams::standard(Default::default())
         };
+
+        let check_predicate_params = CheckPredicateParams::from(&consensus_params);
 
         let checked = tx
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                ConsensusParams::standard(),
-                ChainId::default(),
-                gas_costs,
+                &consensus_params,
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(params)
+            .check_predicates(&check_predicate_params)
             .unwrap();
         assert!(checked
             .checks()

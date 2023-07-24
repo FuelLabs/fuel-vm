@@ -22,6 +22,7 @@ use fuel_tx::{
     field,
     Chargeable,
     CheckError,
+    ConsensusParams,
     Create,
     Executable,
     FeeParameters,
@@ -132,6 +133,20 @@ pub struct InterpreterParams {
     pub chain_id: ChainId,
     /// Fee parameters
     pub fee_params: FeeParameters,
+}
+
+impl From<&ConsensusParams> for InterpreterParams {
+    fn from(value: &ConsensusParams) -> Self {
+        InterpreterParams {
+            gas_costs: value.gas_costs.to_owned(),
+            max_inputs: value.tx_params.max_inputs,
+            contract_max_size: value.contract_params.contract_max_size,
+            tx_offset: value.tx_params.tx_offset(),
+            max_message_data_length: value.predicate_params.max_message_data_length,
+            chain_id: value.chain_id,
+            fee_params: value.fee_params,
+        }
+    }
 }
 
 /// Sometimes it is possible to add some additional context information

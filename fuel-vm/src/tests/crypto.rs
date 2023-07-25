@@ -14,7 +14,11 @@ use fuel_crypto::{
     SecretKey,
     Signature,
 };
-use fuel_tx::TransactionBuilder;
+use fuel_tx::{
+    ConsensusParameters,
+    TransactionBuilder,
+};
+use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
     SeedableRng,
@@ -25,6 +29,7 @@ use sha3::{
 };
 
 use crate::{
+    checked_transaction::CheckPredicateParams,
     prelude::*,
     tests::predicate::TokioWithRayon,
     util::test_helpers::check_expected_reason_for_instructions,
@@ -40,8 +45,6 @@ fn secp256k1_recover() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -77,9 +80,8 @@ fn secp256k1_recover() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
         .add_random_fee_input()
-        .finalize_checked(height, &gas_costs);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -99,11 +101,10 @@ fn ecrecover_tx_id() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
+    let chain_id = ChainId::default();
 
     #[rustfmt::skip]
     let script = vec![
@@ -134,12 +135,13 @@ fn ecrecover_tx_id() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
         .add_random_fee_input()
         .finalize();
 
-    tx.sign_inputs(&secret, &params.chain_id);
-    let tx = tx.into_checked(height, &params, &gas_costs).unwrap();
+    tx.sign_inputs(&secret, &chain_id);
+
+    let consensus_params = ConsensusParameters::standard(Default::default());
+    let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -158,11 +160,14 @@ async fn recover_tx_id_predicate() {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
+
+    let check_params = CheckPredicateParams::default();
+    let chain_id = ChainId::default();
+
+    let consensus_params = ConsensusParameters::standard(chain_id);
 
     #[rustfmt::skip]
     let predicate = vec![
@@ -191,7 +196,7 @@ async fn recover_tx_id_predicate() {
 
     let input = Input::coin_predicate(
         rng.gen(),
-        Input::predicate_owner(&predicate, &params.chain_id),
+        Input::predicate_owner(&predicate, &check_params.chain_id),
         1000,
         rng.gen(),
         Default::default(),
@@ -205,7 +210,6 @@ async fn recover_tx_id_predicate() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
         .add_input(input)
         .add_unsigned_coin_input(
             secret,
@@ -221,20 +225,20 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&params, &gas_costs)
+            .estimate_predicates_async::<TokioWithRayon>(&check_params)
             .await
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &params, &gas_costs)
+            .into_checked(maturity, &consensus_params)
             .expect("Should check predicate successfully");
     }
 
     // sequential version
-    tx.estimate_predicates(&params, &gas_costs)
+    tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &params, &gas_costs)
+    tx.into_checked(maturity, &consensus_params)
         .expect("Should check predicate successfully");
 }
 
@@ -326,8 +330,6 @@ fn secp256r1_recover() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);
@@ -363,9 +365,8 @@ fn secp256r1_recover() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
         .add_random_fee_input()
-        .finalize_checked(height, &gas_costs);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -460,8 +461,6 @@ fn ed25519_verify() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let keypair =
         ed25519_dalek::Keypair::generate(&mut ed25519_dalek_old_rand::rngs::OsRng {});
@@ -495,9 +494,8 @@ fn ed25519_verify() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
         .add_random_fee_input()
-        .finalize_checked(height, &gas_costs);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -591,8 +589,6 @@ fn sha256() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let hash = Hasher::hash(message);
@@ -622,8 +618,7 @@ fn sha256() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .with_params(params)
-        .finalize_checked(height, &gas_costs);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -689,7 +684,6 @@ fn keccak256() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
 
@@ -722,8 +716,7 @@ fn keccak256() {
         .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts

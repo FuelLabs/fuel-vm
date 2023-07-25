@@ -3,7 +3,6 @@ use crate::{
     arith,
     constraints::reg_key::*,
     error::RuntimeError,
-    gas::DependentCost,
     prelude::{
         Bug,
         BugId,
@@ -16,6 +15,7 @@ use fuel_asm::{
     PanicReason,
     RegId,
 };
+use fuel_tx::DependentCost;
 use fuel_types::{
     ContractId,
     Word,

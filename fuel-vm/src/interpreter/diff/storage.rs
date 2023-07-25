@@ -96,10 +96,9 @@ where
             debugger: self.debugger,
             context: self.context,
             balances: self.balances,
-            gas_costs: self.gas_costs,
-            params: self.params,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            interpreter_params: self.interpreter_params,
         }
     }
 
@@ -170,10 +169,9 @@ where
             debugger: self.debugger,
             context: self.context,
             balances: self.balances,
-            gas_costs: self.gas_costs,
-            params: self.params,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            interpreter_params: self.interpreter_params,
         }
     }
 

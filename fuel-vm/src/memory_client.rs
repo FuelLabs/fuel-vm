@@ -3,18 +3,23 @@
 use crate::{
     backtrace::Backtrace,
     checked_transaction::Checked,
-    gas::GasCosts,
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
 };
 
+use crate::interpreter::InterpreterParams;
 use fuel_tx::{
-    ConsensusParameters,
+    ContractParameters,
     Create,
+    FeeParameters,
+    GasCosts,
+    PredicateParameters,
     Receipt,
     Script,
+    TxParameters,
 };
+use fuel_types::ChainId;
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
@@ -36,13 +41,9 @@ impl AsMut<MemoryStorage> for MemoryClient {
 
 impl MemoryClient {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn new(
-        storage: MemoryStorage,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
-    ) -> Self {
+    pub fn new(storage: MemoryStorage, interpreter_params: InterpreterParams) -> Self {
         Self {
-            transactor: Transactor::new(storage, params, gas_costs),
+            transactor: Transactor::new(storage, interpreter_params),
         }
     }
 
@@ -103,13 +104,13 @@ impl MemoryClient {
         self.as_mut().persist();
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.transactor.params()
-    }
+    // /// Consensus parameters
+    // pub const fn params(&self) -> &ConsensusParameters {
+    //     self.transactor.params()
+    // }
 
     /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
+    pub fn tx_offset(&self) -> usize {
         self.transactor.tx_offset()
     }
 
@@ -121,7 +122,16 @@ impl MemoryClient {
 
 impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
-        Self::new(s, Default::default(), Default::default())
+        let interpreter_params = InterpreterParams {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::default().tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+        };
+        Self::new(s, interpreter_params)
     }
 }
 

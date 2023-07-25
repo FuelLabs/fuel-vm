@@ -14,7 +14,7 @@ use fuel_tx::{
     },
     Chargeable,
     CheckError,
-    ConsensusParameters,
+    FeeParameters,
     Input,
     Output,
     TransactionFee,
@@ -27,7 +27,7 @@ use std::collections::BTreeMap;
 
 pub(crate) fn initial_free_balances<T>(
     transaction: &T,
-    params: &ConsensusParameters,
+    params: &FeeParameters,
 ) -> Result<AvailableBalances, CheckError>
 where
     T: Chargeable + field::Inputs + field::Outputs,

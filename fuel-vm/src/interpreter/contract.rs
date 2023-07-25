@@ -87,6 +87,7 @@ where
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = TransferCtx {
@@ -96,7 +97,7 @@ where
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -111,6 +112,7 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = TransferCtx {
@@ -120,7 +122,7 @@ where
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,

@@ -50,7 +50,6 @@ use crate::{
         BugVariant,
         RuntimeError,
     },
-    gas::DependentCost,
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
@@ -70,6 +69,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     ContractIdExt,
+    DependentCost,
     Receipt,
 };
 use fuel_types::{
@@ -115,6 +115,7 @@ where
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError> {
+        let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
                 ssp,
@@ -129,7 +130,7 @@ where
         let input = LoadContractCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
-            contract_max_size: self.params.contract_max_size,
+            contract_max_size,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
@@ -144,6 +145,7 @@ where
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
         BurnCtx {
@@ -152,7 +154,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset,
                 memory: &mut self.memory,
             },
             fp: fp.as_ref(),
@@ -163,6 +165,7 @@ where
     }
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
         MintCtx {
@@ -171,7 +174,7 @@ where
             append: AppendReceipt {
                 receipts: &mut self.receipts,
                 script: self.tx.as_script_mut(),
-                tx_offset: self.params.tx_offset(),
+                tx_offset,
                 memory: &mut self.memory,
             },
             fp: fp.as_ref(),
@@ -251,6 +254,7 @@ where
         ra: RegisterId,
         b: Word,
     ) -> Result<(), RuntimeError> {
+        let gas_cost = self.gas_costs().csiz;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -264,7 +268,7 @@ where
         let input = CodeSizeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
-            gas_cost: self.gas_costs.csiz,
+            gas_cost,
             profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
@@ -422,11 +426,13 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let max_message_data_length = self.max_message_data_length();
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputCtx {
-            max_message_data_length: self.params.max_message_data_length,
+            max_message_data_length,
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
             balances: &mut self.balances,

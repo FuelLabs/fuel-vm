@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Description of the upcoming release here.
+- [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ClientId` and `GasCosts` to `ConsensusParameters`. 
+    Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
+    necessary fields only.
 
 ## [Version 0.35.1]
 

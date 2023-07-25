@@ -6,6 +6,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Describe a panic reason with the instruction that generated it
@@ -31,6 +32,28 @@ impl PanicInstruction {
     /// Underlying instruction
     pub const fn instruction(&self) -> &RawInstruction {
         &self.instruction
+    }
+}
+
+#[cfg(feature = "typescript")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+impl PanicInstruction {
+    /// Represents an error described by a reason and an instruction.
+    #[wasm_bindgen(constructor)]
+    pub fn error_typescript(reason: PanicReason, instruction: RawInstruction) -> Self {
+        Self::error(reason, instruction)
+    }
+
+    /// Underlying panic reason
+    #[wasm_bindgen(js_name = reason)]
+    pub fn reason_typescript(&self) -> PanicReason {
+        *self.reason()
+    }
+
+    /// Underlying instruction
+    #[wasm_bindgen(js_name = instruction)]
+    pub fn instruction_typescript(&self) -> RawInstruction {
+        *self.instruction()
     }
 }
 

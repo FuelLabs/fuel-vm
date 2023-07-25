@@ -1,0 +1,17 @@
+{
+  "name": "@fuels/vm-{{PKG_NAME}}",
+  "version": "{{PKG_VERSION}}",
+  "description": "WASM version of `{{NAME_DASHED}}` Rust crate",
+  "author": "Fuel Labs <contact@fuel.sh> (https://fuel.network/)",
+  "main": "dist/node/index.cjs",
+  "types": "dist/node/index.d.ts",
+  "browser": "dist/web/index.mjs",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "test": "mocha index.test.cjs index.test.mjs"
+  },
+  "license": "Apache-2.0"
+}

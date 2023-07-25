@@ -19,6 +19,7 @@ use rand::{
     SeedableRng,
 };
 
+use crate::TxParameters;
 use fuel_tx::field::{
     Inputs,
     Script,
@@ -369,7 +370,7 @@ fn transaction() {
     assert_encoding_correct(&[
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -380,7 +381,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -391,7 +392,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -402,7 +403,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -413,7 +414,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -424,7 +425,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -657,7 +658,7 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id)
+                        tx_p.precompute(&Default::default())
                             .expect("Should be able to calculate cache");
 
                         buffer.iter_mut().for_each(|b| *b = 0x00);

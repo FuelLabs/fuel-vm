@@ -31,7 +31,19 @@ mod txio;
 
 pub mod consensus_parameters;
 
-pub use consensus_parameters::ConsensusParameters;
+pub use consensus_parameters::{
+    ConsensusParameters,
+    ContractParameters,
+    DependentCost,
+    FeeParameters,
+    GasCosts,
+    GasCostsValues,
+    GasUnit,
+    PredicateParameters,
+    ScriptParameters,
+    TxParameters,
+};
+
 pub use fee::{
     Chargeable,
     TransactionFee,

@@ -2,6 +2,7 @@ use fuel_asm::{
     op,
     Instruction,
 };
+use fuel_tx::ConsensusParameters;
 use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
@@ -21,17 +22,15 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
 
+    let consensus_params = ConsensusParameters::standard(Default::default());
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)
         .gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            Default::default(),
-            &ConsensusParameters::DEFAULT,
-            client.gas_costs(),
-        )
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

@@ -19,8 +19,6 @@ const MAX_GAS: u64 = 100_000_000;
 /// A collection of parameters for convenience
 #[derive(Debug, Clone)]
 pub struct ConsensusParams {
-    // TODO: This should be pub(crate) for the `fuel_tx` tests, but for some reason the
-    // tests can't see the fields with `pub(crate)`
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
     pub script_params: ScriptParameters,

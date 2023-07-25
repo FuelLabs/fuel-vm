@@ -127,11 +127,6 @@ where
         &self.interpreter
     }
 
-    // /// Consensus parameters
-    // pub const fn params(&self) -> &ConsensusParameters {
-    //     self.interpreter.params()
-    // }
-    //
     /// Gas costs of opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         self.interpreter.gas_costs()

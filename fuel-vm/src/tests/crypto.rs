@@ -15,7 +15,7 @@ use fuel_crypto::{
     Signature,
 };
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     TransactionBuilder,
 };
 use fuel_types::ChainId;
@@ -140,7 +140,7 @@ fn ecrecover_tx_id() {
 
     tx.sign_inputs(&secret, &chain_id);
 
-    let consensus_params = ConsensusParams::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard(Default::default());
     let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
@@ -167,7 +167,7 @@ async fn recover_tx_id_predicate() {
     let check_params = CheckPredicateParams::default();
     let chain_id = ChainId::default();
 
-    let consensus_params = ConsensusParams::standard(chain_id);
+    let consensus_params = ConsensusParameters::standard(chain_id);
 
     #[rustfmt::skip]
     let predicate = vec![

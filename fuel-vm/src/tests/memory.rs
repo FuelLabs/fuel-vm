@@ -18,7 +18,7 @@ use super::test_helpers::{
     run_script,
     set_full_word,
 };
-use fuel_tx::ConsensusParams;
+use fuel_tx::ConsensusParameters;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
@@ -28,7 +28,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let maturity = Default::default();
     let height = Default::default();
 
-    let consensus_params = ConsensusParams::standard(ChainId::default());
+    let consensus_params = ConsensusParameters::standard(ChainId::default());
 
     let script = program.into_iter().collect();
 

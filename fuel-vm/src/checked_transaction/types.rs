@@ -64,7 +64,7 @@ pub mod create {
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ConsensusParams,
+        ConsensusParameters,
         Create,
         FormatValidityChecks,
         TransactionFee,
@@ -94,7 +94,7 @@ pub mod create {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: &ConsensusParams,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
@@ -132,7 +132,7 @@ pub mod mint {
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ConsensusParams,
+        ConsensusParameters,
         FormatValidityChecks,
         Mint,
     };
@@ -144,7 +144,7 @@ pub mod mint {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: &ConsensusParams,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
@@ -172,7 +172,7 @@ pub mod script {
     use fuel_tx::{
         Cacheable,
         CheckError,
-        ConsensusParams,
+        ConsensusParameters,
         FormatValidityChecks,
         Script,
         TransactionFee,
@@ -204,7 +204,7 @@ pub mod script {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            consensus_params: &ConsensusParams,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;

@@ -20,7 +20,7 @@ use fuel_types::{
 };
 
 use core::borrow::Borrow;
-use fuel_tx::ConsensusParams;
+use fuel_tx::ConsensusParameters;
 use std::future::Future;
 
 mod balances;
@@ -142,7 +142,7 @@ where
         Tx::default()
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(ChainId::default()),
+                &ConsensusParameters::standard(ChainId::default()),
             )
             .expect("default tx should produce a valid fully checked transaction")
     }
@@ -188,7 +188,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked(
         self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
@@ -203,7 +203,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError>;
 }
 
@@ -246,8 +246,8 @@ impl Default for CheckPredicateParams {
     }
 }
 
-impl From<&ConsensusParams> for CheckPredicateParams {
-    fn from(value: &ConsensusParams) -> Self {
+impl From<&ConsensusParameters> for CheckPredicateParams {
+    fn from(value: &ConsensusParameters) -> Self {
         CheckPredicateParams {
             gas_costs: value.gas_costs().clone(),
             chain_id: value.chain_id,
@@ -617,7 +617,7 @@ impl IntoChecked for Transaction {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
@@ -676,7 +676,7 @@ mod tests {
             .clone()
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -701,7 +701,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -724,7 +724,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect("Expected valid transaction");
 
@@ -753,7 +753,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -794,7 +794,7 @@ mod tests {
         let err = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -960,7 +960,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect_err("Expected invalid transaction");
 
@@ -991,7 +991,7 @@ mod tests {
         let contract_params = ContractParameters::default();
         let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
-        let consensus_params = ConsensusParams::new(
+        let consensus_params = ConsensusParameters::new(
             tx_params,
             predicate_params,
             script_params,
@@ -1031,7 +1031,7 @@ mod tests {
         let contract_params = ContractParameters::default();
         let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
-        let consensus_params = ConsensusParams::new(
+        let consensus_params = ConsensusParameters::new(
             tx_params,
             predicate_params,
             script_params,
@@ -1068,7 +1068,7 @@ mod tests {
         let contract_params = ContractParameters::default();
         let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
-        let consensus_params = ConsensusParams::new(
+        let consensus_params = ConsensusParameters::new(
             tx_params,
             predicate_params,
             script_params,
@@ -1100,7 +1100,7 @@ mod tests {
         let contract_params = ContractParameters::default();
         let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
-        let consensus_params = ConsensusParams::new(
+        let consensus_params = ConsensusParameters::new(
             tx_params,
             predicate_params,
             script_params,
@@ -1152,7 +1152,7 @@ mod tests {
         let checked = tx
             .into_checked(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect_err("Expected valid transaction");
 
@@ -1175,7 +1175,7 @@ mod tests {
         let checked = tx
             .into_checked_basic(
                 block_height,
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
@@ -1192,7 +1192,7 @@ mod tests {
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                &ConsensusParams::standard(chain_id),
+                &ConsensusParameters::standard(chain_id),
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1212,9 +1212,9 @@ mod tests {
 
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
-        let consensus_params = ConsensusParams {
+        let consensus_params = ConsensusParameters {
             gas_costs,
-            ..ConsensusParams::standard(Default::default())
+            ..ConsensusParameters::standard(Default::default())
         };
 
         let check_predicate_params = CheckPredicateParams::from(&consensus_params);

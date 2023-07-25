@@ -26,7 +26,7 @@ use crate::checked_transaction::{
 };
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
-use fuel_tx::ConsensusParams;
+use fuel_tx::ConsensusParameters;
 use fuel_types::ChainId;
 
 pub struct TokioWithRayon;
@@ -117,7 +117,7 @@ where
     let gas_costs = GasCosts::free();
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParams::standard(ChainId::default()))
+        .into_checked_basic(height, &ConsensusParameters::standard(ChainId::default()))
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams {
@@ -270,7 +270,7 @@ async fn execute_gas_metered_predicates(
         let tx = async_tx
             .into_checked_basic(
                 Default::default(),
-                &ConsensusParams::standard(Default::default()),
+                &ConsensusParameters::standard(Default::default()),
             )
             .expect("Should successfully create checked tranaction with predicate");
 
@@ -288,7 +288,7 @@ async fn execute_gas_metered_predicates(
     let tx = transaction
         .into_checked_basic(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -440,7 +440,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let checked = transaction
         .into_checked_basic(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -579,7 +579,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let checked = transaction
         .into_checked_basic(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Should successfully create checked tranaction with predicate");
 

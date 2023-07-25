@@ -1,5 +1,5 @@
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     ContractParameters,
     FeeParameters,
     PredicateParameters,
@@ -28,8 +28,8 @@ pub const FEE_PARAMS: FeeParameters = FeeParameters::DEFAULT;
 
 pub const CHAIN_ID: ChainId = ChainId::new(0);
 
-pub fn test_params() -> ConsensusParams {
-    ConsensusParams::new(
+pub fn test_params() -> ConsensusParameters {
+    ConsensusParameters::new(
         TX_PARAMS,
         PREDICATE_PARAMS,
         SCRIPT_PARAMS,

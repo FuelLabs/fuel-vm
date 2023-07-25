@@ -71,7 +71,7 @@ pub use transaction::{
     Cacheable,
     Chargeable,
     CheckError,
-    ConsensusParams,
+    ConsensusParameters,
     ContractParameters,
     Create,
     DependentCost,

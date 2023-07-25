@@ -21,7 +21,7 @@ use crate::{
     },
     Chargeable,
     CheckError,
-    ConsensusParams,
+    ConsensusParameters,
     Contract,
     Input,
     Output,
@@ -237,7 +237,7 @@ impl FormatValidityChecks for Create {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         check_common_part(
             self,
@@ -932,7 +932,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParams::standard(ChainId::default()))
+            .check(0.into(), &ConsensusParameters::standard(ChainId::default()))
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -952,7 +952,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParams::standard(ChainId::default()))
+        .check(0.into(), &ConsensusParameters::standard(ChainId::default()))
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

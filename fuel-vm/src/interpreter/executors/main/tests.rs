@@ -3,7 +3,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     TransactionBuilder,
 };
 use rand::{
@@ -96,7 +96,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .is_err());
 
@@ -105,7 +105,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .clone()
         .into_checked_basic(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -122,7 +122,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let check_res = transaction.into_checked(
         Default::default(),
-        &ConsensusParams::standard(Default::default()),
+        &ConsensusParameters::standard(Default::default()),
     );
     assert!(check_res.is_ok());
 }

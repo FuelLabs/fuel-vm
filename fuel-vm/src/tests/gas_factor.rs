@@ -4,7 +4,7 @@ use fuel_vm::prelude::*;
 use crate::fuel_types::ChainId;
 use fuel_tx::{
     field::Outputs,
-    ConsensusParams,
+    ConsensusParameters,
     FeeParameters,
 };
 use fuel_vm::interpreter::InterpreterParams;
@@ -41,9 +41,9 @@ fn gas_factor_rounds_correctly() {
 
     let profiler = GasProfiler::default();
 
-    let consensus_params = ConsensusParams {
+    let consensus_params = ConsensusParameters {
         fee_params,
-        ..ConsensusParams::standard(ChainId::default())
+        ..ConsensusParameters::standard(ChainId::default())
     };
 
     let interpreter_params = InterpreterParams::from(&consensus_params);

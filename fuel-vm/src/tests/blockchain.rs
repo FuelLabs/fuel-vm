@@ -44,7 +44,7 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field::Script as ScriptField,
-    ConsensusParams,
+    ConsensusParameters,
 };
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
@@ -291,7 +291,7 @@ fn load_external_contract_code() {
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let consensus_params = ConsensusParams::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard(Default::default());
 
     let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
         .gas_price(gas_price)
@@ -410,7 +410,7 @@ fn ldc_reason_helper(
     // make gas costs free
     let gas_costs = GasCosts::free();
 
-    let consensus_params = ConsensusParams::new(
+    let consensus_params = ConsensusParameters::new(
         tx_params,
         predicate_params,
         script_params,

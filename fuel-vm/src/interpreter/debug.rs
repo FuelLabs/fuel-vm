@@ -47,7 +47,7 @@ where
 #[test]
 fn breakpoint_script() {
     use fuel_asm::op;
-    use fuel_tx::ConsensusParams;
+    use fuel_tx::ConsensusParameters;
 
     let mut vm = Interpreter::with_memory_storage();
 
@@ -65,7 +65,7 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParams::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard(Default::default());
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
@@ -120,7 +120,7 @@ fn breakpoint_script() {
 #[test]
 fn single_stepping() {
     use fuel_asm::op;
-    use fuel_tx::ConsensusParams;
+    use fuel_tx::ConsensusParameters;
 
     let mut vm = Interpreter::with_memory_storage();
 
@@ -137,7 +137,7 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParams::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard(Default::default());
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)

@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::*;
 use crate::prelude::*;
 use fuel_asm::op;
-use fuel_tx::ConsensusParams;
+use fuel_tx::ConsensusParameters;
 use test_case::test_case;
 
 #[test]
@@ -20,7 +20,7 @@ fn memcopy() {
     let contract_params = Default::default();
     let fee_params = &Default::default();
 
-    let consensus_params = ConsensusParams::new(
+    let consensus_params = ConsensusParameters::new(
         tx_params,
         predicate_params,
         script_params,
@@ -90,7 +90,7 @@ fn memrange() {
         .finalize()
         .into_checked(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Empty script should be valid");
     let mut vm = Interpreter::with_memory_storage();
@@ -123,7 +123,7 @@ fn stack_alloc_ownership() {
         .finalize()
         .into_checked(
             Default::default(),
-            &ConsensusParams::standard(Default::default()),
+            &ConsensusParameters::standard(Default::default()),
         )
         .expect("Empty script should be valid");
     vm.init_script(tx).expect("Failed to init VM");

@@ -22,7 +22,7 @@ use fuel_tx::{
     field,
     Chargeable,
     CheckError,
-    ConsensusParams,
+    ConsensusParameters,
     Create,
     Executable,
     FeeParameters,
@@ -135,8 +135,8 @@ pub struct InterpreterParams {
     pub fee_params: FeeParameters,
 }
 
-impl From<&ConsensusParams> for InterpreterParams {
-    fn from(value: &ConsensusParams) -> Self {
+impl From<&ConsensusParameters> for InterpreterParams {
+    fn from(value: &ConsensusParameters) -> Self {
         InterpreterParams {
             gas_costs: value.gas_costs.to_owned(),
             max_inputs: value.tx_params.max_inputs,

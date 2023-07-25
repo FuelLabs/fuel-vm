@@ -12,7 +12,7 @@ use crate::{
         Script,
     },
     Cacheable,
-    ConsensusParams,
+    ConsensusParameters,
     ContractParameters,
     FeeParameters,
     GasCosts,
@@ -121,7 +121,7 @@ pub struct TransactionBuilder<Tx> {
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
-    params: ConsensusParams,
+    params: ConsensusParameters,
 
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
@@ -208,12 +208,12 @@ impl<Tx> TransactionBuilder<Tx> {
             tx,
             should_prepare_script,
             should_prepare_predicate,
-            params: ConsensusParams::standard(chain_id),
+            params: ConsensusParameters::standard(chain_id),
             sign_keys,
         }
     }
 
-    pub fn get_params(&self) -> &ConsensusParams {
+    pub fn get_params(&self) -> &ConsensusParameters {
         &self.params
     }
 

@@ -18,7 +18,7 @@ const MAX_GAS: u64 = 100_000_000;
 
 /// A collection of parameters for convenience
 #[derive(Debug, Clone)]
-pub struct ConsensusParams {
+pub struct ConsensusParameters {
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
     pub script_params: ScriptParameters,
@@ -28,8 +28,8 @@ pub struct ConsensusParams {
     pub gas_costs: GasCosts,
 }
 
-impl ConsensusParams {
-    /// Constructor for the `ConsensusParams` with Standard values
+impl ConsensusParameters {
+    /// Constructor for the `ConsensusParameters` with Standard values
     pub fn standard(chain_id: ChainId) -> Self {
         Self {
             tx_params: TxParameters::DEFAULT,
@@ -42,7 +42,7 @@ impl ConsensusParams {
         }
     }
 
-    /// Constructor for the `ConsensusParams`
+    /// Constructor for the `ConsensusParameters`
     pub const fn new(
         tx_params: TxParameters,
         predicate_params: PredicateParameters,

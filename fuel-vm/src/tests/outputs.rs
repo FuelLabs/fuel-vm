@@ -14,7 +14,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     Witness,
 };
 use rand::{
@@ -143,7 +143,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         1,
     );
 
-    let consensus_params = ConsensusParams::new(
+    let consensus_params = ConsensusParameters::new(
         *context.get_tx_params(),
         *context.get_predicate_params(),
         *context.get_script_params(),

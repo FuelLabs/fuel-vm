@@ -2,7 +2,7 @@ use fuel_asm::{
     op,
     Instruction,
 };
-use fuel_tx::ConsensusParams;
+use fuel_tx::ConsensusParameters;
 use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
@@ -22,7 +22,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
 
-    let consensus_params = ConsensusParams::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard(Default::default());
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)

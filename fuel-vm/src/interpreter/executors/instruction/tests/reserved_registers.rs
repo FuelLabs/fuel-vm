@@ -5,7 +5,7 @@ use crate::{
 };
 use fuel_asm::PanicReason;
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     Finalizable,
     TransactionBuilder,
     TxParameters,
@@ -50,7 +50,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let contract_params = Default::default();
     let fee_params = FeeParameters::default().with_gas_price_factor(1);
 
-    let consensus_params = ConsensusParams::new(
+    let consensus_params = ConsensusParameters::new(
         tx_params,
         predicate_params,
         script_params,

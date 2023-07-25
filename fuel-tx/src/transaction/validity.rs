@@ -1,5 +1,5 @@
 use crate::{
-    ConsensusParams,
+    ConsensusParameters,
     Input,
     Output,
     Transaction,
@@ -249,7 +249,7 @@ pub trait FormatValidityChecks {
     fn check(
         &self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         self.check_without_signatures(block_height, consensus_params)?;
         self.check_signatures(&consensus_params.chain_id())?;
@@ -267,7 +267,7 @@ pub trait FormatValidityChecks {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError>;
 }
 
@@ -284,7 +284,7 @@ impl FormatValidityChecks for Transaction {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => {

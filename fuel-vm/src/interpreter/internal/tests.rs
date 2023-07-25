@@ -9,7 +9,7 @@ use crate::{
 use fuel_asm::op;
 use fuel_tx::{
     field::Outputs,
-    ConsensusParams,
+    ConsensusParameters,
     TransactionBuilder,
 };
 use rand::{
@@ -109,7 +109,7 @@ fn variable_output_updates_in_memory() {
         asset_id: rng.gen(),
     };
 
-    let consensus_params = ConsensusParams {
+    let consensus_params = ConsensusParameters {
         tx_params: Default::default(),
         fee_params: Default::default(),
         predicate_params: Default::default(),

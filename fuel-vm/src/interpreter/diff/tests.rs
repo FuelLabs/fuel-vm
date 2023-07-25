@@ -1,6 +1,6 @@
 use fuel_asm::op;
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     Script,
 };
 use fuel_types::{
@@ -43,7 +43,7 @@ use fuel_types::ChainId;
 #[test]
 fn record_and_invert_storage() {
     let interpreter_params =
-        InterpreterParams::from(&ConsensusParams::standard(ChainId::default()));
+        InterpreterParams::from(&ConsensusParameters::standard(ChainId::default()));
 
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),

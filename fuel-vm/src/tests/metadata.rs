@@ -17,7 +17,7 @@ use fuel_tx::{
         Script as ScriptField,
         Witnesses,
     },
-    ConsensusParams,
+    ConsensusParameters,
     Finalizable,
     Receipt,
     Script,
@@ -49,7 +49,7 @@ fn metadata() {
     let maturity = Default::default();
     let height = Default::default();
 
-    let consensus_params = ConsensusParams::standard(ChainId::default());
+    let consensus_params = ConsensusParameters::standard(ChainId::default());
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -242,7 +242,7 @@ fn get_metadata_chain_id() {
         op::ret(0x10),
     ];
 
-    let consensus_params = ConsensusParams::standard(chain_id);
+    let consensus_params = ConsensusParameters::standard(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)

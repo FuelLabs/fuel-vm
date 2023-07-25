@@ -20,7 +20,7 @@ use crate::{
         Chargeable,
     },
     CheckError,
-    ConsensusParams,
+    ConsensusParameters,
     Input,
     Output,
     Witness,
@@ -196,7 +196,7 @@ impl FormatValidityChecks for Script {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        consensus_params: &ConsensusParams,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         check_common_part(
             self,

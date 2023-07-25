@@ -8,7 +8,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    ConsensusParams,
+    ConsensusParameters,
     Witness,
 };
 use fuel_types::ChainId;
@@ -70,7 +70,7 @@ fn prevent_contract_id_redeployment() {
 
     let chain_id = ChainId::default();
 
-    let consensus_params = ConsensusParams::standard(chain_id);
+    let consensus_params = ConsensusParameters::standard(chain_id);
 
     let create = create
         .into_checked_basic(1.into(), &consensus_params)

@@ -115,7 +115,7 @@ pub mod test_helpers {
     };
     use fuel_tx::{
         field::Outputs,
-        ConsensusParams,
+        ConsensusParameters,
         Contract,
         ContractParameters,
         Create,
@@ -169,7 +169,7 @@ pub mod test_helpers {
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
         block_height: BlockHeight,
-        consensus_params: ConsensusParams,
+        consensus_params: ConsensusParameters,
     }
 
     impl TestBuilder {
@@ -182,7 +182,7 @@ pub mod test_helpers {
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
                 block_height: Default::default(),
-                consensus_params: ConsensusParams::standard(ChainId::default()),
+                consensus_params: ConsensusParameters::standard(ChainId::default()),
             }
         }
 

@@ -19,8 +19,9 @@ use super::{
         AppendReceipt,
     },
     memory::{
+        copy_from_slice_zero_fill_noownerchecks,
+        read_bytes,
         try_mem_write,
-        try_zeroize,
         OwnershipRegisters,
     },
     ExecutableTransaction,
@@ -29,12 +30,9 @@ use super::{
     RuntimeBalances,
 };
 use crate::{
-    arith,
     arith::{
         add_usize,
-        checked_add_usize,
         checked_add_word,
-        checked_sub_word,
     },
     call::CallFrame,
     constraints::{
@@ -465,9 +463,9 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
     /// ```
     pub(crate) fn load_contract_code(
         mut self,
-        a: Word,
-        b: Word,
-        c: Word,
+        contract_id_addr: Word,
+        contract_offset: Word,
+        length_unpadded: Word,
     ) -> Result<(), RuntimeError>
     where
         I: Iterator<Item = &'vm ContractId>,
@@ -481,66 +479,45 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::ExpectedUnallocatedStack.into())
         }
 
-        let contract_id = a as usize;
-        let contract_id_end = checked_add_usize(ContractId::LEN, contract_id)?;
-        let contract_offset = b as usize;
-        let length = bytes::padded_len_usize(c as usize);
+        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
+        let contract_offset: usize = contract_offset
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let length = bytes::padded_len_word(length_unpadded);
 
-        let memory_offset = ssp as usize;
-        let memory_offset_end = checked_add_usize(memory_offset, length)?;
+        let memory_offset = ssp;
 
         // Validate arguments
-        if memory_offset_end >= *self.hp as usize
-            || contract_id_end as Word > VM_MAX_RAM
-            || length > MEM_MAX_ACCESS_SIZE as usize
-            || length > self.contract_max_size as usize
+        if memory_offset.saturating_add(length) > *self.hp
+            || length > self.contract_max_size
         {
             return Err(PanicReason::MemoryOverflow.into())
         }
 
-        // Clear memory
-        self.memory[memory_offset..memory_offset_end].fill(0);
-
-        // Fetch the contract id
-        let contract_id: &[u8; ContractId::LEN] = &self.memory
-            [contract_id..contract_id_end]
-            .try_into()
-            .expect("This can't fail, because we checked the bounds above.");
-
-        // Safety: Memory bounds are checked and consistent
-        let contract_id = ContractId::from_bytes_ref(contract_id);
-
-        self.input_contracts.check(contract_id)?;
+        self.input_contracts.check(&contract_id)?;
 
         // fetch the storage contract
-        let contract = super::contract::contract(self.storage, contract_id)?;
-        let contract = contract.as_ref().as_ref();
+        let contract = super::contract::contract(self.storage, &contract_id)?;
 
-        if contract_offset > contract.len() {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
-        let contract = &contract[contract_offset..];
-        let len = contract.len().min(length);
-
-        let code = &contract[..len];
-
-        let memory = self
-            .memory
-            .get_mut(memory_offset..arith::checked_add_usize(memory_offset, len)?)
-            .ok_or(PanicReason::MemoryOverflow)?;
-
-        // perform the code copy
-        memory.copy_from_slice(code);
-
+        // allocate stack space
         self.sp
             //TODO this is looser than the compare against [RegId::HP,RegId::SSP+length]
-            .checked_add(length as Word)
+            .checked_add(length)
             .map(|sp| {
                 *self.sp = sp;
                 *self.ssp = sp;
             })
             .ok_or_else(|| Bug::new(BugId::ID007, BugVariant::StackPointerOverflow))?;
+
+        // Perform code copy. Ownership checks are not used as the stack is adjusted
+        // above.
+        copy_from_slice_zero_fill_noownerchecks(
+            self.memory,
+            contract.as_ref().as_ref(),
+            memory_offset,
+            contract_offset,
+            length,
+        )?;
 
         // update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
@@ -667,30 +644,26 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
-        let cd = checked_add_word(c, d)?;
-
-        if d > MEM_MAX_ACCESS_SIZE
-            || a > checked_sub_word(VM_MAX_RAM, d)?
-            || cd > VM_MAX_RAM
-        {
+        let contract_id = ContractId::from(read_bytes(self.memory, b)?);
+        let offset: usize = c.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
+        // Check target memory range ownership
+        if !self.owner.has_ownership_range(&MemoryRange::new(a, d)?) {
             return Err(PanicReason::MemoryOverflow.into())
         }
 
-        let (a, c, d) = (a as usize, c as usize, d as usize);
-        let cd = cd as usize;
+        self.input_contracts.check(&contract_id)?;
 
-        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
+        let contract =
+            super::contract::contract(self.storage, &contract_id)?.into_owned();
 
-        self.input_contracts.check(contract)?;
-
-        let contract = super::contract::contract(self.storage, contract)?.into_owned();
-
-        if contract.as_ref().len() < d {
-            try_zeroize(a, d, self.owner, self.memory)?;
-        } else {
-            try_mem_write(a, &contract.as_ref()[c..cd], self.owner, self.memory)?;
-        }
+        // Owner checks already performed above
+        copy_from_slice_zero_fill_noownerchecks(
+            self.memory,
+            contract.as_ref(),
+            a,
+            offset,
+            d,
+        )?;
 
         inc_pc(self.pc)
     }

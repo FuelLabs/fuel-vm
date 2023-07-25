@@ -140,6 +140,13 @@ impl MemoryRange {
         Self(start..end)
     }
 
+    /// Splits range at given relative offset. Panics if offset > range length.
+    pub fn split_at_offset(self, at: usize) -> (Self, Self) {
+        let mid = self.0.start + at;
+        assert!(mid <= self.0.end);
+        (Self(self.0.start..mid), Self(mid..self.0.end))
+    }
+
     /// This function is safe because it is only used to shrink the range
     /// and worst case the range will be empty.
     pub fn shrink_end(&mut self, by: usize) {
@@ -579,5 +586,25 @@ pub(crate) fn write_bytes<const COUNT: usize>(
     }
 
     memory[range.usizes()].copy_from_slice(&bytes);
+    Ok(())
+}
+
+/// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
+/// Performs overflow and memory range checks, but no ownership checks.
+pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
+    memory: &mut [u8; MEM_SIZE],
+    src: &[u8],
+    dst_addr: A,
+    src_offset: usize,
+    len: B,
+) -> Result<(), RuntimeError> {
+    let range = MemoryRange::new(dst_addr, len)?;
+
+    let src_end = range.len().min(src.len());
+    let data = src.get(src_offset..src_end).unwrap_or_default();
+    let (r_data, r_zero) = range.split_at_offset(data.len());
+    memory[r_data.usizes()].copy_from_slice(data);
+    memory[r_zero.usizes()].fill(0);
+
     Ok(())
 }

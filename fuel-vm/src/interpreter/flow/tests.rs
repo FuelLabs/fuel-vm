@@ -6,7 +6,10 @@ use crate::{
 use super::*;
 use crate::crypto;
 use fuel_storage::StorageAsMut;
-use fuel_tx::field::ReceiptsRoot;
+use fuel_tx::{
+    field::ReceiptsRoot,
+    TxParameters,
+};
 use fuel_types::ContractId;
 use test_case::test_case;
 
@@ -355,7 +358,6 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
     }
     let mut panic_context = PanicContext::None;
     let mut receipts = Default::default();
-    let consensus = ConsensusParameters::default();
     let mut frames = Vec::default();
     let current_contract = context.is_internal().then_some(ContractId::default());
 
@@ -370,7 +372,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         receipts: &mut receipts,
         script: script.as_mut(),
-        consensus: &consensus,
+        tx_offset: TxParameters::DEFAULT.tx_offset(),
         frames: &mut frames,
         current_contract,
         profiler: &mut Profiler::default(),

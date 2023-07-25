@@ -13,7 +13,10 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_tx::Witness;
+use fuel_tx::{
+    ConsensusParameters,
+    Witness,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -139,8 +142,18 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         Default::default(),
         1,
     );
+
+    let consensus_params = ConsensusParameters::new(
+        *context.get_tx_params(),
+        *context.get_predicate_params(),
+        *context.get_script_params(),
+        *context.get_contract_params(),
+        *context.get_fee_params(),
+        context.get_chain_id(),
+        context.get_gas_costs().to_owned(),
+    );
     let create = create
-        .into_checked_basic(context.get_block_height(), context.get_params())
+        .into_checked_basic(context.get_block_height(), &consensus_params)
         .expect("failed to generate checked tx");
 
     let state = context.deploy(create).expect("Create should be executed");
@@ -180,7 +193,7 @@ fn change_is_reduced_by_external_transfer() {
             op::tr(0x10, 0x11, 0x12),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -236,7 +249,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             op::tr(0x10, 0x11, 0x12),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -272,8 +285,6 @@ fn variable_output_set_by_external_transfer_out() {
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
 
-    let params = ConsensusParameters::default();
-
     let (script, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -290,7 +301,7 @@ fn variable_output_set_by_external_transfer_out() {
             op::tro(0x12, 0x13, 0x10, 0x11),
             op::ret(RegId::ONE),
         ],
-        params.tx_offset()
+        TxParameters::DEFAULT.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -306,7 +317,6 @@ fn variable_output_set_by_external_transfer_out() {
     // create and run the tx
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
-        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
@@ -348,8 +358,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let gas_limit = 1_000_000;
     let asset_id = AssetId::default();
     let owner: Address = rng.gen();
-
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
 
     let (script, _) = script_with_data_offset!(
         data_offset,
@@ -367,7 +376,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             op::tro(0x12, 0x13, 0x10, 0x11),
             op::ret(RegId::ONE),
         ],
-        params.tx_offset()
+        tx_params.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -383,7 +392,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     // create and run the tx
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
-        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
@@ -458,7 +466,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, 0x11),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -538,7 +546,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data: Vec<u8> = [

@@ -168,7 +168,7 @@ impl RuntimeBalances {
     where
         Tx: ExecutableTransaction,
     {
-        let len = vm.params().max_inputs * (AssetId::LEN + WORD_SIZE) as Word;
+        let len = vm.max_inputs() * (AssetId::LEN + WORD_SIZE) as Word;
 
         vm.registers[RegId::SP] += len;
         vm.reserve_stack(len).expect(

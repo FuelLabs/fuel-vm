@@ -7,7 +7,6 @@ use crate::{
         IntoChecked,
     },
     error::InterpreterError,
-    gas::GasCosts,
     interpreter::{
         CheckedMetadata,
         ExecutableTransaction,
@@ -21,12 +20,18 @@ use crate::{
     storage::InterpreterStorage,
 };
 
+use crate::interpreter::InterpreterParams;
 use fuel_tx::{
-    ConsensusParameters,
+    ContractParameters,
     Create,
+    FeeParameters,
+    GasCosts,
+    PredicateParameters,
     Receipt,
     Script,
+    TxParameters,
 };
+use fuel_types::ChainId;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -47,8 +52,8 @@ where
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
-    pub fn new(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
-        Interpreter::with_storage(storage, params, gas_costs).into()
+    pub fn new(storage: S, interpreter_params: InterpreterParams) -> Self {
+        Interpreter::with_storage(storage, interpreter_params).into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -122,18 +127,13 @@ where
         &self.interpreter
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.interpreter.params()
-    }
-
     /// Gas costs of opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         self.interpreter.gas_costs()
     }
 
     /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
+    pub fn tx_offset(&self) -> usize {
         self.interpreter.tx_offset()
     }
 }
@@ -253,6 +253,15 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::new(Default::default(), Default::default(), Default::default())
+        let interpreter_params = InterpreterParams {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::default().tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+        };
+        Self::new(S::default(), interpreter_params)
     }
 }

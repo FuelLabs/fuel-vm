@@ -10,7 +10,7 @@
 /// ```
 /// use fuel_asm::{op, RegId};
 /// use fuel_types::{Immediate18, Word};
-/// use fuel_vm::prelude::{Call, ConsensusParameters, ContractId, Opcode, SerializableVec};
+/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode, SerializableVec};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
 ///
@@ -39,7 +39,7 @@
 ///         op::call(0x10, 0x11, 0x12, 0x13),
 ///         op::ret(RegId::ONE),
 ///     ],
-///     ConsensusParameters::DEFAULT.tx_offset()
+///     TxParameters::DEFAULT.tx_offset()
 /// );
 /// ```
 #[macro_export]
@@ -85,7 +85,6 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        gas::GasCosts,
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -100,6 +99,7 @@ pub mod test_helpers {
         interpreter::{
             CheckedMetadata,
             ExecutableTransaction,
+            InterpreterParams,
         },
         prelude::{
             Backtrace,
@@ -117,15 +117,21 @@ pub mod test_helpers {
         field::Outputs,
         ConsensusParameters,
         Contract,
+        ContractParameters,
         Create,
+        FeeParameters,
         Finalizable,
+        GasCosts,
         Input,
         Output,
+        PredicateParameters,
         Receipt,
         Script,
+        ScriptParameters,
         StorageSlot,
         Transaction,
         TransactionBuilder,
+        TxParameters,
         Witness,
     };
     use fuel_types::{
@@ -137,6 +143,7 @@ pub mod test_helpers {
         Address,
         AssetId,
         BlockHeight,
+        ChainId,
         ContractId,
         Immediate12,
         Salt,
@@ -161,9 +168,8 @@ pub mod test_helpers {
         gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
         block_height: BlockHeight,
+        consensus_params: ConsensusParameters,
     }
 
     impl TestBuilder {
@@ -175,18 +181,13 @@ pub mod test_helpers {
                 gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
-                params: ConsensusParameters::default(),
-                gas_costs: Default::default(),
                 block_height: Default::default(),
+                consensus_params: ConsensusParameters::standard(ChainId::default()),
             }
         }
 
         pub fn get_block_height(&self) -> BlockHeight {
             self.block_height
-        }
-
-        pub fn get_params(&self) -> &ConsensusParameters {
-            &self.params
         }
 
         pub fn start_script(
@@ -294,30 +295,59 @@ pub mod test_helpers {
             self
         }
 
-        pub fn params(&mut self, params: ConsensusParameters) -> &mut TestBuilder {
-            self.params = params;
-            self
-        }
-
         pub fn block_height(&mut self, block_height: BlockHeight) -> &mut TestBuilder {
             self.block_height = block_height;
             self
         }
 
-        pub const fn tx_offset(&self) -> usize {
-            self.params.tx_offset()
+        pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut TestBuilder {
+            self.consensus_params.fee_params = fee_params;
+            self
         }
 
         pub fn build(&mut self) -> Checked<Script> {
-            self.builder.with_params(self.params);
+            self.builder.with_tx_params(*self.get_tx_params());
             self.builder
-                .finalize_checked(self.block_height, &self.gas_costs)
+                .with_contract_params(*self.get_contract_params());
+            self.builder
+                .with_predicate_params(*self.get_predicate_params());
+            self.builder.with_script_params(*self.get_script_params());
+            self.builder.with_fee_params(*self.get_fee_params());
+            self.builder.finalize_checked(self.block_height)
+        }
+
+        pub fn get_tx_params(&self) -> &TxParameters {
+            self.consensus_params.tx_params()
+        }
+
+        pub fn get_predicate_params(&self) -> &PredicateParameters {
+            self.consensus_params.predicate_params()
+        }
+
+        pub fn get_script_params(&self) -> &ScriptParameters {
+            self.consensus_params.script_params()
+        }
+
+        pub fn get_contract_params(&self) -> &ContractParameters {
+            self.consensus_params.contract_params()
+        }
+
+        pub fn get_fee_params(&self) -> &FeeParameters {
+            self.consensus_params.fee_params()
+        }
+
+        pub fn get_chain_id(&self) -> ChainId {
+            self.consensus_params.chain_id()
+        }
+
+        pub fn get_gas_costs(&self) -> &GasCosts {
+            self.consensus_params.gas_costs()
         }
 
         pub fn build_get_balance_tx(
-            params: &ConsensusParameters,
             contract_id: &ContractId,
             asset_id: &AssetId,
+            tx_offset: usize,
         ) -> Checked<Script> {
             let (script, _) = script_with_data_offset!(
                 data_offset,
@@ -328,7 +358,7 @@ pub mod test_helpers {
                     op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
                     op::ret(RegId::ONE),
                 ],
-                params.tx_offset()
+                tx_offset
             );
 
             let script_data: Vec<u8> = [asset_id.as_ref(), contract_id.as_ref()]
@@ -377,7 +407,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.params, &self.gas_costs)
+                .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -429,7 +459,7 @@ pub mod test_helpers {
 
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
-            let tx_offset = self.params.tx_offset();
+            let tx_offset = self.get_tx_params().tx_offset();
             let tx_mem = &interpreter.memory()
                 [tx_offset..(tx_offset + transaction.serialized_size())];
             let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
@@ -449,11 +479,9 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.params,
-                self.gas_costs.clone(),
-            );
+            let interpreter_params = InterpreterParams::from(&self.consensus_params);
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -462,11 +490,9 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.params,
-                self.gas_costs.clone(),
-            );
+            let interpreter_params = (&self.consensus_params).into();
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -475,11 +501,10 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let mut transactor = Transactor::new(
-                self.storage.clone(),
-                self.params,
-                self.gas_costs.clone(),
-            );
+            let interpreter_params = (&self.consensus_params).into();
+            let mut transactor =
+                Transactor::new(self.storage.clone(), interpreter_params);
+
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();
 
@@ -512,8 +537,11 @@ pub mod test_helpers {
             contract_id: &ContractId,
             asset_id: &AssetId,
         ) -> Word {
-            let tx =
-                TestBuilder::build_get_balance_tx(&self.params, contract_id, asset_id);
+            let tx = TestBuilder::build_get_balance_tx(
+                contract_id,
+                asset_id,
+                self.consensus_params.tx_params().tx_offset(),
+            );
             let state = self
                 .execute_tx(tx)
                 .expect("expected successful vm execution in this context");
@@ -541,8 +569,8 @@ pub mod test_helpers {
         expected_reason: PanicReason,
     ) {
         let gas_price = 0;
-        let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
-        let gas_limit = params.max_gas_per_tx;
+        let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+        let gas_limit = tx_params.max_gas_per_tx;
         let maturity = Default::default();
         let height = Default::default();
 
@@ -556,10 +584,10 @@ pub mod test_helpers {
             Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
-            .with_params(params)
+            .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, client.gas_costs());
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -585,7 +613,7 @@ pub mod test_helpers {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .with_params(params)
+            .with_tx_params(tx_params)
             .add_input(Input::contract(
                 Default::default(),
                 Default::default(),
@@ -595,7 +623,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, client.gas_costs());
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

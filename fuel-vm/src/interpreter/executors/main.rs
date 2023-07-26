@@ -124,8 +124,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        let balances = checked.metadata().balances();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params)
+        Self::run_predicate(PredicateRunKind::Verifying(tx), params)
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -142,15 +141,11 @@ impl<T> Interpreter<PredicateStorage, T> {
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
     {
-        let balances = checked.metadata().balances();
         let tx = checked.transaction();
 
-        let predicates_checked = Self::run_predicate_async::<Tx, E>(
-            PredicateRunKind::Verifying(tx),
-            balances,
-            params,
-        )
-        .await?;
+        let predicates_checked =
+            Self::run_predicate_async::<Tx, E>(PredicateRunKind::Verifying(tx), params)
+                .await?;
 
         Ok(predicates_checked)
     }
@@ -163,13 +158,12 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
-        balances: InitialBalances,
         params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
-        Self::run_predicate(PredicateRunKind::Estimating(transaction), balances, params)?;
+        Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
         Ok(())
     }
 
@@ -181,7 +175,6 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
-        balances: InitialBalances,
         params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
@@ -190,7 +183,6 @@ impl<T> Interpreter<PredicateStorage, T> {
     {
         Self::run_predicate_async::<Tx, E>(
             PredicateRunKind::Estimating(transaction),
-            balances,
             params,
         )
         .await?;
@@ -200,7 +192,6 @@ impl<T> Interpreter<PredicateStorage, T> {
 
     async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
-        balances: InitialBalances,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -217,14 +208,12 @@ impl<T> Interpreter<PredicateStorage, T> {
                 RuntimePredicate::from_tx(kind.tx(), tx_offset, index)
             {
                 let tx = kind.tx().clone();
-                let balances = balances.clone();
                 let my_params = params.clone();
 
                 let verify_task = E::create_task(move || {
                     Self::check_predicate(
                         tx,
                         index,
-                        balances,
                         predicate_action,
                         predicate,
                         my_params,
@@ -242,7 +231,6 @@ impl<T> Interpreter<PredicateStorage, T> {
 
     fn run_predicate<Tx>(
         kind: PredicateRunKind<'_, Tx>,
-        balances: InitialBalances,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -257,12 +245,9 @@ impl<T> Interpreter<PredicateStorage, T> {
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
-                let balances = balances.clone();
-
                 checks.push(Self::check_predicate(
                     tx,
                     index,
-                    balances,
                     predicate_action,
                     predicate,
                     params.clone(),
@@ -281,7 +266,6 @@ impl<T> Interpreter<PredicateStorage, T> {
     fn check_predicate<Tx>(
         tx: Tx,
         index: usize,
-        balances: InitialBalances,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
@@ -313,18 +297,11 @@ impl<T> Interpreter<PredicateStorage, T> {
             _ => {}
         }
 
-        let interpreter_params = InterpreterParams {
-            gas_costs: params.gas_costs,
-            max_inputs: params.max_inputs,
-            contract_max_size: params.contract_max_size,
-            tx_offset: params.tx_offset,
-            max_message_data_length: params.max_message_data_length,
-            chain_id: params.chain_id,
-            fee_params: params.fee_params,
-        };
+        let max_gas_per_tx = params.max_gas_per_tx;
+        let max_gas_per_predicate = params.max_gas_per_predicate;
+        let interpreter_params = params.into();
 
-        let mut vm =
-            Interpreter::with_storage(PredicateStorage::default(), interpreter_params);
+        let mut vm = Interpreter::with_storage(PredicateStorage {}, interpreter_params);
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {
@@ -336,15 +313,14 @@ impl<T> Interpreter<PredicateStorage, T> {
                         return Err(PredicateVerificationFailed::GasNotSpecified)
                     };
 
-                vm.init_predicate(context, tx, balances, available_gas)?;
+                vm.init_predicate(context, tx, available_gas)?;
                 available_gas
             }
             PredicateAction::Estimating => {
                 let context = Context::PredicateEstimation { program: predicate };
-                let available_gas =
-                    core::cmp::min(params.max_gas_per_predicate, params.max_gas_per_tx);
+                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
 
-                vm.init_predicate(context, tx, balances, available_gas)?;
+                vm.init_predicate(context, tx, available_gas)?;
                 available_gas
             }
         };

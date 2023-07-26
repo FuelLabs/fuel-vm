@@ -1,8 +1,11 @@
 use crate::{
     constraints::reg_key::RegMut,
-    interpreter::internal::{
-        external_asset_id_balance_sub,
-        set_variable_output,
+    interpreter::{
+        internal::{
+            external_asset_id_balance_sub,
+            set_variable_output,
+        },
+        InterpreterParams,
     },
     prelude::*,
 };
@@ -95,7 +98,11 @@ fn external_balance() {
 fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::with_memory_storage();
+    let consensus_params = ConsensusParameters::standard();
+    let mut vm = Interpreter::with_storage(
+        MemoryStorage::default(),
+        InterpreterParams::from(&consensus_params),
+    );
 
     let gas_limit = 1_000_000;
     let height = Default::default();
@@ -107,16 +114,6 @@ fn variable_output_updates_in_memory() {
         to: rng.gen(),
         amount: 0,
         asset_id: rng.gen(),
-    };
-
-    let consensus_params = ConsensusParameters {
-        tx_params: Default::default(),
-        fee_params: Default::default(),
-        predicate_params: Default::default(),
-        script_params: Default::default(),
-        contract_params: Default::default(),
-        chain_id: Default::default(),
-        gas_costs: vm.gas_costs().to_owned(),
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])

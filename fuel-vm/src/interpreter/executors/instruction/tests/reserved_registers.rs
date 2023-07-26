@@ -1,14 +1,17 @@
 use super::*;
 use crate::{
     checked_transaction::IntoChecked,
-    prelude::FeeParameters,
+    interpreter::InterpreterParams,
+    prelude::{
+        FeeParameters,
+        MemoryStorage,
+    },
 };
 use fuel_asm::PanicReason;
 use fuel_tx::{
     ConsensusParameters,
     Finalizable,
     TransactionBuilder,
-    TxParameters,
 };
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
@@ -35,30 +38,23 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         _ => (),
     }
 
-    let mut vm = Interpreter::with_memory_storage();
+    let fee_params = FeeParameters::default().with_gas_price_factor(1);
+    let consensus_params = ConsensusParameters {
+        fee_params,
+        ..Default::default()
+    };
 
-    let tx_params = TxParameters::default();
+    let mut vm = Interpreter::with_storage(
+        MemoryStorage::default(),
+        InterpreterParams::from(&consensus_params),
+    );
+
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(tx_params.max_gas_per_tx)
+        .gas_limit(consensus_params.tx_params.max_gas_per_tx)
         .add_random_fee_input()
         .finalize();
-
-    let predicate_params = Default::default();
-    let script_params = Default::default();
-    let contract_params = Default::default();
-    let fee_params = FeeParameters::default().with_gas_price_factor(1);
-
-    let consensus_params = ConsensusParameters::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        Default::default(),
-        vm.gas_costs().to_owned(),
-    );
 
     let tx = tx
         .into_checked(block_height, &consensus_params)

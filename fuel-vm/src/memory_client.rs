@@ -10,16 +10,11 @@ use crate::{
 
 use crate::interpreter::InterpreterParams;
 use fuel_tx::{
-    ContractParameters,
     Create,
-    FeeParameters,
     GasCosts,
-    PredicateParameters,
     Receipt,
     Script,
-    TxParameters,
 };
-use fuel_types::ChainId;
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
@@ -104,11 +99,6 @@ impl MemoryClient {
         self.as_mut().persist();
     }
 
-    // /// Consensus parameters
-    // pub const fn params(&self) -> &ConsensusParameters {
-    //     self.transactor.params()
-    // }
-
     /// Tx memory offset
     pub fn tx_offset(&self) -> usize {
         self.transactor.tx_offset()
@@ -122,16 +112,7 @@ impl MemoryClient {
 
 impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
-        let interpreter_params = InterpreterParams {
-            gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs,
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-            tx_offset: TxParameters::default().tx_offset(),
-            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
-            chain_id: ChainId::default(),
-            fee_params: FeeParameters::default(),
-        };
-        Self::new(s, interpreter_params)
+        Self::new(s, InterpreterParams::default())
     }
 }
 

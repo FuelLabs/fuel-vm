@@ -22,7 +22,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
 
-    let consensus_params = ConsensusParameters::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)

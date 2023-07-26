@@ -291,7 +291,7 @@ fn load_external_contract_code() {
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let consensus_params = ConsensusParameters::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard();
 
     let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
         .gas_price(gas_price)
@@ -400,25 +400,13 @@ fn ldc_reason_helper(
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
-    let tx_params = TxParameters::default();
-    let predicate_params = PredicateParameters::default();
-    let script_params = ScriptParameters::default();
-    let contract_params = ContractParameters::default();
-    let fee_params = FeeParameters::default();
-    let chain_id = ChainId::default();
-
     // make gas costs free
     let gas_costs = GasCosts::free();
 
-    let consensus_params = ConsensusParameters::new(
-        tx_params,
-        predicate_params,
-        script_params,
-        contract_params,
-        fee_params,
-        chain_id,
+    let consensus_params = ConsensusParameters {
         gas_costs,
-    );
+        ..Default::default()
+    };
 
     let interpreter_params = InterpreterParams::from(&consensus_params);
 
@@ -1420,7 +1408,6 @@ fn smo_instruction_works() {
     {
         let mut client = MemoryClient::default();
         let fee_params = FeeParameters::default();
-        let chain_id = ChainId::default();
 
         let gas_limit = 1_000_000;
         let maturity = Default::default();
@@ -1471,7 +1458,7 @@ fn smo_instruction_works() {
             tx.metadata().non_retryable_balances[&AssetId::BASE];
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
 
-        let txid = tx.transaction().id(&chain_id);
+        let txid = tx.transaction().id(&ChainId::default());
         let receipts = client.transact(tx);
 
         let success = receipts.iter().any(|r| {

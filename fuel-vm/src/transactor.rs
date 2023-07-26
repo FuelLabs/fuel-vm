@@ -22,16 +22,11 @@ use crate::{
 
 use crate::interpreter::InterpreterParams;
 use fuel_tx::{
-    ContractParameters,
     Create,
-    FeeParameters,
     GasCosts,
-    PredicateParameters,
     Receipt,
     Script,
-    TxParameters,
 };
-use fuel_types::ChainId;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -253,15 +248,6 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        let interpreter_params = InterpreterParams {
-            gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs,
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-            tx_offset: TxParameters::default().tx_offset(),
-            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
-            chain_id: ChainId::default(),
-            fee_params: FeeParameters::default(),
-        };
-        Self::new(S::default(), interpreter_params)
+        Self::new(S::default(), InterpreterParams::default())
     }
 }

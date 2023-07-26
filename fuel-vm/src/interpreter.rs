@@ -2,6 +2,7 @@
 
 use crate::{
     call::CallFrame,
+    checked_transaction::CheckPredicateParams,
     constraints::reg_key::*,
     consts::*,
     context::Context,
@@ -23,16 +24,19 @@ use fuel_tx::{
     Chargeable,
     CheckError,
     ConsensusParameters,
+    ContractParameters,
     Create,
     Executable,
     FeeParameters,
     GasCosts,
     Output,
+    PredicateParameters,
     Receipt,
     Script,
     Transaction,
     TransactionFee,
     TransactionRepr,
+    TxParameters,
     UniqueIdentifier,
 };
 use fuel_types::{
@@ -117,7 +121,7 @@ pub struct Interpreter<S, Tx = ()> {
 }
 
 /// Interpreter parameters
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterpreterParams {
     /// Gas costs
     pub gas_costs: GasCosts,
@@ -135,6 +139,26 @@ pub struct InterpreterParams {
     pub fee_params: FeeParameters,
 }
 
+impl Default for InterpreterParams {
+    fn default() -> Self {
+        Self {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::DEFAULT.tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+        }
+    }
+}
+
+impl From<ConsensusParameters> for InterpreterParams {
+    fn from(value: ConsensusParameters) -> Self {
+        InterpreterParams::from(&value)
+    }
+}
+
 impl From<&ConsensusParameters> for InterpreterParams {
     fn from(value: &ConsensusParameters) -> Self {
         InterpreterParams {
@@ -145,6 +169,20 @@ impl From<&ConsensusParameters> for InterpreterParams {
             max_message_data_length: value.predicate_params.max_message_data_length,
             chain_id: value.chain_id,
             fee_params: value.fee_params,
+        }
+    }
+}
+
+impl From<CheckPredicateParams> for InterpreterParams {
+    fn from(params: CheckPredicateParams) -> Self {
+        InterpreterParams {
+            gas_costs: params.gas_costs,
+            max_inputs: params.max_inputs,
+            contract_max_size: params.contract_max_size,
+            tx_offset: params.tx_offset,
+            max_message_data_length: params.max_message_data_length,
+            chain_id: params.chain_id,
+            fee_params: params.fee_params,
         }
     }
 }

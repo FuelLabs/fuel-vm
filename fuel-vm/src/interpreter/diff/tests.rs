@@ -38,12 +38,10 @@ fn reset_vm_state() {
 }
 
 use crate::interpreter::InterpreterParams;
-use fuel_types::ChainId;
 
 #[test]
 fn record_and_invert_storage() {
-    let interpreter_params =
-        InterpreterParams::from(&ConsensusParameters::standard(ChainId::default()));
+    let interpreter_params = InterpreterParams::from(&ConsensusParameters::standard());
 
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),

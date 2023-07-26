@@ -11,7 +11,6 @@ use fuel_tx::{
     ConsensusParameters,
     Witness,
 };
-use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
     Rng,
@@ -68,9 +67,7 @@ fn prevent_contract_id_redeployment() {
         1,
     );
 
-    let chain_id = ChainId::default();
-
-    let consensus_params = ConsensusParameters::standard(chain_id);
+    let consensus_params = ConsensusParameters::standard();
 
     let create = create
         .into_checked_basic(1.into(), &consensus_params)

@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
   label:
     types: [created, edited, deleted]
   merge_group:
@@ -23,13 +24,15 @@ env:
 jobs:
   check-changelog:
     name: Check Changelog
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: tarides/changelog-check-action@v2
         with:
           changelog: CHANGELOG.md
 
   cargo:
+    needs:
+      - check-changelog
     runs-on: buildjet-4vcpu-ubuntu-2204
     strategy:
       fail-fast: false
@@ -123,7 +126,6 @@ jobs:
 
   verifications-complete:
     needs:
-      - check-changelog
       - rustfmt
       - cargo
       - cargo-toml-fmt-check
@@ -185,7 +187,7 @@ jobs:
     needs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
 
     steps:
       - uses: actions/checkout@v3

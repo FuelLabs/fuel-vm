@@ -637,7 +637,7 @@ fn load_contract_code_out_of_contract_offset_over_length() {
             op::meq(0x30, 0x21, RegId::SP, 0x13),
             op::ret(0x30),
         ],
-        test_context.tx_offset()
+        TxParameters::DEFAULT.tx_offset()
     );
 
     let mut script_data = contract_id.to_vec();
@@ -695,7 +695,7 @@ fn code_copy_shorter_zero_padding() {
             op::meq(0x30, 0x21, RegId::HP, 0x13),
             op::ret(0x30),
         ],
-        test_context.tx_offset()
+        TxParameters::DEFAULT.tx_offset()
     );
 
     let mut script_data = contract_id.to_vec();
@@ -751,7 +751,7 @@ fn code_copy_out_of_contract_offset_over_length() {
             op::meq(0x30, 0x21, RegId::HP, 0x13),
             op::ret(0x30),
         ],
-        test_context.tx_offset()
+        TxParameters::DEFAULT.tx_offset()
     );
 
     let mut script_data = contract_id.to_vec();

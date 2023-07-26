@@ -208,6 +208,7 @@ impl RetCtx<'_> {
             let ggas = registers[RegId::GGAS];
             let ret = registers[RegId::RET];
             let retl = registers[RegId::RETL];
+            let hp = registers[RegId::HP];
 
             registers.copy_from_slice(frame.registers());
 
@@ -215,6 +216,7 @@ impl RetCtx<'_> {
             registers[RegId::GGAS] = ggas;
             registers[RegId::RET] = ret;
             registers[RegId::RETL] = retl;
+            registers[RegId::HP] = hp;
 
             let fp = registers[RegId::FP];
             set_frame_pointer(context, registers.fp_mut(), fp);

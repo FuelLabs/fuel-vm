@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.
 
+
 ## [Version 0.35.1]
 
 ### Added

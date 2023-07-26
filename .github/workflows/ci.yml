@@ -5,9 +5,7 @@ on:
     branches:
       - master
   pull_request:
-    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
-  label:
-    types: [created, edited, deleted]
+    types: [opened, reopened, labeled, unlabeled]
   merge_group:
   release:
     types: [published]

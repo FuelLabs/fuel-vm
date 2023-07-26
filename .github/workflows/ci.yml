@@ -5,6 +5,8 @@ on:
     branches:
       - master
   pull_request:
+  label:
+    types: [created, edited, deleted]
   merge_group:
   release:
     types: [published]
@@ -20,7 +22,7 @@ env:
 
 jobs:
   check-changelog:
-    name: Check Changelog Action
+    name: Check Changelog
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
       - uses: tarides/changelog-check-action@v2

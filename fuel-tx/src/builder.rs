@@ -238,6 +238,11 @@ impl<Tx> TransactionBuilder<Tx> {
         self.params.chain_id()
     }
 
+    pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
+        self.params = params;
+        self
+    }
+
     pub fn with_tx_params(&mut self, tx_params: TxParameters) -> &mut Self {
         self.params.tx_params = tx_params;
         self

@@ -1,15 +1,17 @@
 import { wasm } from '@rollup/plugin-wasm'
 import dts from 'rollup-plugin-dts'
 
+const sync = ['src/{{NAME_UNDERSCORED}}_bg.wasm'];
+
 export default [
   {
-    plugins: [wasm({ targetEnv: 'auto-inline' })],
+    plugins: [wasm({ sync, targetEnv: 'auto-inline' })],
     input: 'src/index.js',
     output: [
       { file: 'dist/node/index.cjs', format: 'cjs' },
     ]
   }, {
-    plugins: [wasm({ targetEnv: 'auto-inline' })],
+    plugins: [wasm({ sync, targetEnv: 'auto-inline' })],
     input: 'src/index.js',
     output: [
       { file: 'dist/web/index.mjs', format: 'es' },

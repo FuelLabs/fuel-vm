@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [#529](https://github.com/FuelLabs/fuel-vm/pull/529): Fix WASM initialization for NPM wrapper packages.
+
 #### Breaking
 
 - [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.

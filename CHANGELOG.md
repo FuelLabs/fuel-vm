@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
+
+
 #### Breaking
 
 - [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
@@ -27,10 +30,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#499](https://github.com/FuelLabs/fuel-vm/pull/499/): The `wasm_bindgen` support of `fuel-asm` and `fuel-types`.
     Each new release also publish a typescript analog of the `fuel-asm` and `fuel-types` crates to the npm.
-### Changed
-
-- [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
-
 
 ## [Version 0.35.0]
 

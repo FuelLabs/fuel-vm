@@ -72,10 +72,9 @@ where
     let tx_pointer = rng.gen();
     let maturity = Default::default();
     let height = Default::default();
-    let chain_id = Default::default();
     let predicate_gas_used = 0;
 
-    let owner = Input::predicate_owner(&predicate, &chain_id);
+    let owner = Input::predicate_owner(&predicate, &ChainId::default());
     let input = Input::coin_predicate(
         utxo_id,
         owner,
@@ -117,7 +116,7 @@ where
     let gas_costs = GasCosts::free();
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParameters::standard(ChainId::default()))
+        .into_checked_basic(height, &ConsensusParameters::standard())
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams {
@@ -268,10 +267,7 @@ async fn execute_gas_metered_predicates(
             .map_err(|_| ())?;
 
         let tx = async_tx
-            .into_checked_basic(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
@@ -286,10 +282,7 @@ async fn execute_gas_metered_predicates(
     transaction.estimate_predicates(&params).map_err(|_| ())?;
 
     let tx = transaction
-        .into_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(Default::default()),
-        )
+        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
     let seq_gas_used = Interpreter::<PredicateStorage>::check_predicates(&tx, &params)
@@ -438,10 +431,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
         .expect("Predicate estimation failed");
 
     let checked = transaction
-        .into_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(Default::default()),
-        )
+        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version
@@ -577,10 +567,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .expect("Predicate estimation failed");
 
     let checked = transaction
-        .into_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(Default::default()),
-        )
+        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version

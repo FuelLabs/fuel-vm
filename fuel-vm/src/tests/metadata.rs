@@ -49,7 +49,7 @@ fn metadata() {
     let maturity = Default::default();
     let height = Default::default();
 
-    let consensus_params = ConsensusParameters::standard(ChainId::default());
+    let consensus_params = ConsensusParameters::standard();
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -225,13 +225,8 @@ fn get_metadata_chain_id() {
     let chain_id: ChainId = rng.gen();
 
     let interpreter_params = InterpreterParams {
-        gas_costs: Default::default(),
-        max_inputs: TxParameters::DEFAULT.max_inputs,
-        contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-        tx_offset: TxParameters::DEFAULT.tx_offset(),
-        max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
         chain_id,
-        fee_params: FeeParameters::default(),
+        ..Default::default()
     };
 
     let mut client = MemoryClient::new(Default::default(), interpreter_params);
@@ -242,7 +237,7 @@ fn get_metadata_chain_id() {
         op::ret(0x10),
     ];
 
-    let consensus_params = ConsensusParameters::standard(chain_id);
+    let consensus_params = ConsensusParameters::standard_with_id(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
@@ -275,7 +270,6 @@ fn get_transaction_fields() {
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
-    let chain_id = ChainId::default();
 
     let contract: Witness = vec![op::ret(0x01)].into_iter().collect::<Vec<u8>>().into();
     let salt = rng.gen();
@@ -323,7 +317,7 @@ fn get_transaction_fields() {
     rng.fill(m_data.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&m_predicate, &chain_id);
+    let owner = Input::predicate_owner(&m_predicate, &ChainId::default());
     let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,

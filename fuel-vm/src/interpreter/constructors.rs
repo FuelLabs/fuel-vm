@@ -15,13 +15,6 @@ use crate::{
     state::Debugger,
     storage::MemoryStorage,
 };
-use fuel_tx::{
-    ContractParameters,
-    FeeParameters,
-    PredicateParameters,
-    TxParameters,
-};
-use fuel_types::ChainId;
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;
@@ -85,16 +78,7 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        let params = InterpreterParams {
-            gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs,
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-            tx_offset: TxParameters::default().tx_offset(),
-            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
-            chain_id: ChainId::default(),
-            fee_params: FeeParameters::default(),
-        };
-        Self::with_storage(Default::default(), params)
+        Self::with_storage(Default::default(), InterpreterParams::default())
     }
 }
 

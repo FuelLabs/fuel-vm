@@ -17,7 +17,9 @@ pub use gas::{
 const MAX_GAS: u64 = 100_000_000;
 
 /// A collection of parameters for convenience
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct ConsensusParameters {
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
@@ -28,9 +30,28 @@ pub struct ConsensusParameters {
     pub gas_costs: GasCosts,
 }
 
+impl Default for ConsensusParameters {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
 impl ConsensusParameters {
-    /// Constructor for the `ConsensusParameters` with Standard values
-    pub fn standard(chain_id: ChainId) -> Self {
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
+        Self {
+            tx_params: TxParameters::DEFAULT,
+            predicate_params: PredicateParameters::DEFAULT,
+            script_params: ScriptParameters::DEFAULT,
+            contract_params: ContractParameters::DEFAULT,
+            fee_params: FeeParameters::DEFAULT,
+            chain_id: ChainId::default(),
+            gas_costs: GasCosts::default(),
+        }
+    }
+
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
         Self {
             tx_params: TxParameters::DEFAULT,
             predicate_params: PredicateParameters::DEFAULT,

@@ -1,6 +1,7 @@
 use crate::{
     transaction::{
         compute_transaction_id,
+        consensus_parameters::TxParameters,
         field::{
             GasLimit,
             GasPrice,
@@ -42,7 +43,6 @@ use fuel_types::{
     Word,
 };
 
-use crate::transaction::consensus_parameters::TxParameters;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]

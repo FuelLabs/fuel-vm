@@ -303,9 +303,7 @@ impl FormatValidityChecks for Transaction {
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
-    //
     tx_params: &TxParameters,
-    //
     predicate_params: &PredicateParameters,
 ) -> Result<(), CheckError>
 where

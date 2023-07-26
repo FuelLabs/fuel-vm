@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Description of the upcoming release here.
+### Changed
+
+#### Breaking
+
+- [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
+    Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
+    necessary fields only.
+
+### Fixed
+
+#### Breaking
+
+- [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.
 
 ## [Version 0.35.1]
 

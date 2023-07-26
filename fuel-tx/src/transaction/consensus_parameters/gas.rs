@@ -144,7 +144,7 @@ impl GasUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Gas costings for every op.
 /// The inner values are wrapped in an [`Arc`]
@@ -173,7 +173,7 @@ impl Default for GasCostsValues {
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default = "GasCostsValues::unit"))]
 /// Gas costs for every op.
@@ -289,7 +289,7 @@ pub struct GasCostsValues {
     pub srwq: DependentCost,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Dependent cost is a cost that depends on the number of units.
 /// The cost starts at the base and grows by `dep_per_unit` for every unit.

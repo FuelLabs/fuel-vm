@@ -1,7 +1,6 @@
 use fuel_asm::op;
 use fuel_vm::prelude::*;
 
-use crate::fuel_types::ChainId;
 use fuel_tx::{
     field::Outputs,
     ConsensusParameters,
@@ -43,7 +42,7 @@ fn gas_factor_rounds_correctly() {
 
     let consensus_params = ConsensusParameters {
         fee_params,
-        ..ConsensusParameters::standard(ChainId::default())
+        ..ConsensusParameters::standard()
     };
 
     let interpreter_params = InterpreterParams::from(&consensus_params);

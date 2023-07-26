@@ -86,13 +86,12 @@ where
         &mut self,
         context: Context,
         mut tx: Tx,
-        balances: InitialBalances,
         gas_limit: Word,
     ) -> Result<(), InterpreterError> {
         self.context = context;
         tx.prepare_init_predicate();
 
-        self.init_inner(tx, balances, gas_limit)
+        self.init_inner(tx, InitialBalances::default(), gas_limit)
     }
 }
 

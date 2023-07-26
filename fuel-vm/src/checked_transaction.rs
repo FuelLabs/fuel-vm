@@ -30,15 +30,8 @@ pub mod types;
 pub use types::*;
 
 use crate::{
-    checked_transaction::balances::{
-        initial_free_balances,
-        AvailableBalances,
-    },
     error::PredicateVerificationFailed,
-    interpreter::{
-        CheckedMetadata as CheckedMetadataAccessTrait,
-        InitialBalances,
-    },
+    interpreter::CheckedMetadata as CheckedMetadataAccessTrait,
     prelude::*,
 };
 
@@ -140,10 +133,7 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(ChainId::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -232,17 +222,13 @@ pub struct CheckPredicateParams {
 
 impl Default for CheckPredicateParams {
     fn default() -> Self {
-        CheckPredicateParams {
-            gas_costs: Default::default(),
-            chain_id: Default::default(),
-            max_gas_per_predicate: PredicateParameters::DEFAULT.max_gas_per_predicate,
-            max_gas_per_tx: TxParameters::DEFAULT.max_gas_per_tx,
-            max_inputs: TxParameters::DEFAULT.max_inputs,
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
-            tx_offset: TxParameters::DEFAULT.tx_offset(),
-            fee_params: Default::default(),
-        }
+        CheckPredicateParams::from(&ConsensusParameters::standard())
+    }
+}
+
+impl From<ConsensusParameters> for CheckPredicateParams {
+    fn from(value: ConsensusParameters) -> Self {
+        CheckPredicateParams::from(&value)
     }
 }
 
@@ -360,19 +346,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         &mut self,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
-        // validate fees and compute free balances
-        let AvailableBalances {
-            non_retryable_balances,
-            retryable_balance,
-            ..
-        } = initial_free_balances(self, &params.fee_params)?;
-
-        let balances: InitialBalances = InitialBalances {
-            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-            retryable: Some(RetryableAmount(retryable_balance)),
-        };
-
-        Interpreter::<PredicateStorage>::estimate_predicates(self, balances, params)?;
+        Interpreter::<PredicateStorage>::estimate_predicates(self, params)?;
         Ok(())
     }
 
@@ -383,22 +357,8 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     where
         E: ParallelExecutor,
     {
-        // validate fees and compute free balances
-        let AvailableBalances {
-            non_retryable_balances,
-            retryable_balance,
-            ..
-        } = initial_free_balances(self, &params.fee_params)?;
-
-        let balances: InitialBalances = InitialBalances {
-            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-            retryable: Some(RetryableAmount(retryable_balance)),
-        };
-
-        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(
-            self, balances, params,
-        )
-        .await?;
+        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(self, params)
+            .await?;
 
         Ok(())
     }
@@ -662,6 +622,18 @@ mod tests {
         SeedableRng,
     };
 
+    fn params(factor: u64) -> ConsensusParameters {
+        ConsensusParameters::new(
+            TxParameters::default(),
+            PredicateParameters::default(),
+            ScriptParameters::default(),
+            ContractParameters::default(),
+            FeeParameters::default().with_gas_price_factor(factor),
+            Default::default(),
+            Default::default(),
+        )
+    }
+
     #[test]
     fn checked_tx_accepts_valid_tx() {
         // simple smoke test that valid txs can be checked
@@ -674,10 +646,7 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -699,10 +668,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -722,10 +688,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -751,10 +714,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -792,10 +752,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -958,10 +915,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -985,21 +939,7 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let tx_params = TxParameters::default();
-        let predicate_params = PredicateParameters::default();
-        let script_params = ScriptParameters::default();
-        let contract_params = ContractParameters::default();
-        let fee_params = FeeParameters::default().with_gas_price_factor(factor);
-
-        let consensus_params = ConsensusParameters::new(
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            Default::default(),
-            Default::default(),
-        );
+        let consensus_params = params(factor);
 
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
@@ -1025,21 +965,7 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let tx_params = TxParameters::default();
-        let predicate_params = PredicateParameters::default();
-        let script_params = ScriptParameters::default();
-        let contract_params = ContractParameters::default();
-        let fee_params = FeeParameters::default().with_gas_price_factor(factor);
-
-        let consensus_params = ConsensusParameters::new(
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            Default::default(),
-            Default::default(),
-        );
+        let consensus_params = params(factor);
 
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
@@ -1062,21 +988,7 @@ mod tests {
         let gas_limit = 0; // ensure only bytes are included in fee
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let tx_params = TxParameters::default();
-        let predicate_params = PredicateParameters::default();
-        let script_params = ScriptParameters::default();
-        let contract_params = ContractParameters::default();
-        let fee_params = FeeParameters::default().with_gas_price_factor(1);
-
-        let consensus_params = ConsensusParameters::new(
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            Default::default(),
-            Default::default(),
-        );
+        let consensus_params = params(1);
 
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
@@ -1094,21 +1006,7 @@ mod tests {
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
-        let tx_params = TxParameters::default();
-        let predicate_params = PredicateParameters::default();
-        let script_params = ScriptParameters::default();
-        let contract_params = ContractParameters::default();
-        let fee_params = FeeParameters::default().with_gas_price_factor(1);
-
-        let consensus_params = ConsensusParameters::new(
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            Default::default(),
-            Default::default(),
-        );
+        let consensus_params = params(1);
 
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
@@ -1150,10 +1048,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -1173,10 +1068,7 @@ mod tests {
         let tx = Transaction::default_test_tx();
         // Sets Checks::Basic
         let checked = tx
-            .into_checked_basic(
-                block_height,
-                &ConsensusParameters::standard(Default::default()),
-            )
+            .into_checked_basic(block_height, &ConsensusParameters::standard())
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
     }
@@ -1192,7 +1084,7 @@ mod tests {
             // Sets Checks::Basic
             .into_checked(
                 block_height,
-                &ConsensusParameters::standard(chain_id),
+                &ConsensusParameters::standard_with_id(chain_id),
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1214,7 +1106,7 @@ mod tests {
 
         let consensus_params = ConsensusParameters {
             gas_costs,
-            ..ConsensusParameters::standard(Default::default())
+            ..ConsensusParameters::standard()
         };
 
         let check_predicate_params = CheckPredicateParams::from(&consensus_params);

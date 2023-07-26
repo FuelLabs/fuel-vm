@@ -6,7 +6,6 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::Receipt;
-use fuel_types::ChainId;
 use fuel_vm::{
     consts::VM_MAX_RAM,
     interpreter::InterpreterParams,
@@ -28,7 +27,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let maturity = Default::default();
     let height = Default::default();
 
-    let consensus_params = ConsensusParameters::standard(ChainId::default());
+    let consensus_params = ConsensusParameters::standard();
 
     let script = program.into_iter().collect();
 

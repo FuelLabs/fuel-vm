@@ -65,7 +65,7 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParameters::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
@@ -137,7 +137,7 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
-    let consensus_params = ConsensusParameters::standard(Default::default());
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)

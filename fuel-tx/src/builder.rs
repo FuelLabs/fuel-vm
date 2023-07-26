@@ -201,14 +201,11 @@ impl<Tx> TransactionBuilder<Tx> {
         let should_prepare_predicate = false;
         let sign_keys = HashMap::new();
 
-        // TODO: What is a default chain id?
-        let chain_id = ChainId::default();
-
         Self {
             tx,
             should_prepare_script,
             should_prepare_predicate,
-            params: ConsensusParameters::standard(chain_id),
+            params: ConsensusParameters::standard(),
             sign_keys,
         }
     }

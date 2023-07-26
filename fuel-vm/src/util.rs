@@ -182,7 +182,7 @@ pub mod test_helpers {
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
                 block_height: Default::default(),
-                consensus_params: ConsensusParameters::standard(ChainId::default()),
+                consensus_params: ConsensusParameters::standard(),
             }
         }
 

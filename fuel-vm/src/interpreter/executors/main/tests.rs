@@ -13,18 +13,14 @@ use rand::{
 };
 
 use crate::{
-    checked_transaction::{
-        CheckPredicateParams,
-        CheckPredicates,
-    },
-    interpreter::CheckedMetadata,
+    checked_transaction::CheckPredicates,
     prelude::*,
 };
 
 #[test]
 fn estimate_gas_gives_proper_gas_used() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let params = CheckPredicateParams::default();
+    let params = &ConsensusParameters::standard();
 
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
@@ -56,7 +52,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params)
+        .check_predicates(&params.into())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -94,35 +90,17 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(
-            Default::default(),
-            &ConsensusParameters::standard(Default::default()),
-        )
+        .into_checked(Default::default(), params)
         .is_err());
-
-    // create checked transaction to get access to balances from metadata
-    let unestimated_checked = transaction
-        .clone()
-        .into_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(Default::default()),
-        )
-        .expect("Should successfully create checked tranaction with predicate");
-
-    let balances = unestimated_checked.metadata().balances();
 
     Interpreter::<PredicateStorage>::estimate_predicates(
         &mut transaction,
-        balances,
-        &params,
+        &params.into(),
     )
     .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
 
-    let check_res = transaction.into_checked(
-        Default::default(),
-        &ConsensusParameters::standard(Default::default()),
-    );
+    let check_res = transaction.into_checked(Default::default(), params);
     assert!(check_res.is_ok());
 }

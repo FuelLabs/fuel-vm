@@ -156,10 +156,7 @@ fn coin_signed() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(
-            block_height,
-            &ConsensusParameters::standard(Default::default()),
-        )
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err);
@@ -212,8 +209,7 @@ fn coin_predicate() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let chain_id = ChainId::default();
-    let owner = Input::predicate_owner(&predicate, &chain_id);
+    let owner = Input::predicate_owner(&predicate, &ChainId::default());
 
     Input::coin_predicate(
         rng.gen(),
@@ -238,8 +234,7 @@ fn coin_predicate() {
     .unwrap();
 
     let predicate = vec![];
-    let chain_id = ChainId::default();
-    let owner = Input::predicate_owner(&predicate, &chain_id);
+    let owner = Input::predicate_owner(&predicate, &ChainId::default());
 
     let err = Input::coin_predicate(
         rng.gen(),
@@ -420,13 +415,12 @@ fn message_metadata() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard(chain_id))
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let chain_id = ChainId::default();
     let recipient = Input::predicate_owner(&predicate, &chain_id);
     predicate[0] = predicate[0].wrapping_add(1);
 
@@ -588,14 +582,13 @@ fn message_message_coin() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard(chain_id))
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let chain_id = ChainId::default();
-    let recipient = Input::predicate_owner(&predicate, &chain_id);
+    let recipient = Input::predicate_owner(&predicate, &ChainId::default());
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_coin_predicate(
@@ -699,10 +692,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .add_input(b)
         .add_witness(rng.gen())
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(ChainId::default()),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, CheckError::DuplicateInputUtxoId { utxo_id });
@@ -739,7 +729,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         .finalize()
         .check_without_signatures(
             Default::default(),
-            &ConsensusParameters::standard(ChainId::default()),
+            &ConsensusParameters::standard(),
         )
         .expect_err("Expected checkable failure");
 
@@ -773,10 +763,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_output(o)
         .add_output(p)
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(ChainId::default()),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, CheckError::DuplicateInputContractId { contract_id });
@@ -810,9 +797,6 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_output(p)
         .add_witness(rng.gen())
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(ChainId::default()),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect("Duplicated UTXO id is valid for contract input");
 }

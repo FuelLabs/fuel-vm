@@ -32,13 +32,26 @@ pub struct ConsensusParameters {
 
 impl Default for ConsensusParameters {
     fn default() -> Self {
-        Self::standard(ChainId::default())
+        Self::standard()
     }
 }
 
 impl ConsensusParameters {
-    /// Constructor for the `ConsensusParameters` with Standard values
-    pub fn standard(chain_id: ChainId) -> Self {
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
+        Self {
+            tx_params: TxParameters::DEFAULT,
+            predicate_params: PredicateParameters::DEFAULT,
+            script_params: ScriptParameters::DEFAULT,
+            contract_params: ContractParameters::DEFAULT,
+            fee_params: FeeParameters::DEFAULT,
+            chain_id: ChainId::default(),
+            gas_costs: GasCosts::default(),
+        }
+    }
+
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
         Self {
             tx_params: TxParameters::DEFAULT,
             predicate_params: PredicateParameters::DEFAULT,

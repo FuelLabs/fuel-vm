@@ -19,6 +19,14 @@ env:
   NIGHTLY_RUST_VERSION: nightly-2023-05-23
 
 jobs:
+  check-changelog:
+    name: Check Changelog Action
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    steps:
+      - uses: tarides/changelog-check-action@v2
+        with:
+          changelog: CHANGELOG.md
+
   cargo:
     runs-on: buildjet-4vcpu-ubuntu-2204
     strategy:
@@ -113,6 +121,7 @@ jobs:
 
   verifications-complete:
     needs:
+      - check-changelog
       - rustfmt
       - cargo
       - cargo-toml-fmt-check

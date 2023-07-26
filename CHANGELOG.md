@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [#524](https://github.com/FuelLabs/fuel-vm/pull/524): Fix a crash in `CCP` instruction when overflowing contract bounds. Fix a bug in `CCP` where overflowing contract bounds in a different way would not actually copy the contract bytes, but just zeroes out the section. Fix a bug in `LDC` where it would revert the transaction when the contract bounds were exceeded, when it's just supposed to fill the rest of the bytes with zeroes.
+
 #### Breaking
 
 - [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.

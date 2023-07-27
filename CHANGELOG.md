@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
 
-
 #### Breaking
 
 - [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
     Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
     necessary fields only.
+- [#532](https://github.com/FuelLabs/fuel-vm/pull/532): The `TRO` instruction now reverts when attempting to send zero coins to an output. Panic reason of this `TransferZeroCoins`, and `TR` was changed to use the same panic reason as well.
 
 ### Fixed
 

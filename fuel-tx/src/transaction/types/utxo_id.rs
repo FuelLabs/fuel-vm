@@ -101,20 +101,29 @@ impl fmt::UpperHex for UtxoId {
 impl str::FromStr for UtxoId {
     type Err = &'static str;
 
+    /// UtxoId is encoded as hex string with optional 0x prefix, where
+    /// the last two characters are the output index and the part
+    /// optionally preceeding it is the transaction id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte";
         let s = s.trim_start_matches("0x");
-        let utxo_id = if s.is_empty() {
+
+        Ok(if s.is_empty() {
             UtxoId::new(Bytes32::default(), 0)
-        } else if s.len() > 2 {
-            UtxoId::new(
-                Bytes32::from_str(&s[..s.len() - 2])?,
-                u8::from_str_radix(&s[s.len() - 2..], 16).map_err(|_| ERR)?,
-            )
-        } else {
+        } else if s.len() <= 2 {
             UtxoId::new(TxId::default(), u8::from_str_radix(s, 16).map_err(|_| ERR)?)
-        };
-        Ok(utxo_id)
+        } else {
+            let i = s.len() - 2;
+            if !s.is_char_boundary(i) {
+                return Err(ERR)
+            }
+            let (tx_id, output_index) = s.split_at(i);
+
+            UtxoId::new(
+                Bytes32::from_str(tx_id)?,
+                u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
+            )
+        })
     }
 }
 

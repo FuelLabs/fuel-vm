@@ -34,6 +34,7 @@ use std::io;
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     data: Vec<u8>,

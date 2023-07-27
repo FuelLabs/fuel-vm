@@ -151,6 +151,7 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
     Specification: MessageSpecification,

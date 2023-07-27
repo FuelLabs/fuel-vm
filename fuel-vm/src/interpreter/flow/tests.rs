@@ -10,7 +10,10 @@ use fuel_tx::{
     field::ReceiptsRoot,
     TxParameters,
 };
-use fuel_types::ContractId;
+use fuel_types::{
+    canonical::Serialize,
+    ContractId,
+};
 use test_case::test_case;
 
 struct Input {
@@ -176,7 +179,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         ..Default::default()
     } => using check_output({
         let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 0), (GGAS, 100)]), 100, 4, 5);
-        let mut receipt = Receipt::call(ContractId::zeroed(), ContractId::from([1u8; 32]), 20, AssetId::from([2u8; 32]), 30, 4, 5, 800, 800);
+        let receipt = Receipt::call(ContractId::zeroed(), ContractId::from([1u8; 32]), 20, AssetId::from([2u8; 32]), 30, 4, 5, 800, 800);
         let mut script = Script::default();
         *script.receipts_root_mut() = crypto::ephemeral_merkle_root([receipt.to_bytes()].into_iter());
         Ok(Output{

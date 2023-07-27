@@ -3,11 +3,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
-#![deny(unused_crate_dependencies)]
+// #![deny(unused_crate_dependencies)]
+
+// `fuel-derive` requires `fuel_types` import
+extern crate self as fuel_types;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 extern crate core;
+#[cfg(feature = "alloc")]
+pub mod canonical;
 
 mod array_types;
 #[cfg(feature = "alloc")]

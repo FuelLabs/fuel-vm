@@ -114,6 +114,7 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
     pub(crate) gas_price: Word,

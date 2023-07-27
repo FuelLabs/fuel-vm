@@ -4,7 +4,7 @@ use std::mem;
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
 use fuel_types::{
-    bytes::SerializableVec,
+    canonical::Serialize,
     Bytes32,
 };
 
@@ -15,7 +15,7 @@ pub(crate) struct ReceiptsCtx {
 }
 
 impl ReceiptsCtx {
-    pub fn push(&mut self, mut receipt: Receipt) {
+    pub fn push(&mut self, receipt: Receipt) {
         self.receipts_tree.push(receipt.to_bytes().as_slice());
         self.receipts.push(receipt)
     }
@@ -44,7 +44,7 @@ impl ReceiptsCtx {
         self.receipts_tree.reset();
         // TODO: Remove `clone()` when `to_bytes()` no longer requires `&mut self`
         let receipts = self.as_ref().clone();
-        for mut receipt in receipts {
+        for receipt in receipts {
             self.receipts_tree.push(receipt.to_bytes().as_slice())
         }
     }
@@ -123,7 +123,7 @@ mod tests {
         interpreter::receipts::ReceiptsCtx,
     };
     use fuel_tx::Receipt;
-    use fuel_types::bytes::SerializableVec;
+    use fuel_types::canonical::Serialize;
     use std::iter;
 
     fn create_receipt() -> Receipt {
@@ -151,7 +151,7 @@ mod tests {
         let root = ctx.root();
 
         let leaves = receipts
-            .map(|mut receipt| receipt.to_bytes())
+            .map(|receipt| receipt.to_bytes())
             .collect::<Vec<_>>()
             .into_iter();
         let expected_root = ephemeral_merkle_root(leaves);
@@ -171,7 +171,7 @@ mod tests {
         let root = ctx.root();
 
         let leaves = receipts
-            .map(|mut receipt| receipt.to_bytes())
+            .map(|receipt| receipt.to_bytes())
             .collect::<Vec<_>>()
             .into_iter();
         let expected_root = ephemeral_merkle_root(leaves);

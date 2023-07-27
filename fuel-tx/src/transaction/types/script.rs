@@ -58,6 +58,7 @@ pub(crate) struct ScriptMetadata {
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) gas_price: Word,

@@ -34,6 +34,7 @@ macro_rules! key {
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        #[derive(crate::canonical::Serialize, crate::canonical::Deserialize)]
         pub struct $i($t);
 
         key_methods!($i, $t);

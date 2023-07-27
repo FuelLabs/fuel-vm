@@ -83,6 +83,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 pub enum Transaction {
     Script(Script),
     Create(Create),

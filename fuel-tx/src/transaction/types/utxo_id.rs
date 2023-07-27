@@ -34,6 +34,7 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
     tx_id: TxId,

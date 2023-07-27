@@ -30,9 +30,6 @@ use fuel_types::{
     Word,
 };
 
-#[cfg(feature = "std")]
-mod receipt_std;
-
 mod receipt_repr;
 mod script_result;
 mod sizes;
@@ -50,6 +47,7 @@ pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {

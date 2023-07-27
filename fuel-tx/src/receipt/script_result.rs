@@ -2,6 +2,7 @@ use fuel_types::Word;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub enum ScriptExecutionResult {
     Success,
     Revert,

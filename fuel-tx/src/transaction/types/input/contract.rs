@@ -23,6 +23,7 @@ use fuel_types::{
 /// the `fuel-vm`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Contract {
     pub utxo_id: UtxoId,
     pub balance_root: Bytes32,

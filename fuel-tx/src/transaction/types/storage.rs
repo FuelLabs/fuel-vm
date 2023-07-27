@@ -23,6 +23,7 @@ use std::io;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
     value: Bytes32,

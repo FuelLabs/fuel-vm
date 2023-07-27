@@ -1,5 +1,4 @@
 use crate::{
-    consts::*,
     error::{
         InterpreterError,
         RuntimeError,
@@ -33,30 +32,24 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    /// Execute the current instruction pair located in `$m[$pc]`.
+    /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
-        // Safety: `chunks_exact` is guaranteed to return a well-formed slice
-        let [hi, lo] = self.memory[self.registers[RegId::PC] as usize..]
-            .chunks_exact(WORD_SIZE)
-            .next()
-            .map(|b| b.try_into().expect("Has to be correct size slice"))
-            .map(Word::from_be_bytes)
-            .map(fuel_asm::raw_instructions_from_word)
-            .ok_or(InterpreterError::Panic(PanicReason::MemoryOverflow))?;
-
-        // Store the expected `$pc` after executing `hi`
-        let pc = self.registers[RegId::PC] + Instruction::SIZE as Word;
-        let state = self.instruction(hi)?;
-
-        // TODO optimize
-        // Should execute `lo` only if there is no rupture in the flow - that means
-        // either a breakpoint or some instruction that would skip `lo` such as
-        // `RET`, `JI` or `CALL`
-        if self.registers[RegId::PC] == pc && state.should_continue() {
-            self.instruction(lo)
+        if let Some(raw_instruction) = self.fetch_instruction() {
+            self.instruction(raw_instruction)
         } else {
-            Ok(state)
+            Err(InterpreterError::Panic(PanicReason::MemoryOverflow))
         }
+    }
+
+    /// Reads the current instruction located in `$m[$pc]`,
+    /// returning `None` on any memory access violation.
+    fn fetch_instruction(&self) -> Option<RawInstruction> {
+        let start: usize = self.registers[RegId::PC].try_into().ok()?;
+        let end = start.checked_add(Instruction::SIZE)?;
+        let bytes = self.memory.get(start..end)?;
+        Some(RawInstruction::from_be_bytes(
+            bytes.try_into().expect("Slice len mismatch"),
+        ))
     }
 
     /// Execute a provided instruction

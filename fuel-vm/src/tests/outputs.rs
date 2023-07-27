@@ -357,14 +357,11 @@ fn zero_amount_transfer_out_reverts() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    let script_data: Vec<u8> = [
-        asset_id.as_ref(),
-        owner.as_ref(),
-    ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+    let script_data: Vec<u8> = [asset_id.as_ref(), owner.as_ref()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // execute and get receipts
     let result = TestBuilder::new(2322u64)

@@ -214,4 +214,10 @@ mod tests {
         assert_eq!(utxo_id.tx_id[0], 12);
         Ok(())
     }
+
+    #[test]
+    fn from_str_utxo_id_multibyte_bug() {
+        UtxoId::from_str("0x00😎").expect_err("Should fail on incorrect input");
+        UtxoId::from_str("0x000😎").expect_err("Should fail on incorrect input");
+    }
 }

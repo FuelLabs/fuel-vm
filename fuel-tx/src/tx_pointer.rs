@@ -195,3 +195,9 @@ fn fmt_encode_decode() {
         }
     }
 }
+
+#[test]
+fn decode_bug() {
+    use core::str::FromStr;
+    TxPointer::from_str("00000😎000").expect_err("Should fail on incorrect input");
+}

@@ -273,6 +273,119 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
 }
 
 #[test]
+fn zero_amount_transfer_reverts() {
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let asset_id = AssetId::default();
+
+    // setup state for test
+    // simple dummy contract for transferring value to
+    let contract_code = vec![op::ret(RegId::ONE)];
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
+
+    // setup script for transfer
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // set reg 0x10 to contract id
+            op::movi(0x10, data_offset),
+            // set reg 0x12 to asset id
+            op::movi(0x11, data_offset + ContractId::LEN as u32),
+            // transfer to contract id at 0x10, amount of coins is zero, asset id at 0x11
+            op::tr(0x10, RegId::ZERO, 0x11),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+
+    let script_data = [contract_id.as_ref(), asset_id.as_ref()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+
+    // execute and get receipts
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .coin_input(asset_id, 0)
+        .contract_input(contract_id)
+        .change_output(asset_id)
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert_eq!(reason.reason(), &PanicReason::TransferZeroCoins);
+    } else {
+        panic!("Expected a panic receipt");
+    }
+}
+
+#[test]
+fn zero_amount_transfer_out_reverts() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // the initial external (coin) balance
+    let external_balance = 1_000_000;
+    // the amount to transfer out from external balance
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let asset_id = AssetId::default();
+    let owner: Address = rng.gen();
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load amount of coins to 0x10
+            op::movi(0x10, data_offset),
+            op::lw(0x10, 0x10, 0),
+            // load asset id to 0x11
+            op::movi(0x11, data_offset),
+            // load address to 0x12
+            op::movi(0x12, data_offset + 32),
+            // call contract without any tokens to transfer in or out
+            op::tro(0x12, RegId::ZERO, RegId::ZERO, 0x11),
+            op::ret(RegId::ONE),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let script_data: Vec<u8> = [
+        asset_id.as_ref(),
+        owner.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
+
+    // execute and get receipts
+    let result = TestBuilder::new(2322u64)
+        .start_script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .coin_input(asset_id, external_balance)
+        .variable_output(asset_id)
+        .change_output(asset_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert_eq!(reason.reason(), &PanicReason::TransferZeroCoins);
+    } else {
+        panic!("Expected a panic receipt");
+    }
+}
+
+#[test]
 fn variable_output_set_by_external_transfer_out() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

@@ -222,7 +222,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             .check(&destination)?;
 
         if amount == 0 {
-            return Err(PanicReason::NotEnoughBalance.into())
+            return Err(PanicReason::TransferZeroCoins.into())
         }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
@@ -283,6 +283,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let out_idx = b as usize;
         let amount = c;
         let asset_id = AssetId::from(read_bytes(self.memory, d)?);
+
+        if amount == 0 {
+            return Err(PanicReason::TransferZeroCoins.into())
+        }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {

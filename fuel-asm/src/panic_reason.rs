@@ -108,6 +108,8 @@ enum_from! {
         ArithmeticError = 0x23,
         /// The contract instruction is not allowed in predicates.
         ContractInstructionNotAllowed = 0x24,
+        /// Transfer of zero coins is not allowed.
+        TransferZeroCoins = 0x25,
     }
 }
 

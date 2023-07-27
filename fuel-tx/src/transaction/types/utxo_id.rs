@@ -215,6 +215,7 @@ mod tests {
         Ok(())
     }
 
+    /// See https://github.com/FuelLabs/fuel-vm/issues/521
     #[test]
     fn from_str_utxo_id_multibyte_bug() {
         UtxoId::from_str("0x00😎").expect_err("Should fail on incorrect input");

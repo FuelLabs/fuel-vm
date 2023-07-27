@@ -196,6 +196,7 @@ fn fmt_encode_decode() {
     }
 }
 
+/// See https://github.com/FuelLabs/fuel-vm/issues/521
 #[test]
 fn decode_bug() {
     use core::str::FromStr;

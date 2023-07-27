@@ -22,7 +22,7 @@ fn test_malloc(mut hp: Word, sp: Word, a: Word) -> Result<Word, RuntimeError> {
 #[test_case(false, 1, 10 => Err(RuntimeError::Recoverable(PanicReason::MemoryOwnership)); "No ownership")]
 #[test_case(true, 0, 10 => Ok(()); "Memory range starts at 0")]
 #[test_case(true, MEM_SIZE as Word - 10, 10 => Ok(()); "Memory range ends at last address")]
-#[test_case(true, 1, MEM_MAX_ACCESS_SIZE + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory range size exceeds limit")]
+#[test_case(true, 1, VM_MAX_RAM + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Memory range size exceeds limit")]
 fn test_memclear(has_ownership: bool, a: Word, b: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -92,11 +92,11 @@ fn test_memcopy(
 #[test_case(1, 20, 10 => Ok(()); "Can compare some bytes")]
 #[test_case(MEM_SIZE as Word, 1, 2 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "b+d > MAX_RAM")]
 #[test_case(1, MEM_SIZE as Word, 2 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "c+d > MAX_RAM")]
-#[test_case(1, 1, MEM_MAX_ACCESS_SIZE + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "d > MEM_MAX_ACCESS_SIZE")]
+#[test_case(1, 1, VM_MAX_RAM + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "d > VM_MAX_RAM")]
 #[test_case(u64::MAX/2, 1, u64::MAX/2 + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "b+d overflows")]
 #[test_case(1, u64::MAX/2, u64::MAX/2 + 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "c+d overflows")]
 #[test_case(0, 0, 0 => Ok(()); "smallest input values")]
-#[test_case(0, MEM_MAX_ACCESS_SIZE/2, MEM_MAX_ACCESS_SIZE/2 => Ok(()); "maximum range of addressable memory")]
+#[test_case(0, VM_MAX_RAM/2, VM_MAX_RAM/2 => Ok(()); "maximum range of addressable memory")]
 fn test_memeq(b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let r = (b as usize).min(MEM_SIZE)

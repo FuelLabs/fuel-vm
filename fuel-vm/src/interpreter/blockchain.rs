@@ -494,10 +494,6 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
             return Err(PanicReason::MemoryOverflow.into())
         }
 
-        if length > MEM_MAX_ACCESS_SIZE as usize {
-            return Err(PanicReason::MaxMemoryAccess.into())
-        }
-
         // Clear memory
         self.memory[dst_range.usizes()].fill(0);
 
@@ -666,10 +662,6 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
         MemoryRange::new(a, d)?;
         let c_range = MemoryRange::new(c, d)?;
-
-        if d > MEM_MAX_ACCESS_SIZE {
-            return Err(PanicReason::MaxMemoryAccess.into())
-        }
 
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
@@ -939,10 +931,6 @@ where
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(
             self.recipient_mem_address,
         )?;
-
-        if self.msg_data_len > MEM_MAX_ACCESS_SIZE {
-            return Err(RuntimeError::Recoverable(PanicReason::MaxMemoryAccess))
-        }
 
         if self.msg_data_len > self.max_message_data_length {
             return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))

@@ -17,7 +17,6 @@ use crate::{
     error::RuntimeError,
 };
 
-use fuel_asm::PanicReason;
 use fuel_tx::{
     Receipt,
     Script,
@@ -128,10 +127,6 @@ impl LogInput<'_> {
         d: Word,
     ) -> Result<(), RuntimeError> {
         let range = MemoryRange::new(c, d)?;
-
-        if d > MEM_MAX_ACCESS_SIZE {
-            return Err(PanicReason::MaxMemoryAccess.into())
-        }
 
         let receipt = Receipt::log_data(
             internal_contract_or_default(self.context, self.fp, self.memory),

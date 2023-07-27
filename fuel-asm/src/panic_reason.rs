@@ -74,8 +74,8 @@ enum_from! {
         InvalidImmediateValue = 0x13,
         /// The provided transaction input is not of type `Coin`.
         ExpectedCoinInput = 0x14,
-        /// The requested memory access exceeds the limits of the interpreter.
-        MaxMemoryAccess = 0x15,
+        /// This entry is no longer used, and can be repurposed.
+        Unused0x15 = 0x15,
         /// Two segments of the interpreter memory should not intersect for write operations.
         MemoryWriteOverlap = 0x16,
         /// The requested contract is not listed in the transaction inputs.

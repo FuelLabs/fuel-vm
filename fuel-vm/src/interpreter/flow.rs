@@ -229,9 +229,6 @@ impl RetCtx<'_> {
 
     pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
         let range = MemoryRange::new(a, b)?;
-        if b > MEM_MAX_ACCESS_SIZE {
-            return Err(PanicReason::MaxMemoryAccess.into())
-        }
 
         let receipt = Receipt::return_data(
             self.current_contract.unwrap_or_else(ContractId::zeroed),

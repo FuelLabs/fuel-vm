@@ -391,12 +391,8 @@ pub(crate) fn memclear(
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(a, b)?;
     owner.verify_ownership(&range)?;
-    if b > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MaxMemoryAccess.into())
-    } else {
-        memory[range.usizes()].fill(0);
-        inc_pc(pc)
-    }
+    memory[range.usizes()].fill(0);
+    inc_pc(pc)
 }
 
 pub(crate) fn memcopy(
@@ -409,10 +405,6 @@ pub(crate) fn memcopy(
 ) -> Result<(), RuntimeError> {
     let dst_range = MemoryRange::new(a, c)?;
     let src_range = MemoryRange::new(b, c)?;
-
-    if c > MEM_MAX_ACCESS_SIZE {
-        return Err(PanicReason::MaxMemoryAccess.into())
-    }
 
     owner.verify_ownership(&dst_range)?;
 
@@ -446,14 +438,8 @@ pub(crate) fn memeq(
 ) -> Result<(), RuntimeError> {
     let range1 = MemoryRange::new(b, d)?;
     let range2 = MemoryRange::new(c, d)?;
-
-    if d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MaxMemoryAccess.into())
-    } else {
-        *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
-
-        inc_pc(pc)
-    }
+    *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
+    inc_pc(pc)
 }
 
 #[derive(Debug)]

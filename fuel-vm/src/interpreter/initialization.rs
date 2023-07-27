@@ -55,7 +55,7 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id(&self.params.chain_id).as_ref())
+        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         RuntimeBalances::try_from(initial_balances)?.to_vm(self);
@@ -86,13 +86,12 @@ where
         &mut self,
         context: Context,
         mut tx: Tx,
-        balances: InitialBalances,
         gas_limit: Word,
     ) -> Result<(), InterpreterError> {
         self.context = context;
         tx.prepare_init_predicate();
 
-        self.init_inner(tx, balances, gas_limit)
+        self.init_inner(tx, InitialBalances::default(), gas_limit)
     }
 }
 

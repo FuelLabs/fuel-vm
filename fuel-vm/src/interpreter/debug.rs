@@ -47,12 +47,12 @@ where
 #[test]
 fn breakpoint_script() {
     use fuel_asm::op;
+    use fuel_tx::ConsensusParameters;
 
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     let script = [
         op::addi(0x10, RegId::ZERO, 8),
@@ -65,11 +65,13 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
+    let consensus_params = ConsensusParameters::standard();
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -118,11 +120,12 @@ fn breakpoint_script() {
 #[test]
 fn single_stepping() {
     use fuel_asm::op;
+    use fuel_tx::ConsensusParameters;
+
     let mut vm = Interpreter::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
     let script = [
@@ -134,11 +137,13 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
+    let consensus_params = ConsensusParameters::standard();
+
     let tx = TransactionBuilder::script(script, vec![])
         .gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, vm.gas_costs())
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

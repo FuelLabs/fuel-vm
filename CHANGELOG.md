@@ -6,7 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Description of the upcoming release here.
+### Changed
+
+- [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
+
+
+#### Breaking
+
+- [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
+    Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
+    necessary fields only.
+
+### Fixed
+
+- [#529](https://github.com/FuelLabs/fuel-vm/pull/529): Fix WASM initialization for NPM wrapper packages.
+
+#### Breaking
+
+- [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.
+
 
 ## [Version 0.35.1]
 
@@ -14,7 +32,6 @@ Description of the upcoming release here.
 
 - [#499](https://github.com/FuelLabs/fuel-vm/pull/499/): The `wasm_bindgen` support of `fuel-asm` and `fuel-types`.
     Each new release also publish a typescript analog of the `fuel-asm` and `fuel-types` crates to the npm.
-    
 
 ## [Version 0.35.0]
 

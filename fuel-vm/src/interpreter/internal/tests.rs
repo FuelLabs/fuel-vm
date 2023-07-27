@@ -1,14 +1,18 @@
 use crate::{
     constraints::reg_key::RegMut,
-    interpreter::internal::{
-        external_asset_id_balance_sub,
-        set_variable_output,
+    interpreter::{
+        internal::{
+            external_asset_id_balance_sub,
+            set_variable_output,
+        },
+        InterpreterParams,
     },
     prelude::*,
 };
 use fuel_asm::op;
 use fuel_tx::{
     field::Outputs,
+    ConsensusParameters,
     TransactionBuilder,
 };
 use rand::{
@@ -52,7 +56,7 @@ fn external_balance() {
         .gas_limit(gas_limit)
         .gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, &Default::default());
+        .finalize_checked(height);
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -94,7 +98,11 @@ fn external_balance() {
 fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::with_memory_storage();
+    let consensus_params = ConsensusParameters::standard();
+    let mut vm = Interpreter::with_storage(
+        MemoryStorage::default(),
+        InterpreterParams::from(&consensus_params),
+    );
 
     let gas_limit = 1_000_000;
     let height = Default::default();
@@ -113,22 +121,16 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, vm.params(), vm.gas_costs())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");
 
     // increase variable output
     let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
+    let tx_offset = vm.tx_offset();
 
-    set_variable_output(
-        &mut vm.tx,
-        &mut vm.memory,
-        vm.params.tx_offset(),
-        0,
-        variable,
-    )
-    .unwrap();
+    set_variable_output(&mut vm.tx, &mut vm.memory, tx_offset, 0, variable).unwrap();
 
     // verify the referenced tx output is updated properly
     assert!(matches!(

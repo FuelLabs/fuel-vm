@@ -237,9 +237,14 @@ impl FormatValidityChecks for Create {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, parameters)?;
+        check_common_part(
+            self,
+            block_height,
+            consensus_params.tx_params(),
+            consensus_params.predicate_params(),
+        )?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -247,7 +252,9 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > parameters.contract_max_size
+        let contract_params = consensus_params.contract_params();
+
+        if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
             return Err(CheckError::TransactionCreateBytecodeLen)
@@ -255,7 +262,7 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() > parameters.max_storage_slots as usize {
+        if self.storage_slots.len() > contract_params.max_storage_slots as usize {
             return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 
@@ -286,13 +293,14 @@ impl FormatValidityChecks for Create {
             self.metadata.is_some(),
             "`check_without_signatures` is called without cached metadata"
         );
-        let (state_root_calculated, contract_id_calculated) =
-            if let Some(metadata) = &self.metadata {
-                (metadata.state_root, metadata.contract_id)
-            } else {
-                let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
-                (metadata.state_root, metadata.contract_id)
-            };
+        let (state_root_calculated, contract_id_calculated) = if let Some(metadata) =
+            &self.metadata
+        {
+            (metadata.state_root, metadata.contract_id)
+        } else {
+            let metadata = CreateMetadata::compute(self, &consensus_params.chain_id())?;
+            (metadata.state_root, metadata.contract_id)
+        };
 
         let mut contract_created = false;
         self.outputs
@@ -924,7 +932,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::default())
+            .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -944,7 +952,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParameters::default())
+        .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

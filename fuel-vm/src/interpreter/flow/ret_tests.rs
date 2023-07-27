@@ -4,12 +4,7 @@ use super::*;
 
 #[test]
 fn test_return() {
-    let mut frame_reg: [Word; VM_REGISTER_COUNT] =
-        std::iter::successors(Some(0), |x| Some(x + 1))
-            .take(VM_REGISTER_COUNT)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
+    let mut frame_reg: [Word; VM_REGISTER_COUNT] = std::array::from_fn(|i| i as Word);
     frame_reg[RegId::CGAS] = 100;
     let mut expected = frame_reg;
     let frame = CallFrame::new(
@@ -26,11 +21,13 @@ fn test_return() {
     registers[RegId::GGAS] = 100;
     registers[RegId::RET] = 101;
     registers[RegId::RETL] = 102;
+    registers[RegId::HP] = 1234;
 
     expected[RegId::CGAS] = 199;
     expected[RegId::GGAS] = 100;
     expected[RegId::RET] = 101;
     expected[RegId::RETL] = 102;
+    expected[RegId::HP] = 1234;
     expected[RegId::PC] += 4;
     let mut context = Context::Call {
         block_height: Default::default(),

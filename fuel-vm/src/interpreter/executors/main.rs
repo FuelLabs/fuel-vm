@@ -15,7 +15,6 @@ use crate::{
         InterpreterError,
         PredicateVerificationFailed,
     },
-    gas::GasCosts,
     interpreter::{
         CheckedMetadata,
         ExecutableTransaction,
@@ -36,7 +35,11 @@ use crate::{
     },
 };
 
-use crate::error::BugVariant::GlobalGasUnderflow;
+use crate::{
+    checked_transaction::CheckPredicateParams,
+    error::BugVariant::GlobalGasUnderflow,
+    interpreter::InterpreterParams,
+};
 use fuel_asm::{
     PanicReason,
     RegId,
@@ -56,9 +59,9 @@ use fuel_tx::{
         },
     },
     Chargeable,
-    ConsensusParameters,
     Contract,
     Create,
+    FeeParameters,
     Input,
     Receipt,
     ScriptExecutionResult,
@@ -113,16 +116,14 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        let balances = checked.metadata().balances();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), balances, params, gas_costs)
+        Self::run_predicate(PredicateRunKind::Verifying(tx), params)
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -132,24 +133,18 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub async fn check_predicates_async<Tx, E>(
         checked: &Checked<Tx>,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
     {
-        let balances = checked.metadata().balances();
         let tx = checked.transaction();
 
-        let predicates_checked = Self::run_predicate_async::<Tx, E>(
-            PredicateRunKind::Verifying(tx),
-            balances,
-            params,
-            gas_costs,
-        )
-        .await?;
+        let predicates_checked =
+            Self::run_predicate_async::<Tx, E>(PredicateRunKind::Verifying(tx), params)
+                .await?;
 
         Ok(predicates_checked)
     }
@@ -162,19 +157,12 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
-        balances: InitialBalances,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
-        Self::run_predicate(
-            PredicateRunKind::Estimating(transaction),
-            balances,
-            params,
-            gas_costs,
-        )?;
+        Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
         Ok(())
     }
 
@@ -186,9 +174,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     /// predicates.
     pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
-        balances: InitialBalances,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -196,9 +182,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     {
         Self::run_predicate_async::<Tx, E>(
             PredicateRunKind::Estimating(transaction),
-            balances,
             params,
-            gas_costs,
         )
         .await?;
 
@@ -207,9 +191,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
     async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
-        balances: InitialBalances,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
@@ -217,23 +199,23 @@ impl<T> Interpreter<PredicateStorage, T> {
     {
         let mut checks = vec![];
         let predicate_action = PredicateAction::from(&kind);
+        let max_gas_per_tx = params.max_gas_per_tx;
+        let tx_offset = params.tx_offset;
 
         for index in 0..kind.tx().inputs().len() {
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, kind.tx(), index)
+            if let Some(predicate) =
+                RuntimePredicate::from_tx(kind.tx(), tx_offset, index)
             {
                 let tx = kind.tx().clone();
-                let gas_costs = gas_costs.clone();
-                let balances = balances.clone();
+                let my_params = params.clone();
 
                 let verify_task = E::create_task(move || {
                     Self::check_predicate(
                         tx,
                         index,
-                        params,
-                        gas_costs,
-                        balances,
                         predicate_action,
                         predicate,
+                        my_params,
                     )
                 });
 
@@ -243,14 +225,12 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let checks = E::execute_tasks(checks).await;
 
-        Self::finalize_check_predicate(kind, checks, predicate_action, params)
+        Self::finalize_check_predicate(kind, checks, predicate_action, max_gas_per_tx)
     }
 
     fn run_predicate<Tx>(
-        kind: PredicateRunKind<Tx>,
-        balances: InitialBalances,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        kind: PredicateRunKind<'_, Tx>,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -261,33 +241,33 @@ impl<T> Interpreter<PredicateStorage, T> {
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
 
-            if let Some(predicate) = RuntimePredicate::from_tx(&params, &tx, index) {
-                let gas_costs = gas_costs.clone();
-                let balances = balances.clone();
-
+            if let Some(predicate) =
+                RuntimePredicate::from_tx(&tx, params.tx_offset, index)
+            {
                 checks.push(Self::check_predicate(
                     tx,
                     index,
-                    params,
-                    gas_costs,
-                    balances,
                     predicate_action,
                     predicate,
+                    params.clone(),
                 ));
             }
         }
 
-        Self::finalize_check_predicate(kind, checks, predicate_action, params)
+        Self::finalize_check_predicate(
+            kind,
+            checks,
+            predicate_action,
+            params.max_gas_per_tx,
+        )
     }
 
     fn check_predicate<Tx>(
         tx: Tx,
         index: usize,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
-        balances: InitialBalances,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
+        params: CheckPredicateParams,
     ) -> Result<(Word, usize), PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -316,8 +296,11 @@ impl<T> Interpreter<PredicateStorage, T> {
             _ => {}
         }
 
-        let mut vm =
-            Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+        let max_gas_per_tx = params.max_gas_per_tx;
+        let max_gas_per_predicate = params.max_gas_per_predicate;
+        let interpreter_params = params.into();
+
+        let mut vm = Interpreter::with_storage(PredicateStorage {}, interpreter_params);
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {
@@ -329,15 +312,14 @@ impl<T> Interpreter<PredicateStorage, T> {
                         return Err(PredicateVerificationFailed::GasNotSpecified)
                     };
 
-                vm.init_predicate(context, tx, balances, available_gas)?;
+                vm.init_predicate(context, tx, available_gas)?;
                 available_gas
             }
             PredicateAction::Estimating => {
                 let context = Context::PredicateEstimation { program: predicate };
-                let available_gas =
-                    core::cmp::min(params.max_gas_per_predicate, params.max_gas_per_tx);
+                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
 
-                vm.init_predicate(context, tx, balances, available_gas)?;
+                vm.init_predicate(context, tx, available_gas)?;
                 available_gas
             }
         };
@@ -367,7 +349,7 @@ impl<T> Interpreter<PredicateStorage, T> {
         mut kind: PredicateRunKind<Tx>,
         checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
         predicate_action: PredicateAction,
-        params: ConsensusParameters,
+        max_gas_per_tx: u64,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
@@ -412,7 +394,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                 }
             }
             PredicateAction::Estimating => {
-                if cumulative_gas_used > params.max_gas_per_tx {
+                if cumulative_gas_used > max_gas_per_tx {
                     return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
                 }
             }
@@ -432,7 +414,7 @@ where
         create: &mut Create,
         storage: &mut S,
         initial_balances: InitialBalances,
-        params: &ConsensusParameters,
+        fee_params: &FeeParameters,
     ) -> Result<(), InterpreterError> {
         let remaining_gas = create
             .limit()
@@ -480,11 +462,11 @@ where
             .map_err(InterpreterError::from_io)?;
         Self::finalize_outputs(
             create,
+            fee_params,
             false,
             remaining_gas,
             &initial_balances,
             &RuntimeBalances::try_from(initial_balances.clone())?,
-            params,
         )?;
         Ok(())
     }
@@ -503,12 +485,13 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
+        let fee_params = *self.fee_params();
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
                 &mut self.storage,
                 self.initial_balances.clone(),
-                &self.params,
+                &fee_params,
             )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
@@ -598,13 +581,14 @@ where
 
             let revert = matches!(program, ProgramState::Revert(_));
             let remaining_gas = self.remaining_gas();
+            let fee_params = *self.fee_params();
             Self::finalize_outputs(
                 &mut self.tx,
+                &fee_params,
                 revert,
                 remaining_gas,
                 &self.initial_balances,
                 &self.balances,
-                &self.params,
             )?;
             self.update_transaction_outputs()?;
 
@@ -656,10 +640,9 @@ where
     pub fn transact_owned(
         storage: S,
         tx: Checked<Tx>,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
+        params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError> {
-        let mut interpreter = Interpreter::with_storage(storage, params, gas_costs);
+        let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
             .map(ProgramState::from)
@@ -700,11 +683,12 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (mut create, metadata) = tx.into();
+        let fee_params = *self.fee_params();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
-            &self.params,
+            &fee_params,
         )?;
         Ok(create)
     }

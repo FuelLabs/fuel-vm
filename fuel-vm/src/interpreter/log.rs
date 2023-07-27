@@ -38,11 +38,12 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
@@ -60,11 +61,12 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),

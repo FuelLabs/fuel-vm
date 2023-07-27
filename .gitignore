@@ -10,4 +10,7 @@ Cargo.lock
 **/*.rs.bk
 
 .vscode/
+
+.idea
+
 .history

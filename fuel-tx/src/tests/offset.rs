@@ -11,9 +11,12 @@ use fuel_tx::{
     *,
 };
 use fuel_tx_test_helpers::TransactionFactory;
-use fuel_types::bytes::{
-    Deserializable,
-    SerializableVec,
+use fuel_types::{
+    bytes::{
+        Deserializable,
+        SerializableVec,
+    },
+    ChainId,
 };
 use rand::{
     rngs::StdRng,
@@ -466,7 +469,7 @@ fn iow_offset() {
             let bytes = tx.to_bytes();
 
             let mut tx_p = tx.clone();
-            tx_p.precompute(&ConsensusParameters::DEFAULT.chain_id)
+            tx_p.precompute(&ChainId::default())
                 .expect("Should be able to calculate cache");
 
             tx.inputs().iter().enumerate().for_each(|(x, i)| {

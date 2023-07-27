@@ -1,21 +1,34 @@
 use std::ops::Range;
 
 use super::*;
-use crate::prelude::*;
+use crate::{
+    interpreter::InterpreterParams,
+    prelude::*,
+};
 use fuel_asm::op;
+use fuel_tx::ConsensusParameters;
 use test_case::test_case;
 
 #[test]
 fn memcopy() {
-    let mut vm = Interpreter::with_memory_storage();
-    let params = ConsensusParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+    let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+
+    let consensus_params = ConsensusParameters {
+        tx_params,
+        ..Default::default()
+    };
+
+    let mut vm = Interpreter::with_storage(
+        MemoryStorage::default(),
+        InterpreterParams::from(&consensus_params),
+    );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
-        .gas_limit(params.max_gas_per_tx)
+        .gas_limit(tx_params.max_gas_per_tx)
         .add_random_fee_input()
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &params, vm.gas_costs())
+        .into_checked(Default::default(), &consensus_params)
         .expect("default tx should produce a valid checked transaction");
 
     vm.init_script(tx).expect("Failed to init VM");
@@ -72,7 +85,7 @@ fn memrange() {
         .gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &Default::default(), &Default::default())
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid");
     let mut vm = Interpreter::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
@@ -102,7 +115,7 @@ fn stack_alloc_ownership() {
         .gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &Default::default(), &Default::default())
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid");
     vm.init_script(tx).expect("Failed to init VM");
 

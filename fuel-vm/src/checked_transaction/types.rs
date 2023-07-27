@@ -94,17 +94,18 @@ pub mod create {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            params: &ConsensusParameters,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(&params.chain_id)?;
-            self.check_without_signatures(block_height, params)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, params)?;
+            } = initial_free_balances(&self, consensus_params.fee_params())?;
             assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
@@ -143,10 +144,11 @@ pub mod mint {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            params: &ConsensusParameters,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(&params.chain_id)?;
-            self.check_without_signatures(block_height, params)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -202,17 +204,18 @@ pub mod script {
         fn into_checked_basic(
             mut self,
             block_height: BlockHeight,
-            params: &ConsensusParameters,
+            consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
-            self.precompute(&params.chain_id)?;
-            self.check_without_signatures(block_height, params)?;
+            let chain_id = consensus_params.chain_id();
+            self.precompute(&chain_id)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, params)?;
+            } = initial_free_balances(&self, consensus_params.fee_params())?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),

@@ -8,8 +8,10 @@ use super::{
 use crate::{
     consts::*,
     context::Context,
-    gas::GasCosts,
-    interpreter::PanicContext,
+    interpreter::{
+        InterpreterParams,
+        PanicContext,
+    },
     state::Debugger,
     storage::MemoryStorage,
 };
@@ -18,8 +20,6 @@ use crate::{
 use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
-
-use fuel_tx::ConsensusParameters;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -30,11 +30,7 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(
-        storage: S,
-        params: ConsensusParameters,
-        gas_costs: GasCosts,
-    ) -> Self {
+    pub fn with_storage(storage: S, interpreter_params: InterpreterParams) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; MEM_SIZE]
@@ -48,17 +44,10 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            gas_costs,
             profiler: Profiler::default(),
-            params,
+            interpreter_params,
             panic_context: PanicContext::None,
         }
-    }
-
-    /// Set the consensus parameters for the interpreter
-    pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
-        self.params = params;
-        self
     }
 
     /// Sets a profiler for the VM
@@ -89,7 +78,7 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default(), Default::default(), Default::default())
+        Self::with_storage(Default::default(), InterpreterParams::default())
     }
 }
 

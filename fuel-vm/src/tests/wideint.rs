@@ -825,13 +825,15 @@ fn divide_ok_u128(
 
     let receipts = run_script(ops);
 
-    if let Receipt::LogData { data, .. } = receipts.first().unwrap() {
+    let recp = receipts.first().unwrap();
+
+    if let &Receipt::LogData { data, .. } = &recp {
         let data = data.as_ref().unwrap();
         let bytes: [u8; 16] = data.clone().try_into().unwrap();
         let result = u128::from_be_bytes(bytes);
         assert_eq!(result, a / b);
     } else {
-        panic!("Expected logd receipt");
+        panic!("Expected logd receipt, found {:?}", recp);
     }
 }
 

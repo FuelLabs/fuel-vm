@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+- [#535](https://github.com/FuelLabs/fuel-vm/pull/535): Add better test coverage for TR and TRO
+
 ### Changed
 
 - [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.

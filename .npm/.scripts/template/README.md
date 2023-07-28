@@ -8,7 +8,7 @@ WASM version of `{{NAME_DASHED}}` Rust crate:
 
 # Getting Started
 
-Be sure to `await` the the WASM async initialization:
+Be sure to `await` the WASM async initialization:
 
 ```ts
 import * as {{NAME_UNDERSCORED}} from '@fuels/vm-{{PKG_NAME}}'

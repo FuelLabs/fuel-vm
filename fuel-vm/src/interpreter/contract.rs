@@ -304,9 +304,6 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         };
 
         if let Some(source_contract) = internal_context {
-            dbg!(&source_contract);
-            dbg!(&asset_id);
-            dbg!(&amount);
             // debit funding source (source contract balance)
             balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
@@ -316,7 +313,6 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 
         // credit variable output
         let variable = Output::variable(to, amount, asset_id);
-        dbg!(&variable);
 
         set_variable_output(self.tx, self.memory, self.tx_offset, out_idx, variable)?;
 

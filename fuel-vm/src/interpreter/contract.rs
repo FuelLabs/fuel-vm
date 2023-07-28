@@ -201,21 +201,27 @@ struct TransferCtx<'vm, S, Tx> {
 }
 
 impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+    /// In Fuel specs:
+    /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
+    /// $rA -> recipient_contract_id_offset
+    /// $rB -> transfer_amount
+    /// $rC -> asset_id_offset
     pub(crate) fn transfer(
         self,
         panic_context: &mut PanicContext,
-        a: Word,
-        b: Word,
-        c: Word,
+        recipient_contract_id_offset: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let amount = b;
-        let destination = get_contract_id_from_memory(a, self.memory)?;
-        let asset_id = get_asset_id_from_memory(c, self.memory)?;
+        let amount = transfer_amount;
+        let destination =
+            get_contract_id_from_memory(recipient_contract_id_offset, self.memory)?;
+        let asset_id = get_asset_id_from_memory(asset_id_offset, self.memory)?;
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;

@@ -213,25 +213,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let cx = c
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
         let amount = b;
-        let destination = ContractId::try_from(&self.memory[a as usize..ax as usize])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[c as usize..cx as usize])
-            .expect("Unreachable! Checked memory range");
+        let destination = get_contract_id_from_memory(a, self.memory)?;
+        let asset_id = get_asset_id_from_memory(c, self.memory)?;
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;
@@ -282,38 +266,28 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         inc_pc(self.pc)
     }
 
+    /// In Fuel specs:
+    /// Transfer $rC coins with asset ID at $rD to address at $rA, with output $rB.
+    /// $rA -> recipient_offset
+    /// $rB -> output_index
+    /// $rC -> transfer_amount
+    /// $rD -> asset_id_offset
     pub(crate) fn transfer_output(
         self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
+        recipient_offset: Word,
+        output_index: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let dx = d
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
-        let out_idx = b as usize;
-        let to = Address::try_from(&self.memory[a as usize..ax as usize])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[d as usize..dx as usize])
-            .expect("Unreachable! Checked memory range");
-        let amount = c;
+        let out_idx = output_index as usize;
+        let to = get_address_from_memory(recipient_offset, self.memory)?;
+        let asset_id = get_asset_id_from_memory(asset_id_offset, self.memory)?;
+        let amount = transfer_amount;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())
@@ -330,6 +304,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         };
 
         if let Some(source_contract) = internal_context {
+            dbg!(&source_contract);
+            dbg!(&asset_id);
+            dbg!(&amount);
             // debit funding source (source contract balance)
             balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
@@ -339,6 +316,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 
         // credit variable output
         let variable = Output::variable(to, amount, asset_id);
+        dbg!(&variable);
 
         set_variable_output(self.tx, self.memory, self.tx_offset, out_idx, variable)?;
 
@@ -363,6 +341,63 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 
         inc_pc(self.pc)
     }
+}
+
+fn get_contract_id_from_memory(
+    offset: Word,
+    memory: &[u8; MEM_SIZE],
+) -> Result<ContractId, RuntimeError> {
+    let offset_x = offset
+        .checked_add(ContractId::LEN as Word)
+        .ok_or(PanicReason::ArithmeticOverflow)?;
+
+    // if above usize::MAX then it cannot be safely cast to usize,
+    // check the tighter bound between VM_MAX_RAM and usize::MAX
+    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
+        return Err(PanicReason::MemoryOverflow.into())
+    }
+    let contract_id = ContractId::try_from(&memory[offset as usize..offset_x as usize])
+        .expect("Unreachable! Checked memory range");
+
+    Ok(contract_id)
+}
+
+fn get_asset_id_from_memory(
+    offset: Word,
+    memory: &[u8; MEM_SIZE],
+) -> Result<AssetId, RuntimeError> {
+    let offset_x = offset
+        .checked_add(AssetId::LEN as Word)
+        .ok_or(PanicReason::ArithmeticOverflow)?;
+
+    // if above usize::MAX then it cannot be safely cast to usize,
+    // check the tighter bound between VM_MAX_RAM and usize::MAX
+    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
+        return Err(PanicReason::MemoryOverflow.into())
+    }
+    let asset_id = AssetId::try_from(&memory[offset as usize..offset_x as usize])
+        .expect("Unreachable! Checked memory range");
+
+    Ok(asset_id)
+}
+
+fn get_address_from_memory(
+    offset: Word,
+    memory: &[u8; MEM_SIZE],
+) -> Result<Address, RuntimeError> {
+    let offset_x = offset
+        .checked_add(Address::LEN as Word)
+        .ok_or(PanicReason::ArithmeticOverflow)?;
+
+    // if above usize::MAX then it cannot be safely cast to usize,
+    // check the tighter bound between VM_MAX_RAM and usize::MAX
+    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
+        return Err(PanicReason::MemoryOverflow.into())
+    }
+    let address = Address::try_from(&memory[offset as usize..offset_x as usize])
+        .expect("Unreachable! Checked memory range");
+
+    Ok(address)
 }
 
 pub(crate) fn contract_size<S>(

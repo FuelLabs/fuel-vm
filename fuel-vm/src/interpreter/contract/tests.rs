@@ -53,11 +53,16 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 }
 
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
-fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
+fn test_transfer(
+    external: bool,
+    contract_id_offset: Word,
+    transfer_amount: Word,
+    asset_id_offset: Word,
+) -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[a as usize..(a as usize + ContractId::LEN)]
+    memory[contract_id_offset as usize..(contract_id_offset as usize + ContractId::LEN)]
         .copy_from_slice(&[3u8; ContractId::LEN][..]);
-    memory[c as usize..(c as usize + AssetId::LEN)]
+    memory[asset_id_offset as usize..(asset_id_offset as usize + AssetId::LEN)]
         .copy_from_slice(&[2u8; AssetId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
@@ -106,7 +111,12 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
         is: Reg::new(&is),
     };
 
-    input.transfer(&mut panic_context, a, b, c)?;
+    input.transfer(
+        &mut panic_context,
+        contract_id_offset,
+        transfer_amount,
+        asset_id_offset,
+    )?;
 
     assert_eq!(pc, 8);
     let amount = storage
@@ -114,31 +124,57 @@ fn test_transfer(external: bool, a: Word, b: Word, c: Word) -> Result<(), Runtim
         .unwrap()
         .unwrap();
     assert_eq!(balances.balance(&asset_id).unwrap(), 0);
-    assert_eq!(amount, 60 + b);
+    assert_eq!(amount, 60 + transfer_amount);
 
     Ok(())
 }
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
+#[test_case(false, 0, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
 fn test_transfer_output(
     external: bool,
-    a: Word,
-    b: Word,
-    c: Word,
-    d: Word,
+    recipient_offset: Word,
+    output_index: Word,
+    transfer_amount: Word,
+    asset_id_offset: Word,
 ) -> Result<(), RuntimeError> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[a as usize..(a as usize + Address::LEN)]
-        .copy_from_slice(&[3u8; Address::LEN][..]);
-    memory[d as usize..(d as usize + AssetId::LEN)]
-        .copy_from_slice(&[2u8; AssetId::LEN][..]);
-    let contract_id = ContractId::from([3u8; 32]);
-    let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    storage
-        .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, 60)
-        .unwrap();
+    // Given
+
+    const ASSET_ID: [u8; AssetId::LEN] = [2u8; AssetId::LEN];
+    const CONTRACT_ID: [u8; ContractId::LEN] = [3u8; ContractId::LEN];
+    const RECIPIENT_ADDRESS: [u8; Address::LEN] = [4u8; Address::LEN];
+
     let mut pc = 4;
+
+    // Arbitrary value
+    let fp = 2048;
+    let is = 0;
+
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+
+    memory[recipient_offset as usize..(recipient_offset as usize + Address::LEN)]
+        .copy_from_slice(&RECIPIENT_ADDRESS[..]);
+    memory[asset_id_offset as usize..(asset_id_offset as usize + AssetId::LEN)]
+        .copy_from_slice(&ASSET_ID[..]);
+    memory[fp as usize..(fp as usize + ContractId::LEN)]
+        .copy_from_slice(&CONTRACT_ID[..]);
+
+    let contract_id = ContractId::from(CONTRACT_ID);
+    let asset_id = AssetId::from(ASSET_ID);
+    let recipient = Address::from(RECIPIENT_ADDRESS);
+
+    dbg!(contract_id, asset_id);
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+
+    let initial_contract_balance = 60;
+
+    storage
+        .merkle_contract_asset_id_balance_insert(
+            &contract_id,
+            &asset_id,
+            initial_contract_balance,
+        )
+        .unwrap();
 
     let context = if external {
         Context::Script {
@@ -150,8 +186,10 @@ fn test_transfer_output(
         }
     };
 
+    let balance_of_start = transfer_amount;
+
     let mut balances =
-        RuntimeBalances::try_from_iter([(AssetId::from([2u8; 32]), 50)]).unwrap();
+        RuntimeBalances::try_from_iter([(asset_id, balance_of_start)]).unwrap();
     let mut receipts = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
@@ -161,16 +199,17 @@ fn test_transfer_output(
         Default::default(),
         contract_id,
     )];
+
+    dbg!(&recipient);
     *tx.outputs_mut() = vec![Output::variable(
-        Default::default(),
+        recipient,
         Default::default(),
         Default::default(),
     )];
 
-    let fp = 0;
-    let is = 0;
+    let old_memory = memory.clone();
 
-    let input = TransferCtx {
+    let transfer_ctx = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
@@ -183,15 +222,47 @@ fn test_transfer_output(
         is: Reg::new(&is),
     };
 
-    input.transfer_output(a, b, c, d)?;
+    // When
 
-    assert_eq!(pc, 8);
-    let amount = storage
+    transfer_ctx.transfer_output(
+        recipient_offset,
+        output_index,
+        transfer_amount,
+        asset_id_offset,
+    )?;
+
+    let mem_len = old_memory.len();
+
+    for i in 0..mem_len {
+        if old_memory[i] != memory[i] {
+            println!("{}: {} -> {}", i, old_memory[i], memory[i]);
+        }
+    }
+
+    // Then
+
+    let final_contract_balance = storage
         .merkle_contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
-    assert_eq!(balances.balance(&asset_id).unwrap(), 0);
-    assert_eq!(amount, 60 + b);
+
+    dbg!(&final_contract_balance);
+
+    assert_eq!(pc, 8);
+    if external {
+        // In an external context, decrease MEM[balanceOfStart(MEM[$rD, 32]), 8] by $rC.
+        assert_eq!(
+            balances.balance(&asset_id).unwrap(),
+            balance_of_start - transfer_amount
+        );
+        assert_eq!(final_contract_balance, initial_contract_balance);
+    } else {
+        assert_eq!(balances.balance(&asset_id).unwrap(), balance_of_start);
+        assert_eq!(
+            final_contract_balance,
+            initial_contract_balance - transfer_amount
+        );
+    }
 
     Ok(())
 }

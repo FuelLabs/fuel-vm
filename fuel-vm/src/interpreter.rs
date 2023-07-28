@@ -369,9 +369,12 @@ pub trait ExecutableTransaction:
         // panic reason
         self.outputs_mut()
             .get_mut(idx)
-            .and_then(|o| match o {
-                Output::Variable { amount, .. } if amount == &0 => Some(o),
-                _ => None,
+            .and_then(|o| {
+                dbg!(&o);
+                match o {
+                    Output::Variable { amount, .. } if amount == &0 => Some(o),
+                    _ => None,
+                }
             })
             .map(|o| mem::replace(o, output))
             .map(|_| ())

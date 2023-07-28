@@ -90,7 +90,8 @@ fn absolute_output_offset<Tx: Outputs>(
     tx_offset: usize,
     idx: usize,
 ) -> Option<usize> {
-    tx.outputs_offset_at(idx).map(|offset| tx_offset + offset)
+    let abs_offset = tx.outputs_offset_at(idx).map(|offset| tx_offset + offset);
+    dbg!(abs_offset)
 }
 
 pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
@@ -299,6 +300,8 @@ pub(crate) fn internal_contract<'a>(
     memory: &'a [u8; MEM_SIZE],
 ) -> Result<&'a ContractId, RuntimeError> {
     let range = internal_contract_bounds(context, register)?;
+
+    dbg!(range.start, range.end);
 
     // Safety: Memory bounds logically verified by the interpreter
     let contract = ContractId::from_bytes_ref(range.read(memory));

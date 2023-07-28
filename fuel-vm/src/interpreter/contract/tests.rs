@@ -56,6 +56,8 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 #[test_case(false, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
+#[test_case(true, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from external balance insufficient funds")]
+#[test_case(false, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from internal balance insufficient funds")]
 fn test_transfer(
     external: bool,
     contract_id_offset: Word,
@@ -121,8 +123,6 @@ fn test_transfer(
         recipient_contract_id,
     )];
 
-    let old_memory = memory.clone();
-
     let transfer_ctx = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
@@ -144,14 +144,6 @@ fn test_transfer(
         transfer_amount,
         asset_id_offset,
     )?;
-
-    let mem_len = old_memory.len();
-
-    for i in 0..mem_len {
-        if old_memory[i] != memory[i] {
-            println!("{}: {} -> {}", i, old_memory[i], memory[i]);
-        }
-    }
 
     // Then
 
@@ -192,6 +184,8 @@ fn test_transfer(
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 #[test_case(false, 0, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
+#[test_case(false, 0, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from external balance insufficient funds")]
+#[test_case(false, 0, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from internal balance insufficient funds")]
 fn test_transfer_output(
     external: bool,
     recipient_offset: Word,

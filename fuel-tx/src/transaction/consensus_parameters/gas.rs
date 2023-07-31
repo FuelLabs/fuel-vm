@@ -214,12 +214,10 @@ pub struct GasCostsValues {
     pub jnzb: Word,
     pub jnef: Word,
     pub jneb: Word,
-    pub k256: Word,
     pub lb: Word,
     pub log: Word,
     pub lt: Word,
     pub lw: Word,
-    pub mcpi: Word,
     pub mint: Word,
     pub mlog: Word,
     #[cfg_attr(feature = "serde", serde(rename = "mod"))]
@@ -240,9 +238,7 @@ pub struct GasCostsValues {
     pub ret: Word,
     #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
     pub rvrt: Word,
-    pub s256: Word,
     pub sb: Word,
-    pub scwq: Word,
     pub sll: Word,
     pub slli: Word,
     pub srl: Word,
@@ -252,7 +248,6 @@ pub struct GasCostsValues {
     pub subi: Word,
     pub sw: Word,
     pub sww: Word,
-    pub swwq: Word,
     pub time: Word,
     pub tr: Word,
     pub tro: Word,
@@ -277,16 +272,21 @@ pub struct GasCostsValues {
     pub call: DependentCost,
     pub ccp: DependentCost,
     pub csiz: DependentCost,
+    pub k256: DependentCost,
+    pub s256: DependentCost,
     pub ldc: DependentCost,
     pub logd: DependentCost,
     pub mcl: DependentCost,
     pub mcli: DependentCost,
     pub mcp: DependentCost,
+    pub mcpi: DependentCost,
     pub meq: DependentCost,
     #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
     pub retd: DependentCost,
     pub smo: DependentCost,
     pub srwq: DependentCost,
+    pub scwq: DependentCost,
+    pub swwq: DependentCost,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -380,7 +380,6 @@ impl GasCostsValues {
             rvrt: 0,
             s256: 0,
             sb: 0,
-            scwq: 0,
             sll: 0,
             slli: 0,
             srl: 0,
@@ -390,7 +389,6 @@ impl GasCostsValues {
             subi: 0,
             sw: 0,
             sww: 0,
-            swwq: 0,
             time: 0,
             tr: 0,
             tro: 0,
@@ -422,6 +420,8 @@ impl GasCostsValues {
             retd: DependentCost::free(),
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
+            scwq: DependentCost::free(),
+            swwq: DependentCost::free(),
         }
     }
 
@@ -488,7 +488,6 @@ impl GasCostsValues {
             rvrt: 1,
             s256: 1,
             sb: 1,
-            scwq: 1,
             sll: 1,
             slli: 1,
             srl: 1,
@@ -498,7 +497,6 @@ impl GasCostsValues {
             subi: 1,
             sw: 1,
             sww: 1,
-            swwq: 1,
             time: 1,
             tr: 1,
             tro: 1,
@@ -530,6 +528,8 @@ impl GasCostsValues {
             retd: DependentCost::unit(),
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
+            scwq: DependentCost::unit(),
+            swwq: DependentCost::unit(),
         }
     }
 }

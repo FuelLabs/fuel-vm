@@ -45,13 +45,8 @@ pub const fn default_gas_costs() -> GasCostsValues {
         log: 43,
         lt: 1,
         lw: 1,
-        mcpi: 3,
         mint: 127,
         mlog: 1,
-        srwq: DependentCost {
-            base: 44,
-            dep_per_unit: 5,
-        },
         modi: 1,
         mod_op: 1,
         movi: 1,
@@ -67,7 +62,6 @@ pub const fn default_gas_costs() -> GasCostsValues {
         ret: 63,
         s256: 4,
         sb: 1,
-        scwq: 23,
         sll: 1,
         slli: 1,
         srl: 1,
@@ -77,7 +71,6 @@ pub const fn default_gas_costs() -> GasCostsValues {
         subi: 1,
         sw: 1,
         sww: 67,
-        swwq: 68,
         time: 1,
         tr: 255,
         tro: 196,
@@ -129,6 +122,10 @@ pub const fn default_gas_costs() -> GasCostsValues {
             base: 1,
             dep_per_unit: 1301,
         },
+        mcpi: DependentCost {
+            base: 3,
+            dep_per_unit: 1301,
+        },
         meq: DependentCost {
             base: 1,
             dep_per_unit: 1747,
@@ -141,6 +138,18 @@ pub const fn default_gas_costs() -> GasCostsValues {
         retd: DependentCost {
             base: 71,
             dep_per_unit: 18,
+        },
+        srwq: DependentCost {
+            base: 44,
+            dep_per_unit: 5,
+        },
+        scwq: DependentCost {
+            base: 23,
+            dep_per_unit: 5,
+        },
+        swwq: DependentCost {
+            base: 68,
+            dep_per_unit: 5,
         },
     }
 }

@@ -764,8 +764,8 @@ where
             }
 
             Instruction::SCWQ(scwq) => {
-                self.gas_charge(self.gas_costs().scwq)?;
                 let (a, b, c) = scwq.unpack();
+                self.dependent_gas_charge(self.gas_costs().scwq, r!(c))?;
                 self.state_clear_qword(r!(a), b.into(), r!(c))?;
             }
 
@@ -788,8 +788,8 @@ where
             }
 
             Instruction::SWWQ(swwq) => {
-                self.gas_charge(self.gas_costs().swwq)?;
                 let (a, b, c, d) = swwq.unpack();
+                self.dependent_gas_charge(self.gas_costs().swwq, r!(d))?;
                 self.state_write_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 

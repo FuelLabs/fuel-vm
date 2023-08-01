@@ -56,6 +56,8 @@ fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
 
 #[test_case(true, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 #[test_case(false, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
+#[test_case(true, 32, 50, 0 => Ok(()); "Can transfer from external balance with flipped offsets")]
+#[test_case(false, 32, 50, 0 => Ok(()); "Can transfer from internal balance with flipped offsets")]
 #[test_case(true, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from external balance insufficient funds")]
 #[test_case(false, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from internal balance insufficient funds")]
 fn test_transfer(
@@ -181,6 +183,8 @@ fn test_transfer(
 
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 #[test_case(false, 0, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
+#[test_case(true, 32, 0, 50, 0 => Ok(()); "Can transfer from external balance with flipped offsets")]
+#[test_case(false,32, 0, 50, 0 => Ok(()); "Can transfer from internal balance with flipped offsets")]
 #[test_case(false, 0, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from external balance insufficient funds")]
 #[test_case(false, 0, 0, 70, 32 => Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance)); "Cannot transfer from internal balance insufficient funds")]
 fn test_transfer_output(

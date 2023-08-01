@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- [#529](https://github.com/FuelLabs/fuel-vm/pull/529): Fix WASM initialization for NPM wrapper packages.
+- [#529](https://github.com/FuelLabs/fuel-vm/pull/529) [#534](https://github.com/FuelLabs/fuel-vm/pull/534): Enforcing async WASM initialization for all NPM wrapper packages.
 
 #### Breaking
 

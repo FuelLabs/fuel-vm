@@ -66,9 +66,9 @@ fn test_transfer(
 ) -> Result<(), RuntimeError> {
     // Given
 
-    const ASSET_ID: [u8; AssetId::LEN] = [2u8; AssetId::LEN];
-    const RECIPIENT_CONTRACT_ID: [u8; ContractId::LEN] = [3u8; ContractId::LEN];
-    const SOURCE_CONTRACT_ID: [u8; Address::LEN] = [5u8; Address::LEN];
+    const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
+    const RECIPIENT_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
+    const SOURCE_CONTRACT_ID: ContractId = ContractId::new([5u8; ContractId::LEN]);
 
     let mut pc = 4;
 
@@ -78,23 +78,20 @@ fn test_transfer(
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[contract_id_offset as usize..(contract_id_offset as usize + ContractId::LEN)]
-        .copy_from_slice(&RECIPIENT_CONTRACT_ID[..]);
+        .copy_from_slice(RECIPIENT_CONTRACT_ID.as_ref());
     memory[asset_id_offset as usize..(asset_id_offset as usize + AssetId::LEN)]
-        .copy_from_slice(&ASSET_ID[..]);
+        .copy_from_slice(ASSET_ID.as_ref());
     memory[fp as usize..(fp as usize + ContractId::LEN)]
-        .copy_from_slice(&SOURCE_CONTRACT_ID[..]);
+        .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
-    let recipient_contract_id = ContractId::from(RECIPIENT_CONTRACT_ID);
-    let source_contract_id = ContractId::from(SOURCE_CONTRACT_ID);
-    let asset_id = AssetId::from(ASSET_ID);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
 
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
     storage
         .merkle_contract_asset_id_balance_insert(
-            &source_contract_id,
-            &asset_id,
+            &SOURCE_CONTRACT_ID,
+            &ASSET_ID,
             initial_source_contract_balance,
         )
         .unwrap();
@@ -109,8 +106,8 @@ fn test_transfer(
         }
     };
 
-    let mut balances = RuntimeBalances::try_from_iter([(asset_id, 50)]).unwrap();
-    let start_balance = balances.balance(&asset_id).unwrap();
+    let mut balances = RuntimeBalances::try_from_iter([(ASSET_ID, 50)]).unwrap();
+    let start_balance = balances.balance(&ASSET_ID).unwrap();
 
     let mut receipts = Default::default();
     let mut panic_context = PanicContext::None;
@@ -120,7 +117,7 @@ fn test_transfer(
         Default::default(),
         Default::default(),
         Default::default(),
-        recipient_contract_id,
+        RECIPIENT_CONTRACT_ID,
     )];
 
     let transfer_ctx = TransferCtx {
@@ -148,12 +145,12 @@ fn test_transfer(
     // Then
 
     let final_recipient_contract_balance = storage
-        .merkle_contract_asset_id_balance(&recipient_contract_id, &asset_id)
+        .merkle_contract_asset_id_balance(&RECIPIENT_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
     let final_source_contract_balance = storage
-        .merkle_contract_asset_id_balance(&source_contract_id, &asset_id)
+        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -164,7 +161,7 @@ fn test_transfer(
     );
     if external {
         assert_eq!(
-            balances.balance(&asset_id).unwrap(),
+            balances.balance(&ASSET_ID).unwrap(),
             start_balance - transfer_amount
         );
         assert_eq!(
@@ -172,7 +169,7 @@ fn test_transfer(
             initial_source_contract_balance
         );
     } else {
-        assert_eq!(balances.balance(&asset_id).unwrap(), start_balance);
+        assert_eq!(balances.balance(&ASSET_ID).unwrap(), start_balance);
         assert_eq!(
             final_source_contract_balance,
             initial_source_contract_balance - transfer_amount
@@ -195,9 +192,9 @@ fn test_transfer_output(
 ) -> Result<(), RuntimeError> {
     // Given
 
-    const ASSET_ID: [u8; AssetId::LEN] = [2u8; AssetId::LEN];
-    const SOURCE_CONTRACT_ID: [u8; ContractId::LEN] = [3u8; ContractId::LEN];
-    const RECIPIENT_ADDRESS: [u8; Address::LEN] = [4u8; Address::LEN];
+    const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
+    const SOURCE_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
+    const RECIPIENT_ADDRESS: Address = Address::new([4u8; Address::LEN]);
 
     let mut pc = 4;
 
@@ -208,15 +205,11 @@ fn test_transfer_output(
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
 
     memory[recipient_offset as usize..(recipient_offset as usize + Address::LEN)]
-        .copy_from_slice(&RECIPIENT_ADDRESS[..]);
+        .copy_from_slice(RECIPIENT_ADDRESS.as_ref());
     memory[asset_id_offset as usize..(asset_id_offset as usize + AssetId::LEN)]
-        .copy_from_slice(&ASSET_ID[..]);
+        .copy_from_slice(ASSET_ID.as_ref());
     memory[fp as usize..(fp as usize + ContractId::LEN)]
-        .copy_from_slice(&SOURCE_CONTRACT_ID[..]);
-
-    let contract_id = ContractId::from(SOURCE_CONTRACT_ID);
-    let asset_id = AssetId::from(ASSET_ID);
-    let recipient = Address::from(RECIPIENT_ADDRESS);
+        .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
 
@@ -224,8 +217,8 @@ fn test_transfer_output(
 
     storage
         .merkle_contract_asset_id_balance_insert(
-            &contract_id,
-            &asset_id,
+            &SOURCE_CONTRACT_ID,
+            &ASSET_ID,
             initial_contract_balance,
         )
         .unwrap();
@@ -243,7 +236,7 @@ fn test_transfer_output(
     let balance_of_start = transfer_amount;
 
     let mut balances =
-        RuntimeBalances::try_from_iter([(asset_id, balance_of_start)]).unwrap();
+        RuntimeBalances::try_from_iter([(ASSET_ID, balance_of_start)]).unwrap();
     let mut receipts = Default::default();
     let mut tx = Script::default();
     *tx.inputs_mut() = vec![Input::contract(
@@ -251,11 +244,11 @@ fn test_transfer_output(
         Default::default(),
         Default::default(),
         Default::default(),
-        contract_id,
+        SOURCE_CONTRACT_ID,
     )];
 
     *tx.outputs_mut() = vec![Output::variable(
-        recipient,
+        RECIPIENT_ADDRESS,
         Default::default(),
         Default::default(),
     )];
@@ -290,7 +283,7 @@ fn test_transfer_output(
     // Then
 
     let final_contract_balance = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -304,12 +297,12 @@ fn test_transfer_output(
     if external {
         // In an external context, decrease MEM[balanceOfStart(MEM[$rD, 32]), 8] by $rC.
         assert_eq!(
-            balances.balance(&asset_id).unwrap(),
+            balances.balance(&ASSET_ID).unwrap(),
             balance_of_start - transfer_amount
         );
         assert_eq!(final_contract_balance, initial_contract_balance);
     } else {
-        assert_eq!(balances.balance(&asset_id).unwrap(), balance_of_start);
+        assert_eq!(balances.balance(&ASSET_ID).unwrap(), balance_of_start);
         assert_eq!(
             final_contract_balance,
             initial_contract_balance - transfer_amount

@@ -349,57 +349,34 @@ fn get_contract_id_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<ContractId, RuntimeError> {
-    let offset_x = offset
-        .checked_add(ContractId::LEN as Word)
-        .ok_or(PanicReason::ArithmeticOverflow)?;
-
-    // if above usize::MAX then it cannot be safely cast to usize,
-    // check the tighter bound between VM_MAX_RAM and usize::MAX
-    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-    let contract_id = ContractId::try_from(&memory[offset as usize..offset_x as usize])
-        .expect("Unreachable! Checked memory range");
-
-    Ok(contract_id)
+    get_from_memory::<{ ContractId::LEN }, ContractId>(offset, memory)
 }
 
 fn get_asset_id_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<AssetId, RuntimeError> {
-    let offset_x = offset
-        .checked_add(AssetId::LEN as Word)
-        .ok_or(PanicReason::ArithmeticOverflow)?;
-
-    // if above usize::MAX then it cannot be safely cast to usize,
-    // check the tighter bound between VM_MAX_RAM and usize::MAX
-    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-    let asset_id = AssetId::try_from(&memory[offset as usize..offset_x as usize])
-        .expect("Unreachable! Checked memory range");
-
-    Ok(asset_id)
+    get_from_memory::<{ AssetId::LEN }, AssetId>(offset, memory)
 }
 
 fn get_address_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<Address, RuntimeError> {
-    let offset_x = offset
-        .checked_add(Address::LEN as Word)
-        .ok_or(PanicReason::ArithmeticOverflow)?;
+    get_from_memory::<{ Address::LEN }, Address>(offset, memory)
+}
 
-    // if above usize::MAX then it cannot be safely cast to usize,
-    // check the tighter bound between VM_MAX_RAM and usize::MAX
-    if offset_x > MIN_VM_MAX_RAM_USIZE_MAX {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-    let address = Address::try_from(&memory[offset as usize..offset_x as usize])
-        .expect("Unreachable! Checked memory range");
-
-    Ok(address)
+fn get_from_memory<const SIZE: usize, T>(
+    offset: Word,
+    memory: &[u8; MEM_SIZE],
+) -> Result<T, RuntimeError>
+where
+    T: From<[u8; SIZE]>,
+{
+    let range = CheckedMemConstLen::<SIZE>::new(offset)?;
+    let bytes = range.read(memory);
+    let value = T::from(*bytes);
+    Ok(value)
 }
 
 pub(crate) fn contract_size<S>(

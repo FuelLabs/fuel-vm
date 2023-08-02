@@ -2,6 +2,33 @@
 
 You'll find all the routines to publish selected Rust crates as NPM packages here.
 
+# Usage
+
+The external usage of WASM packages requires them to be async.
+
+Don't forget to await for the WASM initialization:
+
+```ts
+import * as asm from '@fuels/vm-asm'
+
+// alternative 1
+(async function() {
+  await asm.initWasm();
+
+  asm.movi(0x10, 0);
+
+})();
+
+// alternative 2
+import * as asm from '@fuels/vm-asm'
+
+asm.initWasm().then(() => {
+    asm.movi(0x10, 0);
+})
+
+```
+
+
 # Testing Locally
 
 To get started and test things locally, you'll need to:

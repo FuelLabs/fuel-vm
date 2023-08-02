@@ -237,7 +237,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             .check(&destination)?;
 
         if amount == 0 {
-            return Err(PanicReason::NotEnoughBalance.into())
+            return Err(PanicReason::TransferZeroCoins.into())
         }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
@@ -314,6 +314,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let asset_id = AssetId::try_from(&self.memory[d as usize..dx as usize])
             .expect("Unreachable! Checked memory range");
         let amount = c;
+
+        if amount == 0 {
+            return Err(PanicReason::TransferZeroCoins.into())
+        }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {

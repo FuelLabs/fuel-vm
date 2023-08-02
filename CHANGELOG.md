@@ -9,19 +9,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
-
+- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
 
 #### Breaking
 
 - [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
     Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
     necessary fields only.
+- [#532](https://github.com/FuelLabs/fuel-vm/pull/532): The `TRO` instruction now reverts when attempting to send zero coins to an output. Panic reason of this `TransferZeroCoins`, and `TR` was changed to use the same panic reason as well.
 
 ### Fixed
 
 - [#524](https://github.com/FuelLabs/fuel-vm/pull/524): Fix a crash in `CCP` instruction when overflowing contract bounds. Fix a bug in `CCP` where overflowing contract bounds in a different way would not actually copy the contract bytes, but just zeroes out the section. Fix a bug in `LDC` where it would revert the transaction when the contract bounds were exceeded, when it's just supposed to fill the rest of the bytes with zeroes.
 
-- [#529](https://github.com/FuelLabs/fuel-vm/pull/529): Fix WASM initialization for NPM wrapper packages.
+- [#529](https://github.com/FuelLabs/fuel-vm/pull/529) [#534](https://github.com/FuelLabs/fuel-vm/pull/534): Enforcing async WASM initialization for all NPM wrapper packages.
 
 #### Breaking
 

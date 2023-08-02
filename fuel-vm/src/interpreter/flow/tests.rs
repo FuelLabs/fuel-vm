@@ -106,7 +106,7 @@ impl Default for Output {
             frames: vec![CallFrame::new(
                 Default::default(),
                 Default::default(),
-                make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 0)]),
+                make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]),
                 10,
                 0,
                 0,
@@ -147,11 +147,11 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 21, ggas: 21 },
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 0 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 10 },
         ..Default::default()
     })); "basic call working"
 )]
@@ -163,7 +163,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 2000,
             amount_of_gas_to_forward: 30,
         },
-        reg: RegInput{hp: 1000, sp: 200, ssp: 200, fp: 0, pc: 0, is: 0, bal: 0, cgas: 1080, ggas: 1150 },
+        reg: RegInput{hp: 1000, sp: 200, ssp: 200, fp: 0, pc: 0, is: 0, bal: 0, cgas: 201, ggas: 201 },
         context: Context::Script{ block_height: Default::default() },
         input_contracts: vec![ContractId::from([1u8; 32])],
         memory: mem(&[(2000, vec![2; 32]), (2032, Call::new(ContractId::from([1u8; 32]), 4, 5).into())]),
@@ -172,12 +172,12 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         script: Some(Default::default()),
         ..Default::default()
     } => using check_output({
-        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 0), (GGAS, 100)]), 100, 4, 5);
+        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 151), (GGAS, 181)]), 100, 4, 5);
         let mut receipt = Receipt::call(ContractId::zeroed(), ContractId::from([1u8; 32]), 20, AssetId::from([2u8; 32]), 30, 4, 5, 800, 800);
         let mut script = Script::default();
         *script.receipts_root_mut() = crypto::ephemeral_merkle_root([receipt.to_bytes()].into_iter());
         Ok(Output{
-            reg: RegInput{hp: 1000, sp: 904, ssp: 904, fp: 200, pc: 800, is: 800, bal: 20, cgas: 30, ggas: 100 },
+            reg: RegInput{hp: 1000, sp: 904, ssp: 904, fp: 200, pc: 800, is: 800, bal: 20, cgas: 30, ggas: 181 },
             receipts: vec![receipt].into(),
             frames: vec![frame.clone()],
             memory: CheckMem::Check(vec![(200, frame.into()), (2000, vec![2; 32]), (2032, Call::new(ContractId::from([1u8; 32]), 4, 5).into())]),
@@ -194,7 +194,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Script{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
@@ -213,14 +213,14 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 10,
         },
-        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 180, ggas: 200 },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
         context: Context::Script{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 30 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 69 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 30)]), 10, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 19), (GGAS, 69)]), 10, 0, 0)],
         ..Default::default()
     })); "forwards gas"
 )]
@@ -232,14 +232,14 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 100,
         },
-        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 180, ggas: 200 },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
         context: Context::Script{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 30 },
-        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 30)]), 10, 0, 0)],
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 29, ggas: 69 },
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 29, 0, 0, 700, 700)].into(),
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 69)]), 10, 0, 0)],
         ..Default::default()
     })); "the receipt shows forwarded gas correctly when limited by available gas"
 )]
@@ -251,7 +251,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Call{ block_height: Default::default() },
         storage_balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
@@ -270,7 +270,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Tries to forward more coins than the contract has"
@@ -283,7 +283,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "call_params_mem_address overflow"
@@ -309,7 +309,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
             asset_id_mem_address: 0,
             amount_of_gas_to_forward: 0,
         },
-        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 170, ggas: 170 },
+        reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Call{ block_height: Default::default() },
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()

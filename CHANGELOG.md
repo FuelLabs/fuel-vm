@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Version 0.35.2]
+
+### Changed
+
+#### Breaking
+
+- [#538](https://github.com/FuelLabs/fuel-vm/pull/538/): Rollbacked the change for the gas charging formula. 
+    Actualized the gas prices for opcodes.
+
 ## [Version 0.35.1]
 
 ### Added

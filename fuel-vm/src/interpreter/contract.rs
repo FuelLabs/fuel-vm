@@ -51,6 +51,7 @@ use fuel_types::{
     ContractId,
 };
 
+use crate::interpreter::memory::read_bytes;
 use std::borrow::Cow;
 
 #[cfg(test)]
@@ -349,34 +350,24 @@ fn get_contract_id_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<ContractId, RuntimeError> {
-    get_from_memory::<{ ContractId::LEN }, ContractId>(offset, memory)
+    let contract_id = ContractId::from(read_bytes(memory, offset)?);
+    Ok(contract_id)
 }
 
 fn get_asset_id_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<AssetId, RuntimeError> {
-    get_from_memory::<{ AssetId::LEN }, AssetId>(offset, memory)
+    let asset_id = AssetId::from(read_bytes(memory, offset)?);
+    Ok(asset_id)
 }
 
 fn get_address_from_memory(
     offset: Word,
     memory: &[u8; MEM_SIZE],
 ) -> Result<Address, RuntimeError> {
-    get_from_memory::<{ Address::LEN }, Address>(offset, memory)
-}
-
-fn get_from_memory<const SIZE: usize, T>(
-    offset: Word,
-    memory: &[u8; MEM_SIZE],
-) -> Result<T, RuntimeError>
-where
-    T: From<[u8; SIZE]>,
-{
-    let range = CheckedMemConstLen::<SIZE>::new(offset)?;
-    let bytes = range.read(memory);
-    let value = T::from(*bytes);
-    Ok(value)
+    let address = Address::from(read_bytes(memory, offset)?);
+    Ok(address)
 }
 
 pub(crate) fn contract_size<S>(

@@ -317,8 +317,7 @@ impl<T> Interpreter<PredicateStorage, T> {
             _ => {}
         }
 
-        let mut vm =
-            Interpreter::with_storage(PredicateStorage::default(), params, gas_costs);
+        let mut vm = Interpreter::with_storage(PredicateStorage {}, params, gas_costs);
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {

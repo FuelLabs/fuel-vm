@@ -5,8 +5,6 @@ use fuel_types::{
     AssetId,
     Bytes32,
     ContractId,
-    MemLayout,
-    MemLocType,
     Nonce,
     Word,
 };
@@ -14,9 +12,13 @@ use fuel_types::{
 use core::mem;
 
 #[cfg(feature = "std")]
-use fuel_types::bytes::{
-    SizedBytes,
-    WORD_SIZE,
+use fuel_types::{
+    bytes::{
+        SizedBytes,
+        WORD_SIZE,
+    },
+    MemLayout,
+    MemLocType,
 };
 
 #[cfg(feature = "std")]
@@ -27,6 +29,8 @@ mod repr;
 mod sizes;
 
 use consts::*;
+
+#[cfg(feature = "std")]
 use sizes::*;
 
 pub use repr::OutputRepr;

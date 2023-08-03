@@ -66,21 +66,21 @@ struct DepGasChargeInput {
 )]
 #[test_case(
     DepGasChargeInput{
-        input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 1},
+        input: GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1},
         gas_cost: DependentCost{base: 1, dep_per_unit: 2}
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just base with gas"
 )]
 #[test_case(
     DepGasChargeInput{
-        input: GasChargeInput{cgas: 33, ggas: 33, dependent_factor: 8},
+        input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 8},
         gas_cost: DependentCost{base: 1, dep_per_unit: 4}
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "base with gas and a unit"
 )]
 #[test_case(
     DepGasChargeInput{
-        input: GasChargeInput{cgas: 30, ggas: 30, dependent_factor: 5},
+        input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 5},
         gas_cost: DependentCost{base: 0, dep_per_unit: 4}
-    } => Ok(GasChargeOutput{ cgas: 10, ggas: 10}); "base with gas and a unit and left over"
+    } => Ok(GasChargeOutput{ cgas: 2, ggas: 2}); "base with gas and a unit and left over"
 )]
 #[test_case(
     DepGasChargeInput{

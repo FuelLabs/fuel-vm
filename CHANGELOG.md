@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#539](https://github.com/FuelLabs/fuel-vm/pull/539/): Rollbacked the change for the gas charging formula. 
     Actualized the gas prices for opcodes.
 
+## [Version 0.35.3]
+
+### Changed
+
+- [#542](https://github.com/FuelLabs/fuel-vm/pull/542/): Make the `fuel-tx` WASM compatible with `serde` feature enabled.
+
 ## [Version 0.35.2]
 
 ### Changed

@@ -41,7 +41,7 @@ pub fn checked_sub_usize(a: usize, b: usize) -> Result<usize, PanicReason> {
 #[inline(always)]
 pub fn add_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
     #[cfg(feature = "optimized")]
-    #[allow(clippy::integer_arithmetic)]
+    #[allow(clippy::arithmetic_side_effects)]
     {
         Ok(a + b)
     }
@@ -61,7 +61,7 @@ pub fn add_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
 /// This should be used in contexts that are checked and guaranteed by the protocol to
 /// never overflow, but then they might due to some bug in the code.
 #[inline(always)]
-#[allow(clippy::integer_arithmetic)]
+#[allow(clippy::arithmetic_side_effects)]
 pub fn sub_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
     #[cfg(feature = "optimized")]
     {
@@ -78,7 +78,7 @@ pub fn sub_word(a: Word, b: Word) -> Result<Word, RuntimeError> {
 /// Add two numbers. Should be used only in compile-time evaluations so the code won't
 /// compile in case of unexpected overflow.
 #[inline(always)]
-#[allow(clippy::integer_arithmetic)]
+#[allow(clippy::arithmetic_side_effects)]
 pub const fn add_usize(a: usize, b: usize) -> usize {
     a + b
 }

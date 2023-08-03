@@ -33,8 +33,10 @@ use fuel_types::{
     Word,
 };
 
-use alloc::vec::Vec;
-use std::collections::HashMap;
+use alloc::{
+    collections::BTreeMap,
+    vec::Vec,
+};
 
 pub trait BuildableAloc
 where
@@ -119,7 +121,7 @@ pub struct TransactionBuilder<Tx> {
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
     // Maps signing keys -> witness indexes
-    sign_keys: HashMap<SecretKey, u8>,
+    sign_keys: BTreeMap<SecretKey, u8>,
 }
 
 impl TransactionBuilder<Script> {
@@ -192,7 +194,7 @@ impl<Tx> TransactionBuilder<Tx> {
     fn with_tx(tx: Tx) -> Self {
         let should_prepare_script = false;
         let should_prepare_predicate = false;
-        let sign_keys = HashMap::new();
+        let sign_keys = BTreeMap::new();
 
         Self {
             tx,

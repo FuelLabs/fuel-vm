@@ -7,14 +7,16 @@ use crate::{
 use core::hash::Hash;
 
 use fuel_types::{
-    Address,
     AssetId,
     BlockHeight,
-    ChainId,
 };
 
 #[cfg(feature = "std")]
-use fuel_types::Bytes32;
+use fuel_types::{
+    Address,
+    Bytes32,
+    ChainId,
+};
 
 use itertools::Itertools;
 #[cfg(feature = "std")]

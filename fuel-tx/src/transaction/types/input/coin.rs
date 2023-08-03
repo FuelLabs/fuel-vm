@@ -7,20 +7,19 @@ use crate::{
     TxPointer,
     UtxoId,
 };
+use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
     Address,
     AssetId,
     BlockHeight,
     MemLayout,
-    MemLocType,
     Word,
 };
+
+#[cfg(feature = "std")]
+use fuel_types::MemLocType;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -136,7 +135,7 @@ where
     }
 }
 
-impl<Specification> SizedBytes for Coin<Specification>
+impl<Specification> bytes::SizedBytes for Coin<Specification>
 where
     Specification: CoinSpecification,
 {
@@ -164,6 +163,7 @@ where
     Specification: CoinSpecification,
 {
     fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::SizedBytes;
         let serialized_size = self.serialized_size();
         if full_buf.len() < serialized_size {
             return Err(bytes::eof())
@@ -274,6 +274,7 @@ where
     Specification: CoinSpecification,
 {
     fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::Deserializable;
         type S = CoinSizes;
         const LEN: usize = CoinSizes::LEN;
         let buf: &[_; LEN] = full_buf

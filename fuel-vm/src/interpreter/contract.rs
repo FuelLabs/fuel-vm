@@ -221,8 +221,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     {
         let amount = transfer_amount;
         let destination =
-            get_contract_id_from_memory(recipient_contract_id_offset, self.memory)?;
-        let asset_id = get_asset_id_from_memory(asset_id_offset, self.memory)?;
+            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;
@@ -292,8 +292,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let out_idx = output_index as usize;
-        let to = get_address_from_memory(recipient_offset, self.memory)?;
-        let asset_id = get_asset_id_from_memory(asset_id_offset, self.memory)?;
+        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
         let amount = transfer_amount;
 
         if amount == 0 {
@@ -344,30 +344,6 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 
         inc_pc(self.pc)
     }
-}
-
-fn get_contract_id_from_memory(
-    offset: Word,
-    memory: &[u8; MEM_SIZE],
-) -> Result<ContractId, RuntimeError> {
-    let contract_id = ContractId::from(read_bytes(memory, offset)?);
-    Ok(contract_id)
-}
-
-fn get_asset_id_from_memory(
-    offset: Word,
-    memory: &[u8; MEM_SIZE],
-) -> Result<AssetId, RuntimeError> {
-    let asset_id = AssetId::from(read_bytes(memory, offset)?);
-    Ok(asset_id)
-}
-
-fn get_address_from_memory(
-    offset: Word,
-    memory: &[u8; MEM_SIZE],
-) -> Result<Address, RuntimeError> {
-    let address = Address::from(read_bytes(memory, offset)?);
-    Ok(address)
 }
 
 pub(crate) fn contract_size<S>(

@@ -181,6 +181,98 @@ fn test_transfer(
     Ok(())
 }
 
+#[test_case(true, MEM_SIZE as u64 - 1, 32 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "External transfer errors if contract_id lookup overflows")]
+#[test_case(false, MEM_SIZE as u64 - 1, 32 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Internal transfer errors if contract_id lookup overflows")]
+#[test_case(true, 0, MEM_SIZE as u64 - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "External transfer errors if asset_id lookup overflows")]
+#[test_case(false, 0, MEM_SIZE as u64 - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Internal transfer errors if asset_id lookup overflows")]
+fn test_transfer_overflow(
+    external: bool,
+    request_contract_id_offset: Word,
+    request_asset_id_offset: Word,
+) -> Result<(), RuntimeError> {
+    // Given
+    let real_contract_id_offset = 0;
+    let transfer_amount = 50;
+    let asset_id_offset = 32;
+
+    const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
+    const RECIPIENT_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
+    const SOURCE_CONTRACT_ID: ContractId = ContractId::new([5u8; ContractId::LEN]);
+
+    let mut pc = 4;
+
+    // Arbitrary value
+    let fp = 2048;
+    let is = 0;
+
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    memory[real_contract_id_offset as usize
+        ..(real_contract_id_offset as usize + ContractId::LEN)]
+        .copy_from_slice(RECIPIENT_CONTRACT_ID.as_ref());
+    memory[asset_id_offset as usize..(asset_id_offset as usize + AssetId::LEN)]
+        .copy_from_slice(ASSET_ID.as_ref());
+    memory[fp as usize..(fp as usize + ContractId::LEN)]
+        .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
+
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+
+    let initial_source_contract_balance = 60;
+    storage
+        .merkle_contract_asset_id_balance_insert(
+            &SOURCE_CONTRACT_ID,
+            &ASSET_ID,
+            initial_source_contract_balance,
+        )
+        .unwrap();
+
+    let context = if external {
+        Context::Script {
+            block_height: Default::default(),
+        }
+    } else {
+        Context::Call {
+            block_height: Default::default(),
+        }
+    };
+
+    let mut balances = RuntimeBalances::try_from_iter([(ASSET_ID, 50)]).unwrap();
+
+    let mut receipts = Default::default();
+    let mut panic_context = PanicContext::None;
+    let mut tx = Script::default();
+    *tx.inputs_mut() = vec![Input::contract(
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        RECIPIENT_CONTRACT_ID,
+    )];
+
+    let transfer_ctx = TransferCtx {
+        storage: &mut storage,
+        memory: &mut memory,
+        pc: RegMut::new(&mut pc),
+        context: &context,
+        balances: &mut balances,
+        receipts: &mut receipts,
+        tx: &mut tx,
+        tx_offset: 0,
+        fp: Reg::new(&fp),
+        is: Reg::new(&is),
+    };
+
+    // When
+
+    transfer_ctx.transfer(
+        &mut panic_context,
+        request_contract_id_offset,
+        transfer_amount,
+        request_asset_id_offset,
+    )?;
+
+    Ok(())
+}
+
 #[test_case(true, 0, 0, 50, 32 => Ok(()); "Can transfer from external balance")]
 #[test_case(false, 0, 0, 50, 32 => Ok(()); "Can transfer from internal balance")]
 #[test_case(true, 32, 0, 50, 0 => Ok(()); "Can transfer from external balance with flipped offsets")]
@@ -312,6 +404,110 @@ fn test_transfer_output(
             initial_contract_balance - transfer_amount
         );
     }
+
+    Ok(())
+}
+
+#[test_case(true, MEM_SIZE as u64 - 1, 32 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "External transfer errors if contract_id lookup overflows")]
+#[test_case(false, MEM_SIZE as u64 - 1, 32 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Internal transfer errors if contract_id lookup overflows")]
+#[test_case(true, 0, MEM_SIZE as u64 - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "External transfer errors if asset_id lookup overflows")]
+#[test_case(false, 0, MEM_SIZE as u64 - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Internal transfer errors if asset_id lookup overflows")]
+fn test_transfer_output_overflow(
+    external: bool,
+    request_recipient_offset: Word,
+    request_asset_id_offset: Word,
+) -> Result<(), RuntimeError> {
+    // Given
+    let real_recipient_offset = 0;
+    let real_asset_id_offset = 32;
+    let output_index = 0;
+    let transfer_amount = 50;
+
+    const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
+    const SOURCE_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
+    const RECIPIENT_ADDRESS: Address = Address::new([4u8; Address::LEN]);
+
+    let mut pc = 4;
+
+    // Arbitrary value
+    let fp = 2048;
+    let is = 0;
+
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+
+    memory
+        [real_recipient_offset as usize..(real_recipient_offset as usize + Address::LEN)]
+        .copy_from_slice(RECIPIENT_ADDRESS.as_ref());
+    memory[real_asset_id_offset as usize..(real_asset_id_offset as usize + AssetId::LEN)]
+        .copy_from_slice(ASSET_ID.as_ref());
+    memory[fp as usize..(fp as usize + ContractId::LEN)]
+        .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
+
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+
+    let initial_contract_balance = 60;
+
+    storage
+        .merkle_contract_asset_id_balance_insert(
+            &SOURCE_CONTRACT_ID,
+            &ASSET_ID,
+            initial_contract_balance,
+        )
+        .unwrap();
+
+    let context = if external {
+        Context::Script {
+            block_height: Default::default(),
+        }
+    } else {
+        Context::Call {
+            block_height: Default::default(),
+        }
+    };
+
+    let balance_of_start = transfer_amount;
+
+    let mut balances =
+        RuntimeBalances::try_from_iter([(ASSET_ID, balance_of_start)]).unwrap();
+    let mut receipts = Default::default();
+    let mut tx = Script::default();
+    *tx.inputs_mut() = vec![Input::contract(
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        SOURCE_CONTRACT_ID,
+    )];
+
+    *tx.outputs_mut() = vec![Output::variable(
+        RECIPIENT_ADDRESS,
+        Default::default(),
+        Default::default(),
+    )];
+
+    let tx_offset = 512;
+
+    let transfer_ctx = TransferCtx {
+        storage: &mut storage,
+        memory: &mut memory,
+        pc: RegMut::new(&mut pc),
+        context: &context,
+        balances: &mut balances,
+        receipts: &mut receipts,
+        tx: &mut tx,
+        tx_offset,
+        fp: Reg::new(&fp),
+        is: Reg::new(&is),
+    };
+
+    // When
+
+    transfer_ctx.transfer_output(
+        request_recipient_offset,
+        output_index,
+        transfer_amount,
+        request_asset_id_offset,
+    )?;
 
     Ok(())
 }

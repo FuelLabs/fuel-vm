@@ -24,6 +24,10 @@ cargo check --all-targets --no-default-features &&
 cargo check --all-targets --all-features &&
 cargo check --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features &&
 cargo check --target wasm32-unknown-unknown -p fuel-crypto --no-default-features &&
+cargo check --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features &&
+cargo check --target wasm32-unknown-unknown -p fuel-tx --features serde --no-default-features &&
+cargo rustc --target wasm32-unknown-unknown -p fuel-types --features typescript --crate-type=cdylib &&
+cargo rustc --target wasm32-unknown-unknown -p fuel-asm --features typescript --crate-type=cdylib &&
 cargo make check &&
 cargo test --all-targets --all-features &&
 cargo test --all-targets --no-default-features &&

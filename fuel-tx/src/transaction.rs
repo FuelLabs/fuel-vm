@@ -5,7 +5,6 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
-    ChainId,
     Nonce,
     Salt,
     Word,
@@ -58,19 +57,22 @@ pub use validity::{
 
 use crate::TxPointer;
 
+use crate::input::coin::{
+    CoinPredicate,
+    CoinSigned,
+};
+use input::*;
+
+#[cfg(feature = "std")]
 use crate::input::{
-    coin::{
-        CoinPredicate,
-        CoinSigned,
-    },
     contract::Contract,
     message::{
         MessageCoinPredicate,
         MessageDataPredicate,
     },
 };
-use input::*;
-
+#[cfg(feature = "std")]
+pub use fuel_types::ChainId;
 #[cfg(feature = "std")]
 pub use id::{
     Signable,
@@ -474,7 +476,7 @@ pub mod field {
     };
 
     use alloc::vec::Vec;
-    use std::ops::{
+    use core::ops::{
         Deref,
         DerefMut,
     };

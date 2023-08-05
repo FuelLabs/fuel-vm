@@ -8,7 +8,6 @@ use fuel_types::{
     mem_layout,
     Bytes32,
     MemLayout,
-    MemLocType,
 };
 
 use core::{
@@ -17,7 +16,10 @@ use core::{
 };
 
 #[cfg(feature = "std")]
-use fuel_types::bytes;
+use fuel_types::{
+    bytes,
+    MemLocType,
+};
 
 #[cfg(feature = "std")]
 use std::io;

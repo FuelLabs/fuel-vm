@@ -228,7 +228,9 @@ pub(crate) fn set_flag(
     pc: RegMut<PC>,
     a: Word,
 ) -> Result<(), RuntimeError> {
-    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::ErrorFlag.into()) };
+    let Some(flags) = Flags::from_bits(a) else {
+        return Err(PanicReason::ErrorFlag.into())
+    };
 
     *flag = flags.bits();
 

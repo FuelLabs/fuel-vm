@@ -5,13 +5,13 @@ use crate::{
 };
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
     Bytes32,
     ContractId,
     MemLayout,
+};
+
+#[cfg(feature = "std")]
+use fuel_types::{
     MemLocType,
     Word,
 };
@@ -42,7 +42,7 @@ impl Contract {
     }
 }
 
-impl SizedBytes for Contract {
+impl bytes::SizedBytes for Contract {
     #[inline(always)]
     fn serialized_size(&self) -> usize {
         ContractSizes::LEN
@@ -90,6 +90,7 @@ impl std::io::Read for Contract {
 #[cfg(feature = "std")]
 impl std::io::Write for Contract {
     fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::Deserializable;
         type S = ContractSizes;
         const LEN: usize = ContractSizes::LEN;
         let buf: &[_; LEN] = full_buf

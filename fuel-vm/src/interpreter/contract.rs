@@ -52,7 +52,6 @@ use fuel_types::{
     ContractId,
 };
 
-use crate::interpreter::memory::read_bytes;
 use std::borrow::Cow;
 
 #[cfg(test)]

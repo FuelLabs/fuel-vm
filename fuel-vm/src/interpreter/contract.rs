@@ -7,6 +7,7 @@ use super::{
         set_variable_output,
         AppendReceipt,
     },
+    memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
     RuntimeBalances,
@@ -51,7 +52,6 @@ use fuel_types::{
     ContractId,
 };
 
-use crate::interpreter::memory::read_bytes;
 use std::borrow::Cow;
 
 #[cfg(test)]

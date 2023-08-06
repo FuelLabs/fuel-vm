@@ -43,7 +43,7 @@ pub trait ToAddr {
 
 impl ToAddr for usize {
     fn to_addr(self) -> Result<usize, RuntimeError> {
-        if self >= MEM_SIZE {
+        if self > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into())
         }
         Ok(self)
@@ -107,6 +107,31 @@ impl MemoryRange {
         address: A,
     ) -> Result<Self, RuntimeError> {
         Self::new(address, SIZE)
+    }
+
+    /// Uses a overflow-capturing operator to combine `base` and `offset`
+    /// into the start of a memory range, returning an error on overflow,
+    /// and then checks that the resulting range is within the VM memory.
+    pub fn new_overflowing_op<A: ToAddr, T: ToAddr, F>(
+        overflowing_op: F,
+        base: T,
+        offset: T,
+        size: A,
+    ) -> Result<Self, RuntimeError>
+    where
+        F: FnOnce(T, T) -> (T, bool),
+    {
+        let (addr, overflow) = overflowing_op(base, offset);
+        if overflow {
+            return Err(PanicReason::MemoryOverflow.into())
+        }
+        Self::new(addr, size)
+    }
+
+    /// Truncate a memory range to a new size if it's smaller then current one.
+    pub fn truncated(&self, limit: usize) -> Self {
+        Self::new(self.start, self.len().min(limit))
+            .expect("Cannot overflow on truncation")
     }
 
     /// Return `true` if the length is `0`.
@@ -294,15 +319,9 @@ pub(crate) fn load_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bc = b.saturating_add(c) as usize;
-
-    if bc >= VM_MAX_RAM as RegisterId {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result = memory[bc] as Word;
-
-        inc_pc(pc)
-    }
+    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1u64)?;
+    *result = memory[range.start] as Word;
+    inc_pc(pc)
 }
 
 pub(crate) fn load_word(
@@ -327,18 +346,8 @@ pub(crate) fn store_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let (ac, overflow) = a.overflowing_add(c);
-    let range = ac..(ac + 1);
-    if overflow
-        || ac >= VM_MAX_RAM
-        || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range))
-    {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[ac as usize] = b as u8;
-
-        inc_pc(pc)
-    }
+    write_bytes(memory, owner, a.saturating_add(c), [b as u8])?;
+    inc_pc(pc)
 }
 
 pub(crate) fn store_word(
@@ -381,12 +390,9 @@ pub(crate) fn memclear(
     b: Word,
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(a, b)?;
-    if b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[range.usizes()].fill(0);
-        inc_pc(pc)
-    }
+    owner.verify_ownership(&range)?;
+    memory[range.usizes()].fill(0);
+    inc_pc(pc)
 }
 
 pub(crate) fn memcopy(
@@ -400,13 +406,7 @@ pub(crate) fn memcopy(
     let dst_range = MemoryRange::new(a, c)?;
     let src_range = MemoryRange::new(b, c)?;
 
-    if c > MEM_MAX_ACCESS_SIZE {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    if !owner.has_ownership_range(&dst_range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
+    owner.verify_ownership(&dst_range)?;
 
     if dst_range.start <= src_range.start && src_range.start < dst_range.end
         || src_range.start <= dst_range.start && dst_range.start < src_range.end
@@ -436,18 +436,10 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> Result<(), RuntimeError> {
-    let (bd, overflow) = b.overflowing_add(d);
-    let (cd, of) = c.overflowing_add(d);
-    let overflow = overflow || of;
-
-    if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result =
-            (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
-
-        inc_pc(pc)
-    }
+    let range1 = MemoryRange::new(b, d)?;
+    let range2 = MemoryRange::new(c, d)?;
+    *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
+    inc_pc(pc)
 }
 
 #[derive(Debug)]
@@ -471,6 +463,25 @@ impl OwnershipRegisters {
                 .map(|frame| frame.registers()[RegId::HP])
                 .unwrap_or(0),
             context: vm.context.clone(),
+        }
+    }
+
+    pub(crate) fn verify_ownership(
+        &self,
+        range: &MemoryRange,
+    ) -> Result<(), PanicReason> {
+        if self.has_ownership_range(range) {
+            Ok(())
+        } else {
+            Err(PanicReason::MemoryOwnership)
+        }
+    }
+
+    pub(crate) fn verify_internal_context(&self) -> Result<(), PanicReason> {
+        if self.context.is_internal() {
+            Ok(())
+        } else {
+            Err(PanicReason::ExpectedInternalContext)
         }
     }
 
@@ -520,15 +531,11 @@ impl OwnershipRegisters {
 pub(crate) fn try_mem_write<A: ToAddr>(
     addr: A,
     data: &[u8],
-    registers: OwnershipRegisters,
+    owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(addr, data.len())?;
-
-    if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(data);
     Ok(())
 }
@@ -536,15 +543,11 @@ pub(crate) fn try_mem_write<A: ToAddr>(
 pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
     addr: A,
     len: B,
-    registers: OwnershipRegisters,
+    owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(addr, len)?;
-
-    if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].fill(0);
     Ok(())
 }
@@ -555,14 +558,9 @@ pub(crate) fn read_bytes<const COUNT: usize>(
     memory: &[u8; MEM_SIZE],
     addr: Word,
 ) -> Result<[u8; COUNT], RuntimeError> {
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || end > VM_MAX_RAM as RegisterId {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
+    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
+    Ok(<[u8; COUNT]>::try_from(&memory[range.usizes()])
+        .unwrap_or_else(|_| unreachable!()))
 }
 
 /// Writes a constant-sized byte array to memory, performing overflow, memory range and
@@ -574,10 +572,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
     bytes: [u8; COUNT],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
-    if !owner.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(&bytes);
     Ok(())
 }

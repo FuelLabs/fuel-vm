@@ -883,13 +883,6 @@ impl core::iter::FromIterator<Instruction> for Vec<u32> {
     }
 }
 
-/// Produce two raw instructions from a word's hi and lo parts.
-pub fn raw_instructions_from_word(word: Word) -> [RawInstruction; 2] {
-    let hi = (word >> 32) as RawInstruction;
-    let lo = word as RawInstruction;
-    [hi, lo]
-}
-
 /// Given an iterator yielding bytes, produces an iterator yielding `Instruction`s.
 ///
 /// This function assumes each consecutive 4 bytes aligns with an instruction.

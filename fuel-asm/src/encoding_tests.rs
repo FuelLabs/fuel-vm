@@ -16,7 +16,7 @@ fn opcode() {
 
     for opcode_int in 0..64 {
         let Ok(op) = Opcode::try_from(opcode_int) else {
-            continue;
+            continue
         };
 
         instructions.push(op.test_construct(r, r, r, r, imm12));

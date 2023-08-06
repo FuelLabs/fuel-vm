@@ -52,6 +52,7 @@ use fuel_types::{
     ContractId,
 };
 
+use crate::interpreter::memory::read_bytes;
 use std::borrow::Cow;
 
 #[cfg(test)]
@@ -202,21 +203,27 @@ struct TransferCtx<'vm, S, Tx> {
 }
 
 impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+    /// In Fuel specs:
+    /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
+    /// $rA -> recipient_contract_id_offset
+    /// $rB -> transfer_amount
+    /// $rC -> asset_id_offset
     pub(crate) fn transfer(
         self,
         panic_context: &mut PanicContext,
-        a: Word,
-        b: Word,
-        c: Word,
+        recipient_contract_id_offset: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let destination = ContractId::from(read_bytes(self.memory, a)?);
-        let amount = b;
-        let asset_id = AssetId::from(read_bytes(self.memory, c)?);
+        let amount = transfer_amount;
+        let destination =
+            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;
@@ -267,22 +274,28 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         inc_pc(self.pc)
     }
 
+    /// In Fuel specs:
+    /// Transfer $rC coins with asset ID at $rD to address at $rA, with output $rB.
+    /// $rA -> recipient_offset
+    /// $rB -> output_index
+    /// $rC -> transfer_amount
+    /// $rD -> asset_id_offset
     pub(crate) fn transfer_output(
         self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
+        recipient_offset: Word,
+        output_index: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let to = Address::from(read_bytes(self.memory, a)?);
-        let out_idx = b as usize;
-        let amount = c;
-        let asset_id = AssetId::from(read_bytes(self.memory, d)?);
+        let out_idx = output_index as usize;
+        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+        let amount = transfer_amount;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())

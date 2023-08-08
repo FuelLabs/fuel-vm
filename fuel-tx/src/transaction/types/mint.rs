@@ -1,6 +1,5 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
         field::{
             Outputs,
             TxPointer as TxPointerField,
@@ -21,12 +20,15 @@ use fuel_types::{
     mem_layout,
     BlockHeight,
     Bytes32,
-    ChainId,
-    MemLayout,
-    MemLocType,
     Word,
 };
 
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::io;
 
@@ -115,7 +117,7 @@ impl crate::UniqueIdentifier for Mint {
         }
 
         let mut clone = self.clone();
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
@@ -132,9 +134,9 @@ impl FormatValidityChecks for Mint {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        if self.outputs().len() > parameters.max_outputs as usize {
+        if self.outputs().len() > consensus_params.tx_params().max_outputs as usize {
             return Err(CheckError::TransactionOutputsMax)
         }
         if self.tx_pointer().block_height() != block_height {

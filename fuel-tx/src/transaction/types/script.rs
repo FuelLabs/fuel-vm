@@ -1,6 +1,6 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
+        consensus_parameters::TxParameters,
         field::{
             GasLimit,
             GasPrice,
@@ -36,14 +36,17 @@ use fuel_types::{
     mem_layout,
     BlockHeight,
     Bytes32,
-    ChainId,
-    MemLayout,
-    MemLocType,
     Word,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
@@ -98,7 +101,7 @@ impl Default for Script {
 
         Self {
             gas_price: Default::default(),
-            gas_limit: ConsensusParameters::DEFAULT.max_gas_per_tx,
+            gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
             maturity: Default::default(),
             script,
             script_data: Default::default(),
@@ -129,7 +132,7 @@ impl crate::UniqueIdentifier for Script {
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
@@ -195,15 +198,20 @@ impl FormatValidityChecks for Script {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, parameters)?;
-
-        if self.script.len() > parameters.max_script_length as usize {
+        check_common_part(
+            self,
+            block_height,
+            consensus_params.tx_params(),
+            consensus_params.predicate_params(),
+        )?;
+        let script_params = consensus_params.script_params();
+        if self.script.len() > script_params.max_script_length as usize {
             Err(CheckError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len() > parameters.max_script_data_length as usize {
+        if self.script_data.len() > script_params.max_script_data_length as usize {
             Err(CheckError::TransactionScriptDataLength)?;
         }
 

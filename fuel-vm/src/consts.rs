@@ -35,15 +35,7 @@ pub const VM_MAX_RAM: u64 = 1024 * 1024 * FUEL_MAX_MEMORY_SIZE;
 /// Size of the VM memory, in bytes.
 pub const MEM_SIZE: usize = VM_MAX_RAM as usize;
 
-/// Maximum memory access size, in bytes.
-pub const MEM_MAX_ACCESS_SIZE: u64 = VM_MAX_RAM;
-
-/// Tighter of the two bounds for VM_MAX_RAM and usize::MAX
-pub const MIN_VM_MAX_RAM_USIZE_MAX: u64 = if VM_MAX_RAM < usize::MAX as u64 {
-    VM_MAX_RAM
-} else {
-    usize::MAX as u64
-};
+static_assertions::const_assert!(VM_MAX_RAM < usize::MAX as u64);
 
 // no limits to heap for now.
 

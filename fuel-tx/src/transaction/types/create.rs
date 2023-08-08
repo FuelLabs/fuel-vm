@@ -1,6 +1,5 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
         field::{
             BytecodeLength,
             BytecodeWitnessIndex,
@@ -13,7 +12,6 @@ use crate::{
             StorageSlots,
             Witnesses,
         },
-        metadata::CommonMetadata,
         validity::{
             check_common_part,
             FormatValidityChecks,
@@ -26,7 +24,6 @@ use crate::{
     Input,
     Output,
     StorageSlot,
-    TxId,
     Witness,
 };
 use derivative::Derivative;
@@ -40,17 +37,19 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
-    ChainId,
     ContractId,
-    MemLayout,
-    MemLocType,
     Salt,
     Word,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use core::cmp::max;
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
@@ -75,9 +74,12 @@ pub struct CreateMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
+#[cfg(feature = "std")]
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
+        use crate::transaction::metadata::CommonMetadata;
+
         let CommonMetadata {
             id,
             inputs_offset,
@@ -154,7 +156,7 @@ impl Create {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self, chain_id: &ChainId) -> TxId {
+    fn id(&self, chain_id: &ChainId) -> crate::TxId {
         if let Some(id) = self.cached_id() {
             return id
         }
@@ -169,10 +171,10 @@ impl crate::UniqueIdentifier for Create {
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
-    fn cached_id(&self) -> Option<TxId> {
+    fn cached_id(&self) -> Option<crate::TxId> {
         self.metadata.as_ref().map(|m| m.id)
     }
 }
@@ -215,8 +217,10 @@ impl FormatValidityChecks for Create {
 
         // There will be at most len(witnesses) - 1 signatures to cache, as one of the
         // witnesses will be bytecode
-        let mut recovery_cache =
-            Some(HashMap::with_capacity(max(self.witnesses().len() - 1, 1)));
+        let mut recovery_cache = Some(HashMap::with_capacity(core::cmp::max(
+            self.witnesses().len() - 1,
+            1,
+        )));
 
         self.inputs()
             .iter()
@@ -237,9 +241,14 @@ impl FormatValidityChecks for Create {
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,
-        parameters: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        check_common_part(self, block_height, parameters)?;
+        check_common_part(
+            self,
+            block_height,
+            consensus_params.tx_params(),
+            consensus_params.predicate_params(),
+        )?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -247,7 +256,9 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > parameters.contract_max_size
+        let contract_params = consensus_params.contract_params();
+
+        if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
             return Err(CheckError::TransactionCreateBytecodeLen)
@@ -255,7 +266,7 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() > parameters.max_storage_slots as usize {
+        if self.storage_slots.len() > contract_params.max_storage_slots as usize {
             return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 
@@ -290,8 +301,23 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                let metadata = CreateMetadata::compute(self, &parameters.chain_id)?;
-                (metadata.state_root, metadata.contract_id)
+                #[cfg(feature = "std")]
+                {
+                    let metadata =
+                        CreateMetadata::compute(self, &consensus_params.chain_id())?;
+                    (metadata.state_root, metadata.contract_id)
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    let salt = self.salt();
+                    let storage_slots = self.storage_slots();
+                    let contract = Contract::try_from(self)?;
+                    let contract_root = contract.root();
+                    let state_root = Contract::initial_state_root(storage_slots.iter());
+                    let contract_id = contract.id(salt, &contract_root, &state_root);
+                    (state_root, contract_id)
+                }
             };
 
         let mut contract_created = false;
@@ -924,7 +950,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::default())
+            .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
@@ -944,7 +970,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParameters::default())
+        .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);

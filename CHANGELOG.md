@@ -6,7 +6,50 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-Description of the upcoming release here.
+### Changed
+
+- [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
+- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
+- [#535](https://github.com/FuelLabs/fuel-vm/pull/535): Add better test coverage for TR and TRO
+
+#### Breaking
+
+- [#514](https://github.com/FuelLabs/fuel-vm/pull/514/): Add `ChainId` and `GasCosts` to `ConsensusParameters`. 
+    Break down `ConsensusParameters` into sub-structs to match usage. Change signatures of functions to ask for
+    necessary fields only.
+- [#532](https://github.com/FuelLabs/fuel-vm/pull/532): The `TRO` instruction now reverts when attempting to send zero coins to an output. Panic reason of this `TransferZeroCoins`, and `TR` was changed to use the same panic reason as well.
+
+### Fixed
+
+- [#529](https://github.com/FuelLabs/fuel-vm/pull/529) [#534](https://github.com/FuelLabs/fuel-vm/pull/534): Enforcing async WASM initialization for all NPM wrapper packages.
+
+- [#511](https://github.com/FuelLabs/fuel-vm/pull/511): Changes multiple panic reasons to be more accurate, and internally refactors instruction fetch logic to be less error-prone.
+
+#### Breaking
+
+- [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.
+
+## [Version 0.35.3]
+
+### Changed
+
+- [#542](https://github.com/FuelLabs/fuel-vm/pull/542/): Make the `fuel-tx` WASM compatible with `serde` feature enabled.
+
+## [Version 0.35.2]
+
+### Changed
+
+#### Breaking
+
+- [#539](https://github.com/FuelLabs/fuel-vm/pull/539/): Rollbacked the change for the gas charging formula. 
+    Actualized the gas prices for opcodes.
+
+## [Version 0.35.1]
+
+### Added
+
+- [#499](https://github.com/FuelLabs/fuel-vm/pull/499/): The `wasm_bindgen` support of `fuel-asm` and `fuel-types`.
+    Each new release also publish a typescript analog of the `fuel-asm` and `fuel-types` crates to the npm.
 
 ## [Version 0.35.0]
 

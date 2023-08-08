@@ -68,7 +68,7 @@ fn cgas_overflow_bug() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -178,7 +178,7 @@ fn cgas_uses_min_available_gas() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),

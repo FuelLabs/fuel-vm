@@ -9,7 +9,6 @@
 
 use fuel_tx::{
     CheckError,
-    ConsensusParameters,
     Create,
     Mint,
     Script,
@@ -21,6 +20,7 @@ use fuel_types::{
 };
 
 use core::borrow::Borrow;
+use fuel_tx::ConsensusParameters;
 use std::future::Future;
 
 mod balances;
@@ -30,16 +30,8 @@ pub mod types;
 pub use types::*;
 
 use crate::{
-    checked_transaction::balances::{
-        initial_free_balances,
-        AvailableBalances,
-    },
     error::PredicateVerificationFailed,
-    gas::GasCosts,
-    interpreter::{
-        CheckedMetadata as CheckedMetadataAccessTrait,
-        InitialBalances,
-    },
+    interpreter::CheckedMetadata as CheckedMetadataAccessTrait,
     prelude::*,
 };
 
@@ -141,7 +133,7 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &Default::default(), &Default::default())
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -186,40 +178,86 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     fn into_checked(
         self,
         block_height: BlockHeight,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
-        self.into_checked_basic(block_height, params)?
-            .check_signatures(&params.chain_id)?
-            .check_predicates(params, gas_costs)
+        let check_predicate_params = consensus_params.into();
+        self.into_checked_basic(block_height, consensus_params)?
+            .check_signatures(&consensus_params.chain_id)?
+            .check_predicates(&check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        params: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError>;
+}
+
+/// The parameters needed for checking a predicate
+#[derive(Debug, Clone)]
+pub struct CheckPredicateParams {
+    /// Gas costs for opcodes
+    pub gas_costs: GasCosts,
+    /// Chain ID
+    pub chain_id: ChainId,
+    /// Maximum gas per predicate
+    pub max_gas_per_predicate: u64,
+    /// Maximum gas per transaction
+    pub max_gas_per_tx: u64,
+    /// Maximum number of inputs
+    pub max_inputs: u64,
+    /// Maximum size of the contract in bytes
+    pub contract_max_size: u64,
+    /// Maximum length of the message data
+    pub max_message_data_length: u64,
+    /// Offset of the transaction data in the memory
+    pub tx_offset: usize,
+    /// Fee parameters
+    pub fee_params: FeeParameters,
+}
+
+impl Default for CheckPredicateParams {
+    fn default() -> Self {
+        CheckPredicateParams::from(&ConsensusParameters::standard())
+    }
+}
+
+impl From<ConsensusParameters> for CheckPredicateParams {
+    fn from(value: ConsensusParameters) -> Self {
+        CheckPredicateParams::from(&value)
+    }
+}
+
+impl From<&ConsensusParameters> for CheckPredicateParams {
+    fn from(value: &ConsensusParameters) -> Self {
+        CheckPredicateParams {
+            gas_costs: value.gas_costs().clone(),
+            chain_id: value.chain_id,
+            max_gas_per_predicate: value.predicate_params().max_gas_per_predicate,
+            max_gas_per_tx: value.tx_params().max_gas_per_tx,
+            max_inputs: value.tx_params().max_inputs,
+            contract_max_size: value.contract_params().contract_max_size,
+            max_message_data_length: value.predicate_params().max_message_data_length,
+            tx_offset: value.tx_params().tx_offset(),
+            fee_params: *(value.fee_params()),
+        }
+    }
 }
 
 /// Provides predicate verification functionality for the transaction.
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(
-        self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
-    ) -> Result<Self, CheckError>;
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>;
 }
 
@@ -229,15 +267,13 @@ pub trait EstimatePredicates: Sized {
     /// Estimates predicates of the transaction.
     fn estimate_predicates(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 }
 
@@ -268,15 +304,11 @@ where
 {
     fn check_predicates(
         mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            let checked = Interpreter::<PredicateStorage>::check_predicates(
-                &self,
-                *params,
-                gas_costs.clone(),
-            )?;
+            let checked =
+                Interpreter::<PredicateStorage>::check_predicates(&self, params)?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
@@ -285,8 +317,7 @@ where
 
     async fn check_predicates_async<E>(
         mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -294,9 +325,7 @@ where
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let predicates_checked =
                 Interpreter::<PredicateStorage>::check_predicates_async::<_, E>(
-                    &self,
-                    *params,
-                    gas_costs.clone(),
+                    &self, params,
                 )
                 .await?;
 
@@ -315,57 +344,21 @@ where
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
     fn estimate_predicates(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
-        // validate fees and compute free balances
-        let AvailableBalances {
-            non_retryable_balances,
-            retryable_balance,
-            ..
-        } = initial_free_balances(self, params)?;
-
-        let balances: InitialBalances = InitialBalances {
-            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-            retryable: Some(RetryableAmount(retryable_balance)),
-        };
-
-        Interpreter::<PredicateStorage>::estimate_predicates(
-            self,
-            balances,
-            *params,
-            gas_costs.clone(),
-        )?;
+        Interpreter::<PredicateStorage>::estimate_predicates(self, params)?;
         Ok(())
     }
 
     async fn estimate_predicates_async<E>(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
     {
-        // validate fees and compute free balances
-        let AvailableBalances {
-            non_retryable_balances,
-            retryable_balance,
-            ..
-        } = initial_free_balances(self, params)?;
-
-        let balances: InitialBalances = InitialBalances {
-            non_retryable: NonRetryableFreeBalances(non_retryable_balances),
-            retryable: Some(RetryableAmount(retryable_balance)),
-        };
-
-        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(
-            self,
-            balances,
-            *params,
-            gas_costs.clone(),
-        )
-        .await?;
+        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(self, params)
+            .await?;
 
         Ok(())
     }
@@ -375,31 +368,25 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => script.estimate_predicates(params, gas_costs),
-            Transaction::Create(create) => create.estimate_predicates(params, gas_costs),
+            Transaction::Script(script) => script.estimate_predicates(params),
+            Transaction::Create(create) => create.estimate_predicates(params),
             Transaction::Mint(_) => Ok(()),
         }
     }
 
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => {
-                script
-                    .estimate_predicates_async::<E>(params, gas_costs)
-                    .await
+                script.estimate_predicates_async::<E>(params).await
             }
             Transaction::Create(create) => {
-                create
-                    .estimate_predicates_async::<E>(params, gas_costs)
-                    .await
+                create.estimate_predicates_async::<E>(params).await
             }
             Transaction::Mint(_) => Ok(()),
         }
@@ -410,8 +397,7 @@ impl EstimatePredicates for Transaction {
 impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
-        _params: &ConsensusParameters,
-        _gas_costs: &GasCosts,
+        _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -419,8 +405,7 @@ impl CheckPredicates for Checked<Mint> {
 
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
-        _params: &ConsensusParameters,
-        _gas_costs: &GasCosts,
+        _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -429,30 +414,25 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(
-        self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
-    ) -> Result<Self, CheckError> {
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, params, gas_costs)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, params, gas_costs)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, params, gas_costs)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
         };
         Ok(checked_transaction.into())
     }
 
     async fn check_predicates_async<E>(
-        self,
-        params: &ConsensusParameters,
-        gas_costs: &GasCosts,
+        mut self,
+        params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -461,17 +441,17 @@ impl CheckPredicates for Checked<Transaction> {
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, gas_costs)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }
@@ -597,22 +577,25 @@ impl IntoChecked for Transaction {
     fn into_checked_basic(
         self,
         block_height: BlockHeight,
-        params: &ConsensusParameters,
+        consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError> {
         let (transaction, metadata) = match self {
             Transaction::Script(script) => {
-                let (transaction, metadata) =
-                    script.into_checked_basic(block_height, params)?.into();
+                let (transaction, metadata) = script
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Create(create) => {
-                let (transaction, metadata) =
-                    create.into_checked_basic(block_height, params)?.into();
+                let (transaction, metadata) = create
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
                 (transaction.into(), metadata.into())
             }
             Transaction::Mint(mint) => {
-                let (transaction, metadata) =
-                    mint.into_checked_basic(block_height, params)?.into();
+                let (transaction, metadata) = mint
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
                 (transaction.into(), metadata.into())
             }
         };
@@ -639,6 +622,18 @@ mod tests {
         SeedableRng,
     };
 
+    fn params(factor: u64) -> ConsensusParameters {
+        ConsensusParameters::new(
+            TxParameters::default(),
+            PredicateParameters::default(),
+            ScriptParameters::default(),
+            ContractParameters::default(),
+            FeeParameters::default().with_gas_price_factor(factor),
+            Default::default(),
+            Default::default(),
+        )
+    }
+
     #[test]
     fn checked_tx_accepts_valid_tx() {
         // simple smoke test that valid txs can be checked
@@ -651,11 +646,7 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -677,11 +668,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -701,11 +688,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -731,11 +714,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -773,11 +752,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -808,12 +783,12 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
-        let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -837,12 +812,12 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
-        let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -867,10 +842,10 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
-        let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -894,10 +869,10 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
-        let params = ConsensusParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &params) {
+        if let Ok(valid) = is_valid_min_fee(&tx, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -940,11 +915,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -965,13 +936,14 @@ mod tests {
         let gas_price = 2; // price > amount
         let gas_limit = 0; // don't include any gas execution fees
         let factor = 1;
-        let params = ConsensusParameters::default().with_gas_price_factor(factor);
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let consensus_params = params(factor);
+
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
-            .expect_err("insufficient fee amount expected");
+            .into_checked(Default::default(), &consensus_params)
+            .expect_err("overflow expected");
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
@@ -987,16 +959,17 @@ mod tests {
 
         let input_amount = 10;
         let factor = 1;
-        let params = ConsensusParameters::default().with_gas_price_factor(factor);
         // make gas price too high for the input amount
         let gas_price = 1;
         let gas_limit = input_amount + 1; // make gas cost 1 higher than input amount
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let consensus_params = params(factor);
+
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
-            .expect_err("insufficient fee amount expected");
+            .into_checked(Default::default(), &consensus_params)
+            .expect_err("overflow expected");
 
         let provided = match err {
             CheckError::InsufficientFeeAmount { provided, .. } => provided,
@@ -1013,11 +986,12 @@ mod tests {
         let input_amount = 1000;
         let gas_price = Word::MAX;
         let gas_limit = 0; // ensure only bytes are included in fee
-        let params = ConsensusParameters::default().with_gas_price_factor(1);
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let consensus_params = params(1);
+
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -1029,12 +1003,13 @@ mod tests {
         let input_amount = 1000;
         let gas_price = Word::MAX;
         let gas_limit = 2; // 2 * max should cause gas fee overflow
-        let params = ConsensusParameters::default().with_gas_price_factor(1);
 
         let transaction = base_asset_tx(rng, input_amount, gas_price, gas_limit);
 
+        let consensus_params = params(1);
+
         let err = transaction
-            .into_checked(Default::default(), &params, &Default::default())
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::ArithmeticOverflow);
@@ -1073,11 +1048,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::DEFAULT,
-                &Default::default(),
-            )
+            .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -1093,11 +1064,12 @@ mod tests {
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();
-        let params = ConsensusParameters::default();
 
         let tx = Transaction::default_test_tx();
         // Sets Checks::Basic
-        let checked = tx.into_checked_basic(block_height, &params).unwrap();
+        let checked = tx
+            .into_checked_basic(block_height, &ConsensusParameters::standard())
+            .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
     }
 
@@ -1105,15 +1077,18 @@ mod tests {
     fn signatures_check_marks_signatures_flag() {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
-        let params = ConsensusParameters::default();
 
         let tx = valid_coin_tx(&mut rng, 1, 100000, 1000000, 10);
+        let chain_id = ChainId::default();
         let checked = tx
             // Sets Checks::Basic
-            .into_checked_basic(block_height, &params)
+            .into_checked(
+                block_height,
+                &ConsensusParameters::standard_with_id(chain_id),
+            )
             .unwrap()
             // Sets Checks::Signatures
-            .check_signatures(&params.chain_id)
+            .check_signatures(&chain_id)
             .unwrap();
 
         assert!(checked
@@ -1125,17 +1100,26 @@ mod tests {
     fn predicates_check_marks_predicate_flag() {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
-        let params = ConsensusParameters::default();
         let gas_costs = GasCosts::free();
 
         let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
 
+        let consensus_params = ConsensusParameters {
+            gas_costs,
+            ..ConsensusParameters::standard()
+        };
+
+        let check_predicate_params = CheckPredicateParams::from(&consensus_params);
+
         let checked = tx
             // Sets Checks::Basic
-            .into_checked_basic(block_height, &params)
+            .into_checked(
+                block_height,
+                &consensus_params,
+            )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&params, &gas_costs)
+            .check_predicates(&check_predicate_params)
             .unwrap();
         assert!(checked
             .checks()
@@ -1144,22 +1128,22 @@ mod tests {
 
     fn is_valid_max_fee<Tx>(
         tx: &Tx,
-        params: &ConsensusParameters,
+        fee_params: &FeeParameters,
     ) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = balances::initial_free_balances(tx, params)?;
+        let available_balances = balances::initial_free_balances(tx, fee_params)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let bytes = (tx.metered_bytes_size() as u128)
-            * params.gas_per_byte as u128
+            * fee_params.gas_per_byte as u128
             * tx.price() as u128;
         let gas = tx.limit() as u128 * tx.price() as u128;
         let total = bytes + gas;
         // use different division mechanism than impl
-        let fee = total / params.gas_price_factor as u128;
+        let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
-            (total.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
+            (total.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
         Ok(rounded_fee == available_balances.fee.max_fee())
@@ -1167,22 +1151,22 @@ mod tests {
 
     fn is_valid_min_fee<Tx>(
         tx: &Tx,
-        params: &ConsensusParameters,
+        fee_params: &FeeParameters,
     ) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = balances::initial_free_balances(tx, params)?;
+        let available_balances = balances::initial_free_balances(tx, fee_params)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
         let bytes = (tx.metered_bytes_size() as u128
             + tx.gas_used_by_predicates() as u128)
-            * params.gas_per_byte as u128
+            * fee_params.gas_per_byte as u128
             * tx.price() as u128;
         // use different division mechanism than impl
-        let fee = bytes / params.gas_price_factor as u128;
+        let fee = bytes / fee_params.gas_price_factor as u128;
         let fee_remainder =
-            (bytes.rem_euclid(params.gas_price_factor as u128) > 0) as u128;
+            (bytes.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
         Ok(rounded_fee == available_balances.fee.min_fee())
@@ -1230,8 +1214,7 @@ mod tests {
     ) -> Script {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
-        let owner =
-            Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT.chain_id);
+        let owner = Input::predicate_owner(&predicate, &ChainId::default());
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)

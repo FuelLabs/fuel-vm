@@ -1,5 +1,8 @@
 use fuel_asm::op;
-use fuel_tx::Script;
+use fuel_tx::{
+    ConsensusParameters,
+    Script,
+};
 use fuel_types::{
     AssetId,
     ContractId,
@@ -34,17 +37,19 @@ fn reset_vm_state() {
     assert_eq!(a, b);
 }
 
+use crate::interpreter::InterpreterParams;
+
 #[test]
 fn record_and_invert_storage() {
+    let interpreter_params = InterpreterParams::from(&ConsensusParameters::standard());
+
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),
-        Default::default(),
-        Default::default(),
+        interpreter_params.clone(),
     );
     let mut b = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),
-        Default::default(),
-        Default::default(),
+        interpreter_params,
     );
 
     <Record<_> as StorageMutate<ContractsAssets>>::insert(

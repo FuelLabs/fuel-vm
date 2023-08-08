@@ -109,6 +109,7 @@ where
 
 #[cfg(all(test, feature = "random"))]
 mod tests {
+    use crate::TxParameters;
     use fuel_tx::{
         field::*,
         input::{
@@ -125,7 +126,6 @@ mod tests {
             },
         },
         Buildable,
-        ConsensusParameters,
         Input,
         Output,
         StorageSlot,
@@ -136,6 +136,7 @@ mod tests {
         generate_bytes,
         generate_nonempty_padded_bytes,
     };
+    use fuel_types::ChainId;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -210,14 +211,10 @@ mod tests {
 
         f(&mut tx_p);
 
-        assert_eq!(
-            tx.id(&ConsensusParameters::DEFAULT.chain_id),
-            tx_p.id(&ConsensusParameters::DEFAULT.chain_id)
-        );
-        assert_eq!(
-            tx.id(&ConsensusParameters::DEFAULT.chain_id),
-            tx_q.id(&ConsensusParameters::DEFAULT.chain_id)
-        );
+        let chain_id = ChainId::default();
+
+        assert_eq!(tx.id(&chain_id), tx_p.id(&chain_id));
+        assert_eq!(tx.id(&chain_id), tx_q.id(&chain_id));
     }
 
     fn assert_id_ne<Tx: Buildable, F>(tx: &Tx, mut f: F)
@@ -230,14 +227,10 @@ mod tests {
 
         let tx_q = tx_p.clone();
 
-        assert_ne!(
-            tx.id(&ConsensusParameters::DEFAULT.chain_id),
-            tx_p.id(&ConsensusParameters::DEFAULT.chain_id)
-        );
-        assert_ne!(
-            tx.id(&ConsensusParameters::DEFAULT.chain_id),
-            tx_q.id(&ConsensusParameters::DEFAULT.chain_id)
-        );
+        let chain_id = ChainId::default();
+
+        assert_ne!(tx.id(&chain_id), tx_p.id(&chain_id));
+        assert_ne!(tx.id(&chain_id), tx_q.id(&chain_id));
     }
 
     macro_rules! assert_io_ne {
@@ -718,7 +711,7 @@ mod tests {
                     for storage_slots in storage_slots.iter() {
                         let tx = Transaction::create(
                             rng.next_u64(),
-                            ConsensusParameters::DEFAULT.max_gas_per_tx,
+                            TxParameters::DEFAULT.max_gas_per_tx,
                             rng.gen(),
                             rng.next_u32().to_be_bytes()[0],
                             rng.gen(),

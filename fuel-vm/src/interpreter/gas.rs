@@ -3,7 +3,6 @@ use crate::{
     arith,
     constraints::reg_key::*,
     error::RuntimeError,
-    gas::DependentCost,
     prelude::{
         Bug,
         BugId,
@@ -16,6 +15,7 @@ use fuel_asm::{
     PanicReason,
     RegId,
 };
+use fuel_tx::DependentCost;
 use fuel_types::{
     ContractId,
     Word,
@@ -97,7 +97,7 @@ fn dependent_gas_charge_inner(
 ) -> Result<Word, RuntimeError> {
     let cost = gas_cost
         .base
-        .saturating_add(arg.saturating_mul(gas_cost.dep_per_unit));
+        .saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
     gas_charge_inner(cgas, ggas, cost).map(|_| cost)
 }
 

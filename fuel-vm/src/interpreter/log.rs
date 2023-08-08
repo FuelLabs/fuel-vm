@@ -8,6 +8,7 @@ use super::{
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
+    MemoryRange,
 };
 use crate::{
     constraints::reg_key::*,
@@ -16,7 +17,6 @@ use crate::{
     error::RuntimeError,
 };
 
-use fuel_asm::PanicReason;
 use fuel_tx::{
     Receipt,
     Script,
@@ -37,11 +37,12 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
@@ -59,11 +60,12 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
@@ -124,11 +126,7 @@ impl LogInput<'_> {
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
-        if d > MEM_MAX_ACCESS_SIZE || c > VM_MAX_RAM - d {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
-        let cd = (c + d) as usize;
+        let range = MemoryRange::new(c, d)?;
 
         let receipt = Receipt::log_data(
             internal_contract_or_default(self.context, self.fp, self.memory),
@@ -137,7 +135,7 @@ impl LogInput<'_> {
             c,
             *self.pc,
             *self.is,
-            self.memory[c as usize..cd].to_vec(),
+            self.memory[range.usizes()].to_vec(),
         );
 
         append_receipt(

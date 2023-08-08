@@ -16,11 +16,7 @@ where
     Tx: IntoChecked,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
-    fn finalize_checked(
-        &mut self,
-        height: BlockHeight,
-        gas_costs: &GasCosts,
-    ) -> Checked<Tx>;
+    fn finalize_checked(&mut self, height: BlockHeight) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
     /// only
@@ -32,13 +28,9 @@ where
     Self: Finalizable<Tx>,
     Checked<Tx>: CheckPredicates,
 {
-    fn finalize_checked(
-        &mut self,
-        height: BlockHeight,
-        gas_costs: &GasCosts,
-    ) -> Checked<Tx> {
+    fn finalize_checked(&mut self, height: BlockHeight) -> Checked<Tx> {
         self.finalize()
-            .into_checked(height, self.get_params(), gas_costs)
+            .into_checked(height, self.get_params())
             .expect("failed to check tx")
     }
 

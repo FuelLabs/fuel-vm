@@ -4,6 +4,7 @@
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
+#![deny(clippy::string_slice)]
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
@@ -72,18 +73,27 @@ pub use transaction::{
     Chargeable,
     CheckError,
     ConsensusParameters,
+    ContractParameters,
     Create,
+    DependentCost,
     Executable,
+    FeeParameters,
     FormatValidityChecks,
+    GasCosts,
+    GasCostsValues,
+    GasUnit,
     Mint,
     Output,
     OutputRepr,
+    PredicateParameters,
     Script,
+    ScriptParameters,
     StorageSlot,
     Transaction,
     TransactionFee,
     TransactionRepr,
     TxId,
+    TxParameters,
     UtxoId,
     Witness,
 };

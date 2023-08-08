@@ -8,6 +8,7 @@ use fuel_asm::{
 use fuel_tx::Receipt;
 use fuel_vm::{
     consts::VM_MAX_RAM,
+    interpreter::InterpreterParams,
     prelude::*,
 };
 
@@ -16,6 +17,7 @@ use super::test_helpers::{
     run_script,
     set_full_word,
 };
+use fuel_tx::ConsensusParameters;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
@@ -24,8 +26,8 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
+
+    let consensus_params = ConsensusParameters::standard();
 
     let script = program.into_iter().collect();
 
@@ -35,10 +37,12 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
+    let interpreter_params = InterpreterParams::from(&consensus_params);
+
+    let mut vm = Transactor::new(storage, interpreter_params);
     vm.transact(tx);
     vm
 }

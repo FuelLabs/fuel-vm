@@ -5,8 +5,6 @@ use fuel_types::{
     },
     mem_layout,
     BlockHeight,
-    MemLayout,
-    MemLocType,
 };
 
 use core::{
@@ -15,7 +13,11 @@ use core::{
 };
 
 #[cfg(feature = "std")]
-use fuel_types::bytes;
+use fuel_types::{
+    bytes,
+    MemLayout,
+    MemLocType,
+};
 
 #[cfg(feature = "std")]
 use std::io;
@@ -92,15 +94,20 @@ impl fmt::UpperHex for TxPointer {
 impl str::FromStr for TxPointer {
     type Err = &'static str;
 
+    /// TxPointer is encoded as 12 hex characters:
+    /// - 8 characters for block height
+    /// - 4 characters for tx index
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte";
 
-        if s.len() != 12 {
+        if s.len() != 12 || !s.is_char_boundary(8) {
             return Err(ERR)
         }
 
-        let block_height = u32::from_str_radix(&s[..8], 16).map_err(|_| ERR)?;
-        let tx_index = u16::from_str_radix(&s[8..12], 16).map_err(|_| ERR)?;
+        let (block_height, tx_index) = s.split_at(8);
+
+        let block_height = u32::from_str_radix(block_height, 16).map_err(|_| ERR)?;
+        let tx_index = u16::from_str_radix(tx_index, 16).map_err(|_| ERR)?;
 
         Ok(Self::new(block_height.into(), tx_index))
     }
@@ -189,4 +196,11 @@ fn fmt_encode_decode() {
             assert_eq!(tx_pointer, tx_pointer_p);
         }
     }
+}
+
+/// See https://github.com/FuelLabs/fuel-vm/issues/521
+#[test]
+fn decode_bug() {
+    use core::str::FromStr;
+    TxPointer::from_str("00000😎000").expect_err("Should fail on incorrect input");
 }

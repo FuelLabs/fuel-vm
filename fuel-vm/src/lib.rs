@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
+#![deny(clippy::string_slice)]
 
 pub mod arith;
 pub mod backtrace;
@@ -13,7 +14,6 @@ pub mod consts;
 pub mod context;
 pub mod crypto;
 pub mod error;
-pub mod gas;
 pub mod interpreter;
 pub mod memory_client;
 pub mod predicate;
@@ -126,10 +126,6 @@ pub mod prelude {
             Infallible,
             InterpreterError,
             RuntimeError,
-        },
-        gas::{
-            GasCosts,
-            GasCostsValues,
         },
         interpreter::{
             ExecutableTransaction,

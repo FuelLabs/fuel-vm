@@ -365,15 +365,18 @@ pub(crate) fn push_selected_registers(
     let bitmask = bitmask.to_u32();
 
     // First update the new stack pointer, as that's the only error condition
-    let count = bitmask.count_ones();
-    let stack_range = MemoryRange::new(*sp, (count as u64) * 8)?;
+    let count: u64 = bitmask.count_ones().into();
+    let stack_range = MemoryRange::new(*sp, count * 8)?;
     try_update_stack_pointer(sp, ssp, hp, stack_range.words().end)?;
 
     // Write the registers to the stack
     let mut it = memory[stack_range.usizes()].chunks_exact_mut(8);
     for (i, reg) in program_regs.segment(segment).iter().enumerate() {
         if (bitmask & (1 << i)) != 0 {
-            it.next().unwrap().copy_from_slice(&reg.to_be_bytes());
+            let item = it
+                .next()
+                .expect("Memory range mismatched with register count");
+            item.copy_from_slice(&reg.to_be_bytes());
         }
     }
 
@@ -394,8 +397,8 @@ pub(crate) fn pop_selected_registers(
     let bitmask = bitmask.to_u32();
 
     // First update the stack pointer, as that's the only error condition
-    let count = bitmask.count_ones();
-    let size_in_stack = (count as u64) * 8;
+    let count: u64 = bitmask.count_ones().into();
+    let size_in_stack = count * 8;
     let new_sp = sp
         .checked_sub(size_in_stack)
         .ok_or(PanicReason::MemoryOverflow)?;

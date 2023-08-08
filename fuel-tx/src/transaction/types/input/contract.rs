@@ -17,7 +17,7 @@ use fuel_types::{
 };
 
 /// It is a full representation of the contract input from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
 ///
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
@@ -33,7 +33,7 @@ pub struct Contract {
 
 impl Contract {
     /// The "Note" section from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.utxo_id);
         core::mem::take(&mut self.balance_root);

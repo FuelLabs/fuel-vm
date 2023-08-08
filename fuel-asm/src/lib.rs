@@ -80,7 +80,7 @@ pub struct InvalidOpcode;
 
 bitflags::bitflags! {
     /// Possible values for the FLAG instruction.
-    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#flags
+    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#flags
     pub struct Flags: Word {
         /// If set, arithmetic errors result in setting $err instead of panicking.
         /// This includes cases where result of a computation is undefined, like
@@ -670,8 +670,8 @@ impl Imm24 {
 impl Opcode {
     /// Check if the opcode is allowed for predicates.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#predicate-verification>
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#contract-opcodes>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#predicate-verification>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#contract-instructions>
     #[allow(clippy::match_like_matches_macro)]
     pub fn is_predicate_allowed(&self) -> bool {
         use Opcode::*;

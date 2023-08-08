@@ -136,7 +136,7 @@ pub mod specifications {
 }
 
 /// It is a full representation of the message from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputmessage>.
 ///
 /// The specification defines the layout of the [`Message`] in the serialized form for
 /// the `fuel-vm`. But on the business logic level, we don't use all fields at the same

@@ -4,7 +4,7 @@
 
 
 The repository contains crates implementing the 
-[FuelVM specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md) 
+[FuelVM specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md) 
 used by [fuel-core](https://github.com/FuelLabs/fuel-core) 
 and [the Sway compiler](https://github.com/FuelLabs/sway/).
 

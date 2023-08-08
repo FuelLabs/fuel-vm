@@ -6,5 +6,5 @@
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
 The crate contains implementation for the Sparse Merkle Tree, Binary Merkle Tree, and Binary Merkle Sum Tree.
-[The specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md#merkle-trees) 
+[The specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#merkle-trees) 
 contains more information on how they work inside and how they are [tested](https://github.com/FuelLabs/fuel-specs/blob/master/src/tests/index.md).

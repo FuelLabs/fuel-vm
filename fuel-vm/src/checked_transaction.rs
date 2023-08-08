@@ -39,7 +39,7 @@ bitflags::bitflags! {
     /// Possible types of transaction checks.
     pub struct Checks: u32 {
         /// Basic checks defined in the specification for each transaction:
-        /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
+        /// https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md#transaction
         const Basic         = 0b00000001;
         /// Check that signature in the transactions are valid.
         const Signatures    = 0b00000010;

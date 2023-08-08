@@ -79,7 +79,7 @@ The release mostly fixes funding during the audit and integration with the bridg
 
 - [#506](https://github.com/FuelLabs/fuel-vm/pull/506): The `mint` and `burn` 
     opcodes accept a new `$rB` register. It is a sub-identifier used to generate an 
-    `AssetId` by [this rule](https://github.com/FuelLabs/fuel-specs/blob/SilentCicero-multi-token/src/identifiers/asset.md). 
+    `AssetId` by [this rule](https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/asset.md). 
     This feature allows having multi-asset per one contract. It is a huge breaking change, and 
     after this point, `ContractId` can't be equal to `AssetId`.
 

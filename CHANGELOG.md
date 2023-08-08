@@ -6,11 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.36.0]
+
 ### Changed
 
 - [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
-- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
-- [#535](https://github.com/FuelLabs/fuel-vm/pull/535): Add better test coverage for TR and TRO
+- [#535](https://github.com/FuelLabs/fuel-vm/pull/535): Add better test coverage for TR and TRO.
 
 #### Breaking
 
@@ -21,9 +22,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [#511](https://github.com/FuelLabs/fuel-vm/pull/511): Changes multiple panic reasons to be more accurate, and internally refactors instruction fetch logic to be less error-prone.
+
 - [#529](https://github.com/FuelLabs/fuel-vm/pull/529) [#534](https://github.com/FuelLabs/fuel-vm/pull/534): Enforcing async WASM initialization for all NPM wrapper packages.
 
-- [#511](https://github.com/FuelLabs/fuel-vm/pull/511): Changes multiple panic reasons to be more accurate, and internally refactors instruction fetch logic to be less error-prone.
+- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
 
 #### Breaking
 

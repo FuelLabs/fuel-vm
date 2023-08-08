@@ -1,4 +1,5 @@
 use crate::{
+    constraints::reg_key::ProgramRegistersSegment,
     error::{
         InterpreterError,
         RuntimeError,
@@ -616,6 +617,30 @@ where
                 self.gas_charge(self.gas_costs().cfsi)?;
                 let a = cfs.unpack();
                 self.stack_pointer_overflow(Word::overflowing_sub, r!(a))?;
+            }
+
+            Instruction::PSHL(pshl) => {
+                self.gas_charge(self.gas_costs().pshl)?;
+                let bitmask = pshl.unpack();
+                self.push_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
+            }
+
+            Instruction::PSHH(pshh) => {
+                self.gas_charge(self.gas_costs().pshh)?;
+                let bitmask = pshh.unpack();
+                self.push_selected_registers(ProgramRegistersSegment::High, bitmask)?;
+            }
+
+            Instruction::POPL(popl) => {
+                self.gas_charge(self.gas_costs().popl)?;
+                let bitmask = popl.unpack();
+                self.pop_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
+            }
+
+            Instruction::POPH(poph) => {
+                self.gas_charge(self.gas_costs().poph)?;
+                let bitmask = poph.unpack();
+                self.pop_selected_registers(ProgramRegistersSegment::High, bitmask)?;
             }
 
             Instruction::LB(lb) => {

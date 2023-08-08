@@ -426,3 +426,32 @@ impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_SYSTEM_COUNT] {
         ]
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ProgramRegistersSegment {
+    /// Registers 16..40
+    Low,
+    /// Registers 40..64
+    High,
+}
+
+impl<'r> ProgramRegisters<'r> {
+    /// Returns the registers corresponding to the segment, always 24 elements.
+    pub(crate) fn segment(&self, segment: ProgramRegistersSegment) -> &[Word] {
+        match segment {
+            ProgramRegistersSegment::Low => &self.0[..24],
+            ProgramRegistersSegment::High => &self.0[24..],
+        }
+    }
+
+    /// Returns the registers corresponding to the segment, always 24 elements.
+    pub(crate) fn segment_mut(
+        &mut self,
+        segment: ProgramRegistersSegment,
+    ) -> &mut [Word] {
+        match segment {
+            ProgramRegistersSegment::Low => &mut self.0[..24],
+            ProgramRegistersSegment::High => &mut self.0[24..],
+        }
+    }
+}

@@ -63,6 +63,8 @@ The release mostly fixes funding during the audit and integration with the bridg
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
 
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/498): Adds `PSHL`, `PSHH`, `POPH` and `POPL` instructions, which allow cheap push and pop stack operations with multiple registers.
+
 - [#500](https://github.com/FuelLabs/fuel-vm/pull/500): Introduced `ParallelExecutor` trait
     and made available async versions of verify and estimate predicates.
     Updated tests to test for both parallel and sequential execution.

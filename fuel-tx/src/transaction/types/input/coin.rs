@@ -77,7 +77,7 @@ impl CoinSpecification for Full {
 }
 
 /// It is a full representation of the coin from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
 ///
 /// The specification defines the layout of the [`Coin`] in the serialized form for the
 /// `fuel-vm`. But on the business logic level, we don't use all fields at the same time.
@@ -126,7 +126,7 @@ where
     Specification: CoinSpecification,
 {
     /// The "Note" section from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.tx_pointer);
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {

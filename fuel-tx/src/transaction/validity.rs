@@ -265,7 +265,7 @@ pub trait FormatValidityChecks {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError>;
 
     /// Validates the transactions according to rules from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transaction
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>
     fn check_without_signatures(
         &self,
         block_height: BlockHeight,

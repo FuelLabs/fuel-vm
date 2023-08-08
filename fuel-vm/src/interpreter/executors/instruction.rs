@@ -1,6 +1,5 @@
 use crate::{
     constraints::reg_key::ProgramRegistersSegment,
-    consts::*,
     error::{
         InterpreterError,
         RuntimeError,
@@ -621,25 +620,25 @@ where
             }
 
             Instruction::PSHL(pshl) => {
-                self.gas_charge(self.gas_costs.pshl)?;
+                self.gas_charge(self.gas_costs().pshl)?;
                 let bitmask = pshl.unpack();
                 self.push_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
             }
 
             Instruction::PSHH(pshh) => {
-                self.gas_charge(self.gas_costs.pshh)?;
+                self.gas_charge(self.gas_costs().pshh)?;
                 let bitmask = pshh.unpack();
                 self.push_selected_registers(ProgramRegistersSegment::High, bitmask)?;
             }
 
             Instruction::POPL(popl) => {
-                self.gas_charge(self.gas_costs.popl)?;
+                self.gas_charge(self.gas_costs().popl)?;
                 let bitmask = popl.unpack();
                 self.pop_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
             }
 
             Instruction::POPH(poph) => {
-                self.gas_charge(self.gas_costs.poph)?;
+                self.gas_charge(self.gas_costs().poph)?;
                 let bitmask = poph.unpack();
                 self.pop_selected_registers(ProgramRegistersSegment::High, bitmask)?;
             }

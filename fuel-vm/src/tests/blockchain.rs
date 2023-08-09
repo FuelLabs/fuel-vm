@@ -754,7 +754,7 @@ fn code_copy_out_of_contract_offset_over_length() {
     );
 
     let mut script_data = contract_id.to_vec();
-    script_data.extend(program.as_slice());
+    script_data.extend(vec![0; contract_size].as_slice());
 
     let result = test_context
         .start_script(script, script_data)
@@ -769,7 +769,7 @@ fn code_copy_out_of_contract_offset_over_length() {
         .first()
         .expect("A `RET` opcode was part of the program.");
 
-    assert_eq!(0, ret.val().expect("Return value"));
+    assert_eq!(1, ret.val().expect("Return value"));
 }
 
 #[test]

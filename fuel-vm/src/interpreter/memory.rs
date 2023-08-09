@@ -726,7 +726,7 @@ pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(dst_addr, len)?;
 
-    let src_end = range.len().min(src.len());
+    let src_end = src_offset.saturating_add(range.len()).min(src.len());
     let data = src.get(src_offset..src_end).unwrap_or_default();
     let (r_data, r_zero) = range.split_at_offset(data.len());
     memory[r_data.usizes()].copy_from_slice(data);

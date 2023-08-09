@@ -312,3 +312,47 @@ fn test_try_zeroize(
     let memory: [u8; 100] = memory[..100].try_into().unwrap();
     (r, memory)
 }
+
+
+// Zero-sized write
+#[test_case(0, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(1, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(0, 0, 1, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+// Dst address checks
+#[test_case(0, 4, 0, &[1, 2, 3, 4] => (true, [1, 2, 3, 4, 0xff]))]
+#[test_case(1, 4, 0, &[1, 2, 3, 4] => (true, [0xff, 1, 2, 3, 4]))]
+#[test_case(2, 4, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 3]))]
+#[test_case(2, 2, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 0xff]))]
+// Zero padding when exceeding slice size
+#[test_case(0, 2, 2, &[1, 2, 3, 4] => (true, [3, 4, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 3, &[1, 2, 3, 4] => (true, [4, 0, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 4, &[1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 5, &[1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
+// Zero padding when exceeding slice size, but with nonzero dst address
+#[test_case(1, 2, 2, &[1, 2, 3, 4] => (true, [0xff, 3, 4, 0xff, 0xff]))]
+#[test_case(1, 2, 3, &[1, 2, 3, 4] => (true, [0xff, 4, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 4, &[1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 5, &[1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+// Zero-sized src slice
+#[test_case(1, 0, 0, &[] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(1, 2, 0, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 1, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 2, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 3, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+fn test_copy_from_slice_zero_fill_noownerchecks(
+    addr: usize,
+    len: usize,
+    src_offset: usize,
+    src_data: &[u8],
+) -> (bool, [u8; 5]) {
+    let mut memory: Memory<MEM_SIZE> = vec![0xffu8; MEM_SIZE].try_into().unwrap();
+    let r = copy_from_slice_zero_fill_noownerchecks(
+        &mut memory,
+        src_data,
+        addr,
+        src_offset,
+        len,
+    ).is_ok();
+    let memory: [u8; 5] = memory[..5].try_into().unwrap();
+    (r, memory)
+}

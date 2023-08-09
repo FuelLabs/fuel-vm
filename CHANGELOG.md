@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#546](https://github.com/FuelLabs/fuel-vm/pull/546): Improve debug formatting of instruction in panic receipts.
+
 ## [Version 0.36.0]
 
 ### Changed

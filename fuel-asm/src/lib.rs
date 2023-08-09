@@ -80,7 +80,7 @@ pub struct InvalidOpcode;
 
 bitflags::bitflags! {
     /// Possible values for the FLAG instruction.
-    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#flags
+    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#flags
     pub struct Flags: Word {
         /// If set, arithmetic errors result in setting $err instead of panicking.
         /// This includes cases where result of a computation is undefined, like
@@ -298,6 +298,14 @@ impl_instructions! {
     0x93 CFE cfe [amount: RegId]
     "Shrink the current call frame's stack"
     0x94 CFS cfs [amount: RegId]
+    "Push a bitmask-selected set of registers in range 16..40 to the stack."
+    0x95 PSHL pshl [bitmask: Imm24]
+    "Push a bitmask-selected set of registers in range 40..64 to the stack."
+    0x96 PSHH pshh [bitmask: Imm24]
+    "Pop a bitmask-selected set of registers in range 16..40 to the stack."
+    0x97 POPL popl [bitmask: Imm24]
+    "Pop a bitmask-selected set of registers in range 40..64 to the stack."
+    0x98 POPH poph [bitmask: Imm24]
 
     "Compare 128bit integers"
     0xa0 WDCM wdcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
@@ -670,20 +678,20 @@ impl Imm24 {
 impl Opcode {
     /// Check if the opcode is allowed for predicates.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#predicate-verification>
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md#contract-opcodes>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#predicate-verification>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#contract-instructions>
     #[allow(clippy::match_like_matches_macro)]
     pub fn is_predicate_allowed(&self) -> bool {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
             | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
-            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | RET
-            | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19 | K256 | S256 | NOOP | FLAG
-            | ADDI | ANDI | DIVI | EXPI | MODI | MULI | MLDV | ORI | SLLI | SRLI
-            | SUBI | XORI | JNEI | LB | LW | SB | SW | MCPI | MCLI | GM | MOVI | JNZI
-            | JI | JMP | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI
-            | CFE | CFS | GTF => true,
+            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
+            | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19
+            | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
+            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
+            | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }
@@ -881,13 +889,6 @@ impl core::iter::FromIterator<Instruction> for Vec<u32> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
         iter.into_iter().map(u32::from).collect()
     }
-}
-
-/// Produce two raw instructions from a word's hi and lo parts.
-pub fn raw_instructions_from_word(word: Word) -> [RawInstruction; 2] {
-    let hi = (word >> 32) as RawInstruction;
-    let lo = word as RawInstruction;
-    [hi, lo]
 }
 
 /// Given an iterator yielding bytes, produces an iterator yielding `Instruction`s.

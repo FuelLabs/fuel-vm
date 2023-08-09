@@ -288,7 +288,9 @@ impl<'r> ProgramRegisters<'r> {
                 // Translate the `a` absolute register index to a program register index.
                 let a = a.translate();
                 // Split the array at the first register which is a.
-                let [i, rest @ ..] = &mut self.0[a..] else { return None };
+                let [i, rest @ ..] = &mut self.0[a..] else {
+                    return None
+                };
                 // Translate the `b` absolute register index to a program register index.
                 // Subtract 1 because the first register is `a`.
                 // Subtract `a` registers because we split the array at `a`.
@@ -303,7 +305,9 @@ impl<'r> ProgramRegisters<'r> {
                 // Translate the `b` absolute register index to a program register index.
                 let b = b.translate();
                 // Split the array at the first register which is b.
-                let [i, rest @ ..] = &mut self.0[b..] else { return None };
+                let [i, rest @ ..] = &mut self.0[b..] else {
+                    return None
+                };
                 // Translate the `a` absolute register index to a program register index.
                 // Subtract 1 because the first register is `b`.
                 // Subtract `b` registers because we split the array at `b`.
@@ -420,5 +424,34 @@ impl<'a> From<&SystemRegistersRef<'a>> for [Word; VM_REGISTER_SYSTEM_COUNT] {
             *zero.0, *one.0, *of.0, *pc.0, *ssp.0, *sp.0, *fp.0, *hp.0, *err.0, *ggas.0,
             *cgas.0, *bal.0, *is.0, *ret.0, *retl.0, *flag.0,
         ]
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ProgramRegistersSegment {
+    /// Registers 16..40
+    Low,
+    /// Registers 40..64
+    High,
+}
+
+impl<'r> ProgramRegisters<'r> {
+    /// Returns the registers corresponding to the segment, always 24 elements.
+    pub(crate) fn segment(&self, segment: ProgramRegistersSegment) -> &[Word] {
+        match segment {
+            ProgramRegistersSegment::Low => &self.0[..24],
+            ProgramRegistersSegment::High => &self.0[24..],
+        }
+    }
+
+    /// Returns the registers corresponding to the segment, always 24 elements.
+    pub(crate) fn segment_mut(
+        &mut self,
+        segment: ProgramRegistersSegment,
+    ) -> &mut [Word] {
+        match segment {
+            ProgramRegistersSegment::Low => &mut self.0[..24],
+            ProgramRegistersSegment::High => &mut self.0[24..],
+        }
     }
 }

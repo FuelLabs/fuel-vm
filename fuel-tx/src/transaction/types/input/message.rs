@@ -5,17 +5,20 @@ use crate::{
     },
     transaction::types::input::AsField,
 };
+use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::SizedBytes,
     Address,
     MemLayout,
-    MemLocType,
     MessageId,
     Nonce,
     Word,
 };
+
+#[cfg(feature = "std")]
+use fuel_types::MemLocType;
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
@@ -51,6 +54,7 @@ pub mod specifications {
         Empty,
         MessageSpecification,
     };
+    use alloc::vec::Vec;
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
@@ -132,7 +136,7 @@ pub mod specifications {
 }
 
 /// It is a full representation of the message from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputmessage.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputmessage>.
 ///
 /// The specification defines the layout of the [`Message`] in the serialized form for
 /// the `fuel-vm`. But on the business logic level, we don't use all fields at the same

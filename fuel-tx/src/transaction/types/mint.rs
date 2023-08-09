@@ -1,6 +1,5 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
         field::{
             Outputs,
             TxPointer as TxPointerField,
@@ -21,12 +20,15 @@ use fuel_types::{
     mem_layout,
     BlockHeight,
     Bytes32,
-    ChainId,
-    MemLayout,
-    MemLocType,
     Word,
 };
 
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::io;
 
@@ -83,7 +85,7 @@ impl MintMetadata {
 }
 
 /// The definition of the `Mint` transaction from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/transaction.md#transactionmint
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md#transactionmint>
 ///
 /// This transaction can be created by the block producer and included in the block only
 /// by it.
@@ -115,7 +117,7 @@ impl crate::UniqueIdentifier for Mint {
         }
 
         let mut clone = self.clone();
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {

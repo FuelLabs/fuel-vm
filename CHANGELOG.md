@@ -6,10 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- [#524](https://github.com/FuelLabs/fuel-vm/pull/524): Fix a crash in `CCP` instruction when overflowing contract bounds. Fix a bug in `CCP` where overflowing contract bounds in a different way would not actually copy the contract bytes, but just zeroes out the section. Fix a bug in `LDC` where it would revert the transaction when the contract bounds were exceeded, when it's just supposed to fill the rest of the bytes with zeroes.
+
+## [Version 0.36.0]
+
 ### Changed
 
 - [#525](https://github.com/FuelLabs/fuel-vm/pull/525): The `$hp` register is no longer restored to it's previous value when returning from a call, making it possible to return heap-allocated types from `CALL`.
-- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
+- [#535](https://github.com/FuelLabs/fuel-vm/pull/535): Add better test coverage for TR and TRO.
 
 #### Breaking
 
@@ -20,14 +26,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- [#524](https://github.com/FuelLabs/fuel-vm/pull/524): Fix a crash in `CCP` instruction when overflowing contract bounds. Fix a bug in `CCP` where overflowing contract bounds in a different way would not actually copy the contract bytes, but just zeroes out the section. Fix a bug in `LDC` where it would revert the transaction when the contract bounds were exceeded, when it's just supposed to fill the rest of the bytes with zeroes.
+- [#511](https://github.com/FuelLabs/fuel-vm/pull/511): Changes multiple panic reasons to be more accurate, and internally refactors instruction fetch logic to be less error-prone.
 
 - [#529](https://github.com/FuelLabs/fuel-vm/pull/529) [#534](https://github.com/FuelLabs/fuel-vm/pull/534): Enforcing async WASM initialization for all NPM wrapper packages.
+
+- [#531](https://github.com/FuelLabs/fuel-vm/pull/531): UtxoId::from_str and TxPointer::from_str no longer crash on invalid input with multibyte characters. Also adds clippy lints to prevent future issues.
 
 #### Breaking
 
 - [#527](https://github.com/FuelLabs/fuel-vm/pull/527): The balances are empty during predicate estimation/verification.
 
+## [Version 0.35.3]
+
+### Changed
+
+- [#542](https://github.com/FuelLabs/fuel-vm/pull/542/): Make the `fuel-tx` WASM compatible with `serde` feature enabled.
 
 ## [Version 0.35.2]
 
@@ -57,6 +70,8 @@ The release mostly fixes funding during the audit and integration with the bridg
 
 - [#486](https://github.com/FuelLabs/fuel-vm/pull/486/): Adds `ed25519` signature verification and `secp256r1` signature recovery to `fuel-crypto`, and corresponding opcodes `ED19` and `ECR1` to `fuel-vm`.
 
+- [#486](https://github.com/FuelLabs/fuel-vm/pull/498): Adds `PSHL`, `PSHH`, `POPH` and `POPL` instructions, which allow cheap push and pop stack operations with multiple registers.
+
 - [#500](https://github.com/FuelLabs/fuel-vm/pull/500): Introduced `ParallelExecutor` trait
     and made available async versions of verify and estimate predicates.
     Updated tests to test for both parallel and sequential execution.
@@ -73,7 +88,7 @@ The release mostly fixes funding during the audit and integration with the bridg
 
 - [#506](https://github.com/FuelLabs/fuel-vm/pull/506): The `mint` and `burn` 
     opcodes accept a new `$rB` register. It is a sub-identifier used to generate an 
-    `AssetId` by [this rule](https://github.com/FuelLabs/fuel-specs/blob/SilentCicero-multi-token/src/identifiers/asset.md). 
+    `AssetId` by [this rule](https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/asset.md). 
     This feature allows having multi-asset per one contract. It is a huge breaking change, and 
     after this point, `ContractId` can't be equal to `AssetId`.
 

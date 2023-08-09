@@ -29,7 +29,7 @@ use core::{
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided
 /// into chunks of this size and pushed to the Merkle tree.
 ///
-/// See https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id
+/// See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md
 const LEAF_SIZE: usize = 16 * 1024;
 /// In the event that contract code cannot be divided evenly by the `LEAF_SIZE`, the
 /// remainder must be padded to the nearest multiple of 8 bytes. Padding is achieved by
@@ -65,7 +65,7 @@ impl Contract {
 
     /// Calculate the code root from a contract.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md>
     pub fn root_from_code<B>(bytes: B) -> Bytes32
     where
         B: AsRef<[u8]>,
@@ -111,7 +111,7 @@ impl Contract {
 
     /// Calculate and return the contract id, provided a salt, code root and state root.
     ///
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/id/contract.md#contract-id>
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md>
     pub fn id(&self, salt: &Salt, root: &Bytes32, state_root: &Bytes32) -> ContractId {
         let mut hasher = Hasher::default();
 

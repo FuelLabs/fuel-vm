@@ -5,19 +5,19 @@ use crate::{
 };
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
     Bytes32,
     ContractId,
     MemLayout,
+};
+
+#[cfg(feature = "std")]
+use fuel_types::{
     MemLocType,
     Word,
 };
 
 /// It is a full representation of the contract input from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
 ///
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
@@ -33,7 +33,7 @@ pub struct Contract {
 
 impl Contract {
     /// The "Note" section from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.utxo_id);
         core::mem::take(&mut self.balance_root);
@@ -42,7 +42,7 @@ impl Contract {
     }
 }
 
-impl SizedBytes for Contract {
+impl bytes::SizedBytes for Contract {
     #[inline(always)]
     fn serialized_size(&self) -> usize {
         ContractSizes::LEN
@@ -90,6 +90,7 @@ impl std::io::Read for Contract {
 #[cfg(feature = "std")]
 impl std::io::Write for Contract {
     fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::Deserializable;
         type S = ContractSizes;
         const LEN: usize = ContractSizes::LEN;
         let buf: &[_; LEN] = full_buf

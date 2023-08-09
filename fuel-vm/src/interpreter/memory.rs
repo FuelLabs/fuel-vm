@@ -11,6 +11,7 @@ use crate::{
 };
 
 use fuel_asm::{
+    Imm24,
     PanicReason,
     RegId,
 };
@@ -32,6 +33,9 @@ mod tests;
 #[cfg(test)]
 mod allocation_tests;
 
+#[cfg(test)]
+mod stack_tests;
+
 /// Used to handle `Word` to `usize` conversions for memory addresses,
 /// as well as checking that the resulting value is withing the VM ram boundaries.
 pub trait ToAddr {
@@ -43,7 +47,7 @@ pub trait ToAddr {
 
 impl ToAddr for usize {
     fn to_addr(self) -> Result<usize, RuntimeError> {
-        if self >= MEM_SIZE {
+        if self > MEM_SIZE {
             return Err(PanicReason::MemoryOverflow.into())
         }
         Ok(self)
@@ -107,6 +111,31 @@ impl MemoryRange {
         address: A,
     ) -> Result<Self, RuntimeError> {
         Self::new(address, SIZE)
+    }
+
+    /// Uses a overflow-capturing operator to combine `base` and `offset`
+    /// into the start of a memory range, returning an error on overflow,
+    /// and then checks that the resulting range is within the VM memory.
+    pub fn new_overflowing_op<A: ToAddr, T: ToAddr, F>(
+        overflowing_op: F,
+        base: T,
+        offset: T,
+        size: A,
+    ) -> Result<Self, RuntimeError>
+    where
+        F: FnOnce(T, T) -> (T, bool),
+    {
+        let (addr, overflow) = overflowing_op(base, offset);
+        if overflow {
+            return Err(PanicReason::MemoryOverflow.into())
+        }
+        Self::new(addr, size)
+    }
+
+    /// Truncate a memory range to a new size if it's smaller then current one.
+    pub fn truncated(&self, limit: usize) -> Self {
+        Self::new(self.start, self.len().min(limit))
+            .expect("Cannot overflow on truncation")
     }
 
     /// Return `true` if the length is `0`.
@@ -196,6 +225,52 @@ where
         stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v)
     }
 
+    pub(crate) fn push_selected_registers(
+        &mut self,
+        segment: ProgramRegistersSegment,
+        bitmask: Imm24,
+    ) -> Result<(), RuntimeError> {
+        let (
+            SystemRegisters {
+                sp, ssp, hp, pc, ..
+            },
+            program_regs,
+        ) = split_registers(&mut self.registers);
+        push_selected_registers(
+            &mut self.memory,
+            sp,
+            ssp.as_ref(),
+            hp.as_ref(),
+            pc,
+            &program_regs,
+            segment,
+            bitmask,
+        )
+    }
+
+    pub(crate) fn pop_selected_registers(
+        &mut self,
+        segment: ProgramRegistersSegment,
+        bitmask: Imm24,
+    ) -> Result<(), RuntimeError> {
+        let (
+            SystemRegisters {
+                sp, ssp, hp, pc, ..
+            },
+            mut program_regs,
+        ) = split_registers(&mut self.registers);
+        pop_selected_registers(
+            &self.memory,
+            sp,
+            ssp.as_ref(),
+            hp.as_ref(),
+            pc,
+            &mut program_regs,
+            segment,
+            bitmask,
+        )
+    }
+
     pub(crate) fn load_byte(
         &mut self,
         ra: RegisterId,
@@ -272,8 +347,23 @@ where
     }
 }
 
-pub(crate) fn stack_pointer_overflow<F>(
+/// Update stack pointer, checking for validity first.
+pub(crate) fn try_update_stack_pointer(
     mut sp: RegMut<SP>,
+    ssp: Reg<SSP>,
+    hp: Reg<HP>,
+    new_sp: Word,
+) -> Result<(), RuntimeError> {
+    if new_sp >= *hp || new_sp < *ssp {
+        Err(PanicReason::MemoryOverflow.into())
+    } else {
+        *sp = new_sp;
+        Ok(())
+    }
+}
+
+pub(crate) fn stack_pointer_overflow<F>(
+    sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
     pc: RegMut<PC>,
@@ -283,15 +373,81 @@ pub(crate) fn stack_pointer_overflow<F>(
 where
     F: FnOnce(Word, Word) -> (Word, bool),
 {
-    let (result, overflow) = f(*sp, v);
+    let (new_sp, overflow) = f(*sp, v);
 
-    if overflow || result >= *hp || result < *ssp {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *sp = result;
-
-        inc_pc(pc)
+    if overflow {
+        return Err(PanicReason::MemoryOverflow.into())
     }
+
+    try_update_stack_pointer(sp, ssp, hp, new_sp)?;
+    inc_pc(pc)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn push_selected_registers(
+    memory: &mut [u8; MEM_SIZE],
+    sp: RegMut<SP>,
+    ssp: Reg<SSP>,
+    hp: Reg<HP>,
+    pc: RegMut<PC>,
+    program_regs: &ProgramRegisters,
+    segment: ProgramRegistersSegment,
+    bitmask: Imm24,
+) -> Result<(), RuntimeError> {
+    let bitmask = bitmask.to_u32();
+
+    // First update the new stack pointer, as that's the only error condition
+    let count: u64 = bitmask.count_ones().into();
+    let stack_range = MemoryRange::new(*sp, count * 8)?;
+    try_update_stack_pointer(sp, ssp, hp, stack_range.words().end)?;
+
+    // Write the registers to the stack
+    let mut it = memory[stack_range.usizes()].chunks_exact_mut(8);
+    for (i, reg) in program_regs.segment(segment).iter().enumerate() {
+        if (bitmask & (1 << i)) != 0 {
+            let item = it
+                .next()
+                .expect("Memory range mismatched with register count");
+            item.copy_from_slice(&reg.to_be_bytes());
+        }
+    }
+
+    inc_pc(pc)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn pop_selected_registers(
+    memory: &[u8; MEM_SIZE],
+    sp: RegMut<SP>,
+    ssp: Reg<SSP>,
+    hp: Reg<HP>,
+    pc: RegMut<PC>,
+    program_regs: &mut ProgramRegisters,
+    segment: ProgramRegistersSegment,
+    bitmask: Imm24,
+) -> Result<(), RuntimeError> {
+    let bitmask = bitmask.to_u32();
+
+    // First update the stack pointer, as that's the only error condition
+    let count: u64 = bitmask.count_ones().into();
+    let size_in_stack = count * 8;
+    let new_sp = sp
+        .checked_sub(size_in_stack)
+        .ok_or(PanicReason::MemoryOverflow)?;
+    try_update_stack_pointer(sp, ssp, hp, new_sp)?;
+    let stack_range = MemoryRange::new(new_sp, size_in_stack)?.usizes();
+
+    // Restore registers from the stack
+    let mut it = memory[stack_range].chunks_exact(8);
+    for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
+        if (bitmask & (1 << i)) != 0 {
+            let mut buf = [0u8; 8];
+            buf.copy_from_slice(it.next().expect("Count mismatch"));
+            *reg = Word::from_be_bytes(buf);
+        }
+    }
+
+    inc_pc(pc)
 }
 
 pub(crate) fn load_byte(
@@ -301,15 +457,9 @@ pub(crate) fn load_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bc = b.saturating_add(c) as usize;
-
-    if bc >= VM_MAX_RAM as RegisterId {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result = memory[bc] as Word;
-
-        inc_pc(pc)
-    }
+    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1u64)?;
+    *result = memory[range.start] as Word;
+    inc_pc(pc)
 }
 
 pub(crate) fn load_word(
@@ -334,18 +484,8 @@ pub(crate) fn store_byte(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let (ac, overflow) = a.overflowing_add(c);
-    let range = ac..(ac + 1);
-    if overflow
-        || ac >= VM_MAX_RAM
-        || !(owner.has_ownership_stack(&range) || owner.has_ownership_heap(&range))
-    {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[ac as usize] = b as u8;
-
-        inc_pc(pc)
-    }
+    write_bytes(memory, owner, a.saturating_add(c), [b as u8])?;
+    inc_pc(pc)
 }
 
 pub(crate) fn store_word(
@@ -388,12 +528,9 @@ pub(crate) fn memclear(
     b: Word,
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(a, b)?;
-    if b > MEM_MAX_ACCESS_SIZE || !owner.has_ownership_range(&range) {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory[range.usizes()].fill(0);
-        inc_pc(pc)
-    }
+    owner.verify_ownership(&range)?;
+    memory[range.usizes()].fill(0);
+    inc_pc(pc)
 }
 
 pub(crate) fn memcopy(
@@ -407,13 +544,7 @@ pub(crate) fn memcopy(
     let dst_range = MemoryRange::new(a, c)?;
     let src_range = MemoryRange::new(b, c)?;
 
-    if c > MEM_MAX_ACCESS_SIZE {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    if !owner.has_ownership_range(&dst_range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
+    owner.verify_ownership(&dst_range)?;
 
     if dst_range.start <= src_range.start && src_range.start < dst_range.end
         || src_range.start <= dst_range.start && dst_range.start < src_range.end
@@ -443,18 +574,10 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> Result<(), RuntimeError> {
-    let (bd, overflow) = b.overflowing_add(d);
-    let (cd, of) = c.overflowing_add(d);
-    let overflow = overflow || of;
-
-    if overflow || bd > VM_MAX_RAM || cd > VM_MAX_RAM || d > MEM_MAX_ACCESS_SIZE {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        *result =
-            (memory[b as usize..bd as usize] == memory[c as usize..cd as usize]) as Word;
-
-        inc_pc(pc)
-    }
+    let range1 = MemoryRange::new(b, d)?;
+    let range2 = MemoryRange::new(c, d)?;
+    *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
+    inc_pc(pc)
 }
 
 #[derive(Debug)]
@@ -478,6 +601,25 @@ impl OwnershipRegisters {
                 .map(|frame| frame.registers()[RegId::HP])
                 .unwrap_or(0),
             context: vm.context.clone(),
+        }
+    }
+
+    pub(crate) fn verify_ownership(
+        &self,
+        range: &MemoryRange,
+    ) -> Result<(), PanicReason> {
+        if self.has_ownership_range(range) {
+            Ok(())
+        } else {
+            Err(PanicReason::MemoryOwnership)
+        }
+    }
+
+    pub(crate) fn verify_internal_context(&self) -> Result<(), PanicReason> {
+        if self.context.is_internal() {
+            Ok(())
+        } else {
+            Err(PanicReason::ExpectedInternalContext)
         }
     }
 
@@ -527,15 +669,11 @@ impl OwnershipRegisters {
 pub(crate) fn try_mem_write<A: ToAddr>(
     addr: A,
     data: &[u8],
-    registers: OwnershipRegisters,
+    owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(addr, data.len())?;
-
-    if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(data);
     Ok(())
 }
@@ -543,15 +681,11 @@ pub(crate) fn try_mem_write<A: ToAddr>(
 pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
     addr: A,
     len: B,
-    registers: OwnershipRegisters,
+    owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new(addr, len)?;
-
-    if !registers.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOwnership.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].fill(0);
     Ok(())
 }
@@ -562,14 +696,9 @@ pub(crate) fn read_bytes<const COUNT: usize>(
     memory: &[u8; MEM_SIZE],
     addr: Word,
 ) -> Result<[u8; COUNT], RuntimeError> {
-    let addr = addr as usize;
-    let (end, overflow) = addr.overflowing_add(COUNT);
-
-    if overflow || end > VM_MAX_RAM as RegisterId {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    Ok(<[u8; COUNT]>::try_from(&memory[addr..end]).unwrap_or_else(|_| unreachable!()))
+    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
+    Ok(<[u8; COUNT]>::try_from(&memory[range.usizes()])
+        .unwrap_or_else(|_| unreachable!()))
 }
 
 /// Writes a constant-sized byte array to memory, performing overflow, memory range and
@@ -581,10 +710,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
     bytes: [u8; COUNT],
 ) -> Result<(), RuntimeError> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
-    if !owner.has_ownership_range(&range) {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
+    owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(&bytes);
     Ok(())
 }

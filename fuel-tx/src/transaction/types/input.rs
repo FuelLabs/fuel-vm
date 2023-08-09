@@ -2,7 +2,10 @@ use crate::{
     TxPointer,
     UtxoId,
 };
-use alloc::vec::Vec;
+use alloc::{
+    string::ToString,
+    vec::Vec,
+};
 use coin::*;
 use consts::*;
 use contract::*;
@@ -157,7 +160,7 @@ impl Default for Input {
     }
 }
 
-impl bytes::SizedBytes for Input {
+impl SizedBytes for Input {
     fn serialized_size(&self) -> usize {
         match self {
             Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),

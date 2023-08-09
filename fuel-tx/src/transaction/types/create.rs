@@ -1,6 +1,5 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
         field::{
             BytecodeLength,
             BytecodeWitnessIndex,
@@ -13,7 +12,6 @@ use crate::{
             StorageSlots,
             Witnesses,
         },
-        metadata::CommonMetadata,
         validity::{
             check_common_part,
             FormatValidityChecks,
@@ -26,7 +24,6 @@ use crate::{
     Input,
     Output,
     StorageSlot,
-    TxId,
     Witness,
 };
 use derivative::Derivative;
@@ -40,17 +37,19 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
-    ChainId,
     ContractId,
-    MemLayout,
-    MemLocType,
     Salt,
     Word,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use core::cmp::max;
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
@@ -75,9 +74,12 @@ pub struct CreateMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
+#[cfg(feature = "std")]
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
+        use crate::transaction::metadata::CommonMetadata;
+
         let CommonMetadata {
             id,
             inputs_offset,
@@ -154,7 +156,7 @@ impl Create {
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
-    fn id(&self, chain_id: &ChainId) -> TxId {
+    fn id(&self, chain_id: &ChainId) -> crate::TxId {
         if let Some(id) = self.cached_id() {
             return id
         }
@@ -169,10 +171,10 @@ impl crate::UniqueIdentifier for Create {
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
-    fn cached_id(&self) -> Option<TxId> {
+    fn cached_id(&self) -> Option<crate::TxId> {
         self.metadata.as_ref().map(|m| m.id)
     }
 }
@@ -215,8 +217,10 @@ impl FormatValidityChecks for Create {
 
         // There will be at most len(witnesses) - 1 signatures to cache, as one of the
         // witnesses will be bytecode
-        let mut recovery_cache =
-            Some(HashMap::with_capacity(max(self.witnesses().len() - 1, 1)));
+        let mut recovery_cache = Some(HashMap::with_capacity(core::cmp::max(
+            self.witnesses().len() - 1,
+            1,
+        )));
 
         self.inputs()
             .iter()
@@ -293,14 +297,28 @@ impl FormatValidityChecks for Create {
             self.metadata.is_some(),
             "`check_without_signatures` is called without cached metadata"
         );
-        let (state_root_calculated, contract_id_calculated) = if let Some(metadata) =
-            &self.metadata
-        {
-            (metadata.state_root, metadata.contract_id)
-        } else {
-            let metadata = CreateMetadata::compute(self, &consensus_params.chain_id())?;
-            (metadata.state_root, metadata.contract_id)
-        };
+        let (state_root_calculated, contract_id_calculated) =
+            if let Some(metadata) = &self.metadata {
+                (metadata.state_root, metadata.contract_id)
+            } else {
+                #[cfg(feature = "std")]
+                {
+                    let metadata =
+                        CreateMetadata::compute(self, &consensus_params.chain_id())?;
+                    (metadata.state_root, metadata.contract_id)
+                }
+
+                #[cfg(not(feature = "std"))]
+                {
+                    let salt = self.salt();
+                    let storage_slots = self.storage_slots();
+                    let contract = Contract::try_from(self)?;
+                    let contract_root = contract.root();
+                    let state_root = Contract::initial_state_root(storage_slots.iter());
+                    let contract_id = contract.id(salt, &contract_root, &state_root);
+                    (state_root, contract_id)
+                }
+            };
 
         let mut contract_created = false;
         self.outputs

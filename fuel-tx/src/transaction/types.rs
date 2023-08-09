@@ -7,13 +7,7 @@ mod storage;
 mod utxo_id;
 mod witness;
 
-use crate::TxId;
 pub use create::Create;
-use fuel_crypto::Hasher;
-use fuel_types::{
-    bytes::SerializableVec,
-    ChainId,
-};
 pub use mint::Mint;
 pub use output::{
     Output,
@@ -24,11 +18,12 @@ pub use storage::StorageSlot;
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
-pub fn compute_transaction_id<T: SerializableVec + Clone>(
-    chain_id: &ChainId,
+#[cfg(feature = "std")]
+pub fn compute_transaction_id<T: fuel_types::bytes::SerializableVec + Clone>(
+    chain_id: &fuel_types::ChainId,
     tx: &mut T,
-) -> TxId {
-    let mut hasher = Hasher::default();
+) -> crate::TxId {
+    let mut hasher = fuel_crypto::Hasher::default();
     // chain ID
     hasher.input(chain_id.to_be_bytes());
     // transaction bytes

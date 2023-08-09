@@ -7,20 +7,19 @@ use crate::{
     TxPointer,
     UtxoId,
 };
+use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
     Address,
     AssetId,
     BlockHeight,
     MemLayout,
-    MemLocType,
     Word,
 };
+
+#[cfg(feature = "std")]
+use fuel_types::MemLocType;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -78,7 +77,7 @@ impl CoinSpecification for Full {
 }
 
 /// It is a full representation of the coin from the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
 ///
 /// The specification defines the layout of the [`Coin`] in the serialized form for the
 /// `fuel-vm`. But on the business logic level, we don't use all fields at the same time.
@@ -127,7 +126,7 @@ where
     Specification: CoinSpecification,
 {
     /// The "Note" section from the specification:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcoin.
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
     pub fn prepare_sign(&mut self) {
         core::mem::take(&mut self.tx_pointer);
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
@@ -136,7 +135,7 @@ where
     }
 }
 
-impl<Specification> SizedBytes for Coin<Specification>
+impl<Specification> bytes::SizedBytes for Coin<Specification>
 where
     Specification: CoinSpecification,
 {
@@ -164,6 +163,7 @@ where
     Specification: CoinSpecification,
 {
     fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::SizedBytes;
         let serialized_size = self.serialized_size();
         if full_buf.len() < serialized_size {
             return Err(bytes::eof())
@@ -274,6 +274,7 @@ where
     Specification: CoinSpecification,
 {
     fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
+        use fuel_types::bytes::Deserializable;
         type S = CoinSizes;
         const LEN: usize = CoinSizes::LEN;
         let buf: &[_; LEN] = full_buf

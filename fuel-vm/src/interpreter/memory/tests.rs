@@ -313,7 +313,6 @@ fn test_try_zeroize(
     (r, memory)
 }
 
-
 // Zero-sized write
 #[test_case(0, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
 #[test_case(1, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
@@ -352,7 +351,8 @@ fn test_copy_from_slice_zero_fill_noownerchecks(
         addr,
         src_offset,
         len,
-    ).is_ok();
+    )
+    .is_ok();
     let memory: [u8; 5] = memory[..5].try_into().unwrap();
     (r, memory)
 }

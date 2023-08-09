@@ -629,20 +629,25 @@ struct CodeCopyCtx<'vm, S, I> {
 impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
     pub(crate) fn code_copy(
         mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
+        dst_addr: Word,
+        contract_id_addr: Word,
+        contract_offset: Word,
+        length: Word,
     ) -> Result<(), RuntimeError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
-        let contract_id = ContractId::from(read_bytes(self.memory, b)?);
-        let offset: usize = c.try_into().map_err(|_| PanicReason::MemoryOverflow)?;
+        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
+        let offset: usize = contract_offset
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
 
         // Check target memory range ownership
-        if !self.owner.has_ownership_range(&MemoryRange::new(a, d)?) {
+        if !self
+            .owner
+            .has_ownership_range(&MemoryRange::new(dst_addr, length)?)
+        {
             return Err(PanicReason::MemoryOverflow.into())
         }
 
@@ -655,9 +660,9 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
         copy_from_slice_zero_fill_noownerchecks(
             self.memory,
             contract.as_ref(),
-            a,
+            dst_addr,
             offset,
-            d,
+            length,
         )?;
 
         inc_pc(self.pc)

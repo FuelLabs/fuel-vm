@@ -653,13 +653,12 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
 
         self.input_contracts.check(&contract_id)?;
 
-        let contract =
-            super::contract::contract(self.storage, &contract_id)?.into_owned();
+        let contract = super::contract::contract(self.storage, &contract_id)?;
 
         // Owner checks already performed above
         copy_from_slice_zero_fill_noownerchecks(
             self.memory,
-            contract.as_ref(),
+            contract.as_ref().as_ref(),
             dst_addr,
             offset,
             length,

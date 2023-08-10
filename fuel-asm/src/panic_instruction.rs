@@ -40,13 +40,13 @@ impl PanicInstruction {
 /// Helper struct to debug-format a `RawInstruction` in `PanicInstruction::fmt`.
 struct InstructionDbg(RawInstruction);
 impl fmt::Debug for InstructionDbg {
-    /// Formats like this: `MOVI { dst: 32, val: 32 } (bytes 72 80 00 20)`}`
+    /// Formats like this: `MOVI { dst: 32, val: 32 } (bytes: 72 80 00 20)`}`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match Instruction::try_from(self.0) {
             Ok(instr) => write!(f, "{:?}", instr)?,
             Err(_) => write!(f, "Unknown")?,
         };
-        write!(f, " (bytes ")?;
+        write!(f, " (bytes: ")?;
         for (i, byte) in self.0.to_be_bytes().iter().enumerate() {
             if i != 0 {
                 write!(f, " ")?;

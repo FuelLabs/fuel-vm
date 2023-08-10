@@ -903,7 +903,7 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let ra = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
                 .finish()
         }
     };
@@ -911,8 +911,8 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, rb) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
-                .field(stringify!($rb), &u8::from(rb))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
+                .field(stringify!($rb), &format_args!("{:#02x}", u8::from(rb)))
                 .finish()
         }
     };
@@ -920,9 +920,9 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, rb, rc) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
-                .field(stringify!($rb), &u8::from(rb))
-                .field(stringify!($rc), &u8::from(rc))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
+                .field(stringify!($rb), &format_args!("{:#02x}", u8::from(rb)))
+                .field(stringify!($rc), &format_args!("{:#02x}", u8::from(rc)))
                 .finish()
         }
     };
@@ -932,10 +932,10 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, rb, rc, rd) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
-                .field(stringify!($rb), &u8::from(rb))
-                .field(stringify!($rc), &u8::from(rc))
-                .field(stringify!($rd), &u8::from(rd))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
+                .field(stringify!($rb), &format_args!("{:#02x}", u8::from(rb)))
+                .field(stringify!($rc), &format_args!("{:#02x}", u8::from(rc)))
+                .field(stringify!($rd), &format_args!("{:#02x}", u8::from(rd)))
                 .finish()
         }
     };
@@ -945,9 +945,9 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, rb, rc, imm) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
-                .field(stringify!($rb), &u8::from(rb))
-                .field(stringify!($rc), &u8::from(rc))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
+                .field(stringify!($rb), &format_args!("{:#02x}", u8::from(rb)))
+                .field(stringify!($rc), &format_args!("{:#02x}", u8::from(rc)))
                 .field(stringify!($imm), &u8::from(imm))
                 .finish()
         }
@@ -956,8 +956,8 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, rb, imm) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
-                .field(stringify!($rb), &u8::from(rb))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
+                .field(stringify!($rb), &format_args!("{:#02x}", u8::from(rb)))
                 .field(stringify!($imm), &u16::from(imm))
                 .finish()
         }
@@ -966,7 +966,7 @@ macro_rules! op_debug_fmt {
         fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
             let (ra, imm) = self.unpack();
             f.debug_struct(stringify!($Op))
-                .field(stringify!($ra), &u8::from(ra))
+                .field(stringify!($ra), &format_args!("{:#02x}", u8::from(ra)))
                 .field(stringify!($imm), &u32::from(imm))
                 .finish()
         }

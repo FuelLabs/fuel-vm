@@ -539,7 +539,7 @@ fn ldc_reason_helper(
             assert_ne!(actual_contract_id, &Some(contract_id));
         };
     } else {
-        panic!("Script should have panicked");
+        panic!("Script should have panicked before logging");
     }
 }
 
@@ -606,26 +606,170 @@ fn ldc_contract_not_in_inputs() {
 }
 
 #[test]
-fn ldc_contract_offset_over_length() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-    let reg_b = 0x21;
+fn load_contract_code_out_of_contract_offset_over_length() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
 
-    let load_contract = vec![
-        op::move_(reg_a, RegId::HP),  // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b), // r[b] := 0
-        op::ori(reg_b, reg_b, 12),    /* r[b] += 12 (will be
-                                       * padded to 16) */
-        op::ldc(reg_a, reg_a, reg_b), // Load first two words from the contract
-        op::move_(reg_a, RegId::SSP), // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2), // r[a] -= 16 (start of the loaded code)
-        op::xor(reg_b, reg_b, reg_b), // r[b] := 0
-        op::ori(reg_b, reg_b, 16),    // r[b] += 16 (length of the loaded code)
-        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), // Log digest of the loaded code
-        op::noop(),                   // Patched to the jump later
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, true);
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, (contract_size + 1) as Immediate18),
+            op::movi(0x13, contract_size as Immediate18),
+            op::ldc(0x11, 0x12, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::SP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(program.as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(0, ret.val().expect("Return value"));
+}
+
+#[test]
+fn code_copy_shorter_zero_padding() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, 2048),
+            op::aloc(0x10),
+            op::addi(0x10, RegId::HP, contract_size as Immediate12),
+            op::movi(0x10, 1234),
+            op::addi(0x10, RegId::HP, (contract_size + 1) as Immediate12),
+            op::movi(0x10, 1234),
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x13, (contract_size + 2) as Immediate18),
+            op::ccp(RegId::HP, 0x11, RegId::ZERO, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::HP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(program.as_slice());
+    script_data.extend(vec![0; 2]);
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("A constant `1` was returned."));
+}
+
+#[test]
+fn code_copy_out_of_contract_offset_over_length() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, 2048),
+            op::aloc(0x10),
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, (contract_size + 1) as Immediate18),
+            op::movi(0x13, contract_size as Immediate18),
+            op::ccp(RegId::HP, 0x11, 0x12, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::HP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(vec![0; contract_size].as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("Return value"));
 }
 
 #[test]

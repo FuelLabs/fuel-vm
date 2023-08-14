@@ -475,7 +475,7 @@ pub mod field {
     };
 
     use alloc::vec::Vec;
-    use std::ops::{
+    use core::ops::{
         Deref,
         DerefMut,
     };

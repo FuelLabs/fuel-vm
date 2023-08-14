@@ -5,16 +5,16 @@ use crate::{
 };
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
+    bytes::SizedBytes,
     Bytes32,
     ContractId,
     MemLayout,
     MemLocType,
     Word,
 };
+
+#[cfg(feature = "std")]
+use fuel_types::bytes::Deserializable;
 
 /// It is a full representation of the contract input from the specification:
 /// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_format/input.md#inputcontract.

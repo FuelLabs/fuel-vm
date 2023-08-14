@@ -1,9 +1,9 @@
 //! Tools for gas instrumentalization
 
-use std::{
-    ops::Deref,
-    sync::Arc,
-};
+use core::ops::Deref;
+
+#[cfg(feature = "alloc")]
+use alloc::sync::Arc;
 
 use fuel_types::Word;
 

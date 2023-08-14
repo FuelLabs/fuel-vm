@@ -2,7 +2,10 @@ use crate::{
     TxPointer,
     UtxoId,
 };
-use alloc::vec::Vec;
+use alloc::{
+    string::ToString,
+    vec::Vec,
+};
 use coin::*;
 use consts::*;
 use contract::*;

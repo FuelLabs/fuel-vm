@@ -17,6 +17,8 @@ use fuel_types::{
     Word,
 };
 
+use alloc::vec::Vec;
+
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
 pub type MessageDataPredicate =
@@ -47,6 +49,8 @@ pub trait MessageSpecification: private::Seal {
 }
 
 pub mod specifications {
+    use alloc::vec::Vec;
+
     use super::{
         Empty,
         MessageSpecification,

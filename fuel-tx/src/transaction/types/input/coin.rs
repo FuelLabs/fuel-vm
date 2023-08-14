@@ -10,10 +10,7 @@ use crate::{
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        Deserializable,
-        SizedBytes,
-    },
+    bytes::SizedBytes,
     Address,
     AssetId,
     BlockHeight,
@@ -21,6 +18,11 @@ use fuel_types::{
     MemLocType,
     Word,
 };
+
+#[cfg(feature = "std")]
+use fuel_types::bytes::Deserializable;
+
+use alloc::vec::Vec;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;

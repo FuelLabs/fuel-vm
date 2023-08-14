@@ -75,6 +75,7 @@ pub struct CreateMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
+#[cfg(feature = "std")]
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
@@ -207,8 +208,8 @@ impl Chargeable for Create {
     }
 }
 
+#[cfg(feature = "std")]
 impl FormatValidityChecks for Create {
-    #[cfg(feature = "std")]
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 

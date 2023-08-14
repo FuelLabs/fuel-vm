@@ -126,24 +126,3 @@ impl bytes::SizedBytes for Witness {
         WORD_SIZE + bytes::padded_len(self.data.as_slice())
     }
 }
-
-#[cfg(feature = "std")]
-impl io::Read for Witness {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        bytes::store_bytes(buf, self.data.as_slice()).map(|(n, _)| n)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Witness {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        bytes::restore_bytes(buf).map(|(n, data, _)| {
-            self.data = data;
-            n
-        })
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}

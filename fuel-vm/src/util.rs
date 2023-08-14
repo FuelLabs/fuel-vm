@@ -462,7 +462,7 @@ pub mod test_helpers {
             let tx_offset = self.get_tx_params().tx_offset();
             let tx_mem = &interpreter.memory()
                 [tx_offset..(tx_offset + transaction.serialized_size())];
-            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            let deser_tx = Transaction::decode(tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {

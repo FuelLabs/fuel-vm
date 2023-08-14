@@ -19,9 +19,6 @@ use fuel_types::{
     MemLocType,
 };
 
-#[cfg(feature = "std")]
-use std::io;
-
 #[cfg(feature = "random")]
 use rand::{
     distributions::{
@@ -119,49 +116,6 @@ impl SizedBytes for TxPointer {
         Self::LEN
     }
 }
-
-#[cfg(feature = "std")]
-impl io::Write for TxPointer {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let buf: &[_; Self::LEN] = buf
-            .get(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let block_height =
-            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.block_height)).into();
-        let tx_index = bytes::restore_u16_at(buf, Self::layout(Self::LAYOUT.tx_index));
-
-        self.block_height = block_height;
-        self.tx_index = tx_index;
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for TxPointer {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let buf: &mut [_; Self::LEN] = buf
-            .get_mut(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.block_height),
-            *self.block_height,
-        );
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.tx_index), self.tx_index);
-
-        Ok(Self::LEN)
-    }
-}
-
 #[test]
 fn fmt_encode_decode() {
     use core::str::FromStr;

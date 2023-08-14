@@ -9,6 +9,7 @@ use fuel_types::{
         self,
         SizedBytes,
     },
+    canonical::Deserialize,
     mem_layout,
     AssetId,
     ContractId,
@@ -21,13 +22,10 @@ use crate::consts::{
     WORD_SIZE,
     *,
 };
-use std::io::{
-    self,
-    Write,
-};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 /// Call structure representation, composed of a called contract `to` and two
 /// word arguments.
 ///
@@ -105,51 +103,8 @@ impl SizedBytes for Call {
     }
 }
 
-impl io::Read for Call {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let buf: &mut [_; Self::LEN] = buf
-            .get_mut(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let bytes: [u8; Self::LEN] = (*self).into();
-        buf.copy_from_slice(&bytes);
-
-        Ok(Self::LEN)
-    }
-}
-
-impl io::Write for Call {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let buf: &[_; Self::LEN] = buf
-            .get(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        *self = Self::from(*buf);
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl TryFrom<&[u8]> for Call {
-    type Error = PanicReason;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, PanicReason> {
-        let mut call = Self::default();
-
-        call.write(bytes)
-            .map_err(|_| PanicReason::MalformedCallStructure)?;
-
-        Ok(call)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 /// Call frame representation in the VM stack.
 ///
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#call-frames>
@@ -304,71 +259,11 @@ impl SizedBytes for CallFrame {
     }
 }
 
-impl io::Read for CallFrame {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let buf: &mut [_; Self::LEN] = buf
-            .get_mut(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
+impl TryFrom<&[u8]> for Call {
+    type Error = PanicReason;
 
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.to), &self.to);
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.asset_id), &self.asset_id);
-        let mut registers = [0u8; Self::LAYOUT.registers.size()];
-        for (reg, out) in self
-            .registers
-            .iter()
-            .zip(registers.chunks_exact_mut(WORD_SIZE))
-        {
-            bytes::store_number(
-                out.try_into().expect("Can't fail as chunks are exact"),
-                *reg,
-            );
-        }
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.registers), &registers);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.code_size), self.code_size);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.a), self.a);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.b), self.b);
-
-        Ok(Self::LEN)
-    }
-}
-
-impl io::Write for CallFrame {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let buf: &[_; Self::LEN] = buf
-            .get(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let to = bytes::restore_at(buf, Self::layout(Self::LAYOUT.to));
-        let asset_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.asset_id));
-        let registers = bytes::restore_at(buf, Self::layout(Self::LAYOUT.registers));
-        let code_size =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.code_size));
-        let a = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.a));
-        let b = bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.b));
-
-        for (reg, word) in self
-            .registers
-            .iter_mut()
-            .zip(registers.chunks_exact(WORD_SIZE))
-        {
-            *reg = bytes::restore_number(
-                word.try_into().expect("Can't fail as chunks are exact"),
-            );
-        }
-
-        self.to = to.into();
-        self.asset_id = asset_id.into();
-        self.code_size = code_size;
-        self.a = a;
-        self.b = b;
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+    fn try_from(mut value: &[u8]) -> Result<Self, Self::Error> {
+        Self::decode(&mut value).map_err(|_| PanicReason::MalformedCallStructure)
     }
 }
 

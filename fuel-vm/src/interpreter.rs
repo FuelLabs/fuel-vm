@@ -9,8 +9,6 @@ use crate::{
     state::Debugger,
 };
 use std::{
-    io,
-    io::Read,
     mem,
     ops::Index,
 };
@@ -41,7 +39,6 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes::{
-        SerializableVec,
         SizedBytes,
     },
     AssetId,
@@ -328,7 +325,7 @@ pub trait ExecutableTransaction:
     + field::Witnesses
     + Into<Transaction>
     + SizedBytes
-    + SerializableVec
+    + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
     fn as_script(&self) -> Option<&Script>;
@@ -345,14 +342,6 @@ pub trait ExecutableTransaction:
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
     fn transaction_type() -> Word;
-
-    /// Dumps the `Output` by the `idx` into the `buf` buffer.
-    fn output_to_mem(&mut self, idx: usize, buf: &mut [u8]) -> io::Result<usize> {
-        self.outputs_mut()
-            .get_mut(idx)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Invalid output idx"))
-            .and_then(|o| o.read(buf))
-    }
 
     /// Replaces the `Output::Variable` with the `output`(should be also
     /// `Output::Variable`) by the `idx` index.

@@ -31,6 +31,7 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
+    canonical::Serialize,
     bytes::SizedBytes,
     AssetId,
     BlockHeight,
@@ -117,10 +118,12 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 ) -> Result<(), RuntimeError> {
     let mem_range = absolute_output_mem_range(tx, tx_offset, idx)?
         .ok_or(PanicReason::OutputNotFound)?;
-    let mem = mem_range.write(memory);
-
-    tx.output_to_mem(idx, mem)?;
-
+    let mut mem = mem_range.write(memory);
+    let output = tx.outputs_mut()
+        .get_mut(idx)
+        .expect("Invalid output index; checked above");
+    output.encode(&mut mem)
+    .expect("Unable to write output into given memory range");
     Ok(())
 }
 

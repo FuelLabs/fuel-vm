@@ -136,50 +136,6 @@ impl SizedBytes for UtxoId {
     }
 }
 
-#[cfg(feature = "std")]
-impl io::Write for UtxoId {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &[_; LEN] = buf
-            .get(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let tx_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.tx_id));
-        let output_index =
-            bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
-
-        self.tx_id = tx_id.into();
-        self.output_index = output_index;
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for UtxoId {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &mut [_; LEN] = buf
-            .get_mut(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.tx_id), &self.tx_id);
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.output_index),
-            self.output_index,
-        );
-
-        Ok(Self::LEN)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

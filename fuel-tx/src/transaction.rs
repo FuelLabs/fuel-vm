@@ -25,9 +25,6 @@ mod validity;
 #[cfg(feature = "std")]
 mod id;
 
-#[cfg(feature = "std")]
-mod txio;
-
 pub mod consensus_parameters;
 
 pub use consensus_parameters::{

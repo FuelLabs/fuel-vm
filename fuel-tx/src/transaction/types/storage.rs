@@ -80,45 +80,6 @@ impl Distribution<StorageSlot> for Standard {
     }
 }
 
-#[cfg(feature = "std")]
-impl io::Read for StorageSlot {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        const LEN: usize = StorageSlot::SLOT_SIZE;
-        let buf: &mut [_; LEN] = buf
-            .get_mut(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.key), &self.key);
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.value), &self.value);
-
-        Ok(Self::SLOT_SIZE)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for StorageSlot {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        const LEN: usize = StorageSlot::SLOT_SIZE;
-        let buf: &[_; LEN] = buf
-            .get(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let key = bytes::restore_at(buf, Self::layout(Self::LAYOUT.key));
-        let value = bytes::restore_at(buf, Self::layout(Self::LAYOUT.value));
-
-        self.key = key.into();
-        self.value = value.into();
-
-        Ok(Self::SLOT_SIZE)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 impl bytes::SizedBytes for StorageSlot {
     fn serialized_size(&self) -> usize {
         Self::SLOT_SIZE

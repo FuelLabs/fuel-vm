@@ -143,11 +143,7 @@ mod tests {
         RngCore,
         SeedableRng,
     };
-    use std::{
-        io::{
-            Read,
-            Write,
-        },
+    use core::{
         mem,
         ops::Not,
     };

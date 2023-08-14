@@ -36,9 +36,6 @@ use fuel_types::{
 };
 use message::*;
 
-#[cfg(feature = "std")]
-use std::io;
-
 pub mod coin;
 mod consts;
 pub mod contract;

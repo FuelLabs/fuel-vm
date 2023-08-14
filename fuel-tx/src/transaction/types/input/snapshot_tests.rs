@@ -2,7 +2,6 @@
 
 use super::*;
 use crate::TransactionBuilder;
-use fuel_types::bytes::SerializableVec;
 
 #[test]
 fn tx_with_signed_coin_snapshot() {

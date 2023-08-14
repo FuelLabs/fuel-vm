@@ -20,8 +20,6 @@ use fuel_crypto::{
     Message,
     Signature,
 };
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(feature = "random")]
 use rand::{

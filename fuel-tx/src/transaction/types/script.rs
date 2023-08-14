@@ -44,13 +44,9 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use fuel_types::{
     ChainId,
-    MemLayout,
-    MemLocType,
 };
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {

@@ -15,14 +15,6 @@ use core::{
     str,
 };
 
-#[cfg(feature = "std")]
-use fuel_types::{
-    bytes,
-    MemLocType,
-};
-
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(feature = "random")]
 use rand::{

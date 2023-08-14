@@ -18,9 +18,6 @@ use rand::{
 
 use core::cmp::Ordering;
 
-#[cfg(feature = "std")]
-use std::io;
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]

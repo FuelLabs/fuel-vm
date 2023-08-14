@@ -1,8 +1,4 @@
 use fuel_types::{
-    bytes::{
-        Deserializable,
-        SerializableVec,
-    },
     Bytes32,
 };
 

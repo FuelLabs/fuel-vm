@@ -26,20 +26,10 @@ use fuel_types::{
 #[cfg(feature = "std")]
 use fuel_types::{
     ChainId,
-    MemLayout,
-    MemLocType,
 };
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
-use fuel_types::bytes::{
-    self,
-    Deserializable,
-};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {

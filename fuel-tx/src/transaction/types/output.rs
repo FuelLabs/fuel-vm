@@ -11,27 +11,11 @@ use fuel_types::{
 
 use core::mem;
 
-#[cfg(feature = "std")]
-use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
-    MemLayout,
-    MemLocType,
-};
-
-#[cfg(feature = "std")]
-use std::io;
-
 mod consts;
 mod repr;
 mod sizes;
 
 use consts::*;
-
-#[cfg(feature = "std")]
-use sizes::*;
 
 pub use repr::OutputRepr;
 

@@ -12,13 +12,6 @@ use core::{
     str,
 };
 
-#[cfg(feature = "std")]
-use fuel_types::{
-    bytes,
-    MemLayout,
-    MemLocType,
-};
-
 #[cfg(feature = "random")]
 use rand::{
     distributions::{
@@ -139,10 +132,6 @@ fn fmt_encode_decode() {
 
         #[cfg(feature = "std")]
         {
-            use fuel_types::bytes::{
-                Deserializable,
-                SerializableVec,
-            };
 
             let bytes = tx_pointer.clone().to_bytes();
             let tx_pointer_p =

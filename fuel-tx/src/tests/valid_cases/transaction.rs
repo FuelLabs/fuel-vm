@@ -16,9 +16,8 @@ use rand::{
     SeedableRng,
 };
 
-use std::{
+use core::{
     cmp,
-    io::Write,
 };
 
 #[test]

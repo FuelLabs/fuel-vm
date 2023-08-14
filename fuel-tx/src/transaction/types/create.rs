@@ -47,13 +47,9 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use fuel_types::{
     ChainId,
-    MemLayout,
-    MemLocType,
 };
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;

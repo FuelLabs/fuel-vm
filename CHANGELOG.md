@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Description of the upcoming release here.
 
+## [Hotfix 0.35.4]
+
+### Fixed
+
+- [#548](https://github.com/FuelLabs/fuel-vm/pull/548): Bumped dalek to `2.0.0` to fix security vulnerability.
+
 ## [Version 0.35.3]
 
 ### Changed

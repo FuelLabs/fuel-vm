@@ -181,6 +181,8 @@ const fn fill_bytes(len: usize) -> usize {
 /// Writes zero bytes to fill alignment into the `buffer`.
 macro_rules! align_during_encode {
     ($t:ty, $buffer:ident) => {
+        // FIXME: This is unsound; size_of shouldn't affect the serialized size.
+        //        The compiler is allowed to add arbitrary padding to structs.
         const FILL_SIZE: usize = fill_bytes(::core::mem::size_of::<$t>());
         // It will be removed by the compiler if `FILL_SIZE` is zero.
         if FILL_SIZE > 0 {
@@ -193,6 +195,8 @@ macro_rules! align_during_encode {
 /// Skips zero bytes added for alignment from the `buffer`.
 macro_rules! align_during_decode {
     ($t:ident, $buffer:ident) => {
+        // FIXME: This is unsound; size_of shouldn't affect the serialized size.
+        //        The compiler is allowed to add arbitrary padding to structs.
         const FILL_SIZE: usize = fill_bytes(::core::mem::size_of::<$t>());
         // It will be removed by the compiler if `FILL_SIZE` is zero.
         if FILL_SIZE > 0 {

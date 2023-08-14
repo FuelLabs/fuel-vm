@@ -12,8 +12,11 @@ use fuel_tx::{
 };
 use fuel_tx_test_helpers::TransactionFactory;
 use fuel_types::{
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     ChainId,
-    canonical::Serialize,
 };
 use rand::{
     rngs::StdRng,

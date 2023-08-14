@@ -168,6 +168,11 @@ pub trait Deserialize: Sized {
     ) -> Result<(), Error> {
         Ok(())
     }
+
+    /// Helper method for deserializing `Self` from bytes.
+    fn from_bytes(mut buffer: &[u8]) -> Result<Self, Error> {
+        Self::decode(&mut buffer)
+    }
 }
 
 /// The data of each field should be 64 bits aligned.

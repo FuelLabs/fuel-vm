@@ -17,6 +17,10 @@ use fuel_tx::{
     ConsensusParameters,
     Witness,
 };
+use fuel_types::canonical::{
+    Deserialize,
+    Serialize,
+};
 use rand::{
     rngs::StdRng,
     Rng,

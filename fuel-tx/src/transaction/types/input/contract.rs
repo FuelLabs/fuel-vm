@@ -10,7 +10,6 @@ use fuel_types::{
     MemLayout,
 };
 
-
 /// It is a full representation of the contract input from the specification:
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
 ///

@@ -262,4 +262,3 @@ impl Output {
         self.prepare_sign()
     }
 }
-

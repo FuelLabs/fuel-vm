@@ -9,6 +9,10 @@ use super::{
 use fuel_crypto::SecretKey;
 use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
+use fuel_types::canonical::{
+    Deserialize,
+    Serialize,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -16,9 +20,7 @@ use rand::{
     SeedableRng,
 };
 
-use core::{
-    cmp,
-};
+use core::cmp;
 
 #[test]
 fn gas_limit() {
@@ -771,8 +773,9 @@ fn create() {
 
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {
+            // FIXME: Why is the copy_from_slice overwritten immediately?
             slot_data[..8].copy_from_slice(&i.to_be_bytes());
-            let _ = slot.write(&slot_data).unwrap();
+            slot.encode(&mut &mut slot_data[..]).unwrap();
             slot.clone()
         })
         .collect::<Vec<StorageSlot>>();

@@ -24,9 +24,7 @@ use fuel_types::{
 };
 
 #[cfg(feature = "std")]
-use fuel_types::{
-    ChainId,
-};
+use fuel_types::ChainId;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -242,4 +240,3 @@ mod field {
         }
     }
 }
-

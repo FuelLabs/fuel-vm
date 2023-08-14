@@ -135,10 +135,11 @@ pub mod test_helpers {
         Witness,
     };
     use fuel_types::{
-        bytes::{
-            SizedBytes,
+        bytes::SizedBytes,
+        canonical::{
+            Deserialize,
+            Serialize,
         },
-        canonical::{Serialize, Deserialize},
         Address,
         AssetId,
         BlockHeight,
@@ -459,7 +460,7 @@ pub mod test_helpers {
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
-            let tx_mem = &interpreter.memory()
+            let mut tx_mem = &interpreter.memory()
                 [tx_offset..(tx_offset + transaction.serialized_size())];
             let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 

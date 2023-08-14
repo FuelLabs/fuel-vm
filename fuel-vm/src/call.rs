@@ -9,7 +9,10 @@ use fuel_types::{
         self,
         SizedBytes,
     },
-    canonical::Deserialize,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     mem_layout,
     AssetId,
     ContractId,
@@ -103,8 +106,15 @@ impl SizedBytes for Call {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    fuel_types::canonical::Deserialize,
+    fuel_types::canonical::Serialize,
+)]
 /// Call frame representation in the VM stack.
 ///
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#call-frames>
@@ -269,20 +279,14 @@ impl TryFrom<&[u8]> for Call {
 
 #[cfg(test)]
 impl From<Call> for Vec<u8> {
-    fn from(mut call: Call) -> Self {
-        use io::Read;
-        let mut buf = [0; Call::LEN];
-        call.read_exact(&mut buf[..]).unwrap();
-        buf.to_vec()
+    fn from(call: Call) -> Self {
+        call.to_bytes()
     }
 }
 
 #[cfg(test)]
 impl From<CallFrame> for Vec<u8> {
-    fn from(mut call: CallFrame) -> Self {
-        use io::Read;
-        let mut buf = [0; CallFrame::serialized_size()];
-        call.read_exact(&mut buf[..]).unwrap();
-        buf.to_vec()
+    fn from(call: CallFrame) -> Self {
+        call.to_bytes()
     }
 }

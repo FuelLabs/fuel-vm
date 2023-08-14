@@ -158,4 +158,3 @@ mem_layout!(SomeTypeLayout for SomeType
     arr2: [u8; 64] = 64,
     bytes_size: Word = WORD_SIZE
 );
-

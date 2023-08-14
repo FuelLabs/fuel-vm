@@ -4,6 +4,10 @@ use crate::input::sizes::{
     MessageSizesLayout,
 };
 use fuel_types::{
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     MemLayout,
 };
 

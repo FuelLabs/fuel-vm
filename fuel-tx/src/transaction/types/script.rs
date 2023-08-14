@@ -42,9 +42,7 @@ use fuel_types::{
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
-use fuel_types::{
-    ChainId,
-};
+use fuel_types::ChainId;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
@@ -567,4 +565,3 @@ mod field {
         }
     }
 }
-

@@ -38,9 +38,7 @@ use fuel_tx::{
     UniqueIdentifier,
 };
 use fuel_types::{
-    bytes::{
-        SizedBytes,
-    },
+    bytes::SizedBytes,
     AssetId,
     ChainId,
     ContractId,

@@ -18,7 +18,6 @@ use fuel_types::{
     Word,
 };
 
-
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
 pub type CoinPredicate = Coin<Predicate>;

@@ -3,6 +3,8 @@
 use super::*;
 use crate::TransactionBuilder;
 
+use fuel_types::canonical::Serialize;
+
 #[test]
 fn tx_with_signed_coin_snapshot() {
     let mut tx = TransactionBuilder::script(vec![], vec![])
@@ -129,7 +131,7 @@ fn tx_with_signed_message_data() {
 
 #[test]
 fn tx_with_predicate_message_data() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),

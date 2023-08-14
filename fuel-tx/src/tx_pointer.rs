@@ -3,6 +3,10 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     mem_layout,
     BlockHeight,
 };
@@ -130,15 +134,10 @@ fn fmt_encode_decode() {
         let x = TxPointer::from_str(&upper).expect("failed to decode from str");
         assert_eq!(tx_pointer, x);
 
-        #[cfg(feature = "std")]
-        {
+        let bytes = tx_pointer.clone().to_bytes();
+        let tx_pointer_p = TxPointer::from_bytes(&bytes).expect("failed to deserialize");
 
-            let bytes = tx_pointer.clone().to_bytes();
-            let tx_pointer_p =
-                TxPointer::from_bytes(&bytes).expect("failed to deserialize");
-
-            assert_eq!(tx_pointer, tx_pointer_p);
-        }
+        assert_eq!(tx_pointer, tx_pointer_p);
     }
 }
 

@@ -17,6 +17,10 @@ use fuel_crypto::{
     Signature,
 };
 use fuel_types::{
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     Bytes32,
     ChainId,
 };
@@ -110,6 +114,15 @@ where
 #[cfg(all(test, feature = "random"))]
 mod tests {
     use crate::TxParameters;
+    use core::{
+        mem,
+        ops::Not,
+    };
+    use fuel_types::canonical::{
+        Deserialize,
+        Serialize,
+    };
+
     use fuel_tx::{
         field::*,
         input::{
@@ -143,10 +156,6 @@ mod tests {
         RngCore,
         SeedableRng,
     };
-    use core::{
-        mem,
-        ops::Not,
-    };
 
     fn invert<B>(mut bytes: B)
     where
@@ -167,9 +176,12 @@ mod tests {
 
     fn invert_storage_slot(storage_slot: &mut StorageSlot) {
         let mut data = [0u8; 64];
-        let _ = storage_slot.read(&mut data).unwrap();
+        storage_slot
+            .encode(&mut &mut data[..])
+            .expect("Failed to encode storage slot");
         invert(&mut data);
-        let _ = storage_slot.write(&data).unwrap();
+        *storage_slot =
+            StorageSlot::from_bytes(&data).expect("Failed to decode storage slot");
     }
 
     fn inv_v(bytes: &mut Vec<u8>) {

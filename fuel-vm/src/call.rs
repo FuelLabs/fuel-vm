@@ -9,10 +9,7 @@ use fuel_types::{
         self,
         SizedBytes,
     },
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
+    canonical::Deserialize,
     mem_layout,
     AssetId,
     ContractId,
@@ -25,6 +22,9 @@ use crate::consts::{
     WORD_SIZE,
     *,
 };
+
+#[cfg(test)]
+use fuel_types::canonical::Serialize;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

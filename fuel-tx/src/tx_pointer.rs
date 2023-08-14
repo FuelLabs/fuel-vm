@@ -3,12 +3,14 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
     mem_layout,
     BlockHeight,
+};
+
+#[cfg(test)]
+use fuel_types::canonical::{
+    Deserialize,
+    Serialize,
 };
 
 use core::{

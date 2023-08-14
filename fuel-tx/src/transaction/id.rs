@@ -17,10 +17,6 @@ use fuel_crypto::{
     Signature,
 };
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
     Bytes32,
     ChainId,
 };

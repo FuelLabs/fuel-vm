@@ -6,10 +6,7 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_types::canonical::{
-    Deserialize,
-    Serialize,
-};
+use fuel_types::canonical::Serialize;
 use rand::{
     rngs::StdRng,
     Rng,

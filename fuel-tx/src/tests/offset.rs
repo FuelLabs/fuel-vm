@@ -329,7 +329,7 @@ fn tx_offset_create() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Create>::from_seed(1295)
         .take(number_cases)
-        .for_each(|(mut tx, _)| {
+        .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
 
             cases.salt = true;
@@ -398,7 +398,7 @@ fn tx_offset_script() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Script>::from_seed(1295)
         .take(number_cases)
-        .for_each(|(mut tx, _)| {
+        .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
             common_parts_create_and_script(&tx, &bytes, &mut cases);
         });
@@ -437,7 +437,7 @@ fn tx_offset_mint() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Mint>::from_seed(1295)
         .take(number_cases)
-        .for_each(|mut tx| {
+        .for_each(|tx| {
             let bytes = tx.to_bytes();
 
             let ofs = tx.tx_pointer_offset();

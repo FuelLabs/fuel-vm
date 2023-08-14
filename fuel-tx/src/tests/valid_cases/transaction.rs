@@ -9,10 +9,7 @@ use super::{
 use fuel_crypto::SecretKey;
 use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
-use fuel_types::canonical::{
-    Deserialize,
-    Serialize,
-};
+use fuel_types::canonical::Serialize;
 use rand::{
     rngs::StdRng,
     Rng,
@@ -769,7 +766,7 @@ fn create() {
         .expect("Failed to validate the transaction");
 
     let mut slot_data = [0u8; 64];
-    let mut slot = StorageSlot::default();
+    let slot = StorageSlot::default();
 
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {

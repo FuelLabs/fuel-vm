@@ -5,13 +5,10 @@ use std::ops::{
 };
 
 use fuel_asm::Word;
-use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
-    ContractId,
-};
+use fuel_types::ContractId;
+
+#[cfg(test)]
+use fuel_types::canonical::Deserialize;
 
 use crate::{
     consts::MEM_SIZE,

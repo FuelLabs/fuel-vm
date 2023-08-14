@@ -1,6 +1,5 @@
 use crate::{
     transaction::{
-        compute_transaction_id,
         consensus_parameters::TxParameters,
         field::{
             GasLimit,
@@ -37,14 +36,17 @@ use fuel_types::{
     mem_layout,
     BlockHeight,
     Bytes32,
-    ChainId,
-    MemLayout,
-    MemLocType,
     Word,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use fuel_types::{
+    ChainId,
+    MemLayout,
+    MemLocType,
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
@@ -131,7 +133,7 @@ impl crate::UniqueIdentifier for Script {
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        compute_transaction_id(chain_id, &mut clone)
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {

@@ -7,6 +7,7 @@ use super::{
         set_variable_output,
         AppendReceipt,
     },
+    memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
     RuntimeBalances,
@@ -201,43 +202,33 @@ struct TransferCtx<'vm, S, Tx> {
 }
 
 impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+    /// In Fuel specs:
+    /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
+    /// $rA -> recipient_contract_id_offset
+    /// $rB -> transfer_amount
+    /// $rC -> asset_id_offset
     pub(crate) fn transfer(
         self,
         panic_context: &mut PanicContext,
-        a: Word,
-        b: Word,
-        c: Word,
+        recipient_contract_id_offset: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let cx = c
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
-        let amount = b;
-        let destination = ContractId::try_from(&self.memory[a as usize..ax as usize])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[c as usize..cx as usize])
-            .expect("Unreachable! Checked memory range");
+        let amount = transfer_amount;
+        let destination =
+            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;
 
         if amount == 0 {
-            return Err(PanicReason::NotEnoughBalance.into())
+            return Err(PanicReason::TransferZeroCoins.into())
         }
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
@@ -282,38 +273,32 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         inc_pc(self.pc)
     }
 
+    /// In Fuel specs:
+    /// Transfer $rC coins with asset ID at $rD to address at $rA, with output $rB.
+    /// $rA -> recipient_offset
+    /// $rB -> output_index
+    /// $rC -> transfer_amount
+    /// $rD -> asset_id_offset
     pub(crate) fn transfer_output(
         self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
+        recipient_offset: Word,
+        output_index: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
+        let out_idx = output_index as usize;
+        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+        let amount = transfer_amount;
 
-        let dx = d
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        // if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into())
+        if amount == 0 {
+            return Err(PanicReason::TransferZeroCoins.into())
         }
-
-        let out_idx = b as usize;
-        let to = Address::try_from(&self.memory[a as usize..ax as usize])
-            .expect("Unreachable! Checked memory range");
-        let asset_id = AssetId::try_from(&self.memory[d as usize..dx as usize])
-            .expect("Unreachable! Checked memory range");
-        let amount = c;
 
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {

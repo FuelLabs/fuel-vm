@@ -1,11 +1,27 @@
+use derivative::Derivative;
 use fuel_types::{
     bytes::{
         self,
         WORD_SIZE,
     },
     fmt_truncated_hex,
-    Address,
 };
+
+use alloc::vec::Vec;
+
+#[cfg(feature = "std")]
+use crate::{
+    CheckError,
+    Input,
+    TxId,
+};
+#[cfg(feature = "std")]
+use fuel_crypto::{
+    Message,
+    Signature,
+};
+#[cfg(feature = "std")]
+use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -15,21 +31,6 @@ use rand::{
     },
     Rng,
 };
-
-use alloc::vec::Vec;
-
-use crate::{
-    CheckError,
-    Input,
-    TxId,
-};
-use derivative::Derivative;
-use fuel_crypto::{
-    Message,
-    Signature,
-};
-#[cfg(feature = "std")]
-use std::io;
 
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
@@ -59,7 +60,7 @@ impl Witness {
         &self,
         txhash: &TxId,
         witness_index: usize,
-    ) -> Result<Address, CheckError> {
+    ) -> Result<fuel_types::Address, CheckError> {
         let bytes = <[u8; Signature::LEN]>::try_from(self.as_ref()).map_err(|_| {
             CheckError::InputInvalidSignature {
                 index: witness_index,

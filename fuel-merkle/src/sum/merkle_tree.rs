@@ -37,7 +37,7 @@ pub enum MerkleTreeError {
 ///
 /// This is in contrast to the Binary Merkle Tree node, where a node has only a digest.
 ///
-/// See the [specification](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/cryptographic_primitives.md#merkle-trees)
+/// See the [specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#merkle-trees)
 /// for more details.
 ///
 /// **Details**

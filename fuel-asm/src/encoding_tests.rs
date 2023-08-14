@@ -16,7 +16,7 @@ fn opcode() {
 
     for opcode_int in 0..64 {
         let Ok(op) = Opcode::try_from(opcode_int) else {
-            continue;
+            continue
         };
 
         instructions.push(op.test_construct(r, r, r, r, imm12));
@@ -44,18 +44,6 @@ fn opcode() {
 
     assert_eq!(instructions, instructions_from_bytes.unwrap());
 
-    let pairs = bytes.chunks(8).map(|chunk| {
-        let mut arr = [0; core::mem::size_of::<Word>()];
-        arr.copy_from_slice(chunk);
-        Word::from_be_bytes(arr)
-    });
-
-    let instructions_from_words: Vec<Instruction> = pairs
-        .into_iter()
-        .flat_map(raw_instructions_from_word)
-        .map(|raw| Instruction::try_from(raw).unwrap())
-        .collect();
-
     #[cfg(feature = "serde")]
     for ins in &instructions {
         let ins_ser = bincode::serialize(ins).expect("Failed to serialize opcode");
@@ -63,8 +51,6 @@ fn opcode() {
             bincode::deserialize(&ins_ser).expect("Failed to serialize opcode");
         assert_eq!(ins, &ins_de);
     }
-
-    assert_eq!(instructions, instructions_from_words);
 }
 
 #[test]

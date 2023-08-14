@@ -161,7 +161,7 @@ impl Default for Input {
     }
 }
 
-impl bytes::SizedBytes for Input {
+impl SizedBytes for Input {
     fn serialized_size(&self) -> usize {
         match self {
             Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),

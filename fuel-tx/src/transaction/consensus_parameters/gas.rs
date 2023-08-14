@@ -145,11 +145,32 @@ impl GasUnit {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Gas costings for every op.
 /// The inner values are wrapped in an [`Arc`]
 /// so this is cheap to clone.
 pub struct GasCosts(Arc<GasCostsValues>);
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for GasCosts {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(GasCosts(Arc::new(serde::Deserialize::deserialize(
+            deserializer,
+        )?)))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for GasCosts {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(self.0.as_ref(), serializer)
+    }
+}
 
 impl GasCosts {
     /// Create new cost values wrapped in an [`Arc`].
@@ -236,6 +257,10 @@ pub struct GasCostsValues {
     pub not: Word,
     pub or: Word,
     pub ori: Word,
+    pub poph: Word,
+    pub popl: Word,
+    pub pshh: Word,
+    pub pshl: Word,
     #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
     pub ret: Word,
     #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
@@ -376,6 +401,10 @@ impl GasCostsValues {
             not: 0,
             or: 0,
             ori: 0,
+            poph: 0,
+            popl: 0,
+            pshh: 0,
+            pshl: 0,
             ret: 0,
             rvrt: 0,
             s256: 0,
@@ -485,6 +514,10 @@ impl GasCostsValues {
             or: 1,
             ori: 1,
             ret: 1,
+            poph: 1,
+            popl: 1,
+            pshh: 1,
+            pshl: 1,
             rvrt: 1,
             s256: 1,
             sb: 1,

@@ -12,7 +12,7 @@ use p256::ecdsa::{
 };
 
 /// Combines recovery id with the signature bytes. See the following link for explanation.
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md#public-key-cryptography
+/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
 /// Panics if the highest bit of byte at index 32 is set, as this indicates non-normalized
 /// signature. Panics if the recovery id is in reduced-x form.
 #[cfg(feature = "test-helpers")]
@@ -28,7 +28,7 @@ fn encode_signature(signature: Signature, recovery_id: RecoveryId) -> [u8; 64] {
 }
 
 /// Separates recovery id from the signature bytes. See the following link for
-/// explanation. https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic_primitives.md#public-key-cryptography
+/// explanation. https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
 fn decode_signature(mut signature: [u8; 64]) -> Option<(Signature, RecoveryId)> {
     let v = (signature[32] & 0x80) != 0;
     signature[32] &= 0x7f;

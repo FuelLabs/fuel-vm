@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 /// The spendable unrestricted initial assets.
 /// More information about it in the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx-validity.md#sufficient-balance>
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct NonRetryableFreeBalances(pub(crate) BTreeMap<AssetId, Word>);
 
@@ -32,7 +32,7 @@ impl core::ops::Deref for NonRetryableFreeBalances {
 
 /// The spendable only during execution [`AssetId::BASE`] asset.
 /// More information about it in the specification:
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx_validity.md#sufficient-balance
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx-validity.md#sufficient-balance>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct RetryableAmount(pub(crate) Word);
 

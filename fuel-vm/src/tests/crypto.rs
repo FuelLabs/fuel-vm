@@ -16,7 +16,10 @@ use fuel_crypto::{
 };
 use fuel_tx::TransactionBuilder;
 use rand::{
-    rngs::StdRng,
+    rngs::{
+        OsRng,
+        StdRng,
+    },
     SeedableRng,
 };
 use sha3::{
@@ -463,9 +466,8 @@ fn ed25519_verify() {
     let params = ConsensusParameters::default();
     let gas_costs = GasCosts::default();
 
-    let arbitrary_bytes = [7u8; 32];
-
-    let signing_key = ed25519_dalek::SigningKey::from_bytes(&arbitrary_bytes);
+    let mut rng = OsRng;
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);

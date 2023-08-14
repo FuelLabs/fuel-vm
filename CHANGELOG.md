@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [#533](https://github.com/FuelLabs/fuel-vm/pull/533): Use custom serliazation for fuel-types to allow no_std compilation.
 - [#546](https://github.com/FuelLabs/fuel-vm/pull/546): Improve debug formatting of instruction in panic receipts.
 
 ### Fixed

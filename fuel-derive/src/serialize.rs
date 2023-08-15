@@ -1,6 +1,8 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
+use crate::attribute::should_skip_field;
+
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
@@ -15,8 +17,12 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     });
 
     let encode_dynamic = variant.each(|binding| {
-        quote! {
-            fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+        if should_skip_field(binding) {
+            quote! {}
+        } else {
+            quote! {
+                fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+            }
         }
     });
 

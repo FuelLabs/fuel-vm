@@ -1,7 +1,9 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
-fn deserialize_struct(s: &synstructure::Structure) -> TokenStream2 {
+use crate::attribute::should_skip_field;
+
+fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
     let variant: &synstructure::VariantInfo = &s.variants()[0];
@@ -13,8 +15,14 @@ fn deserialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     });
 
     let decode_dynamic = variant.each(|binding| {
-        quote! {
-            fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+        if should_skip_field(binding) {
+            quote! {
+                *#binding = ::core::default::Default::default();
+            }
+        } else {
+            quote! {
+                fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+            }
         }
     });
 
@@ -103,7 +111,7 @@ pub fn deserialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
         .add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
     match s.ast().data {
-        syn::Data::Struct(_) => deserialize_struct(&s),
+        syn::Data::Struct(_) => deserialize_struct(&mut s),
         syn::Data::Enum(_) => deserialize_enum(&s),
         _ => panic!("Can't derive `Deserialize` for `union`s"),
     }

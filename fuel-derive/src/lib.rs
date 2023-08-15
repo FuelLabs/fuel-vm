@@ -1,5 +1,6 @@
 extern crate proc_macro;
 
+mod attribute;
 mod deserialize;
 mod serialize;
 
@@ -8,12 +9,12 @@ use self::{
     serialize::serialize_derive,
 };
 synstructure::decl_derive!(
-    [Deserialize] =>
+    [Deserialize, attributes(canonical)] =>
     /// Derives `Deserialize` trait for the given `struct` or `enum`.
     deserialize_derive
 );
 synstructure::decl_derive!(
-    [Serialize] =>
+    [Serialize, attributes(canonical)] =>
     /// Derives `Serialize` trait for the given `struct` or `enum`.
     serialize_derive
 );

@@ -171,7 +171,7 @@ impl_instructions! {
     "Burns `amount` coins of the asset ID created from `sub_id` for the current contract."
     0x2C BURN burn [amount: RegId sub_id_addr: RegId]
     "Call a contract."
-        0x2D CALL call [target_struct: RegId fwd_coins: RegId asset_id_addr: RegId fwd_gas: RegId]
+    0x2D CALL call [target_struct: RegId fwd_coins: RegId asset_id_addr: RegId fwd_gas: RegId]
     "Copy contract code for a contract."
     0x2E CCP ccp [dst_addr: RegId contract_id_addr: RegId offset: RegId len: RegId]
     "Get code root of a contract."

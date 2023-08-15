@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.36.1]
+
 ### Changed
 
 - [#546](https://github.com/FuelLabs/fuel-vm/pull/546): Improve debug formatting of instruction in panic receipts.
@@ -13,10 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - [#547](https://github.com/FuelLabs/fuel-vm/pull/547): Bump `ed25519-dalek` to `2.0.0` to deal with RustSec Advisory 
-
-#### Breaking
-
 - [#524](https://github.com/FuelLabs/fuel-vm/pull/524): Fix a crash in `CCP` instruction when overflowing contract bounds. Fix a bug in `CCP` where overflowing contract bounds in a different way would not actually copy the contract bytes, but just zeroes out the section. Fix a bug in `LDC` where it would revert the transaction when the contract bounds were exceeded, when it's just supposed to fill the rest of the bytes with zeroes.
+
 
 ## [Version 0.36.0]
 

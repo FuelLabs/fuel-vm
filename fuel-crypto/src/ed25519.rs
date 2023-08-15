@@ -17,9 +17,10 @@ pub fn verify(
     signature: &Bytes64,
     message: &Message,
 ) -> Result<(), Error> {
-    let signature = Signature::from_bytes(&**signature);
+    let signature = Signature::from_bytes(signature);
 
-    let pub_key = ed25519_dalek::SigningKey::from_bytes(&**pub_key);
+    let pub_key = ed25519_dalek::VerifyingKey::from_bytes(pub_key)
+        .map_err(|_| Error::InvalidPublicKey)?;
 
     if pub_key.verify_strict(&**message, &signature).is_ok() {
         Ok(())

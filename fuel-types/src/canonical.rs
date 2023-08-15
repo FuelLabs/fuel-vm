@@ -312,37 +312,6 @@ impl Deserialize for () {
     }
 }
 
-// `Option` is not supported by the specification. So ignore them.
-// TODO: should we panic here? I really dislike silently failing. -@Dentosal
-impl<T> Serialize for Option<T> {
-    #[inline(always)]
-    fn size_static(&self) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn size_dynamic(&self) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn size(&self) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn encode_static<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
-        Ok(())
-    }
-}
-
-// `Option` is not supported by the specification. So ignore them.
-impl<T> Deserialize for Option<T> {
-    fn decode_static<I: Input + ?Sized>(_buffer: &mut I) -> Result<Self, Error> {
-        Ok(None)
-    }
-}
-
 impl<T: Serialize> Serialize for Vec<T> {
     #[inline(always)]
     // Encode only the size of the vector. Elements will be encoded in the

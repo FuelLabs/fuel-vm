@@ -78,6 +78,7 @@ pub enum Receipt {
         is: Word,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
 
@@ -87,6 +88,7 @@ pub enum Receipt {
         pc: Word,
         is: Word,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         contract_id: Option<ContractId>,
     },
 
@@ -118,6 +120,7 @@ pub enum Receipt {
         is: Word,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
 
@@ -153,6 +156,7 @@ pub enum Receipt {
         digest: Bytes32,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
     Mint {

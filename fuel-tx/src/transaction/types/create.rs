@@ -125,6 +125,7 @@ pub struct Create {
     pub(crate) salt: Salt,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
     pub(crate) metadata: Option<CreateMetadata>,
 }
 

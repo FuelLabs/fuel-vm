@@ -70,6 +70,7 @@ pub struct Script {
     pub(crate) receipts_root: Bytes32,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
     pub(crate) metadata: Option<ScriptMetadata>,
 }
 

@@ -88,6 +88,7 @@ pub struct Mint {
     pub(crate) outputs: Vec<Output>,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
     pub(crate) metadata: Option<MintMetadata>,
 }
 

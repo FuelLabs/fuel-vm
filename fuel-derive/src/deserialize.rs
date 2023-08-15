@@ -1,7 +1,10 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
-use crate::attribute::should_skip_field;
+use crate::attribute::{
+    should_skip_field,
+    should_skip_field_binding,
+};
 
 fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
@@ -9,13 +12,19 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
     let variant: &synstructure::VariantInfo = &s.variants()[0];
     let decode_main = variant.construct(|field, _| {
         let ty = &field.ty;
-        quote! {
-            <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+        if should_skip_field(&field.attrs) {
+            quote! {
+                ::core::default::Default::default()
+            }
+        } else {
+            quote! {
+                <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+            }
         }
     });
 
     let decode_dynamic = variant.each(|binding| {
-        if should_skip_field(binding) {
+        if should_skip_field_binding(binding) {
             quote! {
                 *#binding = ::core::default::Default::default();
             }
@@ -49,9 +58,15 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .iter()
         .map(|variant| {
             let decode_main = variant.construct(|field, _| {
-                let ty = &field.ty;
-                quote! {
-                    <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+                if should_skip_field(&field.attrs) {
+                    quote! {
+                        ::core::default::Default::default()
+                    }
+                } else {
+                    let ty = &field.ty;
+                    quote! {
+                        <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+                    }
                 }
             });
 
@@ -72,8 +87,14 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     let decode_dynamic = s.variants().iter().map(|variant| {
         let decode_dynamic = variant.each(|binding| {
-            quote! {
-                fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+            if should_skip_field_binding(binding) {
+                quote! {
+                    *#binding = ::core::default::Default::default();
+                }
+            } else {
+                quote! {
+                    fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+                }
             }
         });
 

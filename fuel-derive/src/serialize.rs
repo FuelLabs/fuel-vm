@@ -1,23 +1,27 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
-use crate::attribute::should_skip_field;
+use crate::attribute::should_skip_field_binding;
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
     let variant: &synstructure::VariantInfo = &s.variants()[0];
     let encode_static = variant.each(|binding| {
-        quote! {
-            if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
-                return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
+        if should_skip_field_binding(binding) {
+            quote! {}
+        } else {
+            quote! {
+                if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
+                    return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
+                }
+                fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
             }
-            fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
         }
     });
 
     let encode_dynamic = variant.each(|binding| {
-        if should_skip_field(binding) {
+        if should_skip_field_binding(binding) {
             quote! {}
         } else {
             quote! {
@@ -54,11 +58,15 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         let pat = v.pat();
         let index = i as u64;
         let encode_static_iter = v.bindings().iter().map(|binding| {
-            quote! {
-                if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
-                    return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
+            if should_skip_field_binding(binding) {
+                quote! {}
+            } else {
+                quote! {
+                    if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
+                        return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
+                    }
+                    fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
                 }
-                fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
             }
         });
         quote! {
@@ -72,8 +80,12 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     });
     let encode_dynamic = s.variants().iter().map(|v| {
         let encode_dynamic_iter = v.each(|binding| {
-            quote! {
-                fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+            if should_skip_field_binding(binding) {
+                quote! {}
+            } else {
+                quote! {
+                    fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+                }
             }
         });
         quote! {

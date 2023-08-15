@@ -102,7 +102,7 @@ fn test_return() {
         &mut memory,
         &mut context,
     )
-    .ret_data(0, MEM_MAX_ACCESS_SIZE + 1);
+    .ret_data(0, VM_MAX_RAM + 1);
     assert_eq!(
         r,
         Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))

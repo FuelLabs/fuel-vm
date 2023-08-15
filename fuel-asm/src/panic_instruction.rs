@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::{
     Instruction,
     PanicReason,
@@ -5,7 +7,7 @@ use crate::{
     Word,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
@@ -32,6 +34,35 @@ impl PanicInstruction {
     /// Underlying instruction
     pub const fn instruction(&self) -> &RawInstruction {
         &self.instruction
+    }
+}
+
+/// Helper struct to debug-format a `RawInstruction` in `PanicInstruction::fmt`.
+struct InstructionDbg(RawInstruction);
+impl fmt::Debug for InstructionDbg {
+    /// Formats like this: `MOVI { dst: 32, val: 32 } (bytes: 72 80 00 20)`}`
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match Instruction::try_from(self.0) {
+            Ok(instr) => write!(f, "{:?}", instr)?,
+            Err(_) => write!(f, "Unknown")?,
+        };
+        write!(f, " (bytes: ")?;
+        for (i, byte) in self.0.to_be_bytes().iter().enumerate() {
+            if i != 0 {
+                write!(f, " ")?;
+            }
+            write!(f, "{:02x}", byte)?;
+        }
+        write!(f, ")")
+    }
+}
+
+impl fmt::Debug for PanicInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PanicInstruction")
+            .field("reason", &self.reason)
+            .field("instruction", &InstructionDbg(self.instruction))
+            .finish()
     }
 }
 

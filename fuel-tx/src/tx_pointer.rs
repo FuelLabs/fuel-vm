@@ -5,8 +5,6 @@ use fuel_types::{
     },
     mem_layout,
     BlockHeight,
-    MemLayout,
-    MemLocType,
 };
 
 use core::{
@@ -15,7 +13,11 @@ use core::{
 };
 
 #[cfg(feature = "std")]
-use fuel_types::bytes;
+use fuel_types::{
+    bytes,
+    MemLayout,
+    MemLocType,
+};
 
 #[cfg(feature = "std")]
 use std::io;

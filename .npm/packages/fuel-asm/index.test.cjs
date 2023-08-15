@@ -1,9 +1,21 @@
 const { expect } = require('chai')
 const asm = require('.')
 
+/*
+Top-level usage:
+
+  asm.initWasm().then(() => {
+    const gtf = asm.gtf(0x10, 0x00, asm.GTFArgs.ScriptData)
+    // ...
+  });
+
+*/
+
 describe('fuel-asm [cjs]', () => {
 
-  it('should compose simple script', () => {
+  it('should compose simple script', async () => {
+
+    await asm.initWasm();
 
     const gtf = asm.gtf(0x10, 0x00, asm.GTFArgs.ScriptData)
     const addi = asm.addi(0x11, 0x10, 0x20)

@@ -1,5 +1,4 @@
 use crate::receipt::Receipt;
-use fuel_types::Word;
 
 macro_rules! enum_from {
     (
@@ -21,12 +20,12 @@ macro_rules! enum_from {
         }
 
         #[cfg(feature = "std")]
-        impl TryFrom<Word> for $name {
+        impl TryFrom<fuel_types::Word> for $name {
             type Error = std::io::Error;
 
-            fn try_from(x: Word) -> Result<Self, Self::Error> {
+            fn try_from(x: fuel_types::Word) -> Result<Self, Self::Error> {
                 match x {
-                    $(x if x == $name::$vname as Word => Ok($name::$vname),)*
+                    $(x if x == $name::$vname as fuel_types::Word => Ok($name::$vname),)*
                     _ => Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
                         "The provided identifier is invalid!",

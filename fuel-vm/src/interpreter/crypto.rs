@@ -17,13 +17,9 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     error::RuntimeError,
+    prelude::MemoryRange,
 };
 
-use crate::arith::{
-    checked_add_word,
-    checked_sub_word,
-};
-use fuel_asm::PanicReason;
 use fuel_crypto::{
     Hasher,
     Message,
@@ -186,21 +182,10 @@ pub(crate) fn keccak256(
         Digest,
         Keccak256,
     };
-
-    let bc = checked_add_word(b, c)?;
-
-    if a > checked_sub_word(VM_MAX_RAM, Bytes32::LEN as Word)?
-        || c > MEM_MAX_ACCESS_SIZE
-        || bc > MIN_VM_MAX_RAM_USIZE_MAX
-    {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    let (a, b, bc) = (a as usize, b as usize, bc as usize);
+    let src_range = MemoryRange::new(b, c)?;
 
     let mut h = Keccak256::new();
-
-    h.update(&memory[b..bc]);
+    h.update(&memory[src_range.usizes()]);
 
     try_mem_write(a, h.finalize().as_slice(), owner, memory)?;
 
@@ -215,18 +200,14 @@ pub(crate) fn sha256(
     b: Word,
     c: Word,
 ) -> Result<(), RuntimeError> {
-    let bc = checked_add_word(b, c)?;
+    let src_range = MemoryRange::new(b, c)?;
 
-    if a > checked_sub_word(VM_MAX_RAM, Bytes32::LEN as Word)?
-        || c > MEM_MAX_ACCESS_SIZE
-        || bc > MIN_VM_MAX_RAM_USIZE_MAX
-    {
-        return Err(PanicReason::MemoryOverflow.into())
-    }
-
-    let (a, b, bc) = (a as usize, b as usize, bc as usize);
-
-    try_mem_write(a, Hasher::hash(&memory[b..bc]).as_ref(), owner, memory)?;
+    try_mem_write(
+        a,
+        Hasher::hash(&memory[src_range.usizes()]).as_ref(),
+        owner,
+        memory,
+    )?;
 
     inc_pc(pc)
 }

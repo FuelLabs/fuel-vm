@@ -228,7 +228,9 @@ pub(crate) fn set_flag(
     pc: RegMut<PC>,
     a: Word,
 ) -> Result<(), RuntimeError> {
-    let Some(flags) = Flags::from_bits(a) else { return Err(PanicReason::ErrorFlag.into()) };
+    let Some(flags) = Flags::from_bits(a) else {
+        return Err(PanicReason::ErrorFlag.into())
+    };
 
     *flag = flags.bits();
 
@@ -237,7 +239,7 @@ pub(crate) fn set_flag(
 
 pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
     pc.checked_add(Instruction::SIZE as Word)
-        .ok_or_else(|| PanicReason::ArithmeticOverflow.into())
+        .ok_or_else(|| PanicReason::MemoryOverflow.into())
         .map(|i| *pc = i)
 }
 

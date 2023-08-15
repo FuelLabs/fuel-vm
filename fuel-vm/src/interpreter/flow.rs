@@ -228,18 +228,14 @@ impl RetCtx<'_> {
     }
 
     pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
-        if b > MEM_MAX_ACCESS_SIZE || a > VM_MAX_RAM - b {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
-        let ab = (a + b) as usize;
+        let range = MemoryRange::new(a, b)?;
 
         let receipt = Receipt::return_data(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
             self.registers[RegId::PC],
             self.registers[RegId::IS],
-            self.append.memory[a as usize..ab].to_vec(),
+            self.append.memory[range.usizes()].to_vec(),
         );
         let digest = *receipt
             .digest()

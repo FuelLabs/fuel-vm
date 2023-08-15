@@ -120,16 +120,17 @@ fn test_verify_ed25519() -> Result<(), RuntimeError> {
     let msg_address = 64;
     let pubkey_address = 64 + 32;
 
-    let keypair =
-        ed25519_dalek::Keypair::generate(&mut ed25519_dalek_old_rand::rngs::OsRng {});
+    let mut rng = rand::rngs::OsRng;
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
     let message = Message::new([3u8; 100]);
-    let signature = keypair.sign(&*message);
+    let signature = signing_key.sign(&*message);
 
-    memory[sig_address..sig_address + Signature::LEN].copy_from_slice(signature.as_ref());
+    memory[sig_address..sig_address + Signature::LEN]
+        .copy_from_slice(&signature.to_bytes());
     memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
     memory[pubkey_address..pubkey_address + Bytes32::LEN]
-        .copy_from_slice(keypair.public.as_ref());
+        .copy_from_slice(signing_key.verifying_key().as_ref());
 
     ed25519_verify(
         &mut memory,

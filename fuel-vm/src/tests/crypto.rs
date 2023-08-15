@@ -460,18 +460,18 @@ fn ed25519_verify() {
     let maturity = Default::default();
     let height = Default::default();
 
-    let keypair =
-        ed25519_dalek::Keypair::generate(&mut ed25519_dalek_old_rand::rngs::OsRng {});
+    let mut rng = rand::rngs::OsRng;
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);
 
-    let signature = keypair.sign(&*message);
+    let signature = signing_key.sign(&*message);
 
     #[rustfmt::skip]
     let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
-        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
+        op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
@@ -481,11 +481,11 @@ fn ed25519_verify() {
     ].into_iter().collect();
 
     let script_data = signature
-        .as_ref()
+        .to_bytes()
         .iter()
         .copied()
         .chain(message.as_ref().iter().copied())
-        .chain(keypair.public.as_ref().iter().copied())
+        .chain(signing_key.verifying_key().as_ref().iter().copied())
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)

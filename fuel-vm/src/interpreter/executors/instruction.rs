@@ -677,9 +677,9 @@ where
             }
 
             Instruction::MCPI(mcpi) => {
-                self.gas_charge(self.gas_costs().mcpi)?;
                 let (a, b, imm) = mcpi.unpack();
                 let len = imm.into();
+                self.dependent_gas_charge(self.gas_costs().mcpi, len)?;
                 self.memcopy(r!(a), r!(b), len)?;
             }
 
@@ -836,15 +836,17 @@ where
             }
 
             Instruction::K256(k256) => {
-                self.gas_charge(self.gas_costs().k256)?;
                 let (a, b, c) = k256.unpack();
-                self.keccak256(r!(a), r!(b), r!(c))?;
+                let len = r!(c);
+                self.dependent_gas_charge(self.gas_costs().k256, len)?;
+                self.keccak256(r!(a), r!(b), len)?;
             }
 
             Instruction::S256(s256) => {
-                self.gas_charge(self.gas_costs().s256)?;
                 let (a, b, c) = s256.unpack();
-                self.sha256(r!(a), r!(b), r!(c))?;
+                let len = r!(c);
+                self.dependent_gas_charge(self.gas_costs().s256, len)?;
+                self.sha256(r!(a), r!(b), len)?;
             }
 
             Instruction::FLAG(flag) => {

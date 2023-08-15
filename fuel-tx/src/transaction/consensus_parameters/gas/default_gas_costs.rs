@@ -40,7 +40,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         jnzb: 1,
         jnef: 1,
         jneb: 1,
-        k256: 11,
         lb: 1,
         log: 9,
         lt: 1,
@@ -64,7 +63,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         pshl: 2,
         move_op: 1,
         ret: 13,
-        s256: 2,
         sb: 1,
         sll: 1,
         slli: 1,
@@ -94,6 +92,14 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
+        k256: DependentCost {
+            base: 11,
+            dep_per_unit: 214,
+        },
+        s256: DependentCost {
+            base: 2,
+            dep_per_unit: 214,
+        },
         call: DependentCost {
             base: 144,
             dep_per_unit: 214,

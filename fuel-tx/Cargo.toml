@@ -18,6 +18,7 @@ fuel-merkle = { workspace = true, default-features = false }
 fuel-derive = { path = "../fuel-derive" }
 fuel-types = { workspace = true, default-features = false }
 itertools = { version = "0.10", default-features = false }
+num_enum = "0.7"
 num-integer = { version = "0.1", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }

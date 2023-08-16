@@ -1,7 +1,10 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
-use crate::attribute::should_skip_field_binding;
+use crate::attribute::{
+    should_skip_field_binding,
+    EnumAttrs,
+};
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
@@ -53,10 +56,11 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 }
 
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
+    let attrs = EnumAttrs::parse(s);
+
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let encode_static = s.variants().iter().enumerate().map(|(i, v)| {
         let pat = v.pat();
-        let index = i as u64;
         let encode_static_iter = v.bindings().iter().map(|binding| {
             if should_skip_field_binding(binding) {
                 quote! {}
@@ -69,9 +73,20 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 }
             }
         });
+
+        // Handle #[canonical(discriminant = Type)]
+        let discr = if let Some(discr_type) = attrs.0.get("discriminant") {
+            quote! { {
+                #discr_type::from(self).into()
+            } }
+        } else {
+            let index = i as u64;
+            quote! { #index }
+        };
+
         quote! {
             #pat => {
-                { <::core::primitive::u64 as fuel_types::canonical::Serialize>::encode(&#index, buffer)?; }
+                { <::core::primitive::u64 as fuel_types::canonical::Serialize>::encode(&#discr, buffer)?; }
                 #(
                     { #encode_static_iter }
                 )*
@@ -89,9 +104,11 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
         });
         quote! {
+
             #encode_dynamic_iter
         }
     });
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
             #[inline(always)]

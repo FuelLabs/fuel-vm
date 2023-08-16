@@ -23,6 +23,7 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
+    canonical::Deserialize,
     fmt_truncated_hex,
     Address,
     AssetId,
@@ -133,9 +134,46 @@ where
     field.fmt_as_field(f)
 }
 
+fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
+    discr: InputRepr,
+    data: &mut I,
+) -> Result<Input, fuel_types::canonical::Error> {
+    Ok(match discr {
+        InputRepr::Coin => {
+            let coin = CoinFull::decode(data)?;
+            if coin.predicate.is_empty() {
+                Input::CoinSigned(coin.into_signed())
+            } else {
+                Input::CoinPredicate(coin.into_predicate())
+            }
+        }
+        InputRepr::Contract => {
+            let contract = Contract::decode(data)?;
+            Input::Contract(contract)
+        }
+        InputRepr::Message => {
+            let message = FullMessage::decode(data)?;
+            match (message.data.is_empty(), message.predicate.is_empty()) {
+                (true, true) => Input::MessageCoinSigned(message.into_coin_signed()),
+                (true, false) => {
+                    Input::MessageCoinPredicate(message.into_coin_predicate())
+                }
+                (false, true) => {
+                    Input::MessageDataSigned(message.into_message_data_signed())
+                }
+                (false, false) => {
+                    Input::MessageDataPredicate(message.into_message_data_predicate())
+                }
+            }
+        }
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[canonical(discriminant = InputRepr)]
+#[canonical(deserialize_with = input_deserialize_helper)]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

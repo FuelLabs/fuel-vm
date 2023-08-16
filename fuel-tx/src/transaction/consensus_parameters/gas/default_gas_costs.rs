@@ -40,18 +40,12 @@ pub fn default_gas_costs() -> GasCostsValues {
         jnzb: 1,
         jnef: 1,
         jneb: 1,
-        k256: 11,
         lb: 1,
         log: 9,
         lt: 1,
         lw: 1,
-        mcpi: 33,
         mint: 135,
         mlog: 1,
-        srwq: DependentCost {
-            base: 47,
-            dep_per_unit: 5,
-        },
         modi: 1,
         mod_op: 1,
         movi: 1,
@@ -69,9 +63,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         pshl: 2,
         move_op: 1,
         ret: 13,
-        s256: 2,
         sb: 1,
-        scwq: 13,
         sll: 1,
         slli: 1,
         srl: 1,
@@ -80,8 +72,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         sub: 1,
         subi: 1,
         sw: 1,
-        sww: 43,
-        swwq: 44,
+        sww: 67,
         time: 1,
         tr: 105,
         tro: 60,
@@ -101,6 +92,14 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
+        k256: DependentCost {
+            base: 11,
+            dep_per_unit: 214,
+        },
+        s256: DependentCost {
+            base: 2,
+            dep_per_unit: 214,
+        },
         call: DependentCost {
             base: 144,
             dep_per_unit: 214,
@@ -133,6 +132,10 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 1,
             dep_per_unit: 2000,
         },
+        mcpi: DependentCost {
+            base: 3,
+            dep_per_unit: 2000,
+        },
         meq: DependentCost {
             base: 1,
             dep_per_unit: 2500,
@@ -145,6 +148,18 @@ pub fn default_gas_costs() -> GasCostsValues {
         retd: DependentCost {
             base: 29,
             dep_per_unit: 62,
+        },
+        srwq: DependentCost {
+            base: 47,
+            dep_per_unit: 5,
+        },
+        scwq: DependentCost {
+            base: 13,
+            dep_per_unit: 5,
+        },
+        swwq: DependentCost {
+            base: 44,
+            dep_per_unit: 5,
         },
     }
 }

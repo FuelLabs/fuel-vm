@@ -9,7 +9,10 @@ use super::{
 use fuel_crypto::SecretKey;
 use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
-use fuel_types::canonical::Serialize;
+use fuel_types::canonical::{
+    Deserialize,
+    Serialize,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -765,15 +768,11 @@ fn create() {
         .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
 
-    let mut slot_data = [0u8; 64];
-    let slot = StorageSlot::default();
-
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {
-            // FIXME: Why is the copy_from_slice overwritten immediately?
-            slot_data[..8].copy_from_slice(&i.to_be_bytes());
-            slot.encode(&mut &mut slot_data[..]).unwrap();
-            slot.clone()
+            let mut slot_data = StorageSlot::default().to_bytes();
+            slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
+            StorageSlot::from_bytes(&slot_data).unwrap()
         })
         .collect::<Vec<StorageSlot>>();
 

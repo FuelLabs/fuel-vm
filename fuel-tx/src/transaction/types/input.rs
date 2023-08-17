@@ -23,7 +23,10 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    canonical::Deserialize,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     fmt_truncated_hex,
     Address,
     AssetId,
@@ -134,6 +137,23 @@ where
     field.fmt_as_field(f)
 }
 
+fn input_serialize_helper<O: fuel_types::canonical::Output + ?Sized>(
+    value: &Input,
+    output: &mut O,
+) -> Result<(), fuel_types::canonical::Error> {
+    let discr: u64 = InputRepr::from(value).into();
+    discr.encode(output)?;
+    match value.clone() {
+        Input::CoinSigned(coin) => coin.into_full().encode(output),
+        Input::CoinPredicate(coin) => coin.into_full().encode(output),
+        Input::Contract(contract) => contract.encode(output),
+        Input::MessageCoinSigned(message) => message.into_full().encode(output),
+        Input::MessageCoinPredicate(message) => message.into_full().encode(output),
+        Input::MessageDataSigned(message) => message.into_full().encode(output),
+        Input::MessageDataPredicate(message) => message.into_full().encode(output),
+    }
+}
+
 fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
     discr: InputRepr,
     data: &mut I,
@@ -173,6 +193,7 @@ fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 #[canonical(discriminant = InputRepr)]
+#[canonical(serialize_with = input_serialize_helper)]
 #[canonical(deserialize_with = input_deserialize_helper)]
 pub enum Input {
     CoinSigned(CoinSigned),

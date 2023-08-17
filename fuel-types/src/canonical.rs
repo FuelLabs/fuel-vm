@@ -270,6 +270,8 @@ macro_rules! impl_for_primitives {
                 let mut asset = [0u8; ::core::mem::size_of::<$t>()];
                 buffer.read(asset.as_mut())?;
                 align_during_decode!($t, buffer);
+                println!("Deserialized {}: {}", stringify!($t), <$t>::from_be_bytes(asset));
+                println!("Remaining buffer: {}", buffer.remaining());
                 Ok(<$t>::from_be_bytes(asset))
             }
         }
@@ -350,11 +352,15 @@ impl<T: Deserialize> Deserialize for Vec<T> {
     // `decode_dynamic` method. The capacity is needed for iteration there.
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
         let cap: usize = usize::decode(buffer)?;
-
+        println!("Allocating vec with cap {}", cap);
+        // TODO: this can panic with over-large capacity, and likely has to be reworked
         Ok(Vec::with_capacity(cap))
     }
 
     fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
+        println!("Remaining buffer: {}", buffer.remaining());
+        println!("Restoring vec cap {}", self.capacity());
+
         for _ in 0..self.capacity() {
             // Bytes - Vec<u8> it a separate case without unpadding for each element.
             // It should unpadded at the end if is not % ALIGN

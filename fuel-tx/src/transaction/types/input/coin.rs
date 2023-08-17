@@ -1,3 +1,5 @@
+use core::default::Default;
+
 use crate::{
     input::{
         fmt_as_field,
@@ -207,6 +209,62 @@ impl Coin<Full> {
             predicate,
             predicate_data,
             predicate_gas_used,
+        }
+    }
+}
+
+impl Coin<Signed> {
+    pub fn into_full(self) -> Coin<Full> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+            ..
+        } = self;
+
+        Coin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+            ..Default::default()
+        }
+    }
+}
+
+impl Coin<Predicate> {
+    pub fn into_full(self) -> Coin<Full> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..
+        } = self;
+
+        Coin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..Default::default()
         }
     }
 }

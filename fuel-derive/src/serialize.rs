@@ -14,11 +14,16 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         if should_skip_field_binding(binding) {
             quote! {}
         } else {
+            let f = &binding.ast().ident;
             quote! {
                 if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
                     return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
                 }
+                println!("Serializing field: {}", stringify!(#f));
                 fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
+                let mut tmp = Vec::new();
+                fuel_types::canonical::Serialize::encode_static(#binding, &mut tmp).unwrap();
+                println!("Serialized  sta => {:?}", tmp);
             }
         }
     });
@@ -27,8 +32,13 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         if should_skip_field_binding(binding) {
             quote! {}
         } else {
+            let f = &binding.ast().ident;
             quote! {
+                println!("Serializing field: {}", stringify!(#f));
                 fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+                let mut tmp = Vec::new();
+                fuel_types::canonical::Serialize::encode_dynamic(#binding, &mut tmp).unwrap();
+                println!("Serialized  dyn => {:?}", tmp);
             }
         }
     });
@@ -109,6 +119,22 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
 
+    // Handle #[canonical(serialize_with = function)]
+    if let Some(helper) = attrs.0.get("serialize_with") {
+        return s.gen_impl(quote! {
+            gen impl fuel_types::canonical::Serialize for @Self {
+                #[inline(always)]
+                fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                    #helper(self, buffer)
+                }
+
+                fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                    ::core::result::Result::Ok(())
+                }
+            }
+        })
+    }
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
@@ -141,9 +167,14 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 pub fn serialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
-    match s.ast().data {
+    let x = match s.ast().data {
         syn::Data::Struct(_) => serialize_struct(&s),
         syn::Data::Enum(_) => serialize_enum(&s),
         _ => panic!("Can't derive `Serialize` for `union`s"),
-    }
+    };
+
+    // crate::utils::write_and_fmt(format!("tts/{}.rs", s.ast().ident), quote::quote!(#x))
+    //     .expect("unable to save or format");
+
+    x
 }

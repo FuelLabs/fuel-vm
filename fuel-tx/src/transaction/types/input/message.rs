@@ -330,6 +330,106 @@ impl FullMessage {
     }
 }
 
+impl MessageCoinSigned {
+    pub fn into_full(self) -> FullMessage {
+        let Self {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            witness_index,
+            ..
+        } = self;
+
+        Message {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            witness_index,
+            ..Default::default()
+        }
+    }
+}
+
+impl MessageCoinPredicate {
+    pub fn into_full(self) -> FullMessage {
+        let Self {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..
+        } = self;
+
+        Message {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..Default::default()
+        }
+    }
+}
+
+impl MessageDataPredicate {
+    pub fn into_full(self) -> FullMessage {
+        let Self {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            data,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..
+        } = self;
+
+        Message {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            data,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..Default::default()
+        }
+    }
+}
+
+impl MessageDataSigned {
+    pub fn into_full(self) -> FullMessage {
+        let Self {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            witness_index,
+            data,
+            ..
+        } = self;
+
+        Message {
+            sender,
+            recipient,
+            amount,
+            nonce,
+            witness_index,
+            data,
+            ..Default::default()
+        }
+    }
+}
+
 pub fn compute_message_id(
     sender: &Address,
     recipient: &Address,

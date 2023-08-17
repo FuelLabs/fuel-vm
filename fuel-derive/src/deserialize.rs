@@ -4,7 +4,7 @@ use quote::quote;
 use crate::attribute::{
     should_skip_field,
     should_skip_field_binding,
-    EnumAttrs,
+    TypedefAttrs,
 };
 
 fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
@@ -42,9 +42,18 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
         }
     });
 
+    let remove_prefix = if let Some(_) = TypedefAttrs::parse(s).0.get("prefix") {
+        quote! {
+            <u64 as fuel_types::canonical::Deserialize>::decode_static(buffer)?;
+        }
+    } else {
+        quote! {}
+    };
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Deserialize for @Self {
             fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
+                #remove_prefix
                 ::core::result::Result::Ok(#decode_main)
             }
 
@@ -59,7 +68,8 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
 }
 
 fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
-    let attrs = EnumAttrs::parse(s);
+    let tn = &s.ast().ident;
+    let attrs = TypedefAttrs::parse(s);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let decode_static = s
@@ -122,6 +132,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         quote! { {
             use ::num_enum::{TryFromPrimitive, IntoPrimitive};
             let Ok(discr) = #discr_type::try_from_primitive(raw_discr) else {
+                println!("Discriminant mapping for {} is {}, unknown", stringify!(#tn), raw_discr);
                 return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant)
             };
             discr.into()
@@ -146,10 +157,23 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         })
     }
 
+    let decode_discriminant = if attrs.0.contains_key("inner_discriminant") {
+        quote! {
+            let buf = buffer.clone();
+            let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+            *buffer = buf;
+        }
+    } else {
+        quote! {
+            let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+        }
+    };
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Deserialize for @Self {
             fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
-                let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+                #decode_discriminant
+                println!("Discriminant for {} is {}", stringify!(#tn), raw_discr);
                 match #mapped_discr {
                     #decode_static
                     _ => ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
@@ -157,6 +181,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                println!("Dynamic discriminant for {} is {:?}", stringify!(#tn), self);
                 match self {
                     #(
                         #decode_dynamic

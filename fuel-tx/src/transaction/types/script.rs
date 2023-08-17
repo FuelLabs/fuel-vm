@@ -23,6 +23,7 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
+    TransactionRepr,
     Witness,
 };
 use derivative::Derivative;
@@ -55,6 +56,7 @@ pub(crate) struct ScriptMetadata {
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) gas_price: Word,
@@ -403,8 +405,10 @@ mod field {
                 ..
             }) = &self.metadata
             {
+                println!("META!");
                 return inputs_offset_at.get(idx).cloned()
             }
+            println!("!META");
 
             if idx < self.inputs.len() {
                 Some(

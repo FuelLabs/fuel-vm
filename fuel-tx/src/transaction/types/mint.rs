@@ -9,6 +9,7 @@ use crate::{
     CheckError,
     ConsensusParameters,
     Output,
+    TransactionRepr,
     TxPointer,
 };
 use derivative::Derivative;
@@ -80,6 +81,7 @@ impl MintMetadata {
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.

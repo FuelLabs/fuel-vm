@@ -14,8 +14,8 @@ use syn::{
 use synstructure::BindingInfo;
 
 #[derive(Debug)]
-pub struct EnumAttrs(pub HashMap<String, TokenStream>);
-impl EnumAttrs {
+pub struct TypedefAttrs(pub HashMap<String, TokenStream>);
+impl TypedefAttrs {
     pub fn parse(s: &synstructure::Structure) -> Self {
         let mut attrs = HashMap::new();
 
@@ -33,8 +33,13 @@ impl EnumAttrs {
                             if eq_sign.to_string() == "=" {
                                 let _ = tt.next();
                             }
+                        } else {
+                            // Single token, no `=`, so it's a boolean flag.
+                            attrs.insert(key, TokenStream::new());
+                            continue
                         }
 
+                        // Key-value pair
                         let value = TokenStream::from_iter(tt);
                         attrs.insert(key, value);
                         continue

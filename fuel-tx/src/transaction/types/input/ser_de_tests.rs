@@ -86,7 +86,6 @@ fn test_input_serialization() {
     r.end += DATA_SIZE;
     assert_eq!(bytes[r.clone()], [9u8; DATA_SIZE]); // predicate_data
     assert_eq!(r.end, bytes.len());
-    println!("From bytes: {:?}", bytes);
     let input2 = Input::from_bytes(&bytes).unwrap();
     assert_eq!(input, input2);
 }

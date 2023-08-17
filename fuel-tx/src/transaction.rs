@@ -83,6 +83,7 @@ pub type TxId = Bytes32;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[canonical(inner_discriminant = TransactionRepr)]
 pub enum Transaction {
     Script(Script),
     Create(Create),

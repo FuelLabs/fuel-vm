@@ -3,10 +3,12 @@ use quote::quote;
 
 use crate::attribute::{
     should_skip_field_binding,
-    EnumAttrs,
+    TypedefAttrs,
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
+    let attrs = TypedefAttrs::parse(s);
+
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
     let variant: &synstructure::VariantInfo = &s.variants()[0];
@@ -16,10 +18,10 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         } else {
             let f = &binding.ast().ident;
             quote! {
+                println!("Serializing field: {}", stringify!(#f));
                 if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
                     return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
                 }
-                println!("Serializing field: {}", stringify!(#f));
                 fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
                 let mut tmp = Vec::new();
                 fuel_types::canonical::Serialize::encode_static(#binding, &mut tmp).unwrap();
@@ -43,10 +45,20 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
 
+    let prefix = if let Some(prefix_type) = attrs.0.get("prefix") {
+        quote! {
+            let prefix: u64 = #prefix_type.into();
+            <u64 as fuel_types::canonical::Serialize>::encode(&prefix, buffer)?;
+        }
+    } else {
+        quote! {}
+    };
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
             fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                #prefix
                 match self {
                     #encode_static
                 };
@@ -65,8 +77,9 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     })
 }
 
+// TODO: somehow ensure that all enum variants have equal size, or zero-pad them
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
-    let attrs = EnumAttrs::parse(s);
+    let attrs = TypedefAttrs::parse(s);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let encode_static = s.variants().iter().enumerate().map(|(i, v)| {
@@ -84,8 +97,12 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
         });
 
-        // Handle #[canonical(discriminant = Type)]
+        // Handle #[canonical(discriminant = Type)] and  #[canonical(inner_discriminant)]
         let discr = if let Some(discr_type) = attrs.0.get("discriminant") {
+            quote! { {
+                #discr_type::from(self).into()
+            } }
+        } else if let Some(discr_type) = attrs.0.get("inner_discriminant") {
             quote! { {
                 #discr_type::from(self).into()
             } }
@@ -94,9 +111,17 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             quote! { #index }
         };
 
+        let encode_discriminant = if attrs.0.contains_key("inner_discriminant") {
+            quote! {}
+        } else {
+            quote! {
+                <::core::primitive::u64 as fuel_types::canonical::Serialize>::encode(&#discr, buffer)?;
+            }
+        };
+
         quote! {
             #pat => {
-                { <::core::primitive::u64 as fuel_types::canonical::Serialize>::encode(&#discr, buffer)?; }
+                #encode_discriminant
                 #(
                     { #encode_static_iter }
                 )*

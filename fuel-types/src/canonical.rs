@@ -179,35 +179,8 @@ pub trait Deserialize: Sized {
 pub const ALIGN: usize = 8;
 
 /// Returns the number of bytes to fill aligned
-const fn fill_bytes(len: usize) -> usize {
+const fn alignment_bytes(len: usize) -> usize {
     (ALIGN - (len % ALIGN)) % ALIGN
-}
-
-/// Writes zero bytes to fill alignment into the `buffer`.
-macro_rules! align_during_encode {
-    ($t:ty, $buffer:ident) => {
-        // FIXME: This is unsound; size_of shouldn't affect the serialized size.
-        //        The compiler is allowed to add arbitrary padding to structs.
-        const FILL_SIZE: usize = fill_bytes(::core::mem::size_of::<$t>());
-        // It will be removed by the compiler if `FILL_SIZE` is zero.
-        if FILL_SIZE > 0 {
-            let zeroed: [u8; FILL_SIZE] = [0; FILL_SIZE];
-            $buffer.write(zeroed.as_ref())?;
-        }
-    };
-}
-
-/// Skips zero bytes added for alignment from the `buffer`.
-macro_rules! align_during_decode {
-    ($t:ident, $buffer:ident) => {
-        // FIXME: This is unsound; size_of shouldn't affect the serialized size.
-        //        The compiler is allowed to add arbitrary padding to structs.
-        const FILL_SIZE: usize = fill_bytes(::core::mem::size_of::<$t>());
-        // It will be removed by the compiler if `FILL_SIZE` is zero.
-        if FILL_SIZE > 0 {
-            $buffer.skip(FILL_SIZE)?;
-        }
-    };
 }
 
 macro_rules! impl_for_fuel_types {
@@ -219,7 +192,7 @@ macro_rules! impl_for_fuel_types {
                 buffer: &mut O,
             ) -> Result<(), Error> {
                 buffer.write(self.as_ref())?;
-                align_during_encode!($t, buffer);
+                debug_assert_eq!(alignment_bytes(self.as_ref().len()), 0, "Fuel types should already be aligned");
                 Ok(())
             }
         }
@@ -227,8 +200,8 @@ macro_rules! impl_for_fuel_types {
         impl Deserialize for $t {
             fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
                 let mut asset = $t::zeroed();
+                debug_assert_eq!(alignment_bytes(asset.len()), 0, "Fuel types should already be aligned");
                 buffer.read(asset.as_mut())?;
-                align_during_decode!($t, buffer);
                 Ok(asset)
             }
         }
@@ -256,9 +229,13 @@ macro_rules! impl_for_primitives {
                 &self,
                 buffer: &mut O,
             ) -> Result<(), Error> {
+                // Primitive types are zero-padded on left side to a 8-byte boundary.
+                // The resulting value is always well-aligned.
                 let bytes = <$t>::to_be_bytes(*self);
+                for _ in 0..alignment_bytes(bytes.len()) { // Zero-pad
+                    buffer.push_byte(0)?;
+                }
                 buffer.write(bytes.as_ref())?;
-                align_during_encode!($t, buffer);
                 Ok(())
             }
         }
@@ -268,9 +245,13 @@ macro_rules! impl_for_primitives {
 
             fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
                 let mut asset = [0u8; ::core::mem::size_of::<$t>()];
+                buffer.skip(alignment_bytes(asset.len()))?; // Skip zero-padding
                 buffer.read(asset.as_mut())?;
-                align_during_decode!($t, buffer);
-                println!("Deserialized {}: {}", stringify!($t), <$t>::from_be_bytes(asset));
+                println!(
+                    "Deserialized {}: {}",
+                    stringify!($t),
+                    <$t>::from_be_bytes(asset)
+                );
                 println!("Remaining buffer: {}", buffer.remaining());
                 Ok(<$t>::from_be_bytes(asset))
             }
@@ -330,7 +311,7 @@ impl<T: Serialize> Serialize for Vec<T> {
                 // SAFETY: `Type::U8` implemented only for `u8`.
                 let bytes = unsafe { ::core::mem::transmute::<&Vec<T>, &Vec<u8>>(self) };
                 buffer.write(bytes.as_slice())?;
-                for _ in 0..fill_bytes(self.len()) {
+                for _ in 0..alignment_bytes(self.len()) {
                     buffer.push_byte(0)?;
                 }
             }
@@ -382,7 +363,7 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         }
 
         if let Type::U8 = T::TYPE {
-            buffer.skip(fill_bytes(self.capacity()))?;
+            buffer.skip(alignment_bytes(self.capacity()))?;
         }
 
         Ok(())
@@ -399,7 +380,7 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
                 // SAFETY: `Type::U8` implemented only for `u8`.
                 let bytes = unsafe { ::core::mem::transmute::<&[T; N], &[u8; N]>(self) };
                 buffer.write(bytes.as_slice())?;
-                for _ in 0..fill_bytes(N) {
+                for _ in 0..alignment_bytes(N) {
                     buffer.push_byte(0)?;
                 }
             }
@@ -431,7 +412,7 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
             Type::U8 => {
                 let mut bytes: [u8; N] = [0; N];
                 buffer.read(bytes.as_mut())?;
-                buffer.skip(fill_bytes(N))?;
+                buffer.skip(alignment_bytes(N))?;
                 let ref_typed: &[T; N] = unsafe { core::mem::transmute(&bytes) };
                 let typed: [T; N] = unsafe { core::ptr::read(ref_typed) };
                 Ok(typed)

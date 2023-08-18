@@ -71,7 +71,9 @@ impl MintMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.serialized_size();
+                offset = offset.checked_add(output.serialized_size()).expect(
+                    "offset and output serialized size should never exceed usize::MAX",
+                );
                 i
             })
             .collect_vec();
@@ -177,12 +179,14 @@ impl crate::Cacheable for Mint {
 
 impl SizedBytes for Mint {
     fn serialized_size(&self) -> usize {
+        let summed_sizes = self
+            .outputs()
+            .iter()
+            .map(|w| w.serialized_size())
+            .sum::<usize>();
         self.outputs_offset()
-            + self
-                .outputs()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+            .checked_add(summed_sizes)
+            .expect("should not exceed usize::MAX")
     }
 }
 
@@ -223,7 +227,10 @@ mod field {
                 return *outputs_offset
             }
 
-            self.tx_pointer_offset() + TxPointer::LEN + WORD_SIZE // Outputs size
+            self.tx_pointer_offset()
+                .checked_add(TxPointer::LEN)
+                .and_then(|x| x.checked_add(WORD_SIZE))
+                .expect("Output size should not exceed usize::MAX")
         }
 
         #[inline(always)]
@@ -236,15 +243,13 @@ mod field {
             }
 
             if idx < self.outputs.len() {
-                Some(
-                    self.outputs_offset()
-                        + self
-                            .outputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_size = self
+                    .outputs()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.outputs_offset().checked_add(summed_size)
             } else {
                 None
             }
@@ -328,7 +333,10 @@ impl io::Write for Mint {
         for output in outputs.iter_mut() {
             let output_len = output.write(buf)?;
             buf = &buf[output_len..];
-            n += output_len;
+            n = n.checked_add(output_len).ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
         }
 
         *self = Mint {

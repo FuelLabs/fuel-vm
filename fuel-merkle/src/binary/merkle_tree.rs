@@ -38,6 +38,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
+
+    #[cfg_attr(feature = "std", error("Overflow: {0}"))]
+    Overflow(String),
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -103,11 +106,15 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     fn peak_positions(&self) -> Vec<Position> {
         // Define a new tree with a leaf count 1 greater than the current leaf
         // count.
-        let leaves_count = self.leaves_count + 1;
+        let leaf_index = self.leaves_count;
+        let leaves_count = self
+            .leaves_count
+            .checked_add(1)
+            .expect("Exceeding maximum renders program meaningless");
 
         // The rightmost leaf position of a tree will always have a leaf index
         // N - 1, where N is the number of leaves.
-        let leaf_position = Position::from_leaf_index(leaves_count - 1);
+        let leaf_position = Position::from_leaf_index(leaf_index);
         let root_position = self.root_position();
         let mut peaks_itr = root_position.path(&leaf_position, leaves_count).iter();
         peaks_itr.next(); // Omit the root
@@ -120,12 +127,18 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     fn root_position(&self) -> Position {
         // Define a new tree with a leaf count 1 greater than the current leaf
         // count.
-        let leaves_count = self.leaves_count + 1;
+        let leaves_count = self
+            .leaves_count
+            .checked_add(1)
+            .expect("Exceeding maximum renders program meaningless");
 
         // The root position of a tree will always have an in-order index equal
         // to N' - 1, where N is the leaves count and N' is N rounded (or equal)
         // to the next power of 2.
-        let root_index = leaves_count.next_power_of_two() - 1;
+        let root_index = leaves_count
+            .next_power_of_two()
+            .checked_sub(1)
+            .expect("Should always be able to find a root index");
         Position::from_in_order_index(root_index)
     }
 }
@@ -164,7 +177,10 @@ where
         &self,
         proof_index: u64,
     ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
-        if proof_index + 1 > self.leaves_count {
+        let next_proof_index = proof_index.checked_add(1).ok_or(
+            MerkleTreeError::Overflow("While incrementing proof index".to_string()),
+        )?;
+        if next_proof_index > self.leaves_count {
             return Err(MerkleTreeError::InvalidProofIndex(proof_index))
         }
 
@@ -317,7 +333,7 @@ where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn push(&mut self, data: &[u8]) -> Result<(), StorageError> {
+    pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
@@ -325,7 +341,12 @@ where
         self.head = Some(head);
         self.join_all_subtrees()?;
 
-        self.leaves_count += 1;
+        self.leaves_count =
+            self.leaves_count
+                .checked_add(1)
+                .ok_or(MerkleTreeError::Overflow(
+                    "Leaf count at maximum".to_string(),
+                ))?;
 
         Ok(())
     }

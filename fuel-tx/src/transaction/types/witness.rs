@@ -122,7 +122,9 @@ impl Distribution<Witness> for Standard {
 
 impl bytes::SizedBytes for Witness {
     fn serialized_size(&self) -> usize {
-        WORD_SIZE + bytes::padded_len(self.data.as_slice())
+        WORD_SIZE
+            .checked_add(bytes::padded_len(self.data.as_slice()))
+            .expect("Word size and bytes shouldn't exceed usize")
     }
 }
 

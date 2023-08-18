@@ -112,7 +112,10 @@ impl Node {
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
-            let parent_height = (Node::max_height() - parent_depth) as u32;
+            let parent_height = (Node::max_height()
+                .checked_sub(parent_depth)
+                .expect("Program should panic if this overflows"))
+                as u32;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -126,8 +129,12 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
-            let parent_depth = Node::max_height() - parent_height as usize;
+            let parent_height = cmp::max(path_node.height(), side_node.height())
+                .checked_add(1)
+                .expect("Program should panic if this overflows");
+            let parent_depth = Node::max_height()
+                .checked_sub(parent_height as usize)
+                .expect("Program should panic if this overflows");
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)

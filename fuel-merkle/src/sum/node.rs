@@ -37,7 +37,9 @@ impl Node {
         Self {
             height,
             hash: node_sum(lhs_fee, lhs_key, rhs_fee, rhs_key),
-            fee: lhs_fee + rhs_fee,
+            fee: lhs_fee
+                .checked_add(rhs_fee)
+                .expect("Program should panic if this overflows"),
             left_child_key: Some(*lhs_key),
             right_child_key: Some(*rhs_key),
         }

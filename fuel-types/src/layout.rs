@@ -22,6 +22,7 @@ impl<const ADDR: usize, const SIZE: usize> MemLoc<ADDR, SIZE> {
     }
 
     /// Returns the range represented by the memory location.
+    #[allow(clippy::arithmetic_side_effects)]
     pub const fn range(&self) -> core::ops::Range<usize> {
         ADDR..ADDR + SIZE
     }

@@ -21,6 +21,10 @@ pub use fmt::*;
 pub use layout::*;
 pub use numeric_types::*;
 
+pub mod error;
+
+pub use error::*;
+
 /// Word-aligned bytes serialization functions.
 pub mod bytes;
 
@@ -45,11 +49,11 @@ pub type Immediate18 = u32;
 /// 24-bits immediate value type
 pub type Immediate24 = u32;
 
-pub(crate) const fn hex_val(c: u8) -> Option<u8> {
+pub(crate) fn hex_val(c: u8) -> Option<u8> {
     match c {
-        b'A'..=b'F' => Some(c - b'A' + 10),
-        b'a'..=b'f' => Some(c - b'a' + 10),
-        b'0'..=b'9' => Some(c - b'0'),
+        b'A'..=b'F' => c.checked_sub(b'A').and_then(|c| c.checked_add(10)),
+        b'a'..=b'f' => c.checked_sub(b'a').and_then(|c| c.checked_add(10)),
+        b'0'..=b'9' => c.checked_sub(b'0'),
         _ => None,
     }
 }

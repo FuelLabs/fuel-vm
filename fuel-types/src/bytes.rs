@@ -6,6 +6,11 @@ pub use use_std::*;
 #[cfg(feature = "alloc")]
 pub use use_alloc::*;
 
+use crate::{
+    Error,
+    Result,
+};
+
 pub use const_layout::*;
 
 mod const_layout;
@@ -22,6 +27,7 @@ pub const fn padded_len(bytes: &[u8]) -> usize {
 }
 
 /// Return the word-padded length of an arbitrary length
+#[allow(clippy::arithmetic_side_effects)]
 pub const fn padded_len_word(len: Word) -> Word {
     let pad = len % (WORD_SIZE as Word);
 
@@ -42,8 +48,9 @@ pub const fn padded_len_word(len: Word) -> Word {
 }
 
 /// Return the word-padded length of an arbitrary length
+#[allow(clippy::arithmetic_side_effects)]
 pub const fn padded_len_usize(len: usize) -> usize {
-    let pad = len % WORD_SIZE;
+    let padding = len % WORD_SIZE;
 
     // `pad != 0` is checked because we shouldn't pad in case the length is already
     // well-formed.
@@ -58,7 +65,7 @@ pub const fn padded_len_usize(len: usize) -> usize {
     // 2) Without the check (incorrect result)
     // f(x) -> x + w - x % w
     // f(x) -> x + w
-    len + (pad != 0) as usize * (WORD_SIZE - pad)
+    len + (padding != 0) as usize * (WORD_SIZE - padding)
 }
 
 /// Store a number into this buffer.
@@ -205,10 +212,26 @@ mod use_std {
         bytes: &[u8],
     ) -> io::Result<(usize, &'a mut [u8])> {
         let len = (bytes.len() as Word).to_be_bytes();
-        let pad = bytes.len() % WORD_SIZE;
-        let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
-        if buf.len() < WORD_SIZE + bytes.len() + pad {
-            return Err(eof())
+        let remainder = bytes.len() % WORD_SIZE;
+        let padding = if remainder == 0 {
+            0
+        } else {
+            WORD_SIZE
+                .checked_sub(remainder)
+                .ok_or(io::Error::new::<String>(
+                    io::ErrorKind::Other,
+                    "Overflow".into(),
+                ))?
+        };
+        let extended = WORD_SIZE
+            .checked_add(bytes.len())
+            .and_then(|c| c.checked_add(padding))
+            .ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
+        if buf.len() < extended {
+            Err(eof())?;
         }
 
         buf[..WORD_SIZE].copy_from_slice(&len);
@@ -217,12 +240,12 @@ mod use_std {
         buf[..bytes.len()].copy_from_slice(bytes);
         buf = &mut buf[bytes.len()..];
 
-        for i in &mut buf[..pad] {
+        for i in &mut buf[..padding] {
             *i = 0
         }
-        buf = &mut buf[pad..];
+        buf = &mut buf[padding..];
 
-        Ok((WORD_SIZE + bytes.len() + pad, buf))
+        Ok((extended, buf))
     }
 
     /// Attempt to store into the provided buffer the provided bytes. They will be padded
@@ -235,21 +258,38 @@ mod use_std {
         mut buf: &'a mut [u8],
         bytes: &[u8],
     ) -> io::Result<(usize, &'a mut [u8])> {
-        let pad = bytes.len() % WORD_SIZE;
-        let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
-        if buf.len() < bytes.len() + pad {
-            return Err(eof())
+        let remainder = bytes.len() % WORD_SIZE;
+        let padding = if remainder == 0 {
+            0
+        } else {
+            WORD_SIZE
+                .checked_sub(remainder)
+                .ok_or(io::Error::new::<String>(
+                    io::ErrorKind::Other,
+                    "Overflow".into(),
+                ))?
+        };
+        let extended =
+            bytes
+                .len()
+                .checked_add(padding)
+                .ok_or(io::Error::new::<String>(
+                    io::ErrorKind::Other,
+                    "Overflow".into(),
+                ))?;
+        if buf.len() < extended {
+            Err(eof())?;
         }
 
         buf[..bytes.len()].copy_from_slice(bytes);
         buf = &mut buf[bytes.len()..];
 
-        for i in &mut buf[..pad] {
+        for i in &mut buf[..padding] {
             *i = 0
         }
-        buf = &mut buf[pad..];
+        buf = &mut buf[padding..];
 
-        Ok((bytes.len() + pad, buf))
+        Ok((extended, buf))
     }
 
     /// Attempt to restore a variable size bytes from a buffer.
@@ -267,16 +307,36 @@ mod use_std {
 
         buf = &buf[WORD_SIZE..];
 
-        let pad = len % WORD_SIZE;
-        let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
-        if buf.len() < len + pad {
-            return Err(eof())
+        let remainder = len % WORD_SIZE;
+        let padding = if remainder == 0 {
+            0
+        } else {
+            WORD_SIZE
+                .checked_sub(remainder)
+                .ok_or(io::Error::new::<String>(
+                    io::ErrorKind::Other,
+                    "Overflow".into(),
+                ))?
+        };
+        let start = len.checked_add(padding).ok_or(io::Error::new::<String>(
+            io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
+
+        if buf.len() < start {
+            Err(eof())?;
         }
 
         let data = Vec::from(&buf[..len]);
-        let buf = &buf[len + pad..];
+        let buf = &buf[start..];
 
-        Ok((WORD_SIZE + len + pad, data, buf))
+        let adjusted_start = WORD_SIZE.checked_add(start).ok_or(io::Error::new::<
+            String,
+        >(
+            io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
+        Ok((adjusted_start, data, buf))
     }
 
     /// Attempt to restore a variable size bytes with the length specified as argument.
@@ -284,16 +344,29 @@ mod use_std {
         buf: &[u8],
         len: usize,
     ) -> io::Result<(usize, Vec<u8>, &[u8])> {
-        let pad = len % WORD_SIZE;
-        let pad = if pad == 0 { 0 } else { WORD_SIZE - pad };
-        if buf.len() < len + pad {
-            return Err(eof())
+        let remainder = len % WORD_SIZE;
+        let padding = if remainder == 0 {
+            0
+        } else {
+            WORD_SIZE
+                .checked_sub(remainder)
+                .ok_or(io::Error::new::<String>(
+                    io::ErrorKind::Other,
+                    "Overflow".into(),
+                ))?
+        };
+        let start = len.checked_add(padding).ok_or(io::Error::new::<String>(
+            io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
+        if buf.len() < start {
+            Err(eof())?;
         }
 
         let data = Vec::from(&buf[..len]);
-        let buf = &buf[len + pad..];
+        let buf = &buf[start..];
 
-        Ok((len + pad, data, buf))
+        Ok((start, data, buf))
     }
 
     /// Store a statically sized array into a buffer, returning the remainder of the

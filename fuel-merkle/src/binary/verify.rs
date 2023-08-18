@@ -30,8 +30,14 @@ pub fn verify<T: AsRef<[u8]>>(
     let mut stable_end = proof_index;
 
     loop {
-        let subtree_start_index = proof_index / (1 << height) * (1 << height);
-        let subtree_end_index = subtree_start_index + (1 << height) - 1;
+        let subtree_start_index = proof_index
+            .checked_div(1 << height)
+            .and_then(|x| x.checked_mul(1 << height))
+            .expect("Program should panic if this overflows");
+        let subtree_end_index = subtree_start_index
+            .checked_add(1 << height)
+            .and_then(|x| x.checked_sub(1))
+            .expect("Program should panic if this overflows");
 
         if subtree_end_index >= num_leaves {
             break
@@ -43,29 +49,54 @@ pub fn verify<T: AsRef<[u8]>>(
             return false
         }
 
-        let proof_data = proof_set[height - 1];
-        if proof_index - subtree_start_index < 1 << (height - 1) {
+        let height_index = height
+            .checked_sub(1)
+            .expect("Program should panic if this overflows");
+        let proof_data = proof_set[height_index];
+        let index_difference = proof_index
+            .checked_sub(subtree_start_index)
+            .expect("Program should panic if this overflows");
+        if index_difference < 1 << height_index {
             sum = node_sum(&sum, &proof_data);
         } else {
             sum = node_sum(&proof_data, &sum);
         }
 
-        height += 1;
+        height = height
+            .checked_add(1)
+            .expect("Program should panic if this overflows");
     }
 
-    if stable_end != num_leaves - 1 {
+    let leaf_index = num_leaves
+        .checked_sub(1)
+        .expect("Program should panic if this overflows");
+    if stable_end != leaf_index {
         if proof_set.len() < height {
             return false
         }
-        let proof_data = proof_set[height - 1];
+        let height_index = height
+            .checked_sub(1)
+            .expect("Program should panic if this overflows");
+        let proof_data = proof_set[height_index];
         sum = node_sum(&sum, &proof_data);
-        height += 1;
+        height = height
+            .checked_add(1)
+            .expect("Program should panic if this overflows");
     }
 
-    while height - 1 < proof_set.len() {
-        let proof_data = proof_set[height - 1];
+    while height
+        .checked_sub(1)
+        .expect("Program should panic if this overflows")
+        < proof_set.len()
+    {
+        let height_index = height
+            .checked_sub(1)
+            .expect("Program should panic if this overflows");
+        let proof_data = proof_set[height_index];
         sum = node_sum(&proof_data, &sum);
-        height += 1;
+        height = height
+            .checked_add(1)
+            .expect("Program should panic if this overflows");
     }
 
     sum == *root

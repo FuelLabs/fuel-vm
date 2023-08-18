@@ -227,7 +227,11 @@ where
                 0
             };
 
-        MessageSizes::LEN + data_size + predicate_size + predicate_date_size
+        MessageSizes::LEN
+            .checked_add(data_size)
+            .and_then(|size| size.checked_add(predicate_size))
+            .and_then(|size| size.checked_add(predicate_date_size))
+            .expect("should never exceed usize::MAX")
     }
 }
 
@@ -379,20 +383,29 @@ where
 
         let (size, data, buf) =
             bytes::restore_raw_bytes(full_buf.get(LEN..).ok_or(bytes::eof())?, data_len)?;
-        n += size;
+        n = n.checked_add(size).ok_or(std::io::Error::new::<String>(
+            std::io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
         if let Some(data_field) = self.data.as_mut_field() {
             *data_field = data;
         }
 
         let (size, predicate, buf) = bytes::restore_raw_bytes(buf, predicate_len)?;
-        n += size;
+        n = n.checked_add(size).ok_or(std::io::Error::new::<String>(
+            std::io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
         if let Some(predicate_field) = self.predicate.as_mut_field() {
             *predicate_field = predicate;
         }
 
         let (size, predicate_data, _) =
             bytes::restore_raw_bytes(buf, predicate_data_len)?;
-        n += size;
+        n = n.checked_add(size).ok_or(std::io::Error::new::<String>(
+            std::io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
         if let Some(predicate_data_field) = self.predicate_data.as_mut_field() {
             *predicate_data_field = predicate_data;
         }

@@ -153,7 +153,10 @@ where
                 0
             };
 
-        CoinSizes::LEN + predicate_size + predicate_date_size
+        // CoinSizes::LEN + predicate_size + predicate_date_size
+        CoinSizes::LEN.checked_add(predicate_size).and_then(|x| {
+            x.checked_add(predicate_date_size)
+        }).expect("Coin len with predicate size and predicate data size should never exceed usize::MAX")
     }
 }
 
@@ -323,14 +326,20 @@ where
             full_buf.get(LEN..).ok_or(bytes::eof())?,
             predicate_len,
         )?;
-        n += size;
+        n = n.checked_add(size).ok_or(std::io::Error::new::<String>(
+            std::io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
         if let Some(predicate_field) = self.predicate.as_mut_field() {
             *predicate_field = predicate;
         }
 
         let (size, predicate_data, _) =
             bytes::restore_raw_bytes(buf, predicate_data_len)?;
-        n += size;
+        n = n.checked_add(size).ok_or(std::io::Error::new::<String>(
+            std::io::ErrorKind::Other,
+            "Overflow".into(),
+        ))?;
         if let Some(predicate_data_field) = self.predicate_data.as_mut_field() {
             *predicate_data_field = predicate_data;
         }

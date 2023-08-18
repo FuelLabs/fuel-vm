@@ -47,6 +47,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[cfg_attr(feature = "std", error(transparent))]
     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
+
+    #[cfg_attr(feature = "std", error("Overflow: {0}"))]
+    Overflow(String),
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -218,7 +221,7 @@ where
     pub fn from_set<B, I, D>(
         mut storage: StorageType,
         set: I,
-    ) -> Result<Self, StorageError>
+    ) -> Result<Self, MerkleTreeError<StorageError>>
     where
         I: Iterator<Item = (B, D)>,
         B: Into<Bytes32>,
@@ -338,7 +341,12 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height() as usize;
-        let depth = Node::max_height() - height;
+        let depth =
+            Node::max_height()
+                .checked_sub(height)
+                .ok_or(MerkleTreeError::Overflow(
+                    "Cannot subtract height from max height".to_string(),
+                ))?;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
@@ -418,7 +426,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
 
@@ -457,7 +465,11 @@ where
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
             let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
-            let placeholders_count = stale_depth - side_nodes.len();
+            let placeholders_count = stale_depth.checked_sub(side_nodes.len()).ok_or(
+                MerkleTreeError::Overflow(
+                    "Cannot subtract side nodes length from stale depth".to_string(),
+                ),
+            )?;
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {

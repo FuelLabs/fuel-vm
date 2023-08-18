@@ -163,14 +163,23 @@ impl Default for Input {
 impl SizedBytes for Input {
     fn serialized_size(&self) -> usize {
         match self {
-            Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::Contract(contract) => WORD_SIZE + contract.serialized_size(),
-            Self::MessageCoinSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageCoinPredicate(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataPredicate(message) => WORD_SIZE + message.serialized_size(),
+            Self::CoinSigned(coin) => WORD_SIZE.checked_add(coin.serialized_size()),
+            Self::CoinPredicate(coin) => WORD_SIZE.checked_add(coin.serialized_size()),
+            Self::Contract(contract) => WORD_SIZE.checked_add(contract.serialized_size()),
+            Self::MessageCoinSigned(message) => {
+                WORD_SIZE.checked_add(message.serialized_size())
+            }
+            Self::MessageCoinPredicate(message) => {
+                WORD_SIZE.checked_add(message.serialized_size())
+            }
+            Self::MessageDataSigned(message) => {
+                WORD_SIZE.checked_add(message.serialized_size())
+            }
+            Self::MessageDataPredicate(message) => {
+                WORD_SIZE.checked_add(message.serialized_size())
+            }
         }
+        .expect("Should never exceed usize::MAX")
     }
 }
 
@@ -425,7 +434,7 @@ impl Input {
             Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
                 InputRepr::Message
                     .data_offset()
-                    .map(|o| o + bytes::padded_len(data))
+                    .and_then(|o| o.checked_add(bytes::padded_len(data)))
             }
             Input::CoinSigned(_)
             | Input::Contract(_)
@@ -440,7 +449,7 @@ impl Input {
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => self
                 .predicate_offset()
-                .map(|o| o + bytes::padded_len(predicate)),
+                .and_then(|o| o.checked_add(bytes::padded_len(predicate))),
             Input::CoinSigned(_)
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
@@ -815,7 +824,13 @@ impl io::Write for Input {
         match identifier {
             InputRepr::Coin => {
                 let mut coin = CoinFull::default();
-                let n = WORD_SIZE + CoinFull::write(&mut coin, &full_buf[WORD_SIZE..])?;
+                let write = CoinFull::write(&mut coin, &full_buf[WORD_SIZE..])?;
+                let n = WORD_SIZE
+                    .checked_add(write)
+                    .ok_or(io::Error::new::<String>(
+                        io::ErrorKind::Other,
+                        "Overflow".into(),
+                    ))?;
 
                 *self = if coin.predicate.is_empty() {
                     Self::CoinSigned(coin.into_signed())
@@ -828,8 +843,13 @@ impl io::Write for Input {
 
             InputRepr::Contract => {
                 let mut contract = Contract::default();
-                let n =
-                    WORD_SIZE + Contract::write(&mut contract, &full_buf[WORD_SIZE..])?;
+                let write = Contract::write(&mut contract, &full_buf[WORD_SIZE..])?;
+                let n = WORD_SIZE
+                    .checked_add(write)
+                    .ok_or(io::Error::new::<String>(
+                        io::ErrorKind::Other,
+                        "Overflow".into(),
+                    ))?;
 
                 *self = Self::Contract(contract);
 
@@ -838,8 +858,13 @@ impl io::Write for Input {
 
             InputRepr::Message => {
                 let mut message = FullMessage::default();
-                let n =
-                    WORD_SIZE + FullMessage::write(&mut message, &full_buf[WORD_SIZE..])?;
+                let write = FullMessage::write(&mut message, &full_buf[WORD_SIZE..])?;
+                let n = WORD_SIZE
+                    .checked_add(write)
+                    .ok_or(io::Error::new::<String>(
+                        io::ErrorKind::Other,
+                        "Overflow".into(),
+                    ))?;
 
                 *self = match (message.data.is_empty(), message.predicate.is_empty()) {
                     (true, true) => Self::MessageCoinSigned(message.into_coin_signed()),

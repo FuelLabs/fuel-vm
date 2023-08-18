@@ -13,6 +13,7 @@ use fuel_storage::{
     StorageMutate,
 };
 
+use crate::sparse::MerkleTreeError;
 use core::iter;
 
 pub(crate) struct Branch {
@@ -33,14 +34,18 @@ pub(crate) fn merge_branches<Storage, Table>(
     storage: &mut Storage,
     mut left_branch: Branch,
     mut right_branch: Branch,
-) -> Result<Branch, Storage::Error>
+) -> Result<Branch, MerkleTreeError<Storage::Error>>
 where
     Storage: StorageMutate<Table>,
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
     let branch = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
         let parent_depth = left_branch.node.common_path_length(&right_branch.node);
-        let parent_height = (Node::max_height() - parent_depth) as u32;
+        let parent_height = (Node::max_height().checked_sub(parent_depth).ok_or(
+            MerkleTreeError::Overflow(
+                "Cannot subtract parent depth from max height".to_string(),
+            ),
+        )?) as u32;
         let node =
             Node::create_node(&left_branch.node, &right_branch.node, parent_height);
         Branch {
@@ -49,12 +54,24 @@ where
         }
     } else {
         let ancestor_depth = left_branch.bits.common_path_length(&right_branch.bits);
-        let ancestor_height = Node::max_height() - ancestor_depth;
+        let ancestor_height = Node::max_height().checked_sub(ancestor_depth).ok_or(
+            MerkleTreeError::Overflow(
+                "Cannot subtract ancestor depth from max height".to_string(),
+            ),
+        )?;
         if right_branch.node.is_node() {
             let mut current_node = right_branch.node;
             let path = right_branch.bits;
-            let parent_height = current_node.height() as usize + 1;
-            let stale_depth = ancestor_height - parent_height;
+            let parent_height = (current_node.height() as usize).checked_add(1).ok_or(
+                MerkleTreeError::Overflow(
+                    "Cannot add 1 to current node height".to_string(),
+                ),
+            )?;
+            let stale_depth = ancestor_height.checked_sub(parent_height).ok_or(
+                MerkleTreeError::Overflow(
+                    "Cannot subtract parent height from ancestor height".to_string(),
+                ),
+            )?;
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node =
@@ -66,8 +83,16 @@ where
         if left_branch.node.is_node() {
             let mut current_node = left_branch.node;
             let path = left_branch.bits;
-            let parent_height = current_node.height() as usize + 1;
-            let stale_depth = ancestor_height - parent_height;
+            let parent_height = (current_node.height() as usize).checked_add(1).ok_or(
+                MerkleTreeError::Overflow(
+                    "Cannot add 1 to current node height".to_string(),
+                ),
+            )?;
+            let stale_depth = ancestor_height.checked_sub(parent_height).ok_or(
+                MerkleTreeError::Overflow(
+                    "Cannot subtract parent height from ancestor height".to_string(),
+                ),
+            )?;
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node =

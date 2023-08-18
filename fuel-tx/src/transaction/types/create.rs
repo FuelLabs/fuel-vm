@@ -218,7 +218,7 @@ impl FormatValidityChecks for Create {
         // There will be at most len(witnesses) - 1 signatures to cache, as one of the
         // witnesses will be bytecode
         let mut recovery_cache = Some(HashMap::with_capacity(core::cmp::max(
-            self.witnesses().len() - 1,
+            self.witnesses().len().saturating_sub(1),
             1,
         )));
 
@@ -387,12 +387,14 @@ impl crate::Cacheable for Create {
 
 impl SizedBytes for Create {
     fn serialized_size(&self) -> usize {
+        let summed_sizes = self
+            .witnesses()
+            .iter()
+            .map(|w| w.serialized_size())
+            .sum::<usize>();
         self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+            .checked_add(summed_sizes)
+            .expect("witness offset and summed witness sizes should not exceed usize")
     }
 }
 
@@ -430,7 +432,9 @@ mod field {
 
         #[inline(always)]
         fn gas_limit_offset_static() -> usize {
-            Self::gas_price_offset_static() + WORD_SIZE
+            Self::gas_price_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("gas price offset and word size should not exceed usize")
         }
     }
 
@@ -447,7 +451,9 @@ mod field {
 
         #[inline(always)]
         fn maturity_offset_static() -> usize {
-            Self::gas_limit_offset_static() + WORD_SIZE
+            Self::gas_limit_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("gas limit offset and word size should not exceed usize")
         }
     }
 
@@ -464,7 +470,9 @@ mod field {
 
         #[inline(always)]
         fn bytecode_length_offset_static() -> usize {
-            Self::maturity_offset_static() + WORD_SIZE
+            Self::maturity_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("maturity offset and word size should not exceed usize")
         }
     }
 
@@ -481,7 +489,9 @@ mod field {
 
         #[inline(always)]
         fn bytecode_witness_index_offset_static() -> usize {
-            Self::bytecode_length_offset_static() + WORD_SIZE
+            Self::bytecode_length_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("bytecode length offset and word size should not exceed usize")
         }
     }
 
@@ -498,11 +508,15 @@ mod field {
 
         #[inline(always)]
         fn salt_offset_static() -> usize {
-            Self::bytecode_witness_index_offset_static() + WORD_SIZE
-                + WORD_SIZE // Storage slots size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+            // WORD_SIZE
+            //     + WORD_SIZE // Storage slots size
+            //     + WORD_SIZE // Inputs size
+            //     + WORD_SIZE // Outputs size
+            //     + WORD_SIZE // Witnesses size
+            let five_words = WORD_SIZE
+                .checked_mul(5)
+                .expect("five word sizes should not exceed usize");
+            Self::bytecode_witness_index_offset_static().checked_add(five_words).expect("bytecode witness index offset and five word sizes should not exceed usize")
         }
     }
 
@@ -521,12 +535,15 @@ mod field {
 
         #[inline(always)]
         fn storage_slots_offset_static() -> usize {
-            Self::salt_offset_static() + Salt::LEN
+            Self::salt_offset_static()
+                .checked_add(Salt::LEN)
+                .expect("salt offset and salt len should not exceed usize")
         }
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.storage_slots.len() {
-                Some(Self::storage_slots_offset_static() + idx * StorageSlot::SLOT_SIZE)
+                idx.checked_mul(StorageSlot::SLOT_SIZE)
+                    .and_then(|x| x.checked_add(Self::storage_slots_offset_static()))
             } else {
                 None
             }
@@ -546,8 +563,13 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            Self::storage_slots_offset_static()
-                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+            // Self::storage_slots_offset_static()
+            //     + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+            self.storage_slots
+                .len()
+                .checked_mul(StorageSlot::SLOT_SIZE)
+                .and_then(|x| x.checked_add(Self::storage_slots_offset_static()))
+                .expect("storage slots len and storage slot size should not exceed usize")
         }
 
         #[inline(always)]
@@ -561,15 +583,13 @@ mod field {
             }
 
             if idx < self.inputs.len() {
-                Some(
-                    self.inputs_offset()
-                        + self
-                            .inputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_sizes = self
+                    .inputs()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.inputs_offset().checked_add(summed_sizes)
             } else {
                 None
             }
@@ -589,7 +609,8 @@ mod field {
                 input
                     .predicate_offset()
                     .and_then(|predicate| {
-                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                        self.inputs_offset_at(idx)
+                            .and_then(|inputs| inputs.checked_add(predicate))
                     })
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
@@ -612,13 +633,15 @@ mod field {
             if let Some(CreateMetadata { outputs_offset, .. }) = &self.metadata {
                 return *outputs_offset
             }
+            let summed_sizes = self
+                .inputs()
+                .iter()
+                .map(|i| i.serialized_size())
+                .sum::<usize>();
 
             self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+                .checked_add(summed_sizes)
+                .expect("inputs offset and summed inputs sizes should not exceed usize")
         }
 
         #[inline(always)]
@@ -632,15 +655,13 @@ mod field {
             }
 
             if idx < self.outputs.len() {
-                Some(
-                    self.outputs_offset()
-                        + self
-                            .outputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_sizes = self
+                    .outputs()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.outputs_offset().checked_add(summed_sizes)
             } else {
                 None
             }
@@ -667,12 +688,15 @@ mod field {
                 return *witnesses_offset
             }
 
+            let summed_sizes = self
+                .outputs()
+                .iter()
+                .map(|i| i.serialized_size())
+                .sum::<usize>();
+
             self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+                .checked_add(summed_sizes)
+                .expect("outputs offset and summed outputs sizes should not exceed usize")
         }
 
         #[inline(always)]
@@ -686,15 +710,13 @@ mod field {
             }
 
             if idx < self.witnesses.len() {
-                Some(
-                    self.witnesses_offset()
-                        + self
-                            .witnesses()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_sizes = self
+                    .witnesses()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.witnesses_offset().checked_add(summed_sizes)
             } else {
                 None
             }
@@ -769,21 +791,31 @@ impl io::Read for Create {
         bytes::store_at(buf, Self::layout(Self::LAYOUT.salt), salt);
 
         let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
-        let mut slot_len = 0;
+        let mut slot_len = 0usize;
         for (storage_slot, buf) in storage_slots
             .iter_mut()
             .zip(buf.chunks_exact_mut(StorageSlot::SLOT_SIZE))
         {
             let storage_len = storage_slot.read(buf)?;
-            slot_len += storage_len;
+            slot_len =
+                slot_len
+                    .checked_add(storage_len)
+                    .ok_or(io::Error::new::<String>(
+                        io::ErrorKind::Other,
+                        "Overflow".into(),
+                    ))?;
             if storage_len != StorageSlot::SLOT_SIZE {
                 return Err(bytes::eof())
             }
         }
 
-        let mut buf = full_buf
-            .get_mut(Self::LEN + slot_len..)
-            .ok_or(bytes::eof())?;
+        let start = Self::LEN
+            .checked_add(slot_len)
+            .ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
+        let mut buf = full_buf.get_mut(start..).ok_or(bytes::eof())?;
         for input in self.inputs.iter_mut() {
             let input_len = input.read(buf)?;
             buf = &mut buf[input_len..];
@@ -845,7 +877,13 @@ impl io::Write for Create {
 
         let mut buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
         let mut storage_slots = vec![StorageSlot::default(); storage_slots_len];
-        n += StorageSlot::SLOT_SIZE * storage_slots_len;
+        n = storage_slots_len
+            .checked_mul(StorageSlot::SLOT_SIZE)
+            .and_then(|x| x.checked_add(n))
+            .ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
         for storage_slot in storage_slots.iter_mut() {
             let _ = storage_slot.write(buf)?;
             buf = &buf[StorageSlot::SLOT_SIZE..];
@@ -855,21 +893,30 @@ impl io::Write for Create {
         for input in inputs.iter_mut() {
             let input_len = input.write(buf)?;
             buf = &buf[input_len..];
-            n += input_len;
+            n = n.checked_add(input_len).ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
         }
 
         let mut outputs = vec![Output::default(); outputs_len];
         for output in outputs.iter_mut() {
             let output_len = output.write(buf)?;
             buf = &buf[output_len..];
-            n += output_len;
+            n = n.checked_add(output_len).ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
         }
 
         let mut witnesses = vec![Witness::default(); witnesses_len];
         for witness in witnesses.iter_mut() {
             let witness_len = witness.write(buf)?;
             buf = &buf[witness_len..];
-            n += witness_len;
+            n = n.checked_add(witness_len).ok_or(io::Error::new::<String>(
+                io::ErrorKind::Other,
+                "Overflow".into(),
+            ))?;
         }
 
         *self = Create {

@@ -110,22 +110,36 @@ impl Position {
     /// Construct a position from a leaf index. The in-order index corresponding
     /// to the leaf index will always equal the leaf index multiplied by 2.
     pub fn from_leaf_index(index: u64) -> Self {
-        Position(index * 2)
+        Position(
+            index
+                .checked_mul(2)
+                .expect("Program should panic if this overflows"),
+        )
     }
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
     pub fn sibling(self) -> Self {
-        let shift = 1 << (self.height() + 1);
-        let index = self.in_order_index() as i64 + shift * self.direction();
+        let shift = 1i64
+            << (self
+                .height()
+                .checked_add(1)
+                .expect("Program should panic if this overflows"));
+        let index = shift
+            .checked_mul(self.direction())
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))
+            .expect("Program should panic if this overflows");
         Self::from_in_order_index(index as u64)
     }
 
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
     pub fn parent(self) -> Self {
-        let shift = 1 << self.height();
-        let index = self.in_order_index() as i64 + shift * self.direction();
+        let shift = 1i64 << self.height();
+        let index = shift
+            .checked_mul(self.direction())
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))
+            .expect("Program should panic if this overflows");
         Self::from_in_order_index(index as u64)
     }
 
@@ -214,8 +228,15 @@ impl Position {
     /// current index.
     fn child(self, direction: i64) -> Self {
         assert!(self.is_node());
-        let shift = 1 << (self.height() - 1);
-        let index = self.in_order_index() as i64 + shift * direction;
+        let shift = 1i64
+            << self
+                .height()
+                .checked_sub(1)
+                .expect("Program should panic if this overflows");
+        let index = shift
+            .checked_mul(direction)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))
+            .expect("Program should panic if this overflows");
         Self::from_in_order_index(index as u64)
     }
 
@@ -239,7 +260,12 @@ impl Position {
     /// |           9 |        1001 |      1 |           0 |
     /// |          13 |        1101 |      1 |           1 |
     fn orientation(self) -> u8 {
-        let shift = 1 << (self.height() + 1);
+        let shift = 1
+            << self
+                .height()
+                .checked_add(1)
+                .expect("Program should panic if this overflows");
+
         (self.in_order_index() & shift != 0) as u8
     }
 
@@ -247,7 +273,10 @@ impl Position {
     /// Returns +1 if the index is left of its parent.
     /// Returns -1 if the index is right of its parent.
     fn direction(self) -> i64 {
-        let scale = self.orientation() as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
+        let scale = (self.orientation() as i64)
+            .checked_mul(2)
+            .and_then(|x| x.checked_sub(1))
+            .expect("Program should panic if this overflows"); // Scale [0, 1] to [-1,
         -scale
     }
 }

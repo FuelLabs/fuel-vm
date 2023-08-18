@@ -84,7 +84,9 @@ impl CommonMetadata {
             .iter()
             .map(|input| {
                 let i = offset;
-                offset += input.serialized_size();
+                offset = offset.checked_add(input.serialized_size()).expect(
+                    "offset and input serialized size should never exceed usize::MAX",
+                );
                 i
             })
             .collect_vec();
@@ -98,7 +100,9 @@ impl CommonMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.serialized_size();
+                offset = offset.checked_add(output.serialized_size()).expect(
+                    "offset and output serialized size should never exceed usize::MAX",
+                );
                 i
             })
             .collect_vec();
@@ -112,7 +116,9 @@ impl CommonMetadata {
             .iter()
             .map(|witness| {
                 let i = offset;
-                offset += witness.serialized_size();
+                offset = offset.checked_add(witness.serialized_size()).expect(
+                    "offset and witness serialized size should never exceed usize::MAX",
+                );
                 i
             })
             .collect_vec();

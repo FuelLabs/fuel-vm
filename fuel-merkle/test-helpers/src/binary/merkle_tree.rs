@@ -58,7 +58,10 @@ impl MerkleTree {
         self.head = Some(node);
         self.join_all_subtrees();
 
-        self.leaves_count += 1;
+        self.leaves_count = self
+            .leaves_count
+            .checked_add(1)
+            .expect("Cannot add 1 to leaves count")
     }
 
     pub fn prove(mut self) -> (Data, ProofSet) {
@@ -69,17 +72,18 @@ impl MerkleTree {
         }
 
         let mut current = self.head().clone().unwrap();
-        while current.next().is_some()
-            && current.next_height().unwrap() < proof_set_length - 1
+
+        let proof_set_index = proof_set_length
+            .checked_sub(1)
+            .expect("Cannot subtract 1 from proof set length");
+        while current.next().is_some() && current.next_height().unwrap() < proof_set_index
         {
             let mut node = current;
             let mut next_node = node.take_next().unwrap();
             current = Self::join_subtrees(&mut next_node, &node)
         }
 
-        if current.next().is_some()
-            && current.next_height().unwrap() == proof_set_length - 1
-        {
+        if current.next().is_some() && current.next_height().unwrap() == proof_set_index {
             self.proof_set.push(*current.data());
             current = current.take_next().unwrap();
         }
@@ -114,9 +118,18 @@ impl MerkleTree {
             }
 
             let proof_set_length = self.proof_set.len() as u32;
-            if head.height() + 1 == proof_set_length {
+
+            let next_height = head
+                .height()
+                .checked_add(1)
+                .expect("Cannot add 1 to height");
+            if next_height == proof_set_length {
                 let head_leaves_count = 1u64 << head.height();
-                let mid = (self.leaves_count / head_leaves_count) * head_leaves_count;
+                let mid = self
+                    .leaves_count
+                    .checked_div(head_leaves_count)
+                    .and_then(|x| x.checked_mul(head_leaves_count))
+                    .expect("Cannot divide leaves count by head leaves count");
                 if self.proof_index < mid {
                     self.proof_set.push(*head.data());
                 } else {
@@ -135,7 +148,7 @@ impl MerkleTree {
 
     fn join_subtrees(a: &mut DataNode, b: &DataNode) -> Box<DataNode> {
         let next = a.take_next();
-        let height = a.height() + 1;
+        let height = a.height().checked_add(1).expect("Cannot add 1 to height");
         let data = node_sum(a.data(), b.data());
         Self::create_node(next, height, data)
     }

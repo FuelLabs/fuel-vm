@@ -39,7 +39,12 @@ const MULTIPLE: usize = 8;
 
 /// See https://stackoverflow.com/a/9194117
 fn next_multiple<const N: usize>(x: usize) -> usize {
-    x + (N - x % N) % N
+    // x + (N - x % N) % N
+    let remainder = x.checked_rem(N).expect("N should never be 0");
+    let diff = N.checked_sub(remainder).expect("x should be bigger than N");
+    let second_remainder = diff.checked_rem(N).expect("N should never be 0");
+    x.checked_add(second_remainder)
+        .expect("x and second remainder should never exceed usize max")
 }
 
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]

@@ -247,12 +247,14 @@ impl crate::Cacheable for Script {
 
 impl SizedBytes for Script {
     fn serialized_size(&self) -> usize {
+        let summed_size = self
+            .witnesses()
+            .iter()
+            .map(|w| w.serialized_size())
+            .sum::<usize>();
         self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
+            .checked_add(summed_size)
+            .expect("should not exceed usize::MAX")
     }
 }
 
@@ -289,7 +291,9 @@ mod field {
 
         #[inline(always)]
         fn gas_limit_offset_static() -> usize {
-            Self::gas_price_offset_static() + WORD_SIZE
+            Self::gas_price_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("should not exceed usize::MAX")
         }
     }
 
@@ -306,7 +310,9 @@ mod field {
 
         #[inline(always)]
         fn maturity_offset_static() -> usize {
-            Self::gas_limit_offset_static() + WORD_SIZE
+            Self::gas_limit_offset_static()
+                .checked_add(WORD_SIZE)
+                .expect("should not exceed usize::MAX")
         }
     }
 
@@ -323,12 +329,12 @@ mod field {
 
         #[inline(always)]
         fn receipts_root_offset_static() -> usize {
-            Self::maturity_offset_static() + WORD_SIZE
-                + WORD_SIZE // Script size
-                + WORD_SIZE // Script data size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+            let six_words = WORD_SIZE
+                .checked_mul(6)
+                .expect("should not exceed usize::MAX");
+            Self::maturity_offset_static()
+                .checked_add(six_words)
+                .expect("should not exceed usize::MAX")
         }
     }
 
@@ -345,7 +351,9 @@ mod field {
 
         #[inline(always)]
         fn script_offset_static() -> usize {
-            Self::receipts_root_offset_static() + Bytes32::LEN // Receipts root
+            Self::receipts_root_offset_static()
+                .checked_add(Bytes32::LEN)
+                .expect("receipts root should not exceed usize::MAX")
         }
     }
 
@@ -369,7 +377,9 @@ mod field {
                 return *script_data_offset
             }
 
-            self.script_offset() + bytes::padded_len(self.script.as_slice())
+            self.script_offset()
+                .checked_add(bytes::padded_len(self.script.as_slice()))
+                .expect("should not exceed usize::MAX")
         }
     }
 
@@ -394,7 +404,9 @@ mod field {
                 return *inputs_offset
             }
 
-            self.script_data_offset() + bytes::padded_len(self.script_data.as_slice())
+            self.script_data_offset()
+                .checked_add(bytes::padded_len(self.script_data.as_slice()))
+                .expect("should not exceed usize::MAX")
         }
 
         #[inline(always)]
@@ -411,15 +423,13 @@ mod field {
             }
 
             if idx < self.inputs.len() {
-                Some(
-                    self.inputs_offset()
-                        + self
-                            .inputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_size = self
+                    .inputs()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.inputs_offset().checked_add(summed_size)
             } else {
                 None
             }
@@ -443,7 +453,8 @@ mod field {
                 input
                     .predicate_offset()
                     .and_then(|predicate| {
-                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                        self.inputs_offset_at(idx)
+                            .and_then(|inputs| inputs.checked_add(predicate))
                     })
                     .zip(input.predicate_len().map(bytes::padded_len_usize))
             })
@@ -471,12 +482,14 @@ mod field {
                 return *outputs_offset
             }
 
+            let summed_size = self
+                .inputs()
+                .iter()
+                .map(|i| i.serialized_size())
+                .sum::<usize>();
             self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+                .checked_add(summed_size)
+                .expect("should not exceed usize::MAX")
         }
 
         #[inline(always)]
@@ -493,15 +506,13 @@ mod field {
             }
 
             if idx < self.outputs.len() {
-                Some(
-                    self.outputs_offset()
-                        + self
-                            .outputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_size = self
+                    .outputs()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.outputs_offset().checked_add(summed_size)
             } else {
                 None
             }
@@ -532,12 +543,14 @@ mod field {
                 return *witnesses_offset
             }
 
+            let summed_size = self
+                .outputs()
+                .iter()
+                .map(|i| i.serialized_size())
+                .sum::<usize>();
             self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+                .checked_add(summed_size)
+                .expect("should not exceed usize::MAX")
         }
 
         #[inline(always)]
@@ -555,15 +568,13 @@ mod field {
             }
 
             if idx < self.witnesses.len() {
-                Some(
-                    self.witnesses_offset()
-                        + self
-                            .witnesses()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.serialized_size())
-                            .sum::<usize>(),
-                )
+                let summed_size = self
+                    .witnesses()
+                    .iter()
+                    .take(idx)
+                    .map(|i| i.serialized_size())
+                    .sum::<usize>();
+                self.witnesses_offset().checked_add(summed_size)
             } else {
                 None
             }
@@ -698,31 +709,41 @@ impl io::Write for Script {
 
         let buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
         let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
-        n += size;
+        n = n
+            .checked_add(size)
+            .ok_or(io::Error::new(io::ErrorKind::InvalidData, "Overflow"))?;
 
         let (size, script_data, mut buf) =
             bytes::restore_raw_bytes(buf, script_data_len)?;
-        n += size;
+        n = n
+            .checked_add(size)
+            .ok_or(io::Error::new(io::ErrorKind::InvalidData, "Overflow"))?;
 
         let mut inputs = vec![Input::default(); inputs_len];
         for input in inputs.iter_mut() {
             let input_len = input.write(buf)?;
             buf = &buf[input_len..];
-            n += input_len;
+            n = n
+                .checked_add(input_len)
+                .ok_or(io::Error::new(io::ErrorKind::InvalidData, "Overflow"))?;
         }
 
         let mut outputs = vec![Output::default(); outputs_len];
         for output in outputs.iter_mut() {
             let output_len = output.write(buf)?;
             buf = &buf[output_len..];
-            n += output_len;
+            n = n
+                .checked_add(output_len)
+                .ok_or(io::Error::new(io::ErrorKind::InvalidData, "Overflow"))?;
         }
 
         let mut witnesses = vec![Witness::default(); witnesses_len];
         for witness in witnesses.iter_mut() {
             let witness_len = witness.write(buf)?;
             buf = &buf[witness_len..];
-            n += witness_len;
+            n = n
+                .checked_add(witness_len)
+                .ok_or(io::Error::new(io::ErrorKind::InvalidData, "Overflow"))?;
         }
 
         *self = Script {

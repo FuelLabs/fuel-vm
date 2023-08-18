@@ -11,7 +11,7 @@ trait GetBit {
 impl GetBit for u8 {
     fn get_bit(&self, bit_index: usize) -> Option<Bit> {
         if bit_index < 8 {
-            let mask = 1 << (7 - bit_index);
+            let mask = 1 << 7usize.checked_sub(bit_index)?;
             let bit = self & mask;
             match bit {
                 0 => Some(Bit::_0),
@@ -39,12 +39,14 @@ impl<const N: usize> Msb for [u8; N] {
     }
 
     fn common_prefix_count(&self, other: &Self) -> usize {
-        let mut count = 0;
+        let mut count: u32 = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using
             // exclusive or (XOR). The leading zeros measures the number of
             // similar bits from left to right. For equal bytes, this will be 8.
-            count += (byte1 ^ byte2).leading_zeros();
+            count = count
+                .checked_add((byte1 ^ byte2).leading_zeros())
+                .expect("Program should fail if this overflows");
             if byte1 != byte2 {
                 break
             }

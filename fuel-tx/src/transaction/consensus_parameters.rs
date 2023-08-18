@@ -235,6 +235,7 @@ impl TxParameters {
     };
 
     /// Transaction memory offset in VM runtime
+    #[allow(clippy::arithmetic_side_effects)]
     pub const fn tx_offset(&self) -> usize {
         Bytes32::LEN // Tx ID
             + WORD_SIZE // Tx size

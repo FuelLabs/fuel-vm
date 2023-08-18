@@ -115,7 +115,7 @@ impl str::FromStr for UtxoId {
         } else if s.len() <= 2 {
             UtxoId::new(TxId::default(), u8::from_str_radix(s, 16).map_err(|_| ERR)?)
         } else {
-            let i = s.len() - 2;
+            let i = s.len().checked_sub(2).ok_or("Overflow")?;
             if !s.is_char_boundary(i) {
                 return Err(ERR)
             }

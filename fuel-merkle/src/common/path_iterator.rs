@@ -137,7 +137,9 @@ where
         // 0       7    00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        let initial_offset = T::key_size_in_bits() - root.height() as usize;
+        let initial_offset = T::key_size_in_bits()
+            .checked_sub(root.height() as usize)
+            .expect("Program should panic if this overflows");
         Self {
             leaf_key,
             current: Some(initial),
@@ -161,14 +163,14 @@ where
                 Ok(path_node) if path_node.is_node() => {
                     let path = &self.leaf_key;
                     let instruction = path.get_instruction(self.current_offset);
-                    self.current = instruction.map(|instruction| {
-                        self.current_offset += 1;
+                    self.current = instruction.and_then(|instruction| {
+                        self.current_offset = self.current_offset.checked_add(1)?;
                         match instruction {
                             Instruction::Left => {
-                                (path_node.left_child(), path_node.right_child())
+                                Some((path_node.left_child(), path_node.right_child()))
                             }
                             Instruction::Right => {
-                                (path_node.right_child(), path_node.left_child())
+                                Some((path_node.right_child(), path_node.left_child()))
                             }
                         }
                     });

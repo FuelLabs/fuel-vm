@@ -10,7 +10,8 @@ pub fn fmt_truncated_hex<const N: usize>(
     f: &mut Formatter,
 ) -> fmt::Result {
     let formatted = if data.len() > N {
-        let mut s = hex::encode(&data[0..N - 3]);
+        let index = N.checked_sub(3).ok_or(fmt::Error)?;
+        let mut s = hex::encode(&data[0..index]);
         s.push_str("...");
         s
     } else {
@@ -27,7 +28,8 @@ pub fn fmt_option_truncated_hex<const N: usize>(
 ) -> fmt::Result {
     if let Some(data) = data {
         let formatted = if data.len() > N {
-            let mut s = hex::encode(&data[0..N - 3]);
+            let index = N.checked_sub(3).ok_or(fmt::Error)?;
+            let mut s = hex::encode(&data[0..index]);
             s.push_str("...");
             s
         } else {

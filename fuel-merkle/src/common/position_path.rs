@@ -48,8 +48,11 @@ pub struct PositionPathIter {
 
 impl PositionPathIter {
     pub fn new(root: Position, leaf: Position, leaves_count: u64) -> Self {
+        let leaf_index = leaves_count
+            .checked_sub(1)
+            .expect("Program should panic if this overflows");
         Self {
-            rightmost_position: Position::from_leaf_index(leaves_count - 1),
+            rightmost_position: Position::from_leaf_index(leaf_index),
             current_side_node: None,
             path_iter: root.as_path_iter(leaf.leaf_key()),
         }

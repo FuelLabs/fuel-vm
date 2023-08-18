@@ -17,6 +17,7 @@ use core::{
 pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
 /// Compile time assert that the array is big enough to contain the memory location.
+#[allow(clippy::arithmetic_side_effects)]
 const fn check_range_bounds<const ARR: usize, const ADDR: usize, const SIZE: usize>(
 ) -> Range<usize> {
     assert!(

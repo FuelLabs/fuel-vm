@@ -51,6 +51,7 @@ pub enum GasUnit {
 
 impl GasUnit {
     /// Return the `cost := price · N`.
+    #[allow(clippy::arithmetic_side_effects)]
     pub const fn cost(&self) -> Word {
         use GasUnit::*;
 
@@ -136,6 +137,7 @@ impl GasUnit {
     }
 
     /// Combine two gas computations, accumulating their cost.
+    #[allow(clippy::arithmetic_side_effects)]
     pub const fn join(self, other: Self) -> Self {
         Self::Accumulated(self.cost() + other.cost())
     }

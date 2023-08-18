@@ -29,17 +29,12 @@ where
         data.encode(&mut &mut buffer[..]).expect("Failed to encode");
         T::decode(&mut &buffer[..]).expect("Failed to decode");
 
-        // No panic assertion
-        loop {
-            buffer.pop();
-
-            data.encode(&mut &mut buffer[..])
+        // Test that insufficine buffer size fails and that partial decoding fails
+        buffer.truncate(data.to_bytes().len());
+        while buffer.pop().is_some() {
+            data.encode(&mut buffer.as_mut_slice())
                 .expect_err("Encoding should fail");
-            T::decode(&mut &buffer[..]).expect("Decoding should fail");
-
-            if buffer.is_empty() {
-                break
-            }
+            T::decode(&mut &buffer[..]).expect_err("Decoding should fail");
         }
     }
 }

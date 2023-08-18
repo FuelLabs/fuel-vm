@@ -1,5 +1,6 @@
 use crate::common::{
     node::{
+        ChildError,
         ChildResult,
         Node,
         ParentNode,
@@ -119,46 +120,40 @@ impl Position {
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
-    pub fn sibling(self) -> Self {
-        let shift = 1i64
-            << (self
-                .height()
-                .checked_add(1)
-                .expect("Program should panic if this overflows"));
+    pub fn sibling(self) -> Option<Self> {
+        let shift = 1i64 << (self.height().checked_add(1)?);
         let index = shift
             .checked_mul(self.direction())
-            .and_then(|x| x.checked_add(self.in_order_index() as i64))
-            .expect("Program should panic if this overflows");
-        Self::from_in_order_index(index as u64)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))?;
+        Self::from_in_order_index(index as u64).into()
     }
 
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
-    pub fn parent(self) -> Self {
+    pub fn parent(self) -> Option<Self> {
         let shift = 1i64 << self.height();
         let index = shift
             .checked_mul(self.direction())
-            .and_then(|x| x.checked_add(self.in_order_index() as i64))
-            .expect("Program should panic if this overflows");
-        Self::from_in_order_index(index as u64)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))?;
+        Self::from_in_order_index(index as u64).into()
     }
 
     /// The uncle position.
     /// The uncle position is the sibling of the parent and has a height less 1
     /// relative to this position.
-    pub fn uncle(self) -> Self {
-        self.parent().sibling()
+    pub fn uncle(self) -> Option<Self> {
+        self.parent()?.sibling()
     }
 
     /// The left child position.
     /// See [child](Self::child).
-    pub fn left_child(self) -> Self {
+    pub fn left_child(self) -> Option<Self> {
         self.child(LEFT_CHILD_DIRECTION)
     }
 
     /// The right child position.
     /// See [child](Self::child).
-    pub fn right_child(self) -> Self {
+    pub fn right_child(self) -> Option<Self> {
         self.child(RIGHT_CHILD_DIRECTION)
     }
 
@@ -226,18 +221,13 @@ impl Position {
     /// position has the in-order index arriving before the current index;
     /// the right child position has the in-order index arriving after the
     /// current index.
-    fn child(self, direction: i64) -> Self {
+    fn child(self, direction: i64) -> Option<Self> {
         assert!(self.is_node());
-        let shift = 1i64
-            << self
-                .height()
-                .checked_sub(1)
-                .expect("Program should panic if this overflows");
+        let shift = 1i64 << self.height().checked_sub(1)?;
         let index = shift
             .checked_mul(direction)
-            .and_then(|x| x.checked_add(self.in_order_index() as i64))
-            .expect("Program should panic if this overflows");
-        Self::from_in_order_index(index as u64)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))?;
+        Self::from_in_order_index(index as u64).into()
     }
 
     /// Orientation of the position index relative to its parent.
@@ -302,14 +292,16 @@ impl Node for Position {
 }
 
 impl ParentNode for Position {
-    type Error = Infallible;
+    type Error = String;
 
     fn left_child(&self) -> ChildResult<Self> {
-        Ok(Position::left_child(*self))
+        Position::left_child(*self)
+            .ok_or(ChildError::Error("Child not found".to_string()))
     }
 
     fn right_child(&self) -> ChildResult<Self> {
-        Ok(Position::right_child(*self))
+        Position::right_child(*self)
+            .ok_or(ChildError::Error("Child not found".to_string()))
     }
 }
 
@@ -365,57 +357,57 @@ mod test {
 
     #[test]
     fn test_sibling() {
-        assert_eq!(Position(0).sibling(), Position(2));
-        assert_eq!(Position(2).sibling(), Position(0));
+        assert_eq!(Position(0).sibling(), Position(2).into());
+        assert_eq!(Position(2).sibling(), Position(0).into());
 
-        assert_eq!(Position(1).sibling(), Position(5));
-        assert_eq!(Position(5).sibling(), Position(1));
+        assert_eq!(Position(1).sibling(), Position(5).into());
+        assert_eq!(Position(5).sibling(), Position(1).into());
 
-        assert_eq!(Position(3).sibling(), Position(11));
-        assert_eq!(Position(11).sibling(), Position(3));
+        assert_eq!(Position(3).sibling(), Position(11).into());
+        assert_eq!(Position(11).sibling(), Position(3).into());
     }
 
     #[test]
     fn test_parent() {
-        assert_eq!(Position(0).parent(), Position(1));
-        assert_eq!(Position(2).parent(), Position(1));
+        assert_eq!(Position(0).parent(), Position(1).into());
+        assert_eq!(Position(2).parent(), Position(1).into());
 
-        assert_eq!(Position(1).parent(), Position(3));
-        assert_eq!(Position(5).parent(), Position(3));
+        assert_eq!(Position(1).parent(), Position(3).into());
+        assert_eq!(Position(5).parent(), Position(3).into());
 
-        assert_eq!(Position(3).parent(), Position(7));
-        assert_eq!(Position(11).parent(), Position(7));
+        assert_eq!(Position(3).parent(), Position(7).into());
+        assert_eq!(Position(11).parent(), Position(7).into());
     }
 
     #[test]
     fn test_uncle() {
-        assert_eq!(Position(0).uncle(), Position(5));
-        assert_eq!(Position(2).uncle(), Position(5));
-        assert_eq!(Position(4).uncle(), Position(1));
-        assert_eq!(Position(6).uncle(), Position(1));
+        assert_eq!(Position(0).uncle(), Position(5).into());
+        assert_eq!(Position(2).uncle(), Position(5).into());
+        assert_eq!(Position(4).uncle(), Position(1).into());
+        assert_eq!(Position(6).uncle(), Position(1).into());
 
-        assert_eq!(Position(1).uncle(), Position(11));
-        assert_eq!(Position(5).uncle(), Position(11));
-        assert_eq!(Position(9).uncle(), Position(3));
-        assert_eq!(Position(13).uncle(), Position(3));
+        assert_eq!(Position(1).uncle(), Position(11).into());
+        assert_eq!(Position(5).uncle(), Position(11).into());
+        assert_eq!(Position(9).uncle(), Position(3).into());
+        assert_eq!(Position(13).uncle(), Position(3).into());
     }
 
     #[test]
     fn test_left_child() {
-        assert_eq!(Position(7).left_child(), Position(3));
-        assert_eq!(Position(3).left_child(), Position(1));
-        assert_eq!(Position(1).left_child(), Position(0));
-        assert_eq!(Position(11).left_child(), Position(9));
-        assert_eq!(Position(9).left_child(), Position(8));
+        assert_eq!(Position(7).left_child(), Position(3).into());
+        assert_eq!(Position(3).left_child(), Position(1).into());
+        assert_eq!(Position(1).left_child(), Position(0).into());
+        assert_eq!(Position(11).left_child(), Position(9).into());
+        assert_eq!(Position(9).left_child(), Position(8).into());
     }
 
     #[test]
     fn test_right_child() {
-        assert_eq!(Position(7).right_child(), Position(11));
-        assert_eq!(Position(3).right_child(), Position(5));
-        assert_eq!(Position(1).right_child(), Position(2));
-        assert_eq!(Position(11).right_child(), Position(13));
-        assert_eq!(Position(9).right_child(), Position(10));
+        assert_eq!(Position(7).right_child(), Position(11).into());
+        assert_eq!(Position(3).right_child(), Position(5).into());
+        assert_eq!(Position(1).right_child(), Position(2).into());
+        assert_eq!(Position(11).right_child(), Position(13).into());
+        assert_eq!(Position(9).right_child(), Position(10).into());
     }
 
     #[test]

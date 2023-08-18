@@ -102,7 +102,7 @@ impl Iterator for PositionPathIter {
                 // correct side node will always be a leftward descendent of
                 // this invalid side node.
                 while side.in_order_index() > self.rightmost_position.in_order_index() {
-                    side = side.left_child()
+                    side = side.left_child()?
                 }
 
                 return Some((path, side))

@@ -28,10 +28,10 @@ impl Node {
         Self { position, hash }
     }
 
-    pub fn create_node(left_child: &Self, right_child: &Self) -> Self {
-        let position = left_child.position().parent();
+    pub fn create_node(left_child: &Self, right_child: &Self) -> Option<Self> {
+        let position = left_child.position().parent()?;
         let hash = node_sum(left_child.hash(), right_child.hash());
-        Self { position, hash }
+        Self { position, hash }.into()
     }
 
     pub fn position(&self) -> Position {

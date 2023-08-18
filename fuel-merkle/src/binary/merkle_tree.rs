@@ -41,6 +41,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[cfg_attr(feature = "std", error("Overflow: {0}"))]
     Overflow(String),
+
+    #[cfg_attr(feature = "std", error("Subtree not found!"))]
+    SubtreeNotFound,
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -354,7 +357,7 @@ where
     // PRIVATE
     //
 
-    fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
+    fn join_all_subtrees(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         while {
             // Iterate through all subtrees in the tree to see which subtrees
             // can be merged. Two consecutive subtrees will be merged if, and
@@ -373,7 +376,8 @@ where
             // Merge the two front heads of the list into a single head
             let mut head = self.head.take().expect("Expected head to be present");
             let mut head_next = head.take_next().expect("Expected next to be present");
-            let joined_head = join_subtrees(&mut head_next, &mut head);
+            let joined_head = join_subtrees(&mut head_next, &mut head)
+                .ok_or(MerkleTreeError::SubtreeNotFound)?;
             self.storage
                 .insert(&joined_head.node().key(), &joined_head.node().into())?;
             self.head = Some(joined_head);
@@ -383,9 +387,12 @@ where
     }
 }
 
-fn join_subtrees(lhs: &mut Subtree<Node>, rhs: &mut Subtree<Node>) -> Subtree<Node> {
-    let joined_node = Node::create_node(lhs.node(), rhs.node());
-    Subtree::new(joined_node, lhs.take_next())
+fn join_subtrees(
+    lhs: &mut Subtree<Node>,
+    rhs: &mut Subtree<Node>,
+) -> Option<Subtree<Node>> {
+    let joined_node = Node::create_node(lhs.node(), rhs.node())?;
+    Subtree::new(joined_node, lhs.take_next()).into()
 }
 
 fn build_root_node<Table, Storage>(subtree: &Subtree<Node>, storage: &mut Storage) -> Node
@@ -394,8 +401,11 @@ where
     Storage: StorageMutateInfallible<Table>,
 {
     let mut head = subtree.clone();
-    while let Some(mut head_next) = head.take_next() {
-        head = join_subtrees(&mut head_next, &mut head);
+    while let Some(new_head) = head
+        .take_next()
+        .and_then(|mut head_next| join_subtrees(&mut head_next, &mut head))
+    {
+        head = new_head;
         storage.insert(&head.node().key(), &head.node().into());
     }
     head.node().clone()

@@ -106,43 +106,41 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
             .map(|head| build_root_node(head, scratch_storage))
     }
 
-    fn peak_positions(&self) -> Vec<Position> {
+    fn peak_positions<E>(&self) -> Result<Vec<Position>, MerkleTreeError<E>> {
         // Define a new tree with a leaf count 1 greater than the current leaf
         // count.
         let leaf_index = self.leaves_count;
-        let leaves_count = self
-            .leaves_count
-            .checked_add(1)
-            .expect("Exceeding maximum renders program meaningless");
+        let leaves_count =
+            self.leaves_count
+                .checked_add(1)
+                .ok_or(MerkleTreeError::Overflow(
+                    "While incrementing leaf count".to_string(),
+                ))?;
 
         // The rightmost leaf position of a tree will always have a leaf index
         // N - 1, where N is the number of leaves.
         let leaf_position = Position::from_leaf_index(leaf_index);
-        let root_position = self.root_position();
+        let root_position = self.root_position().ok_or(MerkleTreeError::Overflow(
+            "While calculating root position".to_string(),
+        ))?;
         let mut peaks_itr = root_position.path(&leaf_position, leaves_count).iter();
         peaks_itr.next(); // Omit the root
 
         let (_, peaks): (Vec<_>, Vec<_>) = peaks_itr.unzip();
 
-        peaks
+        Ok(peaks)
     }
 
-    fn root_position(&self) -> Position {
+    fn root_position(&self) -> Option<Position> {
         // Define a new tree with a leaf count 1 greater than the current leaf
         // count.
-        let leaves_count = self
-            .leaves_count
-            .checked_add(1)
-            .expect("Exceeding maximum renders program meaningless");
+        let leaves_count = self.leaves_count.checked_add(1)?;
 
         // The root position of a tree will always have an in-order index equal
         // to N' - 1, where N is the leaves count and N' is N rounded (or equal)
         // to the next power of 2.
-        let root_index = leaves_count
-            .next_power_of_two()
-            .checked_sub(1)
-            .expect("Should always be able to find a root index");
-        Position::from_in_order_index(root_index)
+        let root_index = leaves_count.next_power_of_two().checked_sub(1)?;
+        Position::from_in_order_index(root_index).into()
     }
 }
 
@@ -189,7 +187,9 @@ where
 
         let mut proof_set = ProofSet::new();
 
-        let root_position = self.root_position();
+        let root_position = self.root_position().ok_or(MerkleTreeError::Overflow(
+            "While calculating root position".to_string(),
+        ))?;
         let leaf_position = Position::from_leaf_index(proof_index);
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
             .path(&leaf_position, self.leaves_count)
@@ -312,7 +312,7 @@ where
     /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
     fn build(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         let mut current_head = None;
-        let peaks = &self.peak_positions();
+        let peaks = &self.peak_positions()?;
         for peak in peaks.iter() {
             let key = peak.in_order_index();
             let node = self

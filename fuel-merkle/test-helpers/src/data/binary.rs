@@ -39,19 +39,25 @@ impl ProofTest {
             .collect::<Vec<Bytes32>>();
         let data = self.data.into_bytes()?;
         let verification =
-            verify(&root, &data, &proof_set, self.proof_index, self.num_leaves);
+            verify(&root, &data, &proof_set, self.proof_index, self.num_leaves).ok_or(
+                TestError::Failed(self.name.clone(), "Verification failed".to_string()),
+            )?;
         let verification_from_test_helper = verify_from_test_helper(
             &root,
             &data,
             &proof_set,
             self.proof_index,
             self.num_leaves,
-        );
+        )
+        .ok_or(TestError::Failed(
+            self.name.clone(),
+            "Verification failed".to_string(),
+        ))?;
         let expected_verification = self.expected_verification;
 
         if verification != verification_from_test_helper {
             return Err(TestError::Failed(
-                self.name,
+                self.name.clone(),
                 format!(
                     "Verification {verification} does not match reference verification {verification_from_test_helper}",
                 ),

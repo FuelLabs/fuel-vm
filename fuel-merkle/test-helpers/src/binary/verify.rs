@@ -10,15 +10,15 @@ pub fn verify<T: AsRef<[u8]>>(
     proof_set: &Vec<Data>,
     proof_index: u64,
     num_leaves: u64,
-) -> bool {
+) -> Option<bool> {
     let mut sum = leaf_sum(data.as_ref());
 
     if proof_index >= num_leaves {
-        return false
+        return Some(false)
     }
 
     if proof_set.is_empty() {
-        return if num_leaves == 1 { *root == sum } else { false }
+        return Some(if num_leaves == 1 { *root == sum } else { false })
     }
 
     let mut height = 1usize;
@@ -41,7 +41,7 @@ pub fn verify<T: AsRef<[u8]>>(
         stable_end = subtree_end_index;
 
         if proof_set.len() < height {
-            return false
+            return Some(false)
         }
 
         let height_index = height
@@ -66,7 +66,7 @@ pub fn verify<T: AsRef<[u8]>>(
         .expect("Cannot subtract 1 from num_leaves");
     if stable_end != leaf_index {
         if proof_set.len() < height {
-            return false
+            return Some(false)
         }
         let height_index = height
             .checked_sub(1)
@@ -89,7 +89,7 @@ pub fn verify<T: AsRef<[u8]>>(
         height = height.checked_add(1).expect("Cannot add 1 to height");
     }
 
-    sum == *root
+    Some(sum == *root)
 }
 
 #[cfg(test)]
@@ -122,7 +122,8 @@ mod test {
             &proof_set,
             proof_index,
             data.len() as u64,
-        );
+        )
+        .unwrap();
         assert!(verification);
     }
 
@@ -162,7 +163,8 @@ mod test {
             &proof_set,
             proof_index as u64,
             data.len() as u64,
-        );
+        )
+        .unwrap();
         assert!(!verification);
     }
 
@@ -174,7 +176,7 @@ mod test {
         mt.set_proof_index(proof_index);
 
         let (root, proof_set) = mt.prove();
-        let verification = verify(&root, &Data::default(), &proof_set, 0, 0);
+        let verification = verify(&root, &Data::default(), &proof_set, 0, 0).unwrap();
         assert!(!verification);
     }
 
@@ -191,7 +193,8 @@ mod test {
         }
 
         let (root, proof_set) = mt.prove();
-        let verification = verify(&root, &data[proof_index as usize], &proof_set, 15, 5);
+        let verification =
+            verify(&root, &data[proof_index as usize], &proof_set, 15, 5).unwrap();
         assert!(!verification);
     }
 }

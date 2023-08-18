@@ -15,15 +15,15 @@ pub fn verify<T: AsRef<[u8]>>(
     proof_set: &ProofSet,
     proof_index: u64,
     num_leaves: u64,
-) -> bool {
+) -> Option<bool> {
     let mut sum = leaf_sum(data.as_ref());
 
     if proof_index >= num_leaves {
-        return false
+        return false.into()
     }
 
     if proof_set.is_empty() {
-        return if num_leaves == 1 { *root == sum } else { false }
+        return (if num_leaves == 1 { *root == sum } else { false }).into()
     }
 
     let mut height = 1usize;
@@ -46,7 +46,7 @@ pub fn verify<T: AsRef<[u8]>>(
         stable_end = subtree_end_index;
 
         if proof_set.len() < height {
-            return false
+            return Some(false)
         }
 
         let height_index = height
@@ -72,7 +72,7 @@ pub fn verify<T: AsRef<[u8]>>(
         .expect("Program should panic if this overflows");
     if stable_end != leaf_index {
         if proof_set.len() < height {
-            return false
+            return Some(false)
         }
         let height_index = height
             .checked_sub(1)
@@ -99,7 +99,7 @@ pub fn verify<T: AsRef<[u8]>>(
             .expect("Program should panic if this overflows");
     }
 
-    sum == *root
+    Some(sum == *root)
 }
 
 #[cfg(test)]
@@ -145,7 +145,8 @@ mod test {
             &proof_set,
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
-        );
+        )
+        .unwrap();
         assert!(verification);
     }
 
@@ -187,7 +188,8 @@ mod test {
             &set,
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
-        );
+        )
+        .unwrap();
         assert!(!verification);
     }
 
@@ -202,7 +204,8 @@ mod test {
             &vec![],
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
-        );
+        )
+        .unwrap();
         assert!(!verification);
     }
 
@@ -229,7 +232,8 @@ mod test {
             &set,
             PROOF_INDEX as u64 + 15,
             LEAVES_COUNT as u64,
-        );
+        )
+        .unwrap();
         assert!(!verification);
     }
 }

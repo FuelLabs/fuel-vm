@@ -1,11 +1,5 @@
 use derivative::Derivative;
-use fuel_types::{
-    bytes::{
-        self,
-        WORD_SIZE,
-    },
-    fmt_truncated_hex,
-};
+use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
 
@@ -119,11 +113,5 @@ impl Distribution<Witness> for Standard {
         rng.fill_bytes(data.as_mut_slice());
 
         data.into()
-    }
-}
-
-impl bytes::SizedBytes for Witness {
-    fn serialized_size(&self) -> usize {
-        WORD_SIZE + bytes::padded_len(self.data.as_slice())
     }
 }

@@ -1,5 +1,4 @@
 use fuel_types::{
-    bytes,
     canonical::SerializedSize,
     Bytes32,
     Bytes64,
@@ -75,12 +74,6 @@ impl Distribution<StorageSlot> for Standard {
             key: rng.gen(),
             value: rng.gen(),
         }
-    }
-}
-
-impl bytes::SizedBytes for StorageSlot {
-    fn serialized_size(&self) -> usize {
-        Self::SLOT_SIZE
     }
 }
 

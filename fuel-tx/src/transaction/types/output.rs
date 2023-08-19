@@ -1,6 +1,5 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    bytes,
     canonical::SerializedSize,
     Address,
     AssetId,
@@ -14,8 +13,6 @@ use core::mem;
 
 mod consts;
 mod repr;
-
-use consts::*;
 
 pub use repr::OutputRepr;
 
@@ -61,20 +58,6 @@ impl Default for Output {
         Self::ContractCreated {
             contract_id: Default::default(),
             state_root: Default::default(),
-        }
-    }
-}
-
-impl bytes::SizedBytes for Output {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => {
-                OUTPUT_CCV_SIZE
-            }
-
-            Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
-
-            Self::ContractCreated { .. } => OUTPUT_CONTRACT_CREATED_SIZE,
         }
     }
 }

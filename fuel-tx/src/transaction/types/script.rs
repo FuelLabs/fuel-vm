@@ -29,10 +29,8 @@ use crate::{
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
+    bytes::WORD_SIZE,
+    canonical::Serialize,
     fmt_truncated_hex,
     BlockHeight,
     Bytes32,
@@ -231,17 +229,6 @@ impl crate::Cacheable for Script {
     }
 }
 
-impl SizedBytes for Script {
-    fn serialized_size(&self) -> usize {
-        self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
-    }
-}
-
 mod field {
     use super::*;
 
@@ -403,7 +390,7 @@ mod field {
                             .inputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -457,12 +444,7 @@ mod field {
                 return *outputs_offset
             }
 
-            self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -485,7 +467,7 @@ mod field {
                             .outputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -518,12 +500,7 @@ mod field {
                 return *witnesses_offset
             }
 
-            self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -547,7 +524,7 @@ mod field {
                             .witnesses()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {

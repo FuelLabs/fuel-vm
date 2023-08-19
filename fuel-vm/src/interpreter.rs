@@ -38,7 +38,6 @@ use fuel_tx::{
     UniqueIdentifier,
 };
 use fuel_types::{
-    bytes::SizedBytes,
     AssetId,
     ChainId,
     ContractId,
@@ -322,7 +321,6 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
-    + SizedBytes
     + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.

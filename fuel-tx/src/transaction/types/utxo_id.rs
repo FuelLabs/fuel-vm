@@ -1,7 +1,6 @@
 use crate::TxId;
 
 use fuel_types::{
-    bytes::SizedBytes,
     canonical::SerializedSize,
     Bytes32,
 };
@@ -112,12 +111,6 @@ impl str::FromStr for UtxoId {
                 u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
             )
         })
-    }
-}
-
-impl SizedBytes for UtxoId {
-    fn serialized_size(&self) -> usize {
-        Self::LEN
     }
 }
 

@@ -60,7 +60,7 @@ where
 
         RuntimeBalances::try_from(initial_balances)?.to_vm(self);
 
-        let tx_size = self.transaction().serialized_size() as Word;
+        let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
         self.push_stack(&tx_size.to_be_bytes())

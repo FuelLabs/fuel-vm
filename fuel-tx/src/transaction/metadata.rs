@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use fuel_types::{
+    canonical::Serialize,
     Bytes32,
     ChainId,
 };
@@ -63,9 +64,7 @@ impl CommonMetadata {
         Tx: field::Inputs,
         Tx: field::Outputs,
         Tx: field::Witnesses,
-        Tx: fuel_types::bytes::SizedBytes,
     {
-        use fuel_types::bytes::SizedBytes;
         use itertools::Itertools;
 
         let id = tx.id(chain_id);
@@ -84,7 +83,7 @@ impl CommonMetadata {
             .iter()
             .map(|input| {
                 let i = offset;
-                offset += input.serialized_size();
+                offset += input.size();
                 i
             })
             .collect_vec();
@@ -98,7 +97,7 @@ impl CommonMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.serialized_size();
+                offset += output.size();
                 i
             })
             .collect_vec();
@@ -112,7 +111,7 @@ impl CommonMetadata {
             .iter()
             .map(|witness| {
                 let i = offset;
-                offset += witness.serialized_size();
+                offset += witness.size();
                 i
             })
             .collect_vec();

@@ -9,8 +9,6 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
-    bytes,
-    canonical::SerializedSize,
     Address,
     AssetId,
     BlockHeight,
@@ -132,28 +130,6 @@ where
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
             core::mem::take(predicate_gas_used_field);
         }
-    }
-}
-
-impl<Specification> bytes::SizedBytes for Coin<Specification>
-where
-    Specification: CoinSpecification,
-{
-    #[inline(always)]
-    fn serialized_size(&self) -> usize {
-        let predicate_size = if let Some(predicate) = self.predicate.as_field() {
-            bytes::padded_len(predicate.as_slice())
-        } else {
-            0
-        };
-        let predicate_date_size =
-            if let Some(predicate_data) = self.predicate_data.as_field() {
-                bytes::padded_len(predicate_data.as_slice())
-            } else {
-                0
-            };
-
-        CoinFull::SIZE_STATIC + predicate_size + predicate_date_size
     }
 }
 

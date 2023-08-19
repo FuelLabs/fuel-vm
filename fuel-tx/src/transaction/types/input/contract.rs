@@ -3,8 +3,6 @@ use crate::{
     UtxoId,
 };
 use fuel_types::{
-    bytes,
-    canonical::SerializedSize,
     Bytes32,
     ContractId,
 };
@@ -36,12 +34,5 @@ impl Contract {
         core::mem::take(&mut self.balance_root);
         core::mem::take(&mut self.state_root);
         core::mem::take(&mut self.tx_pointer);
-    }
-}
-
-impl bytes::SizedBytes for Contract {
-    #[inline(always)]
-    fn serialized_size(&self) -> usize {
-        Contract::SIZE_STATIC
     }
 }

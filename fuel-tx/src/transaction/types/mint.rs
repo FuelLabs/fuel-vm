@@ -14,10 +14,8 @@ use crate::{
 };
 use derivative::Derivative;
 use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
+    bytes::WORD_SIZE,
+    canonical::Serialize,
     BlockHeight,
     Bytes32,
 };
@@ -41,7 +39,6 @@ impl MintMetadata {
     where
         Tx: crate::UniqueIdentifier,
         Tx: Outputs,
-        Tx: SizedBytes,
     {
         use itertools::Itertools;
 
@@ -58,7 +55,7 @@ impl MintMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.serialized_size();
+                offset += output.size();
                 i
             })
             .collect_vec();
@@ -161,17 +158,6 @@ impl crate::Cacheable for Mint {
     }
 }
 
-impl SizedBytes for Mint {
-    fn serialized_size(&self) -> usize {
-        self.outputs_offset()
-            + self
-                .outputs()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
-    }
-}
-
 mod field {
     use super::*;
 
@@ -228,7 +214,7 @@ mod field {
                             .outputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {

@@ -4,7 +4,6 @@ use derivative::Derivative;
 use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
-    bytes::SizedBytes,
     canonical::SerializedSize,
     fmt_option_truncated_hex,
     Address,
@@ -18,8 +17,6 @@ use fuel_types::{
 
 mod receipt_repr;
 mod script_result;
-
-use receipt_repr::ReceiptRepr;
 
 use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
@@ -703,24 +700,6 @@ impl Receipt {
             _ => None,
         }
     }
-
-    fn variant_len_without_data(variant: ReceiptRepr) -> usize {
-        match variant {
-            ReceiptRepr::Call => ReceiptVariantSizes::Call,
-            ReceiptRepr::Return => ReceiptVariantSizes::Return,
-            ReceiptRepr::ReturnData => ReceiptVariantSizes::ReturnData,
-            ReceiptRepr::Panic => ReceiptVariantSizes::Panic,
-            ReceiptRepr::Revert => ReceiptVariantSizes::Revert,
-            ReceiptRepr::Log => ReceiptVariantSizes::Log,
-            ReceiptRepr::LogData => ReceiptVariantSizes::LogData,
-            ReceiptRepr::Transfer => ReceiptVariantSizes::Transfer,
-            ReceiptRepr::TransferOut => ReceiptVariantSizes::TransferOut,
-            ReceiptRepr::ScriptResult => ReceiptVariantSizes::ScriptResult,
-            ReceiptRepr::MessageOut => ReceiptVariantSizes::MessageOut,
-            ReceiptRepr::Mint => ReceiptVariantSizes::Mint,
-            ReceiptRepr::Burn => ReceiptVariantSizes::Burn,
-        }
-    }
 }
 
 fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
@@ -731,12 +710,6 @@ fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
             None
         }
     })
-}
-
-impl SizedBytes for Receipt {
-    fn serialized_size(&self) -> usize {
-        Self::variant_len_without_data(ReceiptRepr::from(self))
-    }
 }
 
 #[cfg(test)]

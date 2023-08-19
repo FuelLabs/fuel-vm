@@ -1,6 +1,5 @@
 use fuel_crypto::PublicKey;
 use fuel_types::{
-    bytes::SizedBytes,
     canonical::SerializedSize,
     Address,
     AssetId,
@@ -434,16 +433,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 }
 
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
-
-impl SizedBytes for Transaction {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::Script(script) => script.serialized_size(),
-            Self::Create(create) => create.serialized_size(),
-            Self::Mint(mint) => mint.serialized_size(),
-        }
-    }
-}
 
 impl From<Script> for Transaction {
     fn from(script: Script) -> Self {

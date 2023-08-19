@@ -5,9 +5,6 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
-    bytes,
-    bytes::SizedBytes,
-    canonical::SerializedSize,
     Address,
     MessageId,
     Nonce,
@@ -200,33 +197,6 @@ where
         } else {
             compute_message_id(sender, recipient, nonce, *amount, &[])
         }
-    }
-}
-
-impl<Specification> SizedBytes for Message<Specification>
-where
-    Specification: MessageSpecification,
-{
-    #[inline(always)]
-    fn serialized_size(&self) -> usize {
-        let data_size = if let Some(data) = self.data.as_field() {
-            bytes::padded_len(data.as_slice())
-        } else {
-            0
-        };
-        let predicate_size = if let Some(predicate) = self.predicate.as_field() {
-            bytes::padded_len(predicate.as_slice())
-        } else {
-            0
-        };
-        let predicate_date_size =
-            if let Some(predicate_data) = self.predicate_data.as_field() {
-                bytes::padded_len(predicate_data.as_slice())
-            } else {
-                0
-            };
-
-        FullMessage::SIZE_STATIC + data_size + predicate_size + predicate_date_size
     }
 }
 

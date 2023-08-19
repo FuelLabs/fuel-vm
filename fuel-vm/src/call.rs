@@ -5,7 +5,6 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
-    bytes::SizedBytes,
     canonical::{
         Deserialize,
         SerializedSize,
@@ -207,12 +206,6 @@ impl CallFrame {
     /// Returns the mutable value of the global gas for this call frame.
     pub fn global_gas_mut(&mut self) -> &mut Word {
         &mut self.registers[RegId::GGAS]
-    }
-}
-
-impl SizedBytes for CallFrame {
-    fn serialized_size(&self) -> usize {
-        Self::serialized_size()
     }
 }
 

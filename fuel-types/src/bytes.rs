@@ -3,12 +3,6 @@ use crate::Word;
 /// Size of a word, in bytes
 pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
-/// Define the amount of bytes for a serialization implementation.
-pub trait SizedBytes {
-    /// Return the expected serialized size for an instance of the type.
-    fn serialized_size(&self) -> usize;
-}
-
 /// Return the word-padded length of the buffer
 pub const fn padded_len(bytes: &[u8]) -> usize {
     padded_len_usize(bytes.len())

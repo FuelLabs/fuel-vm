@@ -19,10 +19,6 @@ use fuel_crypto::{
 };
 use fuel_types::{
     bytes,
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
     canonical::{
         Deserialize,
         Serialize,
@@ -218,20 +214,6 @@ impl Default for Input {
             Default::default(),
             Default::default(),
         )
-    }
-}
-
-impl SizedBytes for Input {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::Contract(contract) => WORD_SIZE + contract.serialized_size(),
-            Self::MessageCoinSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageCoinPredicate(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataPredicate(message) => WORD_SIZE + message.serialized_size(),
-        }
     }
 }
 

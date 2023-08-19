@@ -1,8 +1,5 @@
 use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
+    bytes::WORD_SIZE,
     BlockHeight,
 };
 
@@ -106,11 +103,6 @@ impl str::FromStr for TxPointer {
     }
 }
 
-impl SizedBytes for TxPointer {
-    fn serialized_size(&self) -> usize {
-        Self::LEN
-    }
-}
 #[test]
 fn fmt_encode_decode() {
     use core::str::FromStr;

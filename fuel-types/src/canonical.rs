@@ -47,20 +47,6 @@ pub trait Output {
     }
 }
 
-/// !INTERNAL USAGE ONLY!
-/// This enum provides type information required for specialization and deserialization.
-#[derive(Debug, PartialEq, Eq)]
-#[allow(missing_docs)]
-pub enum Type {
-    U8,
-    U16,
-    U32,
-    USIZE,
-    U64,
-    U128,
-    Unknown,
-}
-
 /// Types with fixed static size, i.e. it's enum without repr attribute.
 pub trait SerializedSize {
     /// Size of static portion of the type in bytes.
@@ -70,9 +56,10 @@ pub trait SerializedSize {
 /// Allows serialize the type into the `Output`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
 pub trait Serialize {
-    // !INTERNAL USAGE ONLY!
+    /// !INTERNAL USAGE ONLY!
+    /// Array of bytes that are now aligned by themselves.
     #[doc(hidden)]
-    const TYPE: Type = Type::Unknown;
+    const UNALIGNED_BYTES: bool = false;
 
     /// True if the size has no dynamically sized fields.
     /// This implies that `SIZE_STATIC` is the full size of the type.
@@ -152,9 +139,10 @@ pub trait Input: Clone {
 /// Allows deserialize the type from the `Input`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
 pub trait Deserialize: Sized {
-    // !INTERNAL USAGE ONLY!
+    /// !INTERNAL USAGE ONLY!
+    /// Array of bytes that are now aligned by themselves.
     #[doc(hidden)]
-    const TYPE: Type = Type::Unknown;
+    const UNALIGNED_BYTES: bool = false;
 
     /// Decodes `Self` from the `buffer`.
     ///
@@ -244,14 +232,14 @@ impl_for_fuel_types!(Salt);
 impl_for_fuel_types!(Nonce);
 
 macro_rules! impl_for_primitives {
-    ($t:ident, $ty:path) => {
+    ($t:ident, $unpadded:literal) => {
         impl SerializedSize for $t {
             const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
         }
 
         impl Serialize for $t {
             const SIZE_NO_DYNAMIC: bool = true;
-            const TYPE: Type = $ty;
+            const UNALIGNED_BYTES: bool = $unpadded;
 
             #[inline(always)]
             fn encode_static<O: Output + ?Sized>(
@@ -271,7 +259,7 @@ macro_rules! impl_for_primitives {
         }
 
         impl Deserialize for $t {
-            const TYPE: Type = $ty;
+            const UNALIGNED_BYTES: bool = $unpadded;
 
             fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
                 let mut asset = [0u8; ::core::mem::size_of::<$t>()];
@@ -289,12 +277,12 @@ macro_rules! impl_for_primitives {
     };
 }
 
-impl_for_primitives!(u8, Type::U8);
-impl_for_primitives!(u16, Type::U16);
-impl_for_primitives!(u32, Type::U32);
-impl_for_primitives!(usize, Type::USIZE); // TODO: encode as u64
-impl_for_primitives!(u64, Type::U64);
-impl_for_primitives!(u128, Type::U128);
+impl_for_primitives!(u8, true);
+impl_for_primitives!(u16, false);
+impl_for_primitives!(u32, false);
+impl_for_primitives!(usize, false); // TODO: encode as u64
+impl_for_primitives!(u64, false);
+impl_for_primitives!(u128, false);
 
 impl SerializedSize for () {
     const SIZE_STATIC: usize = 0;
@@ -348,22 +336,18 @@ impl<T: Serialize> Serialize for Vec<T> {
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         // Bytes - Vec<u8> it a separate case without padding for each element.
         // It should padded at the end if is not % ALIGN
-        match T::TYPE {
-            Type::U8 => {
-                // SAFETY: `Type::U8` implemented only for `u8`.
-                let bytes = unsafe { ::core::mem::transmute::<&Vec<T>, &Vec<u8>>(self) };
-                buffer.write(bytes.as_slice())?;
-                for _ in 0..alignment_bytes(self.len()) {
-                    buffer.push_byte(0)?;
-                }
+        if T::UNALIGNED_BYTES {
+            // SAFETY: `UNALIGNED_BYTES` only set for `u8`.
+            let bytes = unsafe { ::core::mem::transmute::<&Vec<T>, &Vec<u8>>(self) };
+            buffer.write(bytes.as_slice())?;
+            for _ in 0..alignment_bytes(self.len()) {
+                buffer.push_byte(0)?;
             }
-            _ => {
-                for e in self.iter() {
-                    e.encode(buffer)?;
-                }
+        } else {
+            for e in self.iter() {
+                e.encode(buffer)?;
             }
-        };
-
+        }
         Ok(())
     }
 }
@@ -385,22 +369,18 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         for _ in 0..self.capacity() {
             // Bytes - Vec<u8> it a separate case without unpadding for each element.
             // It should unpadded at the end if is not % ALIGN
-            match T::TYPE {
-                Type::U8 => {
-                    let byte = buffer.read_byte()?;
-                    // SAFETY: `Type::U8` implemented only for `u8`, so it is `Vec<u8>`.
-                    let _self = unsafe {
-                        ::core::mem::transmute::<&mut Vec<T>, &mut Vec<u8>>(self)
-                    };
-                    _self.push(byte);
-                }
-                _ => {
-                    self.push(T::decode(buffer)?);
-                }
-            };
+            if T::UNALIGNED_BYTES {
+                let byte = buffer.read_byte()?;
+                // SAFETY: `UNALIGNED_BYTES` implemented set for `u8`.
+                let _self =
+                    unsafe { ::core::mem::transmute::<&mut Vec<T>, &mut Vec<u8>>(self) };
+                _self.push(byte);
+            } else {
+                self.push(T::decode(buffer)?);
+            }
         }
 
-        if let Type::U8 = T::TYPE {
+        if T::UNALIGNED_BYTES {
             buffer.skip(alignment_bytes(self.capacity()))?;
         }
 
@@ -419,31 +399,24 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         // Bytes - [u8; N] it a separate case without padding for each element.
         // It should padded at the end if is not % ALIGN
-        match T::TYPE {
-            Type::U8 => {
-                // SAFETY: `Type::U8` implemented only for `u8`.
-                let bytes = unsafe { ::core::mem::transmute::<&[T; N], &[u8; N]>(self) };
-                buffer.write(bytes.as_slice())?;
-                for _ in 0..alignment_bytes(N) {
-                    buffer.push_byte(0)?;
-                }
+        if Self::UNALIGNED_BYTES {
+            // SAFETY: `Type::U8` implemented only for `u8`.
+            let bytes = unsafe { ::core::mem::transmute::<&[T; N], &[u8; N]>(self) };
+            buffer.write(bytes.as_slice())?;
+            for _ in 0..alignment_bytes(N) {
+                buffer.push_byte(0)?;
             }
-            _ => {
-                for e in self.iter() {
-                    e.encode_static(buffer)?;
-                }
+        } else {
+            for e in self.iter() {
+                e.encode_static(buffer)?;
             }
-        };
-
+        }
         Ok(())
     }
 
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        // All primitives have only static part, so skip dynamic encoding for them.
-        if let Type::Unknown = T::TYPE {
-            for e in self.iter() {
-                e.encode_dynamic(buffer)?;
-            }
+        for e in self.iter() {
+            e.encode_dynamic(buffer)?;
         }
 
         Ok(())
@@ -452,48 +425,41 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
 
 impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-        match T::TYPE {
-            Type::U8 => {
-                let mut bytes: [u8; N] = [0; N];
-                buffer.read(bytes.as_mut())?;
-                buffer.skip(alignment_bytes(N))?;
-                let ref_typed: &[T; N] = unsafe { core::mem::transmute(&bytes) };
-                let typed: [T; N] = unsafe { core::ptr::read(ref_typed) };
-                Ok(typed)
-            }
+        if Self::UNALIGNED_BYTES {
+            let mut bytes: [u8; N] = [0; N];
+            buffer.read(bytes.as_mut())?;
+            buffer.skip(alignment_bytes(N))?;
+            let ref_typed: &[T; N] = unsafe { core::mem::transmute(&bytes) };
+            let typed: [T; N] = unsafe { core::ptr::read(ref_typed) };
+            Ok(typed)
+        } else {
             // Spec doesn't say how to deserialize arrays with unaligned
             // primitives(as `u16`, `u32`, `usize`), so unpad them.
-            _ => {
-                let mut uninit = <MaybeUninit<[T; N]>>::uninit();
-                // The following line coerces the pointer to the array to a pointer
-                // to the first array element which is equivalent.
-                let mut ptr = uninit.as_mut_ptr() as *mut T;
-                for _ in 0..N {
-                    let decoded = T::decode_static(buffer)?;
-                    // SAFETY: We do not read uninitialized array contents
-                    // 		 while initializing them.
-                    unsafe {
-                        core::ptr::write(ptr, decoded);
-                    }
-                    // SAFETY: Point to the next element after every iteration.
-                    // 		 We do this N times therefore this is safe.
-                    ptr = unsafe { ptr.add(1) };
+            let mut uninit = <MaybeUninit<[T; N]>>::uninit();
+            // The following line coerces the pointer to the array to a pointer
+            // to the first array element which is equivalent.
+            let mut ptr = uninit.as_mut_ptr() as *mut T;
+            for _ in 0..N {
+                let decoded = T::decode_static(buffer)?;
+                // SAFETY: We do not read uninitialized array contents
+                // 		 while initializing them.
+                unsafe {
+                    core::ptr::write(ptr, decoded);
                 }
-                // SAFETY: All array elements have been initialized above.
-                let init = unsafe { uninit.assume_init() };
-                Ok(init)
+                // SAFETY: Point to the next element after every iteration.
+                // 		 We do this N times therefore this is safe.
+                ptr = unsafe { ptr.add(1) };
             }
+            // SAFETY: All array elements have been initialized above.
+            let init = unsafe { uninit.assume_init() };
+            Ok(init)
         }
     }
 
     fn decode_dynamic<I: Input + ?Sized>(&mut self, buffer: &mut I) -> Result<(), Error> {
-        // All primitives have only static part, so skip dynamic decoding for them.
-        if let Type::Unknown = T::TYPE {
-            for e in self.iter_mut() {
-                e.decode_dynamic(buffer)?;
-            }
+        for e in self.iter_mut() {
+            e.decode_dynamic(buffer)?;
         }
-
         Ok(())
     }
 }
@@ -598,6 +564,21 @@ mod tests {
         validate(u64::MAX);
         validate(123u128);
         validate(u128::MAX);
+        validate(Vec::<u8>::new());
+        validate(Vec::<u16>::new());
+        validate(Vec::<u32>::new());
+        validate(Vec::<u64>::new());
+        validate(Vec::<u128>::new());
+        validate(vec![1u8]);
+        validate(vec![1u16]);
+        validate(vec![1u32]);
+        validate(vec![1u64]);
+        validate(vec![1u128]);
+        validate(vec![1u8, 2u8]);
+        validate(vec![1u16, 2u16]);
+        validate(vec![1u32, 2u32]);
+        validate(vec![1u64, 2u64]);
+        validate(vec![1u128, 2u128]);
 
         #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct TestStruct1 {

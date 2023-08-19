@@ -56,9 +56,14 @@ impl From<&StorageSlot> for Bytes64 {
 
 impl From<&Bytes64> for StorageSlot {
     fn from(b: &Bytes64) -> Self {
-        // from_bytes is infallible with a fixed size array type
-        let key = Bytes32::from_bytes(&b[..Bytes32::LEN]);
-        let value = Bytes32::from_bytes(&b[Bytes32::LEN..]);
+        let key = <Bytes32 as fuel_types::canonical::Deserialize>::from_bytes(
+            &b[..Bytes32::LEN],
+        )
+        .expect("Infallible deserialization");
+        let value = <Bytes32 as fuel_types::canonical::Deserialize>::from_bytes(
+            &b[Bytes32::LEN..],
+        )
+        .expect("Infallible deserialization");
         Self::new(key, value)
     }
 }

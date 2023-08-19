@@ -259,7 +259,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
 
-    // Variant sizes
+    // Variant sizes are generated in under NameVariantSizes
     let variants_struct_name = syn::Ident::new(
         &format!("{}VariantSizes", name),
         proc_macro2::Span::call_site(),

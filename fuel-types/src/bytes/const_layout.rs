@@ -1,16 +1,11 @@
 use crate::{
-    LayoutType,
     MemLoc,
-    MemLocType,
     Word,
 };
-use core::{
-    borrow::Borrow,
-    ops::{
-        Index,
-        IndexMut,
-        Range,
-    },
+use core::ops::{
+    Index,
+    IndexMut,
+    Range,
 };
 
 /// Memory size of a [`Word`]
@@ -70,117 +65,6 @@ impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArray<ARR, ADDR,
 impl<const ARR: usize, const ADDR: usize, const SIZE: usize> SubArrayMut<ARR, ADDR, SIZE>
     for [u8; ARR]
 {
-}
-
-/// Store a number at a specific location in this buffer.
-pub fn store_number_at<const ARR: usize, const ADDR: usize, const SIZE: usize, T>(
-    buf: &mut [u8; ARR],
-    layout: LayoutType<ADDR, SIZE, T>,
-    number: T::Type,
-) where
-    T: MemLocType<ADDR, SIZE>,
-    <T as MemLocType<ADDR, SIZE>>::Type: Into<Word>,
-{
-    from_loc_mut(layout.loc(), buf).copy_from_slice(&number.into().to_be_bytes());
-}
-
-/// Read a number from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_number_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> T::Type
-where
-    T: MemLocType<ADDR, WORD_SIZE>,
-    Word: Into<<T as MemLocType<ADDR, WORD_SIZE>>::Type>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf)).into()
-}
-
-/// Read a word from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_word_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> Word
-where
-    T: MemLocType<ADDR, WORD_SIZE, Type = Word>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf))
-}
-
-/// Read a word-padded u8 from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_u8_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> u8
-where
-    T: MemLocType<ADDR, WORD_SIZE, Type = u8>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf)) as u8
-}
-
-/// Read the a word-padded u16 from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_u16_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> u16
-where
-    T: MemLocType<ADDR, WORD_SIZE, Type = u16>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf)) as u16
-}
-
-/// Read the a word-padded u32 from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_u32_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> u32
-where
-    T: MemLocType<ADDR, WORD_SIZE, Type = u32>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf)) as u32
-}
-
-/// Read the a word-padded usize from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_usize_at<const ARR: usize, const ADDR: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, WORD_SIZE, T>,
-) -> usize
-where
-    T: MemLocType<ADDR, WORD_SIZE, Type = Word>,
-{
-    Word::from_be_bytes(from_loc(loc.loc(), buf)) as usize
-}
-
-/// Store an array at a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn store_at<const ARR: usize, const ADDR: usize, const SIZE: usize, T>(
-    buf: &mut [u8; ARR],
-    layout: LayoutType<ADDR, SIZE, T>,
-    array: &[u8; SIZE],
-) where
-    T: MemLocType<ADDR, SIZE>,
-    <T as MemLocType<ADDR, SIZE>>::Type: Borrow<[u8; SIZE]>,
-{
-    from_loc_mut(layout.loc(), buf).copy_from_slice(array);
-}
-
-/// Restore an array from a specific location in a buffer.
-/// Won't compile if the buffer is too small.
-pub fn restore_at<const ARR: usize, const ADDR: usize, const SIZE: usize, T>(
-    buf: &[u8; ARR],
-    loc: LayoutType<ADDR, SIZE, T>,
-) -> [u8; SIZE]
-where
-    T: MemLocType<ADDR, SIZE>,
-    [u8; SIZE]: From<<T as MemLocType<ADDR, SIZE>>::Type>,
-{
-    from_loc(loc.loc(), buf)
 }
 
 /// Get an array from a fixed sized slice.

@@ -4,8 +4,6 @@ use fuel_types::{
         WORD_SIZE,
     },
     MemLoc,
-    MemLocType,
-    Word,
 };
 
 #[test]
@@ -17,54 +15,6 @@ fn padded_len_to_fit_word_len() {
     assert_eq!(WORD_SIZE * 1, bytes::padded_len(&[0; WORD_SIZE]));
     assert_eq!(WORD_SIZE * 2, bytes::padded_len(&[0; WORD_SIZE + 1]));
     assert_eq!(WORD_SIZE * 2, bytes::padded_len(&[0; WORD_SIZE * 2]));
-}
-
-#[test]
-fn store_restore_number_works() {
-    let mut buf = [0u8; 255];
-    struct Foo;
-    impl MemLocType<0, WORD_SIZE> for Foo {
-        type Type = Word;
-    }
-    bytes::store_number_at(
-        &mut buf,
-        Foo::layout(MemLoc::<0, WORD_SIZE>::new()),
-        65 as Word,
-    );
-    assert_eq!(
-        bytes::restore_usize_at(&buf, Foo::layout(MemLoc::<0, WORD_SIZE>::new())),
-        65
-    );
-    assert_eq!(
-        bytes::restore_word_at(&buf, Foo::layout(MemLoc::<0, WORD_SIZE>::new())),
-        65
-    );
-
-    impl MemLocType<1, WORD_SIZE> for Foo {
-        type Type = u8;
-    }
-    bytes::store_number_at(&mut buf, Foo::layout(MemLoc::<1, WORD_SIZE>::new()), 63u8);
-    assert_eq!(
-        bytes::restore_u8_at(&buf, Foo::layout(MemLoc::<1, WORD_SIZE>::new())),
-        63
-    );
-
-    impl MemLocType<2, WORD_SIZE> for Foo {
-        type Type = u16;
-    }
-    bytes::store_number_at(&mut buf, Foo::layout(MemLoc::<2, WORD_SIZE>::new()), 3u16);
-    assert_eq!(
-        bytes::restore_u16_at(&buf, Foo::layout(MemLoc::<2, WORD_SIZE>::new())),
-        3
-    );
-    impl MemLocType<3, WORD_SIZE> for Foo {
-        type Type = u32;
-    }
-    bytes::store_number_at(&mut buf, Foo::layout(MemLoc::<3, WORD_SIZE>::new()), 4u32);
-    assert_eq!(
-        bytes::restore_u32_at(&buf, Foo::layout(MemLoc::<3, WORD_SIZE>::new())),
-        4
-    );
 }
 
 #[test]

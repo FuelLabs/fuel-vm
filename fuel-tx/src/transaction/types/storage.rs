@@ -1,9 +1,6 @@
 use fuel_types::{
     bytes,
-    canonical::{
-        Deserialize,
-        SerializedSize,
-    },
+    canonical::SerializedSize,
     Bytes32,
     Bytes64,
 };
@@ -60,8 +57,8 @@ impl From<&StorageSlot> for Bytes64 {
 impl From<&Bytes64> for StorageSlot {
     fn from(b: &Bytes64) -> Self {
         // from_bytes is infallible with a fixed size array type
-        let key = Bytes32::from_bytes(&b[..Bytes32::LEN]).unwrap();
-        let value = Bytes32::from_bytes(&b[Bytes32::LEN..]).unwrap();
+        let key = Bytes32::from_bytes(&b[..Bytes32::LEN]);
+        let value = Bytes32::from_bytes(&b[Bytes32::LEN..]);
         Self::new(key, value)
     }
 }

@@ -13,30 +13,24 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
     let variant: &synstructure::VariantInfo = &s.variants()[0];
     let decode_main = variant.construct(|field, _| {
         let ty = &field.ty;
-        let f = &field.ident;
         if should_skip_field(&field.attrs) {
             quote! {
                 ::core::default::Default::default()
             }
         } else {
-            quote! {{
-                println!("Deserialize static {:?}: {}", stringify!(#f), stringify!(#ty));
+            quote! {
                 <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
-            }}
+            }
         }
     });
 
     let decode_dynamic = variant.each(|binding| {
-        let field = binding.ast();
-        let ty = &field.ty;
-        let f = &field.ident;
         if should_skip_field_binding(binding) {
             quote! {
                 *#binding = ::core::default::Default::default();
             }
         } else {
             quote! {
-                println!("Deserialize dynamic {:?}: {}", stringify!(#f), stringify!(#ty));
                 fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
             }
         }
@@ -68,7 +62,6 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
 }
 
 fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
-    let tn = &s.ast().ident;
     let attrs = TypedefAttrs::parse(s);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
@@ -83,10 +76,9 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                     }
                 } else {
                     let ty = &field.ty;
-                    quote! {{
-                        println!("Deserialize static {}", stringify!(#ty));
+                    quote! {
                         <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
-                    }}
+                    }
                 }
             });
 
@@ -107,16 +99,12 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     let decode_dynamic = s.variants().iter().map(|variant| {
         let decode_dynamic = variant.each(|binding| {
-            let field = binding.ast();
-            let ty = &field.ty;
-            let f = &field.ident;
             if should_skip_field_binding(binding) {
                 quote! {
                     *#binding = ::core::default::Default::default();
                 }
             } else {
                 quote! {
-                    println!("Deserialize dynamic {}: {}", stringify!(#f), stringify!(#ty));
                     fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
                 }
             }
@@ -132,7 +120,6 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         quote! { {
             use ::num_enum::{TryFromPrimitive, IntoPrimitive};
             let Ok(discr) = #discr_type::try_from_primitive(raw_discr) else {
-                println!("Discriminant mapping for {} is {}, unknown", stringify!(#tn), raw_discr);
                 return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant)
             };
             discr.into()
@@ -173,7 +160,6 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         gen impl fuel_types::canonical::Deserialize for @Self {
             fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
                 #decode_discriminant
-                println!("Discriminant for {} is {}", stringify!(#tn), raw_discr);
                 match #mapped_discr {
                     #decode_static
                     _ => ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
@@ -181,7 +167,6 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
-                println!("Dynamic discriminant for {} is {:?}", stringify!(#tn), self);
                 match self {
                     #(
                         #decode_dynamic

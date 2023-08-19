@@ -468,9 +468,6 @@ fn iow_offset() {
         .for_each(|(mut tx, _)| {
             let bytes = tx.to_bytes();
 
-            println!("===============");
-            println!("tx: {:?}", tx);
-
             let mut tx_p = tx.clone();
             tx_p.precompute(&ChainId::default())
                 .expect("Should be able to calculate cache");
@@ -479,8 +476,6 @@ fn iow_offset() {
                 let offset = tx.inputs_offset_at(x).unwrap();
                 let offset_p = tx_p.inputs_offset_at(x).unwrap();
                 assert_eq!(offset, offset_p);
-
-                dbg!(x, i, offset);
 
                 let input = Input::from_bytes(&bytes[offset..])
                     .expect("Failed to deserialize input!");

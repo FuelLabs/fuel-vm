@@ -20,16 +20,11 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         if should_skip_field_binding(binding) {
             quote! {}
         } else {
-            let f = &binding.ast().ident;
             quote! {
-                println!("Serializing field: {}", stringify!(#f));
                 if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
                     return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
                 }
                 fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
-                let mut tmp = Vec::new();
-                fuel_types::canonical::Serialize::encode_static(#binding, &mut tmp).unwrap();
-                println!("Serialized  sta => {:?}", tmp);
             }
         }
     });
@@ -38,13 +33,8 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         if should_skip_field_binding(binding) {
             quote! {}
         } else {
-            let f = &binding.ast().ident;
             quote! {
-                println!("Serializing field: {}", stringify!(#f));
                 fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
-                let mut tmp = Vec::new();
-                fuel_types::canonical::Serialize::encode_dynamic(#binding, &mut tmp).unwrap();
-                println!("Serialized  dyn => {:?}", tmp);
             }
         }
     });
@@ -101,8 +91,6 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let name = &s.ast().ident;
     let repr = parse_enum_repr(&s.ast().attrs);
     let attrs = TypedefAttrs::parse(s);
-
-    println!("SERNUM: {:?}", s.ast().ident);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let encode_static = s.variants().iter().enumerate().map(|(i, v)| {

@@ -513,8 +513,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let outputs = result.tx().outputs();
     let receipts = result.receipts();
 
-    println!("{receipts:?}");
-
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
     ));

@@ -393,10 +393,8 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                println!("META!");
                 return inputs_offset_at.get(idx).cloned()
             }
-            println!("!META");
 
             if idx < self.inputs.len() {
                 Some(

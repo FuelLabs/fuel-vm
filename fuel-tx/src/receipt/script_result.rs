@@ -6,6 +6,7 @@ use fuel_types::Word;
     any(feature = "alloc", feature = "std"),
     derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
 )]
+#[repr(u64)]
 pub enum ScriptExecutionResult {
     Success,
     Revert,

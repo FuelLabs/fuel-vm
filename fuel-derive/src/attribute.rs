@@ -53,6 +53,24 @@ impl TypedefAttrs {
     }
 }
 
+pub fn parse_enum_repr(attrs: &[Attribute]) -> Option<String> {
+    for attr in attrs {
+        if attr.style != AttrStyle::Outer {
+            continue
+        }
+        if let Meta::List(ml) = &attr.meta {
+            if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "repr" {
+                if let Some(TokenTree::Ident(ident)) =
+                    ml.tokens.clone().into_iter().next()
+                {
+                    return Some(ident.to_string())
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn should_skip_field_binding(binding: &BindingInfo<'_>) -> bool {
     should_skip_field(&binding.ast().attrs)
 }

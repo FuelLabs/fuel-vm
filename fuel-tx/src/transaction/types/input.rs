@@ -188,17 +188,6 @@ fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
     })
 }
 
-const fn usize_max(a: usize, b: usize) -> usize {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
-
-// static_assertions::const_assert_eq!(CoinFull::SIZE_STATIC, FullMessage::SIZE_STATIC);
-// static_assertions::const_assert_eq!(CoinFull::SIZE_STATIC, Contract::SIZE_STATIC);
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(

@@ -2,7 +2,10 @@ use crate::TxId;
 
 use fuel_types::{
     bytes::SizedBytes,
-    canonical::Serialize,
+    canonical::{
+        Serialize,
+        SerializedSize,
+    },
     Bytes32,
 };
 

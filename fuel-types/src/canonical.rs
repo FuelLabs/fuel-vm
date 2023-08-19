@@ -61,6 +61,18 @@ pub enum Type {
     Unknown,
 }
 
+/// Types with fixed static size, i.e. it's enum without repr attribute.
+pub trait SerializedSize {
+    /// Size of static portion of the type in bytes.
+    const SIZE_STATIC: usize;
+}
+
+/// Enum variants have fixed sizes, but the size of the whole enum can vary.
+pub trait SerializedSizeEnum {
+    /// Size of static portion of the type in bytes.
+    const SIZE_STATIC_TODO: usize;
+}
+
 /// Allows serialize the type into the `Output`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
 pub trait Serialize {
@@ -68,8 +80,6 @@ pub trait Serialize {
     #[doc(hidden)]
     const TYPE: Type = Type::Unknown;
 
-    /// Size of static portion of the type in bytes.
-    const SIZE_STATIC: usize;
     /// True if the size has no dynamically sized fields.
     /// This implies that `SIZE_STATIC` is the full size of the type.
     const SIZE_NO_DYNAMIC: bool;
@@ -196,10 +206,13 @@ pub const fn aligned_size(len: usize) -> usize {
 
 macro_rules! impl_for_fuel_types {
     ($t:ident) => {
-        impl Serialize for $t {
-            const SIZE_NO_DYNAMIC: bool = true;
+        impl SerializedSize for $t {
             // Fuel-types are transparent single-field structs, so the size matches
             const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
+        }
+
+        impl Serialize for $t {
+            const SIZE_NO_DYNAMIC: bool = true;
 
             #[inline(always)]
             fn encode_static<O: Output + ?Sized>(
@@ -238,9 +251,12 @@ impl_for_fuel_types!(Nonce);
 
 macro_rules! impl_for_primitives {
     ($t:ident, $ty:path) => {
+        impl SerializedSize for $t {
+            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
+        }
+
         impl Serialize for $t {
             const SIZE_NO_DYNAMIC: bool = true;
-            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
             const TYPE: Type = $ty;
 
             #[inline(always)]
@@ -286,10 +302,13 @@ impl_for_primitives!(usize, Type::USIZE); // TODO: encode as u64
 impl_for_primitives!(u64, Type::U64);
 impl_for_primitives!(u128, Type::U128);
 
+impl SerializedSize for () {
+    const SIZE_STATIC: usize = 0;
+}
+
 // Empty tuple `()`, i.e. the unit type takes up no space.
 impl Serialize for () {
     const SIZE_NO_DYNAMIC: bool = true;
-    const SIZE_STATIC: usize = 0;
 
     #[inline(always)]
     fn size_static(&self) -> usize {
@@ -318,9 +337,12 @@ impl Deserialize for () {
     }
 }
 
+impl<T: Serialize> SerializedSize for Vec<T> {
+    const SIZE_STATIC: usize = 8;
+}
+
 impl<T: Serialize> Serialize for Vec<T> {
     const SIZE_NO_DYNAMIC: bool = false;
-    const SIZE_STATIC: usize = 8;
 
     #[inline(always)]
     // Encode only the size of the vector. Elements will be encoded in the
@@ -392,9 +414,12 @@ impl<T: Deserialize> Deserialize for Vec<T> {
     }
 }
 
+impl<const N: usize, T: Serialize> SerializedSize for [T; N] {
+    const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<T>()) * N;
+}
+
 impl<const N: usize, T: Serialize> Serialize for [T; N] {
     const SIZE_NO_DYNAMIC: bool = true;
-    const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<T>()) * N;
 
     #[inline(always)]
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
@@ -553,7 +578,9 @@ impl<'a> Input for &'a [u8] {
 mod tests {
     use super::*;
 
-    fn validate<T: Serialize + Deserialize + Eq + core::fmt::Debug>(t: T) {
+    fn validate<T: Serialize + Deserialize + SerializedSize + Eq + core::fmt::Debug>(
+        t: T,
+    ) {
         let bytes = t.to_bytes();
         let t2 = T::from_bytes(&bytes).expect("Roundtrip failed");
         assert_eq!(t, t2);

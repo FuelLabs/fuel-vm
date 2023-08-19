@@ -7,7 +7,7 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::SizedBytes,
-    canonical::Serialize,
+    canonical::SerializedSize,
     Address,
     MessageId,
     Nonce,

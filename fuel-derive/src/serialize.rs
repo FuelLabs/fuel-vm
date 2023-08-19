@@ -4,6 +4,7 @@ use quote::quote;
 use core::cmp::Ordering;
 
 use crate::attribute::{
+    parse_enum_repr,
     should_skip_field,
     should_skip_field_binding,
     TypedefAttrs,
@@ -86,14 +87,19 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
                 ::core::result::Result::Ok(())
             }
 
-            const SIZE_STATIC: usize = #size_prefix #size_static;
             const SIZE_NO_DYNAMIC: bool = #size_dynamic;
+        }
+
+        gen impl fuel_types::canonical::SerializedSize for @Self {
+            const SIZE_STATIC: usize = #size_prefix #size_static;
         }
     })
 }
 
 // TODO: somehow ensure that all enum variants have equal size, or zero-pad them
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
+    let name = &s.ast().ident;
+    let repr = parse_enum_repr(&s.ast().attrs);
     let attrs = TypedefAttrs::parse(s);
 
     println!("SERNUM: {:?}", s.ast().ident);
@@ -171,10 +177,9 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             .0
             .get("SIZE_NO_DYNAMIC")
             .expect("serialize_with requires SIZE_NO_DYNAMIC key");
-        // TODO: size constants?
+
         return s.gen_impl(quote! {
             gen impl fuel_types::canonical::Serialize for @Self {
-                const SIZE_STATIC: usize = #size_static;
                 const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
 
                 #[inline(always)]
@@ -189,29 +194,20 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         })
     }
 
-    let (size_static, size_no_dynamic): (Vec<TokenStream2>, Vec<TokenStream2>) = s
+    let (mut variant_size_static, size_no_dynamic): (
+        Vec<TokenStream2>,
+        Vec<TokenStream2>,
+    ) = s
         .variants()
         .iter()
         .map(|v| constsize_fields(v.ast().fields))
         .unzip();
 
-    let size_static = size_static
-        .iter()
-        .fold(quote! { let mut m = 0; }, |acc, item| {
-            quote! {
-                #acc
-                let item = #item;
-                if item > m {
-                    m = item;
-                }
-            }
-        });
-    let inner_discriminant = if attrs.0.contains_key("inner_discriminant") {
-        quote! { m -= 8; } // TODO: panic handling
-    } else {
-        quote! {}
-    };
-    let size_static = quote! { { #size_static #inner_discriminant m } };
+    variant_size_static.iter_mut().for_each(|aa| {
+        if attrs.0.contains_key("inner_discriminant") {
+            *aa = quote! { #aa - 8 } // TODO: panic handling
+        }
+    });
 
     let size_no_dynamic = size_no_dynamic.iter().fold(quote! { true }, |acc, item| {
         quote! {
@@ -219,7 +215,26 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
 
-    s.gen_impl(quote! {
+    // #[repr(int)] types have a known static size
+    let impl_size = if let Some(repr) = repr {
+        let repr_size: usize = match repr.as_str() {
+            "u8" => 1,
+            "u16" => 2,
+            "u32" => 4,
+            "u64" => 8,
+            "u128" => 16,
+            _ => panic!("Unknown repr: {}", repr),
+        };
+        s.gen_impl(quote! {
+            gen impl fuel_types::canonical::SerializedSize for @Self {
+                const SIZE_STATIC: usize = #repr_size;
+            }
+        })
+    } else {
+        quote! {}
+    };
+
+    let impl_code = s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
             fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
@@ -244,10 +259,34 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 ::core::result::Result::Ok(())
             }
 
-            const SIZE_STATIC: usize = #size_static;
             const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
         }
-    })
+    });
+
+    // Variant sizes
+    let variants_struct_name =
+        syn::Ident::new(&format!("{}Variants", name), proc_macro2::Span::call_site());
+
+    let variants_impl_code: TokenStream2 = variant_size_static
+        .into_iter()
+        .zip(s.variants().iter())
+        .map(|(value, variant)| {
+            let variant_name = &variant.ast().ident;
+            quote! {
+                #[allow(non_upper_case_globals)]
+                pub const #variant_name: usize = #value;
+            }
+        })
+        .collect();
+
+    quote! {
+        pub struct #variants_struct_name;
+        impl #variants_struct_name {
+            #variants_impl_code
+        }
+        #impl_code
+        #impl_size
+    }
 }
 
 fn is_sized_primitive(type_name: &str) -> bool {

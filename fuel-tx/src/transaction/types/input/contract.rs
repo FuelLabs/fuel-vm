@@ -4,7 +4,7 @@ use crate::{
 };
 use fuel_types::{
     bytes,
-    canonical::Serialize,
+    canonical::SerializedSize,
     Bytes32,
     ContractId,
 };

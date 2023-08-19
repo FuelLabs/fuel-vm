@@ -20,6 +20,7 @@ use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
     bytes::SizedBytes,
+    canonical::SerializedSize,
     fmt_option_truncated_hex,
     Address,
     AssetId,

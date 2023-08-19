@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    canonical::Serialize,
+    canonical::SerializedSize,
     Address,
     AssetId,
     BlockHeight,

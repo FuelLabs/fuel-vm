@@ -1,6 +1,7 @@
 use fuel_crypto::PublicKey;
 use fuel_types::{
     bytes::SizedBytes,
+    canonical::SerializedSize,
     Address,
     AssetId,
     BlockHeight,

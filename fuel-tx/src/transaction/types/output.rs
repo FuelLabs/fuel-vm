@@ -1,6 +1,7 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
     bytes,
+    canonical::SerializedSize,
     Address,
     AssetId,
     Bytes32,

@@ -1,6 +1,6 @@
 extern crate proc_macro;
 
-mod utils; // TODO: remove
+mod utils;
 
 mod attribute;
 mod deserialize;

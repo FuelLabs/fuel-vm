@@ -86,7 +86,6 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     })
 }
 
-// TODO: somehow ensure that all enum variants have equal size, or zero-pad them
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let name = &s.ast().ident;
     let repr = parse_enum_repr(&s.ast().attrs);

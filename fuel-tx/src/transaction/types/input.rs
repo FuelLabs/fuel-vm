@@ -223,7 +223,7 @@ impl Default for Input {
 
 impl SizedBytes for Input {
     fn serialized_size(&self) -> usize {
-        let result = match self {
+        match self {
             Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
             Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
             Self::Contract(contract) => WORD_SIZE + contract.serialized_size(),
@@ -231,13 +231,7 @@ impl SizedBytes for Input {
             Self::MessageCoinPredicate(message) => WORD_SIZE + message.serialized_size(),
             Self::MessageDataSigned(message) => WORD_SIZE + message.serialized_size(),
             Self::MessageDataPredicate(message) => WORD_SIZE + message.serialized_size(),
-        };
-
-        // TODO: remove this
-        let bytes = self.clone().to_bytes();
-        assert_eq!(result, bytes.len());
-
-        result
+        }
     }
 }
 

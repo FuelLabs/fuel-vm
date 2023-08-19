@@ -14,12 +14,12 @@ description = "FuelVM transaction."
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
 fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }
-fuel-merkle = { workspace = true, default-features = false }
 fuel-derive = { path = "../fuel-derive" }
+fuel-merkle = { workspace = true, default-features = false }
 fuel-types = { workspace = true, default-features = false }
 itertools = { version = "0.10", default-features = false }
-num_enum = "0.7"
 num-integer = { version = "0.1", default-features = false }
+num_enum = "0.7"
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }

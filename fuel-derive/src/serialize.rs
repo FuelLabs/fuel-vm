@@ -169,10 +169,6 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     // Handle #[canonical(serialize_with = function)]
     if let Some(helper) = attrs.0.get("serialize_with") {
-        let size_static = attrs
-            .0
-            .get("SIZE_STATIC")
-            .expect("serialize_with requires SIZE_STATIC key");
         let size_no_dynamic = attrs
             .0
             .get("SIZE_NO_DYNAMIC")
@@ -264,8 +260,10 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     });
 
     // Variant sizes
-    let variants_struct_name =
-        syn::Ident::new(&format!("{}Variants", name), proc_macro2::Span::call_site());
+    let variants_struct_name = syn::Ident::new(
+        &format!("{}VariantSizes", name),
+        proc_macro2::Span::call_site(),
+    );
 
     let variants_impl_code: TokenStream2 = variant_size_static
         .into_iter()

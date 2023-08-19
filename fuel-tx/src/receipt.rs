@@ -1,19 +1,4 @@
-use crate::{
-    receipt::sizes::{
-        CallSizesLayout,
-        LogDataSizesLayout,
-        LogSizesLayout,
-        MessageOutSizesLayout,
-        PanicSizesLayout,
-        ReturnDataSizesLayout,
-        ReturnSizesLayout,
-        RevertSizesLayout,
-        ScriptResultSizesLayout,
-        TransferOutSizesLayout,
-        TransferSizesLayout,
-    },
-    Output,
-};
+use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::PanicInstruction;
@@ -33,17 +18,10 @@ use fuel_types::{
 
 mod receipt_repr;
 mod script_result;
-mod sizes;
 
 use receipt_repr::ReceiptRepr;
 
-use crate::{
-    input::message::compute_message_id,
-    receipt::sizes::{
-        BurnSizesLayout,
-        MintSizesLayout,
-    },
-};
+use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
@@ -728,19 +706,19 @@ impl Receipt {
 
     fn variant_len_without_data(variant: ReceiptRepr) -> usize {
         match variant {
-            ReceiptRepr::Call => CallSizesLayout::LEN,
-            ReceiptRepr::Return => ReturnSizesLayout::LEN,
-            ReceiptRepr::ReturnData => ReturnDataSizesLayout::LEN,
-            ReceiptRepr::Panic => PanicSizesLayout::LEN,
-            ReceiptRepr::Revert => RevertSizesLayout::LEN,
-            ReceiptRepr::Log => LogSizesLayout::LEN,
-            ReceiptRepr::LogData => LogDataSizesLayout::LEN,
-            ReceiptRepr::Transfer => TransferSizesLayout::LEN,
-            ReceiptRepr::TransferOut => TransferOutSizesLayout::LEN,
-            ReceiptRepr::ScriptResult => ScriptResultSizesLayout::LEN,
-            ReceiptRepr::MessageOut => MessageOutSizesLayout::LEN,
-            ReceiptRepr::Mint => MintSizesLayout::LEN,
-            ReceiptRepr::Burn => BurnSizesLayout::LEN,
+            ReceiptRepr::Call => ReceiptVariantSizes::Call,
+            ReceiptRepr::Return => ReceiptVariantSizes::Return,
+            ReceiptRepr::ReturnData => ReceiptVariantSizes::ReturnData,
+            ReceiptRepr::Panic => ReceiptVariantSizes::Panic,
+            ReceiptRepr::Revert => ReceiptVariantSizes::Revert,
+            ReceiptRepr::Log => ReceiptVariantSizes::Log,
+            ReceiptRepr::LogData => ReceiptVariantSizes::LogData,
+            ReceiptRepr::Transfer => ReceiptVariantSizes::Transfer,
+            ReceiptRepr::TransferOut => ReceiptVariantSizes::TransferOut,
+            ReceiptRepr::ScriptResult => ReceiptVariantSizes::ScriptResult,
+            ReceiptRepr::MessageOut => ReceiptVariantSizes::MessageOut,
+            ReceiptRepr::Mint => ReceiptVariantSizes::Mint,
+            ReceiptRepr::Burn => ReceiptVariantSizes::Burn,
         }
     }
 }

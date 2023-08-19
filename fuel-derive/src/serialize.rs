@@ -277,6 +277,9 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 }
 
 fn is_sized_primitive(type_name: &str) -> bool {
+    // This list contains types that are known to be primitive types,
+    // including common aliases of them. These types cannot be resolved
+    // further, and their size is known at compile time.
     [
         "u8",
         "u16",

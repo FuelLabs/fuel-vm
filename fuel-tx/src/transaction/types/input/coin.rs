@@ -1,9 +1,7 @@
 use core::default::Default;
 
 use crate::{
-    input::{
-        fmt_as_field,
-    },
+    input::fmt_as_field,
     transaction::types::input::AsField,
     TxPointer,
     UtxoId,
@@ -12,10 +10,11 @@ use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
     bytes,
+    canonical::Serialize,
     Address,
     AssetId,
     BlockHeight,
-    Word, canonical::Serialize,
+    Word,
 };
 
 pub type CoinFull = Coin<Full>;

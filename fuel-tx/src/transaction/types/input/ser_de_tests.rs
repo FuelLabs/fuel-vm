@@ -1,14 +1,7 @@
 use super::*;
-use crate::input::sizes::{
-    MessageSizes,
-    MessageSizesLayout,
-};
-use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
-    MemLayout,
+use fuel_types::canonical::{
+    Deserialize,
+    Serialize,
 };
 
 #[test]
@@ -24,28 +17,6 @@ fn test_input_serialization() {
         vec![8u8; DATA_SIZE],
         vec![9u8; DATA_SIZE],
     );
-    const S: MessageSizesLayout = MessageSizes::LAYOUT;
-    assert_eq!(
-        input.serialized_size(),
-        WORD_SIZE
-            + S.sender.size()
-            + S.recipient.size()
-            + S.amount.size()
-            + S.nonce.size()
-            + S.witness_index.size()
-            + S.predicate_gas_used.size()
-            + S.data_len.size()
-            + S.predicate_len.size()
-            + S.predicate_data_len.size()
-            + DATA_SIZE
-            + DATA_SIZE
-            + DATA_SIZE
-    );
-    assert_eq!(
-        input.serialized_size(),
-        WORD_SIZE + MessageSizesLayout::LEN + DATA_SIZE + DATA_SIZE + DATA_SIZE
-    );
-    println!("====");
     let bytes = input.to_bytes();
     let mut r = 0..8;
     assert_eq!(bytes[r.clone()], 2u64.to_be_bytes()); // discriminant (InputRepr)

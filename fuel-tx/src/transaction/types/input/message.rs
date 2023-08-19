@@ -1,8 +1,5 @@
 use crate::{
-    input::{
-        fmt_as_field,
-        sizes::MessageSizes,
-    },
+    input::fmt_as_field,
     transaction::types::input::AsField,
 };
 use alloc::vec::Vec;
@@ -10,8 +7,8 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::SizedBytes,
+    canonical::Serialize,
     Address,
-    MemLayout,
     MessageId,
     Nonce,
     Word,
@@ -229,7 +226,7 @@ where
                 0
             };
 
-        MessageSizes::LEN + data_size + predicate_size + predicate_date_size
+        FullMessage::SIZE_STATIC + data_size + predicate_size + predicate_date_size
     }
 }
 

@@ -45,7 +45,6 @@ mod consts;
 pub mod contract;
 pub mod message;
 mod repr;
-pub mod sizes;
 
 pub use repr::InputRepr;
 

@@ -1,13 +1,12 @@
 use crate::{
-    input::sizes::ContractSizes,
     TxPointer,
     UtxoId,
 };
 use fuel_types::{
     bytes,
+    canonical::Serialize,
     Bytes32,
     ContractId,
-    MemLayout,
 };
 
 /// It is a full representation of the contract input from the specification:
@@ -43,6 +42,6 @@ impl Contract {
 impl bytes::SizedBytes for Contract {
     #[inline(always)]
     fn serialized_size(&self) -> usize {
-        ContractSizes::LEN
+        Contract::SIZE_STATIC
     }
 }

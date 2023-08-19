@@ -549,7 +549,6 @@ impl<'a> Input for &'a [u8] {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -594,7 +593,11 @@ mod tests {
             b: u16,
         }
 
-        validate(TestStruct2 { a: 123, v: vec![1, 2, 3], b: 456 });
+        validate(TestStruct2 {
+            a: 123,
+            v: vec![1, 2, 3],
+            b: 456,
+        });
 
         // #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         // enum TestEnum1 {

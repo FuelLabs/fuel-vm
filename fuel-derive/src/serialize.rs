@@ -10,7 +10,6 @@ use crate::attribute::{
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
-    let name = &s.ast().ident;
     let attrs = TypedefAttrs::parse(s);
 
     assert_eq!(s.variants().len(), 1, "structs must have one variant");

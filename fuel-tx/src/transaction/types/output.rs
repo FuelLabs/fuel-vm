@@ -13,7 +13,6 @@ use core::mem;
 
 mod consts;
 mod repr;
-mod sizes;
 
 use consts::*;
 

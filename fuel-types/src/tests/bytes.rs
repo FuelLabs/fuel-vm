@@ -3,7 +3,6 @@ use fuel_types::{
         self,
         WORD_SIZE,
     },
-    mem_layout,
     MemLoc,
     MemLocType,
     Word,
@@ -120,41 +119,3 @@ fn test_from_loc() {
     let r = bytes::from_loc_mut(MemLoc::<0, 10>::new(), &mut mem);
     assert_eq!(r, &mut [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 }
-
-#[derive(Debug, PartialEq, Eq)]
-struct SomeType {
-    a: u8,
-    b: u16,
-    c: u32,
-    d: usize,
-    e: Word,
-    arr: [u8; 32],
-    arr2: [u8; 64],
-    bytes: Vec<u8>,
-}
-
-impl Default for SomeType {
-    fn default() -> Self {
-        Self {
-            a: Default::default(),
-            b: Default::default(),
-            c: Default::default(),
-            d: Default::default(),
-            e: Default::default(),
-            arr: Default::default(),
-            arr2: [0u8; 64],
-            bytes: Default::default(),
-        }
-    }
-}
-
-mem_layout!(SomeTypeLayout for SomeType
-    a: u8 = WORD_SIZE,
-    b: u16 = WORD_SIZE,
-    c: u32 = WORD_SIZE,
-    d: Word = WORD_SIZE,
-    e: Word = WORD_SIZE,
-    arr: [u8; 32] = 32,
-    arr2: [u8; 64] = 64,
-    bytes_size: Word = WORD_SIZE
-);

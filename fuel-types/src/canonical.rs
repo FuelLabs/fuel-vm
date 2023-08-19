@@ -601,13 +601,14 @@ mod tests {
             b: 456,
         });
 
-        // #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-        // enum TestEnum1 {
-        //     A(u8),
-        //     B(u16),
-        // }
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[repr(u8)]
+        enum TestEnum1 {
+            A,
+            B,
+        }
 
-        // validate(TestEnum1::A(123));
-        // validate(TestEnum1::B(456));
+        validate(TestEnum1::A);
+        validate(TestEnum1::B);
     }
 }

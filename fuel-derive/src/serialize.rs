@@ -213,10 +213,11 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     // #[repr(int)] types have a known static size
     let impl_size = if let Some(repr) = repr {
+        // Repr size, already aligned up
         let repr_size: usize = match repr.as_str() {
-            "u8" => 1,
-            "u16" => 2,
-            "u32" => 4,
+            "u8" => 8,
+            "u16" => 8,
+            "u32" => 8,
             "u64" => 8,
             "u128" => 16,
             _ => panic!("Unknown repr: {}", repr),

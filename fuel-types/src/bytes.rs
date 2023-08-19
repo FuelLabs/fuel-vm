@@ -63,3 +63,14 @@ pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
     // This is safe if the size of `bytes` is consistent to `N`
     *ptr
 }
+
+#[test]
+#[allow(clippy::erasing_op)]
+#[allow(clippy::identity_op)]
+fn padded_len_to_fit_word_len() {
+    assert_eq!(WORD_SIZE * 0, padded_len(&[]));
+    assert_eq!(WORD_SIZE * 1, padded_len(&[0]));
+    assert_eq!(WORD_SIZE * 1, padded_len(&[0; WORD_SIZE]));
+    assert_eq!(WORD_SIZE * 2, padded_len(&[0; WORD_SIZE + 1]));
+    assert_eq!(WORD_SIZE * 2, padded_len(&[0; WORD_SIZE * 2]));
+}

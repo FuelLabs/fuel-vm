@@ -123,7 +123,12 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         let root_position = self.root_position().ok_or(MerkleTreeError::Overflow(
             "While calculating root position".to_string(),
         ))?;
-        let mut peaks_itr = root_position.path(&leaf_position, leaves_count).iter();
+        let mut peaks_itr = root_position
+            .path(&leaf_position, leaves_count)
+            .maybe_iter()
+            .ok_or(MerkleTreeError::Overflow(
+                "While calculating path from leaf to root".to_string(),
+            ))?;
         peaks_itr.next(); // Omit the root
 
         let (_, peaks): (Vec<_>, Vec<_>) = peaks_itr.unzip();
@@ -193,7 +198,10 @@ where
         let leaf_position = Position::from_leaf_index(proof_index);
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
             .path(&leaf_position, self.leaves_count)
-            .iter()
+            .maybe_iter()
+            .ok_or(MerkleTreeError::Overflow(
+                "While calculating path from leaf to root".to_string(),
+            ))?
             .unzip();
         side_positions.reverse(); // Reorder side positions from leaf to root.
         side_positions.pop(); // The last side position is the root; remove it.

@@ -18,10 +18,8 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    fn key_size_in_bits() -> usize {
-        mem::size_of::<Self::Key>()
-            .checked_mul(8)
-            .expect("Program should fail if this overflows")
+    fn key_size_in_bits() -> Option<usize> {
+        mem::size_of::<Self::Key>().checked_mul(8)
     }
 
     fn height(&self) -> u32;

@@ -58,7 +58,7 @@ impl Node {
         hash.finalize().try_into().unwrap()
     }
 
-    pub fn max_height() -> usize {
+    pub fn max_height() -> Option<usize> {
         Node::key_size_in_bits()
     }
 
@@ -112,7 +112,9 @@ impl Node {
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node)?;
-            let parent_height = Node::max_height().checked_sub(parent_depth)? as u32;
+            let parent_height = Node::max_height()
+                .and_then(|max_height| max_height.checked_sub(parent_depth))?
+                as u32;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height).into()
@@ -126,12 +128,10 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height())
-                .checked_add(1)
-                .expect("Program should panic if this overflows");
+            let parent_height =
+                cmp::max(path_node.height(), side_node.height()).checked_add(1)?;
             let parent_depth = Node::max_height()
-                .checked_sub(parent_height as usize)
-                .expect("Program should panic if this overflows");
+                .and_then(|max_height| max_height.checked_sub(parent_height as usize))?;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height).into()

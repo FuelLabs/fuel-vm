@@ -15,6 +15,7 @@ use fuel_storage::{
 
 use crate::sparse::MerkleTreeError;
 use core::iter;
+use std::cmp::max;
 
 pub(crate) struct Branch {
     pub bits: Bytes32,
@@ -46,11 +47,11 @@ where
             .ok_or(MerkleTreeError::Overflow(
                 "Cannot compute common path length of right branch".to_string(),
             ))?;
-        let parent_height = (Node::max_height().checked_sub(parent_depth).ok_or(
-            MerkleTreeError::Overflow(
+        let parent_height = Node::max_height()
+            .and_then(|max_height| max_height.checked_sub(parent_depth))
+            .ok_or(MerkleTreeError::Overflow(
                 "Cannot subtract parent depth from max height".to_string(),
-            ),
-        )?) as u32;
+            ))? as u32;
         let node =
             Node::create_node(&left_branch.node, &right_branch.node, parent_height);
         Branch {
@@ -64,11 +65,11 @@ where
             .ok_or(MerkleTreeError::Overflow(
                 "Cannot compute common path length of right branch".to_string(),
             ))? as usize;
-        let ancestor_height = Node::max_height().checked_sub(ancestor_depth).ok_or(
-            MerkleTreeError::Overflow(
+        let ancestor_height = Node::max_height()
+            .and_then(|max_height| max_height.checked_sub(ancestor_depth))
+            .ok_or(MerkleTreeError::Overflow(
                 "Cannot subtract ancestor depth from max height".to_string(),
-            ),
-        )?;
+            ))?;
         if right_branch.node.is_node() {
             let mut current_node = right_branch.node;
             let path = right_branch.bits;

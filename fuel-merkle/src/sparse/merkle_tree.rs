@@ -136,9 +136,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         &self.root_node
     }
 
-    fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+    fn set_root_node(&mut self, node: Node) -> Option<()> {
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height()? as u32);
         self.root_node = node;
+        Some(())
     }
 }
 
@@ -188,6 +189,9 @@ where
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
             .as_path_iter(leaf_key)
+            .ok_or(MerkleTreeError::Overflow(
+                "Cannot create path iterator".to_string(),
+            ))?
             .map(|(path_node, side_node)| {
                 Ok((
                     path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
@@ -343,12 +347,11 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height() as usize;
-        let depth =
-            Node::max_height()
-                .checked_sub(height)
-                .ok_or(MerkleTreeError::Overflow(
-                    "Cannot subtract height from max height".to_string(),
-                ))?;
+        let depth = Node::max_height()
+            .and_then(|max_height| max_height.checked_sub(height))
+            .ok_or(MerkleTreeError::Overflow(
+                "Cannot subtract height from max height".to_string(),
+            ))?;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder).ok_or(

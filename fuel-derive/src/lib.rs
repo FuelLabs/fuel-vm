@@ -1,3 +1,7 @@
+//! Derive macros for canonical type serialization and deserialization.
+
+#![deny(unused_must_use, missing_docs)]
+
 extern crate proc_macro;
 
 mod utils;

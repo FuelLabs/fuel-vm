@@ -13,6 +13,7 @@ use syn::{
 };
 use synstructure::BindingInfo;
 
+/// This holds top-level `canonical` attributes for a struct or an enum.
 #[derive(Debug)]
 pub struct TypedefAttrs(pub HashMap<String, TokenStream>);
 impl TypedefAttrs {
@@ -53,6 +54,7 @@ impl TypedefAttrs {
     }
 }
 
+/// Parse `#[repr(int)]` attribute for an enum.
 pub fn parse_enum_repr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
         if attr.style != AttrStyle::Outer {
@@ -71,10 +73,12 @@ pub fn parse_enum_repr(attrs: &[Attribute]) -> Option<String> {
     None
 }
 
+/// Parse `#[canonical(skip)]` attribute for a binding field.
 pub fn should_skip_field_binding(binding: &BindingInfo<'_>) -> bool {
     should_skip_field(&binding.ast().attrs)
 }
 
+/// Parse `#[canonical(skip)]` attribute for a struct field.
 pub fn should_skip_field(attrs: &[Attribute]) -> bool {
     for attr in attrs {
         if attr.style != AttrStyle::Outer {

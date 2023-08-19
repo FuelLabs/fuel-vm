@@ -1,4 +1,7 @@
 //! Canonical serialization and deserialization of Fuel types.
+//!
+//! This module provides the `Serialize` and `Deserialize` traits, which
+//! allow for automatic serialization and deserialization of Fuel types.
 
 #![allow(unsafe_code)]
 

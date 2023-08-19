@@ -32,6 +32,8 @@ pub enum Error {
     UnknownDiscriminant,
     /// Wrong align.
     WrongAlign,
+    /// Allocation too large to be correct.
+    AllocationLimit,
     /// Unknown error.
     Unknown(&'static str),
 }
@@ -274,7 +276,6 @@ macro_rules! impl_for_primitives {
 impl_for_primitives!(u8, true);
 impl_for_primitives!(u16, false);
 impl_for_primitives!(u32, false);
-impl_for_primitives!(usize, false); // TODO: encode as u64
 impl_for_primitives!(u64, false);
 impl_for_primitives!(u128, false);
 
@@ -313,6 +314,9 @@ impl Deserialize for () {
     }
 }
 
+/// To protect against malicious large inputs, vectors size is limited on decoding.
+pub const VEC_DECODE_LIMIT: usize = 100 * (1 << 20); // 100 MiB
+
 impl<T: Serialize> SerializedSize for Vec<T> {
     const SIZE_STATIC: usize = 8;
 }
@@ -324,7 +328,12 @@ impl<T: Serialize> Serialize for Vec<T> {
     // Encode only the size of the vector. Elements will be encoded in the
     // `encode_dynamic` method.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        self.len().encode(buffer)
+        assert!(
+            self.len() < VEC_DECODE_LIMIT,
+            "Refusing to encode vector too large to be decoded"
+        );
+        let len: u64 = self.len().try_into().expect("msg.len() > u64::MAX");
+        len.encode(buffer)
     }
 
     fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
@@ -350,8 +359,11 @@ impl<T: Deserialize> Deserialize for Vec<T> {
     // Decode only the capacity of the vector. Elements will be decoded in the
     // `decode_dynamic` method. The capacity is needed for iteration there.
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-        let cap: usize = usize::decode(buffer)?;
-        // TODO: this can panic with over-large capacity, and likely has to be reworked
+        let cap = u64::decode(buffer)?;
+        let cap: usize = cap.try_into().map_err(|_| Error::AllocationLimit)?;
+        if cap > VEC_DECODE_LIMIT {
+            return Err(Error::AllocationLimit)
+        }
         Ok(Vec::with_capacity(cap))
     }
 

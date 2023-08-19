@@ -190,7 +190,7 @@ const fn alignment_bytes(len: usize) -> usize {
 }
 
 /// Size after alignment
-const fn aligned_size(len: usize) -> usize {
+pub const fn aligned_size(len: usize) -> usize {
     len + alignment_bytes(len)
 }
 
@@ -546,5 +546,63 @@ impl<'a> Input for &'a [u8] {
 
         *self = &self[n..];
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn validate<T: Serialize + Deserialize + Eq + core::fmt::Debug>(t: T) {
+        let bytes = t.to_bytes();
+        let t2 = T::from_bytes(&bytes).expect("Roundtrip failed");
+        assert_eq!(t, t2);
+        assert_eq!(t.to_bytes(), t2.to_bytes());
+
+        let mut vec = Vec::new();
+        t.encode_static(&mut vec).expect("Encode failed");
+        assert_eq!(vec.len(), T::SIZE_STATIC);
+    }
+
+    #[test]
+    fn xxx_yyy() {
+        validate(());
+        validate(123u8);
+        validate(u8::MAX);
+        validate(123u16);
+        validate(u16::MAX);
+        validate(123u32);
+        validate(u32::MAX);
+        validate(123u64);
+        validate(u64::MAX);
+        validate(123u128);
+        validate(u128::MAX);
+
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        struct TestStruct1 {
+            a: u8,
+            b: u16,
+        }
+
+        validate(TestStruct1 { a: 123, b: 456 });
+
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        struct TestStruct2 {
+            a: u8,
+            v: Vec<u8>,
+            b: u16,
+        }
+
+        validate(TestStruct2 { a: 123, v: vec![1, 2, 3], b: 456 });
+
+        // #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        // enum TestEnum1 {
+        //     A(u8),
+        //     B(u16),
+        // }
+
+        // validate(TestEnum1::A(123));
+        // validate(TestEnum1::B(456));
     }
 }

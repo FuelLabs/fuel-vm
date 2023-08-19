@@ -3,7 +3,6 @@ use core::default::Default;
 use crate::{
     input::{
         fmt_as_field,
-        sizes::CoinSizes,
     },
     transaction::types::input::AsField,
     TxPointer,
@@ -16,8 +15,7 @@ use fuel_types::{
     Address,
     AssetId,
     BlockHeight,
-    MemLayout,
-    Word,
+    Word, canonical::Serialize,
 };
 
 pub type CoinFull = Coin<Full>;
@@ -156,7 +154,7 @@ where
                 0
             };
 
-        CoinSizes::LEN + predicate_size + predicate_date_size
+        CoinFull::SIZE_STATIC + predicate_size + predicate_date_size
     }
 }
 

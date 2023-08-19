@@ -399,7 +399,7 @@ fn try_builtin_sized(ty: &syn::Type) -> Option<TypeSize> {
             }
 
             Some(TypeSize::Computed(quote! {
-                ::core::mem::size_of::<#p>()
+                fuel_types::canonical::aligned_size(::core::mem::size_of::<#p>())
             }))
         }
         _ => {

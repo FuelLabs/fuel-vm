@@ -40,7 +40,12 @@ where
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
     let branch = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
-        let parent_depth = left_branch.node.common_path_length(&right_branch.node);
+        let parent_depth = left_branch
+            .node
+            .common_path_length(&right_branch.node)
+            .ok_or(MerkleTreeError::Overflow(
+                "Cannot compute common path length of right branch".to_string(),
+            ))?;
         let parent_height = (Node::max_height().checked_sub(parent_depth).ok_or(
             MerkleTreeError::Overflow(
                 "Cannot subtract parent depth from max height".to_string(),
@@ -53,7 +58,12 @@ where
             node,
         }
     } else {
-        let ancestor_depth = left_branch.bits.common_path_length(&right_branch.bits);
+        let ancestor_depth = left_branch
+            .bits
+            .common_path_length(&right_branch.bits)
+            .ok_or(MerkleTreeError::Overflow(
+                "Cannot compute common path length of right branch".to_string(),
+            ))? as usize;
         let ancestor_height = Node::max_height().checked_sub(ancestor_depth).ok_or(
             MerkleTreeError::Overflow(
                 "Cannot subtract ancestor depth from max height".to_string(),
@@ -75,7 +85,11 @@ where
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node =
-                    Node::create_node_on_path(&path, &current_node, &placeholder);
+                    Node::create_node_on_path(&path, &current_node, &placeholder).ok_or(
+                        MerkleTreeError::Overflow(
+                            "Cannot create node on path".to_string(),
+                        ),
+                    )?;
                 storage.insert(current_node.hash(), &current_node.as_ref().into())?;
             }
             right_branch.node = current_node;
@@ -96,7 +110,11 @@ where
             let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
             for placeholder in placeholders {
                 current_node =
-                    Node::create_node_on_path(&path, &current_node, &placeholder);
+                    Node::create_node_on_path(&path, &current_node, &placeholder).ok_or(
+                        MerkleTreeError::Overflow(
+                            "Cannot create node on path".to_string(),
+                        ),
+                    )?;
                 storage.insert(current_node.hash(), &current_node.as_ref().into())?;
             }
             left_branch.node = current_node;

@@ -279,8 +279,10 @@ where
         // checked all windows, we know that we have merged all leaf nodes where
         // possible.
         while let Some(left) = branches.pop() {
-            if let Some(current) = nodes.last() {
-                let left_proximity = current.node.common_path_length(&left.node);
+            if let Some(left_proximity) = nodes
+                .last()
+                .and_then(|current| current.node.common_path_length(&left.node))
+            {
                 while {
                     // The current node's proximity to its right neighbor was
                     // stored previously. We now compare the distances between
@@ -349,7 +351,9 @@ where
                 ))?;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
-            node = Node::create_node_on_path(&path, &node, &placeholder);
+            node = Node::create_node_on_path(&path, &node, &placeholder).ok_or(
+                MerkleTreeError::Overflow("Cannot create node on path".to_string()),
+            )?;
             storage.insert(node.hash(), &node.as_ref().into())?;
         }
 
@@ -457,13 +461,20 @@ where
             // Merge leaves
             if !actual_leaf_node.is_placeholder() {
                 current_node =
-                    Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                    Node::create_node_on_path(path, &current_node, actual_leaf_node)
+                        .ok_or(MerkleTreeError::Overflow(
+                            "Cannot create node on path".to_string(),
+                        ))?;
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
 
             // Merge placeholders
-            let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
+            let ancestor_depth = requested_leaf_node
+                .common_path_length(actual_leaf_node)
+                .ok_or(MerkleTreeError::Overflow(
+                    "Cannot calculate common path length".to_string(),
+                ))?;
             let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
             let placeholders_count = stale_depth.checked_sub(side_nodes.len()).ok_or(
                 MerkleTreeError::Overflow(
@@ -474,7 +485,11 @@ where
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
                 current_node =
-                    Node::create_node_on_path(path, &current_node, &placeholder);
+                    Node::create_node_on_path(path, &current_node, &placeholder).ok_or(
+                        MerkleTreeError::Overflow(
+                            "Cannot create node on path".to_string(),
+                        ),
+                    )?;
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -482,7 +497,10 @@ where
 
         // Merge side nodes
         for side_node in side_nodes {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+            current_node = Node::create_node_on_path(path, &current_node, side_node)
+                .ok_or(MerkleTreeError::Overflow(
+                    "Cannot create node on path".to_string(),
+                ))?;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -497,7 +515,7 @@ where
         requested_leaf_key: &Bytes32,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         for node in path_nodes {
             self.storage.remove(node.hash())?;
         }
@@ -539,7 +557,11 @@ where
                     side_nodes_iter.find(|side_node| !side_node.is_placeholder())
                 {
                     current_node =
-                        Node::create_node_on_path(path, &current_node, side_node);
+                        Node::create_node_on_path(path, &current_node, side_node).ok_or(
+                            MerkleTreeError::Overflow(
+                                "Cannot create node on path".to_string(),
+                            ),
+                        )?;
                     self.storage
                         .insert(current_node.hash(), &current_node.as_ref().into())?;
                 }
@@ -548,7 +570,10 @@ where
 
         // Merge side nodes
         for side_node in side_nodes_iter {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+            current_node = Node::create_node_on_path(path, &current_node, side_node)
+                .ok_or(MerkleTreeError::Overflow(
+                    "Cannot create node on path".to_string(),
+                ))?;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }

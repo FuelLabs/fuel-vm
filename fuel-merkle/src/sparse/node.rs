@@ -104,24 +104,21 @@ impl Node {
         path: &dyn Path,
         path_node: &Node,
         side_node: &Node,
-    ) -> Self {
+    ) -> Option<Self> {
         if path_node.is_leaf() && side_node.is_leaf() {
             // When joining two leaves, the joined node is found where the paths
             // of the two leaves diverge. The joined node may be a direct parent
             // of the leaves or an ancestor multiple generations above the
             // leaves.
             // N.B.: A leaf can be a placeholder.
-            let parent_depth = path_node.common_path_length(side_node);
-            let parent_height = (Node::max_height()
-                .checked_sub(parent_depth)
-                .expect("Program should panic if this overflows"))
-                as u32;
+            let parent_depth = path_node.common_path_length(side_node)?;
+            let parent_height = Node::max_height().checked_sub(parent_depth)? as u32;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
+                    Node::create_node(path_node, side_node, parent_height).into()
                 }
                 Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
+                    Node::create_node(side_node, path_node, parent_height).into()
                 }
             }
         } else {
@@ -137,10 +134,10 @@ impl Node {
                 .expect("Program should panic if this overflows");
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
+                    Node::create_node(path_node, side_node, parent_height).into()
                 }
                 Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
+                    Node::create_node(side_node, path_node, parent_height).into()
                 }
             }
         }
@@ -150,7 +147,7 @@ impl Node {
         Self::Placeholder
     }
 
-    pub fn common_path_length(&self, other: &Node) -> usize {
+    pub fn common_path_length(&self, other: &Node) -> Option<usize> {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
@@ -159,7 +156,7 @@ impl Node {
         // placeholder's key from producing an erroneous match with a 0 bit in
         // the leaf's key.
         if self.is_placeholder() || other.is_placeholder() {
-            0
+            Some(0)
         } else {
             self.leaf_key().common_path_length(other.leaf_key())
         }

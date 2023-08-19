@@ -1,25 +1,30 @@
+#[cfg(feature = "std")]
 use crate::{
-    transaction::{
-        field::{
-            BytecodeLength,
-            BytecodeWitnessIndex,
-            GasLimit,
-            GasPrice,
-            Inputs,
-            Maturity,
-            Outputs,
-            Salt as SaltField,
-            StorageSlots,
-            Witnesses,
-        },
-        validity::{
-            check_common_part,
-            FormatValidityChecks,
-        },
+    transaction::validity::{
+        check_common_part,
+        FormatValidityChecks,
+    },
+    ConsensusParameters,
+};
+
+#[cfg(feature = "std")]
+use fuel_types::AssetId;
+
+use crate::{
+    transaction::field::{
+        BytecodeLength,
+        BytecodeWitnessIndex,
+        GasLimit,
+        GasPrice,
+        Inputs,
+        Maturity,
+        Outputs,
+        Salt as SaltField,
+        StorageSlots,
+        Witnesses,
     },
     Chargeable,
     CheckError,
-    ConsensusParameters,
     Contract,
     Input,
     Output,
@@ -34,7 +39,6 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    AssetId,
     BlockHeight,
     Bytes32,
     ContractId,

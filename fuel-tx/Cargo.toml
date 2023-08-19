@@ -42,7 +42,7 @@ rstest = "0.15"
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
-alloc = ["fuel-types/alloc", "itertools/use_alloc"]
+alloc = ["fuel-types/alloc", "fuel-asm/alloc", "itertools/use_alloc"]
 builder = ["alloc", "internals"]
 internals = []
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]

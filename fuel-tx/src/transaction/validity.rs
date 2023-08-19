@@ -2,7 +2,6 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
-    Transaction,
     Witness,
 };
 use core::hash::Hash;
@@ -11,6 +10,9 @@ use fuel_types::{
     AssetId,
     BlockHeight,
 };
+
+#[cfg(feature = "std")]
+use crate::Transaction;
 
 #[cfg(feature = "std")]
 use fuel_types::{

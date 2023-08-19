@@ -1,10 +1,11 @@
 use fuel_types::{
     bytes,
-    mem_layout,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     Bytes32,
     Bytes64,
-    MemLayout,
-    MemLocType,
 };
 
 #[cfg(feature = "random")]
@@ -20,19 +21,17 @@ use core::cmp::Ordering;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 pub struct StorageSlot {
     key: Bytes32,
     value: Bytes32,
 }
 
-mem_layout!(StorageSlotLayout for StorageSlot
-    key: Bytes32 = {Bytes32::LEN},
-    value: Bytes32 = {Bytes32::LEN}
-);
-
 impl StorageSlot {
-    pub const SLOT_SIZE: usize = Self::LEN;
+    pub const SLOT_SIZE: usize = Self::SIZE_STATIC;
 
     pub const fn new(key: Bytes32, value: Bytes32) -> Self {
         StorageSlot { key, value }
@@ -60,9 +59,9 @@ impl From<&StorageSlot> for Bytes64 {
 
 impl From<&Bytes64> for StorageSlot {
     fn from(b: &Bytes64) -> Self {
-        let key = bytes::restore_at(b, Self::layout(Self::LAYOUT.key)).into();
-        let value = bytes::restore_at(b, Self::layout(Self::LAYOUT.value)).into();
-
+        // from_bytes is infallible with a fixed size array type
+        let key = Bytes32::from_bytes(&b[..Bytes32::LEN]).unwrap();
+        let value = Bytes32::from_bytes(&b[Bytes32::LEN..]).unwrap();
         Self::new(key, value)
     }
 }

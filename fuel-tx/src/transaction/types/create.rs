@@ -34,7 +34,6 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    mem_layout,
     AssetId,
     BlockHeight,
     Bytes32,
@@ -111,7 +110,10 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
@@ -130,21 +132,6 @@ pub struct Create {
     #[canonical(skip)]
     pub(crate) metadata: Option<CreateMetadata>,
 }
-
-mem_layout!(
-    CreateLayout for Create
-    repr: u8 = WORD_SIZE,
-    gas_price: Word = WORD_SIZE,
-    gas_limit: Word = WORD_SIZE,
-    maturity: u32 = WORD_SIZE,
-    bytecode_length: Word = WORD_SIZE,
-    bytecode_witness_index: u8 = WORD_SIZE,
-    storage_slots_len: Word = WORD_SIZE,
-    inputs_len: Word = WORD_SIZE,
-    outputs_len: Word = WORD_SIZE,
-    witnesses_len: Word = WORD_SIZE,
-    salt: Salt = {Salt::LEN}
-);
 
 impl Create {
     pub fn metadata(&self) -> &Option<CreateMetadata> {

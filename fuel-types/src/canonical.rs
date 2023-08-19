@@ -68,6 +68,12 @@ pub trait Serialize {
     #[doc(hidden)]
     const TYPE: Type = Type::Unknown;
 
+    /// Size of static portion of the type in bytes.
+    const SIZE_STATIC: usize;
+    /// True if the size has no dynamically sized fields.
+    /// This implies that `SIZE_STATIC` is the full size of the type.
+    const SIZE_NO_DYNAMIC: bool;
+
     /// Returns the size required for serialization of static data.
     ///
     /// # Note: This function has the performance of constants because,
@@ -183,9 +189,18 @@ const fn alignment_bytes(len: usize) -> usize {
     (ALIGN - (len % ALIGN)) % ALIGN
 }
 
+/// Size after alignment
+const fn aligned_size(len: usize) -> usize {
+    len + alignment_bytes(len)
+}
+
 macro_rules! impl_for_fuel_types {
     ($t:ident) => {
         impl Serialize for $t {
+            const SIZE_NO_DYNAMIC: bool = true;
+            // Fuel-types are transparent single-field structs, so the size matches
+            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
+
             #[inline(always)]
             fn encode_static<O: Output + ?Sized>(
                 &self,
@@ -224,6 +239,8 @@ impl_for_fuel_types!(Nonce);
 macro_rules! impl_for_primitives {
     ($t:ident, $ty:path) => {
         impl Serialize for $t {
+            const SIZE_NO_DYNAMIC: bool = true;
+            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
             const TYPE: Type = $ty;
 
             #[inline(always)]
@@ -271,6 +288,9 @@ impl_for_primitives!(u128, Type::U128);
 
 // Empty tuple `()`, i.e. the unit type takes up no space.
 impl Serialize for () {
+    const SIZE_NO_DYNAMIC: bool = true;
+    const SIZE_STATIC: usize = 0;
+
     #[inline(always)]
     fn size_static(&self) -> usize {
         0
@@ -299,6 +319,9 @@ impl Deserialize for () {
 }
 
 impl<T: Serialize> Serialize for Vec<T> {
+    const SIZE_NO_DYNAMIC: bool = false;
+    const SIZE_STATIC: usize = 8;
+
     #[inline(always)]
     // Encode only the size of the vector. Elements will be encoded in the
     // `encode_dynamic` method.
@@ -370,6 +393,9 @@ impl<T: Deserialize> Deserialize for Vec<T> {
 }
 
 impl<const N: usize, T: Serialize> Serialize for [T; N] {
+    const SIZE_NO_DYNAMIC: bool = true;
+    const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<T>()) * N;
+
     #[inline(always)]
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         // Bytes - [u8; N] it a separate case without padding for each element.
@@ -522,4 +548,3 @@ impl<'a> Input for &'a [u8] {
         Ok(())
     }
 }
-

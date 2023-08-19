@@ -34,7 +34,7 @@ sha2 = "0.10"
 
 [features]
 default = ["fuel-types/default", "std"]
-alloc = ["rand?/alloc", "secp256k1/alloc"]
+alloc = ["rand?/alloc", "secp256k1/alloc", "fuel-types/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
 # `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise

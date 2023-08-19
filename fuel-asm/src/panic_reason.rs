@@ -26,7 +26,10 @@ enum_from! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+    #[cfg_attr(
+        any(feature = "alloc", feature = "std"),
+        derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)
+    )]
     #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     #[repr(u8)]
     #[non_exhaustive]

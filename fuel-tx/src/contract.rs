@@ -45,7 +45,10 @@ fn next_multiple<const N: usize>(x: usize) -> usize {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 /// Deployable representation of a contract code.
 pub struct Contract(
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>,

@@ -189,12 +189,28 @@ fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
     })
 }
 
+const fn usize_max(a: usize, b: usize) -> usize {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+// static_assertions::const_assert_eq!(CoinFull::SIZE_STATIC, FullMessage::SIZE_STATIC);
+// static_assertions::const_assert_eq!(CoinFull::SIZE_STATIC, Contract::SIZE_STATIC);
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 #[canonical(discriminant = InputRepr)]
 #[canonical(serialize_with = input_serialize_helper)]
 #[canonical(deserialize_with = input_deserialize_helper)]
+#[canonical(SIZE_STATIC = usize_max(CoinFull::SIZE_STATIC, usize_max(Contract::SIZE_STATIC, FullMessage::SIZE_STATIC)))]
+#[canonical(SIZE_NO_DYNAMIC = CoinFull::SIZE_NO_DYNAMIC && Contract::SIZE_NO_DYNAMIC && FullMessage::SIZE_NO_DYNAMIC)]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

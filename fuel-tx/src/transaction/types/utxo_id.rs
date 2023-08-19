@@ -1,13 +1,9 @@
 use crate::TxId;
 
 use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
-    mem_layout,
+    bytes::SizedBytes,
+    canonical::Serialize,
     Bytes32,
-    MemLayout,
 };
 
 use core::{
@@ -27,7 +23,10 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 pub struct UtxoId {
     /// transaction id
     tx_id: TxId,
@@ -35,13 +34,11 @@ pub struct UtxoId {
     output_index: u8,
 }
 
-mem_layout!(UtxoIdLayout for UtxoId
-    tx_id: TxId = {TxId::LEN},
-    output_index: u8 = WORD_SIZE
-);
-
 impl UtxoId {
-    pub const LEN: usize = <Self as MemLayout>::LEN;
+    pub const LEN: usize = {
+        assert!(Self::SIZE_NO_DYNAMIC);
+        Self::SIZE_STATIC
+    };
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {

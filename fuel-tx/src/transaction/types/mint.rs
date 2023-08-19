@@ -18,10 +18,8 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    mem_layout,
     BlockHeight,
     Bytes32,
-    Word,
 };
 
 #[cfg(feature = "std")]
@@ -80,7 +78,10 @@ impl MintMetadata {
 /// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
@@ -93,13 +94,6 @@ pub struct Mint {
     #[canonical(skip)]
     pub(crate) metadata: Option<MintMetadata>,
 }
-
-mem_layout!(
-    MintLayout for Mint
-    repr: u8 = WORD_SIZE,
-    tx_pointer: TxPointer = {TxPointer::LEN},
-    outputs_len: Word = WORD_SIZE
-);
 
 #[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {

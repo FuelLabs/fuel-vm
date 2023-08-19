@@ -3,7 +3,6 @@ use fuel_types::{
         SizedBytes,
         WORD_SIZE,
     },
-    mem_layout,
     BlockHeight,
 };
 
@@ -30,19 +29,16 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 pub struct TxPointer {
     /// Block height
     block_height: BlockHeight,
     /// Transaction index
     tx_index: u16,
 }
-
-mem_layout!(
-    TxPointerLayout for TxPointer
-    block_height: u32 = WORD_SIZE,
-    tx_index: u16 = WORD_SIZE
-);
 
 impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;

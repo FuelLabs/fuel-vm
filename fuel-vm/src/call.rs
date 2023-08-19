@@ -5,16 +5,13 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
-    bytes::{
-        self,
-        SizedBytes,
+    bytes::SizedBytes,
+    canonical::{
+        Deserialize,
+        Serialize,
     },
-    canonical::Deserialize,
-    mem_layout,
     AssetId,
     ContractId,
-    MemLayout,
-    MemLocType,
     Word,
 };
 
@@ -22,9 +19,6 @@ use crate::consts::{
     WORD_SIZE,
     *,
 };
-
-#[cfg(test)]
-use fuel_types::canonical::Serialize;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -39,16 +33,9 @@ pub struct Call {
     b: Word,
 }
 
-mem_layout!(
-    CallLayout for Call
-    to: ContractId = {ContractId::LEN},
-    a: Word = WORD_SIZE,
-    b: Word = WORD_SIZE
-);
-
 impl Call {
     /// The size of the call structures in memory representation.
-    pub const LEN: usize = <Call as MemLayout>::LEN;
+    pub const LEN: usize = Self::SIZE_STATIC;
 
     /// Create a new call structure representation.
     pub const fn new(to: ContractId, a: Word, b: Word) -> Self {
@@ -76,36 +63,6 @@ impl Call {
     }
 }
 
-impl From<Call> for [u8; Call::LEN] {
-    fn from(val: Call) -> [u8; Call::LEN] {
-        let mut buf = [0u8; Call::LEN];
-        bytes::store_at(&mut buf, Call::layout(Call::LAYOUT.to), &val.to);
-        bytes::store_number_at(&mut buf, Call::layout(Call::LAYOUT.a), val.a);
-        bytes::store_number_at(&mut buf, Call::layout(Call::LAYOUT.b), val.b);
-        buf
-    }
-}
-
-impl From<[u8; Self::LEN]> for Call {
-    fn from(buf: [u8; Self::LEN]) -> Self {
-        let to = bytes::restore_at(&buf, Self::layout(Self::LAYOUT.to));
-        let a = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.a));
-        let b = bytes::restore_number_at(&buf, Self::layout(Self::LAYOUT.b));
-
-        Self {
-            to: to.into(),
-            a,
-            b,
-        }
-    }
-}
-
-impl SizedBytes for Call {
-    fn serialized_size(&self) -> usize {
-        Self::LEN
-    }
-}
-
 #[derive(
     Debug,
     Clone,
@@ -126,16 +83,6 @@ pub struct CallFrame {
     a: Word,
     b: Word,
 }
-
-mem_layout!(
-    CallFrameLayout for CallFrame
-    to: ContractId = {ContractId::LEN},
-    asset_id: AssetId = {AssetId::LEN},
-    registers: [u8; WORD_SIZE * VM_REGISTER_COUNT] = {WORD_SIZE * VM_REGISTER_COUNT},
-    code_size: Word = WORD_SIZE,
-    a: Word = WORD_SIZE,
-    b: Word = WORD_SIZE
-);
 
 #[cfg(test)]
 impl Default for CallFrame {

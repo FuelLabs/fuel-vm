@@ -34,7 +34,6 @@ use fuel_types::{
         WORD_SIZE,
     },
     fmt_truncated_hex,
-    mem_layout,
     BlockHeight,
     Bytes32,
     Word,
@@ -55,7 +54,10 @@ pub(crate) struct ScriptMetadata {
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[cfg_attr(
+    any(feature = "alloc", feature = "std"),
+    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
+)]
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
@@ -75,20 +77,6 @@ pub struct Script {
     #[canonical(skip)]
     pub(crate) metadata: Option<ScriptMetadata>,
 }
-
-mem_layout!(
-    ScriptLayout for Script
-    repr: u8 = WORD_SIZE,
-    gas_price: Word = WORD_SIZE,
-    gas_limit: Word = WORD_SIZE,
-    maturity: u32 = WORD_SIZE,
-    script_len: Word = WORD_SIZE,
-    script_data_len: Word = WORD_SIZE,
-    inputs_len: Word = WORD_SIZE,
-    outputs_len: Word = WORD_SIZE,
-    witnesses_len: Word = WORD_SIZE,
-    receipts_root: Bytes32 = {Bytes32::LEN}
-);
 
 impl Default for Script {
     fn default() -> Self {

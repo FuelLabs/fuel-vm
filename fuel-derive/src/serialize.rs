@@ -1,12 +1,16 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
+use core::cmp::Ordering;
+
 use crate::attribute::{
+    should_skip_field,
     should_skip_field_binding,
     TypedefAttrs,
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
+    let name = &s.ast().ident;
     let attrs = TypedefAttrs::parse(s);
 
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
@@ -54,6 +58,15 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         quote! {}
     };
 
+    let (size_static, size_dynamic) = constsize_fields(variant.ast().fields);
+    let size_prefix = if attrs.0.contains_key("prefix") {
+        quote! {
+            8 +
+        }
+    } else {
+        quote! {}
+    };
+
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
@@ -73,6 +86,9 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 
                 ::core::result::Result::Ok(())
             }
+
+            const SIZE_STATIC: usize = #size_prefix #size_static;
+            const SIZE_NO_DYNAMIC: bool = #size_dynamic;
         }
     })
 }
@@ -80,6 +96,8 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 // TODO: somehow ensure that all enum variants have equal size, or zero-pad them
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let attrs = TypedefAttrs::parse(s);
+
+    println!("SERNUM: {:?}", s.ast().ident);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let encode_static = s.variants().iter().enumerate().map(|(i, v)| {
@@ -146,8 +164,20 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     // Handle #[canonical(serialize_with = function)]
     if let Some(helper) = attrs.0.get("serialize_with") {
+        let size_static = attrs
+            .0
+            .get("SIZE_STATIC")
+            .expect("serialize_with requires SIZE_STATIC key");
+        let size_no_dynamic = attrs
+            .0
+            .get("SIZE_NO_DYNAMIC")
+            .expect("serialize_with requires SIZE_NO_DYNAMIC key");
+        // TODO: size constants?
         return s.gen_impl(quote! {
             gen impl fuel_types::canonical::Serialize for @Self {
+                const SIZE_STATIC: usize = #size_static;
+                const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
+
                 #[inline(always)]
                 fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
                     #helper(self, buffer)
@@ -159,6 +189,36 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
         })
     }
+
+    let (size_static, size_no_dynamic): (Vec<TokenStream2>, Vec<TokenStream2>) = s
+        .variants()
+        .iter()
+        .map(|v| constsize_fields(v.ast().fields))
+        .unzip();
+
+    let size_static = size_static
+        .iter()
+        .fold(quote! { let mut m = 0; }, |acc, item| {
+            quote! {
+                #acc
+                let item = #item;
+                if item > m {
+                    m = item;
+                }
+            }
+        });
+    let inner_discriminant = if attrs.0.contains_key("inner_discriminant") {
+        quote! { m -= 8; } // TODO: panic handling
+    } else {
+        quote! {}
+    };
+    let size_static = quote! { { #size_static #inner_discriminant m } };
+
+    let size_no_dynamic = size_no_dynamic.iter().fold(quote! { true }, |acc, item| {
+        quote! {
+            #acc && #item
+        }
+    });
 
     s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
@@ -184,22 +244,229 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
                 ::core::result::Result::Ok(())
             }
+
+            const SIZE_STATIC: usize = #size_static;
+            const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
         }
     })
+}
+
+fn is_sized_primitive(type_name: &str) -> bool {
+    [
+        "u8",
+        "u16",
+        "u32",
+        "u64",
+        "u128",
+        "usize",
+        "i8",
+        "i16",
+        "i32",
+        "i64",
+        "i128",
+        "isize",
+        "Word",
+        "RawInstruction",
+    ]
+    .contains(&type_name)
+}
+
+#[derive(Debug)]
+enum TypeSize {
+    /// The size of the type is known at parse time.
+    Constant(usize),
+    /// The size of the type is known at compile time, and
+    /// the following token stream computes to it.
+    Computed(TokenStream2),
+}
+
+impl TypeSize {
+    pub fn from_expr(expr: &syn::Expr) -> Self {
+        match expr {
+            syn::Expr::Lit(lit) => match lit.lit {
+                syn::Lit::Int(ref int) => {
+                    if let Ok(value) = int.base10_parse::<usize>() {
+                        return Self::Constant(value)
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        Self::Computed(quote! {
+            #expr
+        })
+    }
+}
+
+impl quote::ToTokens for TypeSize {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        match self {
+            Self::Constant(value) => {
+                tokens.extend(quote! {
+                    #value
+                });
+            }
+            Self::Computed(expr) => {
+                tokens.extend(expr.clone());
+            }
+        }
+    }
+}
+
+// Used to sort constant first so that they can be folded left-to-right
+impl PartialEq for TypeSize {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Constant(a), Self::Constant(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+// Used to sort constant first so that they can be folded left-to-right
+impl PartialOrd for TypeSize {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(match (self, other) {
+            (Self::Constant(a), Self::Constant(b)) => a.cmp(b),
+            (Self::Computed(_), Self::Computed(_)) => Ordering::Equal,
+            (Self::Constant(_), Self::Computed(_)) => Ordering::Less,
+            (Self::Computed(_), Self::Constant(_)) => Ordering::Greater,
+        })
+    }
+}
+
+impl core::ops::Add for TypeSize {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b),
+            (Self::Computed(a), Self::Computed(b)) => Self::Computed(quote! {
+                #a + #b
+            }),
+            (Self::Constant(a), Self::Computed(b)) => Self::Computed(quote! {
+                #a + #b
+            }),
+            (Self::Computed(a), Self::Constant(b)) => Self::Computed(quote! {
+                #a + #b
+            }),
+        }
+    }
+}
+
+impl core::ops::Mul for TypeSize {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a * b),
+            (Self::Computed(a), Self::Computed(b)) => Self::Computed(quote! {
+                #a * #b
+            }),
+            (Self::Constant(a), Self::Computed(b)) => Self::Computed(quote! {
+                #a * #b
+            }),
+            (Self::Computed(a), Self::Constant(b)) => Self::Computed(quote! {
+                #a * #b
+            }),
+        }
+    }
+}
+
+/// Determines serialized size of a type using `mem::size_of` if possible.
+fn try_builtin_sized(ty: &syn::Type) -> Option<TypeSize> {
+    match ty {
+        syn::Type::Group(group) => try_builtin_sized(&group.elem),
+        syn::Type::Array(arr) => {
+            let elem_size = try_builtin_sized(arr.elem.as_ref())?;
+            let elem_count = TypeSize::from_expr(&arr.len);
+            Some(elem_size * elem_count)
+        }
+        syn::Type::Tuple(tup) => tup
+            .elems
+            .iter()
+            .map(try_builtin_sized)
+            .fold(Some(TypeSize::Constant(0)), |acc, item| Some(acc? + item?)),
+        syn::Type::Path(p) => {
+            if p.qself.is_some() {
+                return None
+            }
+
+            if !is_sized_primitive(p.path.get_ident()?.to_string().as_str()) {
+                return None
+            }
+
+            Some(TypeSize::Computed(quote! {
+                ::core::mem::size_of::<#p>()
+            }))
+        }
+        _ => {
+            panic!("Unsized type {:?}", ty);
+        }
+    }
+}
+
+fn constsize_fields(fields: &syn::Fields) -> (TokenStream2, TokenStream2) {
+    let mut sizes: Vec<_> = fields
+        .iter()
+        .filter_map(|field| {
+            let type_ = &field.ty;
+            if should_skip_field(&field.attrs) {
+                None
+            } else if let Some(size_code) = try_builtin_sized(type_) {
+                Some(size_code)
+            } else {
+                Some(TypeSize::Computed(quote! {
+                    <#type_>::SIZE_STATIC
+                }))
+            }
+        })
+        .collect();
+    sizes.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let static_size: TokenStream2 = sizes.into_iter().fold(quote! { 0 }, |acc, item| {
+        quote! {
+            #acc + #item
+        }
+    });
+
+    let no_dynamic_size: TokenStream2 = fields
+        .iter()
+        .filter_map(|field| {
+            let type_ = &field.ty;
+            if should_skip_field(&field.attrs) || try_builtin_sized(type_).is_some() {
+                return None
+            }
+            Some(quote! {
+                <#type_>::SIZE_NO_DYNAMIC
+            })
+        })
+        .fold(quote! { true }, |acc, item| {
+            quote! {
+                #acc && #item
+            }
+        });
+
+    (static_size, no_dynamic_size)
 }
 
 /// Derives `Serialize` trait for the given `struct` or `enum`.
 pub fn serialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
-    let x = match s.ast().data {
+
+    let serialize = match s.ast().data {
         syn::Data::Struct(_) => serialize_struct(&s),
         syn::Data::Enum(_) => serialize_enum(&s),
         _ => panic!("Can't derive `Serialize` for `union`s"),
     };
 
-    // crate::utils::write_and_fmt(format!("tts/{}.rs", s.ast().ident), quote::quote!(#x))
-    //     .expect("unable to save or format");
+    // crate::utils::write_and_fmt(
+    //     format!("tts/{}.rs", s.ast().ident),
+    //     quote::quote!(#serialize),
+    // )
+    // .expect("unable to save or format");
 
-    x
+    quote! { #serialize }
 }

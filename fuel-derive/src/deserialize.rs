@@ -36,7 +36,7 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
         }
     });
 
-    let remove_prefix = if let Some(_) = TypedefAttrs::parse(s).0.get("prefix") {
+    let remove_prefix = if TypedefAttrs::parse(s).0.contains_key("prefix") {
         quote! {
             <u64 as fuel_types::canonical::Deserialize>::decode_static(buffer)?;
         }

@@ -310,16 +310,12 @@ enum TypeSize {
 
 impl TypeSize {
     pub fn from_expr(expr: &syn::Expr) -> Self {
-        match expr {
-            syn::Expr::Lit(lit) => match lit.lit {
-                syn::Lit::Int(ref int) => {
-                    if let Ok(value) = int.base10_parse::<usize>() {
-                        return Self::Constant(value)
-                    }
+        if let syn::Expr::Lit(lit) = expr {
+            if let syn::Lit::Int(ref int) = lit.lit {
+                if let Ok(value) = int.base10_parse::<usize>() {
+                    return Self::Constant(value)
                 }
-                _ => {}
-            },
-            _ => {}
+            }
         }
 
         Self::Computed(quote! {

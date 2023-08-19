@@ -2,10 +2,7 @@ use crate::TxId;
 
 use fuel_types::{
     bytes::SizedBytes,
-    canonical::{
-        Serialize,
-        SerializedSize,
-    },
+    canonical::SerializedSize,
     Bytes32,
 };
 
@@ -38,10 +35,7 @@ pub struct UtxoId {
 }
 
 impl UtxoId {
-    pub const LEN: usize = {
-        assert!(Self::SIZE_NO_DYNAMIC);
-        Self::SIZE_STATIC
-    };
+    pub const LEN: usize = Self::SIZE_STATIC;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {

@@ -67,12 +67,6 @@ pub trait SerializedSize {
     const SIZE_STATIC: usize;
 }
 
-/// Enum variants have fixed sizes, but the size of the whole enum can vary.
-pub trait SerializedSizeEnum {
-    /// Size of static portion of the type in bytes.
-    const SIZE_STATIC_TODO: usize;
-}
-
 /// Allows serialize the type into the `Output`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
 pub trait Serialize {

@@ -1,8 +1,7 @@
 use crate::Word;
 
-pub use const_layout::*;
-
-mod const_layout;
+/// Size of a word, in bytes
+pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
 /// Define the amount of bytes for a serialization implementation.
 pub trait SizedBytes {

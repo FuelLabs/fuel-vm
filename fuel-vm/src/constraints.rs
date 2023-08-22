@@ -64,7 +64,7 @@ impl<T> CheckedMemValue<T> {
     /// Inspect a value of type `T` from memory.
     pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
     where
-        T: Deserialize + Default,
+        T: Deserialize,
     {
         T::from_bytes(&memory[self.0.usizes()])
             .expect("Inspect failed; invalid value for type")

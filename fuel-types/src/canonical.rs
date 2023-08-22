@@ -5,7 +5,9 @@
 
 #![allow(unsafe_code)]
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use alloc::vec::Vec;
+
 use core::mem::MaybeUninit;
 pub use fuel_derive::{
     Deserialize,
@@ -83,6 +85,7 @@ pub trait Serialize {
     }
 
     /// Encodes `Self` into bytes vector.
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn to_bytes(&self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(self.size());
         self.encode(&mut vec).expect("Unable to encode self");
@@ -263,10 +266,12 @@ impl Deserialize for () {
 /// To protect against malicious large inputs, vectors size is limited on decoding.
 pub const VEC_DECODE_LIMIT: usize = 100 * (1 << 20); // 100 MiB
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl<T: Serialize> SerializedSize for Vec<T> {
     const SIZE_STATIC: usize = 8;
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl<T: Serialize> Serialize for Vec<T> {
     const SIZE_NO_DYNAMIC: bool = false;
 
@@ -301,6 +306,7 @@ impl<T: Serialize> Serialize for Vec<T> {
     }
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl<T: Deserialize> Deserialize for Vec<T> {
     // Decode only the capacity of the vector. Elements will be decoded in the
     // `decode_dynamic` method. The capacity is needed for iteration there.
@@ -416,6 +422,7 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
     }
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl Output for Vec<u8> {
     fn write(&mut self, bytes: &[u8]) -> Result<(), Error> {
         self.extend_from_slice(bytes);

@@ -13,7 +13,6 @@ description = "Atomic types of the FuelVM."
 [dependencies]
 fuel-derive = { path = "../fuel-derive" }
 hex = { version = "0.4", default-features = false, optional = true }
-itertools = { version = "0.10", default-features = false }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 wasm-bindgen = { version = "0.2.87", optional = true }

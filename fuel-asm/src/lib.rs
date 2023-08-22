@@ -6,7 +6,7 @@
 #![deny(clippy::string_slice)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-// #![deny(unused_crate_dependencies)]
+#![deny(unused_crate_dependencies)]
 
 #[cfg(feature = "wee_alloc")]
 use wee_alloc as _;

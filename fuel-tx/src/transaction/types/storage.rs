@@ -1,5 +1,9 @@
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSize,
+    },
     Bytes32,
     Bytes64,
 };
@@ -17,7 +21,7 @@ use core::cmp::Ordering;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
     value: Bytes32,
@@ -52,14 +56,10 @@ impl From<&StorageSlot> for Bytes64 {
 
 impl From<&Bytes64> for StorageSlot {
     fn from(b: &Bytes64) -> Self {
-        let key = <Bytes32 as fuel_types::canonical::Deserialize>::from_bytes(
-            &b[..Bytes32::LEN],
-        )
-        .expect("Infallible deserialization");
-        let value = <Bytes32 as fuel_types::canonical::Deserialize>::from_bytes(
-            &b[Bytes32::LEN..],
-        )
-        .expect("Infallible deserialization");
+        let key = <Bytes32 as Deserialize>::from_bytes(&b[..Bytes32::LEN])
+            .expect("Infallible deserialization");
+        let value = <Bytes32 as Deserialize>::from_bytes(&b[Bytes32::LEN..])
+            .expect("Infallible deserialization");
         Self::new(key, value)
     }
 }

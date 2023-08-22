@@ -3,7 +3,6 @@ use fuel_types::{
     BlockHeight,
 };
 
-#[cfg(test)]
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
@@ -26,7 +25,7 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct TxPointer {
     /// Block height
     block_height: BlockHeight,

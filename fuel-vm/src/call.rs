@@ -7,6 +7,7 @@ use fuel_asm::{
 use fuel_types::{
     canonical::{
         Deserialize,
+        Serialize,
         SerializedSize,
     },
     AssetId,
@@ -21,7 +22,7 @@ use crate::consts::{
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Deserialize, Serialize)]
 /// Call structure representation, composed of a called contract `to` and two
 /// word arguments.
 ///
@@ -220,7 +221,6 @@ impl TryFrom<&[u8]> for Call {
 #[cfg(test)]
 impl From<Call> for Vec<u8> {
     fn from(call: Call) -> Self {
-        use fuel_types::canonical::Serialize;
         call.to_bytes()
     }
 }
@@ -228,7 +228,6 @@ impl From<Call> for Vec<u8> {
 #[cfg(test)]
 impl From<CallFrame> for Vec<u8> {
     fn from(call: CallFrame) -> Self {
-        use fuel_types::canonical::Serialize;
         call.to_bytes()
     }
 }

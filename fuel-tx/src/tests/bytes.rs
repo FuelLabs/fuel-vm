@@ -10,7 +10,10 @@ use fuel_tx_test_helpers::{
 };
 use fuel_types::{
     bytes,
-    canonical::Serialize,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     Immediate24,
 };
 use rand::{
@@ -31,8 +34,8 @@ use strum::IntoEnumIterator;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
-    T: fuel_types::canonical::Serialize
-        + fuel_types::canonical::Deserialize
+    T: Serialize
+        + Deserialize
         + fmt::Debug
         + Clone
         + PartialEq

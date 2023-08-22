@@ -1,6 +1,10 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSize,
+    },
     Address,
     AssetId,
     Bytes32,
@@ -18,7 +22,7 @@ pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Deserialize, Serialize)]
 pub enum Output {
     Coin {
         to: Address,

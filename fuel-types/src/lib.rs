@@ -11,6 +11,7 @@ extern crate self as fuel_types;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 extern crate core;
+
 pub mod canonical;
 
 mod array_types;

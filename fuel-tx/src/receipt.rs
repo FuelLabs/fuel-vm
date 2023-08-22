@@ -4,7 +4,11 @@ use derivative::Derivative;
 use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSize,
+    },
     fmt_option_truncated_hex,
     Address,
     AssetId,
@@ -23,7 +27,7 @@ pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Deserialize, Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {

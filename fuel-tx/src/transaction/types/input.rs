@@ -186,10 +186,7 @@ fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "alloc", feature = "std"),
-    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
-)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(discriminant = InputRepr)]
 #[canonical(serialize_with = input_serialize_helper)]
 #[canonical(deserialize_with = input_deserialize_helper)]

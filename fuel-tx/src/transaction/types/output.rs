@@ -18,10 +18,7 @@ pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "alloc", feature = "std"),
-    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
-)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub enum Output {
     Coin {
         to: Address,

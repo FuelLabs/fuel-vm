@@ -5,18 +5,6 @@
 
 #![allow(unsafe_code)]
 
-use crate::{
-    Address,
-    AssetId,
-    Bytes20,
-    Bytes32,
-    Bytes4,
-    Bytes8,
-    ContractId,
-    MessageId,
-    Nonce,
-    Salt,
-};
 use alloc::vec::Vec;
 use core::mem::MaybeUninit;
 pub use fuel_derive::{
@@ -191,51 +179,6 @@ pub const fn aligned_size(len: usize) -> usize {
     len + alignment_bytes(len)
 }
 
-macro_rules! impl_for_fuel_types {
-    ($t:ident) => {
-        impl SerializedSize for $t {
-            // Fuel-types are transparent single-field structs, so the size matches
-            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
-        }
-
-        impl Serialize for $t {
-            const SIZE_NO_DYNAMIC: bool = true;
-
-            #[inline(always)]
-            fn encode_static<O: Output + ?Sized>(
-                &self,
-                buffer: &mut O,
-            ) -> Result<(), Error> {
-                for _ in 0..alignment_bytes(self.as_ref().len()) {
-                    buffer.push_byte(0)?;
-                }
-                buffer.write(self.as_ref())?;
-                Ok(())
-            }
-        }
-
-        impl Deserialize for $t {
-            fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-                let mut asset = $t::zeroed();
-                buffer.skip(alignment_bytes(asset.as_ref().len()))?;
-                buffer.read(asset.as_mut())?;
-                Ok(asset)
-            }
-        }
-    };
-}
-
-impl_for_fuel_types!(Address);
-impl_for_fuel_types!(AssetId);
-impl_for_fuel_types!(ContractId);
-impl_for_fuel_types!(Bytes4);
-impl_for_fuel_types!(Bytes8);
-impl_for_fuel_types!(Bytes20);
-impl_for_fuel_types!(Bytes32);
-impl_for_fuel_types!(MessageId);
-impl_for_fuel_types!(Salt);
-impl_for_fuel_types!(Nonce);
-
 macro_rules! impl_for_primitives {
     ($t:ident, $unpadded:literal) => {
         impl SerializedSize for $t {
@@ -394,7 +337,11 @@ impl<T: Deserialize> Deserialize for Vec<T> {
 }
 
 impl<const N: usize, T: Serialize> SerializedSize for [T; N] {
-    const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<T>()) * N;
+    const SIZE_STATIC: usize = if T::UNALIGNED_BYTES {
+        aligned_size(N)
+    } else {
+        aligned_size(::core::mem::size_of::<T>()) * N
+    };
 }
 
 impl<const N: usize, T: Serialize> Serialize for [T; N] {
@@ -404,7 +351,7 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         // Bytes - [u8; N] it a separate case without padding for each element.
         // It should padded at the end if is not % ALIGN
-        if Self::UNALIGNED_BYTES {
+        if T::UNALIGNED_BYTES {
             // SAFETY: `Type::U8` implemented only for `u8`.
             let bytes = unsafe { ::core::mem::transmute::<&[T; N], &[u8; N]>(self) };
             buffer.write(bytes.as_slice())?;
@@ -430,7 +377,7 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
 
 impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
-        if Self::UNALIGNED_BYTES {
+        if T::UNALIGNED_BYTES {
             let mut bytes: [u8; N] = [0; N];
             buffer.read(bytes.as_mut())?;
             buffer.skip(alignment_bytes(N))?;
@@ -553,11 +500,12 @@ mod tests {
 
         let mut vec = Vec::new();
         t.encode_static(&mut vec).expect("Encode failed");
+        println!("{vec:?}");
         assert_eq!(vec.len(), T::SIZE_STATIC);
     }
 
     #[test]
-    fn xxx_yyy() {
+    fn test_canonical_encode_decode() {
         validate(());
         validate(123u8);
         validate(u8::MAX);
@@ -592,19 +540,35 @@ mod tests {
         }
 
         validate(TestStruct1 { a: 123, b: 456 });
+        assert_eq!(TestStruct1::SIZE_STATIC, 16);
 
         #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct TestStruct2 {
             a: u8,
             v: Vec<u8>,
             b: u16,
+            arr0: [u8; 0],
+            arr1: [u8; 2],
+            arr2: [u16; 3],
+            arr3: [u64; 4],
         }
 
         validate(TestStruct2 {
             a: 123,
             v: vec![1, 2, 3],
             b: 456,
+            arr0: [],
+            arr1: [1, 2],
+            arr2: [1, 2, u16::MAX],
+            arr3: [0, 3, 1111, u64::MAX],
         });
+
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[repr(transparent)]
+        struct TestStruct3([u8; 64]);
+
+        validate(TestStruct3([1; 64]));
+        assert_eq!(TestStruct3::SIZE_STATIC, 64);
 
         #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         #[repr(u8)]

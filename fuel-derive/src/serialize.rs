@@ -399,18 +399,21 @@ impl core::ops::Mul for TypeSize {
 }
 
 /// Determines serialized size of a type using `mem::size_of` if possible.
-fn try_builtin_sized(ty: &syn::Type) -> Option<TypeSize> {
+fn try_builtin_sized(ty: &syn::Type, align: bool) -> Option<TypeSize> {
     match ty {
-        syn::Type::Group(group) => try_builtin_sized(&group.elem),
+        syn::Type::Group(group) => try_builtin_sized(&group.elem, align),
         syn::Type::Array(arr) => {
-            let elem_size = try_builtin_sized(arr.elem.as_ref())?;
+            let elem_size = try_builtin_sized(arr.elem.as_ref(), false)?;
             let elem_count = TypeSize::from_expr(&arr.len);
-            Some(elem_size * elem_count)
+            let unpadded_size = elem_size * elem_count;
+            Some(TypeSize::Computed(
+                quote! { fuel_types::canonical::aligned_size(#unpadded_size) },
+            ))
         }
         syn::Type::Tuple(tup) => tup
             .elems
             .iter()
-            .map(try_builtin_sized)
+            .map(|type_| try_builtin_sized(type_, true))
             .fold(Some(TypeSize::Constant(0)), |acc, item| Some(acc? + item?)),
         syn::Type::Path(p) => {
             if p.qself.is_some() {
@@ -421,8 +424,16 @@ fn try_builtin_sized(ty: &syn::Type) -> Option<TypeSize> {
                 return None
             }
 
-            Some(TypeSize::Computed(quote! {
-                fuel_types::canonical::aligned_size(::core::mem::size_of::<#p>())
+            Some(TypeSize::Computed(if align {
+                quote! { <#p as fuel_types::canonical::SerializedSize>::SIZE_STATIC }
+            } else {
+                quote! {
+                    if <#p as fuel_types::canonical::Serialize>::UNALIGNED_BYTES {
+                        1
+                    } else {
+                        <#p as fuel_types::canonical::SerializedSize>::SIZE_STATIC
+                    }
+                }
             }))
         }
         _ => {
@@ -438,12 +449,10 @@ fn constsize_fields(fields: &syn::Fields) -> (TokenStream2, TokenStream2) {
             let type_ = &field.ty;
             if should_skip_field(&field.attrs) {
                 None
-            } else if let Some(size_code) = try_builtin_sized(type_) {
-                Some(size_code)
+            } else if let Some(size_code) = try_builtin_sized(type_, true) {
+                Some(TypeSize::Computed(quote! { #size_code }))
             } else {
-                Some(TypeSize::Computed(quote! {
-                    <#type_>::SIZE_STATIC
-                }))
+                Some(TypeSize::Computed(quote! { <#type_>::SIZE_STATIC }))
             }
         })
         .collect();
@@ -458,7 +467,9 @@ fn constsize_fields(fields: &syn::Fields) -> (TokenStream2, TokenStream2) {
         .iter()
         .filter_map(|field| {
             let type_ = &field.ty;
-            if should_skip_field(&field.attrs) || try_builtin_sized(type_).is_some() {
+            if should_skip_field(&field.attrs)
+                || try_builtin_sized(type_, false).is_some()
+            {
                 return None
             }
             Some(quote! {

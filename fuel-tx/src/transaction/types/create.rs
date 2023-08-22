@@ -112,10 +112,7 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "alloc", feature = "std"),
-    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
-)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {

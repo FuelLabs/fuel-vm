@@ -17,10 +17,7 @@ use core::cmp::Ordering;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "alloc", feature = "std"),
-    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
-)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
     value: Bytes32,

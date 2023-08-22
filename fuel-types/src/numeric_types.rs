@@ -34,9 +34,8 @@ macro_rules! key {
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[cfg_attr(
-            any(feature = "alloc", feature = "std"),
-            derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)
+        #[derive(
+            fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
         pub struct $i($t);
 

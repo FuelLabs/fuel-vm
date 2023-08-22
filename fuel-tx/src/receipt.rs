@@ -23,10 +23,7 @@ pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "alloc", feature = "std"),
-    derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)
-)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {

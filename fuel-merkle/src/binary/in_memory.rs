@@ -9,7 +9,10 @@ use crate::{
         StorageMap,
     },
     storage::Mappable,
+    MerkleTreeError,
 };
+use fuel_storage::StorageInspect;
+use std::convert::Infallible;
 
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
@@ -25,7 +28,7 @@ impl Mappable for NodesTable {
 }
 
 type Storage = StorageMap<NodesTable>;
-type BinaryMerkleTree = binary::MerkleTree<NodesTable, Storage>;
+type BinaryMerkleTree = binary::MerkleTree<NodesTable, Storage, Infallible>;
 
 #[derive(Debug, Clone)]
 pub struct MerkleTree {
@@ -43,7 +46,7 @@ impl MerkleTree {
         let _ = self.tree.push(data);
     }
 
-    pub fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> Result<Bytes32, MerkleTreeError<Infallible>> {
         self.tree.root()
     }
 
@@ -76,7 +79,7 @@ mod test {
     fn root_returns_the_empty_root_for_0_leaves() {
         let tree = MerkleTree::new();
 
-        let root = tree.root();
+        let root = tree.root().unwrap();
         assert_eq!(root, empty_sum().clone());
     }
 
@@ -91,7 +94,7 @@ mod test {
 
         let leaf_0 = leaf_sum(data[0]);
 
-        let root = tree.root();
+        let root = tree.root().unwrap();
         assert_eq!(root, leaf_0);
     }
 
@@ -134,7 +137,7 @@ mod test {
         let node_11 = node_sum(&node_9, &leaf_6);
         let node_7 = node_sum(&node_3, &node_11);
 
-        let root = tree.root();
+        let root = tree.root().unwrap();
         assert_eq!(root, node_7);
     }
 

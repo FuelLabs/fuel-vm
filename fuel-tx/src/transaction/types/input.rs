@@ -46,6 +46,7 @@ pub mod message;
 mod repr;
 pub mod sizes;
 
+use crate::error::TransactionError;
 pub use repr::InputRepr;
 
 #[cfg(all(test, feature = "std"))]
@@ -715,13 +716,16 @@ impl Input {
         compute_message_id(sender, recipient, nonce, amount, data)
     }
 
-    pub fn predicate_owner<P>(predicate: P, chain_id: &ChainId) -> Address
+    pub fn predicate_owner<P>(
+        predicate: P,
+        chain_id: &ChainId,
+    ) -> Result<Address, TransactionError>
     where
         P: AsRef<[u8]>,
     {
         use crate::Contract;
 
-        let root = Contract::root_from_code(predicate);
+        let root = Contract::root_from_code(predicate)?;
 
         let mut hasher = Hasher::default();
 
@@ -729,7 +733,7 @@ impl Input {
         hasher.input(chain_id.to_be_bytes());
         hasher.input(root);
 
-        (*hasher.digest()).into()
+        Ok((*hasher.digest()).into())
     }
 
     #[cfg(feature = "std")]
@@ -737,11 +741,11 @@ impl Input {
         owner: &Address,
         predicate: P,
         chain_id: &ChainId,
-    ) -> bool
+    ) -> Result<bool, TransactionError>
     where
         P: AsRef<[u8]>,
     {
-        owner == &Self::predicate_owner(predicate, chain_id)
+        Ok(owner == &Self::predicate_owner(predicate, chain_id)?)
     }
 
     /// Prepare the output for VM predicate execution

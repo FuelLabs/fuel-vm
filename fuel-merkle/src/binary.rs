@@ -11,10 +11,10 @@ pub(crate) use hash::{
 };
 pub(crate) use node::Node;
 
-pub use merkle_tree::{
-    MerkleTree,
-    MerkleTreeError,
-};
+pub use merkle_tree::MerkleTree;
+
+pub use crate::error::MerkleTreeError;
+
 pub use primitive::Primitive;
 pub mod in_memory;
 pub use verify::verify;

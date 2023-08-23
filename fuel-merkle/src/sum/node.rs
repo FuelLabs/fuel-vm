@@ -4,6 +4,7 @@ use crate::{
         leaf_sum,
         node_sum,
     },
+    MerkleTreeError,
 };
 use core::fmt;
 
@@ -27,20 +28,26 @@ impl Node {
         }
     }
 
-    pub fn create_node(
+    pub fn create_node<E>(
         height: u32,
         lhs_fee: u64,
         lhs_key: &Bytes32,
         rhs_fee: u64,
         rhs_key: &Bytes32,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, MerkleTreeError<E>> {
+        let fee = lhs_fee
+            .checked_add(rhs_fee)
+            .ok_or(MerkleTreeError::OverFlow(
+                "Cannot add lhs_fee to rhs_fee".to_string(),
+            ))?;
+        let node = Self {
             height,
             hash: node_sum(lhs_fee, lhs_key, rhs_fee, rhs_key),
-            fee: lhs_fee + rhs_fee,
+            fee,
             left_child_key: Some(*lhs_key),
             right_child_key: Some(*rhs_key),
-        }
+        };
+        Ok(node)
     }
 
     pub fn height(&self) -> u32 {

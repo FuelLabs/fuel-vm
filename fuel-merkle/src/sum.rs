@@ -7,8 +7,8 @@ pub(crate) use hash::{
     leaf_sum,
     node_sum,
 };
-pub use merkle_tree::{
-    MerkleTree,
-    MerkleTreeError,
-};
+pub use merkle_tree::MerkleTree;
+
+pub use crate::error::MerkleTreeError;
+
 pub(crate) use node::Node;

@@ -23,6 +23,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 strum = "0.24"
 strum_macros = "0.24"
+thiserror = "1.0.47"
 
 [dev-dependencies]
 bincode = { workspace = true }

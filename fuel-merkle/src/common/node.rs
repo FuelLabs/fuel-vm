@@ -3,6 +3,7 @@ use crate::common::{
     Bytes8,
 };
 
+use crate::MerkleTreeError;
 use alloc::string::String;
 use core::{
     fmt,
@@ -18,8 +19,10 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    fn key_size_in_bits() -> usize {
-        mem::size_of::<Self::Key>() * 8
+    fn key_size_in_bits<E>() -> Result<usize, MerkleTreeError<E>> {
+        mem::size_of::<Self::Key>().checked_mul(8).ok_or_else(|| {
+            MerkleTreeError::OverFlow("Cannot convert key size to bits".to_string())
+        })
     }
 
     fn height(&self) -> u32;

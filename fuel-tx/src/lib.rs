@@ -128,3 +128,14 @@ impl ContractIdExt for ContractId {
         )
     }
 }
+
+pub mod error {
+    use crate::contract::ContractError;
+    use thiserror::Error;
+
+    #[derive(Error, Debug)]
+    pub enum TransactionError {
+        #[error("contract error: {0}")]
+        ContractError(#[from] ContractError),
+    }
+}

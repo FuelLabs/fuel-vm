@@ -13,9 +13,11 @@ pub(crate) mod branch;
 
 pub use merkle_tree::{
     MerkleTree,
-    MerkleTreeError,
     MerkleTreeKey,
 };
+
+pub use crate::error::MerkleTreeError;
+
 pub use primitive::Primitive;
 pub mod in_memory;
 

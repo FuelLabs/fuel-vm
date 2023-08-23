@@ -12,6 +12,7 @@ use fuel_merkle::{
         in_memory::MerkleTree as SparseMerkleTree,
         MerkleTreeKey,
     },
+    MerkleTreeError,
 };
 use fuel_types::{
     fmt_truncated_hex,
@@ -25,6 +26,8 @@ use core::{
     iter,
     ops::Deref,
 };
+use std::convert::Infallible;
+use thiserror::Error;
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided
 /// into chunks of this size and pushed to the Merkle tree.
@@ -50,6 +53,19 @@ pub struct Contract(
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>,
 );
 
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ContractError {
+    #[error("Merkle tree error: {0}")]
+    MerkleTreeError(String),
+}
+
+impl From<MerkleTreeError<Infallible>> for ContractError {
+    fn from(err: MerkleTreeError<Infallible>) -> Self {
+        ContractError::MerkleTreeError(err.to_string())
+    }
+}
+
 impl Contract {
     /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state
     /// root.
@@ -59,14 +75,14 @@ impl Contract {
     ]);
 
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
-    pub fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> Result<Bytes32, ContractError> {
         Self::root_from_code(self)
     }
 
     /// Calculate the code root from a contract.
     ///
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md>
-    pub fn root_from_code<B>(bytes: B) -> Bytes32
+    pub fn root_from_code<B>(bytes: B) -> Result<Bytes32, ContractError>
     where
         B: AsRef<[u8]>,
     {
@@ -86,7 +102,8 @@ impl Contract {
             }
         });
 
-        tree.root().into()
+        let root = tree.root()?;
+        Ok(root.into())
     }
 
     /// Calculate the root of the initial storage slots for this contract

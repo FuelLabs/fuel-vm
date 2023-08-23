@@ -73,7 +73,7 @@ fn test_roots() {
             for datum in sample_data.iter() {
                 test_tree.push(datum).unwrap();
             }
-            test_tree.root()
+            test_tree.root().unwrap()
         };
 
         assert_eq!(root, expected_root);
@@ -138,13 +138,13 @@ fn test_load() {
             for datum in sample_data.iter() {
                 reference_tree.push(datum).unwrap();
             }
-            reference_tree.root()
+            reference_tree.root().unwrap()
         };
 
         let root = {
             let leaves_count = sample_data.len() as u64;
             let test_tree = MerkleTree::load(&mut storage, leaves_count).unwrap();
-            test_tree.root()
+            test_tree.root().unwrap()
         };
 
         assert_eq!(root, expected_root);

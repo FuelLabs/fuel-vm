@@ -1,3 +1,16 @@
+struct MaximumN<const N: usize, const MAX: usize>;
+
+impl<const N: usize, const MAX: usize> MaximumN<N, MAX> {
+    const V: () = assert!(N <= MAX, "N must be lesser than or equal to MAX");
+}
+
+// Compile-time assertion that N is less than or equal to MAX
+macro_rules! assert_maximum_n {
+    ($N:ident, $MAX:literal) => {
+        let _ = MaximumN::<$N, $MAX>::V;
+    };
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Bit {
     _0 = 0,
@@ -11,7 +24,7 @@ trait GetBit {
 impl GetBit for u8 {
     fn get_bit(&self, bit_index: usize) -> Option<Bit> {
         if bit_index < 8 {
-            let mask = 1 << (7 - bit_index);
+            let mask = 1 << (7usize.checked_sub(bit_index)?);
             let bit = self & mask;
             match bit {
                 0 => Some(Bit::_0),
@@ -38,7 +51,10 @@ impl<const N: usize> Msb for [u8; N] {
             .and_then(|byte| byte.get_bit(byte_bit_index))
     }
 
+    #[allow(clippy::arithmetic_side_effects)] // Constrained to never exceed u32::MAX / 8 so `count` will never overflow
     fn common_prefix_count(&self, other: &Self) -> usize {
+        // u32::MAX / 8 = 536870911
+        assert_maximum_n!(N, 536870911);
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using

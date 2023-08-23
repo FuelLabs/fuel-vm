@@ -9,6 +9,8 @@ use crate::{
     },
 };
 
+// Allow arithmetic side effects because `verify` is used for testing
+#[allow(clippy::arithmetic_side_effects)]
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
     data: &T,

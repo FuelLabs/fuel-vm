@@ -94,7 +94,7 @@ impl CreateMetadata {
         let salt = tx.salt();
         let storage_slots = tx.storage_slots();
         let contract = Contract::try_from(tx)?;
-        let contract_root = contract.root();
+        let contract_root = contract.root()?;
         let state_root = Contract::initial_state_root(storage_slots.iter());
         let contract_id = contract.id(salt, &contract_root, &state_root);
 

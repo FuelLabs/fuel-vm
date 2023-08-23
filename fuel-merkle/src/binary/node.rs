@@ -7,6 +7,7 @@ use crate::{
         Bytes32,
         Position,
     },
+    MerkleTreeError,
 };
 
 use core::fmt::Debug;
@@ -22,16 +23,19 @@ impl Node {
         Self { position, hash }
     }
 
-    pub fn create_leaf(index: u64, data: &[u8]) -> Self {
-        let position = Position::from_leaf_index(index);
+    pub fn create_leaf<E>(index: u64, data: &[u8]) -> Result<Self, MerkleTreeError<E>> {
+        let position = Position::from_leaf_index(index)?;
         let hash = leaf_sum(data);
-        Self { position, hash }
+        Ok(Self { position, hash })
     }
 
-    pub fn create_node(left_child: &Self, right_child: &Self) -> Self {
-        let position = left_child.position().parent();
+    pub fn create_node<E>(
+        left_child: &Self,
+        right_child: &Self,
+    ) -> Result<Self, MerkleTreeError<E>> {
+        let position = left_child.position().parent()?;
         let hash = node_sum(left_child.hash(), right_child.hash());
-        Self { position, hash }
+        Ok(Self { position, hash })
     }
 
     pub fn position(&self) -> Position {

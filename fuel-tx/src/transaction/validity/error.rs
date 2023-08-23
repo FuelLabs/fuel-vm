@@ -1,11 +1,17 @@
 use core::fmt;
 
-use crate::UtxoId;
+use crate::{
+    contract::ContractError,
+    Contract,
+    UtxoId,
+};
+use fuel_merkle::MerkleTreeError;
 use fuel_types::{
     AssetId,
     ContractId,
     MessageId,
 };
+use std::convert::Infallible;
 #[cfg(feature = "std")]
 use std::{
     error,
@@ -16,6 +22,7 @@ use std::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum CheckError {
+    ContractError(ContractError),
     /// Transaction doesn't have spendable input message or coin.
     NoSpendableInput,
     InputWitnessIndexBounds {
@@ -146,5 +153,11 @@ impl error::Error for CheckError {
 impl From<CheckError> for io::Error {
     fn from(v: CheckError) -> io::Error {
         io::Error::new(io::ErrorKind::Other, v)
+    }
+}
+
+impl From<ContractError> for CheckError {
+    fn from(value: ContractError) -> Self {
+        CheckError::ContractError(value)
     }
 }

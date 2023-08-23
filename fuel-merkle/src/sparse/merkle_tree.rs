@@ -1,7 +1,5 @@
 use crate::{
     common::{
-        error::DeserializeError,
-        node::ChildError,
         AsPathIterator,
         Bytes32,
     },
@@ -10,13 +8,13 @@ use crate::{
         primitive::Primitive,
         Node,
         StorageNode,
-        StorageNodeError,
     },
     storage::{
         Mappable,
         StorageInspect,
         StorageMutate,
     },
+    MerkleTreeError,
 };
 
 use crate::sparse::branch::{
@@ -30,30 +28,30 @@ use core::{
     marker::PhantomData,
 };
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum MerkleTreeError<StorageError> {
-    #[cfg_attr(
-        feature = "std",
-        error("cannot load node with key {}; the key is not found in storage", hex::encode(.0))
-    )]
-    LoadError(Bytes32),
-
-    #[cfg_attr(feature = "std", error(transparent))]
-    StorageError(StorageError),
-
-    #[cfg_attr(feature = "std", error(transparent))]
-    DeserializeError(DeserializeError),
-
-    #[cfg_attr(feature = "std", error(transparent))]
-    ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
-}
-
-impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
-    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
-        MerkleTreeError::StorageError(err)
-    }
-}
+// #[derive(Debug, Clone)]
+// #[cfg_attr(feature = "std", derive(thiserror::Error))]
+// pub enum MerkleTreeError<StorageError> {
+//     #[cfg_attr(
+//         feature = "std",
+//         error("cannot load node with key {}; the key is not found in storage",
+// hex::encode(.0))     )]
+//     LoadError(Bytes32),
+//
+//     #[cfg_attr(feature = "std", error(transparent))]
+//     StorageError(StorageError),
+//
+//     #[cfg_attr(feature = "std", error(transparent))]
+//     DeserializeError(DeserializeError),
+//
+//     #[cfg_attr(feature = "std", error(transparent))]
+//     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
+// }
+//
+// impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
+//     fn from(err: StorageError) -> MerkleTreeError<StorageError> {
+//         MerkleTreeError::StorageError(err)
+//     }
+// }
 
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
@@ -134,7 +132,9 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+        debug_assert!(
+            node.is_leaf() || node.height() == Node::max_height::<()>().unwrap() as u32
+        );
         self.root_node = node;
     }
 }
@@ -162,7 +162,7 @@ where
         } else {
             let primitive = storage
                 .get(root)?
-                .ok_or_else(|| MerkleTreeError::LoadError(*root))?
+                .ok_or_else(|| MerkleTreeError::LoadError32(*root))?
                 .into_owned();
             let tree = Self {
                 root_node: primitive
@@ -184,7 +184,7 @@ where
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(leaf_key)
+            .try_as_path_iter(leaf_key)?
             .map(|(path_node, side_node)| {
                 Ok((
                     path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
@@ -218,7 +218,7 @@ where
     pub fn from_set<B, I, D>(
         mut storage: StorageType,
         set: I,
-    ) -> Result<Self, StorageError>
+    ) -> Result<Self, MerkleTreeError<StorageError>>
     where
         I: Iterator<Item = (B, D)>,
         B: Into<Bytes32>,
@@ -338,10 +338,14 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height() as usize;
-        let depth = Node::max_height() - height;
+        let depth = Node::max_height()?.checked_sub(height).ok_or_else(|| {
+            MerkleTreeError::OverFlow(
+                "Cannot subtract height from max height".to_string(),
+            )
+        })?;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
         for placeholder in placeholders {
-            node = Node::create_node_on_path(&path, &node, &placeholder);
+            node = Node::create_node_on_path(&path, &node, &placeholder)?;
             storage.insert(node.hash(), &node.as_ref().into())?;
         }
 
@@ -418,7 +422,7 @@ where
         requested_leaf_node: &Node,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
 
@@ -449,7 +453,7 @@ where
             // Merge leaves
             if !actual_leaf_node.is_placeholder() {
                 current_node =
-                    Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                    Node::create_node_on_path(path, &current_node, actual_leaf_node)?;
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -457,12 +461,16 @@ where
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
             let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
-            let placeholders_count = stale_depth - side_nodes.len();
+            let placeholders_count = stale_depth.checked_sub(side_nodes.len()).ok_or(
+                MerkleTreeError::OverFlow(
+                    "Cannot subtract side nodes length from stale depth".to_string(),
+                ),
+            )?;
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
                 current_node =
-                    Node::create_node_on_path(path, &current_node, &placeholder);
+                    Node::create_node_on_path(path, &current_node, &placeholder)?;
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -470,7 +478,7 @@ where
 
         // Merge side nodes
         for side_node in side_nodes {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+            current_node = Node::create_node_on_path(path, &current_node, side_node)?;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -485,7 +493,7 @@ where
         requested_leaf_key: &Bytes32,
         path_nodes: &[Node],
         side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         for node in path_nodes {
             self.storage.remove(node.hash())?;
         }
@@ -527,7 +535,7 @@ where
                     side_nodes_iter.find(|side_node| !side_node.is_placeholder())
                 {
                     current_node =
-                        Node::create_node_on_path(path, &current_node, side_node);
+                        Node::create_node_on_path(path, &current_node, side_node)?;
                     self.storage
                         .insert(current_node.hash(), &current_node.as_ref().into())?;
                 }
@@ -536,7 +544,7 @@ where
 
         // Merge side nodes
         for side_node in side_nodes_iter {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+            current_node = Node::create_node_on_path(path, &current_node, side_node)?;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -1062,7 +1070,7 @@ mod test {
         let root = &sum(b"\xff\xff\xff\xff");
         let err = MerkleTree::load(&mut storage, root)
             .expect_err("Expected load() to return Error; got Ok");
-        assert!(matches!(err, MerkleTreeError::LoadError(_)));
+        assert!(matches!(err, MerkleTreeError::LoadError32(_)));
     }
 
     #[test]

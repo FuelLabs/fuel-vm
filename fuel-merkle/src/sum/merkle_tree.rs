@@ -7,6 +7,7 @@ use crate::{
         empty_sum,
         Node,
     },
+    MerkleTreeError,
 };
 
 use fuel_storage::{
@@ -16,12 +17,12 @@ use fuel_storage::{
 
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum MerkleTreeError {
-    #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
-    InvalidProofIndex(u64),
-}
+// #[derive(Debug, Clone)]
+// #[cfg_attr(feature = "std", derive(thiserror::Error))]
+// pub enum MerkleTreeError {
+//     #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
+//     InvalidProofIndex(u64),
+// }
 
 /// The Binary Merkle Sum Tree is an extension to the existing Binary
 /// [`MerkleTree`](crate::binary::MerkleTree). A node (leaf or internal node) in the tree
@@ -74,7 +75,7 @@ where
         }
     }
 
-    pub fn root(&mut self) -> Result<(u64, Bytes32), StorageError> {
+    pub fn root(&mut self) -> Result<(u64, Bytes32), MerkleTreeError<StorageError>> {
         let root_node = self.root_node()?;
         let root_pair = match root_node {
             None => Self::empty_root(),
@@ -84,7 +85,11 @@ where
         Ok(root_pair)
     }
 
-    pub fn push(&mut self, fee: u64, data: &[u8]) -> Result<(), StorageError> {
+    pub fn push(
+        &mut self,
+        fee: u64,
+        data: &[u8],
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         let node = Node::create_leaf(fee, data);
         self.storage.insert(node.hash(), &node)?;
 
@@ -99,7 +104,7 @@ where
     // PRIVATE
     //
 
-    fn root_node(&mut self) -> Result<Option<Node>, StorageError> {
+    fn root_node(&mut self) -> Result<Option<Node>, MerkleTreeError<StorageError>> {
         let root_node = match self.head {
             None => None,
             Some(ref initial) => {
@@ -116,7 +121,7 @@ where
         Ok(root_node)
     }
 
-    fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
+    fn join_all_subtrees(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         loop {
             let current = self.head.as_ref().unwrap();
             if !(current.next().is_some()
@@ -141,15 +146,21 @@ where
         &mut self,
         lhs: &mut Subtree<Node>,
         rhs: &mut Subtree<Node>,
-    ) -> Result<Subtree<Node>, StorageError> {
-        let height = lhs.node().height() + 1;
+    ) -> Result<Subtree<Node>, MerkleTreeError<StorageError>> {
+        let height =
+            lhs.node()
+                .height()
+                .checked_add(1)
+                .ok_or(MerkleTreeError::OverFlow(
+                    "Cannot increment height".to_string(),
+                ))?;
         let joined_node = Node::create_node(
             height,
             lhs.node().fee(),
             lhs.node().hash(),
             rhs.node().fee(),
             rhs.node().hash(),
-        );
+        )?;
         self.storage.insert(joined_node.hash(), &joined_node)?;
 
         let joined_head = Subtree::new(joined_node, lhs.take_next());

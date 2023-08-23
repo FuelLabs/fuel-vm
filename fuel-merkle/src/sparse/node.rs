@@ -24,6 +24,7 @@ use crate::{
         Mappable,
         StorageInspect,
     },
+    MerkleTreeError,
 };
 
 use core::{
@@ -58,7 +59,7 @@ impl Node {
         hash.finalize().try_into().unwrap()
     }
 
-    pub fn max_height() -> usize {
+    pub fn max_height<E>() -> Result<usize, MerkleTreeError<E>> {
         Node::key_size_in_bits()
     }
 
@@ -100,19 +101,23 @@ impl Node {
         }
     }
 
-    pub fn create_node_on_path(
+    pub fn create_node_on_path<StorageError>(
         path: &dyn Path,
         path_node: &Node,
         side_node: &Node,
-    ) -> Self {
-        if path_node.is_leaf() && side_node.is_leaf() {
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
+        let node = if path_node.is_leaf() && side_node.is_leaf() {
             // When joining two leaves, the joined node is found where the paths
             // of the two leaves diverge. The joined node may be a direct parent
             // of the leaves or an ancestor multiple generations above the
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
-            let parent_height = (Node::max_height() - parent_depth) as u32;
+            let parent_height = Node::max_height()?.checked_sub(parent_depth).ok_or(
+                MerkleTreeError::OverFlow(
+                    "Cannot subtract parent depth from max height".to_string(),
+                ),
+            )? as u32;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -126,8 +131,16 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
-            let parent_depth = Node::max_height() - parent_height as usize;
+            let parent_height = cmp::max(path_node.height(), side_node.height())
+                .checked_add(1)
+                .ok_or(MerkleTreeError::OverFlow(
+                    "Cannot increment height".to_string(),
+                ))?;
+            let parent_depth = Node::max_height()?
+                .checked_sub(parent_height as usize)
+                .ok_or(MerkleTreeError::OverFlow(
+                    "Cannot subtract parent height from max height".to_string(),
+                ))?;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -136,7 +149,8 @@ impl Node {
                     Node::create_node(side_node, path_node, parent_height)
                 }
             }
-        }
+        };
+        Ok(node)
     }
 
     pub fn create_placeholder() -> Self {

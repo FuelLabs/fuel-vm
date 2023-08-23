@@ -1,11 +1,14 @@
-use crate::common::{
-    node::{
-        ChildResult,
-        Node,
-        ParentNode,
+use crate::{
+    common::{
+        node::{
+            ChildResult,
+            Node,
+            ParentNode,
+        },
+        Bytes8,
+        PositionPath,
     },
-    Bytes8,
-    PositionPath,
+    MerkleTreeError,
 };
 use core::convert::Infallible;
 
@@ -109,31 +112,48 @@ impl Position {
 
     /// Construct a position from a leaf index. The in-order index corresponding
     /// to the leaf index will always equal the leaf index multiplied by 2.
-    pub fn from_leaf_index(index: u64) -> Self {
-        Position(index * 2)
+    pub fn from_leaf_index<E>(index: u64) -> Result<Self, MerkleTreeError<E>> {
+        index
+            .checked_mul(2)
+            .map(Position)
+            .ok_or(MerkleTreeError::OverFlow(
+                "Cannot multiply index by 2".to_string(),
+            ))
     }
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
-    pub fn sibling(self) -> Self {
-        let shift = 1 << (self.height() + 1);
-        let index = self.in_order_index() as i64 + shift * self.direction();
-        Self::from_in_order_index(index as u64)
+    pub fn sibling<E>(self) -> Result<Self, MerkleTreeError<E>> {
+        let shift: i64 = 1 << (self.height() + 1);
+        let direction = self.direction()?;
+        let index = shift
+            .checked_mul(direction)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))
+            .ok_or(MerkleTreeError::OverFlow(
+                "Cannot calculate sibling index".to_string(),
+            ))?;
+        Ok(Self::from_in_order_index(index as u64))
     }
 
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
-    pub fn parent(self) -> Self {
-        let shift = 1 << self.height();
-        let index = self.in_order_index() as i64 + shift * self.direction();
-        Self::from_in_order_index(index as u64)
+    pub fn parent<E>(self) -> Result<Self, MerkleTreeError<E>> {
+        let shift: i64 = 1 << self.height();
+        let direction = self.direction()?;
+        let index = shift
+            .checked_mul(direction)
+            .and_then(|x| x.checked_add(self.in_order_index() as i64))
+            .ok_or(MerkleTreeError::OverFlow(
+                "Cannot calculate sibling index".to_string(),
+            ))?;
+        Ok(Self::from_in_order_index(index as u64))
     }
 
     /// The uncle position.
     /// The uncle position is the sibling of the parent and has a height less 1
     /// relative to this position.
-    pub fn uncle(self) -> Self {
-        self.parent().sibling()
+    pub fn uncle<E>(self) -> Result<Self, MerkleTreeError<E>> {
+        self.parent()?.sibling()
     }
 
     /// The left child position.
@@ -238,17 +258,24 @@ impl Position {
     /// |           5 |        0101 |      1 |           1 |
     /// |           9 |        1001 |      1 |           0 |
     /// |          13 |        1101 |      1 |           1 |
-    fn orientation(self) -> u8 {
-        let shift = 1 << (self.height() + 1);
-        (self.in_order_index() & shift != 0) as u8
+    fn orientation<E>(self) -> Result<u8, MerkleTreeError<E>> {
+        let shift = 1
+            << (self
+                .height()
+                .checked_add(1)
+                .ok_or(MerkleTreeError::OverFlow(
+                    "Cannot increment height".to_string(),
+                ))?);
+        Ok((self.in_order_index() & shift != 0) as u8)
     }
 
     /// The "direction" to travel to reach the parent node.
     /// Returns +1 if the index is left of its parent.
     /// Returns -1 if the index is right of its parent.
-    fn direction(self) -> i64 {
-        let scale = self.orientation() as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
-        -scale
+    #[allow(clippy::arithmetic_side_effects)] // u8 is cast to i64, will never overflow
+    fn direction<E>(self) -> Result<i64, MerkleTreeError<E>> {
+        let scale = self.orientation()? as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
+        Ok(-scale)
     }
 }
 
@@ -297,10 +324,18 @@ mod test {
 
     #[test]
     fn test_from_leaf_index() {
-        assert_eq!(Position::from_leaf_index(0).in_order_index(), 0);
-        assert_eq!(Position::from_leaf_index(1).in_order_index(), 2);
         assert_eq!(
-            Position::from_leaf_index((!0u64) >> 1).in_order_index(),
+            Position::from_leaf_index::<()>(0).unwrap().in_order_index(),
+            0
+        );
+        assert_eq!(
+            Position::from_leaf_index::<()>(1).unwrap().in_order_index(),
+            2
+        );
+        assert_eq!(
+            Position::from_leaf_index::<()>((!0u64) >> 1)
+                .unwrap()
+                .in_order_index(),
             !0u64 - 1
         );
     }
@@ -309,14 +344,14 @@ mod test {
     fn test_equality_returns_true_for_two_equal_positions() {
         assert_eq!(Position(0), Position(0));
         assert_eq!(Position::from_in_order_index(0), Position(0));
-        assert_eq!(Position::from_leaf_index(1), Position(2));
+        assert_eq!(Position::from_leaf_index::<()>(1).unwrap(), Position(2));
     }
 
     #[test]
     fn test_equality_returns_false_for_two_unequal_positions() {
         assert_ne!(Position(0), Position(1));
         assert_ne!(Position::from_in_order_index(0), Position(1));
-        assert_ne!(Position::from_leaf_index(0), Position(2));
+        assert_ne!(Position::from_leaf_index::<()>(0).unwrap(), Position(2));
     }
 
     #[test]
@@ -336,39 +371,39 @@ mod test {
 
     #[test]
     fn test_sibling() {
-        assert_eq!(Position(0).sibling(), Position(2));
-        assert_eq!(Position(2).sibling(), Position(0));
+        assert_eq!(Position(0).sibling::<()>().unwrap(), Position(2));
+        assert_eq!(Position(2).sibling::<()>().unwrap(), Position(0));
 
-        assert_eq!(Position(1).sibling(), Position(5));
-        assert_eq!(Position(5).sibling(), Position(1));
+        assert_eq!(Position(1).sibling::<()>().unwrap(), Position(5));
+        assert_eq!(Position(5).sibling::<()>().unwrap(), Position(1));
 
-        assert_eq!(Position(3).sibling(), Position(11));
-        assert_eq!(Position(11).sibling(), Position(3));
+        assert_eq!(Position(3).sibling::<()>().unwrap(), Position(11));
+        assert_eq!(Position(11).sibling::<()>().unwrap(), Position(3));
     }
 
     #[test]
     fn test_parent() {
-        assert_eq!(Position(0).parent(), Position(1));
-        assert_eq!(Position(2).parent(), Position(1));
+        assert_eq!(Position(0).parent::<()>().unwrap(), Position(1));
+        assert_eq!(Position(2).parent::<()>().unwrap(), Position(1));
 
-        assert_eq!(Position(1).parent(), Position(3));
-        assert_eq!(Position(5).parent(), Position(3));
+        assert_eq!(Position(1).parent::<()>().unwrap(), Position(3));
+        assert_eq!(Position(5).parent::<()>().unwrap(), Position(3));
 
-        assert_eq!(Position(3).parent(), Position(7));
-        assert_eq!(Position(11).parent(), Position(7));
+        assert_eq!(Position(3).parent::<()>().unwrap(), Position(7));
+        assert_eq!(Position(11).parent::<()>().unwrap(), Position(7));
     }
 
     #[test]
     fn test_uncle() {
-        assert_eq!(Position(0).uncle(), Position(5));
-        assert_eq!(Position(2).uncle(), Position(5));
-        assert_eq!(Position(4).uncle(), Position(1));
-        assert_eq!(Position(6).uncle(), Position(1));
+        assert_eq!(Position(0).uncle::<()>().unwrap(), Position(5));
+        assert_eq!(Position(2).uncle::<()>().unwrap(), Position(5));
+        assert_eq!(Position(4).uncle::<()>().unwrap(), Position(1));
+        assert_eq!(Position(6).uncle::<()>().unwrap(), Position(1));
 
-        assert_eq!(Position(1).uncle(), Position(11));
-        assert_eq!(Position(5).uncle(), Position(11));
-        assert_eq!(Position(9).uncle(), Position(3));
-        assert_eq!(Position(13).uncle(), Position(3));
+        assert_eq!(Position(1).uncle::<()>().unwrap(), Position(11));
+        assert_eq!(Position(5).uncle::<()>().unwrap(), Position(11));
+        assert_eq!(Position(9).uncle::<()>().unwrap(), Position(3));
+        assert_eq!(Position(13).uncle::<()>().unwrap(), Position(3));
     }
 
     #[test]

@@ -41,7 +41,6 @@ pub enum InterpreterError {
     #[error("Unrecoverable error: {0}")]
     Io(#[from] io::Error),
 
-    #[cfg(feature = "debug")]
     #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
@@ -118,7 +117,6 @@ impl PartialEq for InterpreterError {
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Io(s), Self::Io(o)) => s.kind() == o.kind(),
 
-            #[cfg(feature = "debug")]
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
 
             _ => false,

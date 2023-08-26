@@ -68,7 +68,6 @@ mod metadata;
 mod post_execution;
 mod receipts;
 
-#[cfg(feature = "debug")]
 mod debug;
 
 use crate::profiler::Profiler;

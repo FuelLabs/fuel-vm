@@ -6,24 +6,16 @@ use fuel_types::{
     Word,
 };
 
-#[cfg(feature = "debug")]
 mod debug;
 
-#[cfg(feature = "debug")]
 mod debugger;
 
-#[cfg(feature = "debug")]
 pub use debug::{
     Breakpoint,
     DebugEval,
 };
 
-#[cfg(feature = "debug")]
 pub use debugger::Debugger;
-
-#[cfg(not(feature = "debug"))]
-/// Fallback functionless implementation if `debug` feature isn't enabled.
-pub type Debugger = ();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Resulting state of an instruction set execution.
@@ -37,7 +29,6 @@ pub enum ExecuteState {
     /// The set execution resulted in a `RVRT` instruction.
     Revert(Word),
 
-    #[cfg(feature = "debug")]
     /// A debug event was reached.
     DebugEvent(DebugEval),
 }
@@ -45,15 +36,7 @@ pub enum ExecuteState {
 impl ExecuteState {
     /// Return true if the VM execution should continue.
     pub const fn should_continue(&self) -> bool {
-        #[cfg(not(feature = "debug"))]
-        {
-            matches!(self, Self::Proceed)
-        }
-
-        #[cfg(feature = "debug")]
-        {
-            matches!(self, Self::Proceed | Self::DebugEvent(DebugEval::Continue))
-        }
+        matches!(self, Self::Proceed | Self::DebugEvent(DebugEval::Continue))
     }
 }
 
@@ -63,7 +46,6 @@ impl Default for ExecuteState {
     }
 }
 
-#[cfg(feature = "debug")]
 impl From<DebugEval> for ExecuteState {
     fn from(d: DebugEval) -> Self {
         Self::DebugEvent(d)
@@ -81,17 +63,14 @@ pub enum ProgramState {
     /// The transaction execution resulted in a `RVRT` instruction.
     Revert(Word),
 
-    #[cfg(feature = "debug")]
     /// A debug event was reached for the transaction. The VM is suspended.
     RunProgram(DebugEval),
 
-    #[cfg(feature = "debug")]
     /// A debug event was reached for a predicate verification. The VM is
     /// suspended.
     VerifyPredicate(DebugEval),
 }
 
-#[cfg(feature = "debug")]
 impl PartialEq<Breakpoint> for ProgramState {
     fn eq(&self, other: &Breakpoint) -> bool {
         match self.debug_ref() {
@@ -101,7 +80,6 @@ impl PartialEq<Breakpoint> for ProgramState {
     }
 }
 
-#[cfg(feature = "debug")]
 impl ProgramState {
     /// Debug event representation.
     ///

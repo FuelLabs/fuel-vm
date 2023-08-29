@@ -104,7 +104,6 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 }
 
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
-    let name = &s.ast().ident;
     let repr = parse_enum_repr(&s.ast().attrs);
     let attrs = TypedefAttrs::parse(s);
 
@@ -254,7 +253,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             quote! { 8usize }
         };
         s.gen_impl(quote! {
-            gen impl fuel_types::canonical::SerializedSizeVariable for @Self {
+            gen impl fuel_types::canonical::SerializedSize for @Self {
                 fn size_static(&self) -> usize {
                     #discr_size + #match_size_static
                 }

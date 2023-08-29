@@ -19,7 +19,7 @@ pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
 #[cfg(feature = "std")]
-pub fn compute_transaction_id<T: fuel_types::canonical::SerializedSizeFixed + Clone>(
+pub fn compute_transaction_id<T: fuel_types::canonical::SerializedSize + Clone>(
     chain_id: &fuel_types::ChainId,
     tx: &mut T,
 ) -> crate::TxId {

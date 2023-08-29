@@ -33,7 +33,7 @@ use fuel_tx::{
 use fuel_types::{
     canonical::{
         Serialize,
-        SerializedSizeVariable,
+        SerializedSize,
     },
     AssetId,
     BlockHeight,

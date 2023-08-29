@@ -20,7 +20,10 @@ use crate::{
 };
 
 use fuel_asm::RegId;
-use fuel_types::Word;
+use fuel_types::{
+    canonical::SerializedSize,
+    Word,
+};
 
 use crate::{
     error::BugVariant::GlobalGasUnderflow,

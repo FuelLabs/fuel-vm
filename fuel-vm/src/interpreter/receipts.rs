@@ -4,7 +4,7 @@ use std::mem;
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
 use fuel_types::{
-    canonical::SerializedSizeVariable,
+    canonical::SerializedSize,
     Bytes32,
 };
 
@@ -123,7 +123,7 @@ mod tests {
         interpreter::receipts::ReceiptsCtx,
     };
     use fuel_tx::Receipt;
-    use fuel_types::canonical::SerializedSizeVariable;
+    use fuel_types::canonical::SerializedSize;
     use std::iter;
 
     fn create_receipt() -> Receipt {

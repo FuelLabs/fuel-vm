@@ -1,4 +1,4 @@
-impl fuel_types::canonical::SerializedSizeVariable for Transaction {
+impl fuel_types::canonical::SerializedSize for Transaction {
     fn size_static(&self) -> usize {
         match self {
             Transaction::Script(_) => Script::SIZE_STATIC,

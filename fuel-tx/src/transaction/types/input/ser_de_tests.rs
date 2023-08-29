@@ -1,7 +1,7 @@
 use super::*;
 use fuel_types::canonical::{
     Deserialize,
-    SerializedSizeVariable,
+    SerializedSize,
 };
 
 #[test]

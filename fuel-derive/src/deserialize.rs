@@ -205,7 +205,6 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
-                println!("decode_dynamic of enum {}", stringify!(#name));
                 match self {
                     #(
                         #decode_dynamic

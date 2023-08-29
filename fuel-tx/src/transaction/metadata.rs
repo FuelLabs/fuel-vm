@@ -66,8 +66,8 @@ impl CommonMetadata {
         Tx: field::Witnesses,
     {
         use fuel_types::canonical::{
+            SerializedSize,
             SerializedSizeFixed,
-            SerializedSizeVariable,
         };
         use itertools::Itertools;
 

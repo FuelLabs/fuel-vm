@@ -8,6 +8,7 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
+        SerializedSize,
         SerializedSizeFixed,
     },
     AssetId,

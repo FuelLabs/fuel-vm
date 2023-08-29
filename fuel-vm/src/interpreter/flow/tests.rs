@@ -11,7 +11,7 @@ use fuel_tx::{
     TxParameters,
 };
 use fuel_types::{
-    canonical::SerializedSizeVariable,
+    canonical::SerializedSize,
     ContractId,
 };
 use test_case::test_case;

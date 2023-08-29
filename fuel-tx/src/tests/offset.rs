@@ -14,6 +14,7 @@ use fuel_tx_test_helpers::TransactionFactory;
 use fuel_types::{
     canonical::{
         Deserialize,
+        SerializedSize,
         SerializedSizeFixed,
     },
     ChainId,

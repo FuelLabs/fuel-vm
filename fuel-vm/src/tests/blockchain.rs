@@ -12,7 +12,7 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_types::{
-    canonical::SerializedSizeFixed,
+    canonical::SerializedSize,
     AssetId,
     BlockHeight,
     ChainId,

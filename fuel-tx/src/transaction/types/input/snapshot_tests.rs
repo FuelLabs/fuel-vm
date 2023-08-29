@@ -3,7 +3,7 @@
 use super::*;
 use crate::TransactionBuilder;
 
-use fuel_types::canonical::SerializedSizeVariable;
+use fuel_types::canonical::SerializedSize;
 
 #[test]
 fn tx_with_signed_coin_snapshot() {

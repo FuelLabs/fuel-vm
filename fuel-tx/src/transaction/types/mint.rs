@@ -15,7 +15,7 @@ use crate::{
 use derivative::Derivative;
 use fuel_types::{
     bytes::WORD_SIZE,
-    canonical::SerializedSizeVariable,
+    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
 };

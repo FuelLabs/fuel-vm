@@ -63,18 +63,17 @@ pub trait SerializedSize: Serialize {
     }
 }
 
-
 /// Types with fixed static size, any types except `enum` with diffrently-sized variants
 pub trait SerializedSizeFixed: Serialize {
     /// Size of static portion of the type in bytes.
     const SIZE_STATIC: usize;
 }
 
-// impl<T: SerializedSizeFixed> SerializedSize for T {
-//     fn size_static(&self) -> usize {
-//         Self::SIZE_STATIC
-//     }
-// }
+impl<T: SerializedSizeFixed> SerializedSize for T {
+    fn size_static(&self) -> usize {
+        Self::SIZE_STATIC
+    }
+}
 
 /// Allows serialize the type into the `Output`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
@@ -464,7 +463,11 @@ impl<'a> Input for &'a [u8] {
     }
 
     fn debug_peek(&self) {
-        println!("Peek: {:x?} ({} remaining)", &self[..::core::cmp::min(16, self.len())], self.len());
+        println!(
+            "Peek: {:x?} ({} remaining)",
+            &self[..::core::cmp::min(16, self.len())],
+            self.len()
+        );
     }
 
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
@@ -514,7 +517,7 @@ mod tests {
     }
 
     fn validate_enum<
-        T: Serialize + Deserialize + SerializedSizeVariable + Eq + core::fmt::Debug,
+        T: Serialize + Deserialize + SerializedSize + Eq + core::fmt::Debug,
     >(
         t: T,
     ) {

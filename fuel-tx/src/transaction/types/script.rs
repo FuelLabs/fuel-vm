@@ -31,8 +31,8 @@ use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
     canonical::{
+        SerializedSize,
         SerializedSizeFixed,
-        SerializedSizeVariable,
     },
     fmt_truncated_hex,
     BlockHeight,

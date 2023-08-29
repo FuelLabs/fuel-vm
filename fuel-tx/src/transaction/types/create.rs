@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 use crate::{
     transaction::validity::{
         check_common_part,
@@ -7,7 +6,6 @@ use crate::{
     ConsensusParameters,
 };
 
-#[cfg(feature = "std")]
 use fuel_types::AssetId;
 
 use crate::{
@@ -193,6 +191,7 @@ impl Chargeable for Create {
 }
 
 impl FormatValidityChecks for Create {
+    #[cfg(feature = "std")]
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 

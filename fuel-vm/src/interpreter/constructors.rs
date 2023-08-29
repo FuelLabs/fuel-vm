@@ -44,7 +44,7 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            profiler: Profiler::default(),
+            profiler: Profiler,
             interpreter_params,
             panic_context: PanicContext::None,
         }

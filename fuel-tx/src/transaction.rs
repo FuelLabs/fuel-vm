@@ -22,7 +22,6 @@ mod repr;
 mod types;
 mod validity;
 
-#[cfg(feature = "std")]
 mod id;
 
 pub mod consensus_parameters;
@@ -70,11 +69,11 @@ use crate::input::{
 };
 #[cfg(feature = "std")]
 pub use fuel_types::ChainId;
+
 #[cfg(feature = "std")]
-pub use id::{
-    Signable,
-    UniqueIdentifier,
-};
+pub use id::Signable;
+
+pub use id::UniqueIdentifier;
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;

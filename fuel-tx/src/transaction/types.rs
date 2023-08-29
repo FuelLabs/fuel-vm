@@ -18,6 +18,7 @@ pub use storage::StorageSlot;
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
+#[cfg(feature = "std")]
 pub fn compute_transaction_id<T: fuel_types::canonical::SerializedSize>(
     chain_id: &fuel_types::ChainId,
     tx: &mut T,

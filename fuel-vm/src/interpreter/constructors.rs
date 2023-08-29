@@ -1,4 +1,5 @@
 //! Exposed constructors API for the [`Interpreter`]
+ #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
 use super::{
     ExecutableTransaction,
@@ -44,7 +45,7 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            profiler: Profiler,
+            profiler: Profiler::default(),
             interpreter_params,
             panic_context: PanicContext::None,
         }

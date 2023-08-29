@@ -8,13 +8,14 @@ use crate::{
         parse_enum_repr,
         should_skip_field,
         should_skip_field_binding,
-        TypedefAttrs,
+        EnumAttrs,
+        StructAttrs,
     },
     evaluate::evaluate_simple_expr,
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
-    let attrs = TypedefAttrs::parse(s);
+    let attrs = StructAttrs::parse(s);
 
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
@@ -51,7 +52,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     let size_dynamic_code =
         quote! { let mut size = 0; match self { #size_dynamic_code}; size };
 
-    let prefix = if let Some(prefix_type) = attrs.0.get("prefix") {
+    let prefix = if let Some(prefix_type) = attrs.prefix.as_ref() {
         quote! {
             let prefix: u64 = #prefix_type.into();
             <u64 as ::fuel_types::canonical::Serialize>::encode(&prefix, buffer)?;
@@ -61,7 +62,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     };
 
     let (size_static, size_no_dynamic) = constsize_fields(variant.ast().fields);
-    let size_prefix = if attrs.0.contains_key("prefix") {
+    let size_prefix = if attrs.prefix.is_some() {
         quote! {
             8 +
         }
@@ -105,7 +106,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let repr = parse_enum_repr(&s.ast().attrs);
-    let attrs = TypedefAttrs::parse(s);
+    let attrs = EnumAttrs::parse(s);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
     let mut next_discriminant = 0u64;
@@ -122,7 +123,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         });
 
         // Handle #[canonical(discriminant = Type)] and  #[canonical(inner_discriminant)]
-        let discr = if let Some(discr_type) = attrs.0.get("discriminant").or(attrs.0.get("inner_discriminant")) {
+        let discr = if let Some(discr_type) = attrs.discriminant.as_ref().or(attrs.inner_discriminant.as_ref()) {
             if v.ast().discriminant.is_some() {
                 panic!("User-specified discriminants are not supported with #[canonical(discriminant = Type)]")
             }
@@ -138,7 +139,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             quote! { #v }
         };
 
-        let encode_discriminant = if attrs.0.contains_key("inner_discriminant") {
+        let encode_discriminant = if attrs.inner_discriminant.is_some() {
             quote! {}
         } else {
             quote! {
@@ -171,12 +172,11 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     });
 
     // Handle #[canonical(serialize_with = function)]
-    let data_helper = attrs.0.get("serialize_with");
-    let size_helper = attrs.0.get("serialized_size_with");
+    let data_helper = attrs.serialize_with.as_ref();
+    let size_helper = attrs.serialized_size_with.as_ref();
     if let (Some(data_helper), Some(size_helper)) = (data_helper, size_helper) {
         let size_no_dynamic = attrs
-            .0
-            .get("SIZE_NO_DYNAMIC")
+            .SIZE_NO_DYNAMIC
             .expect("serialize_with requires SIZE_NO_DYNAMIC key");
 
         return s.gen_impl(quote! {
@@ -247,7 +247,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             })
             .collect();
         let match_size_static = quote! { match self { #match_size_static } };
-        let discr_size = if attrs.0.contains_key("inner_discriminant") {
+        let discr_size = if attrs.inner_discriminant.is_some() {
             quote! { 0usize }
         } else {
             quote! { 8usize }

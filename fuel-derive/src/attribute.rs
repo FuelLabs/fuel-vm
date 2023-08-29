@@ -13,45 +13,104 @@ use syn::{
 };
 use synstructure::BindingInfo;
 
-/// This holds top-level `canonical` attributes for a struct or an enum.
-#[derive(Debug)]
-pub struct TypedefAttrs(pub HashMap<String, TokenStream>);
+fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
+    let mut attrs = HashMap::new();
 
-impl TypedefAttrs {
-    pub fn parse(s: &synstructure::Structure) -> Self {
-        let mut attrs = HashMap::new();
-
-        for attr in &s.ast().attrs {
-            if attr.style != AttrStyle::Outer {
-                continue
-            }
-            if let Meta::List(ml) = &attr.meta {
-                if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical"
-                {
-                    let mut tt = ml.tokens.clone().into_iter().peekable();
-                    if let Some(key) = tt.next() {
-                        let key = key.to_string();
-                        if let Some(eq_sign) = tt.peek() {
-                            if eq_sign.to_string() == "=" {
-                                let _ = tt.next();
-                            }
-                        } else {
-                            // Single token, no `=`, so it's a boolean flag.
-                            attrs.insert(key, TokenStream::new());
-                            continue
+    for attr in &s.ast().attrs {
+        if attr.style != AttrStyle::Outer {
+            continue
+        }
+        if let Meta::List(ml) = &attr.meta {
+            if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical" {
+                let mut tt = ml.tokens.clone().into_iter().peekable();
+                if let Some(key) = tt.next() {
+                    let key = key.to_string();
+                    if let Some(eq_sign) = tt.peek() {
+                        if eq_sign.to_string() == "=" {
+                            let _ = tt.next();
                         }
-
-                        // Key-value pair
-                        let value = TokenStream::from_iter(tt);
-                        attrs.insert(key, value);
+                    } else {
+                        // Single token, no `=`, so it's a boolean flag.
+                        let old = attrs.insert(key.clone(), TokenStream::new());
+                        if old.is_some() {
+                            panic!("duplicate canonical attribute: {}", key);
+                        }
                         continue
                     }
-                    panic!("enum-level canonical attribute must be a `key = value` pair");
+
+                    // Key-value pair
+                    let value = TokenStream::from_iter(tt);
+                    let old = attrs.insert(key.clone(), value);
+                    if old.is_some() {
+                        panic!("duplicate canonical attribute: {}", key);
+                    }
+                    continue
                 }
+                panic!("enum-level canonical attribute must be a `key = value` pair");
             }
         }
+    }
 
-        Self(attrs)
+    attrs
+}
+
+/// Pop-level `canonical` attributes for a struct
+pub struct StructAttrs {
+    pub prefix: Option<TokenStream>,
+}
+
+impl StructAttrs {
+    pub fn parse(s: &synstructure::Structure) -> Self {
+        let mut attrs = parse_attrs(s);
+
+        let prefix = attrs.remove("prefix");
+
+        if !attrs.is_empty() {
+            panic!("unknown canonical attributes: {:?}", attrs.keys())
+        }
+
+        Self { prefix }
+    }
+}
+
+/// Pop-level `canonical` attributes for an enum
+#[allow(non_snake_case)]
+pub struct EnumAttrs {
+    pub discriminant: Option<TokenStream>,
+    pub inner_discriminant: Option<TokenStream>,
+    pub serialized_size_with: Option<TokenStream>,
+    pub serialize_with: Option<TokenStream>,
+    pub deserialize_with: Option<TokenStream>,
+    pub SIZE_STATIC: Option<TokenStream>,
+    pub SIZE_NO_DYNAMIC: Option<TokenStream>,
+}
+
+impl EnumAttrs {
+    #[allow(non_snake_case)]
+    pub fn parse(s: &synstructure::Structure) -> Self {
+        let mut attrs = parse_attrs(s);
+
+        let discriminant = attrs.remove("discriminant");
+        let inner_discriminant = attrs.remove("inner_discriminant");
+        let serialized_size_with = attrs.remove("serialized_size_with");
+        let serialize_with = attrs.remove("serialize_with");
+        let deserialize_with = attrs.remove("deserialize_with");
+        let SIZE_STATIC = attrs.remove("SIZE_STATIC");
+        let SIZE_NO_DYNAMIC = attrs.remove("SIZE_NO_DYNAMIC");
+
+        if !attrs.is_empty() {
+            panic!("unknown canonical attributes: {:?}", attrs.keys())
+        }
+
+        Self {
+            discriminant,
+            inner_discriminant,
+            serialized_size_with,
+            serialize_with,
+            deserialize_with,
+            SIZE_STATIC,
+            SIZE_NO_DYNAMIC,
+        }
     }
 }
 

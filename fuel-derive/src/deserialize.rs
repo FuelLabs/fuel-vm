@@ -5,7 +5,8 @@ use crate::{
     attribute::{
         should_skip_field,
         should_skip_field_binding,
-        TypedefAttrs,
+        EnumAttrs,
+        StructAttrs,
     },
     evaluate::evaluate_simple_expr,
 };
@@ -39,7 +40,7 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
         }
     });
 
-    let remove_prefix = if TypedefAttrs::parse(s).0.contains_key("prefix") {
+    let remove_prefix = if StructAttrs::parse(s).prefix.is_some() {
         quote! {
             <u64 as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?;
         }
@@ -65,7 +66,7 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
 }
 
 fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
-    let attrs = TypedefAttrs::parse(s);
+    let attrs = EnumAttrs::parse(s);
     let _name = &s.ast().ident;
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
@@ -90,9 +91,8 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
 
             let discr = if let Some(discr_type) = attrs
-                .0
-                .get("discriminant")
-                .or(attrs.0.get("inner_discriminant")) {
+                .discriminant.as_ref()
+                .or(attrs.inner_discriminant.as_ref()) {
                 let vname = variant.ast().ident;
                 quote! { #discr_type::#vname }
             } else {
@@ -130,7 +130,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     });
 
     // Handle #[canonical(inner_discriminant = Type)]
-    let decode_discriminant = if attrs.0.contains_key("inner_discriminant") {
+    let decode_discriminant = if attrs.inner_discriminant.is_some() {
         quote! {
             let buf = buffer.clone();
             let raw_discr = <::core::primitive::u64 as ::fuel_types::canonical::Deserialize>::decode(buffer)?;
@@ -143,10 +143,8 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     };
 
     // Handle #[canonical(discriminant = Type)]
-    let mapped_discr = if let Some(discr_type) = attrs
-        .0
-        .get("discriminant")
-        .or(attrs.0.get("inner_discriminant"))
+    let mapped_discr = if let Some(discr_type) =
+        attrs.discriminant.or(attrs.inner_discriminant)
     {
         quote! { {
             use ::num_enum::{TryFromPrimitive, IntoPrimitive};
@@ -160,7 +158,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     };
 
     // Handle #[canonical(deserialize_with = function)]
-    if let Some(helper) = attrs.0.get("deserialize_with") {
+    if let Some(helper) = attrs.deserialize_with {
         return s.gen_impl(quote! {
             gen impl ::fuel_types::canonical::Deserialize for @Self {
                 fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {

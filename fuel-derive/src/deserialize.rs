@@ -22,7 +22,7 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
             }
         } else {
             quote! {{
-                <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+                <#ty as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?
             }}
         }
     });
@@ -34,27 +34,27 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
             }
         } else {
             quote! {{
-                fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+                ::fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
             }}
         }
     });
 
     let remove_prefix = if TypedefAttrs::parse(s).0.contains_key("prefix") {
         quote! {
-            <u64 as fuel_types::canonical::Deserialize>::decode_static(buffer)?;
+            <u64 as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?;
         }
     } else {
         quote! {}
     };
 
     s.gen_impl(quote! {
-        gen impl fuel_types::canonical::Deserialize for @Self {
-            fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
+        gen impl ::fuel_types::canonical::Deserialize for @Self {
+            fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {
                 #remove_prefix
                 ::core::result::Result::Ok(#decode_main)
             }
 
-            fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn decode_dynamic<I: ::fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 match self {
                     #decode_dynamic,
                 };
@@ -83,7 +83,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 } else {
                     let ty = &field.ty;
                     quote! {{
-                        <#ty as fuel_types::canonical::Deserialize>::decode_static(buffer)?
+                        <#ty as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?
                     }}
                 }
             });
@@ -119,7 +119,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 }
             } else {
                 quote! {{
-                    fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
+                    ::fuel_types::canonical::Deserialize::decode_dynamic(#binding, buffer)?;
                 }}
             }
         });
@@ -133,12 +133,12 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let decode_discriminant = if attrs.0.contains_key("inner_discriminant") {
         quote! {
             let buf = buffer.clone();
-            let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+            let raw_discr = <::core::primitive::u64 as ::fuel_types::canonical::Deserialize>::decode(buffer)?;
             *buffer = buf; // Restore buffer position
         }
     } else {
         quote! {
-            let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+            let raw_discr = <::core::primitive::u64 as ::fuel_types::canonical::Deserialize>::decode(buffer)?;
         }
     };
 
@@ -151,7 +151,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         quote! { {
             use ::num_enum::{TryFromPrimitive, IntoPrimitive};
             let Ok(discr) = #discr_type::try_from_primitive(raw_discr) else {
-                return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant)
+                return ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant)
             };
             discr
         } }
@@ -162,13 +162,13 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     // Handle #[canonical(deserialize_with = function)]
     if let Some(helper) = attrs.0.get("deserialize_with") {
         return s.gen_impl(quote! {
-            gen impl fuel_types::canonical::Deserialize for @Self {
-                fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
-                    let raw_discr = <::core::primitive::u64 as fuel_types::canonical::Deserialize>::decode(buffer)?;
+            gen impl ::fuel_types::canonical::Deserialize for @Self {
+                fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {
+                    let raw_discr = <::core::primitive::u64 as ::fuel_types::canonical::Deserialize>::decode(buffer)?;
                     #helper(#mapped_discr, buffer)
                 }
 
-                fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                fn decode_dynamic<I: ::fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                     ::core::result::Result::Ok(())
                 }
             }
@@ -176,21 +176,21 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     }
 
     s.gen_impl(quote! {
-        gen impl fuel_types::canonical::Deserialize for @Self {
-            fn decode_static<I: fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, fuel_types::canonical::Error> {
+        gen impl ::fuel_types::canonical::Deserialize for @Self {
+            fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {
                 #decode_discriminant
                 match #mapped_discr {
                     #decode_static
-                    _ => ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
+                    _ => ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant),
                 }
             }
 
-            fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn decode_dynamic<I: ::fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 match self {
                     #(
                         #decode_dynamic
                     )*
-                    _ => return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
+                    _ => return ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant),
                 };
 
                 ::core::result::Result::Ok(())

@@ -24,7 +24,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
+                ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
             }
         }
     });
@@ -34,7 +34,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+                ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
             }
         }
     });
@@ -54,7 +54,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     let prefix = if let Some(prefix_type) = attrs.0.get("prefix") {
         quote! {
             let prefix: u64 = #prefix_type.into();
-            <u64 as fuel_types::canonical::Serialize>::encode(&prefix, buffer)?;
+            <u64 as ::fuel_types::canonical::Serialize>::encode(&prefix, buffer)?;
         }
     } else {
         quote! {}
@@ -70,9 +70,9 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     };
 
     s.gen_impl(quote! {
-        gen impl fuel_types::canonical::Serialize for @Self {
+        gen impl ::fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
-            fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn encode_static<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 #prefix
                 match self {
                     #encode_static
@@ -81,7 +81,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
                 ::core::result::Result::Ok(())
             }
 
-            fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn encode_dynamic<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 match self {
                     #encode_dynamic
                 };
@@ -97,7 +97,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
         }
 
-        gen impl fuel_types::canonical::SerializedSizeFixed for @Self {
+        gen impl ::fuel_types::canonical::SerializedSizeFixed for @Self {
             const SIZE_STATIC: usize = #size_prefix #size_static;
         }
     })
@@ -116,7 +116,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 quote! {}
             } else {
                 quote! {
-                    fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
+                    ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
                 }
             }
         });
@@ -142,7 +142,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                <::core::primitive::u64 as fuel_types::canonical::Serialize>::encode(&#discr, buffer)?;
+                <::core::primitive::u64 as ::fuel_types::canonical::Serialize>::encode(&#discr, buffer)?;
             }
         };
 
@@ -161,7 +161,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 quote! {}
             } else {
                 quote! {
-                    fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
+                    ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
                 }
             }
         });
@@ -180,15 +180,15 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             .expect("serialize_with requires SIZE_NO_DYNAMIC key");
 
         return s.gen_impl(quote! {
-            gen impl fuel_types::canonical::Serialize for @Self {
+            gen impl ::fuel_types::canonical::Serialize for @Self {
                 const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
 
                 #[inline(always)]
-                fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                fn encode_static<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                     #data_helper(self, buffer)
                 }
 
-                fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+                fn encode_dynamic<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                     ::core::result::Result::Ok(())
                 }
 
@@ -197,7 +197,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 }
             }
 
-            gen impl fuel_types::canonical::SerializedSize for @Self {
+            gen impl ::fuel_types::canonical::SerializedSize for @Self {
                 #[inline(always)]
                 fn size_static(&self) -> usize {
                     #size_helper(self).0
@@ -232,7 +232,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             _ => panic!("Unknown repr: {}", repr),
         };
         s.gen_impl(quote! {
-            gen impl fuel_types::canonical::SerializedSizeFixed for @Self {
+            gen impl ::fuel_types::canonical::SerializedSizeFixed for @Self {
                 const SIZE_STATIC: usize = #repr_size;
             }
         })
@@ -253,7 +253,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             quote! { 8usize }
         };
         s.gen_impl(quote! {
-            gen impl fuel_types::canonical::SerializedSize for @Self {
+            gen impl ::fuel_types::canonical::SerializedSize for @Self {
                 fn size_static(&self) -> usize {
                     #discr_size + #match_size_static
                 }
@@ -280,25 +280,25 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         quote! {{ let mut size = 0; match self { #match_size_dynamic } size }};
 
     let impl_code = s.gen_impl(quote! {
-        gen impl fuel_types::canonical::Serialize for @Self {
+        gen impl ::fuel_types::canonical::Serialize for @Self {
             #[inline(always)]
-            fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn encode_static<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 match self {
                     #(
                         #encode_static
                     )*,
-                    _ => return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
+                    _ => return ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant),
                 };
 
                 ::core::result::Result::Ok(())
             }
 
-            fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
+            fn encode_dynamic<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 match self {
                     #(
                         #encode_dynamic
                     )*,
-                    _ => return ::core::result::Result::Err(fuel_types::canonical::Error::UnknownDiscriminant),
+                    _ => return ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant),
                 };
 
                 ::core::result::Result::Ok(())
@@ -451,7 +451,7 @@ fn try_builtin_sized(ty: &syn::Type, align: bool) -> Option<TypeSize> {
             let elem_count = TypeSize::from_expr(&arr.len);
             let unpadded_size = elem_size * elem_count;
             Some(TypeSize::Computed(
-                quote! { fuel_types::canonical::aligned_size(#unpadded_size) },
+                quote! { ::fuel_types::canonical::aligned_size(#unpadded_size) },
             ))
         }
         syn::Type::Tuple(tup) => tup
@@ -469,13 +469,13 @@ fn try_builtin_sized(ty: &syn::Type, align: bool) -> Option<TypeSize> {
             }
 
             Some(TypeSize::Computed(if align {
-                quote! { <#p as fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC }
+                quote! { <#p as ::fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC }
             } else {
                 quote! {
-                    if <#p as fuel_types::canonical::Serialize>::UNALIGNED_BYTES {
+                    if <#p as ::fuel_types::canonical::Serialize>::UNALIGNED_BYTES {
                         1
                     } else {
-                        <#p as fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC
+                        <#p as ::fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC
                     }
                 }
             }))

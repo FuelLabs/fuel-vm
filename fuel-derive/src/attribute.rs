@@ -56,7 +56,7 @@ fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
 
 /// Pop-level `canonical` attributes for a struct
 pub struct StructAttrs {
-    /// The struct is prefixed with the given byte.
+    /// The struct is prefixed with the given word.
     /// Useful with`#[canonical(inner_discriminant)]`.
     pub prefix: Option<TokenStream>,
 }

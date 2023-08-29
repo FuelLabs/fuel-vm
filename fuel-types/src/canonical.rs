@@ -23,6 +23,8 @@ pub enum Error {
     BufferIsTooShort,
     /// Got unknown enum's discriminant.
     UnknownDiscriminant,
+    /// Struct prefix was invalid.
+    InvalidPrefix,
     /// Wrong align.
     WrongAlign,
     /// Allocation too large to be correct.

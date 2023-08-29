@@ -40,10 +40,13 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
         }
     });
 
-    let remove_prefix = if StructAttrs::parse(s).prefix.is_some() {
-        quote! {
-            <u64 as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?;
-        }
+    let remove_prefix = if let Some(expected_prefix) = StructAttrs::parse(s).prefix {
+        quote! {{
+            let prefix = <u64 as ::fuel_types::canonical::Deserialize>::decode_static(buffer)?;
+            if prefix.try_into() != Ok(#expected_prefix) {
+                return ::core::result::Result::Err(::fuel_types::canonical::Error::InvalidPrefix)
+            }
+        }}
     } else {
         quote! {}
     };

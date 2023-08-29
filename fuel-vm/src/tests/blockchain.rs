@@ -133,10 +133,10 @@ fn state_read_write() {
 
     let program = function_selector
         .into_iter()
-        .chain(call_arguments_parser.into_iter())
-        .chain(routine_add_word_to_state.into_iter())
-        .chain(routine_unpack_and_xor_limbs_into_state.into_iter())
-        .chain(invalid_call.into_iter())
+        .chain(call_arguments_parser)
+        .chain(routine_add_word_to_state)
+        .chain(routine_unpack_and_xor_limbs_into_state)
+        .chain(invalid_call)
         .collect_vec();
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;

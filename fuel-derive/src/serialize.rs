@@ -458,7 +458,7 @@ fn try_builtin_sized(ty: &syn::Type, align: bool) -> Option<TypeSize> {
             .elems
             .iter()
             .map(|type_| try_builtin_sized(type_, true))
-            .fold(Some(TypeSize::Constant(0)), |acc, item| Some(acc? + item?)),
+            .try_fold(TypeSize::Constant(0), |acc, item| Some(acc + item?)),
         syn::Type::Path(p) => {
             if p.qself.is_some() {
                 return None

@@ -342,7 +342,7 @@ fn revert() {
 
     let program = call_arguments_parser
         .into_iter()
-        .chain(routine_add_word_to_state.into_iter())
+        .chain(routine_add_word_to_state)
         .collect_vec();
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;

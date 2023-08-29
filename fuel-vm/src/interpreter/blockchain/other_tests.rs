@@ -238,7 +238,7 @@ fn test_code_root() {
         },
     };
     let mut pc = 4;
-    let input_contracts = vec![contract_id];
+    let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
     CodeRootCtx {
         memory: &mut memory,
@@ -312,7 +312,7 @@ fn test_code_size() {
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
-    let input_contract = vec![contract_id];
+    let input_contract = [contract_id];
     let mut panic_context = PanicContext::None;
     let input = CodeSizeCtx {
         storage: &mut storage,

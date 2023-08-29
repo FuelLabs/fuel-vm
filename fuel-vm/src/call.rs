@@ -8,7 +8,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSize,
         SerializedSizeFixed,
     },
     AssetId,
@@ -214,6 +213,7 @@ impl TryFrom<&[u8]> for Call {
 #[cfg(test)]
 impl From<Call> for Vec<u8> {
     fn from(call: Call) -> Self {
+        use fuel_types::canonical::SerializedSize;
         call.to_bytes()
     }
 }
@@ -221,6 +221,7 @@ impl From<Call> for Vec<u8> {
 #[cfg(test)]
 impl From<CallFrame> for Vec<u8> {
     fn from(call: CallFrame) -> Self {
+        use fuel_types::canonical::SerializedSize;
         call.to_bytes()
     }
 }

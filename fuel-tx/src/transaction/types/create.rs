@@ -36,10 +36,7 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::{
-        SerializedSize,
-        SerializedSizeFixed,
-    },
+    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
     ContractId,

@@ -6,7 +6,6 @@ use fuel_types::{
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
-    SerializedSize,
 };
 
 use core::{
@@ -103,6 +102,7 @@ impl str::FromStr for TxPointer {
 #[test]
 fn fmt_encode_decode() {
     use core::str::FromStr;
+    use fuel_types::canonical::SerializedSize;
 
     let cases = vec![(83473, 3829)];
 

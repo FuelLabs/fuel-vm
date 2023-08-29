@@ -14,7 +14,6 @@ use fuel_types::{
         Deserialize,
         Serialize,
         SerializedSize,
-        SerializedSizeFixed,
     },
     Immediate24,
 };

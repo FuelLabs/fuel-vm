@@ -12,7 +12,6 @@ use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::canonical::{
     Deserialize,
     SerializedSize,
-    SerializedSizeFixed,
 };
 use rand::{
     rngs::StdRng,

@@ -25,10 +25,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes,
-    canonical::{
-        SerializedSize,
-        SerializedSizeFixed,
-    },
+    canonical::SerializedSize,
     BlockHeight,
     ChainId,
 };

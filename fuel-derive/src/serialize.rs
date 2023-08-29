@@ -131,7 +131,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             } }
         } else {
             if let Some((_, d)) = v.ast().discriminant {
-                next_discriminant = evaluate_simple_expr(&d).expect("Unable to evaluate discriminant expression");
+                next_discriminant = evaluate_simple_expr(d).expect("Unable to evaluate discriminant expression");
             };
             let v = next_discriminant;
             next_discriminant += 1;
@@ -534,17 +534,9 @@ pub fn serialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
 
-    let serialize = match s.ast().data {
+    match s.ast().data {
         syn::Data::Struct(_) => serialize_struct(&s),
         syn::Data::Enum(_) => serialize_enum(&s),
         _ => panic!("Can't derive `Serialize` for `union`s"),
-    };
-
-    crate::utils::write_and_fmt(
-        format!("tts/{}.rs", s.ast().ident),
-        quote::quote!(#serialize),
-    )
-    .expect("Unable to write generated code to file");
-
-    quote! { #serialize }
+    }
 }

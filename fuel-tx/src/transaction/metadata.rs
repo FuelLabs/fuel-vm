@@ -1,6 +1,5 @@
 use alloc::vec::Vec;
 use fuel_types::{
-    canonical::SerializedSizeFixed,
     Bytes32,
     ChainId,
 };
@@ -65,10 +64,7 @@ impl CommonMetadata {
         Tx: field::Outputs,
         Tx: field::Witnesses,
     {
-        use fuel_types::canonical::{
-            SerializedSize,
-            SerializedSizeFixed,
-        };
+        use fuel_types::canonical::SerializedSize;
         use itertools::Itertools;
 
         let id = tx.id(chain_id);

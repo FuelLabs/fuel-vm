@@ -2,7 +2,6 @@ use crate::interpreter::memory::Memory;
 
 use super::*;
 use fuel_tx::Create;
-use fuel_types::canonical::Serialize;
 use test_case::test_case;
 
 #[test_case(0, 0, 0 => None)]

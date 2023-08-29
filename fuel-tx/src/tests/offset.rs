@@ -15,7 +15,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         SerializedSize,
-        SerializedSizeFixed,
     },
     ChainId,
 };

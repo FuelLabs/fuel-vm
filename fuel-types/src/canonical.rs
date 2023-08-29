@@ -116,9 +116,6 @@ pub trait Input: Clone {
     /// Returns the remaining length of the input data.
     fn remaining(&mut self) -> usize;
 
-    /// Print next bytes without moving the cursor.
-    fn debug_peek(&self); // TODO: remove
-
     /// Read the exact number of bytes required to fill the given buffer.
     fn read(&mut self, buf: &mut [u8]) -> Result<(), Error>;
 
@@ -460,14 +457,6 @@ impl<'a> Output for &'a mut [u8] {
 impl<'a> Input for &'a [u8] {
     fn remaining(&mut self) -> usize {
         self.len()
-    }
-
-    fn debug_peek(&self) {
-        println!(
-            "Peek: {:x?} ({} remaining)",
-            &self[..::core::cmp::min(16, self.len())],
-            self.len()
-        );
     }
 
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {

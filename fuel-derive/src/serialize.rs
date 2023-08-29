@@ -45,7 +45,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                size += #binding.size_dynamic(); // TODO: overflow checking?
+                size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
             }
         }
     });
@@ -61,13 +61,9 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         quote! {}
     };
 
-    let (size_static, size_no_dynamic) = constsize_fields(variant.ast().fields);
-    let size_prefix = if attrs.prefix.is_some() {
-        quote! {
-            8 +
-        }
-    } else {
-        quote! {}
+    let (mut size_static, size_no_dynamic) = constsize_fields(variant.ast().fields);
+    if attrs.prefix.is_some() {
+        size_static = quote! { ::fuel_types::canonical::add_sizes(#size_static, 8) };
     };
 
     s.gen_impl(quote! {
@@ -99,7 +95,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         }
 
         gen impl ::fuel_types::canonical::SerializedSizeFixed for @Self {
-            const SIZE_STATIC: usize = #size_prefix #size_static;
+            const SIZE_STATIC: usize = #size_static;
         }
     })
 }
@@ -135,7 +131,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 next_discriminant = evaluate_simple_expr(d).expect("Unable to evaluate discriminant expression");
             };
             let v = next_discriminant;
-            next_discriminant += 1;
+            next_discriminant = next_discriminant.checked_add(1).expect("Discriminant overflow");
             quote! { #v }
         };
 
@@ -255,7 +251,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         s.gen_impl(quote! {
             gen impl ::fuel_types::canonical::SerializedSize for @Self {
                 fn size_static(&self) -> usize {
-                    #discr_size + #match_size_static
+                    ::fuel_types::canonical::add_sizes(#discr_size, #match_size_static)
                 }
             }
         })
@@ -270,7 +266,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                     quote! {}
                 } else {
                     quote! {
-                        size += #binding.size_dynamic(); // TODO: overflow checking?
+                        size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
                     }
                 }
             })
@@ -409,15 +405,18 @@ impl core::ops::Add for TypeSize {
 
     fn add(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b),
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(
+                a.checked_add(b)
+                    .expect("Size would overflow on compile time"),
+            ),
             (Self::Computed(a), Self::Computed(b)) => Self::Computed(quote! {
-                #a + #b
+                ::fuel_types::canonical::add_sizes(#a, #b)
             }),
             (Self::Constant(a), Self::Computed(b)) => Self::Computed(quote! {
-                #a + #b
+                ::fuel_types::canonical::add_sizes(#a, #b)
             }),
             (Self::Computed(a), Self::Constant(b)) => Self::Computed(quote! {
-                #a + #b
+                ::fuel_types::canonical::add_sizes(#a, #b)
             }),
         }
     }
@@ -503,7 +502,7 @@ fn constsize_fields(fields: &syn::Fields) -> (TokenStream2, TokenStream2) {
     sizes.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let static_size: TokenStream2 = sizes.into_iter().fold(quote! { 0 }, |acc, item| {
         quote! {
-            #acc + #item
+            ::fuel_types::canonical::add_sizes(#acc, #item)
         }
     });
 

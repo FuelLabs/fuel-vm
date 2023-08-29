@@ -100,7 +100,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                     next_discriminant = evaluate_simple_expr(d).expect("Unable to evaluate discriminant expression");
                 };
                 let v = next_discriminant;
-                next_discriminant += 1;
+                next_discriminant = next_discriminant.checked_add(1).expect("Discriminant overflow");
                 quote! { #v }
             };
 

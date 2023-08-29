@@ -167,6 +167,15 @@ pub trait Deserialize: Sized {
     }
 }
 
+/// Returns the sum of two sizes, or panics if the sum overflows.
+pub const fn add_sizes(a: usize, b: usize) -> usize {
+    if let Some(result) = a.checked_add(b) {
+        result
+    } else {
+        panic!("Sum of sizes of two objects would overflow");
+    }
+}
+
 /// The data of each field should be 64 bits aligned.
 pub const ALIGN: usize = 8;
 
@@ -177,7 +186,7 @@ const fn alignment_bytes(len: usize) -> usize {
 
 /// Size after alignment
 pub const fn aligned_size(len: usize) -> usize {
-    len + alignment_bytes(len)
+    add_sizes(len, alignment_bytes(len))
 }
 
 macro_rules! impl_for_primitives {

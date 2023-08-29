@@ -163,7 +163,8 @@ async fn predicate() {
     let wrong_data = wrong_data.to_be_bytes().to_vec();
 
     // A script that will succeed only if the argument is 0x23
-    let predicate = [op::movi(0x10, 0x11),
+    let predicate = [
+        op::movi(0x10, 0x11),
         op::addi(0x11, 0x10, 0x12),
         op::movi(0x12, 0x08),
         op::aloc(0x12),
@@ -172,7 +173,8 @@ async fn predicate() {
         op::movi(0x10, 0x08),
         op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
         op::meq(0x10, 0x11, 0x12, 0x10),
-        op::ret(0x10)];
+        op::ret(0x10),
+    ];
 
     assert!(execute_predicate(predicate.iter().copied(), expected_data, 0).await);
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);

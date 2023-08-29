@@ -6,6 +6,7 @@ use fuel_types::{
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
+    SerializedSizeFixed,
 };
 
 use core::{

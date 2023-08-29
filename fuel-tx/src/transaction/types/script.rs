@@ -30,7 +30,10 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::Serialize,
+    canonical::{
+        SerializedSizeFixed,
+        SerializedSizeVariable,
+    },
     fmt_truncated_hex,
     BlockHeight,
     Bytes32,

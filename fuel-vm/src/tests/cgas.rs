@@ -6,7 +6,7 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_types::canonical::Serialize;
+use fuel_types::canonical::SerializedSizeFixed;
 use rand::{
     rngs::StdRng,
     Rng,

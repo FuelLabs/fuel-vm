@@ -31,7 +31,10 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    canonical::Serialize,
+    canonical::{
+        Serialize,
+        SerializedSizeVariable,
+    },
     AssetId,
     BlockHeight,
     Bytes32,

@@ -22,6 +22,7 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
+        SerializedSizeFixed,
     },
     fmt_truncated_hex,
     Address,
@@ -132,6 +133,35 @@ where
     field.fmt_as_field(f)
 }
 
+fn input_serialized_size_helper(value: &Input) -> (usize, usize) {
+    let s = 8 + // Discriminant
+    match value.clone() {
+        Input::CoinSigned(_) => CoinFull::SIZE_STATIC,
+        Input::CoinPredicate(_) => CoinFull::SIZE_STATIC,
+        Input::Contract(_) => Contract::SIZE_STATIC,
+        Input::MessageCoinSigned(_) => FullMessage::SIZE_STATIC,
+        Input::MessageCoinPredicate(_) => FullMessage::SIZE_STATIC,
+        Input::MessageDataSigned(_) => FullMessage::SIZE_STATIC,
+        Input::MessageDataPredicate(_) => FullMessage::SIZE_STATIC,
+    };
+
+    let d = match value.clone() {
+        Input::CoinSigned(coin) => coin.into_full().size_dynamic(),
+        Input::CoinPredicate(coin) => coin.into_full().size_dynamic(),
+        Input::Contract(contract) => contract.size_dynamic(),
+        Input::MessageCoinSigned(message) => message.into_full().size_dynamic(),
+        Input::MessageCoinPredicate(message) => message.into_full().size_dynamic(),
+        Input::MessageDataSigned(message) => message.into_full().size_dynamic(),
+        Input::MessageDataPredicate(message) => message.into_full().size_dynamic(),
+    };
+
+    let mut vec = Vec::new();
+    input_serialize_helper(value, &mut vec).unwrap();
+    assert_eq!(vec.len(), s + d);
+
+    (s, d)
+}
+
 fn input_serialize_helper<O: fuel_types::canonical::Output + ?Sized>(
     value: &Input,
     output: &mut O,
@@ -188,6 +218,7 @@ fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Deserialize, Serialize)]
 #[canonical(discriminant = InputRepr)]
+#[canonical(serialized_size_with = input_serialized_size_helper)]
 #[canonical(serialize_with = input_serialize_helper)]
 #[canonical(deserialize_with = input_deserialize_helper)]
 #[canonical(SIZE_STATIC = usize_max(CoinFull::SIZE_STATIC, usize_max(Contract::SIZE_STATIC, FullMessage::SIZE_STATIC)))]

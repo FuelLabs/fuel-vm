@@ -8,7 +8,7 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSize,
+        SerializedSizeFixed,
     },
     AssetId,
     ContractId,
@@ -63,15 +63,7 @@ impl Call {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    fuel_types::canonical::Deserialize,
-    fuel_types::canonical::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 /// Call frame representation in the VM stack.
 ///
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#call-frames>

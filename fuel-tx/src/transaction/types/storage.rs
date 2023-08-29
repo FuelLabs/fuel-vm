@@ -2,7 +2,7 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSize,
+        SerializedSizeFixed,
     },
     Bytes32,
     Bytes64,

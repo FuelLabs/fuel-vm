@@ -36,7 +36,10 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::Serialize,
+    canonical::{
+        SerializedSizeFixed,
+        SerializedSizeVariable,
+    },
     BlockHeight,
     Bytes32,
     ContractId,
@@ -192,7 +195,6 @@ impl Chargeable for Create {
     }
 }
 
-#[cfg(feature = "std")]
 impl FormatValidityChecks for Create {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;

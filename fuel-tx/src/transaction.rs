@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::SerializedSizeFixed,
     Address,
     AssetId,
     BlockHeight,
@@ -82,7 +82,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
 #[canonical(inner_discriminant = TransactionRepr)]
 pub enum Transaction {
     Script(Script),

@@ -7,7 +7,7 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSize,
+        SerializedSizeFixed,
     },
     fmt_option_truncated_hex,
     Address,

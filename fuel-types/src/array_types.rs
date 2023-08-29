@@ -397,9 +397,9 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
     }
 }
 
-/// Roundtrip encode/decode tests
+/// Roundtrip serde encode/decode tests
 #[cfg(all(test, feature = "serde"))]
-mod tests {
+mod tests_serde {
     use rand::{
         rngs::StdRng,
         SeedableRng,

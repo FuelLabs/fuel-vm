@@ -1,7 +1,7 @@
 use crate::TxId;
 
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::SerializedSizeFixed,
     Bytes32,
 };
 

@@ -9,7 +9,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_crypto::Hasher;
-use fuel_types::canonical::Serialize;
+use fuel_types::canonical::SerializedSizeFixed;
 use itertools::Itertools;
 
 const SET_STATUS_REG: u8 = 0x29;

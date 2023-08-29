@@ -3,11 +3,14 @@ use quote::quote;
 
 use core::cmp::Ordering;
 
-use crate::attribute::{
-    parse_enum_repr,
-    should_skip_field,
-    should_skip_field_binding,
-    TypedefAttrs,
+use crate::{
+    attribute::{
+        parse_enum_repr,
+        should_skip_field,
+        should_skip_field_binding,
+        TypedefAttrs,
+    },
+    evaluate::evaluate_simple_expr,
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
@@ -21,9 +24,6 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             quote! {}
         } else {
             quote! {
-                if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
-                    return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
-                }
                 fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
             }
         }
@@ -39,6 +39,18 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
 
+    let size_dynamic_code = variant.each(|binding| {
+        if should_skip_field_binding(binding) {
+            quote! {}
+        } else {
+            quote! {
+                size += #binding.size_dynamic(); // TODO: overflow checking?
+            }
+        }
+    });
+    let size_dynamic_code =
+        quote! { let mut size = 0; match self { #size_dynamic_code}; size };
+
     let prefix = if let Some(prefix_type) = attrs.0.get("prefix") {
         quote! {
             let prefix: u64 = #prefix_type.into();
@@ -48,7 +60,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         quote! {}
     };
 
-    let (size_static, size_dynamic) = constsize_fields(variant.ast().fields);
+    let (size_static, size_no_dynamic) = constsize_fields(variant.ast().fields);
     let size_prefix = if attrs.0.contains_key("prefix") {
         quote! {
             8 +
@@ -77,10 +89,15 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
                 ::core::result::Result::Ok(())
             }
 
-            const SIZE_NO_DYNAMIC: bool = #size_dynamic;
+            #[inline(always)]
+            fn size_dynamic(&self) -> usize {
+                #size_dynamic_code
+            }
+
+            const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
         }
 
-        gen impl fuel_types::canonical::SerializedSize for @Self {
+        gen impl fuel_types::canonical::SerializedSizeFixed for @Self {
             const SIZE_STATIC: usize = #size_prefix #size_static;
         }
     })
@@ -92,33 +109,34 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let attrs = TypedefAttrs::parse(s);
 
     assert!(!s.variants().is_empty(), "got invalid empty enum");
-    let encode_static = s.variants().iter().enumerate().map(|(i, v)| {
+    let mut next_discriminant = 0u64;
+    let encode_static = s.variants().iter().map(|v| {
         let pat = v.pat();
         let encode_static_iter = v.bindings().iter().map(|binding| {
             if should_skip_field_binding(binding) {
                 quote! {}
             } else {
                 quote! {
-                    if fuel_types::canonical::Serialize::size(#binding) % fuel_types::canonical::ALIGN > 0 {
-                        return ::core::result::Result::Err(fuel_types::canonical::Error::WrongAlign)
-                    }
                     fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
                 }
             }
         });
 
         // Handle #[canonical(discriminant = Type)] and  #[canonical(inner_discriminant)]
-        let discr = if let Some(discr_type) = attrs.0.get("discriminant") {
-            quote! { {
-                #discr_type::from(self).into()
-            } }
-        } else if let Some(discr_type) = attrs.0.get("inner_discriminant") {
+        let discr = if let Some(discr_type) = attrs.0.get("discriminant").or(attrs.0.get("inner_discriminant")) {
+            if v.ast().discriminant.is_some() {
+                panic!("User-specified discriminants are not supported with #[canonical(discriminant = Type)]")
+            }
             quote! { {
                 #discr_type::from(self).into()
             } }
         } else {
-            let index = i as u64;
-            quote! { #index }
+            if let Some((_, d)) = v.ast().discriminant {
+                next_discriminant = evaluate_simple_expr(&d).expect("Unable to evaluate discriminant expression");
+            };
+            let v = next_discriminant;
+            next_discriminant += 1;
+            quote! { #v }
         };
 
         let encode_discriminant = if attrs.0.contains_key("inner_discriminant") {
@@ -149,13 +167,14 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
         });
         quote! {
-
             #encode_dynamic_iter
         }
     });
 
     // Handle #[canonical(serialize_with = function)]
-    if let Some(helper) = attrs.0.get("serialize_with") {
+    let data_helper = attrs.0.get("serialize_with");
+    let size_helper = attrs.0.get("serialized_size_with");
+    if let (Some(data_helper), Some(size_helper)) = (data_helper, size_helper) {
         let size_no_dynamic = attrs
             .0
             .get("SIZE_NO_DYNAMIC")
@@ -167,30 +186,34 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
                 #[inline(always)]
                 fn encode_static<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
-                    #helper(self, buffer)
+                    #data_helper(self, buffer)
                 }
 
                 fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), fuel_types::canonical::Error> {
                     ::core::result::Result::Ok(())
                 }
+
+                fn size_dynamic(&self) -> usize {
+                    #size_helper(self).1
+                }
+            }
+
+            gen impl fuel_types::canonical::SerializedSize for @Self {
+                #[inline(always)]
+                fn size_static(&self) -> usize {
+                    #size_helper(self).0
+                }
             }
         })
+    } else if data_helper.is_none() != size_helper.is_none() {
+        panic!("serialize_with and serialized_size_with must be used together");
     }
 
-    let (mut variant_size_static, size_no_dynamic): (
-        Vec<TokenStream2>,
-        Vec<TokenStream2>,
-    ) = s
-        .variants()
-        .iter()
-        .map(|v| constsize_fields(v.ast().fields))
-        .unzip();
-
-    variant_size_static.iter_mut().for_each(|aa| {
-        if attrs.0.contains_key("inner_discriminant") {
-            *aa = quote! { #aa - 8 } // TODO: panic handling
-        }
-    });
+    let (variant_size_static, size_no_dynamic): (Vec<TokenStream2>, Vec<TokenStream2>) =
+        s.variants()
+            .iter()
+            .map(|v| constsize_fields(v.ast().fields))
+            .unzip();
 
     let size_no_dynamic = size_no_dynamic.iter().fold(quote! { true }, |acc, item| {
         quote! {
@@ -210,13 +233,52 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             _ => panic!("Unknown repr: {}", repr),
         };
         s.gen_impl(quote! {
-            gen impl fuel_types::canonical::SerializedSize for @Self {
+            gen impl fuel_types::canonical::SerializedSizeFixed for @Self {
                 const SIZE_STATIC: usize = #repr_size;
             }
         })
     } else {
-        quote! {}
+        let match_size_static: TokenStream2 = s
+            .variants()
+            .iter()
+            .zip(variant_size_static)
+            .map(|(variant, static_size_code)| {
+                let p = variant.pat();
+                quote! { #p => #static_size_code, }
+            })
+            .collect();
+        let match_size_static = quote! { match self { #match_size_static } };
+        let discr_size = if attrs.0.contains_key("inner_discriminant") {
+            quote! { 0usize }
+        } else {
+            quote! { 8usize }
+        };
+        s.gen_impl(quote! {
+            gen impl fuel_types::canonical::SerializedSizeVariable for @Self {
+                fn size_static(&self) -> usize {
+                    #discr_size + #match_size_static
+                }
+            }
+        })
     };
+
+    let match_size_dynamic: TokenStream2 = s
+        .variants()
+        .iter()
+        .map(|variant| {
+            variant.each(|binding| {
+                if should_skip_field_binding(binding) {
+                    quote! {}
+                } else {
+                    quote! {
+                        size += #binding.size_dynamic(); // TODO: overflow checking?
+                    }
+                }
+            })
+        })
+        .collect();
+    let match_size_dynamic =
+        quote! {{ let mut size = 0; match self { #match_size_dynamic } size }};
 
     let impl_code = s.gen_impl(quote! {
         gen impl fuel_types::canonical::Serialize for @Self {
@@ -243,33 +305,16 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 ::core::result::Result::Ok(())
             }
 
+            #[inline(always)]
+            fn size_dynamic(&self) -> usize {
+                #match_size_dynamic
+            }
+
             const SIZE_NO_DYNAMIC: bool = #size_no_dynamic;
         }
     });
 
-    // Variant sizes are generated in under NameVariantSizes
-    let variants_struct_name = syn::Ident::new(
-        &format!("{}VariantSizes", name),
-        proc_macro2::Span::call_site(),
-    );
-
-    let variants_impl_code: TokenStream2 = variant_size_static
-        .into_iter()
-        .zip(s.variants().iter())
-        .map(|(value, variant)| {
-            let variant_name = &variant.ast().ident;
-            quote! {
-                #[allow(non_upper_case_globals)]
-                pub const #variant_name: usize = #value;
-            }
-        })
-        .collect();
-
     quote! {
-        pub struct #variants_struct_name;
-        impl #variants_struct_name {
-            #variants_impl_code
-        }
         #impl_code
         #impl_size
     }
@@ -425,13 +470,13 @@ fn try_builtin_sized(ty: &syn::Type, align: bool) -> Option<TypeSize> {
             }
 
             Some(TypeSize::Computed(if align {
-                quote! { <#p as fuel_types::canonical::SerializedSize>::SIZE_STATIC }
+                quote! { <#p as fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC }
             } else {
                 quote! {
                     if <#p as fuel_types::canonical::Serialize>::UNALIGNED_BYTES {
                         1
                     } else {
-                        <#p as fuel_types::canonical::SerializedSize>::SIZE_STATIC
+                        <#p as fuel_types::canonical::SerializedSizeFixed>::SIZE_STATIC
                     }
                 }
             }))
@@ -496,11 +541,11 @@ pub fn serialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
         _ => panic!("Can't derive `Serialize` for `union`s"),
     };
 
-    // crate::utils::write_and_fmt(
-    //     format!("tts/{}.rs", s.ast().ident),
-    //     quote::quote!(#serialize),
-    // )
-    // .expect("unable to save or format");
+    crate::utils::write_and_fmt(
+        format!("tts/{}.rs", s.ast().ident),
+        quote::quote!(#serialize),
+    )
+    .expect("Unable to write generated code to file");
 
     quote! { #serialize }
 }

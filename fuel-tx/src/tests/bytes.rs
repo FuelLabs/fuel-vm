@@ -13,6 +13,8 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
+        SerializedSizeFixed,
+        SerializedSizeVariable,
     },
     Immediate24,
 };
@@ -51,7 +53,8 @@ where
 
         assert_eq!(&d_s, data);
 
-        let d_bytes = data.clone().to_bytes();
+        let mut d_bytes = Vec::new();
+        data.clone().encode(&mut d_bytes).expect("Failed to encode");
         let d_p = T::decode(&mut &d_bytes[..]).expect("Failed to deserialize T");
 
         assert_eq!(*data, d_p);

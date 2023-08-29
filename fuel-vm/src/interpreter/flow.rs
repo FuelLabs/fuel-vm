@@ -66,7 +66,7 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    canonical::Serialize,
+    canonical::SerializedSizeFixed,
     AssetId,
     Bytes32,
     ContractId,

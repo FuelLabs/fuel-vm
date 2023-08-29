@@ -29,8 +29,14 @@ where
         data.encode(&mut &mut buffer[..]).expect("Failed to encode");
         T::decode(&mut &buffer[..]).expect("Failed to decode");
 
+        let counted_bytes = {
+            let mut v = Vec::new();
+            data.encode(&mut v).expect("Failed to encode");
+            v.len()
+        };
+
         // Test that insufficine buffer size fails and that partial decoding fails
-        buffer.truncate(data.to_bytes().len());
+        buffer.truncate(counted_bytes);
         while buffer.pop().is_some() {
             data.encode(&mut buffer.as_mut_slice())
                 .expect_err("Encoding should fail");

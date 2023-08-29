@@ -321,7 +321,7 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
-    + fuel_types::canonical::Serialize
+    + fuel_types::canonical::SerializedSizeFixed
 {
     /// Casts the `Self` transaction into `&Script` if any.
     fn as_script(&self) -> Option<&Script>;

@@ -213,9 +213,8 @@ fn test_smo(
             initial_balance,
         )
         .unwrap();
-    let mut balances =
-        RuntimeBalances::try_from_iter([(asset, initial_balance)].into_iter())
-            .expect("Should be valid balance");
+    let mut balances = RuntimeBalances::try_from_iter([(asset, initial_balance)])
+        .expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
     let input = MessageOutputCtx {

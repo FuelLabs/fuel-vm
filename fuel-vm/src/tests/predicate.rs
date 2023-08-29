@@ -163,7 +163,7 @@ async fn predicate() {
     let wrong_data = wrong_data.to_be_bytes().to_vec();
 
     // A script that will succeed only if the argument is 0x23
-    let predicate = vec![
+    let predicate = [
         op::movi(0x10, 0x11),
         op::addi(0x11, 0x10, 0x12),
         op::movi(0x12, 0x08),

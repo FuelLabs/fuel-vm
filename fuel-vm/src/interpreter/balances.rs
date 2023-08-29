@@ -77,7 +77,7 @@ impl TryFrom<InitialBalances> for RuntimeBalances {
                 .checked_add(*retryable_amount)
                 .ok_or(CheckError::ArithmeticOverflow)?;
         }
-        Self::try_from_iter(balances.into_iter())
+        Self::try_from_iter(balances)
     }
 }
 

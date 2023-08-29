@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [#574](https://github.com/FuelLabs/fuel-vm/pull/574): Enforce fixed 32-byte input length for LHS and RHS inputs to the BMT's internal node sum.
 - [#547](https://github.com/FuelLabs/fuel-vm/pull/547): Bump `ed25519-dalek` to `2.0.0` to deal with RustSec Advisory. 
 
 #### Breaking

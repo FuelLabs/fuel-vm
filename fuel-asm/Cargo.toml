@@ -28,7 +28,6 @@ rstest = "0.16"
 default = ["std"]
 typescript = ["wasm-bindgen", "wee_alloc"]
 std = ["serde?/default", "fuel-types/std"]
-alloc = []
 serde = ["dep:serde"]
 
 # docs.rs-specific configuration

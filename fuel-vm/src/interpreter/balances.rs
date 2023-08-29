@@ -291,7 +291,7 @@ fn try_from_iter_wont_overflow() {
 
     // Aggregated sum check
     let balances = vec![(a, u64::MAX), (b, 15), (c, 0), (b, 1)];
-    let balances_aggregated = vec![(a, u64::MAX), (b, 16), (c, 0)];
+    let balances_aggregated = [(a, u64::MAX), (b, 16), (c, 0)];
     let runtime_balances =
         RuntimeBalances::try_from_iter(balances).expect("failed to create balance set");
 

@@ -32,7 +32,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
         .unwrap();
 
     let mut panic_context = PanicContext::None;
-    let input_contracts = vec![contract_id];
+    let input_contracts = [contract_id];
     let input = LoadContractCodeCtx {
         contract_max_size: 100,
         storage: &storage,
@@ -70,7 +70,7 @@ fn test_code_copy() -> Result<(), RuntimeError> {
         .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
         .unwrap();
 
-    let input_contracts = vec![contract_id];
+    let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
     let input = CodeCopyCtx {
         storage: &storage,

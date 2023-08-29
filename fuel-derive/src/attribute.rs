@@ -16,6 +16,7 @@ use synstructure::BindingInfo;
 /// This holds top-level `canonical` attributes for a struct or an enum.
 #[derive(Debug)]
 pub struct TypedefAttrs(pub HashMap<String, TokenStream>);
+
 impl TypedefAttrs {
     pub fn parse(s: &synstructure::Structure) -> Self {
         let mut attrs = HashMap::new();

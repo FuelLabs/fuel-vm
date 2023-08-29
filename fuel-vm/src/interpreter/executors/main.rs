@@ -569,7 +569,6 @@ where
 
             self.append_receipt(receipt);
 
-            #[cfg(feature = "debug")]
             if program.is_debug() {
                 self.debugger_set_last_state(program);
             }
@@ -620,7 +619,6 @@ where
 
                     ExecuteState::Proceed => (),
 
-                    #[cfg(feature = "debug")]
                     ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
                 }
             }

@@ -14,12 +14,11 @@ use std::collections::{
     HashSet,
 };
 
-#[derive(Debug, Default, Clone)]
 /// Debugger implementation for the VM.
-///
-/// Required features:
-/// - `debug`
+#[derive(Debug, Default, Clone)]
 pub struct Debugger {
+    /// Debugger is active and used.
+    is_active: bool,
     /// Single-stepping mode triggers a breakpoint after each instruction
     single_stepping: bool,
     breakpoints: HashMap<ContractId, HashSet<Word>>,
@@ -27,6 +26,11 @@ pub struct Debugger {
 }
 
 impl Debugger {
+    /// Returns `true` if the `Debugger` is active and used.
+    pub const fn is_active(&self) -> bool {
+        self.is_active
+    }
+
     /// Get single-stepping mode
     pub const fn single_stepping(&self) -> bool {
         self.single_stepping
@@ -34,11 +38,13 @@ impl Debugger {
 
     /// Set single-stepping mode
     pub fn set_single_stepping(&mut self, single_stepping: bool) {
+        self.is_active = true;
         self.single_stepping = single_stepping;
     }
 
     /// Set a new breakpoint in the provided location.
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
+        self.is_active = true;
         let contract = *breakpoint.contract();
         let pc = breakpoint.pc();
 
@@ -57,6 +63,7 @@ impl Debugger {
 
     /// Remove a breakpoint, if existent.
     pub fn remove_breakpoint(&mut self, breakpoint: &Breakpoint) {
+        self.is_active = true;
         self.breakpoints
             .get_mut(breakpoint.contract())
             .map(|set| set.remove(&breakpoint.pc()));
@@ -90,6 +97,7 @@ impl Debugger {
 
     /// Overwrite the last known state of the VM.
     pub fn set_last_state(&mut self, state: ProgramState) {
+        self.is_active = true;
         self.last_state.replace(state);
     }
 

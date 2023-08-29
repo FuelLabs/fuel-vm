@@ -148,11 +148,11 @@ impl GasUnit {
 /// The inner values are wrapped in an [`Arc`]
 /// so this is cheap to clone.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 pub struct GasCosts(Arc<GasCostsValues>);
 
 #[cfg(feature = "serde")]
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl<'de> serde::Deserialize<'de> for GasCosts {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -165,7 +165,7 @@ impl<'de> serde::Deserialize<'de> for GasCosts {
 }
 
 #[cfg(feature = "serde")]
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl serde::Serialize for GasCosts {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -175,7 +175,7 @@ impl serde::Serialize for GasCosts {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl GasCosts {
     /// Create new cost values wrapped in an [`Arc`].
     pub fn new(costs: GasCostsValues) -> Self {
@@ -183,7 +183,7 @@ impl GasCosts {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl Default for GasCosts {
     fn default() -> Self {
         Self(Arc::new(GasCostsValues::default()))
@@ -334,7 +334,7 @@ pub struct DependentCost {
     pub dep_per_unit: Word,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl GasCosts {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
@@ -591,7 +591,7 @@ impl DependentCost {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "alloc")]
 impl Deref for GasCosts {
     type Target = GasCostsValues;
 

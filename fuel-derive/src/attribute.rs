@@ -56,6 +56,8 @@ fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
 
 /// Pop-level `canonical` attributes for a struct
 pub struct StructAttrs {
+    /// The struct is prefixed with the given byte.
+    /// Useful with`#[canonical(inner_discriminant)]`.
     pub prefix: Option<TokenStream>,
 }
 
@@ -76,12 +78,20 @@ impl StructAttrs {
 /// Pop-level `canonical` attributes for an enum
 #[allow(non_snake_case)]
 pub struct EnumAttrs {
+    /// Use a custom type as a discriminant. Mapped using `TryFromPrimitive` and `Into`.
     pub discriminant: Option<TokenStream>,
+    /// Same as `discriminant`, but each field is prefixed with the discriminant,
+    /// so it's not removed when the enum itself is deserialized.
     pub inner_discriminant: Option<TokenStream>,
-    pub serialized_size_with: Option<TokenStream>,
+    /// Replaces calculation of the serialized static size with a custom function.
+    pub serialized_size_static_with: Option<TokenStream>,
+    /// Replaces calculation of the serialized dynamic size with a custom function.
+    pub serialized_size_dynamic_with: Option<TokenStream>,
+    /// Replaces serialization with a custom function.
     pub serialize_with: Option<TokenStream>,
+    /// Replaces deserialization with a custom function.
     pub deserialize_with: Option<TokenStream>,
-    pub SIZE_STATIC: Option<TokenStream>,
+    /// Determines whether the enum has a dynamic size when `serialize_with` is used.
     pub SIZE_NO_DYNAMIC: Option<TokenStream>,
 }
 
@@ -92,10 +102,10 @@ impl EnumAttrs {
 
         let discriminant = attrs.remove("discriminant");
         let inner_discriminant = attrs.remove("inner_discriminant");
-        let serialized_size_with = attrs.remove("serialized_size_with");
+        let serialized_size_static_with = attrs.remove("serialized_size_static_with");
+        let serialized_size_dynamic_with = attrs.remove("serialized_size_dynamic_with");
         let serialize_with = attrs.remove("serialize_with");
         let deserialize_with = attrs.remove("deserialize_with");
-        let SIZE_STATIC = attrs.remove("SIZE_STATIC");
         let SIZE_NO_DYNAMIC = attrs.remove("SIZE_NO_DYNAMIC");
 
         if !attrs.is_empty() {
@@ -105,10 +115,10 @@ impl EnumAttrs {
         Self {
             discriminant,
             inner_discriminant,
-            serialized_size_with,
+            serialized_size_static_with,
+            serialized_size_dynamic_with,
             serialize_with,
             deserialize_with,
-            SIZE_STATIC,
             SIZE_NO_DYNAMIC,
         }
     }

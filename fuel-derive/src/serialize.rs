@@ -169,8 +169,11 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
     // Handle #[canonical(serialize_with = function)]
     let data_helper = attrs.serialize_with.as_ref();
-    let size_helper = attrs.serialized_size_with.as_ref();
-    if let (Some(data_helper), Some(size_helper)) = (data_helper, size_helper) {
+    let size_helper_static = attrs.serialized_size_static_with.as_ref();
+    let size_helper_dynamic = attrs.serialized_size_dynamic_with.as_ref();
+    if let (Some(data_helper), Some(size_helper_static), Some(size_helper_dynamic)) =
+        (data_helper, size_helper_static, size_helper_dynamic)
+    {
         let size_no_dynamic = attrs
             .SIZE_NO_DYNAMIC
             .expect("serialize_with requires SIZE_NO_DYNAMIC key");
@@ -189,19 +192,26 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                 }
 
                 fn size_dynamic(&self) -> usize {
-                    #size_helper(self).1
+                    #size_helper_dynamic(self)
                 }
             }
 
             gen impl ::fuel_types::canonical::SerializedSize for @Self {
                 #[inline(always)]
                 fn size_static(&self) -> usize {
-                    #size_helper(self).0
+                    #size_helper_static(self)
                 }
             }
         })
-    } else if data_helper.is_none() != size_helper.is_none() {
-        panic!("serialize_with and serialized_size_with must be used together");
+    } else if ![
+        data_helper.is_none(),
+        size_helper_static.is_none(),
+        size_helper_dynamic.is_none(),
+    ]
+    .into_iter()
+    .all(|v| v)
+    {
+        panic!("serialize_with, serialized_size_static_with and serialized_size_dynamic_with must be used together");
     }
 
     let (variant_size_static, size_no_dynamic): (Vec<TokenStream2>, Vec<TokenStream2>) =

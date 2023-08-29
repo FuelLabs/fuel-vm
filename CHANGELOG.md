@@ -6,14 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-
-- [#533](https://github.com/FuelLabs/fuel-vm/pull/533): Use custom serliazation for fuel-types to allow no_std compilation.
 #### Breaking
 
 - [#537](https://github.com/FuelLabs/fuel-vm/pull/537): Use dependent cost for `k256`, `s256`, `mcpi`, `scwq`, `swwq` opcodes.
     These opcodes charged inadequately low costs in comparison to the amount of work.
     This change should make all transactions that used these opcodes much more expensive than before.
+
+- [#533](https://github.com/FuelLabs/fuel-vm/pull/533): Use custom serialization for fuel-types to allow no_std compilation.
 
 ## [Version 0.36.1]
 

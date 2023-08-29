@@ -461,7 +461,6 @@ pub mod test_helpers {
             let tx_offset = self.get_tx_params().tx_offset();
             let mut tx_mem =
                 &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
-            dbg!(transaction.size());
             let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);

@@ -510,7 +510,6 @@ mod tests {
 
         let mut vec = Vec::new();
         t.encode_static(&mut vec).expect("Encode failed");
-        println!("{vec:?}");
         assert_eq!(vec.len(), T::SIZE_STATIC);
     }
 
@@ -526,14 +525,12 @@ mod tests {
 
         let mut vec = Vec::new();
         t.encode_static(&mut vec).expect("Encode failed");
-        println!("{vec:?}");
         assert_eq!(vec.len(), t.size_static());
         t.encode_dynamic(&mut vec).expect("Encode failed");
         assert_eq!(vec.len(), t.size());
 
         let mut vec2 = Vec::new();
         t.encode_dynamic(&mut vec2).expect("Encode failed");
-        println!("{vec2:?}");
         assert_eq!(vec2.len(), t.size_dynamic());
     }
 
